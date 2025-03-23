@@ -831,10 +831,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             // Penalise peers for sending us banned blocks.
             BlockError::KnownInvalidExecutionPayload(block_root) => {
-                warn!(
-                    ?block_root,
-                    "Received block known to be invalid",
-                );
+                warn!(?block_root, "Received block known to be invalid",);
                 Err(ChainSegmentFailed {
                     message: format!("Banned block: {block_root:?}"),
                     peer_action: Some(PeerAction::Fatal),

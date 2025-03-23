@@ -918,11 +918,7 @@ pub fn get_config<E: EthSpec>(
                 |s| match Hash256::from_str(s.strip_prefix("0x").unwrap_or(s).trim()) {
                     Ok(block_root) => Some(block_root),
                     Err(error) => {
-                        warn!(
-                            block_root = s,
-                            ?error,
-                            "Unable to parse invalid block root",
-                        );
+                        warn!(block_root = s, ?error, "Unable to parse invalid block root",);
                         None
                     }
                 },
