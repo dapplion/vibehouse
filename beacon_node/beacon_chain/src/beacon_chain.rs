@@ -92,6 +92,7 @@ use operation_pool::{
 };
 use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
 use proto_array::{DoNotReOrg, ProposerHeadError};
+use rand::RngCore;
 use safe_arith::SafeArith;
 use slasher::Slasher;
 use slot_clock::SlotClock;
@@ -491,6 +492,8 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub data_availability_checker: Arc<DataAvailabilityChecker<T>>,
     /// The KZG trusted setup used by this chain.
     pub kzg: Arc<Kzg>,
+    /// RNG instance used by the chain. Currently used for shuffling column sidecars in block publishing.
+    pub rng: Arc<Mutex<Box<dyn RngCore + Send>>>,
 }
 
 pub enum BeaconBlockResponseWrapper<E: EthSpec> {
