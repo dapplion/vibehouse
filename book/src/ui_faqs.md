@@ -29,3 +29,11 @@ Yes, if you need to access your beacon or validator from an address such as `htt
 ## 7. Why doesn't my validator balance graph show any data?
 
 If your graph is not showing data, it usually means your validator node is still caching data. The application must wait at least 3 epochs before it can render any graphical visualizations. This could take up to 20min.
+
+## 8. How can I connect to Siren using Wallet Connect?
+
+Depending on your configuration, building with Docker or Local, you will need to include the `NEXT_PUBLIC_WALLET_CONNECT_ID` variable in your `.env` file. To obtain your Wallet Connect project ID, please follow the instructions on their [website](https://cloud.walletconnect.com/sign-in). After providing a valid project ID, the Wallet Connect option should appear in the wallet connector dropdown.
+
+## 9. I can't log in to Siren even with correct credentials?
+
+When you deploy Siren via Docker, `NODE_ENV` defaults to `production`, which enforces HTTPS‑only access. If you access the dashboard over HTTP, the authentication cookie can’t be set and login will fail. To allow HTTP access, unset `NODE_ENV` or set it to development.
