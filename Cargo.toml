@@ -188,6 +188,8 @@ maplit = "1"
 merkle_proof = { path = "consensus/merkle_proof" }
 metrics = { path = "common/metrics" }
 milhouse = "0.5"
+mockall = "0.13"
+mockall_double = "0.3"
 mockito = "1.5.0"
 monitoring_api = { path = "common/monitoring_api" }
 network = { path = "beacon_node/network" }
