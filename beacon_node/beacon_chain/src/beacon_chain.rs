@@ -58,12 +58,14 @@ use crate::observed_data_sidecars::ObservedDataSidecars;
 use crate::observed_operations::{ObservationOutcome, ObservedOperations};
 use crate::observed_slashable::ObservedSlashable;
 use crate::persisted_beacon_chain::PersistedBeaconChain;
+use crate::persisted_custody::persist_custody_context;
 use crate::persisted_fork_choice::PersistedForkChoice;
 use crate::pre_finalization_cache::PreFinalizationBlockCache;
 use crate::shuffling_cache::{BlockShufflingIds, ShufflingCache};
 use crate::sync_committee_verification::{
     Error as SyncCommitteeError, VerifiedSyncCommitteeMessage, VerifiedSyncContribution,
 };
+use crate::validator_custody::CustodyContextSsz;
 use crate::validator_monitor::{
     get_slot_delay_ms, timestamp_now, ValidatorMonitor,
     HISTORIC_EPOCHS as VALIDATOR_MONITOR_HISTORIC_EPOCHS,
@@ -666,6 +668,23 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             self.store
                 .put_item(&ETH1_CACHE_DB_KEY, &eth1_chain.as_ssz_container())?;
         }
+
+        Ok(())
+    }
+
+    /// Persists the custody information to disk.
+    pub fn persist_custody_context(&self) -> Result<(), Error> {
+        let custody_context: CustodyContextSsz = self
+            .data_availability_checker
+            .custody_context()
+            .as_ref()
+            .into();
+        debug!(?custody_context, "Persisting custody context to store");
+
+        persist_custody_context::<T::EthSpec, T::HotStore, T::ColdStore>(
+            self.store.clone(),
+            custody_context,
+        )?;
 
         Ok(())
     }
@@ -2990,7 +3009,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     pub async fn verify_block_for_gossip(
         self: &Arc<Self>,
         block: Arc<SignedBeaconBlock<T::EthSpec>>,
-        custody_columns_count: usize,
     ) -> Result<GossipVerifiedBlock<T>, BlockError> {
         let chain = self.clone();
         self.task_executor
@@ -3000,7 +3018,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     let slot = block.slot();
                     let graffiti_string = block.message().body().graffiti().as_utf8_lossy();
 
-                    match GossipVerifiedBlock::new(block, &chain, custody_columns_count) {
+                    match GossipVerifiedBlock::new(block, &chain) {
                         Ok(verified) => {
                             let commitments_formatted = verified.block.commitments_formatted();
                             debug!(
@@ -7232,7 +7250,8 @@ impl<T: BeaconChainTypes> Drop for BeaconChain<T> {
         let drop = || -> Result<(), Error> {
             self.persist_fork_choice()?;
             self.persist_op_pool()?;
-            self.persist_eth1_cache()
+            self.persist_eth1_cache()?;
+            self.persist_custody_context()
         };
 
         if let Err(e) = drop() {

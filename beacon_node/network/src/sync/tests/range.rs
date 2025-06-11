@@ -449,18 +449,10 @@ fn build_rpc_block(
             RpcBlock::new(None, block, Some(blobs.clone())).unwrap()
         }
         Some(DataSidecars::DataColumns(columns)) => {
-            RpcBlock::new_with_custody_columns(
-                None,
-                block,
-                columns.clone(),
-                // TODO(das): Assumes CGC = max value. Change if we want to do more complex tests
-                columns.len(),
-                spec,
-            )
-            .unwrap()
+            RpcBlock::new_with_custody_columns(None, block, columns.clone(), spec).unwrap()
         }
         // Block has no data, expects zero columns
-        None => RpcBlock::new_without_blobs(None, block, 0),
+        None => RpcBlock::new_without_blobs(None, block),
     }
 }
 
