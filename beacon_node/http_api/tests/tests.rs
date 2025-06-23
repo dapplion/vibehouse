@@ -964,6 +964,87 @@ impl ApiTester {
         self
     }
 
+    pub async fn test_beacon_states_validator_identities(self) -> Self {
+        for state_id in self.interesting_state_ids() {
+            for validator_indices in self.interesting_validator_indices() {
+                let state_opt = state_id.state(&self.chain).ok();
+                let validators: Vec<Validator> = match state_opt.as_ref() {
+                    Some((state, _execution_optimistic, _finalized)) => {
+                        state.validators().clone().to_vec()
+                    }
+                    None => vec![],
+                };
+
+                let validator_index_ids = validator_indices
+                    .iter()
+                    .cloned()
+                    .map(ValidatorId::Index)
+                    .collect::<Vec<ValidatorId>>();
+
+                let validator_pubkey_ids = validator_indices
+                    .iter()
+                    .cloned()
+                    .map(|i| {
+                        ValidatorId::PublicKey(
+                            validators
+                                .get(i as usize)
+                                .map_or(PublicKeyBytes::empty(), |val| val.pubkey),
+                        )
+                    })
+                    .collect::<Vec<ValidatorId>>();
+
+                let result_index_ids = self
+                    .client
+                    .post_beacon_states_validator_identities(state_id.0, validator_index_ids)
+                    .await
+                    .unwrap()
+                    .map(|res| res.data);
+                let result_pubkey_ids = self
+                    .client
+                    .post_beacon_states_validator_identities(state_id.0, validator_pubkey_ids)
+                    .await
+                    .unwrap()
+                    .map(|res| res.data);
+
+                let expected = state_opt.map(|(state, _execution_optimistic, _finalized)| {
+                    // If validator_indices is empty, return identities for all validators
+                    if validator_indices.is_empty() {
+                        state
+                            .validators()
+                            .iter()
+                            .enumerate()
+                            .map(|(index, validator)| ValidatorIdentityData {
+                                index: index as u64,
+                                pubkey: validator.pubkey,
+                                activation_epoch: validator.activation_epoch,
+                            })
+                            .collect()
+                    } else {
+                        let mut validators = Vec::with_capacity(validator_indices.len());
+
+                        for i in validator_indices {
+                            if i < state.validators().len() as u64 {
+                                // access each validator, and then transform the data into ValidatorIdentityData
+                                let validator = state.validators().get(i as usize).unwrap();
+                                validators.push(ValidatorIdentityData {
+                                    index: i,
+                                    pubkey: validator.pubkey,
+                                    activation_epoch: validator.activation_epoch,
+                                });
+                            }
+                        }
+
+                        validators
+                    }
+                });
+
+                assert_eq!(result_index_ids, expected, "{:?}", state_id);
+                assert_eq!(result_pubkey_ids, expected, "{:?}", state_id);
+            }
+        }
+        self
+    }
+
     pub async fn test_beacon_states_validators(self) -> Self {
         for state_id in self.interesting_state_ids() {
             for statuses in self.interesting_validator_statuses() {
@@ -6684,6 +6765,8 @@ async fn beacon_get_state_info() {
         .test_beacon_states_validators()
         .await
         .test_beacon_states_validator_balances()
+        .await
+        .test_beacon_states_validator_identities()
         .await
         .test_beacon_states_committees()
         .await
