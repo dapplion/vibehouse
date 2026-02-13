@@ -1,81 +1,64 @@
-# Lighthouse: Ethereum consensus client
+# VIBEHOUSE
 
-An open-source Ethereum consensus client, written in Rust and maintained by Sigma Prime.
+### the lighthouse fork that runs on vibes
 
-[![Book Status]][Book Link] [![Chat Badge]][Chat Link]
+```
+ _    _____ ____  ______  ______  __  _______ ______
+| |  / /  _/ __ )/ ____/ / / / / / / / / ___// ____/
+| | / // // __  / __/   / /_/ / / / / /\__ \/ __/
+| |/ // // /_/ / /___  / __  / /_/ / /___/ / /___
+|___/___/_____/_____/ /_/ /_/\____/\____/____/_____/
+```
 
-[Chat Badge]: https://img.shields.io/badge/chat-discord-%237289da
-[Chat Link]: https://discord.gg/cyAszAh
-[Book Status]:https://img.shields.io/badge/user--docs-unstable-informational
-[Book Link]: https://lighthouse-book.sigmaprime.io
-[stable]: https://github.com/sigp/lighthouse/tree/stable
-[unstable]: https://github.com/sigp/lighthouse/tree/unstable
-[blog]: https://lighthouse-blog.sigmaprime.io
+> Forked from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse) (post-Fulu). From here on out, it's just vibes.
 
-[Documentation](https://lighthouse-book.sigmaprime.io)
+---
 
-![Banner](https://i.postimg.cc/hjdTGKPd/photo-2020-10-23-09-52-16.jpg)
+**vibehouse** is a community-driven Ethereum consensus client. Same rock-solid Lighthouse core, but we ship faster, break things sometimes, and accept feature requests from literally anyone.
 
-## Overview
+We don't have a roadmap. We have a **vibemap**. See [plan.md](./plan.md).
 
-Lighthouse is:
+## What makes vibehouse different
 
-- Ready for use on Ethereum consensus mainnet.
-- Fully open-source, licensed under Apache 2.0.
-- Security-focused. Fuzzing techniques have been continuously applied and several external security reviews have been performed.
-- Built in [Rust](https://www.rust-lang.org), a modern language providing unique safety guarantees and
-	excellent performance (comparable to C++).
-- Funded by various organisations, including Sigma Prime, the
-	Ethereum Foundation, Consensys, the Decentralization Foundation and private individuals.
-- Actively involved in the specification and security analysis of the
-	Ethereum proof-of-stake consensus specification.
+- **Vibes-first development** - If the community wants it, we build it. Open an issue. Dare us.
+- **Gloas on day one** - Tracking [ethereum/consensus-specs](https://github.com/ethereum/consensus-specs) gloas fork as top priority. ePBS or bust.
+- **Spec test maximalism** - Running the latest consensus spec tests. All of them. Always.
+- **Coverage obsession** - We track test coverage and it only goes up.
+- **Kurtosis in CI** - Multi-client testnets on every PR. If it doesn't survive kurtosis, it doesn't merge.
+- **Apache 2.0** - Same license, same freedom. Built in Rust.
 
-## Staking Deposit Contract
+## Quick start
 
-The Lighthouse team acknowledges
-[`0x00000000219ab540356cBB839Cbe05303d7705Fa`](https://etherscan.io/address/0x00000000219ab540356cbb839cbe05303d7705fa)
-as the canonical staking deposit contract address.
+```bash
+# clone it
+git clone https://github.com/dapplion/vibehouse.git
+cd vibehouse
 
-## Documentation
+# build it
+make
 
-The [Lighthouse Book](https://lighthouse-book.sigmaprime.io) contains information for users and
-developers.
+# vibe with it
+./target/release/lighthouse --help
+```
 
-The Lighthouse team maintains a blog at [https://blog.sigmaprime.io/tag/lighthouse][blog] which contains periodic
-progress updates, roadmap insights and interesting findings.
+## Upstream
 
-## Branches
-
-Lighthouse maintains two permanent branches:
-
-- [`stable`][stable]: Always points to the latest stable release.
-  - This is ideal for most users.
-- [`unstable`][unstable]: Used for development, contains the latest PRs.
-  - Developers should base their PRs on this branch.
+vibehouse tracks [sigp/lighthouse](https://github.com/sigp/lighthouse) as upstream. We regularly cherry-pick and merge fixes. The fork point is **v8.0.1** (Fulu mainnet).
 
 ## Contributing
 
-Lighthouse welcomes contributors.
+Open a PR. Open an issue. Drop a meme. We're here for it.
 
-If you are looking to contribute, please head to the
-[Contributing](https://lighthouse-book.sigmaprime.io/contributing.html) section
-of the Lighthouse book.
+See [plan.md](./plan.md) for what we're working on and where help is needed.
+
+## Documentation
+
+For general Lighthouse usage, the [Lighthouse Book](https://lighthouse-book.sigmaprime.io) still applies.
 
 ## Contact
 
-The best place for discussion is the [Lighthouse Discord
-server](https://discord.gg/cyAszAh).
+- GitHub Issues: [dapplion/vibehouse](https://github.com/dapplion/vibehouse/issues)
 
-Sign up to the [Lighthouse Development Updates](https://eepurl.com/dh9Lvb) mailing list for email
-notifications about releases, network status and other important information.
+## License
 
-Encrypt sensitive messages using our [PGP
-key](https://keybase.io/sigp/pgp_keys.asc?fingerprint=15e66d941f697e28f49381f426416dc3f30674b0).
-
-## Donations
-
-Lighthouse is an open-source project and a public good. Funding public goods is
-hard and we're grateful for the donations we receive from the community via:
-
-- [Gitcoin Grants](https://gitcoin.co/grants/25/lighthouse-ethereum-20-client).
-- Ethereum address: `0x25c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b` (donation.sigmaprime.eth).
+Apache 2.0, same as upstream Lighthouse.
