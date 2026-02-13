@@ -2,13 +2,7 @@
 
 ### the lighthouse fork that runs on vibes
 
-```
- _    _____ ____  ______  ______  __  _______ ______
-| |  / /  _/ __ )/ ____/ / / / / / / / / ___// ____/
-| | / // // __  / __/   / /_/ / / / / /\__ \/ __/
-| |/ // // /_/ / /___  / __  / /_/ / /___/ / /___
-|___/___/_____/_____/ /_/ /_/\____/\____/____/_____/
-```
+![vibehouse banner](./banner.svg)
 
 > Forked from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse) (post-Fulu). From here on out, it's just vibes.
 

@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0c29"/>
+      <stop offset="50%" style="stop-color:#302b63"/>
+      <stop offset="100%" style="stop-color:#24243e"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ff6ec7"/>
+      <stop offset="33%" style="stop-color:#7b68ee"/>
+      <stop offset="66%" style="stop-color:#00ffff"/>
+      <stop offset="100%" style="stop-color:#ff6ec7"/>
+    </linearGradient>
+    <linearGradient id="beam1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffff00;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#ffff00;stop-opacity:0"/>
+    </linearGradient>
+    <linearGradient id="beam2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ffff;stop-opacity:0.7"/>
+      <stop offset="100%" style="stop-color:#00ffff;stop-opacity:0"/>
+    </linearGradient>
+    <radialGradient id="lensFlare" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8"/>
+      <stop offset="30%" style="stop-color:#ffff00;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#ffff00;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="neon">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="bigGlow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="15"/>
+    </filter>
+    <!-- wavy water pattern -->
+    <pattern id="waves" x="0" y="0" width="120" height="20" patternUnits="userSpaceOnUse">
+      <path d="M0 10 Q30 0 60 10 Q90 20 120 10" fill="none" stroke="#4444ff" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="400" fill="url(#bg)"/>
+
+  <!-- stars -->
+  <circle cx="100" cy="50" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="200" cy="80" r="1" fill="white" opacity="0.6"/>
+  <circle cx="350" cy="30" r="1.5" fill="white" opacity="0.9"/>
+  <circle cx="500" cy="60" r="1" fill="white" opacity="0.5"/>
+  <circle cx="650" cy="40" r="2" fill="white" opacity="0.7"/>
+  <circle cx="800" cy="70" r="1" fill="white" opacity="0.6"/>
+  <circle cx="950" cy="25" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="1050" cy="55" r="1" fill="white" opacity="0.5"/>
+  <circle cx="1150" cy="35" r="1.5" fill="white" opacity="0.7"/>
+  <circle cx="150" cy="120" r="1" fill="white" opacity="0.4"/>
+  <circle cx="450" cy="100" r="1" fill="white" opacity="0.6"/>
+  <circle cx="750" cy="90" r="1.5" fill="white" opacity="0.5"/>
+  <circle cx="1000" cy="110" r="1" fill="white" opacity="0.4"/>
+  <circle cx="280" cy="140" r="0.8" fill="white" opacity="0.3"/>
+  <circle cx="580" cy="130" r="1.2" fill="white" opacity="0.4"/>
+  <circle cx="880" cy="115" r="0.8" fill="white" opacity="0.3"/>
+
+  <!-- ocean -->
+  <rect x="0" y="260" width="1200" height="140" fill="#0a0a2e" opacity="0.8"/>
+  <rect x="0" y="260" width="1200" height="140" fill="url(#waves)"/>
+
+  <!-- water reflection lines -->
+  <line x1="595" y1="270" x2="605" y2="270" stroke="#ffff00" stroke-width="1" opacity="0.4"/>
+  <line x1="590" y1="285" x2="610" y2="285" stroke="#ffff00" stroke-width="1.5" opacity="0.3"/>
+  <line x1="585" y1="300" x2="615" y2="300" stroke="#ffff00" stroke-width="2" opacity="0.25"/>
+  <line x1="580" y1="315" x2="620" y2="315" stroke="#ffff00" stroke-width="2" opacity="0.2"/>
+  <line x1="575" y1="330" x2="625" y2="330" stroke="#ffff00" stroke-width="2.5" opacity="0.15"/>
+  <line x1="570" y1="345" x2="630" y2="345" stroke="#ffff00" stroke-width="3" opacity="0.1"/>
+  <line x1="565" y1="360" x2="635" y2="360" stroke="#ffff00" stroke-width="3" opacity="0.08"/>
+  <line x1="560" y1="375" x2="640" y2="375" stroke="#ffff00" stroke-width="3.5" opacity="0.05"/>
+
+  <!-- lighthouse structure -->
+  <!-- base rocks -->
+  <ellipse cx="600" cy="262" rx="60" ry="12" fill="#1a1a3e"/>
+  <ellipse cx="600" cy="262" rx="45" ry="8" fill="#252550"/>
+
+  <!-- tower body -->
+  <polygon points="580,260 620,260 612,140 588,140" fill="#cc3333"/>
+  <polygon points="580,260 620,260 612,140 588,140" fill="url(#bg)" opacity="0.3"/>
+
+  <!-- red and white stripes -->
+  <rect x="585" y="160" width="30" height="20" fill="white" opacity="0.9" transform="skewX(-1)"/>
+  <rect x="583" y="200" width="33" height="20" fill="white" opacity="0.9" transform="skewX(-0.5)"/>
+  <rect x="581" y="240" width="37" height="20" fill="white" opacity="0.9"/>
+
+  <!-- lantern room -->
+  <rect x="584" y="128" width="32" height="16" fill="#222244" stroke="#666" stroke-width="1"/>
+  <rect x="582" y="126" width="36" height="4" fill="#444466"/>
+  <rect x="582" y="144" width="36" height="4" fill="#444466"/>
+
+  <!-- light beams spreading wide -->
+  <polygon points="600,136 400,60 420,80" fill="url(#beam1)" opacity="0.5"/>
+  <polygon points="600,136 350,90 380,105" fill="url(#beam2)" opacity="0.3"/>
+  <polygon points="600,136 800,60 780,80" fill="url(#beam1)" opacity="0.5"/>
+  <polygon points="600,136 850,90 820,105" fill="url(#beam2)" opacity="0.3"/>
+
+  <!-- lens flare at light source -->
+  <circle cx="600" cy="136" r="20" fill="url(#lensFlare)"/>
+  <circle cx="600" cy="136" r="6" fill="white" opacity="0.9"/>
+
+  <!-- sunglasses on the lighthouse (THE VIBE) -->
+  <rect x="574" y="131" width="22" height="10" rx="3" fill="#111" stroke="#333" stroke-width="1.5"/>
+  <rect x="604" y="131" width="22" height="10" rx="3" fill="#111" stroke="#333" stroke-width="1.5"/>
+  <line x1="596" y1="136" x2="604" y2="136" stroke="#333" stroke-width="1.5"/>
+  <!-- lens shine -->
+  <rect x="577" y="133" width="6" height="3" rx="1" fill="white" opacity="0.15"/>
+  <rect x="607" y="133" width="6" height="3" rx="1" fill="white" opacity="0.15"/>
+
+  <!-- sparkles around the lighthouse -->
+  <text x="550" y="120" font-size="20" opacity="0.8">&#10024;</text>
+  <text x="640" y="110" font-size="16" opacity="0.7">&#10024;</text>
+  <text x="530" y="160" font-size="14" opacity="0.6">&#10024;</text>
+  <text x="660" y="155" font-size="18" opacity="0.7">&#10024;</text>
+  <text x="560" y="85" font-size="12" opacity="0.5">&#10024;</text>
+  <text x="635" y="80" font-size="14" opacity="0.5">&#10024;</text>
+
+  <!-- VIBEHOUSE title -->
+  <text x="600" y="340" text-anchor="middle" font-family="monospace, 'Courier New'" font-size="72" font-weight="bold" fill="url(#glow)" filter="url(#bigGlow)" letter-spacing="8">VIBEHOUSE</text>
+
+  <!-- subtitle -->
+  <text x="600" y="370" text-anchor="middle" font-family="monospace, 'Courier New'" font-size="16" fill="#aaaacc" letter-spacing="6" opacity="0.8">ETHEREUM CONSENSUS CLIENT</text>
+
+  <!-- top left meme text -->
+  <text x="40" y="35" font-family="monospace" font-size="13" fill="#ff6ec7" filter="url(#neon)" opacity="0.9">$ cargo build --release --vibes</text>
+
+  <!-- top right tag -->
+  <rect x="1000" y="15" width="170" height="28" rx="14" fill="#ff6ec7" opacity="0.2"/>
+  <text x="1085" y="34" text-anchor="middle" font-family="monospace" font-size="12" fill="#ff6ec7" filter="url(#neon)">fork of lighthouse</text>
+
+  <!-- bottom corner tags -->
+  <text x="40" y="390" font-family="monospace" font-size="11" fill="#555577">v8.0.1+ // post-fulu // gloas-ready</text>
+  <text x="1160" y="390" text-anchor="end" font-family="monospace" font-size="11" fill="#555577">rust // apache 2.0</text>
+</svg>
