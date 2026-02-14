@@ -90,7 +90,6 @@ pub mod withdrawal_request;
 pub mod slot_epoch_macros;
 pub mod activation_queue;
 pub mod config_and_preset;
-pub mod execution_block_header;
 pub mod execution_requests;
 pub mod fork_context;
 pub mod participation_flags;

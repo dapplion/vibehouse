@@ -29,7 +29,6 @@ use tree_hash_derive::TreeHash;
 pub struct PayloadAttestation<E: EthSpec> {
     /// Bitfield indicating which PTC members signed this attestation
     /// PTC_SIZE = 512 validators per slot
-    #[serde(with = "serde_utils::bitvec")]
     pub aggregation_bits: BitVector<E::PtcSize>,
     /// The attestation data being signed
     pub data: PayloadAttestationData,

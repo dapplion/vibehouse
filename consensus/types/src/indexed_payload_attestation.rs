@@ -29,7 +29,6 @@ use tree_hash_derive::TreeHash;
 pub struct IndexedPayloadAttestation<E: EthSpec> {
     /// Sorted list of validator indices that signed this attestation
     /// Maximum size is PTC_SIZE (512)
-    #[serde(with = "serde_utils::quoted_u64_var_list")]
     pub attesting_indices: VariableList<u64, E::PtcSize>,
     /// The attestation data being signed
     pub data: PayloadAttestationData,

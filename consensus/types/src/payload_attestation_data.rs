@@ -1,7 +1,6 @@
-use crate::{Hash256, Slot};
+use crate::{Hash256, Slot, test_utils::TestRandom};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
-use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
 /// Data for a payload timeliness attestation in Gloas ePBS.
@@ -10,9 +9,7 @@ use tree_hash_derive::TreeHash;
 /// payload was revealed on time and blob data is available.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestationdata
-#[derive(
-    Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct PayloadAttestationData {
     /// Root of the beacon block being attested to
@@ -30,4 +27,15 @@ mod tests {
     use super::*;
 
     ssz_and_tree_hash_tests!(PayloadAttestationData);
+}
+
+impl TestRandom for PayloadAttestationData {
+    fn random_for_test(rng: &mut impl rand::RngCore) -> Self {
+        Self {
+            beacon_block_root: Hash256::random_for_test(rng),
+            slot: Slot::random_for_test(rng),
+            payload_present: bool::random_for_test(rng),
+            blob_data_available: bool::random_for_test(rng),
+        }
+    }
 }
