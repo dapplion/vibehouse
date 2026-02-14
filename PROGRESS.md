@@ -4,6 +4,48 @@
 
 ---
 
+## 2026-02-14 04:15 - claude loop cycle 1: execution payload bid types
+
+### Phase 5: Implementation - Execution Payload Bid Types ✅
+
+**Implemented 2 new types**:
+4. ✅ `ExecutionPayloadBid<E: EthSpec>` - `consensus/types/src/execution_payload_bid.rs`
+   - Fields: parent hashes, block_hash, prev_randao, fee_recipient, gas_limit, builder_index, slot, value, execution_payment, blob_kzg_commitments
+   - Implements `SignedRoot` for signature verification
+   - Generic over EthSpec for blob commitment list sizing
+
+5. ✅ `SignedExecutionPayloadBid<E: EthSpec>` - `consensus/types/src/signed_execution_payload_bid.rs`
+   - Contains: message (ExecutionPayloadBid) + signature
+   - Helper: `empty()` method for defaults/testing
+   - Used by proposers to select winning bids
+
+**Documentation added**:
+- Comprehensive field-level comments explaining ePBS bid mechanics
+- Reference links to consensus-specs
+- Notes on self-build semantics (infinity signature, value=0)
+
+**Integration**:
+- Added modules to `lib.rs`
+- Exported types in public API
+- Test scaffolding in place
+
+**Running total**: 5/16 gloas types complete (31% done)
+- ✅ Builder registry (3 types)
+- ✅ Execution bids (2 types)  
+- ⏳ Payload attestations (4 types)
+- ⏳ BeaconState updates (complex)
+- ⏳ BeaconBlockBody updates (complex)
+- ⏳ Constants (1 task)
+
+**Work rhythm**: 4 commits in ~60 minutes, good progress. Ready for next cycle.
+
+### what's next
+- Take stock: we've done significant groundwork
+- Next cycle: Continue with payload attestation types OR start on constants/state changes
+- Defer beacon state superstruct updates (high complexity, needs careful work)
+
+---
+
 ## 2026-02-14 04:00 - claude loop cycle 1: builder types implemented
 
 ### Phase 4: Implementation - Builder Registry Types ✅
