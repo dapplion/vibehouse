@@ -4,6 +4,58 @@
 
 ---
 
+## 2026-02-14 06:00 - Phase 2 core logic implemented 🔧
+
+### Major components completed
+
+**PTC Committee Calculation** ✅
+- `get_ptc_committee()`: deterministic 512-validator selection per slot
+- Uses slot-based seed with shuffle algorithm (similar to sync committees)
+- Handles edge cases: no active validators, insufficient validators
+
+**Indexed Payload Attestation Conversion** ✅
+- `get_indexed_payload_attestation()`: converts PayloadAttestation to IndexedPayloadAttestation
+- Unpacks aggregation bitfield to sorted validator index list
+- Validates indices are sorted (required by spec)
+
+**Builder Payment Flow** ✅
+- Pending payment created when bid is selected (stored in builder_pending_payments)
+- Payment uses `BuilderPendingPayment` with weight tracking
+- When PTC quorum reached + payload revealed:
+  - Builder balance decreased by bid value
+  - Payment marked as processed (weight = quorum_threshold)
+  - Prevents double-payment via weight check
+- TODO: Proposer balance increase (needs proposer index from ConsensusContext)
+
+**Error handling expanded**:
+- Added 3 new PayloadAttestationInvalid variants: NoActiveValidators, ShuffleError, InsufficientValidators
+- All validation paths have specific error types
+
+### Remaining TODOs for Phase 2
+
+1. **Signature verification** (2 functions):
+   - Builder bid signature (DOMAIN_BEACON_BUILDER)
+   - PTC attestation signature (DOMAIN_PTC_ATTESTER)
+   
+2. **Proposer balance increase**:
+   - Need proposer_index from ConsensusContext or compute from state
+   - Simple add once we have the index
+
+3. **Unit tests** (12 test cases):
+   - All tests have skeletons, need implementations
+   - Test framework needs gloas state builder helper
+
+4. **Integration with process_operations**:
+   - Wire up process_execution_payload_bid to be called from process_block
+   - Wire up process_payload_attestation for PayloadAttestation list
+
+### Lines of code
+- gloas.rs: ~350 lines (including tests/comments)
+- Core logic: ~250 lines
+- Test skeletons: ~80 lines
+
+---
+
 ## 2026-02-14 05:30 - Phase 2 started: state transition skeletons ⚙️
 
 ### State transition scaffolding created
