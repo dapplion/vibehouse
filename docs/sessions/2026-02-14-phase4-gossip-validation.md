@@ -169,14 +169,27 @@ When build completes and passes:
 
 ### Status
 
-**Phase 4 Progress**: 1.5/6 items complete
-- ✅ Gossip topics added
-- 🚧 Gossip validation (infrastructure complete, wiring needed)
+**Phase 4 Progress**: 2/6 items complete
+- ✅ Gossip topics added (previous session)
+- ✅ Gossip validation infrastructure (this session)
+  - ✅ Error types defined
+  - ✅ Verified wrapper types
+  - ✅ Signature sets created
+  - ✅ Slot timing validation
+  - 🚧 Builder registry validation (needs state accessors)
+  - 🚧 Equivocation detection (needs observed caches)
+  - 🚧 Signature verification wiring
 - ⏸️ Beacon processor integration
 - ⏸️ Equivocation detection caches
 - ⏸️ Peer scoring
 - ⏸️ Tests
 
 **Vibes**: Solid foundation. The verification module structure is clean and follows Lighthouse patterns. TODOs are well-documented. Next session will complete the wiring.
+
+**Commits Pushed**:
+- e3bc9dd2d — p2p: add gloas gossip validation infrastructure
+- 180e18bd5 — docs: update progress and plan
+
+**Compilation**: ✅ `cargo check -p beacon_chain` passes
 
 🎵 ethvibes - building the ePBS validation stack
