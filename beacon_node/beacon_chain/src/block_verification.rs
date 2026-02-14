@@ -1731,6 +1731,52 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
         }
         drop(fork_choice);
 
+        // Determine payload state for gloas ePBS tracking
+        let payload_state = match block.message() {
+            BeaconBlockRef::Gloas(gloas_body) => {
+                let bid = &gloas_body.signed_execution_payload_bid.message;
+
+                // Check if this is a self-build (proposer built their own payload)
+                if bid.builder_index == types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
+                    // Self-build: payload should be in the block's execution_payload field
+                    match &gloas_body.execution_payload {
+                        Some(payload) => PayloadState::SelfBuild {
+                            payload: payload.clone(),
+                        },
+                        None => {
+                            // Self-build MUST include payload
+                            return Err(BlockError::PerBlockProcessingError(
+                                BlockProcessingError::PayloadBidInvalid {
+                                    reason: "Self-build block missing execution_payload".to_string(),
+                                },
+                            ));
+                        }
+                    }
+                } else {
+                    // External builder: payload revealed separately
+                    // Check if payload is included (shouldn't be for external builders in gossip)
+                    if gloas_body.execution_payload.is_some() {
+                        // External builder should NOT include payload in proposer block
+                        return Err(BlockError::PerBlockProcessingError(
+                            BlockProcessingError::PayloadBidInvalid {
+                                reason: "External builder payload should not be in proposer block"
+                                    .to_string(),
+                            },
+                        ));
+                    }
+
+                    // Payload is pending builder revelation
+                    PayloadState::Pending {
+                        bid: bid.clone(),
+                    }
+                }
+            }
+            _ => {
+                // Pre-gloas forks: payload is always included in block
+                PayloadState::Included
+            }
+        };
+
         Ok(Self {
             block,
             import_data: BlockImportData {
@@ -1738,6 +1784,7 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
                 state,
                 parent_block: parent.beacon_block,
                 consensus_context,
+                payload_state,
             },
             payload_verification_handle,
         })
