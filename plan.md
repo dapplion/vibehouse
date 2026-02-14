@@ -1418,3 +1418,78 @@ Decision deferred to next phase after reviewing the code.
 - **Import external crates correctly**: `swap_or_not_shuffle` is separate crate, not internal module
 
 **Handoff**: All context committed to repo. Ready for Lion's agent to debug remaining errors.
+
+---
+
+## 2026-02-14 10:45 - ethvibes continuing after test debugging session
+
+### Current Status
+- ✅ **Tests compiling and running!** (thanks to previous debug agent)
+- **66/77 gloas tests passing** (86% pass rate)
+- **11 failures remaining** - 9 are gloas-specific
+- Full debug notes in `docs/debug-gloas-ef-tests.md`
+
+### Test Failure Priority Order
+
+Based on `docs/debug-gloas-ef-tests.md`, focusing on highest-impact fixes:
+
+**1. operations_withdrawals (17 failures) - PRIORITY #1**
+- Root cause likely affects sanity_blocks and fork_choice_reorg tests too
+- Two categories:
+  - `DidntFail` (2): Missing validation for invalid builder indices  
+  - `NotEqual` (15): Withdrawal computation bugs in `process_withdrawals_gloas`
+- **Next**: Debug withdrawal processing logic against spec
+
+**2. operations_attestation (2 failures)**
+- Missing Gloas-specific `data.index` validation (must be < 2)
+- Same-slot attestation rules need refinement
+
+**3. operations_proposer_slashing (3 failures)**
+- Missing builder payment deletion when proposer is slashed
+- Spec clearly defines this, just need to implement
+
+**4. operations_payload_attestation (5 failures)**
+- State field mismatches in `process_payload_attestation`
+
+**5. operations_execution_payload_bid (3 failures)**
+- State field mismatches in `process_execution_payload_bid`
+
+**6. operations_execution_payload (handler issue)**
+- Tests expect `body.ssz_snappy`, gloas has `signed_envelope.ssz_snappy`
+- Either disable for gloas or create new handler
+
+**7. sanity_blocks + fork_choice_reorg (5 failures)**
+- Likely fixed by addressing withdrawals and other operation bugs
+
+### Immediate Next Steps
+1. **Debug withdrawals** - Read `process_withdrawals_gloas` carefully and compare with spec
+2. Add missing builder index validation
+3. Fix withdrawal computation bugs
+4. Run tests, verify withdrawals pass
+5. Move to next priority
+
+
+### Analysis: Withdrawals Issue
+
+After reviewing `process_withdrawals_gloas` and the debug notes, here's what I understand:
+
+**Current behavior:**
+- `process_withdrawals_gloas` COMPUTES expected withdrawals
+- Stores them in `state.payload_expected_withdrawals`  
+- Applies the withdrawals (decreases balances)
+- Updates indices
+
+**Missing:**
+- **Validation** that the block's actual `execution_payload.withdrawals` match `payload_expected_withdrawals`
+- This is why `invalid_builder_index_*` tests pass (DidntFail) - no validation rejects bad data
+
+**Gloas spec says:**
+The execution payload MUST include withdrawals that match `get_expected_withdrawals()`. The CL computes expected withdrawals and the EL must include them.
+
+**Fix needed:**
+1. Compute expected withdrawals (already done in `process_withdrawals_gloas`)
+2. Compare block's actual withdrawals with expected
+3. Reject block if mismatch
+
+Working on this now...
+

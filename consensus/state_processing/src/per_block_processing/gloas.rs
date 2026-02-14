@@ -496,11 +496,22 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         let state_gloas = state.as_gloas().map_err(|e| {
             BlockProcessingError::BeaconStateError(e)
         })?;
+        let builders_count = state_gloas.builders.len() as u64;
+        
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawals.len() >= withdrawals_limit {
                 break;
             }
             let builder_index = withdrawal.builder_index;
+            
+            // Validate builder_index exists in builders list
+            if builder_index >= builders_count {
+                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index,
+                    builders_count,
+                });
+            }
+            
             withdrawals.push(Withdrawal {
                 index: withdrawal_index,
                 validator_index: builder_index | BUILDER_INDEX_FLAG,
@@ -567,6 +578,15 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             BlockProcessingError::BeaconStateError(e)
         })?;
         let builders_count = state_gloas.builders.len();
+        
+        // Validate next_withdrawal_builder_index is within bounds
+        if builders_count > 0 && state_gloas.next_withdrawal_builder_index >= builders_count as u64 {
+            return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                builder_index: state_gloas.next_withdrawal_builder_index,
+                builders_count: builders_count as u64,
+            });
+        }
+        
         if builders_count > 0 {
             let builders_limit = std::cmp::min(
                 builders_count,

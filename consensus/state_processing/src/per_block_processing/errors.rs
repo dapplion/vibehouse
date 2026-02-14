@@ -89,7 +89,11 @@ pub enum BlockProcessingError {
         expected: Hash256,
         found: Hash256,
     },
-    WithdrawalCredentialsInvalid,
+        WithdrawalCredentialsInvalid,
+    WithdrawalBuilderIndexInvalid {
+        builder_index: u64,
+        builders_count: u64,
+    },
     PendingAttestationInElectra,
     PayloadBidInvalid {
         reason: String,
