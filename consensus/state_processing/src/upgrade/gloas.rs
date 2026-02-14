@@ -1,9 +1,11 @@
+use crate::per_block_processing::is_valid_deposit_signature;
 use ssz_types::BitVector;
 use ssz_types::typenum::Unsigned;
 use std::mem;
 use types::{
-    BeaconState, BeaconStateError as Error, BeaconStateGloas, BuilderPendingPayment, ChainSpec,
-    EthSpec, ExecutionPayloadBid, Fork, List, Vector,
+    Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
+    BuilderPendingPayment, ChainSpec, DepositData, EthSpec, ExecutionPayloadBid, Fork, List,
+    PublicKeyBytes, Vector,
 };
 
 /// Transform a `Fulu` state into a `Gloas` state.
@@ -11,7 +13,10 @@ pub fn upgrade_to_gloas<E: EthSpec>(
     pre_state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let post = upgrade_state_to_gloas(pre_state, spec)?;
+    let mut post = upgrade_state_to_gloas(pre_state, spec)?;
+
+    // [New in Gloas:EIP7732] Onboard builders from pending deposits
+    onboard_builders_from_pending_deposits(&mut post, spec)?;
 
     *pre_state = post;
 
@@ -114,4 +119,131 @@ pub fn upgrade_state_to_gloas<E: EthSpec>(
         epoch_cache: mem::take(&mut pre.epoch_cache),
     });
     Ok(post)
+}
+
+/// [New in Gloas:EIP7732] Applies any pending deposit for builders, effectively
+/// onboarding builders at the fork transition.
+fn onboard_builders_from_pending_deposits<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<(), Error> {
+    // Collect validator pubkeys for lookup
+    let validator_pubkeys: Vec<PublicKeyBytes> =
+        state.validators().iter().map(|v| v.pubkey).collect();
+
+    let pending_deposits = state.pending_deposits()?.clone();
+    let mut new_pending_deposits = Vec::new();
+    let mut new_validator_pubkeys: Vec<PublicKeyBytes> = Vec::new();
+
+    for deposit in pending_deposits.iter() {
+        // If pubkey belongs to a validator, keep as validator deposit
+        if validator_pubkeys.contains(&deposit.pubkey)
+            || new_validator_pubkeys.contains(&deposit.pubkey)
+        {
+            new_pending_deposits.push(deposit.clone());
+            continue;
+        }
+
+        // Check if it's an existing builder or has builder credentials
+        let state_gloas = state.as_gloas().map_err(|_| Error::IncorrectStateVariant)?;
+        let is_existing_builder = state_gloas.builders.iter().any(|b| b.pubkey == deposit.pubkey);
+        let has_builder_credentials =
+            deposit.withdrawal_credentials.as_slice()[0] == 0x03; // BUILDER_WITHDRAWAL_PREFIX
+
+        if is_existing_builder || has_builder_credentials {
+            // Apply as builder deposit
+            apply_builder_deposit::<E>(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, &deposit.signature, deposit.slot, spec)?;
+            continue;
+        }
+
+        // Check if this is a valid new validator deposit
+        let deposit_data = DepositData {
+            pubkey: deposit.pubkey,
+            withdrawal_credentials: deposit.withdrawal_credentials,
+            amount: deposit.amount,
+            signature: deposit.signature.clone(),
+        };
+        if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
+            new_validator_pubkeys.push(deposit.pubkey);
+            new_pending_deposits.push(deposit.clone());
+        }
+    }
+
+    // Replace pending_deposits with filtered list
+    *state.pending_deposits_mut()? =
+        List::new(new_pending_deposits).map_err(Error::MilhouseError)?;
+
+    Ok(())
+}
+
+/// Apply a deposit for a builder during fork upgrade.
+fn apply_builder_deposit<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    pubkey: PublicKeyBytes,
+    withdrawal_credentials: types::Hash256,
+    amount: u64,
+    signature: &types::SignatureBytes,
+    slot: types::Slot,
+    spec: &ChainSpec,
+) -> Result<(), Error> {
+    let state_gloas = state.as_gloas_mut().map_err(|_| Error::IncorrectStateVariant)?;
+
+    // Check if builder already exists
+    let builder_index = state_gloas
+        .builders
+        .iter()
+        .position(|b| b.pubkey == pubkey);
+
+    if let Some(index) = builder_index {
+        // Top-up existing builder
+        let builder = state_gloas
+            .builders
+            .get_mut(index)
+            .ok_or(Error::UnknownValidator(index))?;
+        builder.balance = builder.balance.saturating_add(amount);
+    } else {
+        // New builder - verify deposit signature
+        let deposit_data = DepositData {
+            pubkey,
+            withdrawal_credentials,
+            amount,
+            signature: signature.clone(),
+        };
+
+        if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
+            let current_epoch = state_gloas.slot.epoch(E::slots_per_epoch());
+
+            // Find reusable index or append
+            let new_index = state_gloas
+                .builders
+                .iter()
+                .position(|b| b.withdrawable_epoch <= current_epoch && b.balance == 0)
+                .unwrap_or(state_gloas.builders.len());
+
+            let builder = Builder {
+                pubkey,
+                version: withdrawal_credentials.as_slice()[0],
+                execution_address: Address::from_slice(
+                    &withdrawal_credentials.as_slice()[12..],
+                ),
+                balance: amount,
+                deposit_epoch: slot.epoch(E::slots_per_epoch()),
+                withdrawable_epoch: spec.far_future_epoch,
+            };
+
+            if new_index < state_gloas.builders.len() {
+                *state_gloas
+                    .builders
+                    .get_mut(new_index)
+                    .ok_or(Error::UnknownValidator(new_index))? = builder;
+            } else {
+                state_gloas
+                    .builders
+                    .push(builder)
+                    .map_err(Error::MilhouseError)?;
+            }
+        }
+    }
+
+    Ok(())
 }

@@ -405,12 +405,21 @@ impl<E: EthSpec> Operation<E> for WithdrawalsPayload<E> {
     }
 
     fn decode(path: &Path, fork_name: ForkName, _spec: &ChainSpec) -> Result<Self, Error> {
-        ssz_decode_file_with(path, |bytes| {
-            ExecutionPayload::from_ssz_bytes_by_fork(bytes, fork_name)
-        })
-        .map(|payload| WithdrawalsPayload {
-            payload: payload.into(),
-        })
+        if fork_name.gloas_enabled() {
+            // [Modified in Gloas:EIP7732] No execution payload in withdrawal tests.
+            // Return a dummy payload; apply_to will use process_withdrawals_gloas instead.
+            Ok(WithdrawalsPayload {
+                payload: FullPayload::default_at_fork(fork_name)
+                    .map_err(|e| Error::FailedToParseTest(format!("default payload: {e:?}")))?,
+            })
+        } else {
+            ssz_decode_file_with(path, |bytes| {
+                ExecutionPayload::from_ssz_bytes_by_fork(bytes, fork_name)
+            })
+            .map(|payload| WithdrawalsPayload {
+                payload: payload.into(),
+            })
+        }
     }
 
     fn apply_to(
@@ -419,7 +428,14 @@ impl<E: EthSpec> Operation<E> for WithdrawalsPayload<E> {
         spec: &ChainSpec,
         _: &Operations<E, Self>,
     ) -> Result<(), BlockProcessingError> {
-        process_withdrawals::<_, FullPayload<_>>(state, self.payload.to_ref(), spec)
+        if state.fork_name_unchecked().gloas_enabled() {
+            // [Modified in Gloas:EIP7732] Standalone withdrawals without execution payload
+            state_processing::per_block_processing::gloas::process_withdrawals_gloas::<E>(
+                state, spec,
+            )
+        } else {
+            process_withdrawals::<_, FullPayload<_>>(state, self.payload.to_ref(), spec)
+        }
     }
 }
 

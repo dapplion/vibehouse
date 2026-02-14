@@ -4,6 +4,7 @@ use crate::upgrade::{
 };
 use crate::{per_epoch_processing::EpochProcessingSummary, *};
 use safe_arith::{ArithError, SafeArith};
+use ssz_types::typenum::Unsigned;
 use tracing::instrument;
 use types::*;
 
@@ -121,6 +122,21 @@ fn cache_state<E: EthSpec>(
     // Cache block root
     let latest_block_root = state.latest_block_header().canonical_root();
     state.set_block_root(previous_slot, latest_block_root)?;
+
+    // [New in Gloas:EIP7732] Unset the next payload availability
+    // spec: state.execution_payload_availability[(state.slot + 1) % SLOTS_PER_HISTORICAL_ROOT] = 0b0
+    // Note: at this point state.slot has been temporarily incremented by 1,
+    // so state.slot() already represents the "next slot" from the spec's perspective.
+    if state.fork_name_unchecked().gloas_enabled() {
+        let next_slot_index = state.slot().as_usize()
+            % E::SlotsPerHistoricalRoot::to_usize();
+        if let Ok(gloas_state) = state.as_gloas_mut() {
+            gloas_state
+                .execution_payload_availability
+                .set(next_slot_index, false)
+                .map_err(|_| BeaconStateError::SlotOutOfBounds)?;
+        }
+    }
 
     // Set the state slot back to what it should be.
     state.slot_mut().safe_sub_assign(1)?;

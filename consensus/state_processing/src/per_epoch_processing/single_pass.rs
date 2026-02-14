@@ -30,6 +30,7 @@ pub struct SinglePassConfig {
     pub slashings: bool,
     pub pending_deposits: bool,
     pub pending_consolidations: bool,
+    pub builder_pending_payments: bool,
     pub effective_balance_updates: bool,
     pub proposer_lookahead: bool,
 }
@@ -49,6 +50,7 @@ impl SinglePassConfig {
             slashings: true,
             pending_deposits: true,
             pending_consolidations: true,
+            builder_pending_payments: true,
             effective_balance_updates: true,
             proposer_lookahead: true,
         }
@@ -62,6 +64,7 @@ impl SinglePassConfig {
             slashings: false,
             pending_deposits: false,
             pending_consolidations: false,
+            builder_pending_payments: false,
             effective_balance_updates: false,
             proposer_lookahead: false,
         }
@@ -452,6 +455,11 @@ pub fn process_epoch_single_pass<E: EthSpec>(
             state_ctxt,
             spec,
         )?;
+    }
+
+    // [New in Gloas:EIP7732] Process builder pending payments
+    if fork_name.gloas_enabled() && conf.builder_pending_payments {
+        super::gloas::process_builder_pending_payments(state, spec)?;
     }
 
     // Finally, finish updating effective balance caches. We need this to happen *after* processing

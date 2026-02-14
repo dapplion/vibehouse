@@ -147,6 +147,8 @@ pub fn per_block_processing<E: EthSpec, Payload: AbstractExecPayload<E>>(
         BlockSignatureStrategy::VerifyRandao => VerifySignatures::False,
     };
 
+    let is_gloas = state.fork_name_unchecked().gloas_enabled();
+
     let proposer_index = process_block_header(
         state,
         block.temporary_block_header(),
@@ -171,7 +173,25 @@ pub fn per_block_processing<E: EthSpec, Payload: AbstractExecPayload<E>>(
     // The call to the `process_execution_payload` must happen before the call to the
     // `process_randao` as the former depends on the `randao_mix` computed with the reveal of the
     // previous block.
-    if is_execution_enabled(state, block.body()) {
+    if is_gloas {
+        // [Modified in Gloas:EIP7732] Process withdrawals before bid (no execution payload).
+        gloas::process_withdrawals_gloas::<E>(state, spec)?;
+
+        // The bid must be processed before `process_randao` because it verifies `prev_randao`
+        // against the state's randao mix from the previous block.
+        if let Ok(signed_bid) = block.body().signed_execution_payload_bid() {
+            let block_slot = state.slot();
+            let block_parent_root = state.latest_block_header().parent_root;
+            gloas::process_execution_payload_bid(
+                state,
+                signed_bid,
+                block_slot,
+                block_parent_root,
+                verify_signatures,
+                spec,
+            )?;
+        }
+    } else if is_execution_enabled(state, block.body()) {
         let body = block.body();
         process_withdrawals::<E, Payload>(state, body.execution_payload()?, spec)?;
         process_execution_payload::<E, Payload>(state, body, spec)?;
@@ -501,6 +521,11 @@ pub fn is_execution_enabled<E: EthSpec, Payload: AbstractExecPayload<E>>(
     state: &BeaconState<E>,
     body: BeaconBlockBodyRef<E, Payload>,
 ) -> bool {
+    // In Gloas (ePBS), the proposer's block does not contain an execution payload.
+    // Execution is handled separately via execution payload bids and builder blocks.
+    if state.fork_name_unchecked().gloas_enabled() {
+        return false;
+    }
     is_merge_transition_block(state, body) || is_merge_transition_complete(state)
 }
 

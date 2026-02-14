@@ -1,12 +1,14 @@
+use crate::common::decrease_balance;
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
+use safe_arith::SafeArith;
 use swap_or_not_shuffle::compute_shuffled_index;
 use tree_hash::TreeHash;
-use types::consts::gloas::PTC_SIZE;
+use types::consts::gloas::{BUILDER_INDEX_FLAG, PTC_SIZE};
 use types::{
-    BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec, Domain, EthSpec,
-    Hash256, IndexedPayloadAttestation, PayloadAttestation, PublicKey,
-    SignedExecutionPayloadBid, SigningData, Slot, Unsigned,
+    BeaconState, BeaconStateError, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec,
+    Domain, EthSpec, Hash256, IndexedPayloadAttestation, List, PayloadAttestation,
+    PublicKey, SignedExecutionPayloadBid, SigningData, Slot, Unsigned, Withdrawal,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -458,31 +460,273 @@ fn get_ptc_committee<E: EthSpec>(
     Ok(ptc_committee)
 }
 
-// TODO: Implement unit tests for gloas state transitions
-// Current blockers:
-// 1. Need proper Gloas test state builder (BeaconState::new_gloas_for_test or similar)
-// 2. Need test helpers for creating SignedExecutionPayloadBid with valid signatures
-// 3. Need test helpers for creating PayloadAttestation messages
-//
-// The spec tests (in testing/ef_tests) will validate against consensus-spec-tests vectors.
-// Unit tests should cover edge cases not in spec tests.
-//
-// Test scenarios needed (12 total):
-// - process_execution_payload_bid:
-//   * Self-build (value=0, infinity signature)
-//   * External builder (valid bid)
-//   * Insufficient balance rejection
-//   * Inactive builder rejection
-//   * Wrong slot rejection
-// - process_payload_attestation:
-//   * Quorum reached (triggers payment)
-//   * Sub-quorum (accepted, no payment)
-//   * Wrong slot rejection
-// - get_ptc_committee:
-//   * Deterministic for given slot/state
-//   * Exactly 512 members (when enough validators)
-// - get_indexed_payload_attestation:
-//   * Correct conversion
-//   * Indices are sorted
-//
-// See docs/workstreams/gloas-testing-plan.md for full implementation plan.
+/// [Modified in Gloas:EIP7732] Check if the parent block had its payload delivered.
+pub fn is_parent_block_full<E: EthSpec>(
+    state: &BeaconState<E>,
+) -> Result<bool, BlockProcessingError> {
+    let state_gloas = state.as_gloas().map_err(|e| {
+        BlockProcessingError::BeaconStateError(e)
+    })?;
+    Ok(state_gloas.latest_execution_payload_bid.block_hash == state_gloas.latest_block_hash)
+}
+
+/// [Modified in Gloas:EIP7732] Process withdrawals without execution payload.
+///
+/// In Gloas, withdrawals are computed by the CL and stored in `payload_expected_withdrawals`
+/// for the EL to include. The function computes expected withdrawals from builder pending
+/// withdrawals, partial validator withdrawals, builder sweep, and validator sweep.
+pub fn process_withdrawals_gloas<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<(), BlockProcessingError> {
+    // Return early if the parent block is empty (payload not delivered)
+    if !is_parent_block_full::<E>(state)? {
+        return Ok(());
+    }
+
+    let epoch = state.current_epoch();
+    let fork_name = state.fork_name_unchecked();
+    let mut withdrawal_index = state.next_withdrawal_index()?;
+    let mut withdrawals = Vec::<Withdrawal>::new();
+    let withdrawals_limit = E::max_withdrawals_per_payload().saturating_sub(1);
+
+    // 1. Builder pending withdrawals
+    let mut processed_builder_withdrawals_count: usize = 0;
+    {
+        let state_gloas = state.as_gloas().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
+            if withdrawals.len() >= withdrawals_limit {
+                break;
+            }
+            let builder_index = withdrawal.builder_index;
+            withdrawals.push(Withdrawal {
+                index: withdrawal_index,
+                validator_index: builder_index | BUILDER_INDEX_FLAG,
+                address: withdrawal.fee_recipient,
+                amount: withdrawal.amount,
+            });
+            withdrawal_index.safe_add_assign(1)?;
+            processed_builder_withdrawals_count += 1;
+        }
+    }
+
+    // 2. Pending partial withdrawals (validator)
+    let mut processed_partial_withdrawals_count: usize = 0;
+    {
+        if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
+            for withdrawal_req in pending_partial_withdrawals {
+                if withdrawal_req.withdrawable_epoch > epoch
+                    || withdrawals.len() >= spec.max_pending_partials_per_withdrawals_sweep as usize
+                {
+                    break;
+                }
+
+                let validator = state.get_validator(withdrawal_req.validator_index as usize)?;
+
+                let has_sufficient_effective_balance =
+                    validator.effective_balance >= spec.min_activation_balance;
+                let total_withdrawn: u64 = withdrawals
+                    .iter()
+                    .filter(|w| w.validator_index == withdrawal_req.validator_index)
+                    .map(|w| w.amount)
+                    .sum();
+                let balance = state
+                    .get_balance(withdrawal_req.validator_index as usize)?
+                    .saturating_sub(total_withdrawn);
+                let has_excess_balance = balance > spec.min_activation_balance;
+
+                if validator.exit_epoch == spec.far_future_epoch
+                    && has_sufficient_effective_balance
+                    && has_excess_balance
+                {
+                    let withdrawable_balance = std::cmp::min(
+                        balance.saturating_sub(spec.min_activation_balance),
+                        withdrawal_req.amount,
+                    );
+                    withdrawals.push(Withdrawal {
+                        index: withdrawal_index,
+                        validator_index: withdrawal_req.validator_index,
+                        address: validator
+                            .get_execution_withdrawal_address(spec)
+                            .ok_or(BeaconStateError::NonExecutionAddressWithdrawalCredential)?,
+                        amount: withdrawable_balance,
+                    });
+                    withdrawal_index.safe_add_assign(1)?;
+                }
+                processed_partial_withdrawals_count += 1;
+            }
+        }
+    }
+
+    // 3. Builder sweep (exiting builders with balance)
+    let mut processed_builders_sweep_count: usize = 0;
+    {
+        let state_gloas = state.as_gloas().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        let builders_count = state_gloas.builders.len();
+        if builders_count > 0 {
+            let builders_limit = std::cmp::min(
+                builders_count,
+                spec.max_builders_per_withdrawals_sweep as usize,
+            );
+            let mut builder_index = state_gloas.next_withdrawal_builder_index;
+            for _ in 0..builders_limit {
+                if withdrawals.len() >= withdrawals_limit {
+                    break;
+                }
+
+                if let Some(builder) = state_gloas.builders.get(builder_index as usize) {
+                    if builder.withdrawable_epoch <= epoch && builder.balance > 0 {
+                        withdrawals.push(Withdrawal {
+                            index: withdrawal_index,
+                            validator_index: builder_index | BUILDER_INDEX_FLAG,
+                            address: builder.execution_address,
+                            amount: builder.balance,
+                        });
+                        withdrawal_index.safe_add_assign(1)?;
+                    }
+                }
+
+                builder_index = (builder_index + 1) % builders_count as u64;
+                processed_builders_sweep_count += 1;
+            }
+        }
+    }
+
+    // 4. Validator sweep
+    {
+        let mut validator_index = state.next_withdrawal_validator_index()?;
+        let bound = std::cmp::min(
+            state.validators().len() as u64,
+            spec.max_validators_per_withdrawals_sweep,
+        );
+        for _ in 0..bound {
+            if withdrawals.len() >= E::max_withdrawals_per_payload() {
+                break;
+            }
+
+            let validator = state.get_validator(validator_index as usize)?;
+            let partially_withdrawn_balance: u64 = withdrawals
+                .iter()
+                .filter(|w| w.validator_index == validator_index)
+                .map(|w| w.amount)
+                .sum();
+            let balance = state
+                .get_balance(validator_index as usize)?
+                .saturating_sub(partially_withdrawn_balance);
+            if validator.is_fully_withdrawable_validator(balance, epoch, spec, fork_name) {
+                withdrawals.push(Withdrawal {
+                    index: withdrawal_index,
+                    validator_index,
+                    address: validator
+                        .get_execution_withdrawal_address(spec)
+                        .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
+                    amount: balance,
+                });
+                withdrawal_index.safe_add_assign(1)?;
+            } else if validator.is_partially_withdrawable_validator(balance, spec, fork_name) {
+                withdrawals.push(Withdrawal {
+                    index: withdrawal_index,
+                    validator_index,
+                    address: validator
+                        .get_execution_withdrawal_address(spec)
+                        .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
+                    amount: balance.saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
+                });
+                withdrawal_index.safe_add_assign(1)?;
+            }
+
+            validator_index = validator_index
+                .safe_add(1)?
+                .safe_rem(state.validators().len() as u64)?;
+        }
+    }
+
+    // Apply withdrawals: decrease balances
+    for withdrawal in &withdrawals {
+        if (withdrawal.validator_index & BUILDER_INDEX_FLAG) != 0 {
+            // Builder withdrawal
+            let builder_index = (withdrawal.validator_index & !BUILDER_INDEX_FLAG) as usize;
+            let state_gloas = state.as_gloas_mut().map_err(|e| {
+                BlockProcessingError::BeaconStateError(e)
+            })?;
+            if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
+                builder.balance = builder
+                    .balance
+                    .saturating_sub(std::cmp::min(withdrawal.amount, builder.balance));
+            }
+        } else {
+            // Validator withdrawal
+            decrease_balance(state, withdrawal.validator_index as usize, withdrawal.amount)?;
+        }
+    }
+
+    // Update next_withdrawal_index
+    if let Some(latest_withdrawal) = withdrawals.last() {
+        *state.next_withdrawal_index_mut()? = latest_withdrawal.index.safe_add(1)?;
+    }
+
+    // Store payload_expected_withdrawals
+    {
+        let state_gloas = state.as_gloas_mut().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        state_gloas.payload_expected_withdrawals = List::new(withdrawals)
+            .map_err(|e| BlockProcessingError::MilhouseError(e))?;
+    }
+
+    // Update builder_pending_withdrawals (remove processed)
+    {
+        let state_gloas = state.as_gloas_mut().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        let remaining: Vec<_> = state_gloas
+            .builder_pending_withdrawals
+            .iter()
+            .skip(processed_builder_withdrawals_count)
+            .cloned()
+            .collect();
+        state_gloas.builder_pending_withdrawals = List::new(remaining)
+            .map_err(|e| BlockProcessingError::MilhouseError(e))?;
+    }
+
+    // Update pending_partial_withdrawals (remove processed)
+    if processed_partial_withdrawals_count > 0 {
+        state
+            .pending_partial_withdrawals_mut()?
+            .pop_front(processed_partial_withdrawals_count)?;
+    }
+
+    // Update next_withdrawal_builder_index
+    {
+        let state_gloas = state.as_gloas_mut().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        let builders_count = state_gloas.builders.len();
+        if builders_count > 0 {
+            let next_index = state_gloas
+                .next_withdrawal_builder_index
+                .saturating_add(processed_builders_sweep_count as u64);
+            state_gloas.next_withdrawal_builder_index = next_index % builders_count as u64;
+        }
+    }
+
+    // Update next_withdrawal_validator_index
+    // The spec says to update based on the validator sweep results
+    // For now, use the same logic as pre-Gloas
+    {
+        let validators_len = state.validators().len() as u64;
+        if validators_len > 0 {
+            let next_validator_index = state
+                .next_withdrawal_validator_index()?
+                .safe_add(spec.max_validators_per_withdrawals_sweep)?
+                .safe_rem(validators_len)?;
+            *state.next_withdrawal_validator_index_mut()? = next_validator_index;
+        }
+    }
+
+    Ok(())
+}

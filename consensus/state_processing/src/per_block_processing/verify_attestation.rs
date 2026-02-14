@@ -74,7 +74,12 @@ pub fn verify_attestation_for_state<'ctxt, E: EthSpec>(
             );
         }
         AttestationRef::Electra(_) => {
-            verify!(data.index == 0, Invalid::BadCommitteeIndex);
+            // [Modified in Gloas:EIP7732] data.index < 2 (0 = payload present, 1 = absent)
+            if state.fork_name_unchecked().gloas_enabled() {
+                verify!(data.index < 2, Invalid::BadCommitteeIndex);
+            } else {
+                verify!(data.index == 0, Invalid::BadCommitteeIndex);
+            }
         }
     }
 

@@ -32,4 +32,8 @@ pub mod gloas {
 
     /// Builder index flag indicating a self-build (proposer builds their own payload)
     pub const BUILDER_INDEX_SELF_BUILD: u64 = u64::MAX;
+
+    /// Bitwise flag which indicates that a ValidatorIndex should be treated as a BuilderIndex.
+    /// When set on a withdrawal's validator_index, it means the withdrawal is for a builder.
+    pub const BUILDER_INDEX_FLAG: u64 = 1u64 << 40;
 }

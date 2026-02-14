@@ -1,6 +1,7 @@
 use integer_sqrt::IntegerSquareRoot;
+use safe_arith::SafeArith;
 use smallvec::SmallVec;
-use types::{AttestationData, BeaconState, ChainSpec, EthSpec};
+use types::{AttestationData, BeaconState, ChainSpec, EthSpec, Slot};
 use types::{
     BeaconStateError as Error,
     consts::altair::{
@@ -8,6 +9,21 @@ use types::{
         TIMELY_TARGET_FLAG_INDEX,
     },
 };
+
+/// [New in Gloas:EIP7732]
+/// Check if attestation targets the block proposed at the attestation slot.
+pub fn is_attestation_same_slot<E: EthSpec>(
+    state: &BeaconState<E>,
+    data: &AttestationData,
+) -> Result<bool, Error> {
+    if data.slot == Slot::new(0) {
+        return Ok(true);
+    }
+    let blockroot = data.beacon_block_root;
+    let slot_blockroot = *state.get_block_root(data.slot)?;
+    let prev_blockroot = *state.get_block_root(data.slot.safe_sub(1u64)?)?;
+    Ok(blockroot == slot_blockroot && blockroot != prev_blockroot)
+}
 
 /// Get the participation flags for a valid attestation.
 ///
@@ -32,8 +48,33 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
     let is_matching_source = data.source == justified_checkpoint;
     let is_matching_target = is_matching_source
         && data.target.root == *state.get_block_root_at_epoch(data.target.epoch)?;
-    let is_matching_head =
-        is_matching_target && data.beacon_block_root == *state.get_block_root(data.slot)?;
+
+    let head_root_matches =
+        data.beacon_block_root == *state.get_block_root(data.slot)?;
+
+    // [Modified in Gloas:EIP7732] head flag also requires payload_matches
+    let is_matching_head = if state.fork_name_unchecked().gloas_enabled() {
+        let payload_matches = if is_attestation_same_slot(state, data)? {
+            // Same-slot attestations always match payload
+            true
+        } else {
+            // Historical: check execution_payload_availability
+            let slot_index = data.slot.as_usize() % E::slots_per_historical_root();
+            let availability = state
+                .as_gloas()
+                .map(|s| {
+                    s.execution_payload_availability
+                        .get(slot_index)
+                        .map(|b| b as u64)
+                        .unwrap_or(0)
+                })
+                .unwrap_or(0);
+            data.index == availability
+        };
+        is_matching_target && head_root_matches && payload_matches
+    } else {
+        is_matching_target && head_root_matches
+    };
 
     if !is_matching_source {
         return Err(Error::IncorrectAttestationSource);

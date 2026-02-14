@@ -2,7 +2,7 @@ use super::*;
 use crate::VerifySignatures;
 use crate::common::{
     get_attestation_participation_flag_indices, increase_balance, initiate_validator_exit,
-    slash_validator,
+    is_attestation_same_slot, slash_validator,
 };
 use crate::per_block_processing::errors::{BlockProcessingError, IntoWithIndex};
 use types::consts::altair::{PARTICIPATION_FLAG_WEIGHTS, PROPOSER_WEIGHT, WEIGHT_DENOMINATOR};
@@ -37,36 +37,20 @@ pub fn process_operations<E: EthSpec, Payload: AbstractExecPayload<E>>(
         process_bls_to_execution_changes(state, bls_to_execution_changes, verify_signatures, spec)?;
     }
 
-    if state.fork_name_unchecked().electra_enabled() {
+    // Execution requests exist in Electra and Fulu, but not in Gloas (ePBS removes them
+    // from the block body since there is no execution payload in the proposer's block).
+    if let Ok(execution_requests) = block_body.execution_requests() {
         state.update_pubkey_cache()?;
-        process_deposit_requests(state, &block_body.execution_requests()?.deposits, spec)?;
-        process_withdrawal_requests(state, &block_body.execution_requests()?.withdrawals, spec)?;
-        process_consolidation_requests(
-            state,
-            &block_body.execution_requests()?.consolidations,
-            spec,
-        )?;
+        process_deposit_requests(state, &execution_requests.deposits, spec)?;
+        process_withdrawal_requests(state, &execution_requests.withdrawals, spec)?;
+        process_consolidation_requests(state, &execution_requests.consolidations, spec)?;
     }
 
     // Gloas ePBS operations
+    // Note: process_execution_payload_bid is called from per_block_processing before
+    // process_randao (not here) because the bid verification depends on the randao mix
+    // from the previous block.
     if state.fork_name_unchecked().gloas_enabled() {
-        // Process the execution payload bid
-        // At this point, process_block_header has already been called, so:
-        // - state.slot() == block.slot
-        // - state.latest_block_header().parent_root == block.parent_root
-        if let Ok(signed_bid) = block_body.signed_execution_payload_bid() {
-            let block_slot = state.slot();
-            let block_parent_root = state.latest_block_header().parent_root;
-            gloas::process_execution_payload_bid(
-                state,
-                signed_bid,
-                block_slot,
-                block_parent_root,
-                verify_signatures,
-                spec,
-            )?;
-        }
-
         // Process payload attestations
         if let Ok(attestations) = block_body.payload_attestations() {
             for attestation in attestations.iter() {
@@ -191,6 +175,14 @@ pub mod altair_deneb {
         let participation_flag_indices =
             get_attestation_participation_flag_indices(state, data, inclusion_delay, spec)?;
 
+        // [New in Gloas:EIP7732] Pre-compute whether this is a same-slot attestation
+        let is_gloas = state.fork_name_unchecked().gloas_enabled();
+        let same_slot = if is_gloas {
+            is_attestation_same_slot(state, data)?
+        } else {
+            false
+        };
+
         // Update epoch participation flags.
         let mut proposer_reward_numerator = 0;
         for index in indexed_att.attesting_indices_iter() {
@@ -198,6 +190,9 @@ pub mod altair_deneb {
 
             let validator_effective_balance = state.epoch_cache().get_effective_balance(index)?;
             let validator_slashed = state.slashings_cache().is_slashed(index);
+
+            // [New in Gloas:EIP7732] Track if any new flag is set for this validator
+            let mut will_set_new_flag = false;
 
             for (flag_index, &weight) in PARTICIPATION_FLAG_WEIGHTS.iter().enumerate() {
                 let epoch_participation = state.get_epoch_participation_mut(
@@ -216,6 +211,9 @@ pub mod altair_deneb {
                         proposer_reward_numerator
                             .safe_add_assign(state.get_base_reward(index)?.safe_mul(weight)?)?;
 
+                        // [New in Gloas:EIP7732]
+                        will_set_new_flag = true;
+
                         update_progressive_balances_on_attestation(
                             state,
                             data.target.epoch,
@@ -223,6 +221,28 @@ pub mod altair_deneb {
                             validator_effective_balance,
                             validator_slashed,
                         )?;
+                    }
+                }
+            }
+
+            // [New in Gloas:EIP7732] Add weight for same-slot attestations
+            if is_gloas && will_set_new_flag && same_slot {
+                let slots_per_epoch = E::slots_per_epoch();
+                let payment_slot_index = if data.target.epoch == current_epoch {
+                    (slots_per_epoch + data.slot.as_u64() % slots_per_epoch) as usize
+                } else {
+                    (data.slot.as_u64() % slots_per_epoch) as usize
+                };
+
+                if let Ok(state_gloas) = state.as_gloas_mut() {
+                    if let Some(payment) =
+                        state_gloas.builder_pending_payments.get_mut(payment_slot_index)
+                    {
+                        if payment.withdrawal.amount > 0 {
+                            payment.weight = payment
+                                .weight
+                                .saturating_add(validator_effective_balance);
+                        }
                     }
                 }
             }
@@ -622,21 +642,155 @@ pub fn process_deposit_requests<E: EthSpec>(
         if state.deposit_requests_start_index()? == spec.unset_deposit_requests_start_index {
             *state.deposit_requests_start_index_mut()? = request.index
         }
-        let slot = state.slot();
 
-        // [New in Electra:EIP7251]
-        if let Ok(pending_deposits) = state.pending_deposits_mut() {
-            pending_deposits.push(PendingDeposit {
-                pubkey: request.pubkey,
-                withdrawal_credentials: request.withdrawal_credentials,
-                amount: request.amount,
-                signature: request.signature.clone(),
-                slot,
-            })?;
+        // [Modified in Gloas:EIP7732] Route builder deposits
+        if state.fork_name_unchecked().gloas_enabled() {
+            process_deposit_request_gloas(state, request, spec)?;
+        } else {
+            let slot = state.slot();
+
+            // [New in Electra:EIP7251]
+            if let Ok(pending_deposits) = state.pending_deposits_mut() {
+                pending_deposits.push(PendingDeposit {
+                    pubkey: request.pubkey,
+                    withdrawal_credentials: request.withdrawal_credentials,
+                    amount: request.amount,
+                    signature: request.signature.clone(),
+                    slot,
+                })?;
+            }
         }
     }
 
     Ok(())
+}
+
+/// [New in Gloas:EIP7732] Process a single deposit request, routing builder deposits.
+fn process_deposit_request_gloas<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    request: &DepositRequest,
+    spec: &ChainSpec,
+) -> Result<(), BlockProcessingError> {
+    let slot = state.slot();
+
+    // Check if pubkey belongs to an existing builder
+    let is_builder = state
+        .as_gloas()
+        .map(|s| s.builders.iter().any(|b| b.pubkey == request.pubkey))
+        .unwrap_or(false);
+
+    // Check if pubkey belongs to an existing validator
+    let is_validator = state
+        .pubkey_cache()
+        .get(&request.pubkey)
+        .is_some();
+
+    let is_builder_prefix = is_builder_withdrawal_credential(request.withdrawal_credentials);
+
+    // Route to builder if: existing builder OR (builder prefix AND not existing validator)
+    if is_builder || (is_builder_prefix && !is_validator) {
+        apply_deposit_for_builder(state, request, slot, spec)?;
+    } else {
+        // Add to pending validator deposits
+        state.pending_deposits_mut()?.push(PendingDeposit {
+            pubkey: request.pubkey,
+            withdrawal_credentials: request.withdrawal_credentials,
+            amount: request.amount,
+            signature: request.signature.clone(),
+            slot,
+        })?;
+    }
+
+    Ok(())
+}
+
+/// [New in Gloas:EIP7732] Check if withdrawal credentials have builder prefix (0x03).
+fn is_builder_withdrawal_credential(withdrawal_credentials: Hash256) -> bool {
+    withdrawal_credentials.as_slice()[0] == 0x03
+}
+
+/// [New in Gloas:EIP7732] Apply a deposit for a builder (new or top-up).
+fn apply_deposit_for_builder<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    request: &DepositRequest,
+    slot: Slot,
+    spec: &ChainSpec,
+) -> Result<(), BlockProcessingError> {
+    let state_gloas = state.as_gloas_mut().map_err(|e| {
+        BlockProcessingError::BeaconStateError(e)
+    })?;
+
+    // Check if builder already exists
+    let builder_index = state_gloas
+        .builders
+        .iter()
+        .position(|b| b.pubkey == request.pubkey);
+
+    if let Some(index) = builder_index {
+        // Top-up existing builder
+        let builder = state_gloas
+            .builders
+            .get_mut(index)
+            .ok_or(BeaconStateError::UnknownValidator(index))?;
+        builder.balance = builder.balance.saturating_add(request.amount);
+    } else {
+        // New builder - verify deposit signature
+        let deposit_data = DepositData {
+            pubkey: request.pubkey,
+            withdrawal_credentials: request.withdrawal_credentials,
+            amount: request.amount,
+            signature: request.signature.clone(),
+        };
+
+        if is_valid_deposit_signature(&deposit_data, spec).is_err() {
+            return Ok(());
+        }
+
+        // Find slot for new builder (reuse exited builder slot or append)
+        let current_epoch = state_gloas
+            .slot
+            .epoch(E::slots_per_epoch());
+        let new_index = get_index_for_new_builder::<E>(&state_gloas.builders, current_epoch, spec);
+
+        let builder = types::Builder {
+            pubkey: request.pubkey,
+            version: request.withdrawal_credentials.as_slice()[0],
+            execution_address: Address::from_slice(
+                &request.withdrawal_credentials.as_slice()[12..],
+            ),
+            balance: request.amount,
+            deposit_epoch: slot.epoch(E::slots_per_epoch()),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+
+        if new_index < state_gloas.builders.len() {
+            *state_gloas
+                .builders
+                .get_mut(new_index)
+                .ok_or(BeaconStateError::UnknownValidator(new_index))? = builder;
+        } else {
+            state_gloas
+                .builders
+                .push(builder)
+                .map_err(|e| BlockProcessingError::MilhouseError(e))?;
+        }
+    }
+
+    Ok(())
+}
+
+/// [New in Gloas:EIP7732] Find index for a new builder (reuse exited slot or append).
+fn get_index_for_new_builder<E: EthSpec>(
+    builders: &List<Builder, E::BuilderRegistryLimit>,
+    current_epoch: Epoch,
+    _spec: &ChainSpec,
+) -> usize {
+    for (index, builder) in builders.iter().enumerate() {
+        if builder.withdrawable_epoch <= current_epoch && builder.balance == 0 {
+            return index;
+        }
+    }
+    builders.len()
 }
 
 // Make sure to build the pubkey cache before calling this function
