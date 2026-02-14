@@ -4,6 +4,47 @@
 
 ---
 
+## 2026-02-14 06:14 - Signature verification implemented ✍️
+
+### Gloas ePBS signature verification complete
+
+**Added domain support** ✅
+- Added `Domain::BeaconBuilder` and `Domain::PtcAttester` to chain_spec.rs Domain enum
+- Added domain constants to ChainSpec struct:
+  - `domain_beacon_builder: 0x0B000000`
+  - `domain_ptc_attester: 0x0C000000`
+- Updated `get_domain_constant()` to handle new domains
+- Constants already initialized in both mainnet and gnosis configs
+
+**Builder bid signature verification** ✅
+- Implemented in `process_execution_payload_bid()`
+- Computes signing root from ExecutionPayloadBid + DOMAIN_BEACON_BUILDER
+- Decompresses builder's BLS pubkey from state
+- Verifies signature against pubkey and signing root
+- Returns clear error messages on failure
+
+**Payload attestation signature verification** ✅
+- Implemented in `process_payload_attestation()`
+- Computes signing root from PayloadAttestationData + DOMAIN_PTC_ATTESTER
+- Collects all attesting validator pubkeys from indexed attestation
+- Verifies aggregate BLS signature from PTC members
+- Added error variants: `BadSignature`, `InvalidPubkey`
+
+**Error handling** ✅
+- Added 2 new PayloadAttestationInvalid variants:
+  - `BadSignature` - signature verification failed
+  - `InvalidPubkey` - pubkey decompression failed
+
+### Commit
+`59bae4e8a` - implement gloas signature verification for builder bids and payload attestations
+
+### Next
+- Implement unit tests (12 test cases with skeletons exist)
+- Add proposer balance increase in payment flow
+- Wire up to process_operations
+
+---
+
 ## 2026-02-14 06:00 - Phase 2 core logic implemented 🔧
 
 ### Major components completed
