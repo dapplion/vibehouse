@@ -25,6 +25,7 @@ pub mod beacon_committee;
 pub mod beacon_response;
 pub mod beacon_state;
 pub mod bls_to_execution_change;
+pub mod builder;
 pub mod builder_bid;
 pub mod chain_spec;
 pub mod checkpoint;
@@ -144,6 +145,7 @@ pub use crate::beacon_response::{
 pub use crate::beacon_state::{Error as BeaconStateError, *};
 pub use crate::blob_sidecar::{BlobIdentifier, BlobSidecar, BlobSidecarList, BlobsList};
 pub use crate::bls_to_execution_change::BlsToExecutionChange;
+pub use crate::builder::{Builder, BuilderIndex, BuilderPendingPayment, BuilderPendingWithdrawal};
 pub use crate::chain_spec::{ChainSpec, Config, Domain};
 pub use crate::checkpoint::Checkpoint;
 pub use crate::config_and_preset::{
