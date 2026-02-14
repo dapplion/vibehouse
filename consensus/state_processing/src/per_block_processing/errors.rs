@@ -95,6 +95,8 @@ pub enum BlockProcessingError {
         reason: String,
     },
     PayloadAttestationInvalid(PayloadAttestationInvalid),
+    InvalidSlot(u64),
+    InvalidSlotIndex(usize),
 }
 
 impl From<BeaconStateError> for BlockProcessingError {

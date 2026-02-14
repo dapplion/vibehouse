@@ -119,8 +119,10 @@ fn operations_bls_to_execution_change() {
 
 #[test]
 fn operations_execution_payload_bid() {
-    OperationsHandler::<MinimalEthSpec, SignedExecutionPayloadBid<MinimalEthSpec>>::default().run();
-    OperationsHandler::<MainnetEthSpec, SignedExecutionPayloadBid<MainnetEthSpec>>::default().run();
+    OperationsHandler::<MinimalEthSpec, ExecutionPayloadBidWithBlock<MinimalEthSpec>>::default()
+        .run();
+    OperationsHandler::<MainnetEthSpec, ExecutionPayloadBidWithBlock<MainnetEthSpec>>::default()
+        .run();
 }
 
 #[test]
@@ -959,8 +961,8 @@ fn epoch_processing_participation_flag_updates() {
 
 #[test]
 fn epoch_processing_builder_pending_payments() {
-    EpochProcessingHandler::<MinimalEthSpec, BuilderPendingPayment>::default().run();
-    EpochProcessingHandler::<MainnetEthSpec, BuilderPendingPayment>::default().run();
+    EpochProcessingHandler::<MinimalEthSpec, BuilderPendingPayments>::default().run();
+    EpochProcessingHandler::<MainnetEthSpec, BuilderPendingPayments>::default().run();
 }
 
 #[test]

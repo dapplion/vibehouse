@@ -1,5 +1,5 @@
 use crate::{EthSpec, ForkName, PayloadAttestationData, test_utils::TestRandom};
-use bls::Signature;
+use bls::AggregateSignature;
 use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ pub struct IndexedPayloadAttestation<E: EthSpec> {
     /// The attestation data being signed
     pub data: PayloadAttestationData,
     /// BLS aggregate signature from all attesting validators
-    pub signature: Signature,
+    pub signature: AggregateSignature,
 }
 
 impl<E: EthSpec> IndexedPayloadAttestation<E> {
@@ -59,7 +59,7 @@ impl<E: EthSpec> IndexedPayloadAttestation<E> {
                 payload_present: false,
                 blob_data_available: false,
             },
-            signature: Signature::empty(),
+            signature: AggregateSignature::empty(),
         }
     }
 }

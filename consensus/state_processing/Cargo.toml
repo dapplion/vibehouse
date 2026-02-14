@@ -37,6 +37,7 @@ smallvec = { workspace = true }
 ssz_types = { workspace = true }
 test_random_derive = { path = "../../common/test_random_derive" }
 tracing = { workspace = true }
+swap_or_not_shuffle = { workspace = true }
 tree_hash = { workspace = true }
 types = { workspace = true }
 
