@@ -299,7 +299,10 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, FullPayload<E>> {
     }
 
     fn is_enabled_for_fork(fork_name: ForkName) -> bool {
-        fork_name.bellatrix_enabled()
+        // [Modified in Gloas:EIP7732] Execution payload processing is different in Gloas.
+        // Tests use signed_envelope.ssz_snappy instead of body.ssz_snappy.
+        // Disable these tests for Gloas until proper envelope handler is implemented.
+        fork_name.bellatrix_enabled() && !fork_name.gloas_enabled()
     }
 
     fn decode(path: &Path, fork_name: ForkName, _spec: &ChainSpec) -> Result<Self, Error> {
@@ -343,7 +346,10 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, BlindedPayload<E>> {
     }
 
     fn is_enabled_for_fork(fork_name: ForkName) -> bool {
-        fork_name.bellatrix_enabled()
+        // [Modified in Gloas:EIP7732] Execution payload processing is different in Gloas.
+        // Tests use signed_envelope.ssz_snappy instead of body.ssz_snappy.
+        // Disable these tests for Gloas until proper envelope handler is implemented.
+        fork_name.bellatrix_enabled() && !fork_name.gloas_enabled()
     }
 
     fn decode(path: &Path, fork_name: ForkName, _spec: &ChainSpec) -> Result<Self, Error> {
