@@ -3202,4 +3202,123 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             write_file(error_path, error.to_string().as_bytes());
         }
     }
+
+    /// Process execution bid from gossip (Gloas ePBS).
+    ///
+    /// Verifies the bid against current state and propagates if valid.
+    pub fn process_gossip_execution_bid(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        execution_bid: types::SignedExecutionPayloadBid,
+    ) {
+        use beacon_chain::execution_bid_verification::GossipVerifiedExecutionBid;
+
+        let builder_index = execution_bid.message.builder_index;
+        let slot = execution_bid.message.slot;
+
+        // Verify the execution bid for gossip
+        let verified_bid = match GossipVerifiedExecutionBid::new(execution_bid, &self.chain) {
+            Ok(verified_bid) => verified_bid,
+            Err(e) => {
+                debug!(
+                    builder_index,
+                    %slot,
+                    %peer_id,
+                    error = ?e,
+                    "Dropping invalid execution bid"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::HighToleranceError,
+                    "invalid_execution_bid",
+                );
+                return;
+            }
+        };
+
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_VERIFIED_TOTAL);
+
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // Import the bid into fork choice
+        if let Err(e) = self.chain.process_execution_bid(verified_bid) {
+            warn!(
+                builder_index,
+                %slot,
+                error = ?e,
+                "Failed to process verified execution bid"
+            );
+        } else {
+            debug!(
+                builder_index,
+                %slot,
+                "Successfully processed execution bid"
+            );
+            metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL);
+        }
+    }
+
+    /// Process payload attestation from gossip (Gloas ePBS).
+    ///
+    /// Verifies PTC membership and signature, then processes the attestation.
+    pub fn process_gossip_payload_attestation(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        payload_attestation: types::PayloadAttestation<T::EthSpec>,
+    ) {
+        use beacon_chain::payload_attestation_verification::GossipVerifiedPayloadAttestation;
+
+        let slot = payload_attestation.data.slot;
+        let num_attesters = payload_attestation.num_attesters();
+
+        // Verify the payload attestation for gossip
+        let verified_attestation =
+            match GossipVerifiedPayloadAttestation::new(payload_attestation, &self.chain) {
+                Ok(verified_attestation) => verified_attestation,
+                Err(e) => {
+                    debug!(
+                        %slot,
+                        num_attesters,
+                        %peer_id,
+                        error = ?e,
+                        "Dropping invalid payload attestation"
+                    );
+                    self.propagate_validation_result(
+                        message_id,
+                        peer_id,
+                        MessageAcceptance::Reject,
+                    );
+                    self.gossip_penalize_peer(
+                        peer_id,
+                        PeerAction::HighToleranceError,
+                        "invalid_payload_attestation",
+                    );
+                    return;
+                }
+            };
+
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_VERIFIED_TOTAL);
+
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // Process the attestation in fork choice
+        if let Err(e) = self.chain.process_payload_attestation(verified_attestation) {
+            warn!(
+                %slot,
+                num_attesters,
+                error = ?e,
+                "Failed to process verified payload attestation"
+            );
+        } else {
+            debug!(
+                %slot,
+                num_attesters,
+                "Successfully processed payload attestation"
+            );
+            metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL);
+        }
+    }
 }

@@ -423,6 +423,42 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         })
     }
 
+    /// Handle execution bid from gossip (Gloas ePBS).
+    pub fn send_gossip_execution_bid(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        execution_bid: Box<types::SignedExecutionPayloadBid>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = move || {
+            processor.process_gossip_execution_bid(message_id, peer_id, *execution_bid)
+        };
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: false,
+            work: Work::GossipExecutionBid(Box::new(process_fn)),
+        })
+    }
+
+    /// Handle payload attestation from gossip (Gloas ePBS).
+    pub fn send_gossip_payload_attestation(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        payload_attestation: Box<types::PayloadAttestation<T::EthSpec>>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = move || {
+            processor.process_gossip_payload_attestation(message_id, peer_id, *payload_attestation)
+        };
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: false,
+            work: Work::GossipPayloadAttestation(Box::new(process_fn)),
+        })
+    }
+
     /// Create a new `Work` event for some block, where the result from computation (if any) is
     /// sent to the other side of `result_tx`.
     pub fn send_rpc_beacon_block(

@@ -138,6 +138,8 @@ pub struct BeaconProcessorQueueLengths {
     lc_update_range_queue: usize,
     api_request_p0_queue: usize,
     api_request_p1_queue: usize,
+    gossip_execution_bid_queue: usize,
+    gossip_payload_attestation_queue: usize,
 }
 
 impl BeaconProcessorQueueLengths {
@@ -204,6 +206,10 @@ impl BeaconProcessorQueueLengths {
             lc_update_range_queue: 512,
             api_request_p0_queue: 1024,
             api_request_p1_queue: 1024,
+            // Gloas ePBS: execution bids from builders per slot
+            gossip_execution_bid_queue: 1024,
+            // Gloas ePBS: payload attestations from PTC (512 validators per slot)
+            gossip_payload_attestation_queue: 2048,
         })
     }
 }
@@ -612,6 +618,8 @@ pub enum Work<E: EthSpec> {
     DataColumnsByRootsRequest(BlockingFn),
     DataColumnsByRangeRequest(BlockingFn),
     GossipBlsToExecutionChange(BlockingFn),
+    GossipExecutionBid(BlockingFn),
+    GossipPayloadAttestation(BlockingFn),
     LightClientBootstrapRequest(BlockingFn),
     LightClientOptimisticUpdateRequest(BlockingFn),
     LightClientFinalityUpdateRequest(BlockingFn),
@@ -664,6 +672,8 @@ pub enum WorkType {
     DataColumnsByRootsRequest,
     DataColumnsByRangeRequest,
     GossipBlsToExecutionChange,
+    GossipExecutionBid,
+    GossipPayloadAttestation,
     LightClientBootstrapRequest,
     LightClientOptimisticUpdateRequest,
     LightClientFinalityUpdateRequest,
@@ -699,6 +709,8 @@ impl<E: EthSpec> Work<E> {
                 WorkType::GossipLightClientOptimisticUpdate
             }
             Work::GossipBlsToExecutionChange(_) => WorkType::GossipBlsToExecutionChange,
+            Work::GossipExecutionBid(_) => WorkType::GossipExecutionBid,
+            Work::GossipPayloadAttestation(_) => WorkType::GossipPayloadAttestation,
             Work::RpcBlock { .. } => WorkType::RpcBlock,
             Work::RpcBlobs { .. } => WorkType::RpcBlobs,
             Work::RpcCustodyColumn { .. } => WorkType::RpcCustodyColumn,
@@ -885,6 +897,11 @@ impl<E: EthSpec> BeaconProcessor<E> {
 
         let mut gossip_bls_to_execution_change_queue =
             FifoQueue::new(queue_lengths.gossip_bls_to_execution_change_queue);
+
+        let mut gossip_execution_bid_queue =
+            FifoQueue::new(queue_lengths.gossip_execution_bid_queue);
+        let mut gossip_payload_attestation_queue =
+            FifoQueue::new(queue_lengths.gossip_payload_attestation_queue);
 
         // Using FIFO queues for light client updates to maintain sequence order.
         let mut lc_gossip_finality_update_queue =
@@ -1217,6 +1234,11 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                 Some(item)
                             } else if let Some(item) = gossip_bls_to_execution_change_queue.pop() {
                                 Some(item)
+                            // Check gloas ePBS operations (execution bids + payload attestations)
+                            } else if let Some(item) = gossip_execution_bid_queue.pop() {
+                                Some(item)
+                            } else if let Some(item) = gossip_payload_attestation_queue.pop() {
+                                Some(item)
                             // Check the priority 1 API requests after we've
                             // processed all the interesting things from the network
                             // and things required for us to stay in good repute
@@ -1384,6 +1406,12 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Work::GossipBlsToExecutionChange { .. } => {
                                 gossip_bls_to_execution_change_queue.push(work, work_id)
                             }
+                            Work::GossipExecutionBid { .. } => {
+                                gossip_execution_bid_queue.push(work, work_id)
+                            }
+                            Work::GossipPayloadAttestation { .. } => {
+                                gossip_payload_attestation_queue.push(work, work_id)
+                            }
                             Work::BlobsByRootsRequest { .. } => blbroots_queue.push(work, work_id),
                             Work::DataColumnsByRootsRequest { .. } => {
                                 dcbroots_queue.push(work, work_id)
@@ -1443,6 +1471,12 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::DataColumnsByRangeRequest => dcbrange_queue.len(),
                         WorkType::GossipBlsToExecutionChange => {
                             gossip_bls_to_execution_change_queue.len()
+                        }
+                        WorkType::GossipExecutionBid => {
+                            gossip_execution_bid_queue.len()
+                        }
+                        WorkType::GossipPayloadAttestation => {
+                            gossip_payload_attestation_queue.len()
                         }
                         WorkType::LightClientBootstrapRequest => lc_bootstrap_queue.len(),
                         WorkType::LightClientOptimisticUpdateRequest => {
@@ -1624,6 +1658,8 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::GossipLightClientOptimisticUpdate(process_fn)
             | Work::Status(process_fn)
             | Work::GossipBlsToExecutionChange(process_fn)
+            | Work::GossipExecutionBid(process_fn)
+            | Work::GossipPayloadAttestation(process_fn)
             | Work::LightClientBootstrapRequest(process_fn)
             | Work::LightClientOptimisticUpdateRequest(process_fn)
             | Work::LightClientFinalityUpdateRequest(process_fn)

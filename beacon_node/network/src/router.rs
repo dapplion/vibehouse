@@ -486,6 +486,23 @@ impl<T: BeaconChainTypes> Router<T> {
                             bls_to_execution_change,
                         ),
                 ),
+            PubsubMessage::ExecutionBid(execution_bid) => self.handle_beacon_processor_send_result(
+                self.network_beacon_processor.send_gossip_execution_bid(
+                    message_id,
+                    peer_id,
+                    execution_bid,
+                ),
+            ),
+            PubsubMessage::PayloadAttestation(payload_attestation) => {
+                self.handle_beacon_processor_send_result(
+                    self.network_beacon_processor
+                        .send_gossip_payload_attestation(
+                            message_id,
+                            peer_id,
+                            payload_attestation,
+                        ),
+                )
+            }
         }
     }
 

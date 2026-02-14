@@ -204,6 +204,38 @@ pub static BEACON_PROCESSOR_BLS_TO_EXECUTION_CHANGE_IMPORTED_TOTAL: LazyLock<Res
         )
     });
 
+// Gloas ePBS - Execution bids
+pub static BEACON_PROCESSOR_EXECUTION_BID_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_execution_bid_verified_total",
+            "Total number of execution bids verified for propagation (Gloas ePBS).",
+        )
+    });
+pub static BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_execution_bid_imported_total",
+            "Total number of execution bids imported to fork choice (Gloas ePBS).",
+        )
+    });
+
+// Gloas ePBS - Payload attestations
+pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_payload_attestation_verified_total",
+            "Total number of payload attestations verified for propagation (Gloas ePBS).",
+        )
+    });
+pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_payload_attestation_imported_total",
+            "Total number of payload attestations imported to fork choice (Gloas ePBS).",
+        )
+    });
+
 // Rpc blocks.
 pub static BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {
