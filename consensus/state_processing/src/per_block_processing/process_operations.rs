@@ -48,6 +48,21 @@ pub fn process_operations<E: EthSpec, Payload: AbstractExecPayload<E>>(
         )?;
     }
 
+    // Gloas ePBS operations
+    if state.fork_name_unchecked().gloas_enabled() {
+        // Process the execution payload bid
+        if let Ok(signed_bid) = block_body.signed_execution_payload_bid() {
+            gloas::process_execution_payload_bid(state, signed_bid, verify_signatures, spec)?;
+        }
+
+        // Process payload attestations
+        if let Ok(attestations) = block_body.payload_attestations() {
+            for attestation in attestations.iter() {
+                gloas::process_payload_attestation(state, attestation, verify_signatures, spec)?;
+            }
+        }
+    }
+
     Ok(())
 }
 
