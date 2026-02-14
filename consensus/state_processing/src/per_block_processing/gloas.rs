@@ -1,7 +1,7 @@
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
 use std::borrow::Cow;
-use swap_or_not_shuffle::compute_shuffled_index;
+use crate::common::compute_shuffled_index;
 use tree_hash::TreeHash;
 use types::consts::gloas::{PTC_SIZE, BUILDER_INDEX_SELF_BUILD};
 use types::{
@@ -146,7 +146,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             },
         };
         
-        *state_gloas.builder_pending_payments.get_mut(slot_index).ok_or(BlockProcessingError::InvalidSlotIndex(slot_index))? = pending_payment;
+        *state_gloas.builder_pending_payments.get_mut(slot_index).ok_or(BlockProcessingError::InvalidSlot(slot_index as u64))? = pending_payment;
     }
 
     Ok(())
@@ -266,8 +266,8 @@ pub fn process_payload_attestation<E: EthSpec>(
                 .ok_or(BlockProcessingError::InvalidSlotIndex(payment_slot_index))?;
 
             // Transfer payment from builder to proposer if not already processed
-            if pending_payment.weight < quorum_threshold.as_u64() {
-                pending_payment.weight = quorum_threshold.as_u64(); // Mark as processed
+            if pending_payment.weight < quorum_threshold {
+                pending_payment.weight = quorum_threshold; // Mark as processed
 
                 let builder_index = pending_payment.withdrawal.builder_index as usize;
                 let payment_amount = pending_payment.withdrawal.amount;
@@ -363,11 +363,11 @@ fn get_ptc_committee<E: EthSpec>(
     // TODO: The spec may define a specific domain for PTC. For now, use a slot-based seed.
     let seed = state.get_beacon_proposer_seed(slot, spec)?;
 
-    let mut ptc_committee = Vec::with_capacity(PTC_SIZE as usize);
+    let mut ptc_committee = Vec::with_capacity(PTC_SIZE);
         let mut i = 0;
 
     // Select PTC_SIZE validators using shuffled indices
-    while ptc_committee.len() < PTC_SIZE as usize && i < active_validator_count * 10 {
+    while ptc_committee.len() < PTC_SIZE && i < active_validator_count * 10 {
         let shuffled_index = compute_shuffled_index(
             i % active_validator_count,
             active_validator_count,
@@ -390,7 +390,7 @@ fn get_ptc_committee<E: EthSpec>(
         i += 1;
     }
 
-    if ptc_committee.len() < PTC_SIZE as usize {
+    if ptc_committee.len() < PTC_SIZE {
         // Not enough validators to form a full PTC (edge case for testnets)
         return Err(BlockProcessingError::PayloadAttestationInvalid(
             PayloadAttestationInvalid::InsufficientValidators,
