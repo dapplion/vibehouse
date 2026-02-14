@@ -490,7 +490,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     let fork_name = state.fork_name_unchecked();
     let mut withdrawal_index = state.next_withdrawal_index()?;
     let mut withdrawals = Vec::<Withdrawal>::new();
-    let withdrawals_limit = E::max_withdrawals_per_payload().saturating_sub(1);
+    let withdrawals_limit = E::max_withdrawals_per_payload();
 
     // 1. Builder pending withdrawals
     let mut processed_builder_withdrawals_count: usize = 0;
