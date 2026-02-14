@@ -4,6 +4,60 @@
 
 ---
 
+## 2026-02-14 02:00 - claude loop cycle 1: sync & awareness
+
+### Phase 1: Sync & Awareness ✅
+
+**Upstream sync completed**:
+- Configured upstream remote (sigp/lighthouse)
+- Fetched latest changes from upstream/unstable and upstream/stable
+- Found 15 new commits on unstable, 5 on stable since fork point
+
+**Security fix applied** 🔒:
+- ✅ Cherry-picked c25a97592: Bump bytes to 1.11.1 to fix RUSTSEC-2026-0007
+- Applied manually due to Cargo.lock conflict (trivial)
+- Committed as 2e36cf662
+
+**Major upstream discovery** 🚨:
+Lighthouse merged 3 major gloas PRs in the last 24 hours!
+
+1. **b8072c5b7** - Gloas payload bid consensus (#8801)
+   - Core ePBS bid processing in per_block_processing
+   - New signature verification for bids
+   - EF tests enabled and passing
+   - +358/-18 lines across 10 files
+
+2. **26db01642** - Gloas epoch processing & signature verification (#8808)
+   - Implements `process_builder_pending_payments`
+   - Enables gloas for ALL remaining EF tests (except finality)
+   - Critical: tests are passing!
+   - +192/-34 lines across 9 files
+
+3. **68ad9758a** - Gloas attestation verification (#8705)
+   - Implements gloas attestation verification per p2p spec
+   - Adds 259 lines of new tests
+   - +336/-10 lines across 3 files
+
+**Documents created**:
+- `docs/workstreams/upstream-sync.md` - detailed tracking of all upstream changes
+- Includes PR summaries, file counts, cherry-pick strategy
+
+**Key decision point identified**:
+Should vibehouse cherry-pick upstream gloas work or implement from spec?
+- **Option A (cherry-pick)**: Faster, proven to pass EF tests, less reinventing
+- **Option B (spec-first)**: Learn by doing, may catch issues, more educational
+- **Option C (hybrid)**: Cherry-pick types/structure, verify against spec
+
+Decision deferred to next phase after reviewing the code.
+
+### what's next
+- Phase 2: Review the merged gloas PRs in detail
+- Compare upstream implementation against consensus-specs
+- Make cherry-pick decision
+- Continue spec reading (fork-choice, p2p, validator)
+
+---
+
 ## 2026-02-14 - gloas spec research session 1
 
 ### what happened
