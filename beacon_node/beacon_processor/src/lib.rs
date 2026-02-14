@@ -111,6 +111,9 @@ pub struct BeaconProcessorQueueLengths {
     gossip_voluntary_exit_queue: usize,
     gossip_proposer_slashing_queue: usize,
     gossip_attester_slashing_queue: usize,
+    gossip_execution_bid_queue: usize,
+    gossip_execution_payload_queue: usize,
+    gossip_payload_attestation_queue: usize,
     unknown_light_client_update_queue: usize,
     rpc_block_queue: usize,
     rpc_blob_queue: usize,
@@ -175,6 +178,9 @@ impl BeaconProcessorQueueLengths {
             gossip_voluntary_exit_queue: 4096,
             gossip_proposer_slashing_queue: 4096,
             gossip_attester_slashing_queue: 4096,
+            gossip_execution_bid_queue: 4096,
+            gossip_execution_payload_queue: 4096,
+            gossip_payload_attestation_queue: 4096,
             unknown_light_client_update_queue: 128,
             rpc_block_queue: 1024,
             rpc_blob_queue: 1024,
@@ -591,6 +597,10 @@ pub enum Work<E: EthSpec> {
     GossipSyncContribution(BlockingFn),
     GossipLightClientFinalityUpdate(BlockingFn),
     GossipLightClientOptimisticUpdate(BlockingFn),
+    // Gloas ePBS gossip.
+    GossipExecutionBid(BlockingFn),
+    GossipExecutionPayload(BlockingFn),
+    GossipPayloadAttestation(BlockingFn),
     RpcBlock {
         process_fn: AsyncFn,
     },
@@ -649,6 +659,9 @@ pub enum WorkType {
     GossipSyncContribution,
     GossipLightClientFinalityUpdate,
     GossipLightClientOptimisticUpdate,
+    GossipExecutionBid,
+    GossipExecutionPayload,
+    GossipPayloadAttestation,
     RpcBlock,
     RpcBlobs,
     RpcCustodyColumn,
@@ -698,6 +711,9 @@ impl<E: EthSpec> Work<E> {
             Work::GossipLightClientOptimisticUpdate(_) => {
                 WorkType::GossipLightClientOptimisticUpdate
             }
+            Work::GossipExecutionBid(_) => WorkType::GossipExecutionBid,
+            Work::GossipExecutionPayload(_) => WorkType::GossipExecutionPayload,
+            Work::GossipPayloadAttestation(_) => WorkType::GossipPayloadAttestation,
             Work::GossipBlsToExecutionChange(_) => WorkType::GossipBlsToExecutionChange,
             Work::RpcBlock { .. } => WorkType::RpcBlock,
             Work::RpcBlobs { .. } => WorkType::RpcBlobs,
@@ -861,6 +877,12 @@ impl<E: EthSpec> BeaconProcessor<E> {
             FifoQueue::new(queue_lengths.gossip_proposer_slashing_queue);
         let mut gossip_attester_slashing_queue =
             FifoQueue::new(queue_lengths.gossip_attester_slashing_queue);
+        let mut gossip_execution_bid_queue =
+            FifoQueue::new(queue_lengths.gossip_execution_bid_queue);
+        let mut gossip_execution_payload_queue =
+            FifoQueue::new(queue_lengths.gossip_execution_payload_queue);
+        let mut gossip_payload_attestation_queue =
+            FifoQueue::new(queue_lengths.gossip_payload_attestation_queue);
 
         // Using a FIFO queue since blocks need to be imported sequentially.
         let mut rpc_block_queue = FifoQueue::new(queue_lengths.rpc_block_queue);
@@ -1185,6 +1207,12 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                 Some(item)
                             } else if let Some(item) = unknown_block_attestation_queue.pop() {
                                 Some(item)
+                            } else if let Some(item) = gossip_execution_bid_queue.pop() {
+                                Some(item)
+                            } else if let Some(item) = gossip_payload_attestation_queue.pop() {
+                                Some(item)
+                            } else if let Some(item) = gossip_execution_payload_queue.pop() {
+                                Some(item)
                             // Check RPC methods next. Status messages are needed for sync so
                             // prioritize them over syncing requests from other peers (BlocksByRange
                             // and BlocksByRoot)
@@ -1337,6 +1365,15 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Work::GossipAttesterSlashing { .. } => {
                                 gossip_attester_slashing_queue.push(work, work_id)
                             }
+                            Work::GossipExecutionBid { .. } => {
+                                gossip_execution_bid_queue.push(work, work_id)
+                            }
+                            Work::GossipExecutionPayload { .. } => {
+                                gossip_execution_payload_queue.push(work, work_id)
+                            }
+                            Work::GossipPayloadAttestation { .. } => {
+                                gossip_payload_attestation_queue.push(work, work_id)
+                            }
                             Work::GossipSyncSignature { .. } => sync_message_queue.push(work),
                             Work::GossipSyncContribution { .. } => {
                                 sync_contribution_queue.push(work)
@@ -1420,6 +1457,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::GossipVoluntaryExit => gossip_voluntary_exit_queue.len(),
                         WorkType::GossipProposerSlashing => gossip_proposer_slashing_queue.len(),
                         WorkType::GossipAttesterSlashing => gossip_attester_slashing_queue.len(),
+                        WorkType::GossipExecutionBid => gossip_execution_bid_queue.len(),
+                        WorkType::GossipExecutionPayload => gossip_execution_payload_queue.len(),
+                        WorkType::GossipPayloadAttestation => gossip_payload_attestation_queue.len(),
                         WorkType::GossipSyncSignature => sync_message_queue.len(),
                         WorkType::GossipSyncContribution => sync_contribution_queue.len(),
                         WorkType::GossipLightClientFinalityUpdate => {
@@ -1622,6 +1662,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::GossipSyncContribution(process_fn)
             | Work::GossipLightClientFinalityUpdate(process_fn)
             | Work::GossipLightClientOptimisticUpdate(process_fn)
+            | Work::GossipExecutionBid(process_fn)
+            | Work::GossipExecutionPayload(process_fn)
+            | Work::GossipPayloadAttestation(process_fn)
             | Work::Status(process_fn)
             | Work::GossipBlsToExecutionChange(process_fn)
             | Work::LightClientBootstrapRequest(process_fn)

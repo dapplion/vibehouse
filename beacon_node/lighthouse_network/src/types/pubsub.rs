@@ -13,9 +13,9 @@ use types::{
     SignedAggregateAndProof, SignedAggregateAndProofBase, SignedAggregateAndProofElectra,
     SignedBeaconBlock, SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
-    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
-    SignedContributionAndProof, SignedVoluntaryExit, SingleAttestation, SubnetId,
-    SyncCommitteeMessage, SyncSubnetId,
+    PayloadAttestation, SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
+    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,6 +46,12 @@ pub enum PubsubMessage<E: EthSpec> {
     LightClientFinalityUpdate(Box<LightClientFinalityUpdate<E>>),
     /// Gossipsub message providing notification of a light client optimistic update.
     LightClientOptimisticUpdate(Box<LightClientOptimisticUpdate<E>>),
+    /// Gloas ePBS: builders publish signed execution payload bids.
+    ExecutionBid(Box<SignedExecutionPayloadBid<E>>),
+    /// Gloas ePBS: builders reveal execution payload envelopes.
+    ExecutionPayload(Box<SignedExecutionPayloadEnvelope<E>>),
+    /// Gloas ePBS: PTC members publish payload attestations.
+    PayloadAttestation(Box<PayloadAttestation<E>>),
 }
 
 // Implements the `DataTransform` trait of gossipsub to employ snappy compression
@@ -149,6 +155,9 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::LightClientOptimisticUpdate(_) => {
                 GossipKind::LightClientOptimisticUpdate
             }
+            PubsubMessage::ExecutionBid(_) => GossipKind::ExecutionBid,
+            PubsubMessage::ExecutionPayload(_) => GossipKind::ExecutionPayload,
+            PubsubMessage::PayloadAttestation(_) => GossipKind::PayloadAttestation,
         }
     }
 
@@ -387,16 +396,36 @@ impl<E: EthSpec> PubsubMessage<E> {
                             light_client_optimistic_update,
                         )))
                     }
-                    // gloas ePBS gossip topics - no decoding needed in gossip layer
-                    // validation happens in beacon_chain gossip verification
+                    // Gloas ePBS gossip topics.
+                    // These are decoded here and then validated in the beacon chain gossip
+                    // verification layer.
                     GossipKind::ExecutionBid => {
-                        return Err("ExecutionBid messages should be handled by gossip validation".to_string());
+                        let bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::ExecutionBid(Box::new(bid)))
                     }
                     GossipKind::ExecutionPayload => {
-                        return Err("ExecutionPayload messages should be handled by gossip validation".to_string());
+                        let payload = SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::ExecutionPayload(Box::new(payload)))
                     }
                     GossipKind::PayloadAttestation => {
-                        return Err("PayloadAttestation messages should be handled by gossip validation".to_string());
+                        let attestation = match fork_context
+                            .get_fork_from_context_bytes(gossip_topic.fork_digest)
+                        {
+                            Some(&fork_name) => {
+                                let _ = fork_name; // PayloadAttestation SSZ does not vary by fork.
+                                PayloadAttestation::from_ssz_bytes(data)
+                                    .map_err(|e| format!("{:?}", e))?
+                            }
+                            None => {
+                                return Err(format!(
+                                    "payload_attestation topic invalid for given fork digest {:?}",
+                                    gossip_topic.fork_digest
+                                ));
+                            }
+                        };
+                        Ok(PubsubMessage::PayloadAttestation(Box::new(attestation)))
                     }
                 }
             }
@@ -424,6 +453,9 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::BlsToExecutionChange(data) => data.as_ssz_bytes(),
             PubsubMessage::LightClientFinalityUpdate(data) => data.as_ssz_bytes(),
             PubsubMessage::LightClientOptimisticUpdate(data) => data.as_ssz_bytes(),
+            PubsubMessage::ExecutionBid(data) => data.as_ssz_bytes(),
+            PubsubMessage::ExecutionPayload(data) => data.as_ssz_bytes(),
+            PubsubMessage::PayloadAttestation(data) => data.as_ssz_bytes(),
         }
     }
 }
@@ -482,6 +514,23 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
             }
             PubsubMessage::LightClientOptimisticUpdate(_data) => {
                 write!(f, "Light CLient Optimistic Update")
+            }
+            PubsubMessage::ExecutionBid(bid) => {
+                write!(
+                    f,
+                    "ExecutionBid: slot: {}, builder_index: {}",
+                    bid.message.slot, bid.message.builder_index
+                )
+            }
+            PubsubMessage::ExecutionPayload(payload) => {
+                write!(f, "ExecutionPayload: slot: {}", payload.message.slot)
+            }
+            PubsubMessage::PayloadAttestation(att) => {
+                write!(
+                    f,
+                    "PayloadAttestation: slot: {}, beacon_block_root: {:?}",
+                    att.data.slot, att.data.beacon_block_root
+                )
             }
         }
     }
