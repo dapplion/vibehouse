@@ -476,6 +476,10 @@ pub enum PayloadAttestationInvalid {
     SlotOutOfBounds,
     /// The signature is invalid
     SignatureInvalid,
+    /// Signature verification failed
+    BadSignature,
+    /// Failed to decompress a public key
+    InvalidPubkey,
     /// Attesting indices are not sorted
     IndicesNotSorted,
     /// Attesting indices contain duplicates

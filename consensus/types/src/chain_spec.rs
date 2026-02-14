@@ -29,6 +29,9 @@ pub enum Domain {
     ContributionAndProof,
     SyncCommitteeSelectionProof,
     ApplicationMask(ApplicationDomain),
+    // Gloas ePBS domains
+    BeaconBuilder,
+    PtcAttester,
 }
 
 /// Lighthouse's internal configuration struct.
@@ -316,6 +319,12 @@ pub struct ChainSpec {
      * Capella params
      */
     pub(crate) domain_bls_to_execution_change: u32,
+
+    /*
+     * Gloas ePBS domains
+     */
+    pub(crate) domain_beacon_builder: u32,
+    pub(crate) domain_ptc_attester: u32,
 }
 
 impl ChainSpec {
@@ -562,6 +571,8 @@ impl ChainSpec {
             Domain::SyncCommitteeSelectionProof => self.domain_sync_committee_selection_proof,
             Domain::ApplicationMask(application_domain) => application_domain.get_domain_constant(),
             Domain::BlsToExecutionChange => self.domain_bls_to_execution_change,
+            Domain::BeaconBuilder => self.domain_beacon_builder,
+            Domain::PtcAttester => self.domain_ptc_attester,
         }
     }
 

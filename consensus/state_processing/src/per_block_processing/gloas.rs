@@ -1,9 +1,13 @@
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
+use bls::SignatureSet;
+use std::borrow::Cow;
+use tree_hash::TreeHash;
 use types::consts::gloas::{PTC_SIZE, BUILDER_INDEX_SELF_BUILD};
 use types::{
-    BeaconState, ChainSpec, EthSpec, IndexedPayloadAttestation, PayloadAttestation,
-    PayloadAttestationData, SignedExecutionPayloadBid, Slot,
+    BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec, Domain, EthSpec,
+    IndexedPayloadAttestation, PayloadAttestation, PayloadAttestationData, PublicKey,
+    SignedExecutionPayloadBid, SigningData, Slot,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -90,13 +94,32 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
         // Verify signature if requested
         if verify_signatures.is_true() {
-            // TODO: implement signature verification
-            // Need to:
-            // 1. Get signing root of ExecutionPayloadBid
-            // 2. Get domain for DOMAIN_BEACON_BUILDER
-            // 3. Verify signature against builder's pubkey
-            // For now, we'll add a placeholder
-            todo!("Signature verification for builder bids not yet implemented");
+            // Verify builder bid signature
+            let domain = spec.get_domain(
+                bid.slot.epoch(E::slots_per_epoch()),
+                Domain::BeaconBuilder,
+                &state.fork(),
+                state.genesis_validators_root(),
+            );
+
+            let signing_root = SigningData {
+                object_root: bid.tree_hash_root(),
+                domain,
+            }
+            .tree_hash_root();
+
+            let pubkey = builder
+                .pubkey
+                .decompress()
+                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                    reason: format!("failed to decompress builder {} pubkey", builder_index),
+                })?;
+
+            if !signed_bid.signature.verify(&pubkey, signing_root) {
+                return Err(BlockProcessingError::PayloadBidInvalid {
+                    reason: format!("invalid builder {} signature", builder_index),
+                });
+            }
         }
     }
 
@@ -166,9 +189,49 @@ pub fn process_payload_attestation<E: EthSpec>(
 
     // Verify the attestation signature if requested
     if verify_signatures.is_true() {
-        // TODO: Implement signature verification
-        // Need to verify aggregate signature from all PTC members
-        todo!("Signature verification for payload attestations not yet implemented");
+        // Verify aggregate payload attestation signature
+        let domain = spec.get_domain(
+            data.slot.epoch(E::slots_per_epoch()),
+            Domain::PtcAttester,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+
+        let signing_root = SigningData {
+            object_root: data.tree_hash_root(),
+            domain,
+        }
+        .tree_hash_root();
+
+        // Collect public keys from all attesting indices
+        let mut pubkeys = Vec::new();
+        for &validator_index in indexed_attestation.attesting_indices.iter() {
+            let validator = state
+                .validators()
+                .get(validator_index as usize)
+                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                ))?;
+
+            let pubkey = validator
+                .pubkey
+                .decompress()
+                .map_err(|_| BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::InvalidPubkey,
+                ))?;
+
+            pubkeys.push(pubkey);
+        }
+
+        // Verify the aggregate signature
+        if !attestation
+            .signature
+            .verify_aggregate(&pubkeys, signing_root)
+        {
+            return Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::BadSignature,
+            ));
+        }
     }
 
     // Check if we've reached quorum (60% of PTC = 6/10 * 512 = 307 attesters)
