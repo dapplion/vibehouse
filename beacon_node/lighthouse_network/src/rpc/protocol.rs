@@ -16,7 +16,7 @@ use tokio_util::{
     compat::{Compat, FuturesAsyncReadCompatExt},
 };
 use types::{
-    BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BlobSidecar, ChainSpec, DataColumnSidecar,
+    BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BlobSidecar, ChainSpec, DataColumnSidecarFulu,
     EmptyBlock, Epoch, EthSpec, EthSpecId, ForkContext, ForkName, LightClientBootstrap,
     LightClientBootstrapAltair, LightClientFinalityUpdate, LightClientFinalityUpdateAltair,
     LightClientOptimisticUpdate, LightClientOptimisticUpdateAltair, LightClientUpdate,
@@ -638,8 +638,8 @@ pub fn rpc_data_column_limits<E: EthSpec>(
     spec: &ChainSpec,
 ) -> RpcLimits {
     RpcLimits::new(
-        DataColumnSidecar::<E>::min_size(),
-        DataColumnSidecar::<E>::max_size(spec.max_blobs_per_block(current_digest_epoch) as usize),
+        DataColumnSidecarFulu::<E>::min_size(),
+        DataColumnSidecarFulu::<E>::max_size(spec.max_blobs_per_block(current_digest_epoch) as usize),
     )
 }
 

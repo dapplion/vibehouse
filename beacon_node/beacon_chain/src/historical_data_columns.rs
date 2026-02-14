@@ -61,12 +61,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let unique_column_indices = historical_data_column_sidecar_list
             .iter()
-            .map(|item| item.index)
+            .map(|item| *item.index())
             .collect::<HashSet<_>>();
 
         let mut slot_and_column_index_to_data_columns = historical_data_column_sidecar_list
             .iter()
-            .map(|data_column| ((data_column.slot(), data_column.index), data_column))
+            .map(|data_column| ((data_column.slot(), *data_column.index()), data_column))
             .collect::<HashMap<_, _>>();
 
         let forward_blocks_iter = self

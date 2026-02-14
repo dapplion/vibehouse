@@ -120,6 +120,32 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - **EIP-7916** - Data availability changes for gloas (DataColumnSidecar changes, removal of signed_block_header and kzg_commitments_inclusion_proof fields).
 - **EIP-8016** - Progressive data structures.
 
+### ⚠️⚠️⚠️ CRITICAL: BEFORE MERGING ANY TYPES/SSZ CHANGES ⚠️⚠️⚠️
+
+# YOU MUST RUN `make test-ef` TO VERIFY SPEC TESTS PASS
+
+# YOU MUST ADD TEST ENTRIES IN `testing/ef_tests/tests/tests.rs`
+
+For superstruct types like DataColumnSidecar (Fulu/Gloas variants), you need BOTH:
+1. **type_name entries** in `testing/ef_tests/src/type_name.rs` for each variant
+2. **test functions** in `testing/ef_tests/tests/tests.rs` - one per variant with the correct fork filter (e.g. `fulu_only()`, `gloas_and_later()`)
+
+Example pattern (see how BeaconBlockBody does it with separate Fulu/Gloas entries):
+```rust
+#[test]
+fn data_column_sidecar_fulu() {
+    SszStaticHandler::<DataColumnSidecarFulu<MinimalEthSpec>, MinimalEthSpec>::fulu_only().run();
+    SszStaticHandler::<DataColumnSidecarFulu<MainnetEthSpec>, MainnetEthSpec>::fulu_only().run();
+}
+#[test]
+fn data_column_sidecar_gloas() {
+    SszStaticHandler::<DataColumnSidecarGloas<MinimalEthSpec>, MinimalEthSpec>::gloas_and_later().run();
+    SszStaticHandler::<DataColumnSidecarGloas<MainnetEthSpec>, MainnetEthSpec>::gloas_and_later().run();
+}
+```
+
+Without this, SSZ static tests silently skip your type — you'll think it passes when it doesn't run at all.
+
 ### Implementation steps (detailed)
 
 #### Step 1: Types & Constants

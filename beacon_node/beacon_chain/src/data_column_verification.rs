@@ -9,7 +9,7 @@ use fork_choice::ProtoBlock;
 use kzg::{Error as KzgError, Kzg};
 use proto_array::Block;
 use slot_clock::SlotClock;
-use ssz_derive::{Decode, Encode};
+use ssz_derive::Encode;
 use ssz_types::VariableList;
 use std::iter;
 use std::marker::PhantomData;
@@ -17,8 +17,8 @@ use std::sync::Arc;
 use tracing::{debug, instrument};
 use types::data_column_sidecar::ColumnIndex;
 use types::{
-    BeaconStateError, ChainSpec, DataColumnSidecar, DataColumnSubnetId, EthSpec, Hash256,
-    SignedBeaconBlockHeader, Slot,
+    BeaconBlockHeader, BeaconStateError, ChainSpec, DataColumnSidecar, DataColumnSubnetId, EthSpec,
+    Hash256, SignedBeaconBlockHeader, Slot,
 };
 
 /// An error occurred while validating a gossip data column.
@@ -209,7 +209,13 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
         subnet_id: DataColumnSubnetId,
         chain: &BeaconChain<T>,
     ) -> Result<Self, GossipDataColumnError> {
-        let header = column_sidecar.signed_block_header.clone();
+        let header = column_sidecar
+            .signed_block_header()
+            .cloned()
+            .unwrap_or_else(|_| SignedBeaconBlockHeader {
+                message: BeaconBlockHeader::empty(),
+                signature: bls::Signature::empty(),
+            });
         // We only process slashing info if the gossip verification failed
         // since we do not process the data column any further in that case.
         validate_data_column_sidecar_for_gossip::<T, O>(column_sidecar, subnet_id, chain).map_err(
@@ -283,11 +289,18 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
     }
 
     pub fn index(&self) -> ColumnIndex {
-        self.data_column.data.index
+        *self.data_column.data.index()
     }
 
     pub fn signed_block_header(&self) -> SignedBeaconBlockHeader {
-        self.data_column.data.signed_block_header.clone()
+        self.data_column
+            .data
+            .signed_block_header()
+            .cloned()
+            .unwrap_or_else(|_| SignedBeaconBlockHeader {
+                message: BeaconBlockHeader::empty(),
+                signature: bls::Signature::empty(),
+            })
     }
 
     pub fn into_inner(self) -> KzgVerifiedDataColumn<T::EthSpec> {
@@ -296,7 +309,7 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
 }
 
 /// Wrapper over a `DataColumnSidecar` for which we have completed kzg verification.
-#[derive(Debug, Derivative, Clone, Encode, Decode)]
+#[derive(Debug, Derivative, Clone, Encode)]
 #[derivative(PartialEq, Eq)]
 #[ssz(struct_behaviour = "transparent")]
 pub struct KzgVerifiedDataColumn<E: EthSpec> {
@@ -345,7 +358,7 @@ impl<E: EthSpec> KzgVerifiedDataColumn<E> {
     }
 
     pub fn index(&self) -> ColumnIndex {
-        self.data.index
+        *self.data.index()
     }
 }
 
@@ -353,7 +366,7 @@ pub type CustodyDataColumnList<E> =
     VariableList<CustodyDataColumn<E>, <E as EthSpec>::NumberOfColumns>;
 
 /// Data column that we must custody
-#[derive(Debug, Derivative, Clone, Encode, Decode)]
+#[derive(Debug, Derivative, Clone, Encode)]
 #[derivative(PartialEq, Eq, Hash(bound = "E: EthSpec"))]
 #[ssz(struct_behaviour = "transparent")]
 pub struct CustodyDataColumn<E: EthSpec> {
@@ -378,12 +391,12 @@ impl<E: EthSpec> CustodyDataColumn<E> {
         self.data.clone()
     }
     pub fn index(&self) -> u64 {
-        self.data.index
+        *self.data.index()
     }
 }
 
 /// Data column that we must custody and has completed kzg verification
-#[derive(Debug, Derivative, Clone, Encode, Decode)]
+#[derive(Debug, Derivative, Clone, Encode)]
 #[derivative(PartialEq, Eq)]
 #[ssz(struct_behaviour = "transparent")]
 pub struct KzgVerifiedCustodyDataColumn<E: EthSpec> {
@@ -443,7 +456,7 @@ impl<E: EthSpec> KzgVerifiedCustodyDataColumn<E> {
         self.data.clone()
     }
     pub fn index(&self) -> ColumnIndex {
-        self.data.index
+        *self.data.index()
     }
 }
 
@@ -540,30 +553,37 @@ fn verify_data_column_sidecar<E: EthSpec>(
     data_column: &DataColumnSidecar<E>,
     spec: &ChainSpec,
 ) -> Result<(), GossipDataColumnError> {
-    if data_column.index >= E::number_of_columns() as u64 {
-        return Err(GossipDataColumnError::InvalidColumnIndex(data_column.index));
-    }
-    if data_column.kzg_commitments.is_empty() {
-        return Err(GossipDataColumnError::UnexpectedDataColumn);
+    let index = *data_column.index();
+    if index >= E::number_of_columns() as u64 {
+        return Err(GossipDataColumnError::InvalidColumnIndex(index));
     }
 
-    let cells_len = data_column.column.len();
-    let commitments_len = data_column.kzg_commitments.len();
-    let proofs_len = data_column.kzg_proofs.len();
-    let max_blobs_per_block = spec.max_blobs_per_block(data_column.epoch()) as usize;
+    let cells_len = data_column.column().len();
+    let proofs_len = data_column.kzg_proofs().len();
 
-    if commitments_len > max_blobs_per_block {
-        return Err(GossipDataColumnError::MaxBlobsPerBlockExceeded {
-            max_blobs_per_block,
-            commitments_len,
-        });
-    }
+    // Fulu variant carries kzg_commitments; validate them.
+    if let Ok(kzg_commitments) = data_column.kzg_commitments() {
+        let commitments_len = kzg_commitments.len();
 
-    if cells_len != commitments_len {
-        return Err(GossipDataColumnError::InconsistentCommitmentsLength {
-            cells_len,
-            commitments_len,
-        });
+        if commitments_len == 0 {
+            return Err(GossipDataColumnError::UnexpectedDataColumn);
+        }
+
+        let max_blobs_per_block = spec.max_blobs_per_block(data_column.epoch()) as usize;
+
+        if commitments_len > max_blobs_per_block {
+            return Err(GossipDataColumnError::MaxBlobsPerBlockExceeded {
+                max_blobs_per_block,
+                commitments_len,
+            });
+        }
+
+        if cells_len != commitments_len {
+            return Err(GossipDataColumnError::InconsistentCommitmentsLength {
+                cells_len,
+                commitments_len,
+            });
+        }
     }
 
     if cells_len != proofs_len {
@@ -591,7 +611,7 @@ fn verify_is_unknown_sidecar<T: BeaconChainTypes>(
         return Err(GossipDataColumnError::PriorKnown {
             proposer: column_sidecar.block_proposer_index(),
             slot: column_sidecar.slot(),
-            index: column_sidecar.index,
+            index: *column_sidecar.index(),
         });
     }
     Ok(())
@@ -653,7 +673,7 @@ fn verify_proposer_and_signature<T: BeaconChainTypes>(
     let column_slot = data_column.slot();
     let slots_per_epoch = T::EthSpec::slots_per_epoch();
     let column_epoch = column_slot.epoch(slots_per_epoch);
-    let column_index = data_column.index;
+    let column_index = *data_column.index();
     let block_root = data_column.block_root();
     let block_parent_root = data_column.block_parent_root();
 

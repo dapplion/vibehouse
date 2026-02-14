@@ -47,15 +47,18 @@ impl<E: EthSpec> ObservableDataSidecar for BlobSidecar<E> {
 
 impl<E: EthSpec> ObservableDataSidecar for DataColumnSidecar<E> {
     fn slot(&self) -> Slot {
-        self.slot()
+        DataColumnSidecar::slot(self)
     }
 
     fn block_proposer_index(&self) -> u64 {
-        self.block_proposer_index()
+        match self {
+            DataColumnSidecar::Fulu(col) => col.block_proposer_index(),
+            DataColumnSidecar::Gloas(_) => 0,
+        }
     }
 
     fn index(&self) -> u64 {
-        self.index
+        *DataColumnSidecar::index(self)
     }
 
     fn max_num_of_items(_spec: &ChainSpec, _slot: Slot) -> usize {

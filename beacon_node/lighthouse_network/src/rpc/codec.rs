@@ -693,7 +693,7 @@ fn handle_rpc_response<E: EthSpec>(
             Some(fork_name) => {
                 if fork_name.fulu_enabled() {
                     Ok(Some(RpcSuccessResponse::DataColumnsByRoot(Arc::new(
-                        DataColumnSidecar::from_ssz_bytes(decoded_buffer)?,
+                        DataColumnSidecar::from_ssz_bytes_for_fork(decoded_buffer, fork_name)?,
                     ))))
                 } else {
                     Err(RPCError::ErrorResponse(
@@ -714,7 +714,7 @@ fn handle_rpc_response<E: EthSpec>(
             Some(fork_name) => {
                 if fork_name.fulu_enabled() {
                     Ok(Some(RpcSuccessResponse::DataColumnsByRange(Arc::new(
-                        DataColumnSidecar::from_ssz_bytes(decoded_buffer)?,
+                        DataColumnSidecar::from_ssz_bytes_for_fork(decoded_buffer, fork_name)?,
                     ))))
                 } else {
                     Err(RPCError::ErrorResponse(
@@ -910,9 +910,9 @@ mod tests {
     use crate::types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield};
     use types::{
         BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockBellatrix, BeaconBlockHeader,
-        DataColumnsByRootIdentifier, EmptyBlock, Epoch, FixedBytesExtended, FullPayload,
-        KzgCommitment, KzgProof, Signature, SignedBeaconBlockHeader, Slot,
-        blob_sidecar::BlobIdentifier, data_column_sidecar::Cell,
+        DataColumnSidecarFulu, DataColumnsByRootIdentifier, EmptyBlock, Epoch,
+        FixedBytesExtended, FullPayload, KzgCommitment, KzgProof, Signature,
+        SignedBeaconBlockHeader, Slot, blob_sidecar::BlobIdentifier, data_column_sidecar::Cell,
     };
 
     type Spec = types::MainnetEthSpec;
@@ -975,7 +975,7 @@ mod tests {
     fn empty_data_column_sidecar(spec: &ChainSpec) -> Arc<DataColumnSidecar<Spec>> {
         // The context bytes are now derived from the block epoch, so we need to have the slot set
         // here.
-        let data_column_sidecar = DataColumnSidecar {
+        let data_column_sidecar = DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: 0,
             column: VariableList::new(vec![Cell::<Spec>::default()]).unwrap(),
             kzg_commitments: VariableList::new(vec![KzgCommitment::empty_for_testing()]).unwrap(),
@@ -991,7 +991,7 @@ mod tests {
                 signature: Signature::empty(),
             },
             kzg_commitments_inclusion_proof: Default::default(),
-        };
+        });
         Arc::new(data_column_sidecar)
     }
 

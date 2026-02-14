@@ -2448,7 +2448,7 @@ where
                 // currently have any knowledge of the columns being custodied.
                 let columns = generate_data_column_sidecars_from_block(&block, &self.spec)
                     .into_iter()
-                    .filter(|d| sampling_columns.contains(&d.index))
+                    .filter(|d| sampling_columns.contains(d.index()))
                     .map(CustodyDataColumn::from_asserted_custody)
                     .collect::<Vec<_>>();
                 RpcBlock::new_with_custody_columns(Some(block_root), block, columns)?
@@ -3188,10 +3188,10 @@ where
 
             let verified_columns = generate_data_column_sidecars_from_block(block, &self.spec)
                 .into_iter()
-                .filter(|c| custody_columns.contains(&c.index))
+                .filter(|c| custody_columns.contains(c.index()))
                 .map(|sidecar| {
                     let subnet_id =
-                        DataColumnSubnetId::from_column_index(sidecar.index, &self.spec);
+                        DataColumnSubnetId::from_column_index(*sidecar.index(), &self.spec);
                     self.chain
                         .verify_data_column_sidecar_for_gossip(sidecar, subnet_id)
                 })
@@ -3383,9 +3383,8 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
     let (cells, proofs) = template_data_columns
         .into_iter()
         .map(|sidecar| {
-            let DataColumnSidecar {
-                column, kzg_proofs, ..
-            } = sidecar;
+            let column = sidecar.column().clone();
+            let kzg_proofs = sidecar.kzg_proofs().clone();
             // There's only one cell per column for a single blob
             let cell_bytes: Vec<u8> = column.into_iter().next().unwrap().into();
             let kzg_cell = cell_bytes.try_into().unwrap();
