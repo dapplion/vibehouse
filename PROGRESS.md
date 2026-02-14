@@ -1,3 +1,106 @@
+## 2026-02-14 11:46 - Phase 4: Equivocation detection implemented ✅
+
+### Observed caches created
+
+**New modules (2 files, 489 lines total)**:
+
+1. **`observed_execution_bids.rs` (231 lines)**
+   - Tracks `(slot, builder_index) -> bid_root` mappings
+   - Detects when a builder submits different bids for the same slot
+   - Returns: `New`, `Duplicate`, or `Equivocation`
+   - Auto-prunes to retain 64 slots of history
+   - Full unit test coverage (6 tests)
+
+2. **`observed_payload_attestations.rs` (257 lines)**
+   - Tracks `(slot, block_root, validator_index) -> payload_present` mappings
+   - Detects conflicting `payload_present` values from same validator
+   - Returns: `New`, `Duplicate`, or `Equivocation`
+   - Auto-prunes to retain 64 slots of history
+   - Full unit test coverage (6 tests)
+
+### Integration into BeaconChain
+
+**Modified files**:
+- `beacon_chain.rs` - Added 2 new fields to BeaconChain struct:
+  - `observed_execution_bids: Mutex<ObservedExecutionBids<T::EthSpec>>`
+  - `observed_payload_attestations: Mutex<ObservedPayloadAttestations<T::EthSpec>>`
+  
+- `builder.rs` - Initialized caches with `<_>::default()` in constructor
+
+- `lib.rs` - Registered new modules
+
+### Gossip validation wiring
+
+**Updated `gloas_verification.rs`**:
+
+**Execution bid validation**:
+- Added equivocation check using `observe_bid()`
+- Returns `BuilderEquivocation` error with both bid roots on conflict
+- Returns `DuplicateBid` error for seen-before bids
+- Prevents duplicate/conflicting bids from propagating
+
+**Payload attestation validation**:
+- Added PTC committee calculation using `get_ptc_committee()`
+- Converts aggregation bits to validator indices
+- Checks each attesting validator for equivocation
+- Returns `ValidatorEquivocation` error on conflict
+- Prevents duplicate/conflicting attestations from propagating
+
+**Made `get_ptc_committee()` public**:
+- Changed from `fn` to `pub fn` in `gloas.rs`
+- Enables gossip validation to calculate PTC membership
+
+### Testing
+
+**Unit tests (12 total)**:
+- 6 tests for `ObservedExecutionBids`: new, duplicate, equivocation, multi-builder, pruning
+- 6 tests for `ObservedPayloadAttestations`: new, duplicate, equivocation, multi-validator, different blocks, pruning
+
+**Compilation**:
+- ✅ `cargo check --release -p beacon_chain` passes
+- 9 unused import warnings (minor cleanup needed)
+- Zero errors
+
+### Commit
+- `21c325042` - p2p: implement gloas gossip validation with equivocation detection
+
+### Phase 4 status: 3/6 complete
+
+- ✅ Gossip topics (from previous work)
+- ✅ Validation infrastructure (error types, verified wrappers, signature sets)
+- ✅ Equivocation detection (this session)
+- 🚧 Builder registry state accessors (needs gloas-enabled BeaconState methods)
+- 🚧 Signature verification wiring (needs pubkey access + verify_signature_sets call)
+- ⏸️ Beacon processor integration (gossip_methods.rs handlers)
+- ⏸️ Peer scoring configuration
+
+### Remaining TODOs in gloas_verification.rs
+
+1. **Builder validation** (line ~282):
+   - Access builder registry from BeaconState
+   - Check `builder.is_active_at_finalized_epoch()`
+   - Check `builder.balance >= bid.value`
+
+2. **Signature verification** (line ~321):
+   - Call `verify_signature_sets()` with builder bid signature set
+   - Call `verify_signature_sets()` with PTC attestation signature set
+   - Return `InvalidSignature` on failure
+
+3. **Parent root validation** (line ~318):
+   - Check bid.parent_block_root matches fork choice head
+
+### Files modified (7 total)
+- ✅ `beacon_node/beacon_chain/src/beacon_chain.rs` (+4 lines)
+- ✅ `beacon_node/beacon_chain/src/builder.rs` (+2 lines)
+- ✅ `beacon_node/beacon_chain/src/gloas_verification.rs` (+94 lines)
+- ✅ `beacon_node/beacon_chain/src/lib.rs` (+2 lines)
+- ✅ `beacon_node/beacon_chain/src/observed_execution_bids.rs` (NEW - 231 lines)
+- ✅ `beacon_node/beacon_chain/src/observed_payload_attestations.rs` (NEW - 257 lines)
+- ✅ `consensus/state_processing/src/per_block_processing/gloas.rs` (+1 line - pub visibility)
+
+**Status: Phase 4 equivocation detection complete. Signature verification and builder validation next.** 🎵
+
+---
 
 ## 2026-02-14 10:40 - Phase 4 started: Gossip validation infrastructure 🌐
 
