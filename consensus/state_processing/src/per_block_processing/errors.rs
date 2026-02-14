@@ -495,4 +495,3 @@ pub enum PayloadAttestationInvalid {
     /// Not enough validators to form a full PTC (less than 512)
     InsufficientValidators,
 }
-

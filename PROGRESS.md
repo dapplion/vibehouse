@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-02-14 08:25 - Fork choice: payload status tracking (PENDING→FULL) 🧠
+
+### Implemented ePBS payload tracking in fork choice ✅
+- Added `PayloadStatus` + constants in `types::consts::gloas`:
+  - `PAYLOAD_STATUS_PENDING`, `PAYLOAD_STATUS_EMPTY`, `PAYLOAD_STATUS_FULL`
+- Added `payload_status` field to proto-array nodes (`consensus/proto_array`)
+- Gloas blocks are imported as **PENDING**, pre-gloas as **FULL**
+- Added `ProtoArray::on_execution_payload(block_root)` to mark a node FULL when payload envelope arrives
+- Plumbed through:
+  - `ProtoArrayForkChoice::on_execution_payload`
+  - `ForkChoice::on_execution_payload`
+
+### Compilation ✅
+- `cargo check -p fork_choice` now passes
+
+### Next
+- Wire `ForkChoice::on_execution_payload` from beacon-chain's payload envelope import path
+- Add fork choice rules for bids + payload attestations (real Phase 3 work)
+
+---
+
 ## 2026-02-14 08:17 - Fixed test compilation, verified Phase 2 status 🔧
 
 ### Compilation fixes ✅

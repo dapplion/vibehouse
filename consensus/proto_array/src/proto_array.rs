@@ -9,6 +9,7 @@ use superstruct::superstruct;
 use types::{
     AttestationShufflingId, ChainSpec, Checkpoint, Epoch, EthSpec, ExecutionBlockHash,
     FixedBytesExtended, Hash256, Slot,
+    consts::gloas::{PAYLOAD_STATUS_FULL, PAYLOAD_STATUS_PENDING, PayloadStatus},
 };
 
 // Define a "legacy" implementation of `Option<usize>` which uses four bytes for encoding the union
@@ -108,6 +109,12 @@ pub struct ProtoNode {
     pub unrealized_justified_checkpoint: Option<Checkpoint>,
     #[ssz(with = "four_byte_option_checkpoint")]
     pub unrealized_finalized_checkpoint: Option<Checkpoint>,
+    /// The payload status of this block (Gloas ePBS).
+    ///
+    /// - `PAYLOAD_STATUS_PENDING` (0): The payload has not yet been received (Gloas blocks).
+    /// - `PAYLOAD_STATUS_EMPTY` (1): The slot passed without a payload (empty slot).
+    /// - `PAYLOAD_STATUS_FULL` (2): A valid execution payload has been received (pre-Gloas or revealed Gloas payload).
+    pub payload_status: PayloadStatus,
 }
 
 #[derive(PartialEq, Debug, Encode, Decode, Serialize, Deserialize, Copy, Clone)]
@@ -332,6 +339,7 @@ impl ProtoArray {
             execution_status: block.execution_status,
             unrealized_justified_checkpoint: block.unrealized_justified_checkpoint,
             unrealized_finalized_checkpoint: block.unrealized_finalized_checkpoint,
+            payload_status: block.payload_status,
         };
 
         // If the parent has an invalid execution status, return an error before adding the block to
@@ -382,6 +390,29 @@ impl ProtoArray {
             .get(&block_root)
             .ok_or(Error::NodeUnknown(block_root))?;
         self.propagate_execution_payload_validation_by_index(index)
+    }
+
+    /// Register that an execution payload has been received and validated for `block_root` (Gloas).
+    ///
+    /// Updates the node's `payload_status` from `PENDING` to `FULL`.
+    ///
+    /// Returns an error if the block is unknown to fork choice.
+    pub fn on_execution_payload(&mut self, block_root: Hash256) -> Result<(), Error> {
+        let index = self
+            .indices
+            .get(&block_root)
+            .copied()
+            .ok_or(Error::NodeUnknown(block_root))?;
+        let node = self
+            .nodes
+            .get_mut(index)
+            .ok_or(Error::InvalidNodeIndex(index))?;
+
+        if node.payload_status == PAYLOAD_STATUS_PENDING {
+            node.payload_status = PAYLOAD_STATUS_FULL;
+        }
+
+        Ok(())
     }
 
     /// Updates the `verified_node_index` and all ancestors to have validated execution payloads.

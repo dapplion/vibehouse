@@ -18,8 +18,7 @@ pub fn process_builder_pending_payments<E: EthSpec>(
     // quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR
     let total_active_balance = state.get_total_active_balance()?;
     let per_slot_balance = total_active_balance / E::slots_per_epoch();
-    let quorum = per_slot_balance
-        .saturating_mul(spec.builder_payment_threshold_numerator)
+    let quorum = per_slot_balance.saturating_mul(spec.builder_payment_threshold_numerator)
         / spec.builder_payment_threshold_denominator;
 
     let state_gloas = state.as_gloas_mut()?;

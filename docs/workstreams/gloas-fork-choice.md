@@ -1,8 +1,8 @@
 # Gloas Fork Choice Implementation
 
-## Status: Planning
+## Status: In Progress
 
-Starting implementation of Phase 3: Fork Choice for gloas ePBS.
+Phase 3 implementation started. First milestone: track ePBS payload reveal status in fork choice (PENDING → FULL).
 
 ## Context
 
@@ -28,7 +28,17 @@ Gloas introduces Enshrined Proposer-Builder Separation (ePBS), which fundamental
 
 ## Implementation Plan
 
-### Task 1: Add new message types to fork choice handlers
+### Task 1: Track payload reveal status in fork choice ✅
+
+Implemented a minimal fork-choice compatibility layer for ePBS:
+- New `PayloadStatus` constants in `types::consts::gloas`
+- Proto-array stores `payload_status` per block node
+- Gloas blocks start as `PENDING`, pre-gloas blocks are `FULL`
+- New fork-choice hook `on_execution_payload(block_root)` marks a node `FULL` when the payload envelope arrives
+
+This is the smallest useful step towards proper Gloas fork choice.
+
+### Task 2: Add new message types to fork choice handlers
 
 Files to modify:
 - `consensus/fork_choice/src/fork_choice.rs` - main fork choice logic

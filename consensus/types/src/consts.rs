@@ -32,4 +32,20 @@ pub mod gloas {
 
     /// Builder index flag indicating a self-build (proposer builds their own payload)
     pub const BUILDER_INDEX_SELF_BUILD: u64 = u64::MAX;
+
+    /// Payload status tracking for ePBS fork choice.
+    ///
+    /// In Gloas, the beacon block contains a bid but not the actual execution payload.
+    /// The payload is revealed separately. Fork choice needs to track whether the payload
+    /// has been received yet.
+    pub type PayloadStatus = u8;
+
+    /// Payload has not yet been received (Gloas blocks start in this state)
+    pub const PAYLOAD_STATUS_PENDING: PayloadStatus = 0;
+
+    /// Slot passed without a payload (empty slot or pre-Gloas block)
+    pub const PAYLOAD_STATUS_EMPTY: PayloadStatus = 1;
+
+    /// Valid execution payload has been received and validated
+    pub const PAYLOAD_STATUS_FULL: PayloadStatus = 2;
 }

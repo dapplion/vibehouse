@@ -1,12 +1,12 @@
-use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
+use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use swap_or_not_shuffle::compute_shuffled_index;
 use tree_hash::TreeHash;
 use types::consts::gloas::PTC_SIZE;
 use types::{
     BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec, Domain, EthSpec,
-    Hash256, IndexedPayloadAttestation, PayloadAttestation, PublicKey,
-    SignedExecutionPayloadBid, SigningData, Slot, Unsigned,
+    Hash256, IndexedPayloadAttestation, PayloadAttestation, PublicKey, SignedExecutionPayloadBid,
+    SigningData, Slot, Unsigned,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -45,11 +45,12 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         let fork = state.fork();
         let genesis_validators_root = state.genesis_validators_root();
 
-        let state_gloas = state.as_gloas().map_err(|_| {
-            BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            }
-        })?;
+        let state_gloas =
+            state
+                .as_gloas()
+                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                    reason: "state is not Gloas".into(),
+                })?;
 
         let builder = state_gloas
             .builders
@@ -103,12 +104,11 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             }
             .tree_hash_root();
 
-            let pubkey = builder
-                .pubkey
-                .decompress()
-                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+            let pubkey = builder.pubkey.decompress().map_err(|_| {
+                BlockProcessingError::PayloadBidInvalid {
                     reason: format!("failed to decompress builder {} pubkey", builder_index),
-                })?;
+                }
+            })?;
 
             if !signed_bid.signature.verify(&pubkey, signing_root) {
                 return Err(BlockProcessingError::PayloadBidInvalid {
@@ -141,11 +141,14 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     }
 
     // Verify that the bid is for the right parent block
-    if bid.parent_block_hash != state.as_gloas().map_err(|_| {
-        BlockProcessingError::PayloadBidInvalid {
-            reason: "state is not Gloas".into(),
-        }
-    })?.latest_block_hash {
+    if bid.parent_block_hash
+        != state
+            .as_gloas()
+            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                reason: "state is not Gloas".into(),
+            })?
+            .latest_block_hash
+    {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: "bid parent_block_hash does not match state latest_block_hash".into(),
         });
@@ -184,26 +187,31 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             },
         };
 
-        let state_gloas = state.as_gloas_mut().map_err(|_| {
-            BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            }
-        })?;
+        let state_gloas =
+            state
+                .as_gloas_mut()
+                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                    reason: "state is not Gloas".into(),
+                })?;
 
         *state_gloas
             .builder_pending_payments
             .get_mut(slot_index)
             .ok_or(BlockProcessingError::PayloadBidInvalid {
-                reason: format!("slot index {} out of bounds for builder_pending_payments", slot_index),
+                reason: format!(
+                    "slot index {} out of bounds for builder_pending_payments",
+                    slot_index
+                ),
             })? = pending_payment;
     }
 
     // Cache the signed execution payload bid
-    let state_gloas = state.as_gloas_mut().map_err(|_| {
-        BlockProcessingError::PayloadBidInvalid {
-            reason: "state is not Gloas".into(),
-        }
-    })?;
+    let state_gloas =
+        state
+            .as_gloas_mut()
+            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                reason: "state is not Gloas".into(),
+            })?;
     state_gloas.latest_execution_payload_bid = bid.clone();
 
     Ok(())
@@ -263,24 +271,22 @@ pub fn process_payload_attestation<E: EthSpec>(
         // Collect public keys from all attesting indices
         let mut pubkeys = Vec::new();
         for &validator_index in indexed_attestation.attesting_indices.iter() {
-            let validator = state
-                .validators()
-                .get(validator_index as usize)
-                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+            let validator = state.validators().get(validator_index as usize).ok_or(
+                BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-                ))?;
+                ),
+            )?;
 
-            let pubkey = validator
-                .pubkey
-                .decompress()
-                .map_err(|_| BlockProcessingError::PayloadAttestationInvalid(
+            let pubkey = validator.pubkey.decompress().map_err(|_| {
+                BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::InvalidPubkey,
-                ))?;
+                )
+            })?;
 
-                    pubkeys.push(pubkey);
+            pubkeys.push(pubkey);
         }
 
-        // Verify the aggregate signature  
+        // Verify the aggregate signature
         let pubkey_refs: Vec<&PublicKey> = pubkeys.iter().collect();
         if !attestation
             .signature
@@ -315,11 +321,13 @@ pub fn process_payload_attestation<E: EthSpec>(
                 )
             })?;
 
-                // If payload was revealed, process builder payment
+        // If payload was revealed, process builder payment
         if data.payload_present {
             let payment_slot_index =
                 (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
-            let pending_payment = state_gloas.builder_pending_payments.get_mut(payment_slot_index)
+            let pending_payment = state_gloas
+                .builder_pending_payments
+                .get_mut(payment_slot_index)
                 .ok_or(BlockProcessingError::InvalidSlotIndex(payment_slot_index))?;
 
             // Transfer payment from builder to proposer if not already processed
@@ -436,11 +444,11 @@ fn get_ptc_committee<E: EthSpec>(
             PayloadAttestationInvalid::ShuffleError,
         ))?;
 
-        let candidate_index = *active_validator_indices
-            .get(shuffled_index)
-            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+        let candidate_index = *active_validator_indices.get(shuffled_index).ok_or(
+            BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?;
+            ),
+        )?;
 
         // Add to committee (no duplicates check since shuffled_index is unique)
         ptc_committee.push(candidate_index as u64);

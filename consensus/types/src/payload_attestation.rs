@@ -45,7 +45,7 @@ impl<E: EthSpec> PayloadAttestation<E> {
 
     /// Create an empty payload attestation (used for defaults/testing).
     pub fn empty() -> Self {
-                Self {
+        Self {
             aggregation_bits: BitVector::new(),
             data: PayloadAttestationData {
                 beacon_block_root: Default::default(),
