@@ -977,7 +977,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             .into_iter()
                             .map(|d| {
                                 let subnet =
-                                    DataColumnSubnetId::from_column_index(d.index, &chain.spec);
+                                    DataColumnSubnetId::from_column_index(*d.index(), &chain.spec);
                                 PubsubMessage::DataColumnSidecar(Box::new((subnet, d)))
                             })
                             .collect(),

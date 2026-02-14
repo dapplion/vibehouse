@@ -86,7 +86,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 {
                     if self
                         .store
-                        .get_data_column(&block_root, &data_column.index)?
+                        .get_data_column(&block_root, data_column.index())?
                         .is_some()
                     {
                         continue;

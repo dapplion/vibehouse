@@ -59,13 +59,13 @@ impl<E: EthSpec> ActiveRequestItems for DataColumnsByRootRequestItems<E> {
         if !data_column.verify_inclusion_proof() {
             return Err(LookupVerifyError::InvalidInclusionProof);
         }
-        if !self.request.indices.contains(&data_column.index) {
-            return Err(LookupVerifyError::UnrequestedIndex(data_column.index));
+        if !self.request.indices.contains(data_column.index()) {
+            return Err(LookupVerifyError::UnrequestedIndex(*data_column.index()));
         }
-        if self.items.iter().any(|d| d.index == data_column.index) {
+        if self.items.iter().any(|d| d.index() == data_column.index()) {
             return Err(LookupVerifyError::DuplicatedData(
                 data_column.slot(),
-                data_column.index,
+                *data_column.index(),
             ));
         }
 

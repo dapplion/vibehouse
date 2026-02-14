@@ -714,13 +714,17 @@ fn verify_proposer_and_signature<T: BeaconChainTypes>(
         let pubkey = pubkey_cache
             .get(proposer_index)
             .ok_or_else(|| GossipDataColumnError::UnknownValidator(proposer_index as u64))?;
-        let signed_block_header = &data_column.signed_block_header;
-        signed_block_header.verify_signature::<T::EthSpec>(
-            pubkey,
-            &fork,
-            chain.genesis_validators_root,
-            &chain.spec,
-        )
+        if let Ok(signed_block_header) = data_column.signed_block_header() {
+            signed_block_header.verify_signature::<T::EthSpec>(
+                pubkey,
+                &fork,
+                chain.genesis_validators_root,
+                &chain.spec,
+            )
+        } else {
+            // Gloas variant does not carry a signed block header for signature verification
+            true
+        }
     };
 
     if !signature_is_valid {
@@ -743,7 +747,7 @@ fn verify_index_matches_subnet<E: EthSpec>(
     subnet: DataColumnSubnetId,
     spec: &ChainSpec,
 ) -> Result<(), GossipDataColumnError> {
-    let expected_subnet = DataColumnSubnetId::from_column_index(data_column.index, spec);
+    let expected_subnet = DataColumnSubnetId::from_column_index(*data_column.index(), spec);
     if expected_subnet != subnet {
         return Err(GossipDataColumnError::InvalidSubnetId {
             received: subnet.into(),
@@ -812,7 +816,7 @@ pub fn observe_gossip_data_column<T: BeaconChainTypes>(
         return Err(GossipDataColumnError::PriorKnown {
             proposer: data_column_sidecar.block_proposer_index(),
             slot: data_column_sidecar.slot(),
-            index: data_column_sidecar.index,
+            index: *data_column_sidecar.index(),
         });
     }
     Ok(())
@@ -830,7 +834,10 @@ mod test {
     use eth2::types::BlobsBundle;
     use execution_layer::test_utils::generate_blobs;
     use std::sync::Arc;
-    use types::{DataColumnSidecar, DataColumnSubnetId, EthSpec, ForkName, MainnetEthSpec};
+    use types::{
+        DataColumnSidecar, DataColumnSidecarFulu, DataColumnSubnetId, EthSpec, ForkName,
+        MainnetEthSpec,
+    };
 
     type E = MainnetEthSpec;
 
@@ -847,7 +854,7 @@ mod test {
         harness.advance_slot();
 
         let verify_fn = |column_sidecar: DataColumnSidecar<E>| {
-            let col_index = column_sidecar.index;
+            let col_index = *column_sidecar.index();
             validate_data_column_sidecar_for_gossip::<_, Observe>(
                 column_sidecar.into(),
                 DataColumnSubnetId::from_column_index(col_index, &harness.spec),
@@ -909,7 +916,7 @@ mod test {
             .await;
 
         let index = 0;
-        let column_sidecar = DataColumnSidecar::<E> {
+        let column_sidecar = DataColumnSidecar::Fulu(DataColumnSidecarFulu::<E> {
             index,
             column: vec![].into(),
             kzg_commitments: vec![].into(),
@@ -920,7 +927,7 @@ mod test {
                 .body()
                 .kzg_commitments_merkle_proof()
                 .unwrap(),
-        };
+        });
 
         let result = verify_fn(column_sidecar);
         assert!(matches!(

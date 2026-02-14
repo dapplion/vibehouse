@@ -191,7 +191,12 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
 
             let column_block_signatures = columns
                 .iter()
-                .map(|column| column.signed_block_header.signature.clone())
+                .filter_map(|column| {
+                    column
+                        .signed_block_header()
+                        .ok()
+                        .map(|h| h.signature.clone())
+                })
                 .unique()
                 .collect::<Vec<_>>();
 
@@ -201,8 +206,8 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
                 // If there are no block roots, penalize all peers
                 [] => {
                     for column in &columns {
-                        if let Some(naughty_peer) = column_to_peer.get(&column.index) {
-                            naughty_peers.push((column.index, *naughty_peer));
+                        if let Some(naughty_peer) = column_to_peer.get(column.index()) {
+                            naughty_peers.push((*column.index(), *naughty_peer));
                         }
                     }
                     continue;
@@ -212,9 +217,9 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
                     for column in columns {
                         if column_block_roots.contains(&column.block_root())
                             && block_root != column.block_root()
-                            && let Some(naughty_peer) = column_to_peer.get(&column.index)
+                            && let Some(naughty_peer) = column_to_peer.get(column.index())
                         {
-                            naughty_peers.push((column.index, *naughty_peer));
+                            naughty_peers.push((*column.index(), *naughty_peer));
                         }
                     }
                     continue;
@@ -227,8 +232,8 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
                 // If there are no block signatures, penalize all peers
                 [] => {
                     for column in &columns {
-                        if let Some(naughty_peer) = column_to_peer.get(&column.index) {
-                            naughty_peers.push((column.index, *naughty_peer));
+                        if let Some(naughty_peer) = column_to_peer.get(column.index()) {
+                            naughty_peers.push((*column.index(), *naughty_peer));
                         }
                     }
                     continue;
@@ -237,11 +242,12 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
                 // invalid block signatures.
                 column_block_signatures => {
                     for column in columns {
-                        if column_block_signatures.contains(&column.signed_block_header.signature)
-                            && block.signature() != &column.signed_block_header.signature
-                            && let Some(naughty_peer) = column_to_peer.get(&column.index)
+                        if let Ok(header) = column.signed_block_header()
+                            && column_block_signatures.contains(&header.signature)
+                            && block.signature() != &header.signature
+                            && let Some(naughty_peer) = column_to_peer.get(column.index())
                         {
-                            naughty_peers.push((column.index, *naughty_peer));
+                            naughty_peers.push((*column.index(), *naughty_peer));
                         }
                     }
                     continue;
@@ -251,8 +257,8 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
             // if the block root doesn't match the columns block root, penalize the peers
             if block_root != column_block_root {
                 for column in &columns {
-                    if let Some(naughty_peer) = column_to_peer.get(&column.index) {
-                        naughty_peers.push((column.index, *naughty_peer));
+                    if let Some(naughty_peer) = column_to_peer.get(column.index()) {
+                        naughty_peers.push((*column.index(), *naughty_peer));
                     }
                 }
             }
@@ -260,13 +266,13 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
             // If the block signature doesn't match the columns block signature, penalize the peers
             if block.signature() != column_block_signature {
                 for column in &columns {
-                    if let Some(naughty_peer) = column_to_peer.get(&column.index) {
-                        naughty_peers.push((column.index, *naughty_peer));
+                    if let Some(naughty_peer) = column_to_peer.get(column.index()) {
+                        naughty_peers.push((*column.index(), *naughty_peer));
                     }
                 }
             }
 
-            let received_columns = columns.iter().map(|c| c.index).collect::<HashSet<_>>();
+            let received_columns = columns.iter().map(|c| *c.index()).collect::<HashSet<_>>();
 
             let missing_columns = expected_custody_columns
                 .difference(&received_columns)

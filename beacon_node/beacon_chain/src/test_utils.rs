@@ -3374,17 +3374,19 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
     let signed_block_header = block.signed_block_header();
 
     // load the precomputed column sidecar to avoid computing them for every block in the tests.
-    let template_data_columns = RuntimeVariableList::<DataColumnSidecar<E>>::from_ssz_bytes(
-        TEST_DATA_COLUMN_SIDECARS_SSZ,
-        E::number_of_columns(),
-    )
-    .unwrap();
+    // The pre-computed SSZ data is in Fulu format.
+    let template_data_columns =
+        RuntimeVariableList::<DataColumnSidecarFulu<E>>::from_ssz_bytes(
+            TEST_DATA_COLUMN_SIDECARS_SSZ,
+            E::number_of_columns(),
+        )
+        .unwrap();
 
     let (cells, proofs) = template_data_columns
         .into_iter()
         .map(|sidecar| {
-            let column = sidecar.column().clone();
-            let kzg_proofs = sidecar.kzg_proofs().clone();
+            let column = sidecar.column.clone();
+            let kzg_proofs = sidecar.kzg_proofs.clone();
             // There's only one cell per column for a single blob
             let cell_bytes: Vec<u8> = column.into_iter().next().unwrap().into();
             let kzg_cell = cell_bytes.try_into().unwrap();
