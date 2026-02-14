@@ -4,6 +4,63 @@
 
 ---
 
+## 2026-02-14 15:20 - Spec test results: 3 fork choice failures 🔍
+
+### Test Results Summary
+
+**Ran**: 36/77 tests (41 skipped due to --fail-fast on failures)  
+**Passed**: 33 tests ✅  
+**Failed**: 3 tests ❌  
+**Test time**: 33.19s
+
+### Failures (all fork choice related)
+
+1. **fork_choice_get_head** (5.93s)
+   - Multiple head selection disagreements
+   - Example: Expected slot 7, got slot 8
+   - Pattern: Off-by-one slot errors
+
+2. **fork_choice_on_block** (9.40s)  
+   - Head check failures after block processing
+   - Example: Expected slot 31, got slot 30 (finalized_checkpoint case)
+
+3. **fork_choice_reorg** (20.60s)
+   - Reorg scenarios failing
+   - Examples:
+     - `include_votes_another_empty_chain_with_enough_ffg_votes_previous_epoch`: Expected slot 30, got 31
+     - `simple_attempted_reorg_without_enough_ffg_votes`: Expected slot 38, got 39
+
+### Analysis
+
+**Root cause hypothesis**: Fork choice head selection logic for gloas ePBS blocks
+
+**Possible issues**:
+1. `node_is_viable_for_head()` ePBS check too strict?
+   - External builder blocks require `payload_revealed=true`
+   - May be rejecting valid heads prematurely
+2. Missing quorum logic?
+   - PTC quorum (307/512) might not be calculated correctly
+   - Payload revelation timing
+3. Self-build vs external builder handling?
+   - BUILDER_INDEX_SELF_BUILD (u64::MAX) edge cases
+
+**Files to investigate**:
+- `consensus/fork_choice/src/fork_choice.rs` - head selection, viable node check
+- `consensus/proto_array/src/proto_array.rs` - find_head implementation
+- `beacon_node/beacon_chain/src/gloas_verification.rs` - validation logic
+
+### Next Steps (Priority 3)
+
+1. Analyze failing test cases in detail
+2. Add debug logging to fork choice handlers
+3. Compare our head selection vs expected
+4. Fix viable node logic or quorum calculation
+5. Re-run tests until 100% pass
+
+**Priority**: P3 (Spec test failures) - must fix before continuing Phase 4
+
+---
+
 ## 2026-02-14 15:11 - P2P pubsub wiring fixed 🔌
 
 ### Compilation fix: gloas gossip message handling
