@@ -164,6 +164,13 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
     type MaxAttestationsElectra: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type MaxWithdrawalRequestsPerPayload: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type MaxPendingDepositsPerEpoch: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /*
+     * New in Gloas
+     */
+    /// Size of the Payload Timeliness Committee (PTC) - 512 validators per slot
+    type PtcSize: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /// Maximum payload attestations per block
+    type MaxPayloadAttestations: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 
     fn default_spec() -> ChainSpec;
 
@@ -460,6 +467,8 @@ impl EthSpec for MainnetEthSpec {
     type MaxAttestationsElectra = U8;
     type MaxWithdrawalRequestsPerPayload = U16;
     type MaxPendingDepositsPerEpoch = U16;
+    type PtcSize = U512;
+    type MaxPayloadAttestations = U4;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::mainnet()
@@ -530,7 +539,9 @@ impl EthSpec for MinimalEthSpec {
         MaxAttesterSlashingsElectra,
         MaxAttestationsElectra,
         MaxDepositRequestsPerPayload,
-        MaxWithdrawalRequestsPerPayload
+        MaxWithdrawalRequestsPerPayload,
+        PtcSize,
+        MaxPayloadAttestations
     });
 
     fn default_spec() -> ChainSpec {
@@ -601,6 +612,8 @@ impl EthSpec for GnosisEthSpec {
     type CellsPerExtBlob = U128;
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U32; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
+    type PtcSize = U512;
+    type MaxPayloadAttestations = U4;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::gnosis()

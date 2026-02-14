@@ -52,6 +52,7 @@ pub mod graffiti;
 pub mod historical_batch;
 pub mod historical_summary;
 pub mod indexed_attestation;
+pub mod indexed_payload_attestation;
 pub mod light_client_bootstrap;
 pub mod light_client_finality_update;
 pub mod light_client_optimistic_update;
@@ -60,6 +61,9 @@ pub mod pending_attestation;
 pub mod pending_consolidation;
 pub mod pending_deposit;
 pub mod pending_partial_withdrawal;
+pub mod payload_attestation;
+pub mod payload_attestation_data;
+pub mod payload_attestation_message;
 pub mod proposer_preparation_data;
 pub mod proposer_slashing;
 pub mod relative_epoch;
@@ -172,7 +176,8 @@ pub use crate::eth_spec::EthSpecId;
 pub use crate::eth1_data::Eth1Data;
 pub use crate::execution_block_hash::ExecutionBlockHash;
 pub use crate::execution_block_header::{EncodableExecutionBlockHeader, ExecutionBlockHeader};
-pub use crate::execution_payload_bid::{ExecutionPayloadBid, SignedExecutionPayloadBid};
+pub use crate::execution_payload_bid::ExecutionPayloadBid;
+pub use crate::signed_execution_payload_bid::SignedExecutionPayloadBid;
 pub use crate::execution_payload::{
     ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
     ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadRef,
@@ -193,6 +198,7 @@ pub use crate::historical_batch::HistoricalBatch;
 pub use crate::indexed_attestation::{
     IndexedAttestation, IndexedAttestationBase, IndexedAttestationElectra, IndexedAttestationRef,
 };
+pub use crate::indexed_payload_attestation::IndexedPayloadAttestation;
 pub use crate::light_client_bootstrap::{
     LightClientBootstrap, LightClientBootstrapAltair, LightClientBootstrapCapella,
     LightClientBootstrapDeneb, LightClientBootstrapElectra, LightClientBootstrapFulu,
@@ -230,6 +236,9 @@ pub use crate::pending_attestation::PendingAttestation;
 pub use crate::pending_consolidation::PendingConsolidation;
 pub use crate::pending_deposit::PendingDeposit;
 pub use crate::pending_partial_withdrawal::PendingPartialWithdrawal;
+pub use crate::payload_attestation::PayloadAttestation;
+pub use crate::payload_attestation_data::PayloadAttestationData;
+pub use crate::payload_attestation_message::PayloadAttestationMessage;
 pub use crate::preset::{
     AltairPreset, BasePreset, BellatrixPreset, CapellaPreset, DenebPreset, ElectraPreset,
     FuluPreset, GloasPreset,
