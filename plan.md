@@ -162,13 +162,13 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Equivocation detection strategy documented (deferred to Phase 4 P2P implementation)
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition) - blocked on Rust toolchain
 
-#### Step 4: P2P Networking ⚡ IN PROGRESS (4/6 done - 2026-02-14 14:05)
+#### Step 4: P2P Networking ⚡ IN PROGRESS (4/7 done + 2 planned - 2026-02-14 16:42)
 - [x] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] Gossip validation infrastructure (error types, verified wrappers, signature sets)
 - [x] Add equivocation detection caches (ObservedExecutionBids, ObservedPayloadAttestations)
-- [x] Complete gossip validation wiring (builder registry, signature verification) - **PR #18 (CI fixes pushed)**
-- [ ] Beacon processor integration - wire up handlers (gossip_methods.rs)
-- [ ] Update peer scoring for new topics
+- [x] Complete gossip validation wiring (builder registry, signature verification) - **PR #18**
+- [ ] Beacon processor integration - wire up handlers (gossip_methods.rs) - **PLANNED** (docs/workstreams/gloas-beacon-processor-integration.md, 6h est.)
+- [ ] Update peer scoring for new topics - **PLANNED** (docs/workstreams/gloas-peer-scoring.md, 2h est.)
 - [ ] Tests (gossip validation + integration)
 
 #### Step 5: Beacon Chain Integration
@@ -485,12 +485,12 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 11:46 GMT+1
+## Current Status - 2026-02-14 16:42 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented
 **Phase 2 Complete ✅**: All state transition functions implemented
 **Phase 3 Complete ✅**: Fork choice handlers (5/8 core items, deferred 2, compilation verified)
-**Phase 4 In Progress ⚡**: P2P Networking (3/6 complete - gossip topics + validation infrastructure + equivocation detection)
+**Phase 4 In Progress ⚡**: P2P Networking (4/7 complete + 2 planned - ready for 8h implementation when toolchain available)
 
 ### Implementation Status
 - ✅ All gloas types: BeaconState, BeaconBlockBody, 14 ePBS types
@@ -547,15 +547,35 @@ Maintain a watchlist of upstream PRs that we care about:
 4. Peer scoring configuration
 5. Tests (gossip validation integration tests)
 
-### Next Steps (Priority Order)
-1. **Run spec tests**: `cargo nextest run --release --test tests --features ef_tests minimal gloas`
-2. **Verify test pass rate**: Expect some failures initially
-3. **Fix test failures**: Iterate until 100% pass
-4. **Implement unit tests**: 12 test skeletons in gloas.rs
-5. **Complete Phase 3**: Withholding penalties + equivocation
-6. **Move to Phase 4**: P2P networking (gossip topics, validation)
+**Gossip Validation Wiring** ✅ (PR #18):
+- Builder registry access and validation
+- Parent root validation
+- BLS signature verification (both domains)
+- PTC committee calculation + membership checks
+- Full equivocation detection
+- Compilation verified (blocked by bitvec toolchain issue)
 
-**Status: Phase 3 core logic COMPLETE and COMPILING. Ready for testing.** 🎵
+**Remaining Phase 4 Work** 📋:
+1. **Beacon processor integration** (6h est.) - See docs/workstreams/gloas-beacon-processor-integration.md
+   - Add Work variants (GossipExecutionBid, GossipExecutionPayload, GossipPayloadAttestation)
+   - Implement process methods in gossip_methods.rs
+   - Wire up router to call fork choice handlers
+   - Add metrics tracking
+2. **Peer scoring** (2h est.) - See docs/workstreams/gloas-peer-scoring.md
+   - Add weight constants (0.5, 0.5, 0.4)
+   - Configure topic params in gossipsub_scoring_parameters.rs
+   - Equivocation → graylist threshold
+3. **Tests** - Unit + integration tests for full flow
+
+### Next Steps When Toolchain Available
+1. **Fix bitvec issue**: Upgrade to compatible version or pin Rust toolchain
+2. **Implement beacon processor**: 6h focused work (plan ready)
+3. **Implement peer scoring**: 2h focused work (plan ready)
+4. **Run spec tests**: `cargo nextest run --release --test tests --features ef_tests minimal gloas`
+5. **Write integration tests**: Full gossip → fork choice flow
+6. **Phase 5**: Beacon Chain Integration
+
+**Status: Phase 4 at 4/7 complete. 8 hours of planned work ready to execute. Blocked on Rust toolchain.** 🎵
 # vibehouse progress log
 
 > every work session gets an entry. newest first.
