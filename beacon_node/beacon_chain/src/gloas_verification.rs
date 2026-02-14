@@ -15,21 +15,20 @@
 //! - Equivocation detection via observed message tracking
 //! - Signature verification batching where applicable
 
-use crate::{BeaconChain, BeaconChainTypes, BeaconChainError, metrics, observed_operations::ObservationOutcome};
-use bls::{PublicKey, PublicKeyBytes, verify_signature_sets};
-use derivative::Derivative;
+use crate::{BeaconChain, BeaconChainTypes, BeaconChainError};
+use bls::PublicKey;
 use safe_arith::ArithError;
 use slot_clock::SlotClock;
+use state_processing;
 use state_processing::signature_sets::{
     execution_payload_bid_signature_set, payload_attestation_signature_set,
 };
 use std::borrow::Cow;
-use std::collections::HashSet;
 use strum::AsRefStr;
 use tree_hash::TreeHash;
 use types::{
-    BeaconStateError, BuilderIndex, ChainSpec, EthSpec, Hash256, PayloadAttestation,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, Slot,
+    BeaconStateError, BuilderIndex, Hash256, PayloadAttestation,
+    SignedExecutionPayloadBid, Slot,
 };
 
 /// Returned when an execution payload bid was not successfully verified.
@@ -274,21 +273,29 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             });
         }
 
-        // Get head state for validation (for future use in builder validation)
-        let _head = self.canonical_head.cached_head();
-        // let _state = &head.snapshot.beacon_state;
+        // Get head state for validation
+        let head = self.canonical_head.cached_head();
+        let state = &head.snapshot.beacon_state;
 
         // Check 2: Builder exists and is active
-        // TODO: This needs access to the builder registry in BeaconState
-        // For now, stub this out - will implement when we have state accessors
-        // let builder = state
-        //     .builders()
-        //     .get(builder_index as usize)
-        //     .ok_or(ExecutionBidError::UnknownBuilder { builder_index })?;
+        let builder = state
+            .builders()
+            .map_err(|e| BeaconChainError::BeaconStateError(e))?
+            .get(builder_index as usize)
+            .ok_or(ExecutionBidError::UnknownBuilder { builder_index })?;
         
-        // if !builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, &self.spec) {
-        //     return Err(ExecutionBidError::InactiveBuilder { builder_index });
-        // }
+        if !builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, &self.spec) {
+            return Err(ExecutionBidError::InactiveBuilder { builder_index });
+        }
+        
+        // Check 2b: Builder has sufficient balance
+        if builder.balance < bid.message.value {
+            return Err(ExecutionBidError::InsufficientBuilderBalance {
+                builder_index,
+                balance: builder.balance,
+                bid_value: bid.message.value,
+            });
+        }
 
         // Check 3: Equivocation detection
         let bid_root = bid.tree_hash_root();
@@ -319,11 +326,34 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 4: Parent root validation
-        // TODO: Check against fork choice head
+        let head_block_root = head.snapshot.beacon_block_root;
+        if bid.message.parent_block_root != head_block_root {
+            return Err(ExecutionBidError::InvalidParentRoot {
+                expected: head_block_root,
+                received: bid.message.parent_block_root,
+            });
+        }
         
         // Check 5: Signature verification
-        // TODO: Implement signature verification when signature_sets is available
-        // For now, skip signature verification (will add in next iteration)
+        let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
+            state
+                .builders()
+                .ok()?
+                .get(builder_idx as usize)
+                .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+        };
+        
+        let signature_set = execution_payload_bid_signature_set(
+            state,
+            get_builder_pubkey,
+            &bid,
+            &self.spec,
+        )
+        .map_err(|_| ExecutionBidError::InvalidSignature)?;
+        
+        if !signature_set.verify() {
+            return Err(ExecutionBidError::InvalidSignature);
+        }
 
         Ok(VerifiedExecutionBid {
             bid,
@@ -440,7 +470,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 5: Signature verification
-        // TODO: Implement when signature_sets is available
+        let get_pubkey = |validator_idx: usize| -> Option<Cow<PublicKey>> {
+            state.validators()
+                .get(validator_idx)
+                .and_then(|validator| validator.pubkey.decompress().ok().map(Cow::Owned))
+        };
+        
+        let signature_set = payload_attestation_signature_set(
+            state,
+            get_pubkey,
+            &attestation,
+            &indexed_attestation_indices,
+            &self.spec,
+        )
+        .map_err(|_| PayloadAttestationError::InvalidSignature)?;
+        
+        if !signature_set.verify() {
+            return Err(PayloadAttestationError::InvalidSignature);
+        }
 
         Ok(VerifiedPayloadAttestation {
             attestation,
