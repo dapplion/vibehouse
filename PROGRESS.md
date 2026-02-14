@@ -1,3 +1,62 @@
+## 2026-02-14 16:42 - Peer scoring configuration plan documented 🎯
+
+### Comprehensive peer scoring design created
+
+**Document**: `docs/workstreams/gloas-peer-scoring.md`
+
+**Scope**: Configure gossipsub peer scoring for 3 gloas ePBS topics
+
+**Key decisions**:
+1. **ExecutionBid weight**: 0.5 (same as BeaconBlock) - critical consensus message
+2. **ExecutionPayload weight**: 0.5 - withholding is slashable
+3. **PayloadAttestation weight**: 0.4 (slightly lower) - many messages per slot
+4. **Expected rates**:
+   - Execution bid: 1 per slot (winning bid)
+   - Execution payload: 1 per slot (reveal from winner)
+   - Payload attestation: ~307 per slot (512 PTC × 60% participation)
+
+**Penalty strategy**:
+- Invalid signature → graylist threshold (-16000)
+- Equivocation → permanent mark + graylist
+- Future slot → small penalty, retry
+- Unknown parent → no penalty, reprocess queue
+
+**Implementation**:
+- Add 3 weight constants to `gossipsub_scoring_parameters.rs`
+- Insert topic params in `get_peer_score_params()`
+- Guard with `gloas_enabled()` check
+- Update `max_positive_score` calculation
+
+**Open questions documented**:
+1. Should payload attestations be aggregated?
+2. Do builders need per-epoch rate limiting?
+3. Is 307 attestations/slot sustainable bandwidth?
+
+**Status**: Design complete, ~2 hours implementation est.
+
+### Session summary
+
+**Delivered today** (2 planning docs):
+1. Beacon processor integration plan (6 hours work)
+2. Peer scoring configuration plan (2 hours work)
+
+**Total planned work**: 8 hours ready to execute when toolchain available
+
+**Phase 4 Status**: 4/7 complete
+- ✅ Gossip topics
+- ✅ Validation infrastructure
+- ✅ Equivocation detection  
+- ✅ Validation wiring (PR #18)
+- 📋 Beacon processor (planned)
+- 📋 Peer scoring (planned)
+- ⏳ Tests
+
+### Commits needed
+- `docs: peer scoring configuration plan for gloas ePBS topics`
+- `progress: session update (2 plans delivered)`
+
+---
+
 ## 2026-02-14 16:21 - Beacon processor integration plan documented 📋
 
 ### Comprehensive implementation plan created
