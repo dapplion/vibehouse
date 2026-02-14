@@ -487,13 +487,13 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 16:14 GMT+1
+## Current Status - 2026-02-14 17:45 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented  
 **Phase 2 Complete ✅**: All state transition functions implemented  
 **Phase 3 Complete ✅**: Fork choice handlers (5/8 core complete, COMPILATION VERIFIED)  
 **Phase 4 Complete ✅**: P2P networking (6/6 complete - FULL STACK WIRED)  
-**Phase 5 In Progress 🚧**: Beacon chain integration (1/6 complete)
+**Phase 5 In Progress 🚧**: Beacon chain integration (1.5/6 complete)
 
 ### Phase 5 Progress
 
@@ -502,12 +502,24 @@ Maintain a watchlist of upstream PRs that we care about:
 - GossipVerifiedExecutionBid, GossipVerifiedPayloadAttestation accessible
 - Error types exported
 
-#### 5.2 Block import pipeline ⚠️ IN PLANNING
-- **Critical decision made:** Self-build payload inclusion strategy
-- Added `execution_payload: Option<Payload>` to Gloas BeaconBlockBody
-- Self-build blocks include payload directly (Some), external builders use None
-- Implementation plan complete (8 steps, ~6 hours estimated)
-- Ready to implement PayloadState tracking
+#### 5.2 Block import pipeline 🚧 IN PROGRESS (4/8 steps complete)
+**PayloadState tracking implemented:**
+- ✅ Step 1: PayloadState<E> enum (Included, Pending, Revealed, SelfBuild)
+- ✅ Step 2: Extended BlockImportData with payload_state field
+- ✅ Step 3: Payload state detection in from_signature_verified_components()
+- ✅ Step 4: Skip EL verification for pending blocks
+
+**Validation enforced:**
+- Self-build MUST have execution_payload populated
+- External builders MUST NOT include payload in proposer block
+
+**Remaining steps:**
+- ⏳ Step 5: Fork choice integration (mark blocks as pending/revealed)
+- ⏳ Step 6: Payload reveal handler (process builder payload reveals)
+- ⏳ Step 7: Wire payload reveal to P2P gossip
+- ⏳ Step 8: Tests (unit + integration)
+
+**Commits:** d3621c209, 2aaa2d0ad, 0b6817988, a0e89c141
 
 #### 5.3-5.6 Not started
 - Fork choice store integration
@@ -522,12 +534,18 @@ Maintain a watchlist of upstream PRs that we care about:
 - ✅ P2P gossip validation with equivocation detection
 - ✅ Beacon processor integration (full message flow)
 - ✅ Beacon chain exports and self-build payload design
-- 🚧 Block import pipeline (planning complete, implementation next)
+- 🚧 Block import pipeline (4/8 steps, 50% complete)
+  - PayloadState enum ✅
+  - Conditional payload verification ✅
+  - Fork choice integration pending ⏳
 
 ### Next Steps (Priority Order)
-1. **Implement PayloadState enum** - track payload revelation state
-2. **Extend BlockImportData** - add payload_state field
-3. **Modify GossipVerifiedBlock::new()** - handle gloas proposer blocks
+1. **Fork choice integration** - update on_block to record payload_state
+2. **Payload reveal handler** - process_execution_payload_reveal() method
+3. **Wire to P2P** - connect reveal handler to gossip
+4. **Tests** - comprehensive coverage
+
+**Status: Phase 5.2 - 4/8 complete (50%). Fork choice integration next.** 🎵
 4. **Skip verification for pending** - defer payload validation until reveal
 5. **Fork choice integration** - mark blocks as pending/revealed
 6. **Payload reveal handler** - process builder reveals
