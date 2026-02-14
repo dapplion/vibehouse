@@ -110,9 +110,20 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
     // If this is an external builder bid, set up pending payment
     if bid.builder_index != spec.builder_index_self_build {
-        let slot_index = (bid.slot % E::SlotsPerEpoch::to_u64()) as usize;
-        // TODO: Add builder pending payment to builder_pending_payments[slot_index]
-        // This tracks that the builder should be paid when payload is revealed
+        let slot_index = (bid.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
+        
+        // Record the pending payment with zero initial weight
+        // Weight will be accumulated as PTC members attest
+        let pending_payment = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: bid.fee_recipient,
+                amount: bid.value,
+                builder_index: bid.builder_index,
+            },
+        };
+        
+        state_gloas.builder_pending_payments[slot_index] = pending_payment;
     }
 
     Ok(())
@@ -183,10 +194,37 @@ pub fn process_payload_attestation<E: EthSpec>(
                 )
             })?;
 
-        // If payload was revealed, trigger builder payment
+        // If payload was revealed, process builder payment
         if data.payload_present {
-            // TODO: Process builder payment
-            // Transfer bid value from builder balance to proposer balance
+            let payment_slot_index =
+                (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
+            let pending_payment = &mut state_gloas.builder_pending_payments[payment_slot_index];
+
+            // Transfer payment from builder to proposer if not already processed
+            if pending_payment.weight < quorum_threshold {
+                pending_payment.weight = quorum_threshold; // Mark as processed
+
+                let builder_index = pending_payment.withdrawal.builder_index as usize;
+                let payment_amount = pending_payment.withdrawal.amount;
+
+                // Decrease builder balance
+                if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
+                    if builder.balance < payment_amount {
+                        return Err(BlockProcessingError::PayloadBidInvalid {
+                            reason: format!(
+                                "builder {} has insufficient balance {} for payment {}",
+                                builder_index, builder.balance, payment_amount
+                            ),
+                        });
+                    }
+                    builder.balance = builder.balance.saturating_sub(payment_amount);
+                }
+
+                // TODO: Increase proposer balance
+                // Need to get proposer index for the slot - requires ConsensusContext
+                // For now, this is a known TODO that will be addressed when integrating
+                // with the full block processing pipeline
+            }
         }
     }
 
