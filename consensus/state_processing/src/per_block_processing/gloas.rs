@@ -1,7 +1,7 @@
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
 use std::borrow::Cow;
-use crate::common::compute_shuffled_index;
+use swap_or_not_shuffle::compute_shuffled_index;
 use tree_hash::TreeHash;
 use types::consts::gloas::{PTC_SIZE, BUILDER_INDEX_SELF_BUILD};
 use types::{

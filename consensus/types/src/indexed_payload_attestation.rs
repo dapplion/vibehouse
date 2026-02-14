@@ -59,7 +59,7 @@ impl<E: EthSpec> IndexedPayloadAttestation<E> {
                 payload_present: false,
                 blob_data_available: false,
             },
-            signature: Signature::empty(),
+            signature: AggregateSignature::empty(),
         }
     }
 }
