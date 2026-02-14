@@ -142,14 +142,14 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Add gloas fork to the `ForkName` enum and all fork-conditional logic
 - [x] Update SSZ type definitions and serialization
 
-#### Step 2: State Transition
-- [ ] Implement `process_block` changes for gloas (ePBS block processing)
-- [ ] Implement `process_execution_bid` - validate and apply builder bids
-- [ ] Implement `process_payload_attestation` - handle payload attestation messages
+#### Step 2: State Transition (IN PROGRESS - 4/7 done)
+- [x] Implement `process_block` changes for gloas (ePBS block processing skeleton)
+- [x] Implement `process_execution_payload_bid` - validate and apply builder bids
+- [x] Implement `process_payload_attestation` - handle payload attestation messages
 - [ ] Update `process_epoch` for any gloas epoch processing changes
 - [ ] Update `process_slots` to handle gloas fork transition
-- [ ] Implement proposer/builder role separation in block processing
-- [ ] Implement bid validation: check builder balance, bid amount, commitment validity
+- [x] Implement proposer/builder role separation in block processing
+- [ ] Implement bid validation: check builder balance, bid amount, commitment validity (partial: balance ✅, signature TODO)
 
 #### Step 3: Fork Choice
 - [ ] Implement ePBS fork choice rule changes
