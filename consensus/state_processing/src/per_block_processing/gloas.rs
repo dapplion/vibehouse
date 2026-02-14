@@ -405,7 +405,7 @@ fn get_indexed_payload_attestation<E: EthSpec>(
 /// deterministic shuffle using the slot's seed.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc_committee
-fn get_ptc_committee<E: EthSpec>(
+pub fn get_ptc_committee<E: EthSpec>(
     state: &BeaconState<E>,
     slot: Slot,
     spec: &ChainSpec,

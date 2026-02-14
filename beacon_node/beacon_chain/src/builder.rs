@@ -1010,6 +1010,8 @@ where
             observed_proposer_slashings: <_>::default(),
             observed_attester_slashings: <_>::default(),
             observed_bls_to_execution_changes: <_>::default(),
+            observed_execution_bids: <_>::default(),
+            observed_payload_attestations: <_>::default(),
             execution_layer: self.execution_layer.clone(),
             genesis_validators_root,
             genesis_time,

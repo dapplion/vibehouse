@@ -426,6 +426,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Maintains a record of which validators we've seen BLS to execution changes for.
     pub observed_bls_to_execution_changes:
         Mutex<ObservedOperations<SignedBlsToExecutionChange, T::EthSpec>>,
+    /// Maintains a record of which execution bids we've seen (for equivocation detection).
+    pub observed_execution_bids: Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
+    /// Maintains a record of which payload attestations we've seen (for equivocation detection).
+    pub observed_payload_attestations: Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
     /// Interfaces with the execution client.
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the

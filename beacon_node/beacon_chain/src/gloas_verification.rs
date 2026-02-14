@@ -274,9 +274,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             });
         }
 
-        // Get head state for validation
-        let head = self.canonical_head.cached_head();
-        let state = &head.snapshot.beacon_state;
+        // Get head state for validation (for future use in builder validation)
+        let _head = self.canonical_head.cached_head();
+        // let _state = &head.snapshot.beacon_state;
 
         // Check 2: Builder exists and is active
         // TODO: This needs access to the builder registry in BeaconState
@@ -291,9 +291,32 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // }
 
         // Check 3: Equivocation detection
-        // TODO: Implement observed bids cache (similar to observed_attesters)
-        // For now, accept all bids
         let bid_root = bid.tree_hash_root();
+        
+        let observation_outcome = self
+            .observed_execution_bids
+            .lock()
+            .observe_bid(bid_slot, builder_index, bid_root);
+        
+        match observation_outcome {
+            crate::observed_execution_bids::BidObservationOutcome::New => {
+                // Continue with validation
+            }
+            crate::observed_execution_bids::BidObservationOutcome::Duplicate => {
+                return Err(ExecutionBidError::DuplicateBid { bid_root });
+            }
+            crate::observed_execution_bids::BidObservationOutcome::Equivocation {
+                existing_bid_root,
+                new_bid_root,
+            } => {
+                return Err(ExecutionBidError::BuilderEquivocation {
+                    builder_index,
+                    slot: bid_slot,
+                    previous_bid_root: existing_bid_root,
+                    new_bid_root,
+                });
+            }
+        }
 
         // Check 4: Parent root validation
         // TODO: Check against fork choice head
@@ -356,12 +379,65 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 3: Get PTC committee for this slot
-        // TODO: Implement get_ptc_committee when state accessors are ready
-        // For now, create placeholder indices
-        let indexed_attestation_indices = Vec::new();
+        let head = self.canonical_head.cached_head();
+        let state = &head.snapshot.beacon_state;
+        
+        // Get PTC committee using state processing function
+        let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+            state,
+            attestation_slot,
+            &self.spec,
+        )
+        .map_err(|_| PayloadAttestationError::PtcCommitteeError { slot: attestation_slot })?;
+
+        // Convert aggregation bits to attesting indices
+        let mut indexed_attestation_indices = Vec::new();
+        for (i, &validator_index) in ptc_indices.iter().enumerate() {
+            if attestation
+                .aggregation_bits
+                .get(i)
+                .map_err(|_| PayloadAttestationError::InvalidAggregationBits)?
+            {
+                indexed_attestation_indices.push(validator_index);
+            }
+        }
+
+        if indexed_attestation_indices.is_empty() {
+            return Err(PayloadAttestationError::EmptyAggregationBits);
+        }
 
         // Check 4: Equivocation detection
-        // TODO: Implement observed payload attestations cache
+        let beacon_block_root = attestation.data.beacon_block_root;
+        let payload_present = attestation.data.payload_present;
+        
+        let mut observed_attestations = self.observed_payload_attestations.lock();
+        for &validator_index in &indexed_attestation_indices {
+            let outcome = observed_attestations.observe_attestation(
+                attestation_slot,
+                beacon_block_root,
+                validator_index,
+                payload_present,
+            );
+
+            match outcome {
+                crate::observed_payload_attestations::AttestationObservationOutcome::New => {
+                    // Continue
+                }
+                crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
+                    // This validator already attested with same value, skip
+                    continue;
+                }
+                crate::observed_payload_attestations::AttestationObservationOutcome::Equivocation {
+                    ..
+                } => {
+                    return Err(PayloadAttestationError::ValidatorEquivocation {
+                        validator_index,
+                        slot: attestation_slot,
+                        beacon_block_root,
+                    });
+                }
+            }
+        }
 
         // Check 5: Signature verification
         // TODO: Implement when signature_sets is available
