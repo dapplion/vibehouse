@@ -4,6 +4,83 @@
 
 ---
 
+## 2026-02-14 17:20 - Phase 5.2 in progress: PayloadState tracking 🔄
+
+### Step 1 & 2 Complete: PayloadState enum + BlockImportData extension ✅
+
+**Implemented `PayloadState<E>` enum** (78 lines):
+- `Included`: Pre-gloas forks (Base-Fulu) - payload in block
+- `Pending { bid }`: Gloas proposer block, external builder, payload not yet revealed
+- `Revealed { bid, payload }`: Gloas after builder reveals payload
+- `SelfBuild { payload }`: Gloas with proposer-built payload (BUILDER_INDEX_SELF_BUILD)
+
+**Helper methods:**
+- `is_available()`: true unless Pending
+- `is_revealed()`: true for Revealed variant
+- `is_self_build()`: true for SelfBuild variant
+- `payload()`: returns Option<&ExecutionPayload>
+- `bid()`: returns Option<&ExecutionPayloadBid>
+
+**Extended `BlockImportData` struct:**
+- Added `payload_state: PayloadState<E>` field
+- Updated test constructor with default `PayloadState::Included`
+
+**File:** `beacon_node/beacon_chain/src/block_verification.rs`
+
+### Step 3 Complete: Payload state detection during block import ✅
+
+**Added logic to `from_signature_verified_components()`:**
+
+For gloas blocks:
+1. **Self-build detection** (builder_index == BUILDER_INDEX_SELF_BUILD):
+   - Extract payload from `execution_payload` field
+   - Validate payload exists (return error if None)
+   - Create `PayloadState::SelfBuild { payload }`
+
+2. **External builder detection** (builder_index != BUILDER_INDEX_SELF_BUILD):
+   - Validate execution_payload is None (external builders MUST NOT include payload)
+   - Create `PayloadState::Pending { bid }`
+
+For pre-gloas blocks:
+- Always `PayloadState::Included`
+
+**Validation rules enforced:**
+- ❌ Self-build with missing payload → BlockProcessingError::PayloadBidInvalid
+- ❌ External builder with payload in block → BlockProcessingError::PayloadBidInvalid
+
+**Lines added:** 47 lines of detection + validation logic
+
+### Commits
+
+1. `d3621c209` - phase 5.2: add PayloadState enum and extend BlockImportData
+2. `2aaa2d0ad` - phase 5.2: detect payload state during block import
+
+### Implementation Progress: 3/8 steps complete (37.5%)
+
+**Completed:**
+- ✅ Step 1: PayloadState enum (15 min)
+- ✅ Step 2: BlockImportData extension (10 min)
+- ✅ Step 3: Payload state detection (45 min)
+
+**Remaining:**
+- ⏳ Step 4: Skip payload verification for pending blocks (30 min)
+- ⏳ Step 5: Fork choice integration (45 min)
+- ⏳ Step 6: Payload reveal handler (1.5 hours)
+- ⏳ Step 7: Wire to P2P (30 min)
+- ⏳ Step 8: Tests (2 hours)
+
+**Estimated remaining time:** ~5 hours
+
+### Next: Step 4 - Skip verification for pending payloads
+
+Modify the payload verification logic to handle `PayloadState::Pending` by skipping EL verification. The payload will be verified when the builder reveals it.
+
+**Location:** `into_execution_pending_block()` or similar verification path
+
+**Status:** On track. Block import pipeline taking shape. 🎵
+
+---
+
 ## 2026-02-14 16:14 - Phase 5 started: Beacon chain integration 🏗️
 
 ### Phase 5.1: Exports complete ✅
