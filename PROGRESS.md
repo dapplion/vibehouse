@@ -4,6 +4,55 @@
 
 ---
 
+## 2026-02-14 05:05 - Phase 1 audit: types complete ✅
+
+### Audited gloas Phase 1 implementation status
+
+**All Phase 1 types exist and are tested**:
+- ✅ Builder, BuilderPendingPayment, BuilderPendingWithdrawal (in `consensus/types/src/builder/`)
+- ✅ ExecutionPayloadBid, SignedExecutionPayloadBid
+- ✅ PayloadAttestationData, PayloadAttestation, PayloadAttestationMessage
+- ✅ IndexedPayloadAttestation
+- ✅ ExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope
+
+**SSZ serialization**: all types derive Encode/Decode/TreeHash ✅
+
+**Unit tests**: all types have:
+- `ssz_and_tree_hash_tests!()` macro tests
+- TestRandom implementations
+- Basic functionality tests (empty(), num_attesters(), is_sorted(), etc.)
+
+**BeaconState modifications**: Gloas variant complete ✅
+- `latest_execution_payload_bid` replaces `latest_execution_payload_header`
+- Builder registry fields (builders list, pending payments/withdrawals)
+- Payload availability tracking
+- All fields properly marked with `#[superstruct(only(Gloas))]`
+
+**BeaconBlockBody modifications**: Gloas ePBS restructure complete ✅
+- `signed_execution_payload_bid: SignedExecutionPayloadBid<E>`
+- `payload_attestations: VariableList<PayloadAttestation<E>, E::MaxPayloadAttestations>`
+- Replaces execution_payload (ePBS two-phase block design)
+
+**Constants**: all in ChainSpec ✅
+- BUILDER_INDEX_SELF_BUILD (u64::MAX)
+- PTC_SIZE (512)
+- MAX_PAYLOAD_ATTESTATIONS (4)
+- BUILDER_REGISTRY_LIMIT (2^40)
+- BUILDER_PENDING_WITHDRAWALS_LIMIT (2^20)
+- DOMAIN_BEACON_BUILDER, DOMAIN_PTC_ATTESTER
+- Builder payment threshold (6/10)
+- Builder withdrawal prefix (0x03)
+- Min builder withdrawability delay (64 epochs)
+- Max builders per withdrawal sweep (16,384)
+
+**Public exports**: all types exported in consensus/types/src/lib.rs ✅
+
+### Phase 1 STATUS: **COMPLETE** (16/16 items) 🎉
+
+Next up: Phase 2 - State Transition Functions
+
+---
+
 ## 2026-02-13 - claude loop cycle 3: spec test fixes + full SSZ static pass
 
 ### Type fixes from spec test validation

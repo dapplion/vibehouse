@@ -133,14 +133,14 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 
 ### Implementation steps (detailed)
 
-#### Step 1: Types & Constants
-- [ ] Add gloas fork version constant and epoch placeholder
-- [ ] Define new gloas types: `ExecutionBid`, `SignedExecutionBid`, `PayloadAttestation`, `PayloadAttestationMessage`
-- [ ] Update `BeaconState` with gloas-specific fields (builder-related state)
-- [ ] Update `BeaconBlockBody` for gloas (ePBS changes - payload becomes optional in proposer block, builder submits separately)
-- [ ] Update `DataColumnSidecar` - remove `signed_block_header` and `kzg_commitments_inclusion_proof` fields
-- [ ] Add gloas fork to the `ForkName` enum and all fork-conditional logic
-- [ ] Update SSZ type definitions and serialization
+#### Step 1: Types & Constants ✅ COMPLETE (2026-02-14)
+- [x] Add gloas fork version constant and epoch placeholder
+- [x] Define new gloas types: `ExecutionBid`, `SignedExecutionBid`, `PayloadAttestation`, `PayloadAttestationMessage`
+- [x] Update `BeaconState` with gloas-specific fields (builder-related state)
+- [x] Update `BeaconBlockBody` for gloas (ePBS changes - payload becomes optional in proposer block, builder submits separately)
+- [ ] Update `DataColumnSidecar` - remove `signed_block_header` and `kzg_commitments_inclusion_proof` fields (blocked on upstream)
+- [x] Add gloas fork to the `ForkName` enum and all fork-conditional logic
+- [x] Update SSZ type definitions and serialization
 
 #### Step 2: State Transition
 - [ ] Implement `process_block` changes for gloas (ePBS block processing)
