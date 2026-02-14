@@ -1,5 +1,5 @@
 mod deposit_data_tree;
-mod get_attestation_participation;
+pub mod get_attestation_participation;
 mod get_attesting_indices;
 mod initiate_validator_exit;
 mod slash_validator;
