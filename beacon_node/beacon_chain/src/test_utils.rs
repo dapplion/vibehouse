@@ -3310,25 +3310,7 @@ pub fn generate_rand_block_and_blobs<E: EthSpec>(
             message.body.blob_kzg_commitments = bundle.commitments.clone();
             bundle
         }
-        SignedBeaconBlock::Gloas(SignedBeaconBlockGloas {
-            ref mut message, ..
-        }) => {
-            // Get either zero blobs or a random number of blobs between 1 and Max Blobs.
-            let payload: &mut FullPayloadGloas<E> = &mut message.body.execution_payload;
-            let num_blobs = match num_blobs {
-                NumBlobs::Random => rng.random_range(1..=max_blobs),
-                NumBlobs::Number(n) => n,
-                NumBlobs::None => 0,
-            };
-            let (bundle, transactions) =
-                execution_layer::test_utils::generate_blobs::<E>(num_blobs, fork_name).unwrap();
-            payload.execution_payload.transactions = <_>::default();
-            for tx in Vec::from(transactions) {
-                payload.execution_payload.transactions.push(tx).unwrap();
-            }
-            message.body.blob_kzg_commitments = bundle.commitments.clone();
-            bundle
-        }
+        // TODO(EIP-7732) Add `SignedBeaconBlock::Gloas` variant
         _ => return (block, blob_sidecars),
     };
 

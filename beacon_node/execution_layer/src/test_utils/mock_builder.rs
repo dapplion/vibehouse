@@ -494,8 +494,9 @@ impl<E: EthSpec> MockBuilder<E> {
             SignedBlindedBeaconBlock::Fulu(block) => {
                 block.message.body.execution_payload.tree_hash_root()
             }
-            SignedBlindedBeaconBlock::Gloas(block) => {
-                block.message.body.execution_payload.tree_hash_root()
+            SignedBlindedBeaconBlock::Gloas(_) => {
+                // TODO(EIP7732) Check if this is how we want to do error handling for gloas
+                return Err("invalid fork".to_string());
             }
         };
         let block_hash = block

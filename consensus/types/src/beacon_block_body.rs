@@ -127,17 +127,19 @@ pub struct BeaconBlockBody<E: EthSpec, Payload: AbstractExecPayload<E> = FullPay
     #[superstruct(only(Fulu), partial_getter(rename = "execution_payload_fulu"))]
     #[serde(flatten)]
     pub execution_payload: Payload::Fulu,
-    #[superstruct(only(Gloas), partial_getter(rename = "execution_payload_gloas"))]
-    #[serde(flatten)]
-    pub execution_payload: Payload::Gloas,
     #[superstruct(only(Capella, Deneb, Electra, Fulu, Gloas))]
     pub bls_to_execution_changes:
         VariableList<SignedBlsToExecutionChange, E::MaxBlsToExecutionChanges>,
-    #[superstruct(only(Deneb, Electra, Fulu, Gloas))]
+    #[superstruct(only(Deneb, Electra, Fulu))]
     pub blob_kzg_commitments: KzgCommitments<E>,
-    #[superstruct(only(Electra, Fulu, Gloas))]
+    #[superstruct(only(Electra, Fulu))]
     pub execution_requests: ExecutionRequests<E>,
-    #[superstruct(only(Base, Altair))]
+    // Gloas ePBS: replaces execution_payload with bid + attestations
+    #[superstruct(only(Gloas))]
+    pub signed_execution_payload_bid: SignedExecutionPayloadBid<E>,
+    #[superstruct(only(Gloas))]
+    pub payload_attestations: VariableList<PayloadAttestation<E>, E::MaxPayloadAttestations>,
+    #[superstruct(only(Base, Altair, Gloas))]
     #[metastruct(exclude_from(fields))]
     #[ssz(skip_serializing, skip_deserializing)]
     #[tree_hash(skip_hashing)]
@@ -166,7 +168,7 @@ impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBodyRef<'a, E, 
             Self::Deneb(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Electra(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Fulu(body) => Ok(Payload::Ref::from(&body.execution_payload)),
-            Self::Gloas(body) => Ok(Payload::Ref::from(&body.execution_payload)),
+            Self::Gloas(_) => Err(Error::IncorrectStateVariant),
         }
     }
 
@@ -230,10 +232,12 @@ impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBodyRef<'a, E, 
         kzg_commitments_proof: &[Hash256],
     ) -> Result<FixedVector<Hash256, E::KzgCommitmentInclusionProofDepth>, Error> {
         match self {
-            Self::Base(_) | Self::Altair(_) | Self::Bellatrix(_) | Self::Capella(_) => {
-                Err(Error::IncorrectStateVariant)
-            }
-            Self::Deneb(_) | Self::Electra(_) | Self::Fulu(_) | Self::Gloas(_) => {
+            Self::Base(_)
+            | Self::Altair(_)
+            | Self::Bellatrix(_)
+            | Self::Capella(_)
+            | Self::Gloas(_) => Err(Error::IncorrectStateVariant),
+            Self::Deneb(_) | Self::Electra(_) | Self::Fulu(_) => {
                 // We compute the branches by generating 2 merkle trees:
                 // 1. Merkle tree for the `blob_kzg_commitments` List object
                 // 2. Merkle tree for the `BeaconBlockBody` container
@@ -495,6 +499,46 @@ impl<E: EthSpec> From<BeaconBlockBodyAltair<E, BlindedPayload<E>>>
             deposits,
             voluntary_exits,
             sync_aggregate,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+// Post-Fulu block bodies without payloads can be converted into block bodies with payloads
+// TODO(EIP-7732) Look into whether we can remove this in the future since no blinded blocks post-gloas
+impl<E: EthSpec> From<BeaconBlockBodyGloas<E, BlindedPayload<E>>>
+    for BeaconBlockBodyGloas<E, FullPayload<E>>
+{
+    fn from(body: BeaconBlockBodyGloas<E, BlindedPayload<E>>) -> Self {
+        let BeaconBlockBodyGloas {
+            randao_reveal,
+            eth1_data,
+            graffiti,
+            proposer_slashings,
+            attester_slashings,
+            attestations,
+            deposits,
+            voluntary_exits,
+            sync_aggregate,
+            bls_to_execution_changes,
+            signed_execution_payload_bid,
+            payload_attestations,
+            _phantom,
+        } = body;
+
+        BeaconBlockBodyGloas {
+            randao_reveal,
+            eth1_data,
+            graffiti,
+            proposer_slashings,
+            attester_slashings,
+            attestations,
+            deposits,
+            voluntary_exits,
+            sync_aggregate,
+            bls_to_execution_changes,
+            signed_execution_payload_bid,
+            payload_attestations,
             _phantom: PhantomData,
         }
     }
@@ -810,10 +854,10 @@ impl<E: EthSpec> From<BeaconBlockBodyGloas<E, FullPayload<E>>>
             deposits,
             voluntary_exits,
             sync_aggregate,
-            execution_payload: FullPayloadGloas { execution_payload },
             bls_to_execution_changes,
-            blob_kzg_commitments,
-            execution_requests,
+            signed_execution_payload_bid,
+            payload_attestations,
+            _phantom,
         } = body;
 
         (
@@ -827,14 +871,12 @@ impl<E: EthSpec> From<BeaconBlockBodyGloas<E, FullPayload<E>>>
                 deposits,
                 voluntary_exits,
                 sync_aggregate,
-                execution_payload: BlindedPayloadGloas {
-                    execution_payload_header: From::from(&execution_payload),
-                },
                 bls_to_execution_changes,
-                blob_kzg_commitments: blob_kzg_commitments.clone(),
-                execution_requests,
+                signed_execution_payload_bid,
+                payload_attestations,
+                _phantom: PhantomData,
             },
-            Some(execution_payload),
+            None,
         )
     }
 }
@@ -1034,39 +1076,8 @@ impl<E: EthSpec> BeaconBlockBodyFulu<E, FullPayload<E>> {
 
 impl<E: EthSpec> BeaconBlockBodyGloas<E, FullPayload<E>> {
     pub fn clone_as_blinded(&self) -> BeaconBlockBodyGloas<E, BlindedPayload<E>> {
-        let BeaconBlockBodyGloas {
-            randao_reveal,
-            eth1_data,
-            graffiti,
-            proposer_slashings,
-            attester_slashings,
-            attestations,
-            deposits,
-            voluntary_exits,
-            sync_aggregate,
-            execution_payload: FullPayloadGloas { execution_payload },
-            bls_to_execution_changes,
-            blob_kzg_commitments,
-            execution_requests,
-        } = self;
-
-        BeaconBlockBodyGloas {
-            randao_reveal: randao_reveal.clone(),
-            eth1_data: eth1_data.clone(),
-            graffiti: *graffiti,
-            proposer_slashings: proposer_slashings.clone(),
-            attester_slashings: attester_slashings.clone(),
-            attestations: attestations.clone(),
-            deposits: deposits.clone(),
-            voluntary_exits: voluntary_exits.clone(),
-            sync_aggregate: sync_aggregate.clone(),
-            execution_payload: BlindedPayloadGloas {
-                execution_payload_header: execution_payload.into(),
-            },
-            bls_to_execution_changes: bls_to_execution_changes.clone(),
-            blob_kzg_commitments: blob_kzg_commitments.clone(),
-            execution_requests: execution_requests.clone(),
-        }
+        let (block_body, _payload) = self.clone().into();
+        block_body
     }
 }
 

@@ -672,11 +672,34 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> EmptyBlock for BeaconBlockGloa
                 deposits: VariableList::empty(),
                 voluntary_exits: VariableList::empty(),
                 sync_aggregate: SyncAggregate::empty(),
-                execution_payload: Payload::Gloas::default(),
                 bls_to_execution_changes: VariableList::empty(),
-                blob_kzg_commitments: VariableList::empty(),
-                execution_requests: ExecutionRequests::default(),
+                signed_execution_payload_bid: SignedExecutionPayloadBid::empty(),
+                payload_attestations: VariableList::empty(),
+                _phantom: PhantomData,
             },
+        }
+    }
+}
+
+// TODO(EIP-7732) Look into whether we can remove this in the future since no blinded blocks post-gloas
+impl<E: EthSpec> From<BeaconBlockGloas<E, BlindedPayload<E>>>
+    for BeaconBlockGloas<E, FullPayload<E>>
+{
+    fn from(block: BeaconBlockGloas<E, BlindedPayload<E>>) -> Self {
+        let BeaconBlockGloas {
+            slot,
+            proposer_index,
+            parent_root,
+            state_root,
+            body,
+        } = block;
+
+        BeaconBlockGloas {
+            slot,
+            proposer_index,
+            parent_root,
+            state_root,
+            body: body.into(),
         }
     }
 }
