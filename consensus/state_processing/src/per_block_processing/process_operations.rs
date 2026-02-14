@@ -307,7 +307,7 @@ pub fn process_proposer_slashings<E: EthSpec>(
                     
                     if let Some(&assigned_proposer) = state_gloas.proposer_lookahead.get(slot_index) {
                         if assigned_proposer == proposer_index as u64 {
-                            let payment_index = slot.as_u64() % E::builder_pending_payments_limit();
+                                                        let payment_index = slot.as_u64() % E::builder_pending_payments_limit() as u64;
                             if let Some(payment) = state_gloas.builder_pending_payments.get_mut(payment_index as usize) {
                                 *payment = BuilderPendingPayment::default();
                             }
