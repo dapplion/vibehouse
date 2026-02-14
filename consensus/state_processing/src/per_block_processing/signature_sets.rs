@@ -662,3 +662,43 @@ where
         message,
     )))
 }
+
+/// Create a signature set for an indexed payload attestation (Gloas ePBS).
+///
+/// This verifies that the PTC (Payload Timeliness Committee) members signed the
+/// payload attestation data correctly.
+///
+/// Similar to indexed_attestation_signature_set but uses DOMAIN_PTC_ATTESTER.
+pub fn indexed_payload_attestation_signature_set<'a, E, F>(
+    state: &'a BeaconState<E>,
+    get_pubkey: F,
+    indexed_attestation: &'a types::IndexedPayloadAttestation<E>,
+    spec: &'a ChainSpec,
+) -> Result<SignatureSet<'a>>
+where
+    E: EthSpec,
+    F: Fn(usize) -> Option<Cow<'a, PublicKey>>,
+{
+    let mut pubkeys = Vec::with_capacity(indexed_attestation.attesting_indices.len());
+    for &validator_idx in indexed_attestation.attesting_indices.iter() {
+        pubkeys.push(
+            get_pubkey(validator_idx as usize).ok_or(Error::ValidatorUnknown(validator_idx))?,
+        );
+    }
+
+    // Use slot-based domain for PTC attestations
+    let domain = spec.get_domain(
+        indexed_attestation.data.slot.epoch(E::slots_per_epoch()),
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let message = indexed_attestation.data.signing_root(domain);
+
+    Ok(SignatureSet::multiple_pubkeys(
+        &indexed_attestation.signature,
+        pubkeys,
+        message,
+    ))
+}

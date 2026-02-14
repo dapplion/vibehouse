@@ -1,9 +1,12 @@
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
+use crate::per_block_processing::signature_sets::{indexed_payload_attestation_signature_set, Error as SignatureSetError};
 use crate::VerifySignatures;
-use types::consts::gloas::{PTC_SIZE, BUILDER_INDEX_SELF_BUILD};
+use swap_or_not_shuffle::compute_shuffled_index;
+use tree_hash::TreeHash;
+use types::consts::gloas::PTC_SIZE;
 use types::{
-    BeaconState, ChainSpec, EthSpec, IndexedPayloadAttestation, PayloadAttestation,
-    PayloadAttestationData, SignedExecutionPayloadBid, Slot,
+    BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec, EthSpec, 
+    IndexedPayloadAttestation, PayloadAttestation, SignedExecutionPayloadBid, Slot, Unsigned,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -57,6 +60,9 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         // External builder bid
         let builder_index = bid.builder_index as usize;
 
+        // Get finalized epoch before borrowing state mutably
+        let finalized_epoch = state.finalized_checkpoint().epoch;
+
         // Verify builder exists and is active
         let state_gloas = state.as_gloas_mut().map_err(|_| {
             BlockProcessingError::PayloadBidInvalid {
@@ -72,7 +78,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             })?;
 
         // Check builder is active (registered before finalized_epoch and not withdrawn)
-        if !builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, spec) {
+        if !builder.is_active_at_finalized_epoch(finalized_epoch, spec) {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: format!("builder {} is not active", builder_index),
             });
@@ -88,15 +94,22 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             });
         }
 
+        // Get builder pubkey before signature verification
+        let builder_pubkey = builder.pubkey;
+
+        // Drop the mutable borrow before signature verification
+        drop(state_gloas);
+
         // Verify signature if requested
         if verify_signatures.is_true() {
-            // TODO: implement signature verification
-            // Need to:
-            // 1. Get signing root of ExecutionPayloadBid
-            // 2. Get domain for DOMAIN_BEACON_BUILDER
-            // 3. Verify signature against builder's pubkey
-            // For now, we'll add a placeholder
-            todo!("Signature verification for builder bids not yet implemented");
+            if !signed_bid.verify_signature(&builder_pubkey, state, spec) {
+                return Err(BlockProcessingError::PayloadBidInvalid {
+                    reason: format!(
+                        "invalid signature for builder {} bid",
+                        builder_index
+                    ),
+                });
+            }
         }
     }
 
@@ -123,7 +136,11 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             },
         };
         
-        state_gloas.builder_pending_payments[slot_index] = pending_payment;
+        *state_gloas.builder_pending_payments
+            .get_mut(slot_index)
+            .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
+                reason: format!("slot index {} out of bounds for builder_pending_payments", slot_index),
+            })? = pending_payment;
     }
 
     Ok(())
@@ -166,9 +183,33 @@ pub fn process_payload_attestation<E: EthSpec>(
 
     // Verify the attestation signature if requested
     if verify_signatures.is_true() {
-        // TODO: Implement signature verification
-        // Need to verify aggregate signature from all PTC members
-        todo!("Signature verification for payload attestations not yet implemented");
+        let signature_set = indexed_payload_attestation_signature_set(
+            state,
+            |validator_index| {
+                state
+                    .validators()
+                    .get(validator_index)
+                    .and_then(|v| v.pubkey.decompress().map(std::borrow::Cow::Owned).ok())
+            },
+            &indexed_attestation,
+            spec,
+        )
+        .map_err(|e| match e {
+            SignatureSetError::ValidatorUnknown(idx) => {
+                BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::UnknownValidator(idx),
+                )
+            }
+            _ => BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::InvalidSignature,
+            ),
+        })?;
+
+        if !signature_set.verify() {
+            return Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::InvalidSignature,
+            ));
+        }
     }
 
     // Check if we've reached quorum (60% of PTC = 6/10 * 512 = 307 attesters)
@@ -198,11 +239,15 @@ pub fn process_payload_attestation<E: EthSpec>(
         if data.payload_present {
             let payment_slot_index =
                 (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
-            let pending_payment = &mut state_gloas.builder_pending_payments[payment_slot_index];
+            let pending_payment = state_gloas.builder_pending_payments
+                .get_mut(payment_slot_index)
+                .ok_or_else(|| BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::SlotOutOfBounds,
+                ))?;
 
             // Transfer payment from builder to proposer if not already processed
-            if pending_payment.weight < quorum_threshold {
-                pending_payment.weight = quorum_threshold; // Mark as processed
+            if pending_payment.weight < quorum_threshold as u64 {
+                pending_payment.weight = quorum_threshold as u64; // Mark as processed
 
                 let builder_index = pending_payment.withdrawal.builder_index as usize;
                 let payment_amount = pending_payment.withdrawal.amount;
@@ -220,10 +265,21 @@ pub fn process_payload_attestation<E: EthSpec>(
                     builder.balance = builder.balance.saturating_sub(payment_amount);
                 }
 
-                // TODO: Increase proposer balance
-                // Need to get proposer index for the slot - requires ConsensusContext
-                // For now, this is a known TODO that will be addressed when integrating
-                // with the full block processing pipeline
+                // Increase proposer balance
+                let proposer_index = state
+                    .get_beacon_proposer_index(data.slot, spec)
+                    .map_err(|e| BlockProcessingError::PayloadBidInvalid {
+                        reason: format!("failed to get proposer index: {:?}", e),
+                    })?;
+
+                let proposer_balance = state
+                    .balances_mut()
+                    .get_mut(proposer_index)
+                    .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
+                        reason: format!("proposer index {} out of bounds", proposer_index),
+                    })?;
+
+                *proposer_balance = proposer_balance.saturating_add(payment_amount);
             }
         }
     }
@@ -303,7 +359,7 @@ fn get_ptc_committee<E: EthSpec>(
 
     // Select PTC_SIZE validators using shuffled indices
     while ptc_committee.len() < PTC_SIZE as usize && i < active_validator_count * 10 {
-        let shuffled_index = types::compute_shuffled_index(
+        let shuffled_index = compute_shuffled_index(
             i % active_validator_count,
             active_validator_count,
             seed.as_slice(),
@@ -320,12 +376,12 @@ fn get_ptc_committee<E: EthSpec>(
             ))?;
 
         // Add to committee (no duplicates check since shuffled_index is unique)
-        ptc_committee.push(candidate_index);
+        ptc_committee.push(candidate_index as u64);
 
         i += 1;
     }
 
-    if ptc_committee.len() < PTC_SIZE as usize {
+    if ptc_committee.len() < spec.ptc_size as usize {
         // Not enough validators to form a full PTC (edge case for testnets)
         return Err(BlockProcessingError::PayloadAttestationInvalid(
             PayloadAttestationInvalid::InsufficientValidators,

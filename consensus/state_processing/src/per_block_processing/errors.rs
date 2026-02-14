@@ -476,6 +476,10 @@ pub enum PayloadAttestationInvalid {
     SlotOutOfBounds,
     /// The signature is invalid
     SignatureInvalid,
+    /// Invalid signature (aggregate signature verification failed)
+    InvalidSignature,
+    /// Validator index is unknown or out of bounds
+    UnknownValidator(u64),
     /// Attesting indices are not sorted
     IndicesNotSorted,
     /// Attesting indices contain duplicates

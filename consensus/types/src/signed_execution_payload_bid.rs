@@ -1,6 +1,6 @@
 use crate::ExecutionPayloadBid;
 use crate::test_utils::TestRandom;
-use crate::{EthSpec, ForkName};
+use crate::{BeaconState, ChainSpec, EthSpec, ForkName, PublicKeyBytes, SignedRoot};
 use bls::Signature;
 use context_deserialize::context_deserialize;
 use derivative::Derivative;
@@ -41,6 +41,29 @@ impl<E: EthSpec> SignedExecutionPayloadBid<E> {
             message: ExecutionPayloadBid::default(),
             signature: Signature::empty(),
         }
+    }
+
+    /// Verify the signature of this bid against the builder's public key.
+    ///
+    /// For self-builds (builder_index == BUILDER_INDEX_SELF_BUILD), this always
+    /// returns true since the signature should be empty.
+    ///
+    /// For external builders, retrieves the builder's pubkey from state and verifies
+    /// the signature using DOMAIN_BEACON_BUILDER.
+    pub fn verify_signature(
+        &self,
+        builder_pubkey: &PublicKeyBytes,
+        state: &BeaconState<E>,
+        spec: &ChainSpec,
+    ) -> bool {
+        builder_pubkey
+            .decompress()
+            .map(|pubkey| {
+                let domain = spec.get_builder_domain();
+                let message = self.message.signing_root(domain);
+                self.signature.verify(&pubkey, message)
+            })
+            .unwrap_or(false)
     }
 }
 
