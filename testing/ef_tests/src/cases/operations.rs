@@ -614,3 +614,49 @@ impl<E: EthSpec, O: Operation<E>> Case for Operations<E, O> {
         compare_beacon_state_results_without_caches(&mut result, &mut expected)
     }
 }
+
+impl<E: EthSpec> Operation<E> for SignedExecutionPayloadBid<E> {
+    fn handler_name() -> String {
+        "execution_payload_bid".into()
+    }
+
+    fn decode(path: &Path, _fork_name: ForkName, spec: &ChainSpec) -> Result<Self, Error> {
+        ssz_decode_file_with(path, |bytes| Self::from_ssz_bytes(bytes, spec))
+    }
+
+    fn is_enabled_for_fork(fork_name: ForkName) -> bool {
+        fork_name >= ForkName::Gloas
+    }
+
+    fn apply_to(
+        &self,
+        state: &mut BeaconState<E>,
+        spec: &ChainSpec,
+        _: &Operations<E, Self>,
+    ) -> Result<(), BlockProcessingError> {
+        process_execution_payload_bid(state, self, spec)
+    }
+}
+
+impl<E: EthSpec> Operation<E> for PayloadAttestation<E> {
+    fn handler_name() -> String {
+        "payload_attestation".into()
+    }
+
+    fn decode(path: &Path, _fork_name: ForkName, _spec: &ChainSpec) -> Result<Self, Error> {
+        ssz_decode_file(path)
+    }
+
+    fn is_enabled_for_fork(fork_name: ForkName) -> bool {
+        fork_name >= ForkName::Gloas
+    }
+
+    fn apply_to(
+        &self,
+        state: &mut BeaconState<E>,
+        spec: &ChainSpec,
+        _: &Operations<E, Self>,
+    ) -> Result<(), BlockProcessingError> {
+        process_payload_attestation(state, self, spec)
+    }
+}

@@ -959,8 +959,8 @@ fn epoch_processing_participation_flag_updates() {
 
 #[test]
 fn epoch_processing_builder_pending_payments() {
-    EpochProcessingHandler::<MinimalEthSpec, BuilderPendingPayments>::default().run();
-    EpochProcessingHandler::<MainnetEthSpec, BuilderPendingPayments>::default().run();
+    EpochProcessingHandler::<MinimalEthSpec, BuilderPendingPayment>::default().run();
+    EpochProcessingHandler::<MainnetEthSpec, BuilderPendingPayment>::default().run();
 }
 
 #[test]
