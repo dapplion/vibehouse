@@ -622,16 +622,22 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // 4. Validator sweep
+    let validators_processed: u64;
     {
         let mut validator_index = state.next_withdrawal_validator_index()?;
         let bound = std::cmp::min(
             state.validators().len() as u64,
             spec.max_validators_per_withdrawals_sweep,
         );
+        let mut checked = 0u64;
+        
         for _ in 0..bound {
+            // Check if we've hit the withdrawal limit before processing this validator
             if withdrawals.len() >= E::max_withdrawals_per_payload() {
                 break;
             }
+            
+            checked += 1; // Track that we're processing this validator
 
             let validator = state.get_validator(validator_index as usize)?;
             let partially_withdrawn_balance: u64 = withdrawals
@@ -668,6 +674,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 .safe_add(1)?
                 .safe_rem(state.validators().len() as u64)?;
         }
+        validators_processed = checked;
     }
 
     // Apply withdrawals: decrease balances
@@ -740,14 +747,13 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // Update next_withdrawal_validator_index
-    // The spec says to update based on the validator sweep results
-    // For now, use the same logic as pre-Gloas
+    // Advance by the number of validators we actually processed
     {
         let validators_len = state.validators().len() as u64;
         if validators_len > 0 {
             let next_validator_index = state
                 .next_withdrawal_validator_index()?
-                .safe_add(spec.max_validators_per_withdrawals_sweep)?
+                .safe_add(validators_processed)?
                 .safe_rem(validators_len)?;
             *state.next_withdrawal_validator_index_mut()? = next_validator_index;
         }
