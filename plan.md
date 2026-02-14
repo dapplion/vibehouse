@@ -162,13 +162,14 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Equivocation detection strategy documented (deferred to Phase 4 P2P implementation)
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition) - blocked on Rust toolchain
 
-#### Step 4: P2P Networking ⚡ IN PROGRESS (4/7 done + 2 planned - 2026-02-14 16:42)
+#### Step 4: P2P Networking ⚡ IN PROGRESS (6/7 done - 2026-02-14 17:30)
 - [x] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] Gossip validation infrastructure (error types, verified wrappers, signature sets)
 - [x] Add equivocation detection caches (ObservedExecutionBids, ObservedPayloadAttestations)
 - [x] Complete gossip validation wiring (builder registry, signature verification) - **PR #18**
-- [ ] Beacon processor integration - wire up handlers (gossip_methods.rs) - **PLANNED** (docs/workstreams/gloas-beacon-processor-integration.md, 6h est.)
-- [ ] Update peer scoring for new topics - **PLANNED** (docs/workstreams/gloas-peer-scoring.md, 2h est.)
+- [x] Pubsub message encoding/decoding (commit b0fafabd6)
+- [x] Beacon processor integration - wire up handlers (gossip_methods.rs) - **commit 93f981836**
+- [ ] Update peer scoring for new topics (design in docs/workstreams/gloas-peer-scoring.md)
 - [ ] Tests (gossip validation + integration)
 
 #### Step 5: Beacon Chain Integration
@@ -485,12 +486,12 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 16:42 GMT+1
+## Current Status - 2026-02-14 17:30 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented
 **Phase 2 Complete ✅**: All state transition functions implemented
 **Phase 3 Complete ✅**: Fork choice handlers (5/8 core items, deferred 2, compilation verified)
-**Phase 4 In Progress ⚡**: P2P Networking (4/7 complete + 2 planned - ready for 8h implementation when toolchain available)
+**Phase 4 In Progress ⚡**: P2P Networking (6/7 complete - beacon processor handlers done, peer scoring + tests remain)
 
 ### Implementation Status
 - ✅ All gloas types: BeaconState, BeaconBlockBody, 14 ePBS types
@@ -537,20 +538,23 @@ Maintain a watchlist of upstream PRs that we care about:
 - Integrated both into BeaconChain struct
 - Wired into gossip validation functions
 
-**Remaining Phase 4 Work**:
-1. ✅ ~~Create observed caches~~ (DONE)
-2. Complete validation wiring:
-   - Builder registry access (state.builders())
-   - Builder balance checks
-   - Signature verification wiring (verify_signature_sets calls)
-3. Beacon processor integration (gossip_methods.rs handlers)
-4. Peer scoring configuration
-5. Tests (gossip validation integration tests)
-
 **Gossip Validation Wiring** ✅ (PR #18):
 - Builder registry access and validation
 - Parent root validation
 - BLS signature verification (both domains)
+
+**Beacon Processor Integration** ✅ (commit 93f981836):
+- Added `process_gossip_execution_bid()` handler in gossip_methods.rs
+- Added `process_gossip_payload_attestation()` handler
+- Created `apply_execution_bid_to_fork_choice()` on BeaconChain
+- Created `apply_payload_attestation_to_fork_choice()` on BeaconChain
+- Added 6 Prometheus metrics (verified/imported/equivocating counters)
+- Compilation verified: `cargo check -p network` passes
+
+**Remaining Phase 4 Work**:
+1. Peer scoring configuration (design ready in docs/workstreams/gloas-peer-scoring.md)
+2. Router wiring (connect gossip topics to handlers)
+3. Tests (gossip validation + integration tests)
 - PTC committee calculation + membership checks
 - Full equivocation detection
 - Compilation verified (blocked by bitvec toolchain issue)
