@@ -18,7 +18,7 @@ use lighthouse_network::rpc::methods::{
 };
 use lighthouse_network::service::api_types::CustodyBackfillBatchId;
 use lighthouse_network::{
-    Client, MessageId, NetworkGlobals, PeerId, PubsubMessage,
+    Client, MessageAcceptance, MessageId, NetworkGlobals, PeerId, PubsubMessage,
     rpc::{BlocksByRangeRequest, BlocksByRootRequest, LightClientBootstrapRequest, StatusMessage},
 };
 use rand::prelude::SliceRandom;
@@ -296,6 +296,61 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.try_send(BeaconWorkEvent {
             drop_during_sync: true,
             work: Work::GossipSyncContribution(Box::new(process_fn)),
+        })
+    }
+
+    /// Create a new `Work` event for a gloas execution bid (ePBS).
+    pub fn send_gossip_execution_bid(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        bid: Box<types::SignedExecutionPayloadBid<T::EthSpec>>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = move || processor.process_gossip_execution_bid(message_id, peer_id, *bid);
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: true,
+            work: Work::GossipExecutionBid(Box::new(process_fn)),
+        })
+    }
+
+    /// Create a new `Work` event for a gloas payload attestation (ePBS).
+    pub fn send_gossip_payload_attestation(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        attestation: Box<types::PayloadAttestation<T::EthSpec>>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn =
+            move || processor.process_gossip_payload_attestation(message_id, peer_id, *attestation);
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: true,
+            work: Work::GossipPayloadAttestation(Box::new(process_fn)),
+        })
+    }
+
+    /// Create a new `Work` event for a gloas execution payload reveal (ePBS).
+    ///
+    /// NOTE: reveal processing is not yet implemented. For now we drop during sync and ignore.
+    pub fn send_gossip_execution_payload(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        payload: Box<types::SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = move || {
+            // TODO(gloas): implement execution payload reveal validation + import.
+            processor.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            drop(payload);
+        };
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: true,
+            work: Work::GossipExecutionPayload(Box::new(process_fn)),
         })
     }
 
