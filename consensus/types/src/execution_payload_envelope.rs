@@ -1,8 +1,7 @@
 use crate::{
-    EthSpec, ExecutionPayload, ExecutionPayloadGloas, ExecutionRequests, ForkName, Hash256, Slot,
+    EthSpec, ExecutionPayloadGloas, ExecutionRequests, Hash256, Slot,
     test_utils::TestRandom,
 };
-use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -48,9 +47,9 @@ impl<E: EthSpec> ExecutionPayloadEnvelope<E> {
             payload: ExecutionPayloadGloas::default(),
             execution_requests: ExecutionRequests::default(),
             builder_index: 0,
-            beacon_block_root: Hash256::zero(),
+            beacon_block_root: Hash256::ZERO,
             slot: Slot::new(0),
-            state_root: Hash256::zero(),
+            state_root: Hash256::ZERO,
         }
     }
 }
@@ -86,7 +85,7 @@ mod tests {
         let envelope = ExecutionPayloadEnvelope::<MainnetEthSpec>::empty();
         assert_eq!(envelope.builder_index, 0);
         assert_eq!(envelope.slot, Slot::new(0));
-        assert_eq!(envelope.beacon_block_root, Hash256::zero());
-        assert_eq!(envelope.state_root, Hash256::zero());
+        assert_eq!(envelope.beacon_block_root, Hash256::ZERO);
+        assert_eq!(envelope.state_root, Hash256::ZERO);
     }
 }
