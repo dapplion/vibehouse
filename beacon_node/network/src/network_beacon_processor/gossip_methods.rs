@@ -3202,4 +3202,151 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             write_file(error_path, error.to_string().as_bytes());
         }
     }
+
+    /// Process a gossip execution bid from a builder (gloas ePBS).
+    pub fn process_gossip_execution_bid(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        bid: types::SignedExecutionPayloadBid<T::EthSpec>,
+    ) {
+        use beacon_chain::gloas_verification::ExecutionBidError;
+
+        let builder_index = bid.message.builder_index;
+
+        let verified_bid = match self.chain.verify_execution_bid_for_gossip(bid) {
+            Ok(verified) => verified,
+            Err(ExecutionBidError::DuplicateBid { .. }) => {
+                debug!(
+                    builder_index,
+                    peer = %peer_id,
+                    "Dropping execution bid for already known builder bid"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            Err(ExecutionBidError::BuilderEquivocation { .. }) => {
+                warn!(
+                    builder_index,
+                    %peer_id,
+                    "Builder bid equivocation detected"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_equivocation",
+                );
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_EQUIVOCATING_TOTAL);
+                return;
+            }
+            Err(e) => {
+                debug!(
+                    builder_index,
+                    %peer_id,
+                    error = ?e,
+                    "Dropping invalid execution bid"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::HighToleranceError,
+                    "invalid_gossip_execution_bid",
+                );
+                return;
+            }
+        };
+
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_VERIFIED_TOTAL);
+
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // Import to fork choice (TODO: implement apply_execution_bid_to_fork_choice)
+        if let Err(e) = self.chain.apply_execution_bid_to_fork_choice(&verified_bid) {
+            warn!(
+                builder_index,
+                error = ?e,
+                "Failed to import execution bid to fork choice"
+            );
+        } else {
+            debug!(builder_index, "Successfully imported execution bid");
+            metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL);
+        }
+    }
+
+    /// Process a gossip payload attestation from PTC members (gloas ePBS).
+    pub fn process_gossip_payload_attestation(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        attestation: types::PayloadAttestation<T::EthSpec>,
+    ) {
+        use beacon_chain::gloas_verification::PayloadAttestationError;
+
+        let slot = attestation.data.slot;
+        let beacon_block_root = attestation.data.beacon_block_root;
+
+        let verified_attestation = match self.chain.verify_payload_attestation_for_gossip(attestation) {
+            Ok(verified) => verified,
+            Err(PayloadAttestationError::DuplicateAttestation { .. }) => {
+                debug!(
+                    %slot,
+                    ?beacon_block_root,
+                    peer = %peer_id,
+                    "Dropping already known payload attestation"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            Err(PayloadAttestationError::ValidatorEquivocation { .. }) => {
+                warn!(
+                    %slot,
+                    ?beacon_block_root,
+                    %peer_id,
+                    "Payload attestation equivocation detected"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "payload_attestation_equivocation",
+                );
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL);
+                return;
+            }
+            Err(e) => {
+                debug!(
+                    %slot,
+                    ?beacon_block_root,
+                    %peer_id,
+                    error = ?e,
+                    "Dropping invalid payload attestation"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::HighToleranceError,
+                    "invalid_gossip_payload_attestation",
+                );
+                return;
+            }
+        };
+
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_VERIFIED_TOTAL);
+
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // Import to fork choice (TODO: implement apply_payload_attestation_to_fork_choice)
+        if let Err(e) = self.chain.apply_payload_attestation_to_fork_choice(&verified_attestation) {
+            warn!(
+                %slot,
+                ?beacon_block_root,
+                error = ?e,
+                "Failed to import payload attestation to fork choice"
+            );
+        } else {
+            debug!(%slot, ?beacon_block_root, "Successfully imported payload attestation");
+            metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL);
+        }
+    }
 }

@@ -2256,6 +2256,45 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
+    /// Applies a verified execution bid to fork choice (gloas ePBS).
+    pub fn apply_execution_bid_to_fork_choice(
+        &self,
+        verified_bid: &crate::gloas_verification::VerifiedExecutionBid<T>,
+    ) -> Result<(), Error> {
+        let bid = verified_bid.bid();
+        let beacon_block_root = bid.message.parent_block_root;
+        
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_execution_bid(bid, beacon_block_root)
+            .map_err(Into::into)
+    }
+
+    /// Applies a verified payload attestation to fork choice (gloas ePBS).
+    pub fn apply_payload_attestation_to_fork_choice(
+        &self,
+        verified_attestation: &crate::gloas_verification::VerifiedPayloadAttestation<T>,
+    ) -> Result<(), Error> {
+        use types::IndexedPayloadAttestation;
+        
+        // Convert to IndexedPayloadAttestation
+        let indexed = IndexedPayloadAttestation {
+            attesting_indices: verified_attestation.attesting_indices().to_vec().into(),
+            data: verified_attestation.attestation().data.clone(),
+            signature: verified_attestation.attestation().signature.clone(),
+        };
+        
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_payload_attestation(
+                verified_attestation.attestation(),
+                &indexed,
+                self.slot()?,
+                &self.spec,
+            )
+            .map_err(Into::into)
+    }
+
     /// Accepts an `VerifiedUnaggregatedAttestation` and attempts to apply it to the "naive
     /// aggregation pool".
     ///
