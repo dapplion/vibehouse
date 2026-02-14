@@ -17,7 +17,7 @@ use crate::block_verification::{
     signature_verify_chain_segment, verify_header_signature,
 };
 use crate::block_verification_types::{
-    AsBlock, AvailableExecutedBlock, BlockImportData, ExecutedBlock, RpcBlock,
+    AsBlock, AvailableExecutedBlock, BlockImportData, ExecutedBlock, PayloadState, RpcBlock,
 };
 pub use crate::canonical_head::CanonicalHead;
 use crate::chain_config::ChainConfig;
@@ -3743,6 +3743,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state,
             parent_block,
             consensus_context,
+            payload_state,
         } = import_data;
 
         // Record the time at which this block's blobs became available.
@@ -3771,6 +3772,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         payload_verification_outcome.payload_verification_status,
                         parent_block,
                         consensus_context,
+                        payload_state,
                     )
                 },
                 "payload_verification_handle",
@@ -3796,6 +3798,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         payload_verification_status: PayloadVerificationStatus,
         parent_block: SignedBlindedBeaconBlock<T::EthSpec>,
         mut consensus_context: ConsensusContext<T::EthSpec>,
+        payload_state: PayloadState<T::EthSpec>,
     ) -> Result<Hash256, BlockError> {
         // ----------------------------- BLOCK NOT YET ATTESTABLE ----------------------------------
         // Everything in this initial section is on the hot path between processing the block and
@@ -3882,6 +3885,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     block_delay,
                     &state,
                     payload_verification_status,
+                    &payload_state,
                     &self.spec,
                 )
                 .map_err(|e| BlockError::BeaconChainError(Box::new(e.into())))?;

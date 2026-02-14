@@ -186,6 +186,9 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
         // This scenario is so rare that it seems OK to double-verify some blocks.
         let payload_verification_status = PayloadVerificationStatus::Optimistic;
 
+        // For fork revert, assume all blocks have included payloads (pre-gloas or completed)
+        let payload_state = types::PayloadState::Included;
+
         fork_choice
             .on_block(
                 block.slot(),
@@ -195,6 +198,7 @@ pub fn reset_fork_choice_to_finalization<E: EthSpec, Hot: ItemStore<E>, Cold: It
                 Duration::from_secs(0),
                 &state,
                 payload_verification_status,
+                &payload_state,
                 spec,
             )
             .map_err(|e| format!("Error applying replayed block to fork choice: {:?}", e))?;

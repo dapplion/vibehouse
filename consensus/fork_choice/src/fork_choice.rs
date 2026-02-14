@@ -735,6 +735,7 @@ where
         block_delay: Duration,
         state: &BeaconState<E>,
         payload_verification_status: PayloadVerificationStatus,
+        payload_state: &types::PayloadState<E>,
         spec: &ChainSpec,
     ) -> Result<(), Error<T::Error>> {
         let _timer = metrics::start_timer(&metrics::FORK_CHOICE_ON_BLOCK_TIMES);
@@ -951,6 +952,14 @@ where
             ExecutionStatus::irrelevant()
         };
 
+        // Determine builder_index and payload_revealed from payload_state (gloas ePBS)
+        let (builder_index, payload_revealed) = match payload_state {
+            types::PayloadState::Included => (None, false),
+            types::PayloadState::Pending { bid } => (Some(bid.message.builder_index), false),
+            types::PayloadState::Revealed { bid, .. } => (Some(bid.message.builder_index), true),
+            types::PayloadState::SelfBuild { .. } => (Some(types::BUILDER_INDEX_SELF_BUILD), true),
+        };
+
         // This does not apply a vote to the block, it just makes fork choice aware of the block so
         // it can still be identified as the head even if it doesn't have any votes.
         self.proto_array.process_block::<E>(
@@ -977,8 +986,8 @@ where
                 execution_status,
                 unrealized_justified_checkpoint: Some(unrealized_justified_checkpoint),
                 unrealized_finalized_checkpoint: Some(unrealized_finalized_checkpoint),
-                builder_index: None,
-                payload_revealed: false,
+                builder_index,
+                payload_revealed,
                 ptc_weight: 0,
             },
             current_slot,
