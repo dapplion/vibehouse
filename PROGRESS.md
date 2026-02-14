@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-02-14 - gloas spec research session 1
+
+### what happened
+- Read full gloas beacon-chain.md spec from consensus-specs repo
+- Created `docs/workstreams/gloas-implementation.md` with detailed learnings
+- Documented key ePBS concepts: builder registry, two-phase blocks, PTC, builder payments
+- Set up hourly cron job to spawn vibehouse work agent
+- Identified blockers: no Rust toolchain on host (can't compile/test yet)
+
+### key learnings
+- **Builder registry**: builders are separate from validators, use 0x03 withdrawal prefix
+- **Two-phase blocks**: proposer commits to bid (phase 1), builder reveals payload (phase 2)
+- **PTC (Payload Timeliness Committee)**: 512 validators attest to payload delivery
+- **Builder payments**: quorum-based (60% stake), paid at epoch boundary if quorum met
+- **State transition reordering**: withdrawals now before bid processing
+- **Fork choice**: operates on beacon blocks; payload tracked separately via PTC attestations
+- **Data availability**: DataColumnSidecar drops signed_block_header and inclusion_proof fields
+
+### decisions made
+- Document-first approach: write detailed workstream docs as I learn
+- Use spec as ground truth, reference upstream PRs but verify against spec
+- Track blockers explicitly (Rust toolchain missing on this host)
+- Focus on research and documentation work until build environment ready
+
+### next steps
+- Continue reading other gloas specs (fork-choice, p2p, validator)
+- Research spec test runner structure in lighthouse codebase
+- Plan type hierarchy for gloas containers
+- Check if build can happen in CI or different environment
+
+---
+
 ## 2026-02-13 - project initialization
 
 ### what happened
