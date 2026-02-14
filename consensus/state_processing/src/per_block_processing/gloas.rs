@@ -474,24 +474,19 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     let mut withdrawals = Vec::<Withdrawal>::new();
 
     // 1. Builder pending withdrawals (limit: MAX_WITHDRAWALS_PER_PAYLOAD - 1)
+    // Spec: get_builder_withdrawals(state, withdrawal_index, withdrawals)
+    // Note: The spec does NOT validate builder_index here. Invalid indices are
+    // caught later in apply_withdrawals when accessing state.builders[builder_index].
     let mut processed_builder_withdrawals_count: usize = 0;
     {
         let state_gloas = state.as_gloas().map_err(|e| {
             BlockProcessingError::BeaconStateError(e)
         })?;
-        let builders_count = state_gloas.builders.len() as u64;
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawals.len() >= reserved_limit {
                 break;
             }
             let builder_index = withdrawal.builder_index;
-            // Spec: state.builders[builder_index] — panics if OOB
-            if builder_index >= builders_count {
-                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
-                    builder_index,
-                    builders_count,
-                });
-            }
             withdrawals.push(Withdrawal {
                 index: withdrawal_index,
                 validator_index: builder_index | BUILDER_INDEX_FLAG,
@@ -557,6 +552,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // 3. Builder sweep (exiting builders with balance, limit: MAX_WITHDRAWALS - 1)
+    // Spec: get_builders_sweep_withdrawals(state, withdrawal_index, withdrawals)
     let mut processed_builders_sweep_count: usize = 0;
     {
         let state_gloas = state.as_gloas().map_err(|e| {
@@ -569,28 +565,29 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 spec.max_builders_per_withdrawals_sweep as usize,
             );
             let mut builder_index = state_gloas.next_withdrawal_builder_index;
-            // Spec: state.builders[builder_index] — panics if OOB
-            if builder_index >= builders_count as u64 {
-                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
-                    builder_index,
-                    builders_count: builders_count as u64,
-                });
-            }
             for _ in 0..builders_limit {
                 if withdrawals.len() >= reserved_limit {
                     break;
                 }
 
-                if let Some(builder) = state_gloas.builders.get(builder_index as usize) {
-                    if builder.withdrawable_epoch <= epoch && builder.balance > 0 {
-                        withdrawals.push(Withdrawal {
-                            index: withdrawal_index,
-                            validator_index: builder_index | BUILDER_INDEX_FLAG,
-                            address: builder.execution_address,
-                            amount: builder.balance,
-                        });
-                        withdrawal_index.safe_add_assign(1)?;
-                    }
+                // Spec accesses state.builders[builder_index] directly.
+                // With wrapping modular arithmetic, this should always be in-bounds.
+                let bi = (builder_index % builders_count as u64) as usize;
+                let builder = state_gloas
+                    .builders
+                    .get(bi)
+                    .ok_or(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                        builder_index,
+                        builders_count: builders_count as u64,
+                    })?;
+                if builder.withdrawable_epoch <= epoch && builder.balance > 0 {
+                    withdrawals.push(Withdrawal {
+                        index: withdrawal_index,
+                        validator_index: builder_index | BUILDER_INDEX_FLAG,
+                        address: builder.execution_address,
+                        amount: builder.balance,
+                    });
+                    withdrawal_index.safe_add_assign(1)?;
                 }
 
                 builder_index = (builder_index + 1) % builders_count as u64;
@@ -649,6 +646,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // Apply withdrawals: decrease balances
+    // Spec: apply_withdrawals(state, withdrawals)
     for withdrawal in &withdrawals {
         if (withdrawal.validator_index & BUILDER_INDEX_FLAG) != 0 {
             // Builder withdrawal
@@ -656,11 +654,17 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             let state_gloas = state.as_gloas_mut().map_err(|e| {
                 BlockProcessingError::BeaconStateError(e)
             })?;
-            if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
-                builder.balance = builder
-                    .balance
-                    .saturating_sub(std::cmp::min(withdrawal.amount, builder.balance));
-            }
+            let builders_count = state_gloas.builders.len() as u64;
+            let builder = state_gloas
+                .builders
+                .get_mut(builder_index)
+                .ok_or(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: builder_index as u64,
+                    builders_count,
+                })?;
+            builder.balance = builder
+                .balance
+                .saturating_sub(std::cmp::min(withdrawal.amount, builder.balance));
         } else {
             // Validator withdrawal
             decrease_balance(state, withdrawal.validator_index as usize, withdrawal.amount)?;
