@@ -4,6 +4,48 @@
 
 ---
 
+## 2026-02-14 07:10 - Phase 3 started: Fork Choice research 🔍
+
+### Research complete
+
+**Gloas spec analysis** ✅
+- Read gloas beacon-chain.md spec (50KB, comprehensive)
+- Key finding: Fork choice logic appears integrated into beacon-chain.md (no separate fork-choice.md file exists)
+- Two-phase block processing identified:
+  - Beacon block contains `SignedExecutionPayloadBid` (not full payload)
+  - Execution payload comes separately in `SignedExecutionPayloadEnvelope`
+  - State transition split: `state_transition(state, signed_block)` then `process_execution_payload(state, signed_envelope)`
+
+**State tracking mechanisms** ✅
+- `state.latest_execution_payload_bid` - bid accepted in current block
+- `state.execution_payload_availability` - bitvector for revealed payloads
+- `state.builder_pending_payments` - payments awaiting PTC quorum
+- `state.latest_block_hash` - tracks revealed payload hashes
+
+**Message types** ✅
+- `PayloadAttestation` - PTC attestations (512 validators) with `payload_present` + `blob_data_available`
+- `ExecutionPayloadBid` - builder bid with `block_hash`, `value`, `blob_kzg_commitments`
+- `ExecutionPayloadEnvelope` - actual payload reveal
+- `BuilderPendingPayment` - tracks pending payments with weight threshold
+
+### Workstream documentation
+
+Created `docs/workstreams/gloas-fork-choice.md` with:
+- Implementation plan (6 tasks)
+- Open questions
+- Reference links
+- Current findings
+
+### Commits
+- `51a3d13d9` - start gloas fork choice implementation, research phase complete
+
+### Next: Fork choice handler design
+
+Need to design handlers for:
+1. `on_execution_bid()` - process builder bids
+2. `on_payload_attestation()` - process PTC attestations
+3. Modify `on_block()` - handle blocks with bids instead of payloads
+
 ## 2026-02-14 06:20 - Gloas operations wired into block processing 🔌
 
 ### Integration complete
