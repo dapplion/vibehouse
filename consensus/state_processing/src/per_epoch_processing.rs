@@ -22,6 +22,7 @@ pub mod historical_roots_update;
 pub mod justification_and_finalization_state;
 pub mod registry_updates;
 pub mod resets;
+pub mod gloas;
 pub mod single_pass;
 pub mod slashings;
 pub mod tests;

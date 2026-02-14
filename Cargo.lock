@@ -8982,6 +8982,7 @@ dependencies = [
  "safe_arith",
  "smallvec",
  "ssz_types",
+ "swap_or_not_shuffle",
  "test_random_derive",
  "tokio",
  "tracing",

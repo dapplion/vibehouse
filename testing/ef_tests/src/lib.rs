@@ -1,7 +1,8 @@
 pub use case_result::CaseResult;
 pub use cases::WithdrawalsPayload;
 pub use cases::{
-    Case, EffectiveBalanceUpdates, Eth1DataReset, FeatureName, HistoricalRootsUpdate,
+    BuilderPendingPayments, Case, EffectiveBalanceUpdates, Eth1DataReset,
+    ExecutionPayloadBidWithBlock, FeatureName, HistoricalRootsUpdate,
     HistoricalSummariesUpdate, InactivityUpdates, JustificationAndFinalization,
     ParticipationFlagUpdates, ParticipationRecordUpdates, PendingBalanceDeposits,
     PendingConsolidations, ProposerLookahead, RandaoMixesReset, RegistryUpdates,

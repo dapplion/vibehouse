@@ -1,13 +1,12 @@
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
-use std::borrow::Cow;
 use swap_or_not_shuffle::compute_shuffled_index;
 use tree_hash::TreeHash;
-use types::consts::gloas::{PTC_SIZE, BUILDER_INDEX_SELF_BUILD};
+use types::consts::gloas::PTC_SIZE;
 use types::{
-    AggregateSignature, BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec,
-    Domain, EthSpec, IndexedPayloadAttestation, PayloadAttestation, PayloadAttestationData,
-    PublicKey, SignedExecutionPayloadBid, SigningData, Slot, Unsigned,
+    BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec, Domain, EthSpec,
+    Hash256, IndexedPayloadAttestation, PayloadAttestation, PublicKey,
+    SignedExecutionPayloadBid, SigningData, Slot, Unsigned,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -15,54 +14,38 @@ use types::{
 /// This validates the builder's bid and updates the state with the chosen bid.
 /// The proposer may choose the highest valid bid or self-build (value = 0).
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#modified-process_block
+/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_execution_payload_bid
 pub fn process_execution_payload_bid<E: EthSpec>(
     state: &mut BeaconState<E>,
     signed_bid: &SignedExecutionPayloadBid<E>,
+    block_slot: Slot,
+    block_parent_root: Hash256,
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
     let bid = &signed_bid.message;
+    let builder_index = bid.builder_index;
+    let amount = bid.value;
 
-    // Verify slot matches current slot
-    if bid.slot != state.slot() {
-        return Err(BlockProcessingError::PayloadBidInvalid {
-            reason: format!(
-                "bid slot {} does not match state slot {}",
-                bid.slot,
-                state.slot()
-            ),
-        });
-    }
-
-    // Verify parent block root matches
-    if bid.parent_block_root != state.latest_block_header().parent_root {
-        return Err(BlockProcessingError::PayloadBidInvalid {
-            reason: "bid parent_block_root does not match state".into(),
-        });
-    }
-
-    // Handle self-build case (builder_index == BUILDER_INDEX_SELF_BUILD)
-    if bid.builder_index == spec.builder_index_self_build {
-        // For self-builds:
-        // - value must be 0
-        // - signature must be infinity (empty)
-        if bid.value != 0 {
+    // Self-build validation
+    if builder_index == spec.builder_index_self_build {
+        if amount != 0 {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: "self-build bid must have value = 0".into(),
             });
         }
-        if !signed_bid.signature.is_empty() {
+        if !signed_bid.signature.is_infinity() {
             return Err(BlockProcessingError::PayloadBidInvalid {
-                reason: "self-build bid must have empty signature".into(),
+                reason: "self-build bid signature must be G2_POINT_AT_INFINITY".into(),
             });
         }
     } else {
-        // External builder bid
-        let builder_index = bid.builder_index as usize;
+        // Extract values needed for validation before taking mutable borrow
+        let finalized_epoch = state.finalized_checkpoint().epoch;
+        let fork = state.fork();
+        let genesis_validators_root = state.genesis_validators_root();
 
-        // Verify builder exists and is active
-        let state_gloas = state.as_gloas_mut().map_err(|_| {
+        let state_gloas = state.as_gloas().map_err(|_| {
             BlockProcessingError::PayloadBidInvalid {
                 reason: "state is not Gloas".into(),
             }
@@ -70,36 +53,48 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
         let builder = state_gloas
             .builders
-            .get(builder_index)
+            .get(builder_index as usize)
             .ok_or_else(|| BlockProcessingError::PayloadBidInvalid {
                 reason: format!("builder index {} does not exist", builder_index),
             })?;
 
-        // Check builder is active (registered before finalized_epoch and not withdrawn)
-        if !builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, spec) {
+        // Verify that the builder is active
+        if !builder.is_active_at_finalized_epoch(finalized_epoch, spec) {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: format!("builder {} is not active", builder_index),
             });
         }
 
-        // Check builder has sufficient balance for the bid
-        if builder.balance < bid.value {
+        // Verify that the builder has funds to cover the bid (can_builder_cover_bid)
+        // Calculate total pending payments for this builder
+        let mut total_pending = 0u64;
+        for payment in state_gloas.builder_pending_payments.iter() {
+            if payment.withdrawal.builder_index == builder_index {
+                total_pending = total_pending.saturating_add(payment.withdrawal.amount);
+            }
+        }
+        // Also account for pending withdrawals
+        for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
+            if withdrawal.builder_index == builder_index {
+                total_pending = total_pending.saturating_add(withdrawal.amount);
+            }
+        }
+        if builder.balance < amount.saturating_add(total_pending) {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
-                    "builder balance {} insufficient for bid value {}",
-                    builder.balance, bid.value
+                    "builder balance {} insufficient for bid value {} + pending {}",
+                    builder.balance, amount, total_pending
                 ),
             });
         }
 
         // Verify signature if requested
         if verify_signatures.is_true() {
-            // Verify builder bid signature
             let domain = spec.get_domain(
                 bid.slot.epoch(E::slots_per_epoch()),
                 Domain::BeaconBuilder,
-                &state.fork(),
-                state.genesis_validators_root(),
+                &fork,
+                genesis_validators_root,
             );
 
             let signing_root = SigningData {
@@ -123,31 +118,93 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         }
     }
 
-    // Update state with the chosen bid
+    // Verify commitments are under limit
+    let max_blobs = spec.max_blobs_per_block(state.current_epoch());
+    if bid.blob_kzg_commitments.len() > max_blobs as usize {
+        return Err(BlockProcessingError::PayloadBidInvalid {
+            reason: format!(
+                "blob_kzg_commitments length {} exceeds max {}",
+                bid.blob_kzg_commitments.len(),
+                max_blobs
+            ),
+        });
+    }
+
+    // Verify that the bid is for the current slot
+    if bid.slot != block_slot {
+        return Err(BlockProcessingError::PayloadBidInvalid {
+            reason: format!(
+                "bid slot {} does not match block slot {}",
+                bid.slot, block_slot
+            ),
+        });
+    }
+
+    // Verify that the bid is for the right parent block
+    if bid.parent_block_hash != state.as_gloas().map_err(|_| {
+        BlockProcessingError::PayloadBidInvalid {
+            reason: "state is not Gloas".into(),
+        }
+    })?.latest_block_hash {
+        return Err(BlockProcessingError::PayloadBidInvalid {
+            reason: "bid parent_block_hash does not match state latest_block_hash".into(),
+        });
+    }
+
+    if bid.parent_block_root != block_parent_root {
+        return Err(BlockProcessingError::PayloadBidInvalid {
+            reason: "bid parent_block_root does not match block parent_root".into(),
+        });
+    }
+
+    // Verify prev_randao
+    let current_epoch = state.current_epoch();
+    let randao_mix = *state.get_randao_mix(current_epoch).map_err(|_| {
+        BlockProcessingError::PayloadBidInvalid {
+            reason: "failed to get randao mix".into(),
+        }
+    })?;
+    if bid.prev_randao != randao_mix {
+        return Err(BlockProcessingError::PayloadBidInvalid {
+            reason: "bid prev_randao does not match state randao mix".into(),
+        });
+    }
+
+    // Record the pending payment if there is some payment
+    if amount > 0 {
+        let slots_per_epoch = E::slots_per_epoch();
+        let slot_index = (slots_per_epoch + bid.slot.as_u64() % slots_per_epoch) as usize;
+
+        let pending_payment = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: bid.fee_recipient,
+                amount,
+                builder_index,
+            },
+        };
+
+        let state_gloas = state.as_gloas_mut().map_err(|_| {
+            BlockProcessingError::PayloadBidInvalid {
+                reason: "state is not Gloas".into(),
+            }
+        })?;
+
+        *state_gloas
+            .builder_pending_payments
+            .get_mut(slot_index)
+            .ok_or(BlockProcessingError::PayloadBidInvalid {
+                reason: format!("slot index {} out of bounds for builder_pending_payments", slot_index),
+            })? = pending_payment;
+    }
+
+    // Cache the signed execution payload bid
     let state_gloas = state.as_gloas_mut().map_err(|_| {
         BlockProcessingError::PayloadBidInvalid {
             reason: "state is not Gloas".into(),
         }
     })?;
     state_gloas.latest_execution_payload_bid = bid.clone();
-
-    // If this is an external builder bid, set up pending payment
-    if bid.builder_index != spec.builder_index_self_build {
-        let slot_index = (bid.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
-        
-        // Record the pending payment with zero initial weight
-        // Weight will be accumulated as PTC members attest
-        let pending_payment = BuilderPendingPayment {
-            weight: 0,
-            withdrawal: BuilderPendingWithdrawal {
-                fee_recipient: bid.fee_recipient,
-                amount: bid.value,
-                        builder_index: bid.builder_index,
-            },
-        };
-        
-        *state_gloas.builder_pending_payments.get_mut(slot_index).ok_or(BlockProcessingError::InvalidSlot(slot_index as u64))? = pending_payment;
-    }
 
     Ok(())
 }
@@ -363,11 +420,12 @@ fn get_ptc_committee<E: EthSpec>(
     // TODO: The spec may define a specific domain for PTC. For now, use a slot-based seed.
     let seed = state.get_beacon_proposer_seed(slot, spec)?;
 
-    let mut ptc_committee = Vec::with_capacity(PTC_SIZE);
-        let mut i = 0;
+    let ptc_size = PTC_SIZE as usize;
+    let mut ptc_committee = Vec::with_capacity(ptc_size);
+    let mut i = 0;
 
     // Select PTC_SIZE validators using shuffled indices
-    while ptc_committee.len() < PTC_SIZE && i < active_validator_count * 10 {
+    while ptc_committee.len() < ptc_size && i < active_validator_count * 10 {
         let shuffled_index = compute_shuffled_index(
             i % active_validator_count,
             active_validator_count,
@@ -385,12 +443,12 @@ fn get_ptc_committee<E: EthSpec>(
             ))?;
 
         // Add to committee (no duplicates check since shuffled_index is unique)
-        ptc_committee.push(candidate_index);
+        ptc_committee.push(candidate_index as u64);
 
         i += 1;
     }
 
-    if ptc_committee.len() < PTC_SIZE {
+    if ptc_committee.len() < ptc_size {
         // Not enough validators to form a full PTC (edge case for testnets)
         return Err(BlockProcessingError::PayloadAttestationInvalid(
             PayloadAttestationInvalid::InsufficientValidators,

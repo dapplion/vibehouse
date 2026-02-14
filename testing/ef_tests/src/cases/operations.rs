@@ -14,6 +14,7 @@ use state_processing::{
     per_block_processing::{
         VerifyBlockRoot, VerifySignatures,
         errors::BlockProcessingError,
+        gloas::{process_execution_payload_bid, process_payload_attestation},
         process_block_header, process_execution_payload,
         process_operations::{
             altair_deneb, base, process_attester_slashings, process_bls_to_execution_changes,
@@ -27,8 +28,9 @@ use types::{
     Attestation, AttesterSlashing, BeaconBlock, BeaconBlockBody, BeaconBlockBodyBellatrix,
     BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra, BeaconBlockBodyFulu,
     BeaconState, BlindedPayload, ConsolidationRequest, Deposit, DepositRequest, ExecutionPayload,
-    ForkVersionDecode, FullPayload, ProposerSlashing, SignedBlsToExecutionChange,
-    SignedVoluntaryExit, SyncAggregate, WithdrawalRequest,
+    ForkVersionDecode, FullPayload, Hash256, PayloadAttestation, ProposerSlashing,
+    SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedVoluntaryExit, Slot,
+    SyncAggregate, WithdrawalRequest,
 };
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -615,13 +617,40 @@ impl<E: EthSpec, O: Operation<E>> Case for Operations<E, O> {
     }
 }
 
-impl<E: EthSpec> Operation<E> for SignedExecutionPayloadBid<E> {
+/// Wrapper for execution payload bid tests that carries block context needed by the spec.
+/// The spec's `process_execution_payload_bid(state, block)` takes the full block, so we
+/// need `block.slot` and `block.parent_root` alongside the extracted bid.
+#[derive(Debug, Clone)]
+pub struct ExecutionPayloadBidWithBlock<E: EthSpec> {
+    pub signed_bid: SignedExecutionPayloadBid<E>,
+    pub block_slot: Slot,
+    pub block_parent_root: Hash256,
+}
+
+impl<E: EthSpec> Operation<E> for ExecutionPayloadBidWithBlock<E> {
     fn handler_name() -> String {
         "execution_payload_bid".into()
     }
 
+    fn filename() -> String {
+        "block.ssz_snappy".into()
+    }
+
     fn decode(path: &Path, _fork_name: ForkName, spec: &ChainSpec) -> Result<Self, Error> {
-        ssz_decode_file_with(path, |bytes| Self::from_ssz_bytes(bytes, spec))
+        let block: BeaconBlock<E> =
+            ssz_decode_file_with(path, |bytes| BeaconBlock::from_ssz_bytes(bytes, spec))?;
+        let signed_bid = block
+            .body()
+            .signed_execution_payload_bid()
+            .map_err(|e| {
+                Error::FailedToParseTest(format!("No signed_execution_payload_bid: {e:?}"))
+            })?
+            .clone();
+        Ok(ExecutionPayloadBidWithBlock {
+            signed_bid,
+            block_slot: block.slot(),
+            block_parent_root: block.parent_root(),
+        })
     }
 
     fn is_enabled_for_fork(fork_name: ForkName) -> bool {
@@ -634,7 +663,14 @@ impl<E: EthSpec> Operation<E> for SignedExecutionPayloadBid<E> {
         spec: &ChainSpec,
         _: &Operations<E, Self>,
     ) -> Result<(), BlockProcessingError> {
-        process_execution_payload_bid(state, self, spec)
+        process_execution_payload_bid(
+            state,
+            &self.signed_bid,
+            self.block_slot,
+            self.block_parent_root,
+            VerifySignatures::True,
+            spec,
+        )
     }
 }
 
@@ -657,6 +693,6 @@ impl<E: EthSpec> Operation<E> for PayloadAttestation<E> {
         spec: &ChainSpec,
         _: &Operations<E, Self>,
     ) -> Result<(), BlockProcessingError> {
-        process_payload_attestation(state, self, spec)
+        process_payload_attestation(state, self, VerifySignatures::True, spec)
     }
 }

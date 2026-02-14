@@ -51,8 +51,20 @@ pub fn process_operations<E: EthSpec, Payload: AbstractExecPayload<E>>(
     // Gloas ePBS operations
     if state.fork_name_unchecked().gloas_enabled() {
         // Process the execution payload bid
+        // At this point, process_block_header has already been called, so:
+        // - state.slot() == block.slot
+        // - state.latest_block_header().parent_root == block.parent_root
         if let Ok(signed_bid) = block_body.signed_execution_payload_bid() {
-            gloas::process_execution_payload_bid(state, signed_bid, verify_signatures, spec)?;
+            let block_slot = state.slot();
+            let block_parent_root = state.latest_block_header().parent_root;
+            gloas::process_execution_payload_bid(
+                state,
+                signed_bid,
+                block_slot,
+                block_parent_root,
+                verify_signatures,
+                spec,
+            )?;
         }
 
         // Process payload attestations
