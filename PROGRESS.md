@@ -4,6 +4,60 @@
 
 ---
 
+## 2026-02-14 03:00 - claude loop cycle 1: types research & cherry-pick strategy
+
+### Phase 2: Upstream Code Review ✅
+
+**Reviewed PR #8801** (b8072c5b7) - Gloas payload bid consensus:
+- Created detailed code review doc: `docs/workstreams/gloas-code-review-bid-processing.md`
+- Analyzed `process_execution_payload_bid()` implementation (170 lines)
+- Documented validation logic: 9 different check types
+- Assessed signature verification, error types, test coverage
+- **Code quality**: Production-ready, well-tested, descriptive errors
+
+**Key findings**:
+1. Self-build vs external builder logic clearly separated
+2. Builder balance checks include pending withdrawals/payments
+3. Payment recording deferred to epoch boundary (payment_index = SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH)
+4. All EF tests passing for bid operations
+5. Implementation follows existing lighthouse patterns
+
+**CRITICAL DISCOVERY** 🎯:
+Found the types foundation PR that must come first!
+- **a39e99155** - Gloas(EIP-7732): Containers / Constants (#7923)
+- Merged: Dec 16, 2025 (2 months before bid processing PR)
+- **52 files changed**, +930/-689 lines
+- Introduces: `Builder`, `BuilderPendingPayment`, `BuilderPendingWithdrawal`, `SignedExecutionPayloadBid`
+- Also adds beacon state fields: `builder_pending_payments`, `builder_pending_withdrawals`, `latest_execution_payload_bid`
+- Plus constants: `BUILDER_INDEX_SELF_BUILD`, `MAX_BUILDERS`, etc.
+
+**Cherry-pick dependency chain identified**:
+```
+a39e99155 (Dec 16) - Types & constants foundation
+    ↓
+21cabba1a - Updated types for spec 1.7.0-alpha.1
+    ↓
+b8072c5b7 (Feb 12) - Payload bid consensus
+    ↓
+26db01642 (Feb 13) - Epoch processing
+    ↓
+68ad9758a (Feb 13) - Attestation verification
+```
+
+**Decision made**:
+- Start with types PR (a39e99155) - it's the foundation
+- Expect conflicts (52 files is huge, 2 months of drift)
+- Alternative: read types PR, document types, implement from spec
+- **Next action**: Attempt cherry-pick of types PR, assess conflicts
+
+### what's next
+- Phase 3: Attempt cherry-pick of a39e99155 (types foundation)
+- If conflicts manageable: resolve and commit
+- If conflicts too large: document types from PR + spec, implement manually
+- Update plan.md with refined gloas implementation steps
+
+---
+
 ## 2026-02-14 02:00 - claude loop cycle 1: sync & awareness
 
 ### Phase 1: Sync & Awareness ✅
