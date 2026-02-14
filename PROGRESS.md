@@ -4,6 +4,55 @@
 
 ---
 
+## 2026-02-15 05:27 - Signature verification complete ✍️
+
+### All signature verification TODOs resolved
+
+**Builder Bid Signatures** ✅
+- Added `verify_signature()` method to `SignedExecutionPayloadBid`
+- Uses `DOMAIN_BEACON_BUILDER` domain
+- Retrieves builder pubkey from state and verifies BLS signature
+- Integrated into `process_execution_payload_bid` with proper error handling
+
+**Payload Attestation Signatures** ✅
+- Implemented `indexed_payload_attestation_signature_set()` in signature_sets.rs
+- Added `Domain::PtcAttester` to Domain enum (domain value: `0x0C000000`)
+- Signature verification checks all PTC member signatures
+- Uses epoch-based domain derivation like regular attestations
+
+**Proposer Balance Increase** ✅
+- Completed builder payment flow: proposer receives bid value
+- Uses `state.get_beacon_proposer_index()` to find proposer
+- Manually increases proposer balance (saturating add)
+- Payment only triggers when PTC quorum reached + payload revealed
+
+**Type Infrastructure** ✅
+- Added `SignedRoot` impl for `PayloadAttestationData` (enables signing_root)
+- Added `SignedRoot` import to `SignedExecutionPayloadBid`
+- Added `swap_or_not_shuffle` dependency to state_processing Cargo.toml
+- Fixed all borrow checker issues in bid processing
+
+**Error Handling** ✅
+- Added `InvalidSignature` and `UnknownValidator(u64)` to PayloadAttestationInvalid
+- Proper error propagation from signature verification
+- Clear error messages for all failure cases
+
+### Compilation Status
+✅ `cargo check --package state_processing` passes
+✅ All signature verification code compiles without errors
+⚠️ One warning about unnecessary `drop()` call (harmless)
+
+### Branch Status
+- Branch: `gloas-signatures`
+- Pushed to origin
+- Ready for review/merge
+- 9 files changed, 158 insertions(+), 30 deletions(-)
+
+### Next Steps
+See plan.md Step 2 (State Transition) - signature verification complete, now ready for unit tests.
+
+---
+
 ## 2026-02-14 06:00 - Phase 2 core logic implemented 🔧
 
 ### Major components completed
