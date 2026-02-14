@@ -76,6 +76,10 @@ pub enum Error<T> {
     },
     UnrealizedVoteProcessing(state_processing::EpochProcessingError),
     ValidatorStatuses(BeaconStateError),
+    /// Gloas ePBS: Invalid execution bid
+    InvalidExecutionBid(InvalidExecutionBid),
+    /// Gloas ePBS: Invalid payload attestation
+    InvalidPayloadAttestation(InvalidPayloadAttestation),
 }
 
 impl<T> From<InvalidAttestation> for Error<T> {
@@ -169,6 +173,72 @@ pub enum InvalidAttestation {
     /// The attestation is attesting to a state that is later than itself. (Viz., attesting to the
     /// future).
     AttestsToFutureBlock { block: Slot, attestation: Slot },
+}
+
+/// Gloas ePBS: Reasons an execution payload bid might be invalid.
+#[derive(Debug)]
+pub enum InvalidExecutionBid {
+    /// The beacon block root referenced by the bid is unknown.
+    UnknownBeaconBlockRoot { beacon_block_root: Hash256 },
+    /// The bid's slot doesn't match the beacon block's slot.
+    SlotMismatch { bid_slot: Slot, block_slot: Slot },
+    /// The bid's parent_block_root doesn't match expectations.
+    ParentMismatch {
+        bid_parent: Hash256,
+        expected_parent: Hash256,
+    },
+    /// Builder index doesn't exist in the builder registry.
+    UnknownBuilder { builder_index: types::BuilderIndex },
+    /// Builder is not currently active.
+    BuilderNotActive { builder_index: types::BuilderIndex },
+    /// Builder doesn't have sufficient balance to cover the bid.
+    InsufficientBuilderBalance {
+        builder_index: types::BuilderIndex,
+        bid_value: u64,
+        builder_balance: u64,
+    },
+    /// Bid signature verification failed.
+    InvalidSignature,
+    /// Bid value is zero for non-self-build.
+    ZeroValueBid,
+}
+
+/// Gloas ePBS: Reasons a payload attestation might be invalid.
+#[derive(Debug)]
+pub enum InvalidPayloadAttestation {
+    /// The beacon block root referenced by the attestation is unknown.
+    UnknownBeaconBlockRoot { beacon_block_root: Hash256 },
+    /// The attestation's slot doesn't match the block's slot.
+    SlotMismatch {
+        attestation_slot: Slot,
+        block_slot: Slot,
+    },
+    /// One or more attesters are not in the PTC for this slot.
+    InvalidAttester { attester_index: u64 },
+    /// The aggregate signature verification failed.
+    InvalidSignature,
+    /// The attestation is from a future slot.
+    FutureSlot {
+        attestation_slot: Slot,
+        current_slot: Slot,
+    },
+    /// The attestation is from a past slot (beyond acceptance window).
+    TooOld {
+        attestation_slot: Slot,
+        current_slot: Slot,
+    },
+}
+
+impl<T> From<InvalidExecutionBid> for Error<T> {
+    fn from(e: InvalidExecutionBid) -> Self {
+        Error::InvalidExecutionBid(e)
+    }
+}
+
+impl<T> From<InvalidPayloadAttestation> for Error<T> {
+    fn from(e: InvalidPayloadAttestation) -> Self {
+        Error::InvalidPayloadAttestation(e)
+    }
 }
 
 impl<T> From<String> for Error<T> {

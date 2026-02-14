@@ -75,4 +75,26 @@ Unit tests + integration tests for all fork choice changes.
 
 ## Work Log
 
-### 08:30 - ProtoNode Updates
+### 08:30 - ProtoNode Updates ✅
+
+**Completed**: Added gloas ePBS fields to proto_array
+
+Changes made:
+1. **proto_array.rs**: 
+   - Added `BuilderIndex` to imports
+   - Added `four_byte_option_builder_index` for SSZ encoding
+   - Added 3 new fields to `ProtoNode`:
+     * `builder_index: Option<BuilderIndex>` - tracks winning builder
+     * `payload_revealed: bool` - tracks if payload delivered
+     * `ptc_weight: u64` - tracks PTC attestation weight
+   - Updated ProtoNode construction to initialize new fields
+
+2. **proto_array_fork_choice.rs**:
+   - Added same 3 fields to `Block` struct
+   - Fields will be populated when blocks are added to fork choice
+
+**Commit**: `79908de46` - proto_array: add gloas ePBS fields to ProtoNode and Block
+
+**Next**: Implement `on_execution_bid` handler in fork_choice.rs
+
+### 08:45 - Fork Choice Handler Implementation
