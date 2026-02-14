@@ -1449,65 +1449,133 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
          */
         check_block_relevancy(block.as_block(), block_root, chain)?;
 
+        // Determine payload state for gloas ePBS tracking (must happen before payload verification)
+        let payload_state = match block.message() {
+            BeaconBlockRef::Gloas(gloas_body) => {
+                let bid = &gloas_body.signed_execution_payload_bid.message;
+
+                // Check if this is a self-build (proposer built their own payload)
+                if bid.builder_index == types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
+                    // Self-build: payload should be in the block's execution_payload field
+                    match &gloas_body.execution_payload {
+                        Some(payload) => PayloadState::SelfBuild {
+                            payload: payload.clone(),
+                        },
+                        None => {
+                            // Self-build MUST include payload
+                            return Err(BlockError::PerBlockProcessingError(
+                                BlockProcessingError::PayloadBidInvalid {
+                                    reason: "Self-build block missing execution_payload".to_string(),
+                                },
+                            ));
+                        }
+                    }
+                } else {
+                    // External builder: payload revealed separately
+                    // Check if payload is included (shouldn't be for external builders in gossip)
+                    if gloas_body.execution_payload.is_some() {
+                        // External builder should NOT include payload in proposer block
+                        return Err(BlockError::PerBlockProcessingError(
+                            BlockProcessingError::PayloadBidInvalid {
+                                reason: "External builder payload should not be in proposer block"
+                                    .to_string(),
+                            },
+                        ));
+                    }
+
+                    // Payload is pending builder revelation
+                    PayloadState::Pending {
+                        bid: bid.clone(),
+                    }
+                }
+            }
+            _ => {
+                // Pre-gloas forks: payload is always included in block
+                PayloadState::Included
+            }
+        };
+
         // Define a future that will verify the execution payload with an execution engine.
         //
         // We do this as early as possible so that later parts of this function can run in parallel
         // with the payload verification.
-        let payload_notifier = PayloadNotifier::new(
-            chain.clone(),
-            block.block_cloned(),
-            &parent.pre_state,
-            notify_execution_layer,
-        )?;
-        let is_valid_merge_transition_block =
-            is_merge_transition_block(&parent.pre_state, block.message().body());
+        //
+        // For gloas ePBS with pending payloads, we skip verification here - it will happen when
+        // the builder reveals the payload.
+        let skip_payload_verification = matches!(payload_state, PayloadState::Pending { .. });
 
-        let payload_verification_future = async move {
-            let chain = payload_notifier.chain.clone();
-            let block = payload_notifier.block.clone();
-
-            // If this block triggers the merge, check to ensure that it references valid execution
-            // blocks.
-            //
-            // The specification defines this check inside `on_block` in the fork-choice specification,
-            // however we perform the check here for two reasons:
-            //
-            // - There's no point in importing a block that will fail fork choice, so it's best to fail
-            //   early.
-            // - Doing the check here means we can keep our fork-choice implementation "pure". I.e., no
-            //   calls to remote servers.
-            if is_valid_merge_transition_block {
-                validate_merge_block(&chain, block.message(), AllowOptimisticImport::Yes).await?;
+        let payload_verification_handle = if skip_payload_verification {
+            // Gloas block with pending payload - no verification needed yet
+            // Create a completed handle that returns a dummy successful outcome
+            let dummy_outcome = PayloadVerificationOutcome {
+                payload_verification_status: PayloadVerificationStatus::Irrelevant,
+                is_valid_merge_transition_block: false,
             };
+            chain
+                .task_executor
+                .spawn_handle(
+                    async move { Ok(dummy_outcome) },
+                    "gloas_pending_payload_no_verification",
+                )
+                .ok_or(BeaconChainError::RuntimeShutdown)?
+        } else {
+            // Pre-gloas or gloas self-build - verify payload normally
+            let payload_notifier = PayloadNotifier::new(
+                chain.clone(),
+                block.block_cloned(),
+                &parent.pre_state,
+                notify_execution_layer,
+            )?;
+            let is_valid_merge_transition_block =
+                is_merge_transition_block(&parent.pre_state, block.message().body());
 
-            // The specification declares that this should be run *inside* `per_block_processing`,
-            // however we run it here to keep `per_block_processing` pure (i.e., no calls to external
-            // servers).
-            if let Some(started_execution) = chain.slot_clock.now_duration() {
-                chain.block_times_cache.write().set_time_started_execution(
-                    block_root,
-                    block.slot(),
-                    started_execution,
-                );
-            }
-            let payload_verification_status = payload_notifier.notify_new_payload().await?;
+            let payload_verification_future = async move {
+                let chain = payload_notifier.chain.clone();
+                let block = payload_notifier.block.clone();
 
-            Ok(PayloadVerificationOutcome {
-                payload_verification_status,
-                is_valid_merge_transition_block,
-            })
+                // If this block triggers the merge, check to ensure that it references valid execution
+                // blocks.
+                //
+                // The specification defines this check inside `on_block` in the fork-choice specification,
+                // however we perform the check here for two reasons:
+                //
+                // - There's no point in importing a block that will fail fork choice, so it's best to fail
+                //   early.
+                // - Doing the check here means we can keep our fork-choice implementation "pure". I.e., no
+                //   calls to remote servers.
+                if is_valid_merge_transition_block {
+                    validate_merge_block(&chain, block.message(), AllowOptimisticImport::Yes).await?;
+                };
+
+                // The specification declares that this should be run *inside* `per_block_processing`,
+                // however we run it here to keep `per_block_processing` pure (i.e., no calls to external
+                // servers).
+                if let Some(started_execution) = chain.slot_clock.now_duration() {
+                    chain.block_times_cache.write().set_time_started_execution(
+                        block_root,
+                        block.slot(),
+                        started_execution,
+                    );
+                }
+                let payload_verification_status = payload_notifier.notify_new_payload().await?;
+
+                Ok(PayloadVerificationOutcome {
+                    payload_verification_status,
+                    is_valid_merge_transition_block,
+                })
+            };
+            // Spawn the payload verification future as a new task, but don't wait for it to complete.
+            // The `payload_verification_future` will be awaited later to ensure verification completed
+            // successfully.
+            chain
+                .task_executor
+                .spawn_handle(
+                    payload_verification_future
+                        .instrument(debug_span!("execution_payload_verification")),
+                    "execution_payload_verification",
+                )
+                .ok_or(BeaconChainError::RuntimeShutdown)?
         };
-        // Spawn the payload verification future as a new task, but don't wait for it to complete.
-        // The `payload_verification_future` will be awaited later to ensure verification completed
-        // successfully.
-        let payload_verification_handle = chain
-            .task_executor
-            .spawn_handle(
-                payload_verification_future
-                    .instrument(debug_span!("execution_payload_verification")),
-                "execution_payload_verification",
-            )
-            .ok_or(BeaconChainError::RuntimeShutdown)?;
 
         /*
          * Advance the given `parent.beacon_state` to the slot of the given `block`.
@@ -1730,52 +1798,6 @@ impl<T: BeaconChainTypes> ExecutionPendingBlock<T> {
             }?;
         }
         drop(fork_choice);
-
-        // Determine payload state for gloas ePBS tracking
-        let payload_state = match block.message() {
-            BeaconBlockRef::Gloas(gloas_body) => {
-                let bid = &gloas_body.signed_execution_payload_bid.message;
-
-                // Check if this is a self-build (proposer built their own payload)
-                if bid.builder_index == types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
-                    // Self-build: payload should be in the block's execution_payload field
-                    match &gloas_body.execution_payload {
-                        Some(payload) => PayloadState::SelfBuild {
-                            payload: payload.clone(),
-                        },
-                        None => {
-                            // Self-build MUST include payload
-                            return Err(BlockError::PerBlockProcessingError(
-                                BlockProcessingError::PayloadBidInvalid {
-                                    reason: "Self-build block missing execution_payload".to_string(),
-                                },
-                            ));
-                        }
-                    }
-                } else {
-                    // External builder: payload revealed separately
-                    // Check if payload is included (shouldn't be for external builders in gossip)
-                    if gloas_body.execution_payload.is_some() {
-                        // External builder should NOT include payload in proposer block
-                        return Err(BlockError::PerBlockProcessingError(
-                            BlockProcessingError::PayloadBidInvalid {
-                                reason: "External builder payload should not be in proposer block"
-                                    .to_string(),
-                            },
-                        ));
-                    }
-
-                    // Payload is pending builder revelation
-                    PayloadState::Pending {
-                        bid: bid.clone(),
-                    }
-                }
-            }
-            _ => {
-                // Pre-gloas forks: payload is always included in block
-                PayloadState::Included
-            }
-        };
 
         Ok(Self {
             block,
