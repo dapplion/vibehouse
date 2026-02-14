@@ -162,12 +162,13 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Equivocation detection strategy documented (deferred to Phase 4 P2P implementation)
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition) - blocked on Rust toolchain
 
-#### Step 4: P2P Networking
-- [ ] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
+#### Step 4: P2P Networking ⚡ IN PROGRESS (1/6 done - 2026-02-14)
+- [x] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
 - [ ] Implement gossip validation for each new topic
-- [ ] Update `DataColumnSidecar` gossip validation (no more header/inclusion proof checks, use kzg_commitments hash against builder bid instead)
-- [ ] Update req/resp protocols if needed for gloas
-- [ ] Handle gossip topic subscription/unsubscription at fork boundary
+- [ ] Beacon processor integration - wire up handlers
+- [ ] Add equivocation detection caches
+- [ ] Update peer scoring for new topics
+- [ ] Tests (gossip validation + integration)
 - [ ] Update peer scoring for new message types
 
 #### Step 5: Beacon Chain Integration
@@ -525,6 +526,83 @@ Maintain a watchlist of upstream PRs that we care about:
 # vibehouse progress log
 
 > every work session gets an entry. newest first.
+
+---
+
+## 2026-02-14 10:15 - Phase 4 started: P2P gossip topics added 🌐
+
+### Phase 4: P2P Networking (1/6 complete)
+
+**Gossip topics implemented** ✅
+
+Added 3 new ePBS gossip topics to lighthouse_network:
+
+1. **ExecutionBid** - builders publish bids for slots
+   - Topic: `/eth2/{fork_digest}/execution_bid/ssz_snappy`
+   - Message type: `SignedExecutionPayloadBid`
+
+2. **ExecutionPayload** - builders reveal payloads
+   - Topic: `/eth2/{fork_digest}/execution_payload/ssz_snappy`
+   - Message type: `SignedExecutionPayloadEnvelope`
+
+3. **PayloadAttestation** - PTC members attest to payload delivery
+   - Topic: `/eth2/{fork_digest}/payload_attestation/ssz_snappy`
+   - Message type: `PayloadAttestation`
+
+**Integration**:
+- Topics auto-subscribe when `fork_name.gloas_enabled()`
+- Marked as core topics (all nodes subscribe)
+- Follow existing SSZ+Snappy encoding pattern
+- Decode/Display support added
+
+**File**: `beacon_node/lighthouse_network/src/types/topics.rs`
+
+### Remaining Phase 4 Work
+
+Next up:
+1. **Gossip validation** (biggest task)
+   - `verify_execution_bid_for_gossip()` - validate builder bids
+   - `verify_execution_payload_for_gossip()` - validate payload reveals
+   - `verify_payload_attestation_for_gossip()` - validate PTC attestations
+   
+2. **Equivocation detection**
+   - Seen bid cache: track (builder, slot) → bid_root
+   - Seen attestation cache: track (validator, slot, block) → payload_present
+   - Mark equivocators and reject future messages
+
+3. **Beacon processor handlers**
+   - Wire validation → fork choice handlers
+   - Call `on_execution_bid()`, `on_payload_attestation()`
+   - Propagate valid messages to peers
+
+4. **Peer scoring**
+   - Configure topic weights
+   - Set penalties for invalid messages
+
+5. **Tests**
+   - Unit tests for each validator
+   - Integration tests for message flow
+
+### Commits
+- `p2p: add gloas ePBS gossip topics (execution_bid, execution_payload, payload_attestation)`
+- Session doc: `docs/sessions/2026-02-14-phase4-p2p-gossip-topics.md`
+
+### Session Summary
+
+**Time**: 09:45-10:15 (30 minutes)
+**Output**: Gossip topic infrastructure complete
+**Quality**: Clean implementation following existing patterns
+**Next**: Gossip validation (complex, needs state access)
+
+**Phase progress**:
+- Phase 1 ✅ (types)
+- Phase 2 ✅ (state transitions)
+- Phase 3 ✅ (fork choice)
+- Phase 4 🚧 (P2P - 1/6 done)
+
+**Momentum**: Strong. The foundation is solid. Gossip validation will be the heavy lift (needs builder registry access, signature verification, equivocation tracking).
+
+🎵 **ethvibes - keeping the vibe flowing** 🎵
 
 ---
 
