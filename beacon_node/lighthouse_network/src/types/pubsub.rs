@@ -9,13 +9,13 @@ use std::sync::Arc;
 use types::{
     AttesterSlashing, AttesterSlashingBase, AttesterSlashingElectra, BlobSidecar,
     DataColumnSidecar, DataColumnSubnetId, EthSpec, ForkContext, ForkName,
-    LightClientFinalityUpdate, LightClientOptimisticUpdate, ProposerSlashing,
+    LightClientFinalityUpdate, LightClientOptimisticUpdate, PayloadAttestation, ProposerSlashing,
     SignedAggregateAndProof, SignedAggregateAndProofBase, SignedAggregateAndProofElectra,
     SignedBeaconBlock, SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
     SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
-    SignedContributionAndProof, SignedVoluntaryExit, SingleAttestation, SubnetId,
-    SyncCommitteeMessage, SyncSubnetId,
+    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,6 +46,12 @@ pub enum PubsubMessage<E: EthSpec> {
     LightClientFinalityUpdate(Box<LightClientFinalityUpdate<E>>),
     /// Gossipsub message providing notification of a light client optimistic update.
     LightClientOptimisticUpdate(Box<LightClientOptimisticUpdate<E>>),
+    /// Gossipsub message providing notification of an execution payload bid (gloas ePBS).
+    ExecutionBid(Box<SignedExecutionPayloadBid<E>>),
+    /// Gossipsub message providing notification of an execution payload envelope reveal (gloas ePBS).
+    ExecutionPayload(Box<SignedExecutionPayloadEnvelope<E>>),
+    /// Gossipsub message providing notification of a payload attestation from PTC (gloas ePBS).
+    PayloadAttestation(Box<PayloadAttestation<E>>),
 }
 
 // Implements the `DataTransform` trait of gossipsub to employ snappy compression
@@ -149,6 +155,9 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::LightClientOptimisticUpdate(_) => {
                 GossipKind::LightClientOptimisticUpdate
             }
+            PubsubMessage::ExecutionBid(_) => GossipKind::ExecutionBid,
+            PubsubMessage::ExecutionPayload(_) => GossipKind::ExecutionPayload,
+            PubsubMessage::PayloadAttestation(_) => GossipKind::PayloadAttestation,
         }
     }
 
@@ -387,6 +396,21 @@ impl<E: EthSpec> PubsubMessage<E> {
                             light_client_optimistic_update,
                         )))
                     }
+                    GossipKind::ExecutionBid => {
+                        let execution_bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
+                    }
+                    GossipKind::ExecutionPayload => {
+                        let execution_payload = SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::ExecutionPayload(Box::new(execution_payload)))
+                    }
+                    GossipKind::PayloadAttestation => {
+                        let payload_attestation = PayloadAttestation::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::PayloadAttestation(Box::new(payload_attestation)))
+                    }
                 }
             }
         }
@@ -413,6 +437,9 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::BlsToExecutionChange(data) => data.as_ssz_bytes(),
             PubsubMessage::LightClientFinalityUpdate(data) => data.as_ssz_bytes(),
             PubsubMessage::LightClientOptimisticUpdate(data) => data.as_ssz_bytes(),
+            PubsubMessage::ExecutionBid(data) => data.as_ssz_bytes(),
+            PubsubMessage::ExecutionPayload(data) => data.as_ssz_bytes(),
+            PubsubMessage::PayloadAttestation(data) => data.as_ssz_bytes(),
         }
     }
 }
@@ -472,6 +499,23 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
             PubsubMessage::LightClientOptimisticUpdate(_data) => {
                 write!(f, "Light CLient Optimistic Update")
             }
+            PubsubMessage::ExecutionBid(data) => write!(
+                f,
+                "Execution Bid: slot: {}, builder_index: {}, value: {}",
+                data.message.slot, data.message.builder_index, data.message.value
+            ),
+            PubsubMessage::ExecutionPayload(data) => write!(
+                f,
+                "Execution Payload: slot: {}, builder_index: {}",
+                data.message.slot, data.message.builder_index
+            ),
+            PubsubMessage::PayloadAttestation(data) => write!(
+                f,
+                "Payload Attestation: slot: {}, beacon_block_root: {:?}, num_attesters: {}",
+                data.data.slot,
+                data.data.beacon_block_root,
+                data.num_attesters()
+            ),
         }
     }
 }
