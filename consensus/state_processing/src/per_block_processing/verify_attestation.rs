@@ -1,6 +1,5 @@
 use super::VerifySignatures;
 use super::errors::{AttestationInvalid as Invalid, BlockOperationError};
-use crate::common::get_attestation_participation::is_attestation_same_slot;
 use crate::ConsensusContext;
 use crate::per_block_processing::is_valid_indexed_attestation;
 use safe_arith::SafeArith;
@@ -75,18 +74,9 @@ pub fn verify_attestation_for_state<'ctxt, E: EthSpec>(
             );
         }
         AttestationRef::Electra(_) => {
-            // [Modified in Gloas:EIP7732] data.index must be 0 or 1
+            // [Modified in Gloas:EIP7732] data.index < 2 (0 or 1)
             if state.fork_name_unchecked().gloas_enabled() {
                 verify!(data.index < 2, Invalid::BadCommitteeIndex);
-                
-                // [Modified in Gloas:EIP7732] Validate index matches attestation type
-                // Same-slot attestations (PTC) must have index=1, others must have index=0
-                let is_same_slot = is_attestation_same_slot(state, data)?;
-                if is_same_slot {
-                    verify!(data.index == 1, Invalid::BadCommitteeIndex);
-                } else {
-                    verify!(data.index == 0, Invalid::BadCommitteeIndex);
-                }
             } else {
                 verify!(data.index == 0, Invalid::BadCommitteeIndex);
             }
