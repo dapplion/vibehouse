@@ -484,11 +484,11 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 07:21 GMT+1
+## Current Status - 2026-02-14 09:25 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented
 **Phase 2 Complete ✅**: All state transition functions implemented
-**Error Types Fixed ✅**: Added `InvalidSlot` and `InvalidSlotIndex` variants
+**Phase 3 In Progress ⚡**: Fork choice handlers (5/8 complete, COMPILATION VERIFIED)
 
 ### Implementation Status
 - ✅ All gloas types: BeaconState, BeaconBlockBody, 14 ePBS types
@@ -501,26 +501,27 @@ Maintain a watchlist of upstream PRs that we care about:
   - PTC aggregate signature verification (DOMAIN_PTC_ATTESTER)
 - ✅ Integration with `process_operations()` when gloas fork active
 - ✅ Test handlers registered for operations
-- ✅ Error variants added to BlockProcessingError
+- ✅ Fork choice handlers (consensus/fork_choice/src/fork_choice.rs):
+  - `on_execution_bid()` - tracks builder selection, initializes payload tracking
+  - `on_payload_attestation()` - accumulates PTC weight, marks revealed at quorum
+  - `node_is_viable_for_head()` - requires payload_revealed for external builders
+- ✅ ProtoNode extended with builder_index, payload_revealed, ptc_weight
+- ✅ **COMPILATION VERIFIED**: `cargo check --release` passes for fork_choice and proto_array
 
-### What Requires Rust Toolchain
-1. **Compilation check**: Verify no remaining errors
-2. **Test execution**: Run spec tests for gloas operations
-3. **Unit tests**: Implement 12 test skeletons in gloas.rs
+### Phase 3 Remaining
+1. Withholding penalty mechanism (TODO)
+2. Equivocation detection for new message types (TODO)
+3. Tests (unit + integration) (TODO)
 
-### Test Strategy (documented in detail below)
-- Spec tests will validate against consensus-spec-tests vectors
-- Unit tests will cover edge cases not in spec tests
-- All 9 payload_attestation spec tests exist and are ready
+### Next Steps (Priority Order)
+1. **Run spec tests**: `cargo nextest run --release --test tests --features ef_tests minimal gloas`
+2. **Verify test pass rate**: Expect some failures initially
+3. **Fix test failures**: Iterate until 100% pass
+4. **Implement unit tests**: 12 test skeletons in gloas.rs
+5. **Complete Phase 3**: Withholding penalties + equivocation
+6. **Move to Phase 4**: P2P networking (gossip topics, validation)
 
-### Next Steps When Cargo Available
-1. `cargo check --release` - verify compilation
-2. `cargo nextest run --release --test tests --features ef_tests minimal` - run minimal gloas tests
-3. Fix any failures
-4. `make test-ef` - full suite
-5. Implement unit tests
-
-**Status: Code complete, awaiting toolchain for validation** 🎵
+**Status: Phase 3 core logic COMPLETE and COMPILING. Ready for testing.** 🎵
 # vibehouse progress log
 
 > every work session gets an entry. newest first.
