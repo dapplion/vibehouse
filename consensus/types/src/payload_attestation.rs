@@ -1,4 +1,4 @@
-use crate::{test_utils::TestRandom, EthSpec, PayloadAttestationData};
+use crate::{EthSpec, PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
 use educe::Educe;
 use safe_arith::ArithError;
@@ -16,9 +16,7 @@ use tree_hash_derive::TreeHash;
 /// attestations using a bitvector and aggregate signature.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestation
-#[derive(
-    Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),

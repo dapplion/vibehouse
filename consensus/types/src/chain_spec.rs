@@ -220,7 +220,7 @@ pub struct ChainSpec {
     pub gloas_fork_version: [u8; 4],
     /// The Gloas fork epoch is optional, with `None` representing "Gloas never happens".
     pub gloas_fork_epoch: Option<Epoch>,
-    
+
     /*
      * Gloas ePBS constants
      */
@@ -1153,7 +1153,7 @@ impl ChainSpec {
              */
             gloas_fork_version: [0x07, 0x00, 0x00, 0x00],
             gloas_fork_epoch: None,
-            
+
             /*
              * Gloas ePBS constants
              */
@@ -1165,7 +1165,7 @@ impl ChainSpec {
             max_builders_per_withdrawals_sweep: 16384,
             ptc_size: 512,
             max_payload_attestations: 4,
-            builder_registry_limit: 1099511627776, // 2^40
+            builder_registry_limit: 1099511627776,      // 2^40
             builder_pending_withdrawals_limit: 1048576, // 2^20
             domain_beacon_builder: 0x0B000000,
             domain_ptc_attester: 0x0C000000,
@@ -1530,7 +1530,7 @@ impl ChainSpec {
              */
             gloas_fork_version: [0x07, 0x00, 0x00, 0x64],
             gloas_fork_epoch: None,
-            
+
             /*
              * Gloas ePBS constants
              */
@@ -1542,7 +1542,7 @@ impl ChainSpec {
             max_builders_per_withdrawals_sweep: 16384,
             ptc_size: 512,
             max_payload_attestations: 4,
-            builder_registry_limit: 1099511627776, // 2^40
+            builder_registry_limit: 1099511627776,      // 2^40
             builder_pending_withdrawals_limit: 1048576, // 2^20
             domain_beacon_builder: 0x0B000000,
             domain_ptc_attester: 0x0C000000,

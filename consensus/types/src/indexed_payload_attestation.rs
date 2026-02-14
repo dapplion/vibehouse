@@ -1,4 +1,4 @@
-use crate::{test_utils::TestRandom, EthSpec, PayloadAttestationData};
+use crate::{EthSpec, PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
 use educe::Educe;
 use serde::{Deserialize, Serialize};
@@ -16,9 +16,7 @@ use tree_hash_derive::TreeHash;
 /// The attesting_indices list must be sorted for efficient verification.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#indexedpayloadattestation
-#[derive(
-    Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
@@ -88,18 +86,18 @@ mod tests {
     #[test]
     fn test_is_sorted() {
         let mut attestation = IndexedPayloadAttestation::<MainnetEthSpec>::empty();
-        
+
         // Empty list is sorted
         assert!(attestation.is_sorted());
-        
+
         // Single element is sorted
         attestation.attesting_indices.push(5).unwrap();
         assert!(attestation.is_sorted());
-        
+
         // Two sorted elements
         attestation.attesting_indices.push(10).unwrap();
         assert!(attestation.is_sorted());
-        
+
         // Unsorted should fail - but we can't test this easily without modifying
         // the internal structure, so we document the expected behavior
     }

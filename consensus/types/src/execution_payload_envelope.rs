@@ -1,5 +1,5 @@
 use crate::{
-    test_utils::TestRandom, EthSpec, ExecutionPayload, ExecutionRequests, ForkName, Hash256, Slot,
+    EthSpec, ExecutionPayload, ExecutionRequests, ForkName, Hash256, Slot, test_utils::TestRandom,
 };
 use context_deserialize::context_deserialize;
 use educe::Educe;
@@ -17,9 +17,7 @@ use tree_hash_derive::TreeHash;
 /// The envelope is signed by the builder to prove they authorized the reveal.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadenvelope
-#[derive(
-    Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Educe, TestRandom,
-)]
+#[derive(Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Educe, TestRandom)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),

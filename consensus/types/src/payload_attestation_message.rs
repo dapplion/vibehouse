@@ -1,4 +1,4 @@
-use crate::{test_utils::TestRandom, PayloadAttestationData};
+use crate::{PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
