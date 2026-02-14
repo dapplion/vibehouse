@@ -27,6 +27,7 @@ pub mod execution_payload;
 pub mod fetch_blobs;
 pub mod fork_choice_signal;
 pub mod fork_revert;
+pub mod gloas_verification;
 pub mod graffiti_calculator;
 pub mod historical_blocks;
 pub mod historical_data_columns;

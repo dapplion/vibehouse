@@ -1,4 +1,4 @@
-use crate::{ForkName, Hash256, Slot, test_utils::TestRandom};
+use crate::{ForkName, Hash256, SignedRoot, Slot, test_utils::TestRandom};
 use context_deserialize::context_deserialize;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -23,6 +23,8 @@ pub struct PayloadAttestationData {
     /// Whether blob data is available
     pub blob_data_available: bool,
 }
+
+impl SignedRoot for PayloadAttestationData {}
 
 #[cfg(test)]
 mod tests {

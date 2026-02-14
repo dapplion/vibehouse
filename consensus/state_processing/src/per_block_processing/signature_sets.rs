@@ -662,3 +662,79 @@ where
         message,
     )))
 }
+
+/// A signature set that is valid if an execution payload bid was signed by the builder.
+///
+/// This checks the `SignedExecutionPayloadBid` signature against the builder's public key
+/// using the `DOMAIN_BEACON_BUILDER` domain.
+pub fn execution_payload_bid_signature_set<'a, E, F>(
+    state: &'a BeaconState<E>,
+    get_builder_pubkey: F,
+    signed_bid: &'a types::SignedExecutionPayloadBid<E>,
+    spec: &'a ChainSpec,
+) -> Result<SignatureSet<'a>>
+where
+    E: EthSpec,
+    F: Fn(u64) -> Option<Cow<'a, PublicKey>>,
+{
+    let builder_index = signed_bid.message.builder_index;
+    
+    let builder_pubkey = get_builder_pubkey(builder_index)
+        .ok_or(Error::ValidatorUnknown(builder_index))?;
+
+    let epoch = signed_bid.message.slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let message = signed_bid.message.signing_root(domain);
+
+    Ok(SignatureSet::single_pubkey(
+        &signed_bid.signature,
+        builder_pubkey,
+        message,
+    ))
+}
+
+/// A signature set that is valid if a payload attestation was signed by the PTC members.
+///
+/// This checks the aggregated `PayloadAttestation` signature against the PTC members' public keys
+/// using the `DOMAIN_PTC_ATTESTER` domain.
+pub fn payload_attestation_signature_set<'a, E, F>(
+    state: &'a BeaconState<E>,
+    get_pubkey: F,
+    attestation: &'a types::PayloadAttestation<E>,
+    attesting_indices: &'a [u64],
+    spec: &'a ChainSpec,
+) -> Result<SignatureSet<'a>>
+where
+    E: EthSpec,
+    F: Fn(usize) -> Option<Cow<'a, PublicKey>>,
+{
+    // Collect public keys for all attesting validators
+    let mut pubkeys = Vec::with_capacity(attesting_indices.len());
+    for &validator_index in attesting_indices.iter() {
+        let pubkey = get_pubkey(validator_index as usize)
+            .ok_or(Error::ValidatorUnknown(validator_index))?;
+        pubkeys.push(pubkey);
+    }
+
+    let epoch = attestation.data.slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let message = attestation.data.signing_root(domain);
+
+    Ok(SignatureSet::multiple_pubkeys(
+        &attestation.signature,
+        pubkeys,
+        message,
+    ))
+}
