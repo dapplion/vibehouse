@@ -1,3 +1,4 @@
+use crate::block_verification::PayloadState;
 use crate::data_availability_checker::AvailabilityCheckError;
 pub use crate::data_availability_checker::{AvailableBlock, MaybeAvailableBlock};
 use crate::data_column_verification::{CustodyDataColumn, CustodyDataColumnList};
@@ -338,6 +339,12 @@ pub struct BlockImportData<E: EthSpec> {
     pub state: BeaconState<E>,
     pub parent_block: SignedBeaconBlock<E, BlindedPayload<E>>,
     pub consensus_context: ConsensusContext<E>,
+    /// Tracks payload state for gloas ePBS blocks.
+    ///
+    /// - Pre-gloas (Base-Fulu): Always `PayloadState::Included`
+    /// - Gloas external builder: `PayloadState::Pending` → `PayloadState::Revealed` after reveal
+    /// - Gloas self-build: `PayloadState::SelfBuild`
+    pub payload_state: PayloadState<E>,
 }
 
 impl<E: EthSpec> BlockImportData<E> {
@@ -351,6 +358,7 @@ impl<E: EthSpec> BlockImportData<E> {
             state,
             parent_block,
             consensus_context: ConsensusContext::new(Slot::new(0)),
+            payload_state: PayloadState::Included, // Default for tests
         }
     }
 }

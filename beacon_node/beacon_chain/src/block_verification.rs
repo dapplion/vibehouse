@@ -96,9 +96,9 @@ use task_executor::JoinHandle;
 use tracing::{Instrument, Span, debug, debug_span, error, info_span, instrument};
 use types::{
     BeaconBlockRef, BeaconState, BeaconStateError, BlobsList, ChainSpec, DataColumnSidecarList,
-    Epoch, EthSpec, ExecutionBlockHash, FullPayload, Hash256, InconsistentFork, KzgProofs,
-    PublicKey, PublicKeyBytes, RelativeEpoch, SignedBeaconBlock, SignedBeaconBlockHeader, Slot,
-    data_column_sidecar::DataColumnSidecarError,
+    Epoch, EthSpec, ExecutionBlockHash, ExecutionPayload, ExecutionPayloadBid, FullPayload,
+    Hash256, InconsistentFork, KzgProofs, PublicKey, PublicKeyBytes, RelativeEpoch,
+    SignedBeaconBlock, SignedBeaconBlockHeader, Slot, data_column_sidecar::DataColumnSidecarError,
 };
 
 pub const POS_PANDA_BANNER: &str = r#"
@@ -133,6 +133,78 @@ const MAXIMUM_BLOCK_SLOT_NUMBER: u64 = 4_294_967_296; // 2^32
 ///
 /// Only useful for testing.
 const WRITE_BLOCK_PROCESSING_SSZ: bool = cfg!(feature = "write_ssz_files");
+
+/// Tracks the state of execution payload for a block in the import pipeline.
+///
+/// Gloas ePBS introduces two-phase blocks:
+/// 1. Proposer commits to a builder bid (payload pending)
+/// 2. Builder reveals payload (payload revealed)
+///
+/// Pre-gloas blocks always have the payload included.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PayloadState<E: EthSpec> {
+    /// Payload is included in the block (pre-gloas forks: Base through Fulu)
+    Included,
+
+    /// Payload is pending builder revelation (gloas proposer block with external builder)
+    ///
+    /// The proposer committed to a builder's bid, but the builder hasn't revealed the
+    /// execution payload yet. This block cannot be selected as head until the payload
+    /// is revealed and validated.
+    Pending { bid: ExecutionPayloadBid<E> },
+
+    /// Payload has been revealed by builder (gloas after builder submission)
+    ///
+    /// The builder revealed their execution payload, matching the committed bid.
+    /// This block is now eligible for head selection if other conditions are met.
+    Revealed {
+        bid: ExecutionPayloadBid<E>,
+        payload: ExecutionPayload<E>,
+    },
+
+    /// Self-build scenario (gloas with BUILDER_INDEX_SELF_BUILD)
+    ///
+    /// The proposer built their own execution payload. The payload is included
+    /// directly in the beacon block (via the optional execution_payload field).
+    /// No separate reveal message needed.
+    SelfBuild { payload: ExecutionPayload<E> },
+}
+
+impl<E: EthSpec> PayloadState<E> {
+    /// Returns true if the payload is available (included, revealed, or self-built).
+    pub fn is_available(&self) -> bool {
+        !matches!(self, PayloadState::Pending { .. })
+    }
+
+    /// Returns true if the payload has been revealed (for external builders).
+    pub fn is_revealed(&self) -> bool {
+        matches!(self, PayloadState::Revealed { .. })
+    }
+
+    /// Returns true if this is a self-build block.
+    pub fn is_self_build(&self) -> bool {
+        matches!(self, PayloadState::SelfBuild { .. })
+    }
+
+    /// Returns a reference to the payload if available, None if pending.
+    pub fn payload(&self) -> Option<&ExecutionPayload<E>> {
+        match self {
+            PayloadState::Included => None, // Pre-gloas: payload in block, accessed differently
+            PayloadState::Pending { .. } => None,
+            PayloadState::Revealed { payload, .. } => Some(payload),
+            PayloadState::SelfBuild { payload } => Some(payload),
+        }
+    }
+
+    /// Returns a reference to the bid if this is a gloas ePBS block.
+    pub fn bid(&self) -> Option<&ExecutionPayloadBid<E>> {
+        match self {
+            PayloadState::Pending { bid } => Some(bid),
+            PayloadState::Revealed { bid, .. } => Some(bid),
+            _ => None,
+        }
+    }
+}
 
 /// Returned when a block was not verified. A block is not verified for two reasons:
 ///
