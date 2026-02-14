@@ -482,5 +482,11 @@ pub enum PayloadAttestationInvalid {
     DuplicateIndices,
     /// One or more attesting indices are out of bounds
     AttesterIndexOutOfBounds,
+    /// No active validators to form PTC
+    NoActiveValidators,
+    /// Shuffle computation failed
+    ShuffleError,
+    /// Not enough validators to form a full PTC (less than 512)
+    InsufficientValidators,
 }
 

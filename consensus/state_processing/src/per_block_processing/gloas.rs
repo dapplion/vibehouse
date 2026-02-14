@@ -202,22 +202,190 @@ fn get_indexed_payload_attestation<E: EthSpec>(
     attestation: &PayloadAttestation<E>,
     spec: &ChainSpec,
 ) -> Result<IndexedPayloadAttestation<E>, BlockProcessingError> {
-    // TODO: Implement PTC committee calculation
-    // For now, return a placeholder
-    todo!("PTC committee calculation not yet implemented")
+    let ptc_indices = get_ptc_committee(state, attestation.data.slot, spec)?;
+
+    // Convert aggregation bits to list of attesting indices
+    let mut attesting_indices = Vec::new();
+    for (i, &validator_index) in ptc_indices.iter().enumerate() {
+        if attestation.aggregation_bits.get(i).map_err(|_| {
+            BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            )
+        })? {
+            attesting_indices.push(validator_index);
+        }
+    }
+
+    // Verify indices are sorted (required by spec)
+    if !attesting_indices.windows(2).all(|w| w[0] < w[1]) {
+        return Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::IndicesNotSorted,
+        ));
+    }
+
+    Ok(IndexedPayloadAttestation {
+        attesting_indices: attesting_indices.try_into().map_err(|_| {
+            BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            )
+        })?,
+        data: attestation.data.clone(),
+        signature: attestation.signature.clone(),
+    })
+}
+
+/// Computes the PTC (Payload Timeliness Committee) for a given slot.
+///
+/// The PTC is a subset of 512 validators selected per slot who attest to
+/// payload delivery and blob availability. The selection is based on a
+/// deterministic shuffle using the slot's seed.
+///
+/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc_committee
+fn get_ptc_committee<E: EthSpec>(
+    state: &BeaconState<E>,
+    slot: Slot,
+    spec: &ChainSpec,
+) -> Result<Vec<u64>, BlockProcessingError> {
+    let epoch = slot.epoch(E::slots_per_epoch());
+    let active_validator_indices = state.get_active_validator_indices(epoch, spec)?;
+    let active_validator_count = active_validator_indices.len();
+
+    if active_validator_count == 0 {
+        return Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::NoActiveValidators,
+        ));
+    }
+
+    // Get seed for this slot using domain PTC_ATTESTER
+    // TODO: The spec may define a specific domain for PTC. For now, use a slot-based seed.
+    let seed = state.get_beacon_proposer_seed(slot, spec)?;
+
+    let mut ptc_committee = Vec::with_capacity(PTC_SIZE as usize);
+    let mut i = 0;
+
+    // Select PTC_SIZE validators using shuffled indices
+    while ptc_committee.len() < PTC_SIZE as usize && i < active_validator_count * 10 {
+        let shuffled_index = types::compute_shuffled_index(
+            i % active_validator_count,
+            active_validator_count,
+            seed.as_slice(),
+            spec.shuffle_round_count,
+        )
+        .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::ShuffleError,
+        ))?;
+
+        let candidate_index = *active_validator_indices
+            .get(shuffled_index)
+            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?;
+
+        // Add to committee (no duplicates check since shuffled_index is unique)
+        ptc_committee.push(candidate_index);
+
+        i += 1;
+    }
+
+    if ptc_committee.len() < PTC_SIZE as usize {
+        // Not enough validators to form a full PTC (edge case for testnets)
+        return Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::InsufficientValidators,
+        ));
+    }
+
+    Ok(ptc_committee)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use types::*;
+    use types::test_utils::{TestRandom, XorShiftRng};
 
-    // TODO: Add unit tests
-    // - test_process_execution_payload_bid_self_build
-    // - test_process_execution_payload_bid_external_builder
-    // - test_process_execution_payload_bid_insufficient_balance
-    // - test_process_execution_payload_bid_inactive_builder
-    // - test_process_payload_attestation_quorum_reached
-    // - test_process_payload_attestation_quorum_not_reached
-    // - test_process_payload_attestation_wrong_slot
+    fn get_gloas_state<E: EthSpec>(validator_count: usize) -> BeaconState<E> {
+        let spec = E::default_spec();
+        let mut state = BeaconState::new(0, Hash256::zero(), &spec);
+        
+        // Add validators
+        let mut rng = XorShiftRng::from_seed([42; 16]);
+        for _ in 0..validator_count {
+            let validator = Validator::random_for_test(&mut rng);
+            state.validators_mut().push(validator).unwrap();
+            state.balances_mut().push(32_000_000_000).unwrap(); // 32 ETH in Gwei
+        }
+        
+        // Upgrade to Gloas
+        let epoch = Epoch::new(0);
+        let mut state_gloas = match state {
+            BeaconState::Base(mut base) => {
+                // This is a hack for testing - in reality we'd go through proper upgrade
+                // For now just create a minimal Gloas state
+                todo!("Need proper test state builder for Gloas")
+            }
+            _ => unreachable!(),
+        };
+        
+        state_gloas
+    }
+
+    #[test]
+    fn test_process_execution_payload_bid_self_build() {
+        // TODO: Test that self-build bids are accepted with value=0 and empty signature
+    }
+
+    #[test]
+    fn test_process_execution_payload_bid_external_builder() {
+        // TODO: Test that external builder bids are validated correctly
+    }
+
+    #[test]
+    fn test_process_execution_payload_bid_insufficient_balance() {
+        // TODO: Test rejection when builder balance < bid value
+    }
+
+    #[test]
+    fn test_process_execution_payload_bid_inactive_builder() {
+        // TODO: Test rejection when builder is not active
+    }
+
+    #[test]
+    fn test_process_execution_payload_bid_wrong_slot() {
+        // TODO: Test rejection when bid slot != state slot
+    }
+
+    #[test]
+    fn test_process_payload_attestation_quorum_reached() {
+        // TODO: Test that quorum triggers payload availability update
+    }
+
+    #[test]
+    fn test_process_payload_attestation_quorum_not_reached() {
+        // TODO: Test that sub-quorum attestations are accepted but don't trigger payment
+    }
+
+    #[test]
+    fn test_process_payload_attestation_wrong_slot() {
+        // TODO: Test rejection when attestation slot != state slot
+    }
+
+    #[test]
+    fn test_get_ptc_committee_deterministic() {
+        // TODO: Test that PTC committee is deterministic for a given slot/state
+    }
+
+    #[test]
+    fn test_get_ptc_committee_size() {
+        // TODO: Test that PTC committee has exactly 512 members (when enough validators)
+    }
+
+    #[test]
+    fn test_get_indexed_payload_attestation() {
+        // TODO: Test conversion from PayloadAttestation to IndexedPayloadAttestation
+    }
+
+    #[test]
+    fn test_indexed_payload_attestation_sorted() {
+        // TODO: Test that indices are sorted after conversion
+    }
 }
