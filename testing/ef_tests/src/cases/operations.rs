@@ -27,6 +27,7 @@ use std::fmt::Debug;
 use types::{
     Attestation, AttesterSlashing, BeaconBlock, BeaconBlockBody, BeaconBlockBodyBellatrix,
     BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra, BeaconBlockBodyFulu,
+    BeaconBlockBodyGloas,
     BeaconState, BlindedPayload, ConsolidationRequest, Deposit, DepositRequest, ExecutionPayload,
     ForkVersionDecode, FullPayload, Hash256, PayloadAttestation, ProposerSlashing,
     SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedVoluntaryExit, Slot,
@@ -309,6 +310,7 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, FullPayload<E>> {
                 ForkName::Deneb => BeaconBlockBody::Deneb(<_>::from_ssz_bytes(bytes)?),
                 ForkName::Electra => BeaconBlockBody::Electra(<_>::from_ssz_bytes(bytes)?),
                 ForkName::Fulu => BeaconBlockBody::Fulu(<_>::from_ssz_bytes(bytes)?),
+                ForkName::Gloas => BeaconBlockBody::Gloas(<_>::from_ssz_bytes(bytes)?),
                 _ => panic!(),
             })
         })
@@ -367,6 +369,10 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, BlindedPayload<E>> {
                 ForkName::Fulu => {
                     let inner = <BeaconBlockBodyFulu<E, FullPayload<E>>>::from_ssz_bytes(bytes)?;
                     BeaconBlockBody::Fulu(inner.clone_as_blinded())
+                }
+                ForkName::Gloas => {
+                    let inner = <BeaconBlockBodyGloas<E, FullPayload<E>>>::from_ssz_bytes(bytes)?;
+                    BeaconBlockBody::Gloas(inner.clone_as_blinded())
                 }
                 _ => panic!(),
             })
@@ -514,6 +520,7 @@ impl<E: EthSpec> Operation<E> for DepositRequest {
         spec: &ChainSpec,
         _extra: &Operations<E, Self>,
     ) -> Result<(), BlockProcessingError> {
+        state.update_pubkey_cache()?;
         process_deposit_requests(state, std::slice::from_ref(self), spec)
     }
 }
