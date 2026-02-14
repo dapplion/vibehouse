@@ -1,13 +1,13 @@
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
-use bls::SignatureSet;
 use std::borrow::Cow;
+use swap_or_not_shuffle::compute_shuffled_index;
 use tree_hash::TreeHash;
 use types::consts::gloas::{PTC_SIZE, BUILDER_INDEX_SELF_BUILD};
 use types::{
-    BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec, Domain, EthSpec,
-    IndexedPayloadAttestation, PayloadAttestation, PayloadAttestationData, PublicKey,
-    SignedExecutionPayloadBid, SigningData, Slot,
+    AggregateSignature, BeaconState, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec,
+    Domain, EthSpec, IndexedPayloadAttestation, PayloadAttestation, PayloadAttestationData,
+    PublicKey, SignedExecutionPayloadBid, SigningData, Slot, Unsigned,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -142,14 +142,15 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             withdrawal: BuilderPendingWithdrawal {
                 fee_recipient: bid.fee_recipient,
                 amount: bid.value,
-                builder_index: bid.builder_index,
+                        builder_index: bid.builder_index,
             },
         };
         
-        state_gloas.builder_pending_payments[slot_index] = pending_payment;
+        *state_gloas.builder_pending_payments.get_mut(slot_index).ok_or(BlockProcessingError::InvalidSlotIndex(slot_index))? = pending_payment;
     }
 
     Ok(())
+}
 }
 
 /// Processes payload attestations from the PTC (Payload Timeliness Committee).
@@ -220,13 +221,14 @@ pub fn process_payload_attestation<E: EthSpec>(
                     PayloadAttestationInvalid::InvalidPubkey,
                 ))?;
 
-            pubkeys.push(pubkey);
+                    pubkeys.push(pubkey);
         }
 
-        // Verify the aggregate signature
+        // Verify the aggregate signature  
+        let pubkey_refs: Vec<&PublicKey> = pubkeys.iter().collect();
         if !attestation
             .signature
-            .verify_aggregate(&pubkeys, signing_root)
+            .fast_aggregate_verify(signing_root, &pubkey_refs)
         {
             return Err(BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::BadSignature,
@@ -257,15 +259,16 @@ pub fn process_payload_attestation<E: EthSpec>(
                 )
             })?;
 
-        // If payload was revealed, process builder payment
+                // If payload was revealed, process builder payment
         if data.payload_present {
             let payment_slot_index =
                 (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
-            let pending_payment = &mut state_gloas.builder_pending_payments[payment_slot_index];
+            let pending_payment = state_gloas.builder_pending_payments.get_mut(payment_slot_index)
+                .ok_or(BlockProcessingError::InvalidSlotIndex(payment_slot_index))?;
 
             // Transfer payment from builder to proposer if not already processed
-            if pending_payment.weight < quorum_threshold {
-                pending_payment.weight = quorum_threshold; // Mark as processed
+            if pending_payment.weight < quorum_threshold.as_u64() {
+                pending_payment.weight = quorum_threshold.as_u64(); // Mark as processed
 
                 let builder_index = pending_payment.withdrawal.builder_index as usize;
                 let payment_amount = pending_payment.withdrawal.amount;
@@ -362,11 +365,11 @@ fn get_ptc_committee<E: EthSpec>(
     let seed = state.get_beacon_proposer_seed(slot, spec)?;
 
     let mut ptc_committee = Vec::with_capacity(PTC_SIZE as usize);
-    let mut i = 0;
+        let mut i = 0;
 
     // Select PTC_SIZE validators using shuffled indices
     while ptc_committee.len() < PTC_SIZE as usize && i < active_validator_count * 10 {
-        let shuffled_index = types::compute_shuffled_index(
+        let shuffled_index = compute_shuffled_index(
             i % active_validator_count,
             active_validator_count,
             seed.as_slice(),

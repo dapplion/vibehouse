@@ -1,5 +1,5 @@
 use crate::{EthSpec, ForkName, PayloadAttestationData, test_utils::TestRandom};
-use bls::Signature;
+use bls::AggregateSignature;
 use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,7 @@ pub struct PayloadAttestation<E: EthSpec> {
     /// The attestation data being signed
     pub data: PayloadAttestationData,
     /// BLS aggregate signature from all attesting PTC members
-    pub signature: Signature,
+    pub signature: AggregateSignature,
 }
 
 impl<E: EthSpec> PayloadAttestation<E> {
@@ -45,7 +45,7 @@ impl<E: EthSpec> PayloadAttestation<E> {
 
     /// Create an empty payload attestation (used for defaults/testing).
     pub fn empty() -> Self {
-        Self {
+                Self {
             aggregation_bits: BitVector::new(),
             data: PayloadAttestationData {
                 beacon_block_root: Default::default(),
@@ -53,7 +53,7 @@ impl<E: EthSpec> PayloadAttestation<E> {
                 payload_present: false,
                 blob_data_available: false,
             },
-            signature: Signature::empty(),
+            signature: AggregateSignature::empty(),
         }
     }
 }
