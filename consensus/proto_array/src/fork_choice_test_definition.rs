@@ -210,6 +210,9 @@ impl ForkChoiceTestDefinition {
                         ),
                         unrealized_justified_checkpoint: None,
                         unrealized_finalized_checkpoint: None,
+                        builder_index: None,
+                        payload_revealed: false,
+                        ptc_weight: 0,
                     };
                     fork_choice
                         .process_block::<MainnetEthSpec>(block, slot)

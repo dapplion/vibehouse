@@ -977,6 +977,9 @@ where
                 execution_status,
                 unrealized_justified_checkpoint: Some(unrealized_justified_checkpoint),
                 unrealized_finalized_checkpoint: Some(unrealized_finalized_checkpoint),
+                builder_index: None,
+                payload_revealed: false,
+                ptc_weight: 0,
             },
             current_slot,
         )?;
@@ -1250,6 +1253,9 @@ where
             .into());
         }
 
+        // Copy slot for logging before mutable borrow
+        let node_slot = node.slot;
+
         // Update the proto_array node with builder information
         let nodes = &mut self
             .proto_array
@@ -1269,11 +1275,11 @@ where
         }
 
         debug!(
-            "Processed execution bid";
-            "beacon_block_root" => ?beacon_block_root,
-            "builder_index" => bid.message.builder_index,
-            "bid_value" => bid.message.value,
-            "slot" => node.slot,
+            ?beacon_block_root,
+            builder_index = bid.message.builder_index,
+            bid_value = bid.message.value,
+            slot = %node_slot,
+            "Processed execution bid"
         );
 
         Ok(())
@@ -1361,20 +1367,20 @@ where
                     node.payload_revealed = true;
                     
                     debug!(
-                        "Payload quorum reached and payload present";
-                        "beacon_block_root" => ?beacon_block_root,
-                        "ptc_weight" => node.ptc_weight,
-                        "quorum_threshold" => quorum_threshold,
-                        "slot" => node.slot,
+                        ?beacon_block_root,
+                        ptc_weight = node.ptc_weight,
+                        quorum_threshold = quorum_threshold,
+                        slot = %node.slot,
+                        "Payload quorum reached and payload present"
                     );
                 } else {
                     // Quorum says payload was NOT present (builder withholding)
                     warn!(
-                        "Payload quorum reached but payload NOT present - builder withholding";
-                        "beacon_block_root" => ?beacon_block_root,
-                        "builder_index" => ?node.builder_index,
-                        "ptc_weight" => node.ptc_weight,
-                        "slot" => node.slot,
+                        ?beacon_block_root,
+                        builder_index = ?node.builder_index,
+                        ptc_weight = node.ptc_weight,
+                        slot = %node.slot,
+                        "Payload quorum reached but payload NOT present - builder withholding"
                     );
                 }
             }

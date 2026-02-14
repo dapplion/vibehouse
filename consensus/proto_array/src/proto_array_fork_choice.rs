@@ -452,6 +452,9 @@ impl ProtoArrayForkChoice {
             execution_status,
             unrealized_justified_checkpoint: Some(justified_checkpoint),
             unrealized_finalized_checkpoint: Some(finalized_checkpoint),
+            builder_index: None,
+            payload_revealed: false,
+            ptc_weight: 0,
         };
 
         proto_array
@@ -862,6 +865,9 @@ impl ProtoArrayForkChoice {
             execution_status: block.execution_status,
             unrealized_justified_checkpoint: block.unrealized_justified_checkpoint,
             unrealized_finalized_checkpoint: block.unrealized_finalized_checkpoint,
+            builder_index: block.builder_index,
+            payload_revealed: block.payload_revealed,
+            ptc_weight: block.ptc_weight,
         })
     }
 
