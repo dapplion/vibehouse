@@ -162,14 +162,14 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Equivocation detection strategy documented (deferred to Phase 4 P2P implementation)
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition) - blocked on Rust toolchain
 
-#### Step 4: P2P Networking ⚡ IN PROGRESS (5/7 done - 2026-02-14 15:11)
+#### Step 4: P2P Networking ⚡ IN PROGRESS (6/8 done - 2026-02-14 18:48)
 - [x] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] Gossip validation infrastructure (error types, verified wrappers, signature sets)
 - [x] Add equivocation detection caches (ObservedExecutionBids, ObservedPayloadAttestations)
 - [x] Complete gossip validation wiring (builder registry, signature verification) - **PR #18**
 - [x] Pubsub message encoding/decoding (commit b0fafabd6)
-- [ ] Beacon processor integration - wire up handlers (gossip_methods.rs)
-- [ ] Update peer scoring for new topics
+- [x] Beacon processor integration - wire up handlers (gossip_methods.rs) ✅ ALREADY COMPLETE
+- [ ] Verify peer scoring configuration for new topics
 - [ ] Tests (gossip validation + integration)
 
 #### Step 5: Beacon Chain Integration
