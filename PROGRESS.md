@@ -4,6 +4,55 @@
 
 ---
 
+## 2026-02-14 05:30 - Phase 2 started: state transition skeletons ⚙️
+
+### State transition scaffolding created
+
+**New file**: `consensus/state_processing/src/per_block_processing/gloas.rs`
+
+**Functions added** (with TODOs for completion):
+1. `process_execution_payload_bid()`
+   - ✅ Slot validation
+   - ✅ Parent block root validation  
+   - ✅ Self-build detection (BUILDER_INDEX_SELF_BUILD)
+   - ✅ Builder existence and active status check
+   - ✅ Builder balance check
+   - ❌ TODO: Signature verification (DOMAIN_BEACON_BUILDER)
+   - ❌ TODO: Builder pending payment setup
+
+2. `process_payload_attestation()`
+   - ✅ Slot validation
+   - ✅ Beacon block root validation
+   - ✅ Quorum threshold calculation (60% of PTC)
+   - ✅ execution_payload_availability bit update
+   - ❌ TODO: Signature verification
+   - ❌ TODO: PTC committee member calculation
+   - ❌ TODO: Builder payment trigger
+
+3. `get_indexed_payload_attestation()`
+   - ❌ TODO: Implement PTC committee selection algorithm
+
+**Error types added**:
+- `BlockProcessingError::PayloadBidInvalid { reason: String }`
+- `BlockProcessingError::PayloadAttestationInvalid(PayloadAttestationInvalid)`
+- `PayloadAttestationInvalid` enum with 8 variants
+
+**Constants defined**:
+- `types::consts::gloas::PTC_SIZE = 512`
+- `types::consts::gloas::BUILDER_INDEX_SELF_BUILD = u64::MAX`
+
+**Documentation**:
+- Created `docs/workstreams/gloas-state-transitions.md` with 4-week implementation plan
+
+### Next steps
+1. Implement signature verification helpers
+2. Implement PTC committee calculation (get_ptc_committee)
+3. Add builder payment logic
+4. Write unit tests for each validation path
+5. Integration test: full block with bid + attestations
+
+---
+
 ## 2026-02-14 05:05 - Phase 1 audit: types complete ✅
 
 ### Audited gloas Phase 1 implementation status
