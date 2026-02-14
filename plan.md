@@ -152,12 +152,13 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Implement bid validation: check builder balance, bid amount, commitment validity, signature verification
 - [x] Wire gloas operations into `process_operations()` - integrated with block processing flow
 
-#### Step 3: Fork Choice
-- [ ] Implement ePBS fork choice rule changes
-- [ ] Update `on_block` to handle the proposer/builder split
-- [ ] Implement `on_execution_bid` fork choice handler
-- [ ] Implement `on_payload_attestation` fork choice handler
-- [ ] Handle the case where payload is not revealed (builder withholding)
+#### Step 3: Fork Choice ⚡ IN PROGRESS (5/8 done - 2026-02-14)
+- [x] Add ePBS fields to ProtoNode (builder_index, payload_revealed, ptc_weight)
+- [x] Add error types (InvalidExecutionBid, InvalidPayloadAttestation)
+- [x] Implement `on_execution_bid` fork choice handler
+- [x] Implement `on_payload_attestation` fork choice handler
+- [x] Update `node_is_viable_for_head` to require payload_revealed for external builders
+- [ ] Handle the case where payload is not revealed (builder withholding penalty)
 - [ ] Update equivocation detection for the new message types
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition)
 
@@ -623,6 +624,36 @@ Once toolchain is available:
 ---
 
 ## 2026-02-14 06:14 - Signature verification implemented ✍️
+
+## 2026-02-14 08:30-09:00 - Phase 3: Fork Choice Implementation 🎯
+
+**[Full session notes: docs/sessions/2026-02-14-phase3-fork-choice-start.md]**
+
+### Summary
+
+Implemented the core fork choice changes for gloas ePBS (5/8 Phase 3 items):
+
+**ProtoArray Updates**:
+- Added 3 fields to ProtoNode: builder_index, payload_revealed, ptc_weight
+- Added same fields to Block struct for fork choice integration
+
+**Error Types**:
+- InvalidExecutionBid: 9 validation failure cases
+- InvalidPayloadAttestation: 6 validation failure cases
+
+**Fork Choice Handlers**:
+- on_execution_bid: Records builder selection, initializes payload tracking
+- on_payload_attestation: Accumulates PTC weight, marks revealed at quorum (307/512)
+
+**Head Selection**:
+- Updated node_is_viable_for_head: external builder blocks require payload_revealed=true
+
+**Commits**: 79908de46, 9236290cb, 9bc71e46b, b5347b138
+
+**Phase 3 Status**: Core logic COMPLETE. Remaining: withholding penalties, equivocation, tests.
+
+---
+
 
 ### Gloas ePBS signature verification complete
 
