@@ -1,3 +1,23 @@
+## 2026-02-14 14:05 - CI compilation errors fixed 🔧
+
+### Fixes applied (PR #18 commit a950183)
+
+1. **Missing gossip match arms** (gossip_cache.rs, pubsub.rs)
+   - Added `ExecutionBid`, `ExecutionPayload`, `PayloadAttestation` arms to match statements
+   - Gossip cache: use same timeouts as beacon blocks/attestations
+   - Pubsub decoder: return error (validation happens in beacon_chain layer)
+
+2. **Hash256::from_low_u64_be() API change**
+   - Added `use fixed_bytes::FixedBytesExtended;` import
+   - Method exists in FixedBytesExtended trait, was missing trait import
+   - Fixed in `observed_execution_bids.rs` and `observed_payload_attestations.rs`
+
+### CI Status
+- All compilation errors resolved
+- Waiting for CI rerun on PR #18
+
+---
+
 ## 2026-02-14 11:46 - Phase 4: Equivocation detection implemented ✅
 
 ### Observed caches created
