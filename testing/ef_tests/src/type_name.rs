@@ -167,3 +167,24 @@ type_name!(Withdrawal);
 type_name!(BlsToExecutionChange, "BLSToExecutionChange");
 type_name!(SignedBlsToExecutionChange, "SignedBLSToExecutionChange");
 type_name!(HistoricalSummary);
+
+// Gloas (ePBS) types
+type_name!(Builder);
+type_name!(BuilderPendingPayment);
+type_name!(BuilderPendingWithdrawal);
+type_name_generic!(ExecutionPayloadBid);
+type_name_generic!(SignedExecutionPayloadBid);
+type_name_generic!(ExecutionPayloadEnvelope);
+type_name_generic!(SignedExecutionPayloadEnvelope);
+type_name_generic!(PayloadAttestation);
+type_name!(PayloadAttestationData);
+type_name!(PayloadAttestationMessage);
+type_name_generic!(IndexedPayloadAttestation);
+type_name_generic!(BeaconBlockBodyGloas, "BeaconBlockBody");
+type_name_generic!(ExecutionPayloadGloas, "ExecutionPayload");
+type_name_generic!(ExecutionPayloadHeaderGloas, "ExecutionPayloadHeader");
+type_name_generic!(LightClientBootstrapGloas, "LightClientBootstrap");
+type_name_generic!(LightClientFinalityUpdateGloas, "LightClientFinalityUpdate");
+type_name_generic!(LightClientHeaderGloas, "LightClientHeader");
+type_name_generic!(LightClientOptimisticUpdateGloas, "LightClientOptimisticUpdate");
+type_name_generic!(LightClientUpdateGloas, "LightClientUpdate");
