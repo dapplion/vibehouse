@@ -4,6 +4,51 @@
 
 ---
 
+## 2026-02-14 15:11 - P2P pubsub wiring fixed 🔌
+
+### Compilation fix: gloas gossip message handling
+
+**Problem**: Missing match arms for ExecutionBid, ExecutionPayload, PayloadAttestation in pubsub encoding/decoding caused compilation failures.
+
+**Solution** (commit b0fafabd6):
+1. Added 3 PubsubMessage enum variants:
+   - `ExecutionBid(Box<SignedExecutionPayloadBid<E>>)`
+   - `ExecutionPayload(Box<SignedExecutionPayloadEnvelope<E>>)`
+   - `PayloadAttestation(Box<PayloadAttestation<E>>)`
+
+2. Implemented decode logic for all 3:
+   - SSZ deserialization from gossip data
+   - Proper error handling
+
+3. Implemented encode logic:
+   - SSZ serialization via `.as_ssz_bytes()`
+
+4. Implemented Display for debugging:
+   - ExecutionBid shows slot, builder_index, value
+   - ExecutionPayload shows slot, builder_index
+   - PayloadAttestation shows slot, beacon_block_root, num_attesters
+
+5. Gossip cache handling:
+   - Returns `None` for all 3 gloas message types (time-sensitive, no caching needed)
+
+**Files modified**:
+- `beacon_node/lighthouse_network/src/types/pubsub.rs` (+47 lines)
+- `beacon_node/lighthouse_network/src/service/gossip_cache.rs` (+3 lines)
+
+**Compilation status**: ✅ lighthouse_network and ef_tests packages now compile cleanly
+
+### Next steps
+
+Priority 2 item resolved (broken compilation). Moving back to priority order:
+1. ~~Broken CI~~ ✅ FIXED
+2. Run spec tests - check for failures
+3. If tests pass → continue Phase 4 (beacon processor + peer scoring)
+4. If tests fail → fix failures before proceeding
+
+**Phase 4 status**: 4/6 complete (gossip topics + validation infrastructure + wiring done, beacon processor + peer scoring + tests remain)
+
+---
+
 ## 2026-02-14 12:56 - Phase 4: Gossip validation wiring complete ✅
 
 ### Completed gossip validation implementation
