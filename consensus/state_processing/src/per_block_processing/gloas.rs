@@ -174,8 +174,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
     // Record the pending payment if there is some payment
     if amount > 0 {
-        let slots_per_epoch = E::slots_per_epoch();
-        let slot_index = (slots_per_epoch + bid.slot.as_u64() % slots_per_epoch) as usize;
+        let slot_index = (bid.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
 
         let pending_payment = BuilderPendingPayment {
             weight: 0,
