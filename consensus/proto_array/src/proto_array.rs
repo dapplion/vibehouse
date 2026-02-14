@@ -898,6 +898,18 @@ impl ProtoArray {
             return false;
         }
 
+        // Gloas ePBS: For external builder blocks, payload must be revealed to be viable for head.
+        // Self-build blocks (builder_index = None or BUILDER_INDEX_SELF_BUILD) are always viable.
+        if let Some(builder_index) = node.builder_index {
+            // BUILDER_INDEX_SELF_BUILD is u64::MAX - proposer built their own payload
+            const BUILDER_INDEX_SELF_BUILD: u64 = u64::MAX;
+            
+            if builder_index != BUILDER_INDEX_SELF_BUILD && !node.payload_revealed {
+                // External builder block without revealed payload - not viable for head
+                return false;
+            }
+        }
+
         let genesis_epoch = Epoch::new(0);
         let current_epoch = current_slot.epoch(E::slots_per_epoch());
         let node_epoch = node.slot.epoch(E::slots_per_epoch());
