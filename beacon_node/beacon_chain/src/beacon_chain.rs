@@ -416,6 +416,8 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub observed_column_sidecars: RwLock<ObservedDataSidecars<DataColumnSidecar<T::EthSpec>>>,
     /// Maintains a record of slashable message seen over the gossip network or RPC.
     pub observed_slashable: RwLock<ObservedSlashable<T::EthSpec>>,
+    /// Maintains a record of execution payload bids seen over the gossip network (Gloas ePBS).
+    pub observed_execution_bids: Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
     /// Maintains a record of which validators have submitted voluntary exits.
     pub observed_voluntary_exits: Mutex<ObservedOperations<SignedVoluntaryExit, T::EthSpec>>,
     /// Maintains a record of which validators we've seen proposer slashings for.

@@ -662,3 +662,70 @@ where
         message,
     )))
 }
+
+/// Gloas ePBS: A signature set for verifying a builder's execution payload bid signature.
+///
+/// This validates that the builder actually signed the bid using DOMAIN_BEACON_BUILDER.
+pub fn execution_bid_signature_set<'a, E, F>(
+    get_pubkey: F,
+    signed_bid: &'a types::SignedExecutionPayloadBid<E>,
+    fork: &Fork,
+    genesis_validators_root: Hash256,
+    spec: &'a ChainSpec,
+) -> Result<SignatureSet<'a>>
+where
+    E: EthSpec,
+    F: Fn(usize) -> Option<Cow<'a, PublicKey>>,
+{
+    let builder_index = signed_bid.message.builder_index;
+    let slot = signed_bid.message.slot;
+
+    let domain = spec.get_domain(
+        slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        fork,
+        genesis_validators_root,
+    );
+
+    let message = signed_bid.message.signing_root(domain);
+
+    Ok(SignatureSet::single_pubkey(
+        &signed_bid.signature,
+        get_pubkey(builder_index as usize).ok_or(Error::ValidatorUnknown(builder_index))?,
+        message,
+    ))
+}
+
+/// Gloas ePBS: A signature set for verifying an indexed payload attestation aggregate signature.
+///
+/// This validates that PTC members signed the payload attestation using DOMAIN_PTC_ATTESTER.
+pub fn indexed_payload_attestation_signature_set<'a, E, F>(
+    get_pubkeys: F,
+    indexed_attestation: &'a types::IndexedPayloadAttestation<E>,
+    fork: &Fork,
+    genesis_validators_root: Hash256,
+    spec: &'a ChainSpec,
+) -> Result<SignatureSet<'a>>
+where
+    E: EthSpec,
+    F: Fn(&[u64]) -> Result<Vec<Cow<'a, PublicKey>>>,
+{
+    let slot = indexed_attestation.data.slot;
+
+    let domain = spec.get_domain(
+        slot.epoch(E::slots_per_epoch()),
+        Domain::PtcAttester,
+        fork,
+        genesis_validators_root,
+    );
+
+    let message = indexed_attestation.data.signing_root(domain);
+
+    let pubkeys = get_pubkeys(&indexed_attestation.attesting_indices)?;
+
+    Ok(SignatureSet::multiple_pubkeys(
+        &indexed_attestation.signature,
+        pubkeys,
+        message,
+    ))
+}
