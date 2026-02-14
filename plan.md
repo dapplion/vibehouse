@@ -502,24 +502,25 @@ Maintain a watchlist of upstream PRs that we care about:
 - GossipVerifiedExecutionBid, GossipVerifiedPayloadAttestation accessible
 - Error types exported
 
-#### 5.2 Block import pipeline 🚧 IN PROGRESS (4/8 steps complete)
+#### 5.2 Block import pipeline 🚧 IN PROGRESS (5/8 steps complete)
 **PayloadState tracking implemented:**
 - ✅ Step 1: PayloadState<E> enum (Included, Pending, Revealed, SelfBuild)
 - ✅ Step 2: Extended BlockImportData with payload_state field
 - ✅ Step 3: Payload state detection in from_signature_verified_components()
 - ✅ Step 4: Skip EL verification for pending blocks
+- ✅ Step 5: Fork choice integration (payload_state → builder_index, payload_revealed)
 
 **Validation enforced:**
 - Self-build MUST have execution_payload populated
 - External builders MUST NOT include payload in proposer block
+- Fork choice tracks builder_index and payload_revealed for each block
 
 **Remaining steps:**
-- ⏳ Step 5: Fork choice integration (mark blocks as pending/revealed)
 - ⏳ Step 6: Payload reveal handler (process builder payload reveals)
 - ⏳ Step 7: Wire payload reveal to P2P gossip
 - ⏳ Step 8: Tests (unit + integration)
 
-**Commits:** d3621c209, 2aaa2d0ad, 0b6817988, a0e89c141
+**Commits:** d3621c209, 2aaa2d0ad, 0b6817988, a0e89c141, d03241840
 
 #### 5.3-5.6 Not started
 - Fork choice store integration
@@ -534,19 +535,17 @@ Maintain a watchlist of upstream PRs that we care about:
 - ✅ P2P gossip validation with equivocation detection
 - ✅ Beacon processor integration (full message flow)
 - ✅ Beacon chain exports and self-build payload design
-- 🚧 Block import pipeline (4/8 steps, 50% complete)
+- 🚧 Block import pipeline (5/8 steps, 62.5% complete)
   - PayloadState enum ✅
   - Conditional payload verification ✅
-  - Fork choice integration pending ⏳
+  - Fork choice integration ✅
 
 ### Next Steps (Priority Order)
-1. **Fork choice integration** - update on_block to record payload_state
-2. **Payload reveal handler** - process_execution_payload_reveal() method
-3. **Wire to P2P** - connect reveal handler to gossip
-4. **Tests** - comprehensive coverage
+1. **Payload reveal handler** - process_execution_payload_reveal() method
+2. **Wire to P2P** - connect reveal handler to gossip
+3. **Tests** - comprehensive coverage
 
-**Status: Phase 5.2 - 4/8 complete (50%). Fork choice integration next.** 🎵
-4. **Skip verification for pending** - defer payload validation until reveal
+**Status: Phase 5.2 - 5/8 complete (62.5%). Payload reveal handler next.** 🎵
 5. **Fork choice integration** - mark blocks as pending/revealed
 6. **Payload reveal handler** - process builder reveals
 7. **Tests** - comprehensive coverage

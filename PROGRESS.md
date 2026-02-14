@@ -4,6 +4,92 @@
 
 ---
 
+## 2026-02-14 18:28 - Phase 5.2 Step 5 complete: Fork choice integration ✅
+
+### Step 5 Complete: Fork choice tracks payload_state ✅
+
+**Problem:** Fork choice `on_block()` was hardcoding `builder_index: None, payload_revealed: false` for all blocks, ignoring the gloas ePBS payload state.
+
+**Solution:** Wire `payload_state` through the entire block import pipeline to fork choice:
+
+**Implementation:**
+1. **BlockImportData destructuring** - Fixed missing `payload_state` field (was causing silent data loss)
+2. **import_available_block()** - Extract payload_state from BlockImportData
+3. **import_block() signature** - Add payload_state parameter
+4. **beacon_chain imports** - Add PayloadState to block_verification_types import
+5. **fork_choice.on_block() signature** - Add payload_state parameter
+6. **ProtoNode initialization logic**:
+   ```rust
+   let (builder_index, payload_revealed) = match payload_state {
+       PayloadState::Included => (None, false),
+       PayloadState::Pending { bid } => (Some(bid.message.builder_index), false),
+       PayloadState::Revealed { bid, .. } => (Some(bid.message.builder_index), true),
+       PayloadState::SelfBuild { .. } => (Some(BUILDER_INDEX_SELF_BUILD), true),
+   };
+   ```
+
+**Updated call sites:**
+- `beacon_chain.rs`: Pass payload_state to fork_choice.on_block()
+- `fork_revert.rs`: Use `PayloadState::Included` for replayed blocks
+- `payload_invalidation.rs` test: Use `PayloadState::Included`
+- `fork_choice/tests.rs`: Use `PayloadState::Included` (2 locations)
+
+**Impact:**
+- Fork choice now correctly tracks which blocks have pending/revealed payloads
+- `payload_revealed` flag enables head selection to enforce revelation requirement
+- `builder_index` links blocks to their builders for payment tracking
+
+**File changes:** 5 files, +23/-3 lines
+
+### Implementation Progress: 5/8 steps complete (62.5%)
+
+**Completed:**
+- ✅ Step 1: PayloadState enum (15 min) - d3621c209
+- ✅ Step 2: BlockImportData extension (10 min) - d3621c209
+- ✅ Step 3: Payload state detection (45 min) - 2aaa2d0ad
+- ✅ Step 4: Skip verification for pending (45 min) - 0b6817988
+- ✅ Step 5: Fork choice integration (35 min) - d03241840
+
+**Commits:**
+- `d3621c209` - phase 5.2: add PayloadState enum and extend BlockImportData
+- `2aaa2d0ad` - phase 5.2: detect payload state during block import
+- `0b6817988` - phase 5.2: skip payload verification for pending gloas blocks
+- `a0e89c141` - progress update: phase 5.2 steps 1-3 complete
+- `674403601` - plan.md: update Phase 5.2 progress (4/8 steps complete)
+- `d03241840` - phase 5.2 step 5: fork choice integration
+
+**Remaining:**
+- ⏳ Step 6: Payload reveal handler (1.5 hours)
+- ⏳ Step 7: Wire to P2P (30 min)
+- ⏳ Step 8: Tests (2 hours)
+
+**Estimated remaining time:** ~4 hours
+
+### Session Summary
+
+**Time:** 2026-02-14 18:00 - 18:28 (28 minutes)
+**Pace:** Efficient - wired through 5 files systematically
+**Output:**
+- Full payload_state pipeline from block import → fork choice
+- Fixed silent data loss bug (missing payload_state in destructuring)
+- All call sites updated (main code + tests)
+
+**Momentum:** Excellent. The payload_state now flows end-to-end. Next is the payload reveal handler - the mechanism for builders to publish their payloads after proposers commit to bids.
+
+### Next: Step 6 - Payload reveal handler
+
+Implement `process_execution_payload_reveal()` method in BeaconChain:
+- Accept SignedExecutionPayloadEnvelope from P2P
+- Validate signature, slot, parent_root match pending block
+- Update fork choice: mark block as revealed, run EL verification
+- Propagate to peers if valid
+
+**Location:** `beacon_node/beacon_chain/src/` - new method or in gloas-specific module
+
+**Status:** Phase 5.2 at 62.5% complete. Reveal handler is the biggest remaining piece. 🎵
+
+---
+
 ## 2026-02-14 17:45 - Phase 5.2 Step 4 complete: Conditional payload verification 🚀
 
 ### Step 4 Complete: Skip payload verification for pending blocks ✅
