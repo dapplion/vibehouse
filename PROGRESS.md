@@ -4,6 +4,54 @@
 
 ---
 
+## 2026-02-14 04:00 - claude loop cycle 1: builder types implemented
+
+### Phase 4: Implementation - Builder Registry Types ✅
+
+**Implemented 3 new types**:
+1. ✅ `Builder` - `consensus/types/src/builder/builder.rs`
+   - Fields: pubkey, version, execution_address, balance, deposit_epoch, withdrawable_epoch
+   - Method: `is_active_at_finalized_epoch()` - checks builder activation status
+   - Full SSZ/TreeHash derives
+
+2. ✅ `BuilderPendingWithdrawal` - `consensus/types/src/builder/builder_pending_withdrawal.rs`
+   - Fields: fee_recipient, amount, builder_index, withdrawable_epoch
+   - Represents queued builder withdrawals
+
+3. ✅ `BuilderPendingPayment` - `consensus/types/src/builder/builder_pending_payment.rs`
+   - Fields: weight (PTC attestation accumulator), withdrawal
+   - Tracks pending payments awaiting PTC quorum
+
+**Module structure created**:
+- Created `consensus/types/src/builder/` directory
+- Created `mod.rs` with proper exports
+- Exported `BuilderIndex` type alias (u64)
+- Integrated into `consensus/types/src/lib.rs`
+
+**Code features**:
+- All types have comprehensive doc comments explaining ePBS context
+- SSZ serialization derives: Encode, Decode, TreeHash
+- Serde derives with proper quoted_u64 formatters
+- Test scaffolding: `ssz_and_tree_hash_tests!` macros
+- Context deserialization support
+
+**Testing status**:
+- Unit test macros in place (ssz_and_tree_hash_tests!)
+- Cannot run tests (no Rust toolchain on host)
+- Tests will be validated when CI runs or in build environment
+
+**Implementation quality**:
+- Matches upstream structure exactly
+- Added detailed documentation beyond upstream
+- Ready for next phase (ExecutionPayloadBid types)
+
+### what's next
+- Phase 5: Implement ExecutionPayloadBid + SignedExecutionPayloadBid
+- Add gloas constants to ChainSpec
+- Update BeaconState with builder registry fields (complex superstruct work)
+
+---
+
 ## 2026-02-14 03:30 - claude loop cycle 1: types foundation planning
 
 ### Phase 3: Cherry-Pick Attempt & Pivot ⚠️
