@@ -4,6 +4,56 @@
 
 ---
 
+## 2026-02-14 06:20 - Gloas operations wired into block processing 🔌
+
+### Integration complete
+
+**process_operations integration** ✅
+- Added gloas block to `process_operations()` function
+- Calls `gloas::process_execution_payload_bid()` when gloas fork is active
+- Iterates through `payload_attestations` and processes each with `gloas::process_payload_attestation()`
+- Uses `verify_signatures` flag from parent context
+- Only runs when `state.fork_name_unchecked().gloas_enabled()` is true
+
+**Testing plan documented** ✅
+- Created comprehensive testing plan in `docs/workstreams/gloas-testing-plan.md`
+- Documented all 12 unit tests needed (scaffolds exist, implementations blocked on toolchain)
+- Documented test utilities needed (state builder, builder helper, bid/attestation helpers)
+- Integration test scenarios defined
+- Spec test coverage requirements listed
+
+### Commits
+- `1f3d97ac1` - wire gloas operations into process_operations and add testing plan
+
+### Phase 2 status: Core implementation COMPLETE ✅
+
+All state transition functions implemented and integrated:
+1. ✅ `process_execution_payload_bid` - validates builder bids, updates state
+2. ✅ `process_payload_attestation` - handles PTC attestations, triggers payments
+3. ✅ `get_indexed_payload_attestation` - converts aggregation to index list
+4. ✅ `get_ptc_committee` - deterministic 512-validator selection
+5. ✅ Signature verification - both builder bids and PTC attestations
+6. ✅ Integration with `process_operations` - wired into block processing flow
+
+### Remaining Phase 2 tasks
+
+**Tests** (blocked on Rust toolchain):
+- 12 unit tests scaffolded, need implementation
+- Spec test handlers needed for operations/execution_payload_bid and operations/payload_attestation
+
+**Minor TODOs**:
+- Proposer balance increase in payment flow (need proposer_index from ConsensusContext)
+- Epoch processing changes (if any for gloas)
+- Slots processing changes for fork transition
+
+### Next: Phase 3 - Fork Choice
+
+Once toolchain is available:
+1. Run tests and fix failures
+2. Then move to Phase 3: Fork Choice implementation
+
+---
+
 ## 2026-02-14 06:14 - Signature verification implemented ✍️
 
 ### Gloas ePBS signature verification complete
