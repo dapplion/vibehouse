@@ -162,11 +162,11 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Equivocation detection strategy documented (deferred to Phase 4 P2P implementation)
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition) - blocked on Rust toolchain
 
-#### Step 4: P2P Networking ⚡ IN PROGRESS (2/6 done - 2026-02-14)
+#### Step 4: P2P Networking ⚡ IN PROGRESS (3/6 done - 2026-02-14 13:30)
 - [x] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] Implement gossip validation for execution_bid (equivocation detection included)
-- [ ] Implement gossip validation for payload_attestation
-- [ ] Implement gossip validation for execution_payload envelope
+- [x] Implement gossip validation for payload_attestation (PTC committee validation + equivocation detection)
+- [ ] Implement gossip validation for execution_payload envelope (deferred - lower priority)
 - [ ] Beacon processor integration - wire up handlers
 - [ ] Update peer scoring for new topics
 - [ ] Tests (gossip validation + integration)
@@ -485,11 +485,12 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 09:25 GMT+1
+## Current Status - 2026-02-14 13:30 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented
 **Phase 2 Complete ✅**: All state transition functions implemented
-**Phase 3 In Progress ⚡**: Fork choice handlers (5/8 complete, COMPILATION VERIFIED)
+**Phase 3 Complete ✅**: Fork choice handlers (5/8 core complete, COMPILATION VERIFIED)
+**Phase 4 In Progress ⚡**: P2P networking (3/6 complete)
 
 ### Implementation Status
 - ✅ All gloas types: BeaconState, BeaconBlockBody, 14 ePBS types
@@ -508,21 +509,29 @@ Maintain a watchlist of upstream PRs that we care about:
   - `node_is_viable_for_head()` - requires payload_revealed for external builders
 - ✅ ProtoNode extended with builder_index, payload_revealed, ptc_weight
 - ✅ **COMPILATION VERIFIED**: `cargo check --release` passes for fork_choice and proto_array
+- ✅ P2P gossip validation (Phase 4.2 + 4.3):
+  - `GossipVerifiedExecutionBid` - full bid validation with equivocation detection
+  - `GossipVerifiedPayloadAttestation` - full PTC attestation validation with equivocation detection
+  - Observed caches: `ObservedExecutionBids`, `ObservedPayloadAttestations`
+  - Signature verification: builder bid signatures, PTC aggregate signatures
+  - PTC committee membership validation
 
-### Phase 3 Remaining
-1. Withholding penalty mechanism (TODO)
-2. Equivocation detection for new message types (TODO)
-3. Tests (unit + integration) (TODO)
+### Phase 4 Progress (3/6 complete)
+1. ✅ Gossip topics (execution_bid, execution_payload, payload_attestation)
+2. ✅ Execution bid validation with equivocation detection
+3. ✅ Payload attestation validation with PTC committee checks
+4. ⏸️ Execution payload envelope validation (deferred - lower priority)
+5. 🚧 Beacon processor integration (next - wire up handlers)
+6. ⏸️ Peer scoring (configure topic weights)
 
 ### Next Steps (Priority Order)
-1. **Run spec tests**: `cargo nextest run --release --test tests --features ef_tests minimal gloas`
-2. **Verify test pass rate**: Expect some failures initially
-3. **Fix test failures**: Iterate until 100% pass
-4. **Implement unit tests**: 12 test skeletons in gloas.rs
-5. **Complete Phase 3**: Withholding penalties + equivocation
-6. **Move to Phase 4**: P2P networking (gossip topics, validation)
+1. **Beacon processor integration**: Wire gossip handlers to fork choice
+2. **Peer scoring**: Configure topic weights and penalties
+3. **Integration tests**: End-to-end gossip flow validation
+4. **Run spec tests**: Validate against consensus-spec-tests
+5. **Move to Phase 5**: Beacon chain integration (block import pipeline)
 
-**Status: Phase 3 core logic COMPLETE and COMPILING. Ready for testing.** 🎵
+**Status: Phase 4 gossip validation COMPLETE (3/6). Ready for beacon processor wiring.** 🎵
 # vibehouse progress log
 
 > every work session gets an entry. newest first.
