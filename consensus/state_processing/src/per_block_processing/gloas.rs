@@ -458,95 +458,31 @@ fn get_ptc_committee<E: EthSpec>(
     Ok(ptc_committee)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use types::*;
-    use types::test_utils::{TestRandom, XorShiftRng};
-
-    fn get_gloas_state<E: EthSpec>(validator_count: usize) -> BeaconState<E> {
-        let spec = E::default_spec();
-        let mut state = BeaconState::new(0, Hash256::zero(), &spec);
-        
-        // Add validators
-        let mut rng = XorShiftRng::from_seed([42; 16]);
-        for _ in 0..validator_count {
-            let validator = Validator::random_for_test(&mut rng);
-            state.validators_mut().push(validator).unwrap();
-            state.balances_mut().push(32_000_000_000).unwrap(); // 32 ETH in Gwei
-        }
-        
-        // Upgrade to Gloas
-        let epoch = Epoch::new(0);
-        let mut state_gloas = match state {
-            BeaconState::Base(mut base) => {
-                // This is a hack for testing - in reality we'd go through proper upgrade
-                // For now just create a minimal Gloas state
-                todo!("Need proper test state builder for Gloas")
-            }
-            _ => unreachable!(),
-        };
-        
-        state_gloas
-    }
-
-    #[test]
-    fn test_process_execution_payload_bid_self_build() {
-        // TODO: Test that self-build bids are accepted with value=0 and empty signature
-    }
-
-    #[test]
-    fn test_process_execution_payload_bid_external_builder() {
-        // TODO: Test that external builder bids are validated correctly
-    }
-
-    #[test]
-    fn test_process_execution_payload_bid_insufficient_balance() {
-        // TODO: Test rejection when builder balance < bid value
-    }
-
-    #[test]
-    fn test_process_execution_payload_bid_inactive_builder() {
-        // TODO: Test rejection when builder is not active
-    }
-
-    #[test]
-    fn test_process_execution_payload_bid_wrong_slot() {
-        // TODO: Test rejection when bid slot != state slot
-    }
-
-    #[test]
-    fn test_process_payload_attestation_quorum_reached() {
-        // TODO: Test that quorum triggers payload availability update
-    }
-
-    #[test]
-    fn test_process_payload_attestation_quorum_not_reached() {
-        // TODO: Test that sub-quorum attestations are accepted but don't trigger payment
-    }
-
-    #[test]
-    fn test_process_payload_attestation_wrong_slot() {
-        // TODO: Test rejection when attestation slot != state slot
-    }
-
-    #[test]
-    fn test_get_ptc_committee_deterministic() {
-        // TODO: Test that PTC committee is deterministic for a given slot/state
-    }
-
-    #[test]
-    fn test_get_ptc_committee_size() {
-        // TODO: Test that PTC committee has exactly 512 members (when enough validators)
-    }
-
-    #[test]
-    fn test_get_indexed_payload_attestation() {
-        // TODO: Test conversion from PayloadAttestation to IndexedPayloadAttestation
-    }
-
-    #[test]
-    fn test_indexed_payload_attestation_sorted() {
-        // TODO: Test that indices are sorted after conversion
-    }
-}
+// TODO: Implement unit tests for gloas state transitions
+// Current blockers:
+// 1. Need proper Gloas test state builder (BeaconState::new_gloas_for_test or similar)
+// 2. Need test helpers for creating SignedExecutionPayloadBid with valid signatures
+// 3. Need test helpers for creating PayloadAttestation messages
+//
+// The spec tests (in testing/ef_tests) will validate against consensus-spec-tests vectors.
+// Unit tests should cover edge cases not in spec tests.
+//
+// Test scenarios needed (12 total):
+// - process_execution_payload_bid:
+//   * Self-build (value=0, infinity signature)
+//   * External builder (valid bid)
+//   * Insufficient balance rejection
+//   * Inactive builder rejection
+//   * Wrong slot rejection
+// - process_payload_attestation:
+//   * Quorum reached (triggers payment)
+//   * Sub-quorum (accepted, no payment)
+//   * Wrong slot rejection
+// - get_ptc_committee:
+//   * Deterministic for given slot/state
+//   * Exactly 512 members (when enough validators)
+// - get_indexed_payload_attestation:
+//   * Correct conversion
+//   * Indices are sorted
+//
+// See docs/workstreams/gloas-testing-plan.md for full implementation plan.
