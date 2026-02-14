@@ -19,7 +19,8 @@ use tracing::{debug, instrument, warn};
 use types::{
     AbstractExecPayload, AttestationShufflingId, AttesterSlashingRef, BeaconBlockRef, BeaconState,
     BeaconStateError, ChainSpec, Checkpoint, Epoch, EthSpec, ExecPayload, ExecutionBlockHash,
-    FixedBytesExtended, Hash256, IndexedAttestationRef, RelativeEpoch, SignedBeaconBlock, Slot,
+    FixedBytesExtended, Hash256, IndexedAttestationRef, IndexedPayloadAttestation,
+    PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid, Slot,
     consts::bellatrix::INTERVALS_PER_SLOT,
 };
 
@@ -1204,6 +1205,182 @@ where
         let att2_indices = attesting_indices_set(slashing.attestation_2());
         self.fc_store
             .extend_equivocating_indices(att1_indices.intersection(&att2_indices).copied());
+    }
+
+    /// Gloas ePBS: Process a builder's execution payload bid.
+    ///
+    /// This is called when a proposer includes a `SignedExecutionPayloadBid` in their block.
+    /// The bid represents the builder's commitment to provide an execution payload.
+    ///
+    /// ## Validation
+    ///
+    /// This function performs fork choice validation only. Full state transition validation
+    /// (builder signature, balance checks, etc.) should be done during block processing.
+    ///
+    /// ## Spec Reference
+    ///
+    /// https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#on_execution_bid
+    pub fn on_execution_bid(
+        &mut self,
+        bid: &SignedExecutionPayloadBid<E>,
+        beacon_block_root: Hash256,
+    ) -> Result<(), Error<T::Error>> {
+        // Get the block this bid is for
+        let block_index = self
+            .proto_array
+            .core_proto_array()
+            .indices
+            .get(&beacon_block_root)
+            .copied()
+            .ok_or(InvalidExecutionBid::UnknownBeaconBlockRoot { beacon_block_root })?;
+
+        let node = self
+            .proto_array
+            .core_proto_array()
+            .nodes
+            .get(block_index)
+            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
+
+        // Verify bid slot matches block slot
+        if bid.message.slot != node.slot {
+            return Err(InvalidExecutionBid::SlotMismatch {
+                bid_slot: bid.message.slot,
+                block_slot: node.slot,
+            }
+            .into());
+        }
+
+        // Update the proto_array node with builder information
+        let nodes = &mut self
+            .proto_array
+            .core_proto_array_mut()
+            .nodes;
+        
+        if let Some(node) = nodes.get_mut(block_index) {
+            // Record which builder won this slot's bid
+            node.builder_index = Some(bid.message.builder_index);
+            
+            // Mark payload as not yet revealed
+            // (will be set to true when builder publishes the execution payload envelope)
+            node.payload_revealed = false;
+            
+            // Initialize PTC weight to 0 (will accumulate via on_payload_attestation)
+            node.ptc_weight = 0;
+        }
+
+        debug!(
+            "Processed execution bid";
+            "beacon_block_root" => ?beacon_block_root,
+            "builder_index" => bid.message.builder_index,
+            "bid_value" => bid.message.value,
+            "slot" => node.slot,
+        );
+
+        Ok(())
+    }
+
+    /// Gloas ePBS: Process a PTC (Payload Timeliness Committee) attestation.
+    ///
+    /// PTC attestations signal whether a builder successfully revealed their execution payload.
+    /// When enough attestations accumulate (quorum), the payload is considered available and
+    /// the block becomes viable for head selection.
+    ///
+    /// ## Validation
+    ///
+    /// This function performs fork choice validation only. Full validation (PTC membership,
+    /// aggregate signature) should be done during gossip or block processing.
+    ///
+    /// ## Spec Reference
+    ///
+    /// https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#on_payload_attestation
+    pub fn on_payload_attestation(
+        &mut self,
+        attestation: &PayloadAttestation<E>,
+        indexed_attestation: &IndexedPayloadAttestation<E>,
+        current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> Result<(), Error<T::Error>> {
+        let beacon_block_root = attestation.data.beacon_block_root;
+        
+        // Validate slot is not from the future
+        if attestation.data.slot > current_slot {
+            return Err(InvalidPayloadAttestation::FutureSlot {
+                attestation_slot: attestation.data.slot,
+                current_slot,
+            }
+            .into());
+        }
+
+        // Get the block this attestation is for
+        let block_index = self
+            .proto_array
+            .core_proto_array()
+            .indices
+            .get(&beacon_block_root)
+            .copied()
+            .ok_or(InvalidPayloadAttestation::UnknownBeaconBlockRoot { beacon_block_root })?;
+
+        let node = self
+            .proto_array
+            .core_proto_array()
+            .nodes
+            .get(block_index)
+            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
+
+        // Verify attestation slot matches block slot
+        if attestation.data.slot != node.slot {
+            return Err(InvalidPayloadAttestation::SlotMismatch {
+                attestation_slot: attestation.data.slot,
+                block_slot: node.slot,
+            }
+            .into());
+        }
+
+        // Calculate PTC quorum threshold (60% of PTC_SIZE = 512)
+        // PTC_SIZE * 3 / 5 = 307 (minimum attesters for quorum)
+        let ptc_size = spec.ptc_size;
+        let quorum_threshold = (ptc_size * 3) / 5;
+
+        // Count the attesters (weight each as 1)
+        let attester_count = indexed_attestation.attesting_indices.len() as u64;
+
+        // Update the proto_array node with accumulated PTC weight
+        let nodes = &mut self
+            .proto_array
+            .core_proto_array_mut()
+            .nodes;
+        
+        if let Some(node) = nodes.get_mut(block_index) {
+            // Accumulate weight from this attestation
+            node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
+            
+            // Check if we've reached quorum
+            if node.ptc_weight >= quorum_threshold {
+                // Only mark revealed if the attestation signals payload was present
+                if attestation.data.payload_present {
+                    node.payload_revealed = true;
+                    
+                    debug!(
+                        "Payload quorum reached and payload present";
+                        "beacon_block_root" => ?beacon_block_root,
+                        "ptc_weight" => node.ptc_weight,
+                        "quorum_threshold" => quorum_threshold,
+                        "slot" => node.slot,
+                    );
+                } else {
+                    // Quorum says payload was NOT present (builder withholding)
+                    warn!(
+                        "Payload quorum reached but payload NOT present - builder withholding";
+                        "beacon_block_root" => ?beacon_block_root,
+                        "builder_index" => ?node.builder_index,
+                        "ptc_weight" => node.ptc_weight,
+                        "slot" => node.slot,
+                    );
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Call `on_tick` for all slots between `fc_store.get_current_slot()` and the provided
