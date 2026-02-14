@@ -4,6 +4,97 @@
 
 ---
 
+## 2026-02-14 16:14 - Phase 5 started: Beacon chain integration 🏗️
+
+### Phase 5.1: Exports complete ✅
+
+**Added gloas type exports to beacon_chain/lib.rs:**
+- `GossipVerifiedExecutionBid` + `verify_execution_bid_for_gossip`
+- `GossipVerifiedPayloadAttestation` + `verify_payload_attestation_for_gossip`
+- Error types: `ExecutionBidError`, `PayloadAttestationError`
+
+**Result:** All gloas ePBS types now accessible throughout beacon_chain crate
+
+### Critical Design Decision: Self-Build Payload Inclusion ✅
+
+**Problem:** In ePBS, external builders reveal payloads separately. But for self-build (proposer == builder), how does the payload get included?
+
+**Decision:** Add optional `execution_payload: Option<Payload>` field to Gloas BeaconBlockBody
+- Self-build: `execution_payload = Some(payload)` (included directly)
+- External builder: `execution_payload = None` (revealed separately)
+
+**Implementation:**
+- ✅ Added field to BeaconBlockBody superstruct
+- ✅ Updated execution_payload() accessor to check Option
+- ✅ Updated From impls for blinded/full conversions
+- ✅ Documented decision in `docs/decisions/self-build-payload-inclusion.md`
+
+**Rationale:**
+- Simpler for validators (one message instead of two)
+- No latency overhead for self-build
+- Aligns with "tight binding" concept from specs
+- Easy to rollback if spec mandates separate reveal
+
+### Phase 5.2: Planning complete ✅
+
+Created comprehensive implementation plan: `docs/workstreams/phase5.2-block-import-epbs.md`
+
+**Key components identified:**
+1. `PayloadState` enum (Included, Pending, Revealed, SelfBuild)
+2. Extend `BlockImportData` with payload_state field
+3. Modify `GossipVerifiedBlock::new()` for gloas handling
+4. Skip payload verification for pending blocks
+5. Update fork choice integration
+6. Implement `process_execution_payload_reveal()` method
+7. Wire reveal handler to P2P
+
+**Edge cases documented:**
+- Self-build with inline payload ✅
+- Builder withholding (handled by fork choice)
+- Late reveal (idempotent processing)
+- Duplicate reveals (check state before processing)
+- Fork boundary (Fulu → Gloas)
+
+**Estimated implementation time:** 4-6 hours (7-9 steps)
+
+**Status:** Ready to implement payload state tracking and import pipeline updates
+
+### Next Steps (Priority Order)
+
+1. **Implement PayloadState enum** (15 min)
+2. **Extend BlockImportData** (10 min)
+3. **Modify GossipVerifiedBlock::new()** for gloas (1 hour)
+4. **Skip verification for pending payloads** (30 min)
+5. **Fork choice integration** (45 min)
+6. **Payload reveal handler** (1.5 hours)
+7. **Wire to P2P** (30 min)
+8. **Write tests** (2 hours)
+
+### Session Summary
+
+**Time:** 2026-02-14 15:15 - 16:14 (59 minutes)
+**Output:**
+- Phase 5.1 complete (exports)
+- Critical type change (execution_payload field added)
+- Phase 5.2 comprehensively planned
+- Self-build design decision made and documented
+
+**Quality:** HIGH - thorough planning, clear decision rationale, implementation-ready
+
+**Commits:**
+- `eeebe3135` - gloas: add optional execution_payload to BeaconBlockBody for self-build
+
+**Phase progress:**
+- Phase 1 ✅ (types)
+- Phase 2 ✅ (state transitions)
+- Phase 3 ✅ (fork choice)
+- Phase 4 ✅ (P2P networking)
+- Phase 5 🚧 (Beacon chain - 1/6 tasks done: 5.1 exports complete)
+
+**Momentum:** STRONG 🎵 The hardest architectural decisions are made. Implementation path is clear.
+
+---
+
 ## 2026-02-14 15:00 - Phase 4 COMPLETE: P2P beacon processor integration ✅
 
 ### Phase 4: P2P Networking (6/6 COMPLETE)

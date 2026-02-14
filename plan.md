@@ -487,65 +487,53 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 15:00 GMT+1
+## Current Status - 2026-02-14 16:14 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented  
 **Phase 2 Complete ✅**: All state transition functions implemented  
 **Phase 3 Complete ✅**: Fork choice handlers (5/8 core complete, COMPILATION VERIFIED)  
-**Phase 4 Complete ✅**: P2P networking (6/6 complete - FULL STACK WIRED)
+**Phase 4 Complete ✅**: P2P networking (6/6 complete - FULL STACK WIRED)  
+**Phase 5 In Progress 🚧**: Beacon chain integration (1/6 complete)
+
+### Phase 5 Progress
+
+#### 5.1 Wire up gloas types ✅ COMPLETE
+- Exports added to beacon_chain/lib.rs
+- GossipVerifiedExecutionBid, GossipVerifiedPayloadAttestation accessible
+- Error types exported
+
+#### 5.2 Block import pipeline ⚠️ IN PLANNING
+- **Critical decision made:** Self-build payload inclusion strategy
+- Added `execution_payload: Option<Payload>` to Gloas BeaconBlockBody
+- Self-build blocks include payload directly (Some), external builders use None
+- Implementation plan complete (8 steps, ~6 hours estimated)
+- Ready to implement PayloadState tracking
+
+#### 5.3-5.6 Not started
+- Fork choice store integration
+- Two-phase block handling
+- PTC duty scheduler
+- Chain head tracking
 
 ### Implementation Status
 - ✅ All gloas types: BeaconState, BeaconBlockBody, 14 ePBS types
-- ✅ State transitions in `consensus/state_processing/src/per_block_processing/gloas.rs`:
-  - `process_execution_payload_bid()` - validates and applies builder bids
-  - `process_payload_attestation()` - handles PTC attestations, triggers payments
-  - `get_ptc_committee()` - deterministic 512-validator PTC selection
-  - `get_indexed_payload_attestation()` - converts bitfields to indices
-  - Builder signature verification (DOMAIN_BEACON_BUILDER)
-  - PTC aggregate signature verification (DOMAIN_PTC_ATTESTER)
-- ✅ Integration with `process_operations()` when gloas fork active
-- ✅ Test handlers registered for operations
-- ✅ Fork choice handlers (consensus/fork_choice/src/fork_choice.rs):
-  - `on_execution_bid()` - tracks builder selection, initializes payload tracking
-  - `on_payload_attestation()` - accumulates PTC weight, marks revealed at quorum
-  - `node_is_viable_for_head()` - requires payload_revealed for external builders
-- ✅ ProtoNode extended with builder_index, payload_revealed, ptc_weight
-- ✅ **COMPILATION VERIFIED**: `cargo check --release` passes for fork_choice and proto_array
-- ✅ P2P gossip validation (Phase 4):
-  - `GossipVerifiedExecutionBid` - full bid validation with equivocation detection
-  - `GossipVerifiedPayloadAttestation` - full PTC attestation validation with equivocation detection
-  - Observed caches: `ObservedExecutionBids`, `ObservedPayloadAttestations`
-  - Signature verification: builder bid signatures, PTC aggregate signatures
-  - PTC committee membership validation
-- ✅ Beacon processor integration (Phase 4):
-  - Work enum variants: `GossipExecutionBid`, `GossipPayloadAttestation`
-  - Queue infrastructure with metrics (gossip_execution_bid_queue, gossip_payload_attestation_queue)
-  - Worker spawning and idle management
-  - Network beacon processor handlers: `process_gossip_execution_bid()`, `process_gossip_payload_attestation()`
-  - Router integration: PubsubMessage routing to beacon processor
-  - Beacon chain integration: `process_execution_bid()`, `process_payload_attestation()` call fork choice
-
-### Phase 4 Complete ✅ (6/6)
-1. ✅ Gossip topics (execution_bid, execution_payload, payload_attestation)
-2. ✅ Execution bid validation with equivocation detection
-3. ✅ Payload attestation validation with PTC committee checks
-4. ✅ Beacon processor integration (Work enum, queues, spawning)
-5. ✅ Network beacon processor handlers (process_gossip_*)
-6. ✅ Router integration (PubsubMessage → beacon processor)
-
-**Deferred items (not blockers):**
-- Execution payload envelope validation (lower priority)
-- Custom peer scoring weights (using defaults)
-- Integration tests (will be covered by spec tests)
+- ✅ State transitions in `consensus/state_processing/src/per_block_processing/gloas.rs`
+- ✅ Fork choice handlers in `consensus/fork_choice/src/fork_choice.rs`
+- ✅ P2P gossip validation with equivocation detection
+- ✅ Beacon processor integration (full message flow)
+- ✅ Beacon chain exports and self-build payload design
+- 🚧 Block import pipeline (planning complete, implementation next)
 
 ### Next Steps (Priority Order)
-1. **Phase 5: Beacon Chain Integration** - block import pipeline (proposer blocks, builder payloads)
-2. **Run spec tests**: Validate against consensus-spec-tests
-3. **Phase 6: Validator Client** - block proposal, bid selection, PTC duties
-4. **Phase 7: REST API** - endpoints for bids, attestations, proposer lookahead
-5. **Phase 8: Testing** - comprehensive test coverage
+1. **Implement PayloadState enum** - track payload revelation state
+2. **Extend BlockImportData** - add payload_state field
+3. **Modify GossipVerifiedBlock::new()** - handle gloas proposer blocks
+4. **Skip verification for pending** - defer payload validation until reveal
+5. **Fork choice integration** - mark blocks as pending/revealed
+6. **Payload reveal handler** - process builder reveals
+7. **Tests** - comprehensive coverage
 
-**Status: Phase 4 ✅ COMPLETE (6/6). Ready for Phase 5: Beacon Chain Integration.** 🎵
+**Status: Phase 5 - 1/6 complete. Block import pipeline next.** 🎵
 # vibehouse progress log
 
 > every work session gets an entry. newest first.
