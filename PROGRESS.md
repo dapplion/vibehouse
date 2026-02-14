@@ -4,6 +4,85 @@
 
 ---
 
+## 2026-02-13 - claude loop cycle 3: spec test fixes + full SSZ static pass
+
+### Type fixes from spec test validation
+- **BuilderPendingWithdrawal**: removed extra `withdrawable_epoch` field (spec only has 3 fields: `fee_recipient`, `amount`, `builder_index`)
+- **6 types added `#[context_deserialize(ForkName)]`**: ExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage, IndexedPayloadAttestation
+
+### Spec test infrastructure for Gloas
+- Added `gloas_only()` and `gloas_and_later()` fork filter methods to SszStaticHandler, SszStaticWithSpecHandler
+- Registered 15 new type_name entries for gloas types (Builder, BuilderPendingPayment, etc.)
+- Added Gloas variants for existing fork-specific tests (BeaconBlockBody, ExecutionPayload, ExecutionPayloadHeader, LightClient*)
+- Added 11 new gloas-only SSZ static tests (builder types, payload attestation types, execution payload bid/envelope types)
+
+### SSZ static test results: 66/67 pass ✅
+- **All gloas types pass**: BeaconState, BeaconBlock, BeaconBlockBody, Builder, BuilderPendingPayment, BuilderPendingWithdrawal, ExecutionPayloadBid, SignedExecutionPayloadBid, ExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage, IndexedPayloadAttestation
+- **1 pre-existing failure**: DataColumnSidecar (Gloas spec added `kzg_commitments` field not in our Fulu-based type)
+- Both minimal and mainnet vectors pass
+
+### what's next
+- Fix DataColumnSidecar for Gloas (add kzg_commitments field)
+- Begin Phase 3 of plan.md: state transition implementation
+- Port process_execution_payload_bid, epoch processing from upstream
+
+---
+
+## 2026-02-13 - claude loop cycle 2: Phase 4 container updates + spec tests
+
+### Phase 4: BeaconState & BeaconBlockBody superstruct updates ✅
+
+**BeaconState gloas fields added** (3 commits):
+1. Fixed `Hash256::zero()` → `Hash256::ZERO` in execution_payload_envelope.rs (alloy-primitives API change)
+2. Added all ePBS builder registry fields to BeaconState:
+   - `builders: List<Builder, BuilderRegistryLimit>`
+   - `next_withdrawal_builder_index: BuilderIndex`
+   - `execution_payload_availability: BitVector<SlotsPerHistoricalRoot>`
+   - `builder_pending_payments: Vector<BuilderPendingPayment, BuilderPendingPaymentsLimit>`
+   - `builder_pending_withdrawals: List<BuilderPendingWithdrawal, BuilderPendingWithdrawalsLimit>`
+   - `latest_block_hash: ExecutionBlockHash`
+   - `payload_expected_withdrawals: List<Withdrawal, MaxWithdrawalsPerPayload>`
+   - `latest_execution_payload_bid: ExecutionPayloadBid` (replaces `latest_execution_payload_header`)
+3. Added EthSpec types: `BuilderRegistryLimit`, `BuilderPendingPaymentsLimit`, `BuilderPendingWithdrawalsLimit`, `MaxBuildersPerWithdrawalsSweep`
+4. Updated Fulu→Gloas state upgrade with proper initialization (all bits set for availability, empty builder registry, default pending payments vector)
+5. Updated partial_beacon_state.rs for store compatibility
+
+**BeaconBlockBody gloas ePBS restructure** (1 commit):
+- Removed `execution_payload`, `blob_kzg_commitments`, `execution_requests` from Gloas variant
+- Added `signed_execution_payload_bid: SignedExecutionPayloadBid<E>`
+- Added `payload_attestations: VariableList<PayloadAttestation<E>, MaxPayloadAttestations>`
+- Updated all From impls, blinded/full conversions, match arms across:
+  - `beacon_block_body.rs`, `beacon_block.rs`, `signed_beacon_block.rs`
+  - `beacon_chain.rs`, `test_utils.rs`, `new_payload_request.rs`, `mock_builder.rs`
+- Fixed Hash derive bounds on `ExecutionPayloadBid` and `SignedExecutionPayloadBid`
+
+**Running total**: Phase 4 types complete. All 5 phases of gloas types plan done:
+- ✅ Phase 1: Builder types (3 types)
+- ✅ Phase 2: Execution types (4 types)
+- ✅ Phase 3: Attestation types (4 types)
+- ✅ Phase 4: Container updates (BeaconState + BeaconBlockBody)
+- ✅ Phase 5: Constants & EthSpec (already done in earlier cycle)
+
+### Spec tests: enabled gloas, downloading vectors
+
+- Downloaded consensus-spec-tests v1.7.0-alpha.2 (includes gloas test vectors)
+- Enabled gloas in `handler.rs` `disabled_forks()` (was `vec![ForkName::Gloas]`, now `vec![]`)
+- Running SSZ static tests to validate type serialization
+- Test results pending (release build in progress)
+
+### Upstream sync awareness
+
+- Fetched upstream: 157 commits ahead, new `gloas-devnet-0` branch
+- Major upstream gloas PRs merged: attestation verification, epoch processing, bid consensus, envelope consensus, gossip boilerplate, data column support, withdrawals, DB operations
+- Cherry-picking remains infeasible (too much divergence)
+
+### what's next
+- Analyze spec test results - fix any SSZ serialization mismatches
+- Begin Phase 3 of plan.md: state transition implementation
+- Consider which upstream consensus logic to port next (process_execution_payload_bid, epoch processing)
+
+---
+
 ## 2026-02-14 04:15 - claude loop cycle 1: execution payload bid types
 
 ### Phase 5: Implementation - Execution Payload Bid Types ✅
