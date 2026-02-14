@@ -321,10 +321,6 @@ pub struct ChainSpec {
     pub(crate) domain_bls_to_execution_change: u32,
 
     /*
-     * Gloas ePBS domains
-     */
-    pub(crate) domain_beacon_builder: u32,
-    pub(crate) domain_ptc_attester: u32,
 }
 
 impl ChainSpec {
