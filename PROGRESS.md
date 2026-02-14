@@ -1,3 +1,43 @@
+## 2026-02-14 16:21 - Beacon processor integration plan documented 📋
+
+### Comprehensive implementation plan created
+
+**Document**: `docs/workstreams/gloas-beacon-processor-integration.md`
+
+**Scope**: Wire gloas gossip messages to fork choice handlers through beacon processor
+
+**Plan includes**:
+1. **Work variants**: Add 3 new variants to `Work<E>` enum (GossipExecutionBid, GossipExecutionPayload, GossipPayloadAttestation)
+2. **Process methods**: Implement handlers in `gossip_methods.rs` (6 hours estimated)
+   - `process_gossip_execution_bid()` → calls `chain.on_execution_bid()`
+   - `process_gossip_execution_payload()` → payload reveal handling
+   - `process_gossip_payload_attestation()` → calls `chain.on_payload_attestation()`
+3. **Router wiring**: Connect gossip topics to process methods
+4. **Metrics**: Add counters/histograms for all 3 message types
+5. **Testing**: Unit + integration tests
+
+**Key design decisions**:
+- Execution bids/attestations use `BlockingFn` (CPU-bound validation)
+- Equivocation → reject + mark + peer penalty (no propagation)
+- Unknown parent → reprocessing queue (same as attestations)
+- PTC quorum tracking via metrics
+
+**Status**: Ready to implement when Rust toolchain issue resolved (bitvec 0.17.4)
+
+### Session context
+
+**Checked**:
+- PR #18 open (gossip validation wiring) - can't merge due to compilation failure
+- Rust toolchain blocked (bitvec trait object compatibility)
+
+**Decision**: Document next steps instead of attempting implementation without testing
+
+### Commits needed
+- `docs: complete beacon processor integration plan`
+- `progress: session update`
+
+---
+
 ## 2026-02-14 14:05 - CI compilation errors fixed 🔧
 
 ### Fixes applied (PR #18 commit a950183)
