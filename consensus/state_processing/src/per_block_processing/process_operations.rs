@@ -292,26 +292,29 @@ pub fn process_proposer_slashings<E: EthSpec>(
                 spec,
             )?;
             
-            // [Modified in Gloas:EIP7732] Delete builder pending payments for current epoch
+            // [New in Gloas:EIP7732] Remove the BuilderPendingPayment for this proposal
+            // if it is still in the 2-epoch window.
             if state.fork_name_unchecked().gloas_enabled() {
-                let current_epoch = state.current_epoch();
-                let state_gloas = state.as_gloas_mut().map_err(|e| {
-                    BlockProcessingError::BeaconStateError(e)
-                })?;
-                
-                // Clear pending payments for slots in current epoch where this proposer is assigned
+                let slot = proposer_slashing.signed_header_1.message.slot;
                 let slots_per_epoch = E::slots_per_epoch();
-                for slot_in_epoch in 0..slots_per_epoch {
-                    let slot = current_epoch.start_slot(slots_per_epoch).safe_add(slot_in_epoch)?;
-                    let slot_index = slot.as_usize() % E::slots_per_historical_root();
-                    
-                    if let Some(&assigned_proposer) = state_gloas.proposer_lookahead.get(slot_index) {
-                        if assigned_proposer == proposer_index as u64 {
-                                                        let payment_index = slot.as_u64() % E::builder_pending_payments_limit() as u64;
-                            if let Some(payment) = state_gloas.builder_pending_payments.get_mut(payment_index as usize) {
-                                *payment = BuilderPendingPayment::default();
-                            }
-                        }
+                let proposal_epoch = slot.epoch(slots_per_epoch);
+                let current_epoch = state.current_epoch();
+                let previous_epoch = current_epoch.saturating_sub(1u64);
+
+                let payment_index = if proposal_epoch == current_epoch {
+                    Some((slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize)
+                } else if proposal_epoch == previous_epoch {
+                    Some((slot.as_u64() % slots_per_epoch) as usize)
+                } else {
+                    None
+                };
+
+                if let Some(idx) = payment_index {
+                    let state_gloas = state.as_gloas_mut().map_err(|e| {
+                        BlockProcessingError::BeaconStateError(e)
+                    })?;
+                    if let Some(payment) = state_gloas.builder_pending_payments.get_mut(idx) {
+                        *payment = BuilderPendingPayment::default();
                     }
                 }
             }

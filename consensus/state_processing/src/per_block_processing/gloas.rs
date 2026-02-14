@@ -2,13 +2,14 @@ use crate::common::decrease_balance;
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
 use crate::VerifySignatures;
 use safe_arith::SafeArith;
-use swap_or_not_shuffle::compute_shuffled_index;
+use ethereum_hashing::hash;
+use int_to_bytes::int_to_bytes8;
 use tree_hash::TreeHash;
-use types::consts::gloas::{BUILDER_INDEX_FLAG, PTC_SIZE};
+use types::consts::gloas::BUILDER_INDEX_FLAG;
 use types::{
     BeaconState, BeaconStateError, BuilderPendingPayment, BuilderPendingWithdrawal, ChainSpec,
-    Domain, EthSpec, Hash256, IndexedPayloadAttestation, List, PayloadAttestation,
-    PublicKey, SignedExecutionPayloadBid, SigningData, Slot, Unsigned, Withdrawal,
+    Domain, EthSpec, Hash256, IndexedPayloadAttestation, List, PayloadAttestation, PublicKey,
+    SignedExecutionPayloadBid, SigningData, Slot, Unsigned, Withdrawal,
 };
 
 /// Processes an execution payload bid in Gloas ePBS.
@@ -68,24 +69,31 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         }
 
         // Verify that the builder has funds to cover the bid (can_builder_cover_bid)
-        // Calculate total pending payments for this builder
-        let mut total_pending = 0u64;
-        for payment in state_gloas.builder_pending_payments.iter() {
-            if payment.withdrawal.builder_index == builder_index {
-                total_pending = total_pending.saturating_add(payment.withdrawal.amount);
-            }
-        }
-        // Also account for pending withdrawals
+        // Spec: get_pending_balance_to_withdraw_for_builder
+        let mut pending_withdrawals_amount = 0u64;
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawal.builder_index == builder_index {
-                total_pending = total_pending.saturating_add(withdrawal.amount);
+                pending_withdrawals_amount =
+                    pending_withdrawals_amount.saturating_add(withdrawal.amount);
             }
         }
-        if builder.balance < amount.saturating_add(total_pending) {
+        for payment in state_gloas.builder_pending_payments.iter() {
+            if payment.withdrawal.builder_index == builder_index {
+                pending_withdrawals_amount =
+                    pending_withdrawals_amount.saturating_add(payment.withdrawal.amount);
+            }
+        }
+        // Spec: min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
+        let min_balance = spec
+            .min_deposit_amount
+            .saturating_add(pending_withdrawals_amount);
+        if builder.balance < min_balance
+            || builder.balance.saturating_sub(min_balance) < amount
+        {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
-                    "builder balance {} insufficient for bid value {} + pending {}",
-                    builder.balance, amount, total_pending
+                    "builder balance {} insufficient for bid value {} (min_balance {})",
+                    builder.balance, amount, min_balance
                 ),
             });
         }
@@ -174,7 +182,9 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
     // Record the pending payment if there is some payment
     if amount > 0 {
-        let slot_index = (bid.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
+        // Spec: state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH]
+        let slots_per_epoch = E::slots_per_epoch();
+        let slot_index = (slots_per_epoch + bid.slot.as_u64() % slots_per_epoch) as usize;
 
         let pending_payment = BuilderPendingPayment {
             weight: 0,
@@ -210,11 +220,11 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     Ok(())
 }
 
-/// Processes payload attestations from the PTC (Payload Timeliness Committee).
+/// Processes a payload attestation from the PTC (Payload Timeliness Committee).
 ///
-/// PTC members attest to whether the execution payload was revealed on time
-/// and blob data is available. Once enough attestations are collected
-/// (quorum threshold), the builder gets paid.
+/// Spec: process_payload_attestation(state, payload_attestation)
+/// Validates that the attestation targets the parent block at the previous slot
+/// and verifies the aggregate BLS signature.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_payload_attestation
 pub fn process_payload_attestation<E: EthSpec>(
@@ -225,8 +235,21 @@ pub fn process_payload_attestation<E: EthSpec>(
 ) -> Result<(), BlockProcessingError> {
     let data = &attestation.data;
 
-    // Verify attestation is for the current slot
-    if data.slot != state.slot() {
+    // Spec: assert data.beacon_block_root == state.latest_block_header.parent_root
+    if data.beacon_block_root != state.latest_block_header().parent_root {
+        return Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::WrongBeaconBlockRoot,
+        ));
+    }
+
+    // Spec: assert data.slot + 1 == state.slot
+    let expected_slot = data.slot.safe_add(1u64).map_err(|_| {
+        BlockProcessingError::PayloadAttestationInvalid(PayloadAttestationInvalid::WrongSlot {
+            expected: state.slot(),
+            actual: data.slot,
+        })
+    })?;
+    if expected_slot != state.slot() {
         return Err(BlockProcessingError::PayloadAttestationInvalid(
             PayloadAttestationInvalid::WrongSlot {
                 expected: state.slot(),
@@ -235,19 +258,27 @@ pub fn process_payload_attestation<E: EthSpec>(
         ));
     }
 
-    // Verify beacon_block_root matches
-    if data.beacon_block_root != state.latest_block_header().tree_hash_root() {
-        return Err(BlockProcessingError::PayloadAttestationInvalid(
-            PayloadAttestationInvalid::WrongBeaconBlockRoot,
-        ));
-    }
-
-    // Convert to indexed form for validation
+    // Spec: indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
+    // Spec: assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
     let indexed_attestation = get_indexed_payload_attestation(state, attestation, spec)?;
 
-    // Verify the attestation signature if requested
     if verify_signatures.is_true() {
-        // Verify aggregate payload attestation signature
+        let indices = &indexed_attestation.attesting_indices;
+        if indices.is_empty() {
+            return Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ));
+        }
+
+        // Verify indices are sorted (non-decreasing, duplicates allowed)
+        for i in 1..indices.len() {
+            if indices[i] < indices[i - 1] {
+                return Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                ));
+            }
+        }
+
         let domain = spec.get_domain(
             data.slot.epoch(E::slots_per_epoch()),
             Domain::PtcAttester,
@@ -261,9 +292,8 @@ pub fn process_payload_attestation<E: EthSpec>(
         }
         .tree_hash_root();
 
-        // Collect public keys from all attesting indices
-        let mut pubkeys = Vec::new();
-        for &validator_index in indexed_attestation.attesting_indices.iter() {
+        let mut pubkeys = Vec::with_capacity(indices.len());
+        for &validator_index in indices.iter() {
             let validator = state
                 .validators()
                 .get(validator_index as usize)
@@ -271,17 +301,15 @@ pub fn process_payload_attestation<E: EthSpec>(
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds,
                 ))?;
 
-            let pubkey = validator
-                .pubkey
-                .decompress()
-                .map_err(|_| BlockProcessingError::PayloadAttestationInvalid(
+            let pubkey = validator.pubkey.decompress().map_err(|_| {
+                BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::InvalidPubkey,
-                ))?;
+                )
+            })?;
 
-                    pubkeys.push(pubkey);
+            pubkeys.push(pubkey);
         }
 
-        // Verify the aggregate signature  
         let pubkey_refs: Vec<&PublicKey> = pubkeys.iter().collect();
         if !attestation
             .signature
@@ -290,67 +318,6 @@ pub fn process_payload_attestation<E: EthSpec>(
             return Err(BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::BadSignature,
             ));
-        }
-    }
-
-    // Update execution_payload_availability based on attestation data
-    let state_gloas = state.as_gloas_mut().map_err(|_| {
-        BlockProcessingError::PayloadAttestationInvalid(
-            PayloadAttestationInvalid::IncorrectStateVariant,
-        )
-    })?;
-
-    let slot_index = data.slot.as_usize() % E::SlotsPerHistoricalRoot::to_usize();
-    
-    // Update availability flag if payload_present (any attestation can mark it)
-    if data.payload_present {
-        state_gloas
-            .execution_payload_availability
-            .set(slot_index, true)
-            .map_err(|_| {
-                BlockProcessingError::PayloadAttestationInvalid(
-                    PayloadAttestationInvalid::SlotOutOfBounds,
-                )
-            })?;
-    }
-
-    // Accumulate weight from this attestation
-    let num_attesters = attestation.num_attesters() as u64;
-    let payment_slot_index =
-        (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
-    let pending_payment = state_gloas.builder_pending_payments.get_mut(payment_slot_index)
-        .ok_or(BlockProcessingError::InvalidSlotIndex(payment_slot_index))?;
-
-    // Add weight from this attestation
-    let new_weight = pending_payment.weight.saturating_add(num_attesters);
-    pending_payment.weight = new_weight;
-
-    // Check if we've reached quorum (60% of PTC)
-    let quorum_threshold = (PTC_SIZE * spec.builder_payment_threshold_numerator)
-        / spec.builder_payment_threshold_denominator;
-
-    // Process builder payment if we've crossed quorum threshold AND payload was revealed
-    if new_weight >= quorum_threshold && data.payload_present {
-        let builder_index = pending_payment.withdrawal.builder_index as usize;
-        let payment_amount = pending_payment.withdrawal.amount;
-
-        // Only process payment if it hasn't been done yet (weight was below threshold before)
-        if pending_payment.weight.saturating_sub(num_attesters) < quorum_threshold {
-            // Decrease builder balance
-            if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
-                if builder.balance < payment_amount {
-                    return Err(BlockProcessingError::PayloadBidInvalid {
-                        reason: format!(
-                            "builder {} has insufficient balance {} for payment {}",
-                            builder_index, builder.balance, payment_amount
-                        ),
-                    });
-                }
-                builder.balance = builder.balance.saturating_sub(payment_amount);
-            }
-
-            // TODO: Increase proposer balance
-            // Need to get proposer index for the slot - requires ConsensusContext
         }
     }
 
@@ -369,6 +336,7 @@ fn get_indexed_payload_attestation<E: EthSpec>(
     let ptc_indices = get_ptc_committee(state, attestation.data.slot, spec)?;
 
     // Convert aggregation bits to list of attesting indices
+    // Spec: attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
     let mut attesting_indices = Vec::new();
     for (i, &validator_index) in ptc_indices.iter().enumerate() {
         if attestation.aggregation_bits.get(i).map_err(|_| {
@@ -380,12 +348,8 @@ fn get_indexed_payload_attestation<E: EthSpec>(
         }
     }
 
-    // Verify indices are sorted (required by spec)
-    if !attesting_indices.windows(2).all(|w| w[0] < w[1]) {
-        return Err(BlockProcessingError::PayloadAttestationInvalid(
-            PayloadAttestationInvalid::IndicesNotSorted,
-        ));
-    }
+    // Spec: attesting_indices = sorted(attesting_indices)
+    attesting_indices.sort_unstable();
 
     Ok(IndexedPayloadAttestation {
         attesting_indices: attesting_indices.try_into().map_err(|_| {
@@ -400,66 +364,81 @@ fn get_indexed_payload_attestation<E: EthSpec>(
 
 /// Computes the PTC (Payload Timeliness Committee) for a given slot.
 ///
-/// The PTC is a subset of 512 validators selected per slot who attest to
-/// payload delivery and blob availability. The selection is based on a
-/// deterministic shuffle using the slot's seed.
+/// Spec: get_ptc(state, slot)
+/// 1. Concatenate all beacon committees for the slot
+/// 2. Use compute_balance_weighted_selection to pick PTC_SIZE validators
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc_committee
+/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc
 pub fn get_ptc_committee<E: EthSpec>(
     state: &BeaconState<E>,
     slot: Slot,
     spec: &ChainSpec,
 ) -> Result<Vec<u64>, BlockProcessingError> {
     let epoch = slot.epoch(E::slots_per_epoch());
-    let active_validator_indices = state.get_active_validator_indices(epoch, spec)?;
-    let active_validator_count = active_validator_indices.len();
 
-    if active_validator_count == 0 {
+    // Spec: seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    let base_seed = state
+        .get_seed(epoch, Domain::PtcAttester, spec)
+        .map_err(BlockProcessingError::BeaconStateError)?;
+    let slot_bytes = int_to_bytes8(slot.as_u64());
+    let mut seed_input = [0u8; 40]; // 32 + 8
+    seed_input[..32].copy_from_slice(base_seed.as_slice());
+    seed_input[32..].copy_from_slice(&slot_bytes);
+    let seed = hash(&seed_input);
+
+    // Concatenate all committees for this slot in order
+    let committees = state
+        .get_beacon_committees_at_slot(slot)
+        .map_err(BlockProcessingError::BeaconStateError)?;
+    let mut indices: Vec<u64> = Vec::new();
+    for committee in &committees {
+        for &validator_index in committee.committee {
+            indices.push(validator_index as u64);
+        }
+    }
+
+    // compute_balance_weighted_selection(state, indices, seed, PTC_SIZE, shuffle_indices=False)
+    let ptc_size = E::PtcSize::to_usize();
+    let total = indices.len();
+    if total == 0 {
         return Err(BlockProcessingError::PayloadAttestationInvalid(
             PayloadAttestationInvalid::NoActiveValidators,
         ));
     }
 
-    // Get seed for this slot using domain PTC_ATTESTER
-    // TODO: The spec may define a specific domain for PTC. For now, use a slot-based seed.
-    let seed = state.get_beacon_proposer_seed(slot, spec)?;
+    let max_effective_balance = spec.max_effective_balance_electra;
+    let max_random_value: u64 = (1u64 << 16) - 1; // 2^16 - 1
 
-    let ptc_size = PTC_SIZE as usize;
-    let mut ptc_committee = Vec::with_capacity(ptc_size);
-    let mut i = 0;
+    let mut selected: Vec<u64> = Vec::with_capacity(ptc_size);
+    let mut i: u64 = 0;
+    while selected.len() < ptc_size {
+        let next_index = (i % total as u64) as usize;
+        // shuffle_indices=False, so just use next_index directly
+        let candidate_index = indices[next_index];
 
-    // Select PTC_SIZE validators using shuffled indices
-    while ptc_committee.len() < ptc_size && i < active_validator_count * 10 {
-        let shuffled_index = compute_shuffled_index(
-            i % active_validator_count,
-            active_validator_count,
-            seed.as_slice(),
-            spec.shuffle_round_count,
-        )
-        .ok_or(BlockProcessingError::PayloadAttestationInvalid(
-            PayloadAttestationInvalid::ShuffleError,
-        ))?;
+        // compute_balance_weighted_acceptance
+        let random_bytes = hash(
+            &[&seed[..], &int_to_bytes8(i / 16)].concat(),
+        );
+        let offset = ((i % 16) * 2) as usize;
+        let random_value =
+            u16::from_le_bytes([random_bytes[offset], random_bytes[offset + 1]]) as u64;
 
-        let candidate_index = *active_validator_indices
-            .get(shuffled_index)
+        let effective_balance = state
+            .validators()
+            .get(candidate_index as usize)
             .ok_or(BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?;
+            ))?
+            .effective_balance;
 
-        // Add to committee (no duplicates check since shuffled_index is unique)
-        ptc_committee.push(candidate_index as u64);
-
+        if effective_balance * max_random_value >= max_effective_balance * random_value {
+            selected.push(candidate_index);
+        }
         i += 1;
     }
 
-    if ptc_committee.len() < ptc_size {
-        // Not enough validators to form a full PTC (edge case for testnets)
-        return Err(BlockProcessingError::PayloadAttestationInvalid(
-            PayloadAttestationInvalid::InsufficientValidators,
-        ));
-    }
-
-    Ok(ptc_committee)
+    Ok(selected)
 }
 
 /// [Modified in Gloas:EIP7732] Check if the parent block had its payload delivered.
@@ -488,32 +467,31 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
     let epoch = state.current_epoch();
     let fork_name = state.fork_name_unchecked();
+    let max_withdrawals = E::max_withdrawals_per_payload();
+    // Builders, partials, and builder sweep reserve 1 slot for the validator sweep
+    let reserved_limit = max_withdrawals.saturating_sub(1);
     let mut withdrawal_index = state.next_withdrawal_index()?;
     let mut withdrawals = Vec::<Withdrawal>::new();
-    let withdrawals_limit = E::max_withdrawals_per_payload();
 
-    // 1. Builder pending withdrawals
+    // 1. Builder pending withdrawals (limit: MAX_WITHDRAWALS_PER_PAYLOAD - 1)
     let mut processed_builder_withdrawals_count: usize = 0;
     {
         let state_gloas = state.as_gloas().map_err(|e| {
             BlockProcessingError::BeaconStateError(e)
         })?;
         let builders_count = state_gloas.builders.len() as u64;
-        
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
-            if withdrawals.len() >= withdrawals_limit {
+            if withdrawals.len() >= reserved_limit {
                 break;
             }
             let builder_index = withdrawal.builder_index;
-            
-            // Validate builder_index exists in builders list
+            // Spec: state.builders[builder_index] — panics if OOB
             if builder_index >= builders_count {
                 return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
                     builder_index,
                     builders_count,
                 });
             }
-            
             withdrawals.push(Withdrawal {
                 index: withdrawal_index,
                 validator_index: builder_index | BUILDER_INDEX_FLAG,
@@ -526,16 +504,18 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // 2. Pending partial withdrawals (validator)
+    // Spec: withdrawals_limit = min(prior_count + MAX_PENDING_PARTIALS, MAX_WITHDRAWALS - 1)
     let mut processed_partial_withdrawals_count: usize = 0;
     {
+        let partials_limit = std::cmp::min(
+            withdrawals.len().saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
+            reserved_limit,
+        );
         if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
             for withdrawal_req in pending_partial_withdrawals {
-                // Stop if:
-                // 1. Withdrawal not yet eligible (withdrawable_epoch in future)
-                // 2. We've processed the max number of partial withdrawal requests
-                if withdrawal_req.withdrawable_epoch > epoch
-                    || processed_partial_withdrawals_count >= spec.max_pending_partials_per_withdrawals_sweep as usize
-                {
+                let is_withdrawable = withdrawal_req.withdrawable_epoch <= epoch;
+                let has_reached_limit = withdrawals.len() >= partials_limit;
+                if !is_withdrawable || has_reached_limit {
                     break;
                 }
 
@@ -576,30 +556,28 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         }
     }
 
-    // 3. Builder sweep (exiting builders with balance)
+    // 3. Builder sweep (exiting builders with balance, limit: MAX_WITHDRAWALS - 1)
     let mut processed_builders_sweep_count: usize = 0;
     {
         let state_gloas = state.as_gloas().map_err(|e| {
             BlockProcessingError::BeaconStateError(e)
         })?;
         let builders_count = state_gloas.builders.len();
-        
-        // Validate next_withdrawal_builder_index is within bounds
-        if builders_count > 0 && state_gloas.next_withdrawal_builder_index >= builders_count as u64 {
-            return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
-                builder_index: state_gloas.next_withdrawal_builder_index,
-                builders_count: builders_count as u64,
-            });
-        }
-        
         if builders_count > 0 {
             let builders_limit = std::cmp::min(
                 builders_count,
                 spec.max_builders_per_withdrawals_sweep as usize,
             );
             let mut builder_index = state_gloas.next_withdrawal_builder_index;
+            // Spec: state.builders[builder_index] — panics if OOB
+            if builder_index >= builders_count as u64 {
+                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index,
+                    builders_count: builders_count as u64,
+                });
+            }
             for _ in 0..builders_limit {
-                if withdrawals.len() >= withdrawals_limit {
+                if withdrawals.len() >= reserved_limit {
                     break;
                 }
 
@@ -621,23 +599,17 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         }
     }
 
-    // 4. Validator sweep
-    let validators_processed: u64;
+    // 4. Validator sweep (limit: MAX_WITHDRAWALS_PER_PAYLOAD — the full limit)
     {
         let mut validator_index = state.next_withdrawal_validator_index()?;
         let bound = std::cmp::min(
             state.validators().len() as u64,
             spec.max_validators_per_withdrawals_sweep,
         );
-        let mut checked = 0u64;
-        
         for _ in 0..bound {
-            // Check if we've hit the withdrawal limit before processing this validator
-            if withdrawals.len() >= E::max_withdrawals_per_payload() {
+            if withdrawals.len() >= max_withdrawals {
                 break;
             }
-            
-            checked += 1; // Track that we're processing this validator
 
             let validator = state.get_validator(validator_index as usize)?;
             let partially_withdrawn_balance: u64 = withdrawals
@@ -674,7 +646,6 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 .safe_add(1)?
                 .safe_rem(state.validators().len() as u64)?;
         }
-        validators_processed = checked;
     }
 
     // Apply withdrawals: decrease balances
@@ -697,7 +668,8 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // Update next_withdrawal_index
-    if let Some(latest_withdrawal) = withdrawals.last() {
+    if !withdrawals.is_empty() {
+        let latest_withdrawal = withdrawals.last().unwrap();
         *state.next_withdrawal_index_mut()? = latest_withdrawal.index.safe_add(1)?;
     }
 
@@ -706,7 +678,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         let state_gloas = state.as_gloas_mut().map_err(|e| {
             BlockProcessingError::BeaconStateError(e)
         })?;
-        state_gloas.payload_expected_withdrawals = List::new(withdrawals)
+        state_gloas.payload_expected_withdrawals = List::new(withdrawals.clone())
             .map_err(|e| BlockProcessingError::MilhouseError(e))?;
     }
 
@@ -747,14 +719,25 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // Update next_withdrawal_validator_index
-    // Advance by the number of validators we actually processed
+    // Spec: if withdrawals hit MAX, next = (last.validator_index + 1) % len
+    //       else, next = (current + MAX_VALIDATORS_PER_SWEEP) % len
     {
         let validators_len = state.validators().len() as u64;
         if validators_len > 0 {
-            let next_validator_index = state
-                .next_withdrawal_validator_index()?
-                .safe_add(validators_processed)?
-                .safe_rem(validators_len)?;
+            let next_validator_index = if withdrawals.len() == max_withdrawals {
+                let last_validator_index = withdrawals
+                    .last()
+                    .map(|w| w.validator_index)
+                    .unwrap_or(0);
+                last_validator_index
+                    .safe_add(1)?
+                    .safe_rem(validators_len)?
+            } else {
+                state
+                    .next_withdrawal_validator_index()?
+                    .safe_add(spec.max_validators_per_withdrawals_sweep)?
+                    .safe_rem(validators_len)?
+            };
             *state.next_withdrawal_validator_index_mut()? = next_validator_index;
         }
     }

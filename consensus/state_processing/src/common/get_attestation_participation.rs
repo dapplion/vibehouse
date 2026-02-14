@@ -54,7 +54,12 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
 
     // [Modified in Gloas:EIP7732] head flag also requires payload_matches
     let is_matching_head = if state.fork_name_unchecked().gloas_enabled() {
-        let payload_matches = if is_attestation_same_slot(state, data)? {
+        let is_same_slot = is_attestation_same_slot(state, data)?;
+        // [New in Gloas:EIP7732] Same-slot attestations must have data.index == 0
+        if is_same_slot && data.index != 0 {
+            return Err(Error::IncorrectAttestationIndex);
+        }
+        let payload_matches = if is_same_slot {
             // Same-slot attestations always match payload
             true
         } else {

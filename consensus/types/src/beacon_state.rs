@@ -135,6 +135,8 @@ pub enum Error {
     },
     /// Attestation slipped through block processing with a non-matching source.
     IncorrectAttestationSource,
+    /// [New in Gloas:EIP7732] Same-slot attestation has data.index != 0.
+    IncorrectAttestationIndex,
     /// An arithmetic operation occurred which would have overflowed or divided by 0.
     ///
     /// This represents a serious bug in either the spec or Lighthouse!

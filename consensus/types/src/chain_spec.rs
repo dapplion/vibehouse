@@ -1173,9 +1173,9 @@ impl ChainSpec {
             max_payload_attestations: 4,
             builder_registry_limit: 1099511627776,      // 2^40
             builder_pending_withdrawals_limit: 1048576, // 2^20
-            domain_beacon_builder: 0x0B000000,
-            domain_ptc_attester: 0x0C000000,
-            domain_proposer_preferences: 0x0D000000,
+            domain_beacon_builder: 11,
+            domain_ptc_attester: 12,
+            domain_proposer_preferences: 13,
 
             /*
              * Network specific
@@ -1550,9 +1550,9 @@ impl ChainSpec {
             max_payload_attestations: 4,
             builder_registry_limit: 1099511627776,      // 2^40
             builder_pending_withdrawals_limit: 1048576, // 2^20
-            domain_beacon_builder: 0x0B000000,
-            domain_ptc_attester: 0x0C000000,
-            domain_proposer_preferences: 0x0D000000,
+            domain_beacon_builder: 11,
+            domain_ptc_attester: 12,
+            domain_proposer_preferences: 13,
 
             /*
              * Network specific
