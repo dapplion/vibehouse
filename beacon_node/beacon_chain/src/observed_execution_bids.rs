@@ -7,6 +7,7 @@
 //! This serves as equivocation detection for the execution payload bid gossip topic.
 
 use derivative::Derivative;
+use fixed_bytes::FixedBytesExtended;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use tree_hash::TreeHash;

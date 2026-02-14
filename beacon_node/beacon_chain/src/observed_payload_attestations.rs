@@ -7,6 +7,7 @@
 //! This serves as equivocation detection for the payload attestation gossip topic.
 
 use derivative::Derivative;
+use fixed_bytes::FixedBytesExtended;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{EthSpec, Hash256, Slot};

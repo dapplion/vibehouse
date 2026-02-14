@@ -387,6 +387,17 @@ impl<E: EthSpec> PubsubMessage<E> {
                             light_client_optimistic_update,
                         )))
                     }
+                    // gloas ePBS gossip topics - no decoding needed in gossip layer
+                    // validation happens in beacon_chain gossip verification
+                    GossipKind::ExecutionBid => {
+                        return Err("ExecutionBid messages should be handled by gossip validation".to_string());
+                    }
+                    GossipKind::ExecutionPayload => {
+                        return Err("ExecutionPayload messages should be handled by gossip validation".to_string());
+                    }
+                    GossipKind::PayloadAttestation => {
+                        return Err("PayloadAttestation messages should be handled by gossip validation".to_string());
+                    }
                 }
             }
         }
