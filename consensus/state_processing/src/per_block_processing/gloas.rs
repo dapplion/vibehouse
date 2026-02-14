@@ -294,61 +294,64 @@ pub fn process_payload_attestation<E: EthSpec>(
         }
     }
 
-    // Check if we've reached quorum (60% of PTC = 6/10 * 512 = 307 attesters)
-    let num_attesters = attestation.num_attesters();
-    let quorum_threshold = (PTC_SIZE * spec.builder_payment_threshold_numerator)
-        / spec.builder_payment_threshold_denominator;
+    // Update execution_payload_availability based on attestation data
+    let state_gloas = state.as_gloas_mut().map_err(|_| {
+        BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::IncorrectStateVariant,
+        )
+    })?;
 
-    if num_attesters >= quorum_threshold as usize {
-        // Quorum reached! Mark payload as available
-        let state_gloas = state.as_gloas_mut().map_err(|_| {
-            BlockProcessingError::PayloadAttestationInvalid(
-                PayloadAttestationInvalid::IncorrectStateVariant,
-            )
-        })?;
-
-        let slot_index = data.slot.as_usize() % E::SlotsPerHistoricalRoot::to_usize();
+    let slot_index = data.slot.as_usize() % E::SlotsPerHistoricalRoot::to_usize();
+    
+    // Update availability flag if payload_present (any attestation can mark it)
+    if data.payload_present {
         state_gloas
             .execution_payload_availability
-            .set(slot_index, data.payload_present)
+            .set(slot_index, true)
             .map_err(|_| {
                 BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::SlotOutOfBounds,
                 )
             })?;
+    }
 
-                // If payload was revealed, process builder payment
-        if data.payload_present {
-            let payment_slot_index =
-                (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
-            let pending_payment = state_gloas.builder_pending_payments.get_mut(payment_slot_index)
-                .ok_or(BlockProcessingError::InvalidSlotIndex(payment_slot_index))?;
+    // Accumulate weight from this attestation
+    let num_attesters = attestation.num_attesters() as u64;
+    let payment_slot_index =
+        (data.slot.as_u64() % E::BuilderPendingPaymentsLimit::to_u64()) as usize;
+    let pending_payment = state_gloas.builder_pending_payments.get_mut(payment_slot_index)
+        .ok_or(BlockProcessingError::InvalidSlotIndex(payment_slot_index))?;
 
-            // Transfer payment from builder to proposer if not already processed
-            if pending_payment.weight < quorum_threshold {
-                pending_payment.weight = quorum_threshold; // Mark as processed
+    // Add weight from this attestation
+    let new_weight = pending_payment.weight.saturating_add(num_attesters);
+    pending_payment.weight = new_weight;
 
-                let builder_index = pending_payment.withdrawal.builder_index as usize;
-                let payment_amount = pending_payment.withdrawal.amount;
+    // Check if we've reached quorum (60% of PTC)
+    let quorum_threshold = (PTC_SIZE * spec.builder_payment_threshold_numerator)
+        / spec.builder_payment_threshold_denominator;
 
-                // Decrease builder balance
-                if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
-                    if builder.balance < payment_amount {
-                        return Err(BlockProcessingError::PayloadBidInvalid {
-                            reason: format!(
-                                "builder {} has insufficient balance {} for payment {}",
-                                builder_index, builder.balance, payment_amount
-                            ),
-                        });
-                    }
-                    builder.balance = builder.balance.saturating_sub(payment_amount);
+    // Process builder payment if we've crossed quorum threshold AND payload was revealed
+    if new_weight >= quorum_threshold && data.payload_present {
+        let builder_index = pending_payment.withdrawal.builder_index as usize;
+        let payment_amount = pending_payment.withdrawal.amount;
+
+        // Only process payment if it hasn't been done yet (weight was below threshold before)
+        if pending_payment.weight.saturating_sub(num_attesters) < quorum_threshold {
+            // Decrease builder balance
+            if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
+                if builder.balance < payment_amount {
+                    return Err(BlockProcessingError::PayloadBidInvalid {
+                        reason: format!(
+                            "builder {} has insufficient balance {} for payment {}",
+                            builder_index, builder.balance, payment_amount
+                        ),
+                    });
                 }
-
-                // TODO: Increase proposer balance
-                // Need to get proposer index for the slot - requires ConsensusContext
-                // For now, this is a known TODO that will be addressed when integrating
-                // with the full block processing pipeline
+                builder.balance = builder.balance.saturating_sub(payment_amount);
             }
+
+            // TODO: Increase proposer balance
+            // Need to get proposer index for the slot - requires ConsensusContext
         }
     }
 
