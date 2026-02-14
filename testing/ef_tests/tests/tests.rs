@@ -118,6 +118,18 @@ fn operations_bls_to_execution_change() {
 }
 
 #[test]
+fn operations_execution_payload_bid() {
+    OperationsHandler::<MinimalEthSpec, SignedExecutionPayloadBid<MinimalEthSpec>>::default().run();
+    OperationsHandler::<MainnetEthSpec, SignedExecutionPayloadBid<MainnetEthSpec>>::default().run();
+}
+
+#[test]
+fn operations_payload_attestation() {
+    OperationsHandler::<MinimalEthSpec, PayloadAttestation<MinimalEthSpec>>::default().run();
+    OperationsHandler::<MainnetEthSpec, PayloadAttestation<MainnetEthSpec>>::default().run();
+}
+
+#[test]
 fn sanity_blocks() {
     SanityBlocksHandler::<MinimalEthSpec>::default().run();
     SanityBlocksHandler::<MainnetEthSpec>::default().run();
@@ -943,6 +955,12 @@ fn epoch_processing_inactivity_updates() {
 fn epoch_processing_participation_flag_updates() {
     EpochProcessingHandler::<MinimalEthSpec, ParticipationFlagUpdates>::default().run();
     EpochProcessingHandler::<MainnetEthSpec, ParticipationFlagUpdates>::default().run();
+}
+
+#[test]
+fn epoch_processing_builder_pending_payments() {
+    EpochProcessingHandler::<MinimalEthSpec, BuilderPendingPayments>::default().run();
+    EpochProcessingHandler::<MainnetEthSpec, BuilderPendingPayments>::default().run();
 }
 
 #[test]
