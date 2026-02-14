@@ -9,11 +9,11 @@ use std::sync::Arc;
 use types::{
     AttesterSlashing, AttesterSlashingBase, AttesterSlashingElectra, BlobSidecar,
     DataColumnSidecar, DataColumnSubnetId, EthSpec, ForkContext, ForkName,
-    LightClientFinalityUpdate, LightClientOptimisticUpdate, ProposerSlashing,
+    LightClientFinalityUpdate, LightClientOptimisticUpdate, PayloadAttestation, ProposerSlashing,
     SignedAggregateAndProof, SignedAggregateAndProofBase, SignedAggregateAndProofElectra,
     SignedBeaconBlock, SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
-    PayloadAttestation, SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
+    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
     SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
     SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
 };
@@ -46,11 +46,11 @@ pub enum PubsubMessage<E: EthSpec> {
     LightClientFinalityUpdate(Box<LightClientFinalityUpdate<E>>),
     /// Gossipsub message providing notification of a light client optimistic update.
     LightClientOptimisticUpdate(Box<LightClientOptimisticUpdate<E>>),
-    /// Gloas ePBS: builders publish signed execution payload bids.
+    /// Gossipsub message providing notification of an execution payload bid (gloas ePBS).
     ExecutionBid(Box<SignedExecutionPayloadBid<E>>),
-    /// Gloas ePBS: builders reveal execution payload envelopes.
+    /// Gossipsub message providing notification of an execution payload envelope reveal (gloas ePBS).
     ExecutionPayload(Box<SignedExecutionPayloadEnvelope<E>>),
-    /// Gloas ePBS: PTC members publish payload attestations.
+    /// Gossipsub message providing notification of a payload attestation from PTC (gloas ePBS).
     PayloadAttestation(Box<PayloadAttestation<E>>),
 }
 
@@ -396,36 +396,20 @@ impl<E: EthSpec> PubsubMessage<E> {
                             light_client_optimistic_update,
                         )))
                     }
-                    // Gloas ePBS gossip topics.
-                    // These are decoded here and then validated in the beacon chain gossip
-                    // verification layer.
                     GossipKind::ExecutionBid => {
-                        let bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
+                        let execution_bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
                             .map_err(|e| format!("{:?}", e))?;
-                        Ok(PubsubMessage::ExecutionBid(Box::new(bid)))
+                        Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
                     }
                     GossipKind::ExecutionPayload => {
-                        let payload = SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
+                        let execution_payload = SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
                             .map_err(|e| format!("{:?}", e))?;
-                        Ok(PubsubMessage::ExecutionPayload(Box::new(payload)))
+                        Ok(PubsubMessage::ExecutionPayload(Box::new(execution_payload)))
                     }
                     GossipKind::PayloadAttestation => {
-                        let attestation = match fork_context
-                            .get_fork_from_context_bytes(gossip_topic.fork_digest)
-                        {
-                            Some(&fork_name) => {
-                                let _ = fork_name; // PayloadAttestation SSZ does not vary by fork.
-                                PayloadAttestation::from_ssz_bytes(data)
-                                    .map_err(|e| format!("{:?}", e))?
-                            }
-                            None => {
-                                return Err(format!(
-                                    "payload_attestation topic invalid for given fork digest {:?}",
-                                    gossip_topic.fork_digest
-                                ));
-                            }
-                        };
-                        Ok(PubsubMessage::PayloadAttestation(Box::new(attestation)))
+                        let payload_attestation = PayloadAttestation::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::PayloadAttestation(Box::new(payload_attestation)))
                     }
                 }
             }
@@ -515,23 +499,23 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
             PubsubMessage::LightClientOptimisticUpdate(_data) => {
                 write!(f, "Light CLient Optimistic Update")
             }
-            PubsubMessage::ExecutionBid(bid) => {
-                write!(
-                    f,
-                    "ExecutionBid: slot: {}, builder_index: {}",
-                    bid.message.slot, bid.message.builder_index
-                )
-            }
-            PubsubMessage::ExecutionPayload(payload) => {
-                write!(f, "ExecutionPayload: slot: {}", payload.message.slot)
-            }
-            PubsubMessage::PayloadAttestation(att) => {
-                write!(
-                    f,
-                    "PayloadAttestation: slot: {}, beacon_block_root: {:?}",
-                    att.data.slot, att.data.beacon_block_root
-                )
-            }
+            PubsubMessage::ExecutionBid(data) => write!(
+                f,
+                "Execution Bid: slot: {}, builder_index: {}, value: {}",
+                data.message.slot, data.message.builder_index, data.message.value
+            ),
+            PubsubMessage::ExecutionPayload(data) => write!(
+                f,
+                "Execution Payload: slot: {}, builder_index: {}",
+                data.message.slot, data.message.builder_index
+            ),
+            PubsubMessage::PayloadAttestation(data) => write!(
+                f,
+                "Payload Attestation: slot: {}, beacon_block_root: {:?}, num_attesters: {}",
+                data.data.slot,
+                data.data.beacon_block_root,
+                data.num_attesters()
+            ),
         }
     }
 }
