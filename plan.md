@@ -162,12 +162,12 @@ The next Ethereum hard fork is **Glamsterdam** (execution: Amsterdam, consensus:
 - [x] Equivocation detection strategy documented (deferred to Phase 4 P2P implementation)
 - [ ] Test fork choice across fork boundary (fulu -> gloas transition) - blocked on Rust toolchain
 
-#### Step 4: P2P Networking ⚡ IN PROGRESS (2/6 done - 2026-02-14)
+#### Step 4: P2P Networking ⚡ IN PROGRESS (4/6 done - 2026-02-14 12:56)
 - [x] Add new gossip topics: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] Gossip validation infrastructure (error types, verified wrappers, signature sets)
-- [ ] Complete gossip validation wiring (state accessors, equivocation caches, signature verification)
-- [ ] Beacon processor integration - wire up handlers
-- [ ] Add equivocation detection caches (ObservedExecutionBids, ObservedPayloadAttestations)
+- [x] Add equivocation detection caches (ObservedExecutionBids, ObservedPayloadAttestations)
+- [x] Complete gossip validation wiring (builder registry, signature verification) - **PR #18**
+- [ ] Beacon processor integration - wire up handlers (gossip_methods.rs)
 - [ ] Update peer scoring for new topics
 - [ ] Tests (gossip validation + integration)
 
@@ -485,12 +485,12 @@ Maintain a watchlist of upstream PRs that we care about:
 4. We merge fast
 5. vibes
 
-## Current Status - 2026-02-14 11:46 GMT+1
+## Current Status - 2026-02-14 12:56 GMT+1
 
 **Phase 1 Complete ✅**: All 16 gloas types implemented
 **Phase 2 Complete ✅**: All state transition functions implemented
 **Phase 3 Complete ✅**: Fork choice handlers (5/8 core items, deferred 2, compilation verified)
-**Phase 4 In Progress ⚡**: P2P Networking (3/6 complete - gossip topics + validation infrastructure + equivocation detection)
+**Phase 4 In Progress ⚡**: P2P Networking (4/6 complete - validation wiring done, beacon processor + tests remain)
 
 ### Implementation Status
 - ✅ All gloas types: BeaconState, BeaconBlockBody, 14 ePBS types
@@ -527,24 +527,22 @@ Maintain a watchlist of upstream PRs that we care about:
 
 **Equivocation Detection** ✅:
 - Created `observed_execution_bids.rs` (231 lines, 6 unit tests)
-  - Tracks (builder, slot) -> bid_root mappings
-  - Detects conflicting bids from same builder
-  - Auto-prunes to 64 slots
 - Created `observed_payload_attestations.rs` (257 lines, 6 unit tests)
-  - Tracks (validator, slot, block) -> payload_present mappings
-  - Detects conflicting attestations from same validator
-  - Auto-prunes to 64 slots
-- Integrated both into BeaconChain struct
-- Wired into gossip validation functions
+- Integrated into BeaconChain struct
+
+**Gossip Validation Wiring** ✅ (PR #18 - 2026-02-14 12:56):
+- Builder registry access and validation (exists, active, balance ≥ bid.value)
+- Parent root validation (bid.parent_block_root == head)
+- BLS signature verification for execution bids (DOMAIN_BEACON_BUILDER)
+- BLS signature verification for payload attestations (DOMAIN_PTC_ATTESTER)
+- PTC committee calculation and membership checks
+- Full equivocation detection for both message types
+- Compilation verified
 
 **Remaining Phase 4 Work**:
-1. ✅ ~~Create observed caches~~ (DONE)
-2. Complete validation wiring:
-   - Builder registry access (state.builders())
-   - Builder balance checks
-   - Signature verification wiring (verify_signature_sets calls)
-3. Beacon processor integration (gossip_methods.rs handlers)
-4. Peer scoring configuration
+1. Beacon processor integration (gossip_methods.rs handlers)
+2. Peer scoring configuration
+3. Integration tests
 5. Tests (gossip validation integration tests)
 
 ### Next Steps (Priority Order)
