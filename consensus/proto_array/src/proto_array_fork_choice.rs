@@ -158,6 +158,12 @@ pub struct Block {
     pub execution_status: ExecutionStatus,
     pub unrealized_justified_checkpoint: Option<Checkpoint>,
     pub unrealized_finalized_checkpoint: Option<Checkpoint>,
+    /// Gloas ePBS: Which builder won the bid for this slot (if any).
+    pub builder_index: Option<types::BuilderIndex>,
+    /// Gloas ePBS: Has the builder revealed the execution payload?
+    pub payload_revealed: bool,
+    /// Gloas ePBS: Initial PTC weight (usually 0 at block insertion).
+    pub ptc_weight: u64,
 }
 
 impl Block {

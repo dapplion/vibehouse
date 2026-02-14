@@ -7,7 +7,7 @@ use ssz_derive::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
 use superstruct::superstruct;
 use types::{
-    AttestationShufflingId, ChainSpec, Checkpoint, Epoch, EthSpec, ExecutionBlockHash,
+    AttestationShufflingId, BuilderIndex, ChainSpec, Checkpoint, Epoch, EthSpec, ExecutionBlockHash,
     FixedBytesExtended, Hash256, Slot,
 };
 
@@ -15,6 +15,7 @@ use types::{
 // selector.
 four_byte_option_impl!(four_byte_option_usize, usize);
 four_byte_option_impl!(four_byte_option_checkpoint, Checkpoint);
+four_byte_option_impl!(four_byte_option_builder_index, BuilderIndex);
 
 /// Defines an operation which may invalidate the `execution_status` of some nodes.
 #[derive(Clone, Debug)]
@@ -108,6 +109,16 @@ pub struct ProtoNode {
     pub unrealized_justified_checkpoint: Option<Checkpoint>,
     #[ssz(with = "four_byte_option_checkpoint")]
     pub unrealized_finalized_checkpoint: Option<Checkpoint>,
+    /// Gloas ePBS: Which builder won the bid for this slot (if any).
+    /// None for self-build blocks or pre-gloas blocks.
+    #[ssz(with = "four_byte_option_builder_index")]
+    pub builder_index: Option<BuilderIndex>,
+    /// Gloas ePBS: Has the builder revealed the execution payload for this block?
+    /// Always true for self-build and pre-gloas blocks.
+    pub payload_revealed: bool,
+    /// Gloas ePBS: Accumulated weight from PTC attestations for payload availability.
+    /// Used to determine if payload quorum has been reached.
+    pub ptc_weight: u64,
 }
 
 #[derive(PartialEq, Debug, Encode, Decode, Serialize, Deserialize, Copy, Clone)]
@@ -332,6 +343,9 @@ impl ProtoArray {
             execution_status: block.execution_status,
             unrealized_justified_checkpoint: block.unrealized_justified_checkpoint,
             unrealized_finalized_checkpoint: block.unrealized_finalized_checkpoint,
+            builder_index: block.builder_index,
+            payload_revealed: block.payload_revealed,
+            ptc_weight: block.ptc_weight,
         };
 
         // If the parent has an invalid execution status, return an error before adding the block to
