@@ -530,8 +530,11 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
             for withdrawal_req in pending_partial_withdrawals {
+                // Stop if:
+                // 1. Withdrawal not yet eligible (withdrawable_epoch in future)
+                // 2. We've processed the max number of partial withdrawal requests
                 if withdrawal_req.withdrawable_epoch > epoch
-                    || withdrawals.len() >= spec.max_pending_partials_per_withdrawals_sweep as usize
+                    || processed_partial_withdrawals_count >= spec.max_pending_partials_per_withdrawals_sweep as usize
                 {
                     break;
                 }
