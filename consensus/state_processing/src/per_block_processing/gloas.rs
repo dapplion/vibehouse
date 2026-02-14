@@ -151,7 +151,6 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 
     Ok(())
 }
-}
 
 /// Processes payload attestations from the PTC (Payload Timeliness Committee).
 ///
