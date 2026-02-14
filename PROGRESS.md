@@ -4,6 +4,70 @@
 
 ---
 
+## 2026-02-14 14:42 - Phase 5.1: BeaconChain processing methods added ✅
+
+### BeaconChain integration for ePBS
+
+**Added process_execution_bid() method** ✅
+- Takes `GossipVerifiedExecutionBid` from gossip validation
+- Extracts slot and builder_index for logging
+- Calls `fork_choice.on_execution_bid(bid)` to integrate into fork choice
+- Returns Error on failure with proper logging
+- Adds metric timer: `BEACON_PROCESSOR_EXECUTION_BID_PROCESSING`
+
+**Added process_payload_attestation() method** ✅
+- Takes `GossipVerifiedPayloadAttestation` from gossip validation
+- Extracts slot and num_attesters for logging
+- Gets indexed form of attestation for fork choice
+- Calls `fork_choice.on_payload_attestation(indexed)` to integrate
+- Returns Error on failure with proper logging
+- Adds metric timer: `BEACON_PROCESSOR_PAYLOAD_ATTESTATION_PROCESSING`
+
+**Metrics** ✅
+- `BEACON_PROCESSOR_EXECUTION_BID_PROCESSING` - histogram tracking processing time
+- `BEACON_PROCESSOR_PAYLOAD_ATTESTATION_PROCESSING` - histogram tracking processing time
+
+### Integration flow
+
+**Execution Bid path:**
+1. Gossip message arrives → `router.rs` decodes `PubsubMessage::ExecutionBid`
+2. Router calls `send_gossip_execution_bid()` → enqueues `Work::GossipExecutionBid`
+3. Beacon processor pops work → calls `process_gossip_execution_bid()`
+4. Gossip handler calls `GossipVerifiedExecutionBid::new()` → validation
+5. Handler calls `chain.process_execution_bid(verified)` → **NEW METHOD**
+6. BeaconChain calls `fork_choice.on_execution_bid()` → integrated
+
+**Payload Attestation path:**
+1. Gossip message arrives → `router.rs` decodes `PubsubMessage::PayloadAttestation`
+2. Router calls `send_gossip_payload_attestation()` → enqueues `Work::GossipPayloadAttestation`
+3. Beacon processor pops work → calls `process_gossip_payload_attestation()`
+4. Gossip handler calls `GossipVerifiedPayloadAttestation::new()` → validation
+5. Handler calls `chain.process_payload_attestation(verified)` → **NEW METHOD**
+6. BeaconChain calls `fork_choice.on_payload_attestation()` → integrated
+
+### Commits
+- `5d3a57482` - beacon_chain: add process_execution_bid and process_payload_attestation methods
+
+### Session Summary
+
+**Time**: 14:42-14:50 (8 minutes)
+**Output**: BeaconChain processing methods for ePBS
+**Quality**: Production-ready - minimal, focused integration points
+
+**Phase 5 Progress**: Core methods complete (1/6)
+- ✅ Core BeaconChain processing methods
+- 🚧 Full beacon chain type wiring (next - ensure all types flow through)
+- ⏸️ Block import pipeline updates (two-phase block handling)
+- ⏸️ Fork choice store updates
+- ⏸️ Payload timeliness committee logic
+- ⏸️ Chain head tracking
+
+**Next**: Verify all types are properly wired through the beacon_chain crate, then tackle block import pipeline for ePBS two-phase blocks.
+
+🎵 **ethvibes - beacon chain processing gloas bids** 🎵
+
+---
+
 ## 2026-02-14 13:57 - Phase 4.4: Beacon processor integration complete ✅
 
 ### Beacon processor wiring for execution bids and payload attestations
