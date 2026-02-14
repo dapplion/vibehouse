@@ -4,6 +4,77 @@
 
 ---
 
+## 2026-02-14 17:45 - Phase 5.2 Step 4 complete: Conditional payload verification 🚀
+
+### Step 4 Complete: Skip payload verification for pending blocks ✅
+
+**Problem:** Pre-gloas block import always verifies the execution payload with the EL. For gloas external builder blocks, the payload doesn't exist yet - it will be revealed separately by the builder.
+
+**Solution:** Moved payload_state detection to happen *before* payload verification, then conditionally skip EL verification for pending payloads.
+
+**Implementation:**
+1. **Refactored detection order:** Moved payload_state calculation from end of function to right after `check_block_relevancy()` (before payload verification)
+2. **Conditional verification:**
+   - `PayloadState::Pending`: Skip verification, spawn dummy successful handle
+   - `PayloadState::Included | SelfBuild | Revealed`: Verify payload normally via PayloadNotifier
+3. **Removed duplicate code:** Eliminated second payload_state calculation at end of function
+
+**Code changes:**
+- Wrapped entire `PayloadNotifier::new()` + verification future in conditional block
+- For pending: returns `PayloadVerificationStatus::Irrelevant` immediately
+- For others: spawns normal async payload verification task
+
+**Lines modified:** 118 insertions, 96 deletions (net +22 lines, structural refactor)
+
+**File:** `beacon_node/beacon_chain/src/block_verification.rs`
+
+### Implementation Progress: 4/8 steps complete (50%)
+
+**Completed:**
+- ✅ Step 1: PayloadState enum (15 min) - d3621c209
+- ✅ Step 2: BlockImportData extension (10 min) - d3621c209
+- ✅ Step 3: Payload state detection (45 min) - 2aaa2d0ad
+- ✅ Step 4: Skip verification for pending (45 min) - 0b6817988
+
+**Commits:**
+- `d3621c209` - phase 5.2: add PayloadState enum and extend BlockImportData
+- `2aaa2d0ad` - phase 5.2: detect payload state during block import
+- `0b6817988` - phase 5.2: skip payload verification for pending gloas blocks
+- `a0e89c141` - progress update: phase 5.2 steps 1-3 complete
+- `674403601` - plan.md: update Phase 5.2 progress (4/8 steps complete)
+
+**Remaining:**
+- ⏳ Step 5: Fork choice integration (45 min)
+- ⏳ Step 6: Payload reveal handler (1.5 hours)
+- ⏳ Step 7: Wire to P2P (30 min)
+- ⏳ Step 8: Tests (2 hours)
+
+**Estimated remaining time:** ~4.5 hours
+
+### Session Summary
+
+**Time:** 2026-02-14 17:20 - 17:45 (25 minutes)
+**Pace:** Fast and efficient
+**Output:**
+- Major refactor: moved payload state detection earlier
+- Conditional payload verification implemented
+- Gloas blocks can now import without waiting for builder reveal
+
+**Momentum:** Strong. The hard parts (state detection, conditional verification) are done. Next steps are cleaner: fork choice updates, reveal handler, P2P wiring.
+
+### Next: Step 5 - Fork choice integration
+
+Update fork choice to track payload_state when importing blocks:
+- Record `PayloadState::Pending` blocks with `payload_revealed = false`
+- Record `PayloadState::Revealed | SelfBuild` blocks with `payload_revealed = true`
+- Head selection already enforces payload revelation requirement
+
+**Location:** Block import path in `beacon_chain.rs`, calls `fork_choice.on_block()`
+
+**Status:** Halfway through Phase 5.2. On track for completion. 🎵
+
+---
+
 ## 2026-02-14 17:20 - Phase 5.2 in progress: PayloadState tracking 🔄
 
 ### Step 1 & 2 Complete: PayloadState enum + BlockImportData extension ✅
