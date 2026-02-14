@@ -41,7 +41,9 @@ pub mod enr_fork_id;
 pub mod eth1_data;
 pub mod eth_spec;
 pub mod execution_block_hash;
+pub mod execution_block_header;
 pub mod execution_payload;
+pub mod execution_payload_bid;
 pub mod execution_payload_header;
 pub mod fork;
 pub mod fork_data;
@@ -68,6 +70,7 @@ pub mod signed_beacon_block;
 pub mod signed_beacon_block_header;
 pub mod signed_bls_to_execution_change;
 pub mod signed_contribution_and_proof;
+pub mod signed_execution_payload_bid;
 pub mod signed_voluntary_exit;
 pub mod signing_data;
 pub mod sync_committee_subscription;
@@ -169,6 +172,7 @@ pub use crate::eth_spec::EthSpecId;
 pub use crate::eth1_data::Eth1Data;
 pub use crate::execution_block_hash::ExecutionBlockHash;
 pub use crate::execution_block_header::{EncodableExecutionBlockHeader, ExecutionBlockHeader};
+pub use crate::execution_payload_bid::{ExecutionPayloadBid, SignedExecutionPayloadBid};
 pub use crate::execution_payload::{
     ExecutionPayload, ExecutionPayloadBellatrix, ExecutionPayloadCapella, ExecutionPayloadDeneb,
     ExecutionPayloadElectra, ExecutionPayloadFulu, ExecutionPayloadGloas, ExecutionPayloadRef,
