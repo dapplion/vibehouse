@@ -88,6 +88,13 @@ pub use block_verification::{
 pub use block_verification_types::AvailabilityPendingExecutedBlock;
 pub use block_verification_types::ExecutedBlock;
 pub use canonical_head::{CachedHead, CanonicalHead, CanonicalHeadRwLock};
+pub use execution_bid_verification::{
+    Error as ExecutionBidError, GossipVerifiedExecutionBid, verify_execution_bid_for_gossip,
+};
+pub use payload_attestation_verification::{
+    Error as PayloadAttestationError, GossipVerifiedPayloadAttestation,
+    verify_payload_attestation_for_gossip,
+};
 pub use custody_context::CustodyContext;
 pub use events::ServerSentEventHandler;
 pub use execution_layer::EngineState;

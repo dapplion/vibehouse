@@ -137,6 +137,10 @@ pub struct BeaconBlockBody<E: EthSpec, Payload: AbstractExecPayload<E> = FullPay
     // Gloas ePBS: replaces execution_payload with bid + attestations
     #[superstruct(only(Gloas))]
     pub signed_execution_payload_bid: SignedExecutionPayloadBid<E>,
+    // For self-build only: proposer includes payload directly (builder_index = BUILDER_INDEX_SELF_BUILD)
+    // For external builders: None (payload revealed separately via SignedExecutionPayloadEnvelope)
+    #[superstruct(only(Gloas))]
+    pub execution_payload: Option<Payload>,
     #[superstruct(only(Gloas))]
     pub payload_attestations: VariableList<PayloadAttestation<E>, E::MaxPayloadAttestations>,
     #[superstruct(only(Base, Altair, Gloas))]
@@ -168,7 +172,12 @@ impl<'a, E: EthSpec, Payload: AbstractExecPayload<E>> BeaconBlockBodyRef<'a, E, 
             Self::Deneb(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Electra(body) => Ok(Payload::Ref::from(&body.execution_payload)),
             Self::Fulu(body) => Ok(Payload::Ref::from(&body.execution_payload)),
-            Self::Gloas(_) => Err(Error::IncorrectStateVariant),
+            // Gloas ePBS: payload only present for self-build
+            Self::Gloas(body) => body
+                .execution_payload
+                .as_ref()
+                .map(Payload::Ref::from)
+                .ok_or(Error::IncorrectStateVariant),
         }
     }
 
@@ -522,6 +531,7 @@ impl<E: EthSpec> From<BeaconBlockBodyGloas<E, BlindedPayload<E>>>
             sync_aggregate,
             bls_to_execution_changes,
             signed_execution_payload_bid,
+            execution_payload,
             payload_attestations,
             _phantom,
         } = body;
@@ -538,6 +548,7 @@ impl<E: EthSpec> From<BeaconBlockBodyGloas<E, BlindedPayload<E>>>
             sync_aggregate,
             bls_to_execution_changes,
             signed_execution_payload_bid,
+            execution_payload: execution_payload.map(|p| FullPayload::from(p.into())),
             payload_attestations,
             _phantom: PhantomData,
         }
@@ -856,6 +867,7 @@ impl<E: EthSpec> From<BeaconBlockBodyGloas<E, FullPayload<E>>>
             sync_aggregate,
             bls_to_execution_changes,
             signed_execution_payload_bid,
+            execution_payload,
             payload_attestations,
             _phantom,
         } = body;
@@ -873,10 +885,11 @@ impl<E: EthSpec> From<BeaconBlockBodyGloas<E, FullPayload<E>>>
                 sync_aggregate,
                 bls_to_execution_changes,
                 signed_execution_payload_bid,
+                execution_payload: execution_payload.map(|p| BlindedPayload::from(p.into())),
                 payload_attestations,
                 _phantom: PhantomData,
             },
-            None,
+            execution_payload.map(Into::into),
         )
     }
 }
