@@ -1945,6 +1945,23 @@ pub static LIGHT_CLIENT_SERVER_CACHE_PROCESSING_SUCCESSES: LazyLock<Result<IntCo
         )
     });
 
+// Gloas ePBS metrics
+pub static BEACON_PROCESSOR_EXECUTION_BID_PROCESSING: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
+        try_create_histogram(
+            "beacon_chain_execution_bid_processing_seconds",
+            "Time spent processing execution bids in BeaconChain (Gloas ePBS)",
+        )
+    });
+
+pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_PROCESSING: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
+        try_create_histogram(
+            "beacon_chain_payload_attestation_processing_seconds",
+            "Time spent processing payload attestations in BeaconChain (Gloas ePBS)",
+        )
+    });
+
 /// Scrape the `beacon_chain` for metrics that are not constantly updated (e.g., the present slot,
 /// head state info, etc) and update the Prometheus `DEFAULT_REGISTRY`.
 pub fn scrape_for_metrics<T: BeaconChainTypes>(beacon_chain: &BeaconChain<T>) {

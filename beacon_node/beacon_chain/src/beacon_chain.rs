@@ -7368,8 +7368,80 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .custody_context()
             .custody_columns_for_epoch(epoch_opt, &self.spec)
     }
-}
 
+    /// Process a gossip-verified execution bid (Gloas ePBS).
+    ///
+    /// Imports the bid into fork choice via `on_execution_bid`.
+    pub fn process_execution_bid(
+        &self,
+        verified_bid: execution_bid_verification::GossipVerifiedExecutionBid,
+    ) -> Result<(), Error> {
+        let _timer = metrics::start_timer(&metrics::BEACON_PROCESSOR_EXECUTION_BID_PROCESSING);
+
+        let bid = verified_bid.into_inner();
+        let slot = bid.message.slot;
+        let builder_index = bid.message.builder_index;
+
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_execution_bid(bid)
+            .map_err(|e| {
+                warn!(
+                    slot = %slot,
+                    builder_index,
+                    error = ?e,
+                    "Failed to process execution bid in fork choice"
+                );
+                Error::ForkChoiceError(e)
+            })?;
+
+        debug!(
+            slot = %slot,
+            builder_index,
+            "Processed execution bid"
+        );
+
+        Ok(())
+    }
+
+    /// Process a gossip-verified payload attestation (Gloas ePBS).
+    ///
+    /// Imports the attestation into fork choice via `on_payload_attestation`.
+    pub fn process_payload_attestation(
+        &self,
+        verified_attestation: payload_attestation_verification::GossipVerifiedPayloadAttestation<T>,
+    ) -> Result<(), Error> {
+        let _timer =
+            metrics::start_timer(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_PROCESSING);
+
+        let slot = verified_attestation.attestation().data.slot;
+        let num_attesters = verified_attestation.attestation().num_attesters();
+
+        // Get indexed form for fork choice
+        let indexed = verified_attestation.indexed_attestation().clone();
+
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_payload_attestation(indexed)
+            .map_err(|e| {
+                warn!(
+                    slot = %slot,
+                    num_attesters,
+                    error = ?e,
+                    "Failed to process payload attestation in fork choice"
+                );
+                Error::ForkChoiceError(e)
+            })?;
+
+        debug!(
+            slot = %slot,
+            num_attesters,
+            "Processed payload attestation"
+        );
+
+        Ok(())
+    }
+}
 impl<T: BeaconChainTypes> Drop for BeaconChain<T> {
     fn drop(&mut self) {
         let drop = || -> Result<(), Error> {
