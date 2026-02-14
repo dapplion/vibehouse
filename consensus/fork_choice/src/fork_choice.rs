@@ -1342,10 +1342,12 @@ where
             .into());
         }
 
-        // Calculate PTC quorum threshold (60% of PTC_SIZE = 512)
-        // PTC_SIZE * 3 / 5 = 307 (minimum attesters for quorum)
+        // Calculate PTC quorum threshold.
+        // Spec: PAYLOAD_TIMELY_THRESHOLD = PTC_SIZE // 2 and payload is timely when
+        // sum(votes) > PAYLOAD_TIMELY_THRESHOLD.
+        // With PTC_SIZE=512 this requires 257+ votes.
         let ptc_size = spec.ptc_size;
-        let quorum_threshold = (ptc_size * 3) / 5;
+        let quorum_threshold = ptc_size / 2;
 
         // Count the attesters (weight each as 1)
         let attester_count = indexed_attestation.attesting_indices.len() as u64;
@@ -1360,8 +1362,8 @@ where
             // Accumulate weight from this attestation
             node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
             
-            // Check if we've reached quorum
-            if node.ptc_weight >= quorum_threshold {
+            // Check if we've reached quorum (strictly greater than threshold per spec)
+            if node.ptc_weight > quorum_threshold {
                 // Only mark revealed if the attestation signals payload was present
                 if attestation.data.payload_present {
                     node.payload_revealed = true;
