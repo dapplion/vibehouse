@@ -2,6 +2,17 @@
 
 > the vibemap. not a roadmap. roadmaps have deadlines. vibemaps have directions.
 
+## 🚨 CRITICAL: ALWAYS RUN TESTS BEFORE PUSHING 🚨
+
+# **`make test-ef`** — Run this EVERY TIME before pushing code!
+
+When adding new test vectors or types:
+1. Add test handlers in `testing/ef_tests/tests/tests.rs`
+2. Run `make test-ef` to verify they work
+3. Never push without running tests locally
+
+---
+
 ## fork point
 
 vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/releases/tag/v8.0.1), the last stable release covering the Fulu mainnet fork (epoch 411,392, Dec 3 2025). Everything before v8.0.1 is inherited. Everything after is vibes.
