@@ -530,12 +530,10 @@ where
     )]
     #[metastruct(exclude_from(tree_lists))]
     pub latest_execution_payload_header: ExecutionPayloadHeaderFulu<E>,
-    #[superstruct(
-        only(Gloas),
-        partial_getter(rename = "latest_execution_payload_header_gloas")
-    )]
+    // In Gloas, latest_execution_payload_header is replaced by latest_execution_payload_bid
+    #[superstruct(only(Gloas))]
     #[metastruct(exclude_from(tree_lists))]
-    pub latest_execution_payload_header: ExecutionPayloadHeaderGloas<E>,
+    pub latest_execution_payload_bid: ExecutionPayloadBid<E>,
 
     // Capella
     #[superstruct(only(Capella, Deneb, Electra, Fulu, Gloas), partial_getter(copy))]
@@ -596,6 +594,47 @@ where
     pub proposer_lookahead: Vector<u64, E::ProposerLookaheadSlots>,
 
     // Gloas
+    // ePBS builder registry
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    pub builders: List<Builder, E::BuilderRegistryLimit>,
+
+    #[metastruct(exclude_from(tree_lists))]
+    #[serde(with = "serde_utils::quoted_u64")]
+    #[superstruct(only(Gloas), partial_getter(copy))]
+    pub next_withdrawal_builder_index: BuilderIndex,
+
+    // Bitvector tracking which slots had their payload delivered
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[metastruct(exclude_from(tree_lists))]
+    pub execution_payload_availability: BitVector<E::SlotsPerHistoricalRoot>,
+
+    // Builder pending payments (fixed-size vector, indexed by slot)
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    pub builder_pending_payments: Vector<BuilderPendingPayment, E::BuilderPendingPaymentsLimit>,
+
+    // Builder pending withdrawals queue
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    pub builder_pending_withdrawals:
+        List<BuilderPendingWithdrawal, E::BuilderPendingWithdrawalsLimit>,
+
+    // Latest block hash from execution layer
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[metastruct(exclude_from(tree_lists))]
+    pub latest_block_hash: ExecutionBlockHash,
+
+    // Expected withdrawals for the current payload
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    pub payload_expected_withdrawals: List<Withdrawal, E::MaxWithdrawalsPerPayload>,
 
     // Caching (not in the spec)
     #[serde(skip_serializing, skip_deserializing)]
@@ -1141,9 +1180,8 @@ impl<E: EthSpec> BeaconState<E> {
             BeaconState::Fulu(state) => Ok(ExecutionPayloadHeaderRef::Fulu(
                 &state.latest_execution_payload_header,
             )),
-            BeaconState::Gloas(state) => Ok(ExecutionPayloadHeaderRef::Gloas(
-                &state.latest_execution_payload_header,
-            )),
+            // Gloas replaces latest_execution_payload_header with latest_execution_payload_bid
+            BeaconState::Gloas(_) => Err(Error::IncorrectStateVariant),
         }
     }
 
@@ -1167,9 +1205,8 @@ impl<E: EthSpec> BeaconState<E> {
             BeaconState::Fulu(state) => Ok(ExecutionPayloadHeaderRefMut::Fulu(
                 &mut state.latest_execution_payload_header,
             )),
-            BeaconState::Gloas(state) => Ok(ExecutionPayloadHeaderRefMut::Gloas(
-                &mut state.latest_execution_payload_header,
-            )),
+            // Gloas replaces latest_execution_payload_header with latest_execution_payload_bid
+            BeaconState::Gloas(_) => Err(Error::IncorrectStateVariant),
         }
     }
 

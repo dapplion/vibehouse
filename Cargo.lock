@@ -8976,6 +8976,7 @@ dependencies = [
  "itertools 0.10.5",
  "merkle_proof",
  "metrics",
+ "milhouse",
  "rand 0.9.0",
  "rayon",
  "safe_arith",

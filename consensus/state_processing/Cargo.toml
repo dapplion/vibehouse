@@ -29,6 +29,7 @@ integer-sqrt = "0.1.5"
 itertools = { workspace = true }
 merkle_proof = { workspace = true }
 metrics = { workspace = true }
+milhouse = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 safe_arith = { workspace = true }

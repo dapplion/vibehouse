@@ -4,7 +4,7 @@ use safe_arith::SafeArith;
 use serde::{Deserialize, Serialize};
 use ssz_types::typenum::{
     U0, U1, U2, U4, U8, U16, U17, U32, U64, U128, U256, U512, U625, U1024, U2048, U4096, U8192,
-    U65536, U131072, U262144, U1048576, U16777216, U33554432, U134217728, U1073741824,
+    U16384, U65536, U131072, U262144, U1048576, U16777216, U33554432, U134217728, U1073741824,
     U1099511627776, UInt, bit::B0,
 };
 use std::fmt::{self, Debug};
@@ -171,6 +171,14 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
     type PtcSize: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     /// Maximum payload attestations per block
     type MaxPayloadAttestations: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /// Maximum number of builders in the registry (2^40)
+    type BuilderRegistryLimit: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /// Length of builder_pending_payments vector (2 * SLOTS_PER_EPOCH)
+    type BuilderPendingPaymentsLimit: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /// Maximum pending builder withdrawals
+    type BuilderPendingWithdrawalsLimit: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    /// Maximum builders processed per withdrawals sweep
+    type MaxBuildersPerWithdrawalsSweep: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 
     fn default_spec() -> ChainSpec;
 
@@ -398,6 +406,36 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
     fn proposer_lookahead_slots() -> usize {
         Self::ProposerLookaheadSlots::to_usize()
     }
+
+    /// Returns the `BUILDER_REGISTRY_LIMIT` constant for this specification.
+    fn builder_registry_limit() -> usize {
+        Self::BuilderRegistryLimit::to_usize()
+    }
+
+    /// Returns the `BUILDER_PENDING_PAYMENTS_LIMIT` constant for this specification.
+    fn builder_pending_payments_limit() -> usize {
+        Self::BuilderPendingPaymentsLimit::to_usize()
+    }
+
+    /// Returns the `BUILDER_PENDING_WITHDRAWALS_LIMIT` constant for this specification.
+    fn builder_pending_withdrawals_limit() -> usize {
+        Self::BuilderPendingWithdrawalsLimit::to_usize()
+    }
+
+    /// Returns the `PTC_SIZE` constant for this specification.
+    fn ptc_size() -> usize {
+        Self::PtcSize::to_usize()
+    }
+
+    /// Returns the `MAX_PAYLOAD_ATTESTATIONS` constant for this specification.
+    fn max_payload_attestations() -> usize {
+        Self::MaxPayloadAttestations::to_usize()
+    }
+
+    /// Returns the `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` constant for this specification.
+    fn max_builders_per_withdrawals_sweep() -> usize {
+        Self::MaxBuildersPerWithdrawalsSweep::to_usize()
+    }
 }
 
 /// Macro to inherit some type values from another EthSpec.
@@ -469,6 +507,10 @@ impl EthSpec for MainnetEthSpec {
     type MaxPendingDepositsPerEpoch = U16;
     type PtcSize = U512;
     type MaxPayloadAttestations = U4;
+    type BuilderRegistryLimit = U1099511627776;
+    type BuilderPendingPaymentsLimit = U64; // 2 * SLOTS_PER_EPOCH = 2 * 32 = 64
+    type BuilderPendingWithdrawalsLimit = U1048576;
+    type MaxBuildersPerWithdrawalsSweep = U16384;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::mainnet()
@@ -511,6 +553,9 @@ impl EthSpec for MinimalEthSpec {
     type CellsPerExtBlob = U128;
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U16; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
+    type BuilderPendingPaymentsLimit = U16; // 2 * SLOTS_PER_EPOCH = 2 * 8 = 16
+    type PtcSize = U2;
+    type MaxBuildersPerWithdrawalsSweep = U16;
 
     params_from_eth_spec!(MainnetEthSpec {
         JustificationBitsLength,
@@ -540,8 +585,9 @@ impl EthSpec for MinimalEthSpec {
         MaxAttestationsElectra,
         MaxDepositRequestsPerPayload,
         MaxWithdrawalRequestsPerPayload,
-        PtcSize,
-        MaxPayloadAttestations
+        MaxPayloadAttestations,
+        BuilderRegistryLimit,
+        BuilderPendingWithdrawalsLimit
     });
 
     fn default_spec() -> ChainSpec {
@@ -613,7 +659,11 @@ impl EthSpec for GnosisEthSpec {
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U32; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
     type PtcSize = U512;
-    type MaxPayloadAttestations = U4;
+    type MaxPayloadAttestations = U2;
+    type BuilderRegistryLimit = U1099511627776;
+    type BuilderPendingPaymentsLimit = U32; // 2 * SLOTS_PER_EPOCH = 2 * 16 = 32
+    type BuilderPendingWithdrawalsLimit = U1048576;
+    type MaxBuildersPerWithdrawalsSweep = U16384;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::gnosis()

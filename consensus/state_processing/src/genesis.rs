@@ -166,10 +166,9 @@ pub fn initialize_beacon_state_from_eth1<E: EthSpec>(
         // Remove intermediate Fulu fork from `state.fork`.
         state.fork_mut().previous_version = spec.gloas_fork_version;
 
-        // Override latest execution payload header.
-        if let Some(ExecutionPayloadHeader::Gloas(header)) = execution_payload_header {
-            *state.latest_execution_payload_header_gloas_mut()? = header.clone();
-        }
+        // Gloas replaces execution payload headers with execution payload bids.
+        // The upgrade_to_gloas function initializes latest_execution_payload_bid
+        // from the previous fork's block_hash.
     }
 
     // Now that we have our validators, initialize the caches (including the committees)
