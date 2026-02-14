@@ -1,7 +1,6 @@
 use crate::{EthSpec, PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
 use derivative::Derivative;
-use safe_arith::ArithError;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::BitVector;

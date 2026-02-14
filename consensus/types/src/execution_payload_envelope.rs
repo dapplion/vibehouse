@@ -1,11 +1,11 @@
 use crate::{
-    EthSpec, ExecutionPayload, ExecutionRequests, ForkName, Hash256, Slot, test_utils::TestRandom,
+    EthSpec, ExecutionPayload, ExecutionPayloadGloas, ExecutionRequests, ForkName, Hash256, Slot,
+    test_utils::TestRandom,
 };
 use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
-use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
 /// Execution payload envelope submitted by builders in Gloas ePBS.
@@ -17,9 +17,7 @@ use tree_hash_derive::TreeHash;
 /// The envelope is signed by the builder to prove they authorized the reveal.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadenvelope
-#[derive(
-    Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Derivative, TestRandom,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
@@ -27,10 +25,9 @@ use tree_hash_derive::TreeHash;
 )]
 #[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
-#[context_deserialize(ForkName)]
 pub struct ExecutionPayloadEnvelope<E: EthSpec> {
     /// The execution payload being revealed
-    pub payload: ExecutionPayload<E>,
+    pub payload: ExecutionPayloadGloas<E>,
     /// Execution layer requests (deposits, withdrawals, consolidations)
     pub execution_requests: ExecutionRequests<E>,
     /// Index of the builder revealing this payload
@@ -48,7 +45,7 @@ impl<E: EthSpec> ExecutionPayloadEnvelope<E> {
     /// Create an empty execution payload envelope (used for defaults/testing).
     pub fn empty() -> Self {
         Self {
-            payload: ExecutionPayload::default(),
+            payload: ExecutionPayloadGloas::default(),
             execution_requests: ExecutionRequests::default(),
             builder_index: 0,
             beacon_block_root: Hash256::zero(),
@@ -61,6 +58,19 @@ impl<E: EthSpec> ExecutionPayloadEnvelope<E> {
 impl<E: EthSpec> Default for ExecutionPayloadEnvelope<E> {
     fn default() -> Self {
         Self::empty()
+    }
+}
+
+impl<E: EthSpec> TestRandom for ExecutionPayloadEnvelope<E> {
+    fn random_for_test(rng: &mut impl rand::RngCore) -> Self {
+        Self {
+            payload: ExecutionPayloadGloas::random_for_test(rng),
+            execution_requests: ExecutionRequests::random_for_test(rng),
+            builder_index: u64::random_for_test(rng),
+            beacon_block_root: Hash256::random_for_test(rng),
+            slot: Slot::random_for_test(rng),
+            state_root: Hash256::random_for_test(rng),
+        }
     }
 }
 

@@ -3,7 +3,6 @@ use bls::Signature;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
-use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
 
 /// Signed execution payload envelope in Gloas ePBS.
@@ -13,9 +12,7 @@ use tree_hash_derive::TreeHash;
 /// using the DOMAIN_BEACON_BUILDER domain.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope
-#[derive(
-    Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative, TestRandom,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
@@ -43,6 +40,15 @@ impl<E: EthSpec> SignedExecutionPayloadEnvelope<E> {
 impl<E: EthSpec> Default for SignedExecutionPayloadEnvelope<E> {
     fn default() -> Self {
         Self::empty()
+    }
+}
+
+impl<E: EthSpec> TestRandom for SignedExecutionPayloadEnvelope<E> {
+    fn random_for_test(rng: &mut impl rand::RngCore) -> Self {
+        Self {
+            message: ExecutionPayloadEnvelope::random_for_test(rng),
+            signature: Signature::random_for_test(rng),
+        }
     }
 }
 
