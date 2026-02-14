@@ -553,23 +553,16 @@ Maintain a watchlist of upstream PRs that we care about:
 
 **Remaining Phase 4 Work**:
 1. Peer scoring configuration (design ready in docs/workstreams/gloas-peer-scoring.md)
-2. Router wiring (connect gossip topics to handlers)
-3. Tests (gossip validation + integration tests)
-- PTC committee calculation + membership checks
-- Full equivocation detection
-- Compilation verified (blocked by bitvec toolchain issue)
+2. Tests (gossip validation + integration tests) — run `make test-ef`
 
 **Remaining Phase 4 Work** 📋:
-1. **Beacon processor integration** (6h est.) - See docs/workstreams/gloas-beacon-processor-integration.md
-   - Add Work variants (GossipExecutionBid, GossipExecutionPayload, GossipPayloadAttestation)
-   - Implement process methods in gossip_methods.rs
-   - Wire up router to call fork choice handlers
-   - Add metrics tracking
-2. **Peer scoring** (2h est.) - See docs/workstreams/gloas-peer-scoring.md
+1. ✅ **Beacon processor integration** - done (commit 93f981836)
+2. ✅ **Router wiring + pubsub decode** - done (commit 6d74d890c)
+3. **Peer scoring** (2h est.) - See docs/workstreams/gloas-peer-scoring.md
    - Add weight constants (0.5, 0.5, 0.4)
    - Configure topic params in gossipsub_scoring_parameters.rs
    - Equivocation → graylist threshold
-3. **Tests** - Unit + integration tests for full flow
+4. **Tests** - run `make test-ef` and fix any failures
 
 ### Next Steps When Toolchain Available
 1. **Fix bitvec issue**: Upgrade to compatible version or pin Rust toolchain

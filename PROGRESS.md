@@ -1,3 +1,56 @@
+## 2026-02-14 18:05 - Phase 4: Router wiring for gloas gossip ✅
+
+### Gloas gossip messages now flow end-to-end (decode → router → beacon processor)
+
+**What**: Wired the new gloas gossip topics into the normal gossipsub decode + router + beacon processor pipeline.
+
+### Changes
+
+**lighthouse_network pubsub decode** (`beacon_node/lighthouse_network/src/types/pubsub.rs`)
+- Added `PubsubMessage` variants:
+  - `ExecutionBid(SignedExecutionPayloadBid)`
+  - `ExecutionPayload(SignedExecutionPayloadEnvelope)`
+  - `PayloadAttestation(PayloadAttestation)`
+- Implemented decoding for `GossipKind::{ExecutionBid, ExecutionPayload, PayloadAttestation}`
+- Updated kind()/encode()/Display to support new variants
+
+**router wiring** (`beacon_node/network/src/router.rs`)
+- Added match arms to route:
+  - `PubsubMessage::ExecutionBid` → `send_gossip_execution_bid()`
+  - `PubsubMessage::PayloadAttestation` → `send_gossip_payload_attestation()`
+  - `PubsubMessage::ExecutionPayload` → `send_gossip_execution_payload()` (stub/ignore for now)
+
+**beacon processor queue support** (`beacon_node/beacon_processor/src/lib.rs`)
+- Added `Work` + `WorkType` variants for the 3 new gossip message types
+- Added FIFO queues + queue length tracking for:
+  - execution bids
+  - execution payload reveals
+  - payload attestations
+
+**network_beacon_processor send methods** (`beacon_node/network/src/network_beacon_processor/mod.rs`)
+- Added `send_gossip_execution_bid()`
+- Added `send_gossip_payload_attestation()`
+- Added `send_gossip_execution_payload()` (currently ignore; reveal processing not implemented yet)
+
+### Compilation ✅
+
+`cargo check -p beacon_processor -p lighthouse_network -p network` passes.
+
+### Commit
+
+`6d74d890c` - phase 4 p2p: route gloas gossip messages to beacon processor
+
+### Phase 4 Status
+
+- ✅ Topics
+- ✅ Validation
+- ✅ Equivocation detection
+- ✅ Encoding/decoding
+- ✅ Router wiring
+- ✅ Beacon processor handlers
+- ⏳ Peer scoring config
+- ⏳ Tests (`make test-ef`)
+
 ## 2026-02-14 17:30 - Phase 4: Beacon processor handlers complete ✅
 
 ### Gloas gossip message processing implemented
