@@ -220,6 +220,36 @@ pub struct ChainSpec {
     pub gloas_fork_version: [u8; 4],
     /// The Gloas fork epoch is optional, with `None` representing "Gloas never happens".
     pub gloas_fork_epoch: Option<Epoch>,
+    
+    /*
+     * Gloas ePBS constants
+     */
+    /// Value indicating the proposer built the payload (self-build)
+    pub builder_index_self_build: u64,
+    /// Numerator for builder payment quorum threshold (6/10 = 60%)
+    pub builder_payment_threshold_numerator: u64,
+    /// Denominator for builder payment quorum threshold (6/10 = 60%)
+    pub builder_payment_threshold_denominator: u64,
+    /// Withdrawal credential prefix for builders (0x03)
+    pub builder_withdrawal_prefix: u8,
+    /// Minimum epochs before builder can withdraw (64 epochs)
+    pub min_builder_withdrawability_delay: Epoch,
+    /// Maximum builders per withdrawal sweep (16,384)
+    pub max_builders_per_withdrawals_sweep: u64,
+    /// Size of Payload Timeliness Committee (512 validators per slot)
+    pub ptc_size: u64,
+    /// Maximum payload attestations per block (4)
+    pub max_payload_attestations: u64,
+    /// Builder registry limit (2^40 builders)
+    pub builder_registry_limit: u64,
+    /// Builder pending withdrawals limit (2^20 = 1,048,576)
+    pub builder_pending_withdrawals_limit: u64,
+    /// Domain for builder bid signatures
+    pub(crate) domain_beacon_builder: u32,
+    /// Domain for PTC attestations
+    pub(crate) domain_ptc_attester: u32,
+    /// Domain for proposer preferences
+    pub(crate) domain_proposer_preferences: u32,
 
     /*
      * Networking
@@ -1123,6 +1153,23 @@ impl ChainSpec {
              */
             gloas_fork_version: [0x07, 0x00, 0x00, 0x00],
             gloas_fork_epoch: None,
+            
+            /*
+             * Gloas ePBS constants
+             */
+            builder_index_self_build: u64::MAX,
+            builder_payment_threshold_numerator: 6,
+            builder_payment_threshold_denominator: 10,
+            builder_withdrawal_prefix: 0x03,
+            min_builder_withdrawability_delay: Epoch::new(64),
+            max_builders_per_withdrawals_sweep: 16384,
+            ptc_size: 512,
+            max_payload_attestations: 4,
+            builder_registry_limit: 1099511627776, // 2^40
+            builder_pending_withdrawals_limit: 1048576, // 2^20
+            domain_beacon_builder: 0x0B000000,
+            domain_ptc_attester: 0x0C000000,
+            domain_proposer_preferences: 0x0D000000,
 
             /*
              * Network specific
@@ -1483,6 +1530,23 @@ impl ChainSpec {
              */
             gloas_fork_version: [0x07, 0x00, 0x00, 0x64],
             gloas_fork_epoch: None,
+            
+            /*
+             * Gloas ePBS constants
+             */
+            builder_index_self_build: u64::MAX,
+            builder_payment_threshold_numerator: 6,
+            builder_payment_threshold_denominator: 10,
+            builder_withdrawal_prefix: 0x03,
+            min_builder_withdrawability_delay: Epoch::new(64),
+            max_builders_per_withdrawals_sweep: 16384,
+            ptc_size: 512,
+            max_payload_attestations: 4,
+            builder_registry_limit: 1099511627776, // 2^40
+            builder_pending_withdrawals_limit: 1048576, // 2^20
+            domain_beacon_builder: 0x0B000000,
+            domain_ptc_attester: 0x0C000000,
+            domain_proposer_preferences: 0x0D000000,
 
             /*
              * Network specific
