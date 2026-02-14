@@ -1,5 +1,6 @@
-use crate::{PayloadAttestationData, test_utils::TestRandom};
+use crate::{ForkName, PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
+use context_deserialize::context_deserialize;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -16,6 +17,7 @@ use tree_hash_derive::TreeHash;
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
 )]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[context_deserialize(ForkName)]
 pub struct PayloadAttestationMessage {
     /// Index of the validator submitting this attestation
     #[serde(with = "serde_utils::quoted_u64")]

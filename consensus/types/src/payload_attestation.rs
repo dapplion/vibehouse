@@ -1,5 +1,6 @@
-use crate::{EthSpec, PayloadAttestationData, test_utils::TestRandom};
+use crate::{EthSpec, ForkName, PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
+use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -25,6 +26,7 @@ use tree_hash_derive::TreeHash;
 )]
 #[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
+#[context_deserialize(ForkName)]
 pub struct PayloadAttestation<E: EthSpec> {
     /// Bitfield indicating which PTC members signed this attestation
     /// PTC_SIZE = 512 validators per slot

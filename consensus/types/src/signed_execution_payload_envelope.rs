@@ -1,5 +1,6 @@
-use crate::{EthSpec, ExecutionPayloadEnvelope, test_utils::TestRandom};
+use crate::{EthSpec, ExecutionPayloadEnvelope, ForkName, test_utils::TestRandom};
 use bls::Signature;
+use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -20,6 +21,7 @@ use tree_hash_derive::TreeHash;
 )]
 #[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
+#[context_deserialize(ForkName)]
 pub struct SignedExecutionPayloadEnvelope<E: EthSpec> {
     /// The execution payload envelope being signed
     pub message: ExecutionPayloadEnvelope<E>,

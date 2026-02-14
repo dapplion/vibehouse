@@ -1,7 +1,8 @@
 use crate::{
-    EthSpec, ExecutionPayloadGloas, ExecutionRequests, Hash256, Slot,
+    EthSpec, ExecutionPayloadGloas, ExecutionRequests, ForkName, Hash256, Slot,
     test_utils::TestRandom,
 };
+use context_deserialize::context_deserialize;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -24,6 +25,7 @@ use tree_hash_derive::TreeHash;
 )]
 #[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
+#[context_deserialize(ForkName)]
 pub struct ExecutionPayloadEnvelope<E: EthSpec> {
     /// The execution payload being revealed
     pub payload: ExecutionPayloadGloas<E>,

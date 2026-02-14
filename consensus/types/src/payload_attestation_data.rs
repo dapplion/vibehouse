@@ -1,4 +1,5 @@
-use crate::{Hash256, Slot, test_utils::TestRandom};
+use crate::{ForkName, Hash256, Slot, test_utils::TestRandom};
+use context_deserialize::context_deserialize;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use tree_hash_derive::TreeHash;
@@ -11,6 +12,7 @@ use tree_hash_derive::TreeHash;
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestationdata
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[context_deserialize(ForkName)]
 pub struct PayloadAttestationData {
     /// Root of the beacon block being attested to
     pub beacon_block_root: Hash256,
