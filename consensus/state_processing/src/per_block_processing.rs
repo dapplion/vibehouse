@@ -28,6 +28,7 @@ pub mod altair;
 pub mod block_signature_verifier;
 pub mod deneb;
 pub mod errors;
+pub mod gloas;
 mod is_valid_indexed_attestation;
 pub mod process_operations;
 pub mod signature_sets;

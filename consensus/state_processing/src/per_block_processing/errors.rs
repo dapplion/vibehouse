@@ -91,6 +91,10 @@ pub enum BlockProcessingError {
     },
     WithdrawalCredentialsInvalid,
     PendingAttestationInElectra,
+    PayloadBidInvalid {
+        reason: String,
+    },
+    PayloadAttestationInvalid(PayloadAttestationInvalid),
 }
 
 impl From<BeaconStateError> for BlockProcessingError {
@@ -459,3 +463,24 @@ pub enum SyncAggregateInvalid {
     /// The signature is invalid.
     SignatureInvalid,
 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum PayloadAttestationInvalid {
+    /// Attestation is for the wrong slot
+    WrongSlot { expected: Slot, actual: Slot },
+    /// Attestation beacon_block_root does not match state
+    WrongBeaconBlockRoot,
+    /// State is not Gloas variant
+    IncorrectStateVariant,
+    /// Slot index out of bounds for execution_payload_availability
+    SlotOutOfBounds,
+    /// The signature is invalid
+    SignatureInvalid,
+    /// Attesting indices are not sorted
+    IndicesNotSorted,
+    /// Attesting indices contain duplicates
+    DuplicateIndices,
+    /// One or more attesting indices are out of bounds
+    AttesterIndexOutOfBounds,
+}
+

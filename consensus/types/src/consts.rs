@@ -25,3 +25,11 @@ pub mod bellatrix {
 pub mod deneb {
     pub use crate::VERSIONED_HASH_VERSION_KZG;
 }
+
+pub mod gloas {
+    /// Size of the Payload Timeliness Committee (PTC)
+    pub const PTC_SIZE: u64 = 512;
+
+    /// Builder index flag indicating a self-build (proposer builds their own payload)
+    pub const BUILDER_INDEX_SELF_BUILD: u64 = u64::MAX;
+}
