@@ -1,6 +1,6 @@
 use crate::{EthSpec, PayloadAttestationData, test_utils::TestRandom};
 use bls::Signature;
-use educe::Educe;
+use derivative::Derivative;
 use safe_arith::ArithError;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -16,13 +16,15 @@ use tree_hash_derive::TreeHash;
 /// attestations using a bitvector and aggregate signature.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestation
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative, TestRandom,
+)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[educe(PartialEq, Hash)]
+#[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 pub struct PayloadAttestation<E: EthSpec> {
     /// Bitfield indicating which PTC members signed this attestation

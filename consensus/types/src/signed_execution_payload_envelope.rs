@@ -1,6 +1,6 @@
 use crate::{EthSpec, ExecutionPayloadEnvelope, test_utils::TestRandom};
 use bls::Signature;
-use educe::Educe;
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -13,13 +13,15 @@ use tree_hash_derive::TreeHash;
 /// using the DOMAIN_BEACON_BUILDER domain.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative, TestRandom,
+)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[educe(PartialEq, Hash)]
+#[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 pub struct SignedExecutionPayloadEnvelope<E: EthSpec> {
     /// The execution payload envelope being signed

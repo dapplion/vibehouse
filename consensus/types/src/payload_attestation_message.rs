@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
 use tree_hash_derive::TreeHash;
-use types_derive::ValidatorIndex;
 
 /// Individual payload attestation message from a PTC member in Gloas ePBS.
 ///

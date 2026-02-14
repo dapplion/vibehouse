@@ -2,7 +2,7 @@ use crate::beacon_block_body::KzgCommitments;
 use crate::test_utils::TestRandom;
 use crate::{Address, EthSpec, ExecutionBlockHash, ForkName, Hash256, SignedRoot, Slot};
 use context_deserialize::context_deserialize;
-use educe::Educe;
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -16,14 +16,14 @@ use tree_hash_derive::TreeHash;
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadbid
 #[derive(
-    Default, Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Educe, TestRandom,
+    Default, Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Derivative, TestRandom,
 )]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[educe(PartialEq, Hash)]
+#[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 #[context_deserialize(ForkName)]
 pub struct ExecutionPayloadBid<E: EthSpec> {

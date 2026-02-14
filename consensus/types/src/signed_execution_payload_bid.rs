@@ -3,7 +3,7 @@ use crate::test_utils::TestRandom;
 use crate::{EthSpec, ForkName};
 use bls::Signature;
 use context_deserialize::context_deserialize;
-use educe::Educe;
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -24,7 +24,7 @@ use tree_hash_derive::TreeHash;
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[educe(PartialEq, Hash)]
+#[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 #[context_deserialize(ForkName)]
 pub struct SignedExecutionPayloadBid<E: EthSpec> {

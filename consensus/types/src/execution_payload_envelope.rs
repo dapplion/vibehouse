@@ -2,7 +2,7 @@ use crate::{
     EthSpec, ExecutionPayload, ExecutionRequests, ForkName, Hash256, Slot, test_utils::TestRandom,
 };
 use context_deserialize::context_deserialize;
-use educe::Educe;
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -17,13 +17,15 @@ use tree_hash_derive::TreeHash;
 /// The envelope is signed by the builder to prove they authorized the reveal.
 ///
 /// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadenvelope
-#[derive(Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Educe, TestRandom)]
+#[derive(
+    Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Derivative, TestRandom,
+)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[educe(PartialEq, Hash)]
+#[derivative(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 #[context_deserialize(ForkName)]
 pub struct ExecutionPayloadEnvelope<E: EthSpec> {
