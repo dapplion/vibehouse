@@ -311,6 +311,8 @@ pub struct QueuedAttestation {
     attesting_indices: Vec<u64>,
     block_root: Hash256,
     target_epoch: Epoch,
+    /// Gloas: attestation index (0 = beacon, 1 = payload present).
+    index: u64,
 }
 
 impl<'a, E: EthSpec> From<IndexedAttestationRef<'a, E>> for QueuedAttestation {
@@ -320,6 +322,7 @@ impl<'a, E: EthSpec> From<IndexedAttestationRef<'a, E>> for QueuedAttestation {
             attesting_indices: a.attesting_indices_to_vec(),
             block_root: a.data().beacon_block_root,
             target_epoch: a.data().target.epoch,
+            index: a.data().index,
         }
     }
 }
@@ -977,9 +980,28 @@ where
                 execution_status,
                 unrealized_justified_checkpoint: Some(unrealized_justified_checkpoint),
                 unrealized_finalized_checkpoint: Some(unrealized_finalized_checkpoint),
-                builder_index: None,
+                builder_index: block
+                    .body()
+                    .signed_execution_payload_bid()
+                    .ok()
+                    .map(|bid| bid.message.builder_index),
                 payload_revealed: false,
                 ptc_weight: 0,
+                bid_block_hash: block
+                    .body()
+                    .signed_execution_payload_bid()
+                    .ok()
+                    .map(|bid| bid.message.block_hash),
+                bid_parent_block_hash: block
+                    .body()
+                    .signed_execution_payload_bid()
+                    .ok()
+                    .map(|bid| bid.message.parent_block_hash),
+                proposer_index: block.proposer_index(),
+                // PTC timeliness: block received in its own slot before the PTC deadline.
+                // The PTC deadline is later than the attestation deadline, so any block
+                // that's current-slot is conservatively PTC-timely.
+                ptc_timely: current_slot == block.slot(),
             },
             current_slot,
         )?;
@@ -1172,11 +1194,15 @@ where
         self.validate_on_attestation(attestation, is_from_block)?;
 
         if attestation.data().slot < self.fc_store.get_current_slot() {
+            let att_slot = attestation.data().slot;
+            let payload_present = attestation.data().index == 1;
             for validator_index in attestation.attesting_indices_iter() {
                 self.proto_array.process_attestation(
                     *validator_index as usize,
                     attestation.data().beacon_block_root,
                     attestation.data().target.epoch,
+                    att_slot,
+                    payload_present,
                 )?;
             }
         } else {
@@ -1474,11 +1500,14 @@ where
             self.fc_store.get_current_slot(),
             &mut self.queued_attestations,
         ) {
+            let payload_present = attestation.index == 1;
             for validator_index in attestation.attesting_indices.iter() {
                 self.proto_array.process_attestation(
                     *validator_index as usize,
                     attestation.block_root,
                     attestation.target_epoch,
+                    attestation.slot,
+                    payload_present,
                 )?;
             }
         }

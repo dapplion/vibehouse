@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt,
 };
 use types::{
@@ -26,6 +26,28 @@ pub struct VoteTracker {
     current_root: Hash256,
     next_root: Hash256,
     next_epoch: Epoch,
+    /// Gloas: slot of the attestation for is_supporting_vote.
+    current_slot: Slot,
+    next_slot: Slot,
+    /// Gloas: whether the attestation indicated payload_present (index == 1).
+    current_payload_present: bool,
+    next_payload_present: bool,
+}
+
+/// Payload status for Gloas fork choice virtual nodes.
+/// Each block is modeled as 3 virtual nodes: PENDING, EMPTY, FULL.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GloasPayloadStatus {
+    Pending = 0,
+    Empty = 1,
+    Full = 2,
+}
+
+/// A virtual fork choice node in the Gloas model: (root, payload_status).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct GloasForkChoiceNode {
+    root: Hash256,
+    payload_status: GloasPayloadStatus,
 }
 
 /// Represents the verification status of an execution payload.
@@ -164,6 +186,14 @@ pub struct Block {
     pub payload_revealed: bool,
     /// Gloas ePBS: Initial PTC weight (usually 0 at block insertion).
     pub ptc_weight: u64,
+    /// Gloas ePBS: The execution block hash from this block's bid.
+    pub bid_block_hash: Option<ExecutionBlockHash>,
+    /// Gloas ePBS: The parent execution block hash from this block's bid.
+    pub bid_parent_block_hash: Option<ExecutionBlockHash>,
+    /// The proposer index of the validator who proposed this block.
+    pub proposer_index: u64,
+    /// Whether this block was received before the PTC timeliness deadline.
+    pub ptc_timely: bool,
 }
 
 impl Block {
@@ -455,6 +485,10 @@ impl ProtoArrayForkChoice {
             builder_index: None,
             payload_revealed: false,
             ptc_weight: 0,
+            bid_block_hash: None,
+            bid_parent_block_hash: None,
+            proposer_index: 0,
+            ptc_timely: false,
         };
 
         proto_array
@@ -493,12 +527,16 @@ impl ProtoArrayForkChoice {
         validator_index: usize,
         block_root: Hash256,
         target_epoch: Epoch,
+        slot: Slot,
+        payload_present: bool,
     ) -> Result<(), String> {
         let vote = self.votes.get_mut(validator_index);
 
         if target_epoch > vote.next_epoch || *vote == VoteTracker::default() {
             vote.next_root = block_root;
             vote.next_epoch = target_epoch;
+            vote.next_slot = slot;
+            vote.next_payload_present = payload_present;
         }
 
         Ok(())
@@ -529,17 +567,40 @@ impl ProtoArrayForkChoice {
         current_slot: Slot,
         spec: &ChainSpec,
     ) -> Result<Hash256, String> {
-        let old_balances = &mut self.balances;
         let new_balances = justified_state_balances;
 
         let deltas = compute_deltas(
             &self.proto_array.indices,
             &mut self.votes,
-            &old_balances.effective_balances,
+            &self.balances.effective_balances,
             &new_balances.effective_balances,
             equivocating_indices,
         )
         .map_err(|e| format!("find_head compute_deltas failed: {:?}", e))?;
+
+        // Check if Gloas fork choice applies.
+        // Use gloas_fork_epoch from spec: if current epoch >= gloas fork epoch, use Gloas algorithm.
+        let is_gloas = spec
+            .gloas_fork_epoch
+            .is_some_and(|fork_epoch| current_slot.epoch(E::slots_per_epoch()) >= fork_epoch);
+
+        if is_gloas {
+            // Update the proto_array's checkpoints so that node_is_viable_for_head
+            // uses the correct justified/finalized values for filtering.
+            if justified_checkpoint != self.proto_array.justified_checkpoint
+                || finalized_checkpoint != self.proto_array.finalized_checkpoint
+            {
+                self.proto_array.justified_checkpoint = justified_checkpoint;
+                self.proto_array.finalized_checkpoint = finalized_checkpoint;
+            }
+            self.balances = new_balances.clone();
+            return self.find_head_gloas::<E>(
+                justified_checkpoint,
+                proposer_boost_root,
+                current_slot,
+                spec,
+            );
+        }
 
         self.proto_array
             .apply_score_changes::<E>(
@@ -553,7 +614,7 @@ impl ProtoArrayForkChoice {
             )
             .map_err(|e| format!("find_head apply_score_changes failed: {:?}", e))?;
 
-        *old_balances = new_balances.clone();
+        self.balances = new_balances.clone();
 
         self.proto_array
             .find_head::<E>(&justified_checkpoint.root, current_slot)
@@ -868,6 +929,10 @@ impl ProtoArrayForkChoice {
             builder_index: block.builder_index,
             payload_revealed: block.payload_revealed,
             ptc_weight: block.ptc_weight,
+            bid_block_hash: block.bid_block_hash,
+            bid_parent_block_hash: block.bid_parent_block_hash,
+            proposer_index: block.proposer_index,
+            ptc_timely: block.ptc_timely,
         })
     }
 
@@ -969,6 +1034,462 @@ impl ProtoArrayForkChoice {
     pub fn heads_descended_from_finalization<E: EthSpec>(&self) -> Vec<&ProtoNode> {
         self.proto_array.heads_descended_from_finalization::<E>()
     }
+
+    // ─── Gloas fork choice ─────────────────────────────────────────────
+
+    /// Gloas-specific head selection implementing the spec's (root, payload_status) model.
+    ///
+    /// Instead of proto_array's bottom-up weight propagation, this uses top-down traversal
+    /// where each block has 3 virtual nodes: PENDING, EMPTY, FULL.
+    ///
+    /// Spec: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#get_head
+    #[allow(clippy::too_many_arguments)]
+    fn find_head_gloas<E: EthSpec>(
+        &self,
+        justified_checkpoint: Checkpoint,
+        proposer_boost_root: Hash256,
+        current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> Result<Hash256, String> {
+        let filtered_roots = self.compute_filtered_roots::<E>(current_slot);
+        let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
+            proposer_boost_root,
+            current_slot,
+            spec,
+        );
+
+        let mut head = GloasForkChoiceNode {
+            root: justified_checkpoint.root,
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        loop {
+            let children = self.get_gloas_children(&head, &filtered_roots);
+            if children.is_empty() {
+                return Ok(head.root);
+            }
+
+            head = children
+                .into_iter()
+                .max_by(|a, b| {
+                    let wa = self.get_gloas_weight::<E>(
+                        a, proposer_boost_root, apply_boost, current_slot, spec,
+                    );
+                    let wb = self.get_gloas_weight::<E>(
+                        b, proposer_boost_root, apply_boost, current_slot, spec,
+                    );
+                    wa.cmp(&wb)
+                        .then_with(|| a.root.cmp(&b.root))
+                        .then_with(|| {
+                            let ta = self.get_payload_tiebreaker(a, current_slot);
+                            let tb = self.get_payload_tiebreaker(b, current_slot);
+                            ta.cmp(&tb)
+                        })
+                })
+                .unwrap(); // safe: children is non-empty
+        }
+    }
+
+    /// Compute the set of block roots that lead to viable heads.
+    /// This implements the spec's `get_filtered_block_tree`.
+    fn compute_filtered_roots<E: EthSpec>(&self, current_slot: Slot) -> HashSet<Hash256> {
+        let pa = &self.proto_array;
+        let mut filtered = vec![false; pa.nodes.len()];
+
+        // Mark nodes that are viable for head
+        for (i, node) in pa.nodes.iter().enumerate() {
+            if pa.node_is_viable_for_head::<E>(node, current_slot) {
+                filtered[i] = true;
+            }
+        }
+
+        // Propagate upward: mark parents of any filtered node.
+        // Nodes are ordered parent-before-child, so reverse iteration propagates correctly.
+        for i in (0..pa.nodes.len()).rev() {
+            if filtered[i] {
+                if let Some(parent_idx) = pa.nodes[i].parent {
+                    filtered[parent_idx] = true;
+                }
+            }
+        }
+
+        pa.nodes
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| filtered[*i])
+            .map(|(_, node)| node.root)
+            .collect()
+    }
+
+    /// Get children of a Gloas fork choice node.
+    ///
+    /// - PENDING → [EMPTY, optionally FULL if payload revealed]
+    /// - EMPTY/FULL → [PENDING children matching parent_payload_status]
+    fn get_gloas_children(
+        &self,
+        node: &GloasForkChoiceNode,
+        filtered_roots: &HashSet<Hash256>,
+    ) -> Vec<GloasForkChoiceNode> {
+        let pa = &self.proto_array;
+
+        match node.payload_status {
+            GloasPayloadStatus::Pending => {
+                let mut children = vec![GloasForkChoiceNode {
+                    root: node.root,
+                    payload_status: GloasPayloadStatus::Empty,
+                }];
+
+                // Include FULL child only if execution payload has been revealed
+                if let Some(&idx) = pa.indices.get(&node.root) {
+                    if let Some(proto_node) = pa.nodes.get(idx) {
+                        if proto_node.payload_revealed {
+                            children.push(GloasForkChoiceNode {
+                                root: node.root,
+                                payload_status: GloasPayloadStatus::Full,
+                            });
+                        }
+                    }
+                }
+
+                children
+            }
+            GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
+                let mut children = Vec::new();
+
+                if let Some(&parent_idx) = pa.indices.get(&node.root) {
+                    let parent_node = &pa.nodes[parent_idx];
+
+                    // Find all blocks whose parent is node.root with matching payload status
+                    for child_node in &pa.nodes {
+                        if child_node.parent != Some(parent_idx) {
+                            continue;
+                        }
+                        if !filtered_roots.contains(&child_node.root) {
+                            continue;
+                        }
+                        if self.get_parent_payload_status_of(child_node, parent_node)
+                            == node.payload_status
+                        {
+                            children.push(GloasForkChoiceNode {
+                                root: child_node.root,
+                                payload_status: GloasPayloadStatus::Pending,
+                            });
+                        }
+                    }
+                }
+
+                children
+            }
+        }
+    }
+
+    /// Determine the parent payload status of a child block relative to its parent.
+    ///
+    /// Compares child's `bid_parent_block_hash` with parent's `bid_block_hash`.
+    /// If they match, the parent was FULL (execution payload delivered).
+    /// Otherwise, the parent was EMPTY.
+    fn get_parent_payload_status_of(
+        &self,
+        child: &ProtoNode,
+        parent: &ProtoNode,
+    ) -> GloasPayloadStatus {
+        match (child.bid_parent_block_hash, parent.bid_block_hash) {
+            (Some(child_parent_hash), Some(parent_hash))
+                if child_parent_hash == parent_hash =>
+            {
+                GloasPayloadStatus::Full
+            }
+            _ => GloasPayloadStatus::Empty,
+        }
+    }
+
+    /// Implements the Gloas spec's `should_apply_proposer_boost`.
+    ///
+    /// Returns false when the boosted block's parent is adjacent, weak, and there
+    /// are equivocating blocks at the parent slot by the same proposer.
+    fn should_apply_proposer_boost_gloas<E: EthSpec>(
+        &self,
+        proposer_boost_root: Hash256,
+        _current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> bool {
+        if proposer_boost_root.is_zero() {
+            return false;
+        }
+
+        let pa = &self.proto_array;
+
+        // Get the boosted block
+        let boost_idx = match pa.indices.get(&proposer_boost_root) {
+            Some(&idx) => idx,
+            None => return false,
+        };
+        let boost_block = match pa.nodes.get(boost_idx) {
+            Some(n) => n,
+            None => return false,
+        };
+
+        // Get its parent
+        let parent_idx = match boost_block.parent {
+            Some(idx) => idx,
+            None => return true, // No parent = always boost
+        };
+        let parent_block = match pa.nodes.get(parent_idx) {
+            Some(n) => n,
+            None => return true,
+        };
+
+        // If parent slot + 1 < block slot (skipped slots), always boost
+        if parent_block.slot + 1 < boost_block.slot {
+            return true;
+        }
+
+        // Check if parent is head-weak using attestation weight at PENDING level
+        let parent_node = GloasForkChoiceNode {
+            root: parent_block.root,
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        // Compute attestation-only weight for the parent (no proposer boost)
+        let mut parent_att_weight: u64 = 0;
+        for (val_index, vote) in self.votes.0.iter().enumerate() {
+            if vote.current_root.is_zero() {
+                continue;
+            }
+            let balance = self
+                .balances
+                .effective_balances
+                .get(val_index)
+                .copied()
+                .unwrap_or(0);
+            if balance == 0 {
+                continue;
+            }
+            if self.is_supporting_vote_gloas(&parent_node, vote) {
+                parent_att_weight = parent_att_weight.saturating_add(balance);
+            }
+        }
+
+        // Also add equivocating validator weight to parent (per spec)
+        // (simplified: we don't have equivocating indices here, so skip this)
+
+        // Threshold for "head weak" is REORG_HEAD_WEIGHT_THRESHOLD% of committee
+        let reorg_threshold = spec
+            .reorg_head_weight_threshold
+            .and_then(|pct| calculate_committee_fraction::<E>(&self.balances, pct))
+            .unwrap_or(0);
+
+        let head_is_weak = parent_att_weight < reorg_threshold;
+
+        if !head_is_weak {
+            // Parent is strong, always apply boost
+            return true;
+        }
+
+        // Parent is weak AND adjacent: check for equivocating proposers per spec.
+        // The spec checks: blocks that are PTC-timely, by the same proposer as parent,
+        // at parent.slot (i.e., block.slot + 1 == boost_block.slot), and different from parent.
+        let has_equivocation = pa.nodes.iter().any(|n| {
+            n.ptc_timely
+                && n.proposer_index == parent_block.proposer_index
+                && n.slot + 1 == boost_block.slot
+                && n.root != parent_block.root
+        });
+
+        // If equivocating proposer exists, suppress boost
+        !has_equivocation
+    }
+
+    /// Compute weight for a Gloas fork choice node.
+    ///
+    /// Non-PENDING nodes from the previous slot get 0 weight (reorg resistance).
+    /// Otherwise, sum of supporting attestation balances + proposer boost.
+    fn get_gloas_weight<E: EthSpec>(
+        &self,
+        node: &GloasForkChoiceNode,
+        proposer_boost_root: Hash256,
+        apply_proposer_boost: bool,
+        current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> u64 {
+        let pa = &self.proto_array;
+
+        // Non-PENDING nodes from previous slot get 0 weight
+        if node.payload_status != GloasPayloadStatus::Pending {
+            if let Some(&idx) = pa.indices.get(&node.root) {
+                if let Some(proto_node) = pa.nodes.get(idx) {
+                    if proto_node.slot + 1 == current_slot {
+                        return 0;
+                    }
+                }
+            }
+        }
+
+        // Sum attestation scores from supporting votes
+        let mut weight: u64 = 0;
+        for (val_index, vote) in self.votes.0.iter().enumerate() {
+            if vote.current_root.is_zero() {
+                continue;
+            }
+            let balance = self
+                .balances
+                .effective_balances
+                .get(val_index)
+                .copied()
+                .unwrap_or(0);
+            if balance == 0 {
+                continue;
+            }
+            if self.is_supporting_vote_gloas(node, vote) {
+                weight = weight.saturating_add(balance);
+            }
+        }
+
+        // Proposer boost: treated as a synthetic vote at current_slot
+        if !proposer_boost_root.is_zero() && apply_proposer_boost {
+            if let Some(boost_pct) = spec.proposer_score_boost {
+                let boost_vote = VoteTracker {
+                    current_root: proposer_boost_root,
+                    current_slot,
+                    ..VoteTracker::default()
+                };
+                if self.is_supporting_vote_gloas(node, &boost_vote) {
+                    if let Some(score) =
+                        calculate_committee_fraction::<E>(&self.balances, boost_pct)
+                    {
+                        weight = weight.saturating_add(score);
+                    }
+                }
+            }
+        }
+
+        weight
+    }
+
+    /// Check if a vote supports a Gloas fork choice node.
+    ///
+    /// Implements the spec's `is_supporting_vote` with payload_present awareness.
+    fn is_supporting_vote_gloas(
+        &self,
+        node: &GloasForkChoiceNode,
+        vote: &VoteTracker,
+    ) -> bool {
+        let pa = &self.proto_array;
+
+        let node_idx = match pa.indices.get(&node.root) {
+            Some(&idx) => idx,
+            None => return false,
+        };
+        let block = match pa.nodes.get(node_idx) {
+            Some(n) => n,
+            None => return false,
+        };
+
+        if node.root == vote.current_root {
+            match node.payload_status {
+                GloasPayloadStatus::Pending => true,
+                GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
+                    if vote.current_slot <= block.slot {
+                        return false;
+                    }
+                    if vote.current_payload_present {
+                        node.payload_status == GloasPayloadStatus::Full
+                    } else {
+                        node.payload_status == GloasPayloadStatus::Empty
+                    }
+                }
+            }
+        } else {
+            // Ancestor check: does the vote's chain pass through this node?
+            match self.get_ancestor_gloas(vote.current_root, block.slot) {
+                Some(ancestor) => {
+                    node.root == ancestor.root
+                        && (node.payload_status == GloasPayloadStatus::Pending
+                            || node.payload_status == ancestor.payload_status)
+                }
+                None => false,
+            }
+        }
+    }
+
+    /// Walk up the proto_array chain to find the ancestor at the given slot.
+    ///
+    /// Returns a `GloasForkChoiceNode` with the ancestor's root and the payload
+    /// status relationship (derived from the child→parent bid block hashes).
+    fn get_ancestor_gloas(&self, root: Hash256, slot: Slot) -> Option<GloasForkChoiceNode> {
+        let pa = &self.proto_array;
+        let idx = *pa.indices.get(&root)?;
+        let block = pa.nodes.get(idx)?;
+
+        if block.slot <= slot {
+            return Some(GloasForkChoiceNode {
+                root,
+                payload_status: GloasPayloadStatus::Pending,
+            });
+        }
+
+        // Walk up: find the first ancestor whose parent's slot <= target slot
+        let mut child = block;
+        let mut parent_idx = child.parent?;
+        let mut parent = pa.nodes.get(parent_idx)?;
+
+        while parent.slot > slot {
+            child = parent;
+            parent_idx = child.parent?;
+            parent = pa.nodes.get(parent_idx)?;
+        }
+
+        // parent.slot <= slot < child.slot
+        // The ancestor at slot is parent, payload status from child→parent relationship
+        Some(GloasForkChoiceNode {
+            root: parent.root,
+            payload_status: self.get_parent_payload_status_of(child, parent),
+        })
+    }
+
+    /// Tiebreaker between EMPTY and FULL payload statuses.
+    ///
+    /// For PENDING or non-previous-slot nodes: use payload_status ordinal.
+    /// For previous-slot EMPTY: 1 (favored).
+    /// For previous-slot FULL: 2 if should extend payload, else 0.
+    fn get_payload_tiebreaker(
+        &self,
+        node: &GloasForkChoiceNode,
+        current_slot: Slot,
+    ) -> u8 {
+        let pa = &self.proto_array;
+
+        let is_previous_slot = pa
+            .indices
+            .get(&node.root)
+            .and_then(|&idx| pa.nodes.get(idx))
+            .map_or(false, |n| n.slot + 1 == current_slot);
+
+        if node.payload_status == GloasPayloadStatus::Pending || !is_previous_slot {
+            node.payload_status as u8
+        } else if node.payload_status == GloasPayloadStatus::Empty {
+            1
+        } else {
+            // FULL: use 2 if should extend payload, else 0.
+            // For now, without full should_extend_payload logic, default to 0
+            // (EMPTY wins tiebreaker when no payload has been delivered).
+            if self.should_extend_payload(node) {
+                2
+            } else {
+                0
+            }
+        }
+    }
+
+    /// Simplified should_extend_payload: checks if the payload was revealed.
+    /// Full spec version also considers PTC timeliness and proposer boost context.
+    fn should_extend_payload(&self, node: &GloasForkChoiceNode) -> bool {
+        let pa = &self.proto_array;
+        pa.indices
+            .get(&node.root)
+            .and_then(|&idx| pa.nodes.get(idx))
+            .map_or(false, |n| n.payload_revealed)
+    }
 }
 
 /// Returns a list of `deltas`, where there is one delta for each of the indices in
@@ -1068,6 +1589,8 @@ fn compute_deltas(
             }
 
             vote.current_root = vote.next_root;
+            vote.current_slot = vote.next_slot;
+            vote.current_payload_present = vote.next_payload_present;
         }
     }
 
@@ -1135,6 +1658,13 @@ mod test_compute_deltas {
                     execution_status,
                     unrealized_justified_checkpoint: Some(genesis_checkpoint),
                     unrealized_finalized_checkpoint: Some(genesis_checkpoint),
+                    builder_index: None,
+                    payload_revealed: false,
+                    ptc_weight: 0,
+                    bid_block_hash: None,
+                    bid_parent_block_hash: None,
+                    proposer_index: 0,
+                    ptc_timely: false,
                 },
                 genesis_slot + 1,
             )
@@ -1158,6 +1688,13 @@ mod test_compute_deltas {
                     execution_status,
                     unrealized_justified_checkpoint: None,
                     unrealized_finalized_checkpoint: None,
+                    builder_index: None,
+                    payload_revealed: false,
+                    ptc_weight: 0,
+                    bid_block_hash: None,
+                    bid_parent_block_hash: None,
+                    proposer_index: 0,
+                    ptc_timely: false,
                 },
                 genesis_slot + 1,
             )
@@ -1270,6 +1807,13 @@ mod test_compute_deltas {
                         execution_status,
                         unrealized_justified_checkpoint: Some(genesis_checkpoint),
                         unrealized_finalized_checkpoint: Some(genesis_checkpoint),
+                        builder_index: None,
+                        payload_revealed: false,
+                        ptc_weight: 0,
+                        bid_block_hash: None,
+                        bid_parent_block_hash: None,
+                        proposer_index: 0,
+                        ptc_timely: false,
                     },
                     Slot::from(block.slot),
                 )
@@ -1370,6 +1914,7 @@ mod test_compute_deltas {
                 current_root: Hash256::zero(),
                 next_root: Hash256::zero(),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
             old_balances.push(0);
             new_balances.push(0);
@@ -1421,6 +1966,7 @@ mod test_compute_deltas {
                 current_root: Hash256::zero(),
                 next_root: hash_from_index(0),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
             old_balances.push(BALANCE);
             new_balances.push(BALANCE);
@@ -1479,6 +2025,7 @@ mod test_compute_deltas {
                 current_root: Hash256::zero(),
                 next_root: hash_from_index(i),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
             old_balances.push(BALANCE);
             new_balances.push(BALANCE);
@@ -1532,6 +2079,7 @@ mod test_compute_deltas {
                 current_root: hash_from_index(0),
                 next_root: hash_from_index(1),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
             old_balances.push(BALANCE);
             new_balances.push(BALANCE);
@@ -1596,6 +2144,7 @@ mod test_compute_deltas {
             current_root: hash_from_index(1),
             next_root: Hash256::zero(),
             next_epoch: Epoch::new(0),
+            ..VoteTracker::default()
         });
 
         // One validator moves their vote from the block to something outside the tree.
@@ -1603,6 +2152,7 @@ mod test_compute_deltas {
             current_root: hash_from_index(1),
             next_root: Hash256::from_low_u64_be(1337),
             next_epoch: Epoch::new(0),
+            ..VoteTracker::default()
         });
 
         let deltas = compute_deltas(
@@ -1649,6 +2199,7 @@ mod test_compute_deltas {
                 current_root: hash_from_index(0),
                 next_root: hash_from_index(1),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
             old_balances.push(OLD_BALANCE);
             new_balances.push(NEW_BALANCE);
@@ -1718,6 +2269,7 @@ mod test_compute_deltas {
                 current_root: hash_from_index(1),
                 next_root: hash_from_index(2),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
         }
 
@@ -1774,6 +2326,7 @@ mod test_compute_deltas {
                 current_root: hash_from_index(1),
                 next_root: hash_from_index(2),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
         }
 
@@ -1828,6 +2381,7 @@ mod test_compute_deltas {
                 current_root: hash_from_index(1),
                 next_root: hash_from_index(2),
                 next_epoch: Epoch::new(0),
+                ..VoteTracker::default()
             });
         }
 

@@ -119,6 +119,18 @@ pub struct ProtoNode {
     /// Gloas ePBS: Accumulated weight from PTC attestations for payload availability.
     /// Used to determine if payload quorum has been reached.
     pub ptc_weight: u64,
+    /// Gloas ePBS: The execution block hash from this block's bid.
+    /// Used to determine parent payload status (FULL vs EMPTY).
+    pub bid_block_hash: Option<ExecutionBlockHash>,
+    /// Gloas ePBS: The parent execution block hash from this block's bid.
+    /// Compared against parent's bid_block_hash to determine parent payload status.
+    pub bid_parent_block_hash: Option<ExecutionBlockHash>,
+    /// The proposer index of the validator who proposed this block.
+    /// Used for equivocation detection in should_apply_proposer_boost.
+    pub proposer_index: u64,
+    /// Whether this block was received before the PTC timeliness deadline.
+    /// Used for equivocation detection in should_apply_proposer_boost.
+    pub ptc_timely: bool,
 }
 
 #[derive(PartialEq, Debug, Encode, Decode, Serialize, Deserialize, Copy, Clone)]
@@ -346,6 +358,10 @@ impl ProtoArray {
             builder_index: block.builder_index,
             payload_revealed: block.payload_revealed,
             ptc_weight: block.ptc_weight,
+            bid_block_hash: block.bid_block_hash,
+            bid_parent_block_hash: block.bid_parent_block_hash,
+            proposer_index: block.proposer_index,
+            ptc_timely: block.ptc_timely,
         };
 
         // If the parent has an invalid execution status, return an error before adding the block to
@@ -893,7 +909,7 @@ impl ProtoArray {
     ///
     /// Any node that has a different finalized or justified epoch should not be viable for the
     /// head.
-    fn node_is_viable_for_head<E: EthSpec>(&self, node: &ProtoNode, current_slot: Slot) -> bool {
+    pub(crate) fn node_is_viable_for_head<E: EthSpec>(&self, node: &ProtoNode, current_slot: Slot) -> bool {
         if node.execution_status.is_invalid() {
             return false;
         }

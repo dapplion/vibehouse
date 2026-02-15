@@ -213,6 +213,10 @@ impl ForkChoiceTestDefinition {
                         builder_index: None,
                         payload_revealed: false,
                         ptc_weight: 0,
+                        bid_block_hash: None,
+                        bid_parent_block_hash: None,
+                        proposer_index: 0,
+                        ptc_timely: false,
                     };
                     fork_choice
                         .process_block::<MainnetEthSpec>(block, slot)
@@ -230,7 +234,7 @@ impl ForkChoiceTestDefinition {
                     target_epoch,
                 } => {
                     fork_choice
-                        .process_attestation(validator_index, block_root, target_epoch)
+                        .process_attestation(validator_index, block_root, target_epoch, Slot::new(0), false)
                         .unwrap_or_else(|_| {
                             panic!(
                                 "process_attestation op at index {} returned error",
