@@ -15,7 +15,8 @@ use types::{
     SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
     SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
     SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
-    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
+    SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, SubnetId,
+    SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,6 +53,8 @@ pub enum PubsubMessage<E: EthSpec> {
     ExecutionPayload(Box<SignedExecutionPayloadEnvelope<E>>),
     /// Gossipsub message providing notification of a payload attestation from PTC (gloas ePBS).
     PayloadAttestation(Box<PayloadAttestation<E>>),
+    /// Gossipsub message providing notification of proposer preferences (gloas ePBS).
+    ProposerPreferences(Box<SignedProposerPreferences>),
 }
 
 // Implements the `DataTransform` trait of gossipsub to employ snappy compression
@@ -158,6 +161,7 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::ExecutionBid(_) => GossipKind::ExecutionBid,
             PubsubMessage::ExecutionPayload(_) => GossipKind::ExecutionPayload,
             PubsubMessage::PayloadAttestation(_) => GossipKind::PayloadAttestation,
+            PubsubMessage::ProposerPreferences(_) => GossipKind::ProposerPreferences,
         }
     }
 
@@ -411,6 +415,11 @@ impl<E: EthSpec> PubsubMessage<E> {
                             .map_err(|e| format!("{:?}", e))?;
                         Ok(PubsubMessage::PayloadAttestation(Box::new(payload_attestation)))
                     }
+                    GossipKind::ProposerPreferences => {
+                        let preferences = SignedProposerPreferences::from_ssz_bytes(data)
+                            .map_err(|e| format!("{:?}", e))?;
+                        Ok(PubsubMessage::ProposerPreferences(Box::new(preferences)))
+                    }
                 }
             }
         }
@@ -440,6 +449,7 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::ExecutionBid(data) => data.as_ssz_bytes(),
             PubsubMessage::ExecutionPayload(data) => data.as_ssz_bytes(),
             PubsubMessage::PayloadAttestation(data) => data.as_ssz_bytes(),
+            PubsubMessage::ProposerPreferences(data) => data.as_ssz_bytes(),
         }
     }
 }
@@ -515,6 +525,11 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
                 data.data.slot,
                 data.data.beacon_block_root,
                 data.num_attesters()
+            ),
+            PubsubMessage::ProposerPreferences(data) => write!(
+                f,
+                "Proposer Preferences: slot: {}, validator_index: {}",
+                data.message.proposal_slot, data.message.validator_index
             ),
         }
     }

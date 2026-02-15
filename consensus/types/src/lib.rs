@@ -66,7 +66,9 @@ pub mod pending_consolidation;
 pub mod pending_deposit;
 pub mod pending_partial_withdrawal;
 pub mod proposer_preparation_data;
+pub mod proposer_preferences;
 pub mod proposer_slashing;
+pub mod signed_proposer_preferences;
 pub mod relative_epoch;
 pub mod selection_proof;
 pub mod shuffling_id;
@@ -245,7 +247,9 @@ pub use crate::preset::{
     FuluPreset, GloasPreset,
 };
 pub use crate::proposer_preparation_data::ProposerPreparationData;
+pub use crate::proposer_preferences::ProposerPreferences;
 pub use crate::proposer_slashing::ProposerSlashing;
+pub use crate::signed_proposer_preferences::SignedProposerPreferences;
 pub use crate::relative_epoch::{Error as RelativeEpochError, RelativeEpoch};
 pub use crate::runtime_fixed_vector::RuntimeFixedVector;
 pub use crate::runtime_var_list::RuntimeVariableList;

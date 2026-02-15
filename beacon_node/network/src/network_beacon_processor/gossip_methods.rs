@@ -3349,4 +3349,100 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL);
         }
     }
+
+    /// Process a gossip proposer preferences message (gloas ePBS).
+    ///
+    /// Spec validations from `proposer_preferences` topic:
+    /// - [IGNORE] proposal_slot is in the next epoch
+    /// - [REJECT] validator_index is valid proposer for slot (proposer_lookahead)
+    /// - [IGNORE] first valid message from this validator for this slot
+    /// - [REJECT] signature is valid
+    pub fn process_gossip_proposer_preferences(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        signed_preferences: types::SignedProposerPreferences,
+    ) {
+        let preferences = &signed_preferences.message;
+        let proposal_slot = preferences.proposal_slot;
+        let validator_index = preferences.validator_index;
+
+        // [IGNORE] proposal_slot is in the next epoch
+        let current_slot = match self.chain.slot_clock.now() {
+            Some(slot) => slot,
+            None => {
+                debug!(
+                    %peer_id,
+                    "Dropping proposer preferences: unable to read slot clock"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+        };
+
+        let slots_per_epoch = T::EthSpec::slots_per_epoch();
+        let current_epoch = current_slot.epoch(slots_per_epoch);
+        let next_epoch = current_epoch + 1;
+        let proposal_epoch = proposal_slot.epoch(slots_per_epoch);
+
+        if proposal_epoch != next_epoch {
+            debug!(
+                %peer_id,
+                %proposal_slot,
+                %current_slot,
+                "Ignoring proposer preferences: proposal_slot not in next epoch"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            return;
+        }
+
+        // [REJECT] validator_index is valid proposer for proposal_slot (check proposer_lookahead)
+        let head = self.chain.canonical_head.cached_head();
+        let state = &head.snapshot.beacon_state;
+
+        let is_valid_proposer = match state.proposer_lookahead() {
+            Ok(lookahead) => {
+                // Spec: index = SLOTS_PER_EPOCH + proposal_slot % SLOTS_PER_EPOCH
+                let index = slots_per_epoch as usize
+                    + (proposal_slot.as_u64() % slots_per_epoch) as usize;
+                lookahead
+                    .get(index)
+                    .map_or(false, |&proposer| proposer == validator_index)
+            }
+            Err(_) => false,
+        };
+
+        if !is_valid_proposer {
+            warn!(
+                %peer_id,
+                %proposal_slot,
+                validator_index,
+                "Rejecting proposer preferences: validator not proposer for slot"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+            self.gossip_penalize_peer(
+                peer_id,
+                PeerAction::LowToleranceError,
+                "invalid_proposer_preferences_not_proposer",
+            );
+            return;
+        }
+
+        // [IGNORE] first valid message from this validator for this slot
+        // TODO(gloas): implement observed_proposer_preferences dedup tracking
+
+        // [REJECT] signature is valid
+        // TODO(gloas): implement full signature verification using domain_proposer_preferences
+        // For now, log acceptance without signature check as a placeholder
+        // until the signing domain helpers are wired up.
+
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // TODO(gloas): store preferences for builders to reference when constructing bids
+        debug!(
+            %proposal_slot,
+            validator_index,
+            "Accepted proposer preferences"
+        );
+    }
 }

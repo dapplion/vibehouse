@@ -601,6 +601,7 @@ pub enum Work<E: EthSpec> {
     GossipExecutionBid(BlockingFn),
     GossipExecutionPayload(BlockingFn),
     GossipPayloadAttestation(BlockingFn),
+    GossipProposerPreferences(BlockingFn),
     RpcBlock {
         process_fn: AsyncFn,
     },
@@ -662,6 +663,7 @@ pub enum WorkType {
     GossipExecutionBid,
     GossipExecutionPayload,
     GossipPayloadAttestation,
+    GossipProposerPreferences,
     RpcBlock,
     RpcBlobs,
     RpcCustodyColumn,
@@ -714,6 +716,7 @@ impl<E: EthSpec> Work<E> {
             Work::GossipExecutionBid(_) => WorkType::GossipExecutionBid,
             Work::GossipExecutionPayload(_) => WorkType::GossipExecutionPayload,
             Work::GossipPayloadAttestation(_) => WorkType::GossipPayloadAttestation,
+            Work::GossipProposerPreferences(_) => WorkType::GossipProposerPreferences,
             Work::GossipBlsToExecutionChange(_) => WorkType::GossipBlsToExecutionChange,
             Work::RpcBlock { .. } => WorkType::RpcBlock,
             Work::RpcBlobs { .. } => WorkType::RpcBlobs,
@@ -1374,6 +1377,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Work::GossipPayloadAttestation { .. } => {
                                 gossip_payload_attestation_queue.push(work, work_id)
                             }
+                            Work::GossipProposerPreferences { .. } => {
+                                gossip_execution_bid_queue.push(work, work_id)
+                            }
                             Work::GossipSyncSignature { .. } => sync_message_queue.push(work),
                             Work::GossipSyncContribution { .. } => {
                                 sync_contribution_queue.push(work)
@@ -1665,6 +1671,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::GossipExecutionBid(process_fn)
             | Work::GossipExecutionPayload(process_fn)
             | Work::GossipPayloadAttestation(process_fn)
+            | Work::GossipProposerPreferences(process_fn)
             | Work::Status(process_fn)
             | Work::GossipBlsToExecutionChange(process_fn)
             | Work::LightClientBootstrapRequest(process_fn)
