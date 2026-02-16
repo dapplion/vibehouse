@@ -8,7 +8,7 @@ Ensure vibehouse runs the latest consensus spec tests for all forks, including g
 
 ## current state (2026-02-15)
 
-**77 tests total, 76 pass, 3 skipped (known), 1 env failure**
+**77 tests total, 77 pass, 3 skipped (known)**
 
 ```
 cargo nextest run -p ef_tests --features ef_tests --no-fail-fast
@@ -40,7 +40,7 @@ cargo nextest run -p ef_tests --features ef_tests --no-fail-fast
 |------|-------|--------|-------|
 | fork_choice_get_head | 1 | skipped | altair `voting_source_beyond_two_epoch` — upstream [#8689](https://github.com/sigp/lighthouse/issues/8689) |
 | fork_choice_on_block | 2 | skipped | altair `justified_update_*` — upstream [#8689](https://github.com/sigp/lighthouse/issues/8689) |
-| kzg_verify_blob_kzg_proof_batch | 1 | env issue | SIGABRT, KZG library/env issue |
+| kzg_verify_blob_kzg_proof_batch | 1 | ~~env issue~~ pass | previously SIGABRT, now passing |
 
 ### fixes applied
 
@@ -90,6 +90,7 @@ cargo nextest run -p ef_tests --features ef_tests -E 'test(operations_payload_at
 
 ## log
 
+- 2026-02-15: 77/77 passing. KZG SIGABRT resolved (env issue). all tests green.
 - 2026-02-15: 76/77 passing. added upstream known-failure skips for 3 altair proposer_boost tests. fork_choice_reorg all pass now.
 - 2026-02-14: 73/77 passing after fixing all state_processing issues
 - 2026-02-14: fork choice reorg investigation complete, documented in gloas-fork-choice.md

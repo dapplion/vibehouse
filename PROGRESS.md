@@ -4,6 +4,47 @@
 
 ---
 
+## 2026-02-15 - Phase 5: payload envelope gossip verification + fork choice
+
+### changes
+
+continued Phase 5 (beacon chain integration). second step: gossip verification and fork choice integration for `SignedExecutionPayloadEnvelope`.
+
+1. **envelope signature set** — added `execution_payload_envelope_signature_set()` using `DOMAIN_BEACON_BUILDER`, matching the bid signature pattern
+2. **`SignedRoot` for envelope** — `ExecutionPayloadEnvelope` now implements `SignedRoot` (required for `signing_root()`)
+3. **`PayloadEnvelopeError`** — 9 error variants with peer scoring annotations (block unknown, slot mismatch, builder mismatch, block hash mismatch, bad signature, etc.)
+4. **`verify_payload_envelope_for_gossip()`** — 6 validation checks: block root known in fork choice, not prior to finalization, slot matches block, builder index matches committed bid, block_hash matches bid, signature valid
+5. **`on_execution_payload()`** in fork choice — marks `payload_revealed = true` on the proto_array node when envelope arrives
+6. **`apply_payload_envelope_to_fork_choice()`** — beacon_chain bridge method
+7. **`process_gossip_execution_payload()`** — full gossip handler with peer scoring (ignore for unknown blocks/finalized, reject for mismatches/bad sigs, accept + fork choice import on success)
+8. **wired up `send_gossip_execution_payload()`** — replaced TODO/ignore stub with real handler
+
+### files modified
+
+- `consensus/state_processing/src/per_block_processing/signature_sets.rs` — envelope signature set
+- `consensus/types/src/execution_payload_envelope.rs` — `SignedRoot` impl
+- `consensus/fork_choice/src/fork_choice.rs` — `on_execution_payload()`
+- `beacon_node/beacon_chain/src/gloas_verification.rs` — error types, verification, verified wrapper
+- `beacon_node/beacon_chain/src/beacon_chain.rs` — fork choice bridge
+- `beacon_node/network/src/network_beacon_processor/gossip_methods.rs` — gossip handler
+- `beacon_node/network/src/network_beacon_processor/mod.rs` — wired handler
+
+### testing
+
+- 77/77 ef_tests pass (no regressions, KZG test also passing now)
+- full build succeeds
+
+### commit
+
+- `35b99ae6a` - phase 5: payload envelope gossip verification + fork choice
+
+### next
+
+- full payload envelope import (state transition via `process_execution_payload_envelope`, EL notification via `newPayload`)
+- block production for gloas (replacing `GloasNotImplemented`)
+
+---
+
 ## 2026-02-15 - Phase 5: block verification pipeline for gloas
 
 ### changes
