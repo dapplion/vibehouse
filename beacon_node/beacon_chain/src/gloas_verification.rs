@@ -193,7 +193,6 @@ impl From<BeaconStateError> for PayloadAttestationError {
 #[derive(Debug, Clone)]
 pub struct VerifiedExecutionBid<T: BeaconChainTypes> {
     bid: SignedExecutionPayloadBid<T::EthSpec>,
-    // TODO: Add builder_pubkey field when we implement full signature verification
 }
 
 impl<T: BeaconChainTypes> VerifiedExecutionBid<T> {
@@ -361,7 +360,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             });
         }
 
-        // Check 1b: Spec: [REJECT] bid.execution_payment is zero.
+        // Check 1b: Spec: [REJECT] bid.execution_payment must be zero.
+        // Reject bids with non-zero execution_payment.
         if bid.message.execution_payment != 0 {
             return Err(ExecutionBidError::NonZeroExecutionPayment {
                 execution_payment: bid.message.execution_payment,

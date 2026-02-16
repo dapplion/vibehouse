@@ -593,7 +593,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                     }
                 }
 
-                builder_index = (builder_index + 1) % builders_count as u64;
+                builder_index = builder_index
+                    .safe_add(1)?
+                    .safe_rem(builders_count as u64)?;
                 processed_builders_sweep_count += 1;
             }
         }
