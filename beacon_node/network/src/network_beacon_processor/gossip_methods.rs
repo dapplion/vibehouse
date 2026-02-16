@@ -3240,6 +3240,30 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_EQUIVOCATING_TOTAL);
                 return;
             }
+            Err(ExecutionBidError::NonZeroExecutionPayment { execution_payment }) => {
+                warn!(
+                    builder_index,
+                    execution_payment,
+                    %peer_id,
+                    "Rejecting bid with non-zero execution_payment"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_non_zero_payment",
+                );
+                return;
+            }
+            Err(ExecutionBidError::SlotNotCurrentOrNext { .. }) => {
+                debug!(
+                    builder_index,
+                    %peer_id,
+                    "Ignoring execution bid for non-current/next slot"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
             Err(e) => {
                 debug!(
                     builder_index,

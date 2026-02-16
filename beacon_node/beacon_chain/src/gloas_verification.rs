@@ -34,21 +34,24 @@ use types::{
 /// Returned when an execution payload bid was not successfully verified.
 #[derive(Debug, AsRefStr)]
 pub enum ExecutionBidError {
-    /// The bid is from a slot in the future (with respect to gossip clock disparity).
+    /// The bid slot is not the current or next slot.
+    ///
+    /// Spec: `[IGNORE] bid.slot is the current slot or the next slot.`
     ///
     /// ## Peer scoring
-    /// Assuming the local clock is correct, the peer has sent an invalid message.
-    FutureSlot {
+    /// Not malicious, just not timely.
+    SlotNotCurrentOrNext {
         bid_slot: Slot,
-        latest_permissible_slot: Slot,
+        current_slot: Slot,
     },
-    /// The bid is from a slot too far in the past.
+    /// The bid's execution_payment field is not zero.
+    ///
+    /// Spec: `[REJECT] bid.execution_payment is zero.`
     ///
     /// ## Peer scoring
-    /// Assuming the local clock is correct, the peer has sent an invalid message.
-    PastSlot {
-        bid_slot: Slot,
-        earliest_permissible_slot: Slot,
+    /// The peer has sent an invalid message.
+    NonZeroExecutionPayment {
+        execution_payment: u64,
     },
     /// The builder index does not exist in the builder registry.
     ///
@@ -245,31 +248,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let bid_slot = bid.message.slot;
         let builder_index = bid.message.builder_index;
 
-        // Check 1: Slot validation (not too far in future/past)
+        // Check 1: Slot validation
+        // Spec: [IGNORE] bid.slot is the current slot or the next slot.
         let current_slot = self
             .slot_clock
             .now()
             .ok_or(BeaconChainError::UnableToReadSlot)?;
-        
-        let gossip_clock_disparity = self.spec.maximum_gossip_clock_disparity();
-        let earliest_permissible_slot = current_slot
-            .as_u64()
-            .saturating_sub(gossip_clock_disparity.as_secs() / self.spec.seconds_per_slot);
-        let latest_permissible_slot = current_slot
-            .as_u64()
-            .saturating_add(gossip_clock_disparity.as_secs() / self.spec.seconds_per_slot);
 
-        if bid_slot.as_u64() < earliest_permissible_slot {
-            return Err(ExecutionBidError::PastSlot {
+        let next_slot = current_slot + 1;
+        if bid_slot != current_slot && bid_slot != next_slot {
+            return Err(ExecutionBidError::SlotNotCurrentOrNext {
                 bid_slot,
-                earliest_permissible_slot: Slot::new(earliest_permissible_slot),
+                current_slot,
             });
         }
 
-        if bid_slot.as_u64() > latest_permissible_slot {
-            return Err(ExecutionBidError::FutureSlot {
-                bid_slot,
-                latest_permissible_slot: Slot::new(latest_permissible_slot),
+        // Check 1b: Spec: [REJECT] bid.execution_payment is zero.
+        if bid.message.execution_payment != 0 {
+            return Err(ExecutionBidError::NonZeroExecutionPayment {
+                execution_payment: bid.message.execution_payment,
             });
         }
 
