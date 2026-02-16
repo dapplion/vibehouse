@@ -248,6 +248,7 @@ pub enum BeaconChainError {
     },
     SkipProposerPreparation,
     FailedColumnCustodyInfoUpdate,
+    EnvelopeProcessingError(String),
 }
 
 easy_from_to!(SlotProcessingError, BeaconChainError);

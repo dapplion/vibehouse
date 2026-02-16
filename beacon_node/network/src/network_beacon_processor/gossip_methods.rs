@@ -3393,11 +3393,23 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 error = ?e,
                 "Failed to import payload envelope to fork choice"
             );
+            return;
+        }
+
+        // Apply envelope state transition (validates bid consistency, processes
+        // execution requests, builder payment, sets availability)
+        if let Err(e) = self.chain.process_payload_envelope(&verified_envelope) {
+            warn!(
+                ?beacon_block_root,
+                builder_index,
+                error = ?e,
+                "Failed to process payload envelope state transition"
+            );
         } else {
             debug!(
                 ?beacon_block_root,
                 builder_index,
-                "Successfully imported execution payload envelope"
+                "Successfully processed execution payload envelope"
             );
         }
     }

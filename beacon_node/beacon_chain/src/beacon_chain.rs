@@ -2285,6 +2285,60 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
+    /// Processes a verified payload envelope through the beacon state transition (gloas ePBS).
+    ///
+    /// This applies the envelope's execution payload to the post-block state, performing
+    /// all spec validations (bid consistency, withdrawals, block hash, etc.) and state
+    /// mutations (execution requests, builder payment, availability tracking).
+    ///
+    /// The envelope must already be gossip-verified. This function retrieves the
+    /// post-block state from the canonical head and applies the transition.
+    pub fn process_payload_envelope(
+        &self,
+        verified_envelope: &crate::gloas_verification::VerifiedPayloadEnvelope<T>,
+    ) -> Result<(), Error> {
+        let beacon_block_root = verified_envelope.beacon_block_root();
+        let signed_envelope = verified_envelope.envelope();
+
+        // Get the head state — the envelope should be for the current head block
+        let head = self.canonical_head.cached_head();
+        let head_block_root = head.head_block_root();
+
+        if beacon_block_root != head_block_root {
+            debug!(
+                ?beacon_block_root,
+                ?head_block_root,
+                "Envelope not for current head, skipping state transition"
+            );
+            return Ok(());
+        }
+
+        let mut state = head.snapshot.beacon_state.clone();
+        let state_root = head.head_state_root();
+        drop(head);
+
+        // Apply the envelope state transition
+        state_processing::envelope_processing::process_execution_payload_envelope(
+            &mut state,
+            Some(state_root),
+            signed_envelope,
+            state_processing::VerifySignatures::True,
+            &self.spec,
+        )
+        .map_err(|e| {
+            Error::EnvelopeProcessingError(format!("{:?}", e))
+        })?;
+
+        debug!(
+            ?beacon_block_root,
+            builder_index = signed_envelope.message.builder_index,
+            block_hash = ?signed_envelope.message.payload.block_hash,
+            "Successfully processed execution payload envelope state transition"
+        );
+
+        Ok(())
+    }
+
     /// Applies a verified payload attestation to fork choice (gloas ePBS).
     pub fn apply_payload_attestation_to_fork_choice(
         &self,
