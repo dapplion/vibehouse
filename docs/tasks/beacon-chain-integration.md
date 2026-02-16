@@ -9,10 +9,10 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Block verification pipeline for gloas (bid KZG check, parent root validation, availability handling)
 - ✅ Payload envelope gossip verification + fork choice (signature sets, error types, gossip handler)
 - ✅ Self-build block production (replaced `GloasNotImplemented` with real implementation)
-- ✅ Envelope processing state transition (`process_execution_payload_envelope` — 278 lines, spec-compliant)
+- ✅ Envelope processing state transition (`process_execution_payload_envelope` — 273 lines, spec-compliant)
+- ✅ Envelope processing wired into beacon chain import pipeline
 
 ### Remaining
-- [ ] Wire envelope processing into beacon chain import pipeline
 - [ ] EL integration: `newPayload` call for gloas payloads
 - [ ] Envelope creation and broadcast after block production (self-build flow)
 - [ ] Update chain head tracking for ePBS
@@ -27,6 +27,14 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Envelope processing wired into import pipeline
+- Recovered orphaned `envelope_processing.rs` from commit `1844ddfb0` (was lost when `daa27499e` was committed as sibling instead of child)
+- Added `BeaconChain::process_payload_envelope()`: retrieves head state, applies `process_execution_payload_envelope` state transition
+- Updated gossip handler to call `process_payload_envelope` after fork choice update
+- Added `EnvelopeProcessingError` variant to `BeaconChainError`
+- 77/77 EF tests passing
+- Commit: `4daffbe2e`
 
 ### 2026-02-16 — Block production + envelope processing
 - Implemented self-build block production: creates `ExecutionPayloadBid` from EL response, uses `BUILDER_INDEX_SELF_BUILD` (u64::MAX) with value=0, empty signature
