@@ -771,6 +771,23 @@ pub struct AvailableBlock<E: EthSpec> {
 }
 
 impl<E: EthSpec> AvailableBlock<E> {
+    /// Construct an AvailableBlock with no blob data.
+    /// Used for pre-Deneb blocks and Gloas blocks (where execution payload
+    /// arrives separately via the payload envelope pipeline).
+    pub fn new_no_data(
+        block_root: Hash256,
+        block: Arc<SignedBeaconBlock<E>>,
+        spec: Arc<ChainSpec>,
+    ) -> Self {
+        Self {
+            block_root,
+            block,
+            blob_data: AvailableBlockData::NoData,
+            blobs_available_timestamp: None,
+            spec,
+        }
+    }
+
     pub fn __new_for_testing(
         block_root: Hash256,
         block: Arc<SignedBeaconBlock<E>>,
