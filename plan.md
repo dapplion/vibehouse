@@ -66,12 +66,11 @@ The claude instance cycles through these phases repeatedly:
 7. Each logical change gets its own commit with a clear message
 
 **Phase 4: Testing & Coverage**
-1. Run full test suite: `cargo test --workspace`
-2. Run spec tests for all forks
-3. Check coverage numbers - identify any regressions
-4. Write new tests for uncovered code paths, prioritizing critical consensus logic
-5. Run kurtosis multi-client testnet (see priority 4 below for setup steps)
-6. If kurtosis tests fail, diagnose and fix before moving on
+1. Run EF spec tests: `cargo nextest run -p ef_tests --features ef_tests --no-fail-fast`
+2. Run full test suite: `cargo test --workspace`
+3. Run kurtosis: vibehouse + geth, gloas fork at epoch 1, verify finalization (see priority 4)
+4. If kurtosis or tests fail, diagnose and fix before moving on
+5. Write new tests for uncovered code paths, prioritizing critical consensus logic
 
 **Phase 5: Community & Issues**
 1. Check GitHub Issues for new requests
@@ -312,73 +311,107 @@ Priority order for writing new tests:
 
 ---
 
-## priority 4: kurtosis multi-client testing
+## priority 4: kurtosis testing — epbs-devnet-0 target
 
-Run multi-client testnets in CI. If vibehouse can't interop, it doesn't ship.
+**Goal: participate in epbs-devnet-0** (launch target: Feb 18, 2026)
+- Spec: https://notes.ethereum.org/@ethpandaops/epbs-devnet-0
+- Consensus specs: `v1.7.0-alpha.2` (we're already on this ✅)
+- Only self-built payloads tested (no builder marketplace)
+- Fork name: `gloas`, fork epoch: 1, preset: `minimal`
 
-### immediate next action
+### devnet kurtosis config (from ethpandaops)
 
-- [ ] Run a basic kurtosis test locally: vibehouse CL + geth EL, verify it boots and finalizes
-- [ ] If no kurtosis CLI installed, install it first (`brew install kurtosis` or equivalent)
-- [ ] Use the [ethereum-package](https://github.com/ethpandaops/ethereum-package) with a minimal config pointing at a local vibehouse docker image
-- [ ] Document results in `docs/workstreams/kurtosis.md`
+```yaml
+participants:
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: consensoor
+    cl_image: ethpandaops/consensoor:main
+    count: 1
+network_params:
+  gloas_fork_epoch: 1
+  preset: minimal
+additional_services:
+  - dora
+snooper_enabled: true
+global_log_level: debug
+dora_params:
+  image: ethpandaops/dora:gloas-support
+```
 
-### Setup steps (detailed)
+### step 1: run kurtosis with reference config (no vibehouse)
 
-#### Step 1: Local kurtosis setup
-- [ ] Install kurtosis CLI
-- [ ] Fork/pin the [ethereum-package](https://github.com/ethpandaops/ethereum-package) kurtosis package
-- [ ] Add vibehouse as a CL client option in the package configuration
-- [ ] Build vibehouse docker image in CI (or use pre-built from earlier CI step)
-- [ ] Test locally: vibehouse BN + vibehouse VC + geth EL
+Verify the test infra works before adding vibehouse as a participant.
 
-#### Step 2: Basic interop test
-- [ ] Define a minimal kurtosis config:
-  - 4 nodes total
-  - vibehouse CL + geth EL (2 nodes)
-  - prysm CL + geth EL (1 node)
-  - lodestar CL + geth EL (1 node)
-  - 32 validators split across nodes
-- [ ] Run network for 3 epochs
-- [ ] Assert: chain finalizes
-- [ ] Assert: all nodes on same head
-- [ ] Assert: no crashes or panics in vibehouse logs
+- [ ] Install kurtosis CLI (`brew install kurtosis-tech/tap/kurtosis-cli` or check if installed)
+- [ ] Run the devnet config above as-is (consensoor + geth) to verify the setup works
+- [ ] Confirm: chain starts, reaches epoch 1 (gloas fork), finalizes
+- [ ] Document results
 
-#### Step 3: Comprehensive test scenarios
-- [ ] **Finality test**: run for 10 epochs, verify finality at expected epochs
-- [ ] **Deposit test**: submit deposits via deposit contract, verify activation
-- [ ] **Voluntary exit test**: submit exits, verify processed
-- [ ] **Slashing test**: create equivocating validators, verify slashing
-- [ ] **Sync committee test**: verify sync committee participation across clients
-- [ ] **Sync test**: start a node late, verify it syncs from peers
-- [ ] **Restart test**: kill a vibehouse node, restart, verify it recovers
+### step 2: build vibehouse docker image
 
-#### Step 4: Multi-EL interop
-- [ ] Test vibehouse against each EL separately: geth, reth, nethermind, besu
-- [ ] Create a mixed-EL config (all 4 ELs, all running vibehouse CL)
-- [ ] Verify payload validation works correctly across all ELs
+- [ ] Create a Dockerfile for vibehouse (or adapt upstream lighthouse Dockerfile)
+- [ ] Build local image: `docker build -t vibehouse:local .`
+- [ ] Verify the image runs: `docker run vibehouse:local lighthouse --version`
 
-#### Step 5: CI Integration
-- [ ] Run basic interop test on every PR (if CI resources allow)
-- [ ] Run comprehensive tests nightly
-- [ ] Run full multi-EL matrix weekly
-- [ ] Collect and store test results for trend tracking
-- [ ] Alert on regressions (test that used to pass now fails)
+### step 3: run kurtosis with vibehouse
 
-#### Step 6: Gloas devnet
-- [ ] Once gloas implementation is ready, set up a gloas-fork kurtosis config
-- [ ] Test ePBS flow: proposer creates block, builder submits bid, payload revealed
-- [ ] Test across clients as other clients implement gloas
-- [ ] Run gloas devnet continuously to catch regressions
+Replace `consensoor` with vibehouse in the kurtosis config:
 
-### Alternative: lightweight interop testing
+```yaml
+participants:
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    count: 1
+network_params:
+  gloas_fork_epoch: 1
+  preset: minimal
+additional_services:
+  - dora
+snooper_enabled: true
+global_log_level: debug
+dora_params:
+  image: ethpandaops/dora:gloas-support
+```
 
-If kurtosis is too heavy for per-PR CI:
+- [ ] Run kurtosis with vibehouse CL + geth EL
+- [ ] Check: does it boot? does it connect to geth?
+- [ ] Check: does it produce blocks pre-fork?
+- [ ] Check: does it survive the gloas fork at epoch 1?
+- [ ] Check: does it produce gloas blocks (self-built payloads)?
+- [ ] Check: does chain finalize post-fork?
+- [ ] Capture logs on failure for debugging
 
-- [ ] Build a lightweight test harness using `lcli` (lighthouse CLI tool) and docker-compose
-- [ ] Spin up 2-node network (vibehouse + one other CL) with geth EL
-- [ ] Run for 2 epochs, check finality, tear down
-- [ ] Target: under 5 minutes total
+### step 4: fix issues found by kurtosis
+
+- [ ] Fix any boot/startup failures
+- [ ] Fix any fork transition failures
+- [ ] Fix any block production failures (the `GloasNotImplemented` error in block production is a known blocker — must implement self-build block production)
+- [ ] Fix any state transition failures
+- [ ] Re-run kurtosis after each fix
+
+### step 5: multi-node kurtosis
+
+- [ ] Run vibehouse alongside other CL clients (consensoor, etc.)
+- [ ] Verify cross-client interop: all nodes on same head, chain finalizes
+- [ ] Test with 2+ vibehouse nodes
+
+### blockers for devnet participation
+
+Key implementation gaps that kurtosis will hit:
+
+1. **Block production** — `BlockProductionError::GloasNotImplemented` must be replaced with actual self-build block production (proposer creates bid with `builder_index = BUILDER_INDEX_SELF_BUILD`, bundles payload directly)
+2. **Payload envelope import** — full state transition via `process_execution_payload_envelope` (gossip verification is done, but import to DB/state is not)
+3. **EL integration** — `newPayload` calls for gloas payloads need the correct versioned format
+
+### later: CI integration and expanded testing
+
+- [ ] Run kurtosis on every PR (if CI resources allow)
+- [ ] Multi-EL matrix: geth, reth, nethermind, besu
+- [ ] Comprehensive scenarios: deposits, exits, slashings, sync, restarts
+- [ ] Nightly comprehensive runs, weekly full matrix
 
 ---
 
