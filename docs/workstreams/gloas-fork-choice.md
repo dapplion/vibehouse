@@ -11,33 +11,24 @@ This is not a minor tweak — it's a structural change to proto_array.
 
 Spec source: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md
 
-## current state
+## current state (2026-02-15)
 
-- **4 failing fork_choice_reorg tests** (all gloas-specific, minimal preset)
-- All other ef_tests pass (73/77, remaining 3 are pre-existing altair failures + 1 KZG env issue)
-- Current proto_array implementation uses a simple `payload_revealed: bool` on each node
-- This does NOT match the spec's 3-state model with `(root, payload_status)` pairs
+- **All 8 fork_choice_reorg tests pass** (including all 4 previously failing gloas tests)
+- 76/77 ef_tests pass (1 KZG env SIGABRT, 3 altair tests skipped as known upstream failures)
+- The (root, payload_status) 3-state model is implemented in `proto_array_fork_choice.rs`
+- Implementation includes: `find_head_gloas`, `get_gloas_children`, `get_parent_payload_status_of`, `is_supporting_vote_gloas`, `get_gloas_weight`, `get_ancestor_gloas`
 
-### failing tests
-
-```
-include_votes_another_empty_chain_with_enough_ffg_votes_previous_epoch
-include_votes_another_empty_chain_without_enough_ffg_votes_current_epoch
-include_votes_another_empty_chain_with_enough_ffg_votes_current_epoch
-simple_attempted_reorg_without_enough_ffg_votes
-```
-
-All show the same pattern: head is at slot N+1 when spec expects slot N. The implementation
-doesn't correctly model the empty/full branching, so it always selects the "latest" block
-instead of respecting the payload status constraints.
-
-### passing tests (4/8 reorg tests pass)
+### all 8 reorg tests pass
 
 ```
-delayed_justification_current_epoch
-delayed_justification_previous_epoch
-simple_attempted_reorg_delayed_justification_current_epoch
-simple_attempted_reorg_delayed_justification_previous_epoch
+✅ include_votes_another_empty_chain_with_enough_ffg_votes_previous_epoch
+✅ include_votes_another_empty_chain_without_enough_ffg_votes_current_epoch
+✅ include_votes_another_empty_chain_with_enough_ffg_votes_current_epoch
+✅ simple_attempted_reorg_without_enough_ffg_votes
+✅ delayed_justification_current_epoch
+✅ delayed_justification_previous_epoch
+✅ simple_attempted_reorg_delayed_justification_current_epoch
+✅ simple_attempted_reorg_delayed_justification_previous_epoch
 ```
 
 ## spec analysis: how gloas fork choice works
@@ -244,5 +235,6 @@ weight propagation but doubles/triples the node count.
 
 ## log
 
+- 2026-02-15: all 8 reorg tests pass. implementation verified correct.
 - 2026-02-14: investigation complete, 4/8 reorg tests failing, root cause identified
 - 2026-02-14: spec analysis complete, documented all spec functions

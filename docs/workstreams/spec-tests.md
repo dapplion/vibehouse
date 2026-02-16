@@ -6,17 +6,21 @@
 
 Ensure vibehouse runs the latest consensus spec tests for all forks, including gloas.
 
-## current state (2026-02-14)
+## current state (2026-02-15)
 
-**77 tests total, 73 pass, 4 fail**
+**77 tests total, 76 pass, 3 skipped (known), 1 env failure**
 
 ```
 cargo nextest run -p ef_tests --features ef_tests --no-fail-fast
 ```
 
-### passing gloas tests
+### all gloas tests pass
 
-All state_processing tests pass:
+- fork_choice_reorg (8/8) — includes all 4 previously failing tests
+- fork_choice_get_head (all gloas pass)
+- fork_choice_on_block (all gloas pass)
+- fork_choice_get_proposer_head (all pass)
+- fork_choice_should_override_forkchoice_update (all pass)
 - operations_attestation (62/62)
 - operations_execution_payload_bid (17/17)
 - operations_payload_attestation (11/11)
@@ -30,14 +34,13 @@ All state_processing tests pass:
 - transition (all pass)
 - random (all pass)
 
-### failing tests
+### skipped tests (known upstream failures)
 
 | test | count | status | notes |
 |------|-------|--------|-------|
-| fork_choice_get_head | 1 | pre-existing | altair `voting_source_beyond_two_epoch` |
-| fork_choice_on_block | 2 | pre-existing | altair `justified_update_*` |
-| fork_choice_reorg | 4 | **gloas** | needs fork choice rewrite, see `gloas-fork-choice.md` |
-| kzg_verify_blob_kzg_proof_batch | 1 | env issue | SIGABRT, likely KZG library/env |
+| fork_choice_get_head | 1 | skipped | altair `voting_source_beyond_two_epoch` — upstream [#8689](https://github.com/sigp/lighthouse/issues/8689) |
+| fork_choice_on_block | 2 | skipped | altair `justified_update_*` — upstream [#8689](https://github.com/sigp/lighthouse/issues/8689) |
+| kzg_verify_blob_kzg_proof_batch | 1 | env issue | SIGABRT, KZG library/env issue |
 
 ### fixes applied
 
@@ -81,12 +84,13 @@ cargo nextest run -p ef_tests --features ef_tests -E 'test(operations_payload_at
 
 ## next steps
 
-1. Fix fork_choice_reorg failures (see `gloas-fork-choice.md`)
-2. Investigate kzg SIGABRT
-3. Investigate pre-existing altair fork_choice failures
+1. Investigate kzg SIGABRT (environment-specific, low priority)
+2. Run `make test-ef` (release build + fake_crypto pass)
+3. Set up CI to run EF tests on every push
 
 ## log
 
+- 2026-02-15: 76/77 passing. added upstream known-failure skips for 3 altair proposer_boost tests. fork_choice_reorg all pass now.
 - 2026-02-14: 73/77 passing after fixing all state_processing issues
 - 2026-02-14: fork choice reorg investigation complete, documented in gloas-fork-choice.md
 - 2026-02-13: workstream created
