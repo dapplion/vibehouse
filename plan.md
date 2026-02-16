@@ -70,7 +70,8 @@ The claude instance cycles through these phases repeatedly:
 2. Run spec tests for all forks
 3. Check coverage numbers - identify any regressions
 4. Write new tests for uncovered code paths, prioritizing critical consensus logic
-5. If kurtosis is set up, trigger a multi-client testnet run
+5. Run kurtosis multi-client testnet (see priority 4 below for setup steps)
+6. If kurtosis tests fail, diagnose and fix before moving on
 
 **Phase 5: Community & Issues**
 1. Check GitHub Issues for new requests
@@ -315,10 +316,17 @@ Priority order for writing new tests:
 
 Run multi-client testnets in CI. If vibehouse can't interop, it doesn't ship.
 
+### immediate next action
+
+- [ ] Run a basic kurtosis test locally: vibehouse CL + geth EL, verify it boots and finalizes
+- [ ] If no kurtosis CLI installed, install it first (`brew install kurtosis` or equivalent)
+- [ ] Use the [ethereum-package](https://github.com/ethpandaops/ethereum-package) with a minimal config pointing at a local vibehouse docker image
+- [ ] Document results in `docs/workstreams/kurtosis.md`
+
 ### Setup steps (detailed)
 
 #### Step 1: Local kurtosis setup
-- [ ] Install kurtosis CLI in CI runner
+- [ ] Install kurtosis CLI
 - [ ] Fork/pin the [ethereum-package](https://github.com/ethpandaops/ethereum-package) kurtosis package
 - [ ] Add vibehouse as a CL client option in the package configuration
 - [ ] Build vibehouse docker image in CI (or use pre-built from earlier CI step)
