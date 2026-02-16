@@ -5774,7 +5774,72 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     execution_payload_value,
                 )
             }
-            BeaconState::Gloas(_) => return Err(BlockProductionError::GloasNotImplemented),
+            BeaconState::Gloas(_) => {
+                // Gloas ePBS self-build: proposer builds own execution payload.
+                // No builder marketplace in devnet-0, so we always self-build.
+                let (
+                    payload,
+                    kzg_commitments,
+                    maybe_blobs_and_proofs,
+                    _maybe_requests,
+                    execution_payload_value,
+                ) = block_contents
+                    .ok_or(BlockProductionError::MissingExecutionPayload)?
+                    .deconstruct();
+
+                // Build execution payload bid from the EL payload response.
+                // For self-build: builder_index = BUILDER_INDEX_SELF_BUILD, value = 0,
+                // signature = empty (infinity point).
+                let execution_payload_bid = ExecutionPayloadBid {
+                    parent_block_hash: payload.parent_hash(),
+                    parent_block_root: parent_root,
+                    block_hash: payload.block_hash(),
+                    prev_randao: payload.prev_randao(),
+                    fee_recipient: payload.fee_recipient(),
+                    gas_limit: payload.gas_limit(),
+                    builder_index: types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
+                    slot,
+                    value: 0,
+                    execution_payment: 0,
+                    blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
+                };
+
+                let signed_bid = SignedExecutionPayloadBid {
+                    message: execution_payload_bid,
+                    signature: Signature::empty(),
+                };
+
+                // TODO: Include payload attestations from the op pool for the previous slot's
+                // payload. For devnet-0 self-build, empty list is acceptable.
+                let payload_attestations = VariableList::empty();
+
+                (
+                    BeaconBlock::Gloas(BeaconBlockGloas {
+                        slot,
+                        proposer_index,
+                        parent_root,
+                        state_root: Hash256::zero(),
+                        body: BeaconBlockBodyGloas {
+                            randao_reveal,
+                            eth1_data,
+                            graffiti,
+                            proposer_slashings: proposer_slashings.into(),
+                            attester_slashings: attester_slashings_electra.into(),
+                            attestations: attestations_electra.into(),
+                            deposits: deposits.into(),
+                            voluntary_exits: voluntary_exits.into(),
+                            sync_aggregate: sync_aggregate
+                                .ok_or(BlockProductionError::MissingSyncAggregate)?,
+                            bls_to_execution_changes: bls_to_execution_changes.into(),
+                            signed_execution_payload_bid: signed_bid,
+                            payload_attestations,
+                            _phantom: PhantomData,
+                        },
+                    }),
+                    maybe_blobs_and_proofs,
+                    execution_payload_value,
+                )
+            }
         };
 
         let block = SignedBeaconBlock::from_block(
@@ -5825,19 +5890,30 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let blob_items = match maybe_blobs_and_proofs {
             Some((blobs, proofs)) => {
-                let expected_kzg_commitments =
-                    block.body().blob_kzg_commitments().map_err(|_| {
+                // For Gloas, KZG commitments are on the bid, not the block body.
+                let expected_kzg_commitments_len = block
+                    .body()
+                    .blob_kzg_commitments()
+                    .map(|c| c.len())
+                    .or_else(|_| {
+                        // Gloas: get commitments from the execution payload bid
+                        block
+                            .body()
+                            .signed_execution_payload_bid()
+                            .map(|bid| bid.message.blob_kzg_commitments.len())
+                    })
+                    .map_err(|_| {
                         BlockProductionError::InvalidBlockVariant(
-                            "deneb block does not contain kzg commitments".to_string(),
+                            "block does not contain kzg commitments".to_string(),
                         )
                     })?;
 
-                if expected_kzg_commitments.len() != blobs.len() {
+                if expected_kzg_commitments_len != blobs.len() {
                     return Err(BlockProductionError::MissingKzgCommitment(format!(
                         "Missing KZG commitment for slot {}. Expected {}, got: {}",
                         block.slot(),
                         blobs.len(),
-                        expected_kzg_commitments.len()
+                        expected_kzg_commitments_len
                     )));
                 }
 
