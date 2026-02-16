@@ -427,9 +427,11 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub observed_bls_to_execution_changes:
         Mutex<ObservedOperations<SignedBlsToExecutionChange, T::EthSpec>>,
     /// Maintains a record of which execution bids we've seen (for equivocation detection).
-    pub observed_execution_bids: Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
+    pub observed_execution_bids:
+        Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
     /// Maintains a record of which payload attestations we've seen (for equivocation detection).
-    pub observed_payload_attestations: Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
+    pub observed_payload_attestations:
+        Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
     /// Interfaces with the execution client.
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the
@@ -2263,7 +2265,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) -> Result<(), Error> {
         let bid = verified_bid.bid();
         let beacon_block_root = bid.message.parent_block_root;
-        
+
         self.canonical_head
             .fork_choice_write_lock()
             .on_execution_bid(bid, beacon_block_root)
@@ -2291,14 +2293,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         verified_attestation: &crate::gloas_verification::VerifiedPayloadAttestation<T>,
     ) -> Result<(), Error> {
         use types::IndexedPayloadAttestation;
-        
+
         // Convert to IndexedPayloadAttestation
         let indexed = IndexedPayloadAttestation {
             attesting_indices: verified_attestation.attesting_indices().to_vec().into(),
             data: verified_attestation.attestation().data.clone(),
             signature: verified_attestation.attestation().signature.clone(),
         };
-        
+
         self.canonical_head
             .fork_choice_write_lock()
             .on_payload_attestation(

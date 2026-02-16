@@ -3414,7 +3414,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let slot = attestation.data.slot;
         let beacon_block_root = attestation.data.beacon_block_root;
 
-        let verified_attestation = match self.chain.verify_payload_attestation_for_gossip(attestation) {
+        let verified_attestation = match self
+            .chain
+            .verify_payload_attestation_for_gossip(attestation)
+        {
             Ok(verified) => verified,
             Err(PayloadAttestationError::DuplicateAttestation { .. }) => {
                 debug!(
@@ -3439,7 +3442,9 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "payload_attestation_equivocation",
                 );
-                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL);
+                metrics::inc_counter(
+                    &metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL,
+                );
                 return;
             }
             Err(e) => {
@@ -3465,7 +3470,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
         // Import to fork choice (TODO: implement apply_payload_attestation_to_fork_choice)
-        if let Err(e) = self.chain.apply_payload_attestation_to_fork_choice(&verified_attestation) {
+        if let Err(e) = self
+            .chain
+            .apply_payload_attestation_to_fork_choice(&verified_attestation)
+        {
             warn!(
                 %slot,
                 ?beacon_block_root,

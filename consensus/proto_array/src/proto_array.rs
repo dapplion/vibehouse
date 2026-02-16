@@ -7,8 +7,8 @@ use ssz_derive::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
 use superstruct::superstruct;
 use types::{
-    AttestationShufflingId, BuilderIndex, ChainSpec, Checkpoint, Epoch, EthSpec, ExecutionBlockHash,
-    FixedBytesExtended, Hash256, Slot,
+    AttestationShufflingId, BuilderIndex, ChainSpec, Checkpoint, Epoch, EthSpec,
+    ExecutionBlockHash, FixedBytesExtended, Hash256, Slot,
 };
 
 // Define a "legacy" implementation of `Option<usize>` which uses four bytes for encoding the union
@@ -919,7 +919,7 @@ impl ProtoArray {
         if let Some(builder_index) = node.builder_index {
             // BUILDER_INDEX_SELF_BUILD is u64::MAX - proposer built their own payload
             const BUILDER_INDEX_SELF_BUILD: u64 = u64::MAX;
-            
+
             if builder_index != BUILDER_INDEX_SELF_BUILD && !node.payload_revealed {
                 // External builder block without revealed payload - not viable for head
                 return false;

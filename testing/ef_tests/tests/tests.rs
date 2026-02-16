@@ -255,11 +255,11 @@ mod ssz_static {
     use types::historical_summary::HistoricalSummary;
     use types::{
         AttesterSlashingBase, AttesterSlashingElectra, Builder, BuilderPendingPayment,
-        BuilderPendingWithdrawal, ConsolidationRequest, DepositRequest,
-        ExecutionPayloadBid, ExecutionPayloadEnvelope, IndexedPayloadAttestation,
-        LightClientBootstrapAltair, PayloadAttestation, PayloadAttestationData,
-        PayloadAttestationMessage, PendingDeposit, PendingPartialWithdrawal,
-        SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, WithdrawalRequest, *,
+        BuilderPendingWithdrawal, ConsolidationRequest, DepositRequest, ExecutionPayloadBid,
+        ExecutionPayloadEnvelope, IndexedPayloadAttestation, LightClientBootstrapAltair,
+        PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage, PendingDeposit,
+        PendingPartialWithdrawal, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+        WithdrawalRequest, *,
     };
 
     ssz_static_test!(attestation_data, AttestationData);

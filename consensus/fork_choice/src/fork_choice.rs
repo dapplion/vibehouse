@@ -1283,19 +1283,16 @@ where
         let node_slot = node.slot;
 
         // Update the proto_array node with builder information
-        let nodes = &mut self
-            .proto_array
-            .core_proto_array_mut()
-            .nodes;
-        
+        let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
+
         if let Some(node) = nodes.get_mut(block_index) {
             // Record which builder won this slot's bid
             node.builder_index = Some(bid.message.builder_index);
-            
+
             // Mark payload as not yet revealed
             // (will be set to true when builder publishes the execution payload envelope)
             node.payload_revealed = false;
-            
+
             // Initialize PTC weight to 0 (will accumulate via on_payload_attestation)
             node.ptc_weight = 0;
         }
@@ -1333,7 +1330,7 @@ where
         spec: &ChainSpec,
     ) -> Result<(), Error<T::Error>> {
         let beacon_block_root = attestation.data.beacon_block_root;
-        
+
         // Validate slot is not from the future
         if attestation.data.slot > current_slot {
             return Err(InvalidPayloadAttestation::FutureSlot {
@@ -1378,21 +1375,18 @@ where
         let attester_count = indexed_attestation.attesting_indices.len() as u64;
 
         // Update the proto_array node with accumulated PTC weight
-        let nodes = &mut self
-            .proto_array
-            .core_proto_array_mut()
-            .nodes;
-        
+        let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
+
         if let Some(node) = nodes.get_mut(block_index) {
             // Accumulate weight from this attestation
             node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
-            
+
             // Check if we've reached quorum (strictly greater than threshold per spec)
             if node.ptc_weight > quorum_threshold {
                 // Only mark revealed if the attestation signals payload was present
                 if attestation.data.payload_present {
                     node.payload_revealed = true;
-                    
+
                     debug!(
                         ?beacon_block_root,
                         ptc_weight = node.ptc_weight,

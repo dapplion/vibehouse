@@ -1459,7 +1459,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::GossipAttesterSlashing => gossip_attester_slashing_queue.len(),
                         WorkType::GossipExecutionBid => gossip_execution_bid_queue.len(),
                         WorkType::GossipExecutionPayload => gossip_execution_payload_queue.len(),
-                        WorkType::GossipPayloadAttestation => gossip_payload_attestation_queue.len(),
+                        WorkType::GossipPayloadAttestation => {
+                            gossip_payload_attestation_queue.len()
+                        }
                         WorkType::GossipSyncSignature => sync_message_queue.len(),
                         WorkType::GossipSyncContribution => sync_contribution_queue.len(),
                         WorkType::GossipLightClientFinalityUpdate => {

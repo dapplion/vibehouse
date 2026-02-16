@@ -7,7 +7,6 @@
 //! This serves as equivocation detection for the execution payload bid gossip topic.
 
 use derivative::Derivative;
-use types::FixedBytesExtended;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use types::{BuilderIndex, EthSpec, Hash256, Slot};
@@ -102,12 +101,10 @@ impl<E: EthSpec> ObservedExecutionBids<E> {
         let earliest_slot = Slot::new(current_slot.as_u64().saturating_sub(MAX_OBSERVED_SLOTS));
 
         // Remove slots older than earliest_slot
-        self.observed_bids
-            .retain(|&slot, _| slot >= earliest_slot);
+        self.observed_bids.retain(|&slot, _| slot >= earliest_slot);
 
         // Also prune the observed_slots vector
-        self.observed_slots
-            .retain(|&slot| slot >= earliest_slot);
+        self.observed_slots.retain(|&slot| slot >= earliest_slot);
     }
 
     /// Returns the number of unique slots currently tracked.

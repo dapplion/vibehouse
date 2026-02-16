@@ -7,7 +7,6 @@
 //! This serves as equivocation detection for the payload attestation gossip topic.
 
 use derivative::Derivative;
-use types::FixedBytesExtended;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{EthSpec, Hash256, Slot};
@@ -117,8 +116,7 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
             .retain(|key, _| key.slot >= earliest_slot);
 
         // Also prune the observed_slots set
-        self.observed_slots
-            .retain(|&slot| slot >= earliest_slot);
+        self.observed_slots.retain(|&slot| slot >= earliest_slot);
     }
 
     /// Returns the number of unique slots currently tracked.

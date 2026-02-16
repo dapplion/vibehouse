@@ -236,13 +236,13 @@ pub mod altair_deneb {
                 };
 
                 if let Ok(state_gloas) = state.as_gloas_mut() {
-                    if let Some(payment) =
-                        state_gloas.builder_pending_payments.get_mut(payment_slot_index)
+                    if let Some(payment) = state_gloas
+                        .builder_pending_payments
+                        .get_mut(payment_slot_index)
                     {
                         if payment.withdrawal.amount > 0 {
-                            payment.weight = payment
-                                .weight
-                                .saturating_add(validator_effective_balance);
+                            payment.weight =
+                                payment.weight.saturating_add(validator_effective_balance);
                         }
                     }
                 }
@@ -283,15 +283,9 @@ pub fn process_proposer_slashings<E: EthSpec>(
                 .map_err(|e| e.into_with_index(i))?;
 
             let proposer_index = proposer_slashing.signed_header_1.message.proposer_index as usize;
-            
-            slash_validator(
-                state,
-                proposer_index,
-                None,
-                ctxt,
-                spec,
-            )?;
-            
+
+            slash_validator(state, proposer_index, None, ctxt, spec)?;
+
             // [New in Gloas:EIP7732] Remove the BuilderPendingPayment for this proposal
             // if it is still in the 2-epoch window.
             if state.fork_name_unchecked().gloas_enabled() {
@@ -310,9 +304,9 @@ pub fn process_proposer_slashings<E: EthSpec>(
                 };
 
                 if let Some(idx) = payment_index {
-                    let state_gloas = state.as_gloas_mut().map_err(|e| {
-                        BlockProcessingError::BeaconStateError(e)
-                    })?;
+                    let state_gloas = state
+                        .as_gloas_mut()
+                        .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
                     if let Some(payment) = state_gloas.builder_pending_payments.get_mut(idx) {
                         *payment = BuilderPendingPayment::default();
                     }
@@ -710,10 +704,7 @@ fn process_deposit_request_gloas<E: EthSpec>(
         .unwrap_or(false);
 
     // Check if pubkey belongs to an existing validator
-    let is_validator = state
-        .pubkey_cache()
-        .get(&request.pubkey)
-        .is_some();
+    let is_validator = state.pubkey_cache().get(&request.pubkey).is_some();
 
     let is_builder_prefix = is_builder_withdrawal_credential(request.withdrawal_credentials);
 
@@ -775,9 +766,9 @@ fn apply_deposit_for_builder<E: EthSpec>(
     slot: Slot,
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
-    let state_gloas = state.as_gloas_mut().map_err(|e| {
-        BlockProcessingError::BeaconStateError(e)
-    })?;
+    let state_gloas = state
+        .as_gloas_mut()
+        .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
 
     // Check if builder already exists
     let builder_index = state_gloas
@@ -806,9 +797,7 @@ fn apply_deposit_for_builder<E: EthSpec>(
         }
 
         // Find slot for new builder (reuse exited builder slot or append)
-        let current_epoch = state_gloas
-            .slot
-            .epoch(E::slots_per_epoch());
+        let current_epoch = state_gloas.slot.epoch(E::slots_per_epoch());
         let new_index = get_index_for_new_builder::<E>(&state_gloas.builders, current_epoch, spec);
 
         let builder = types::Builder {

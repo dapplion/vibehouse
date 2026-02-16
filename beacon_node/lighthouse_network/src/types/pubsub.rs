@@ -402,14 +402,17 @@ impl<E: EthSpec> PubsubMessage<E> {
                         Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
                     }
                     GossipKind::ExecutionPayload => {
-                        let execution_payload = SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
+                        let execution_payload =
+                            SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
+                                .map_err(|e| format!("{:?}", e))?;
                         Ok(PubsubMessage::ExecutionPayload(Box::new(execution_payload)))
                     }
                     GossipKind::PayloadAttestation => {
                         let payload_attestation = PayloadAttestation::from_ssz_bytes(data)
                             .map_err(|e| format!("{:?}", e))?;
-                        Ok(PubsubMessage::PayloadAttestation(Box::new(payload_attestation)))
+                        Ok(PubsubMessage::PayloadAttestation(Box::new(
+                            payload_attestation,
+                        )))
                     }
                 }
             }

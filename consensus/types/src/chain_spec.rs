@@ -319,7 +319,6 @@ pub struct ChainSpec {
      * Capella params
      */
     pub(crate) domain_bls_to_execution_change: u32,
-
 }
 
 impl ChainSpec {
