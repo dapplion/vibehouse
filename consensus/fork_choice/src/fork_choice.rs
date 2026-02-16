@@ -1416,6 +1416,45 @@ where
         Ok(())
     }
 
+    /// Gloas ePBS: Process an execution payload envelope reveal.
+    ///
+    /// When a builder reveals their execution payload, mark the corresponding block's payload
+    /// as revealed in fork choice. This makes the block viable for head selection.
+    ///
+    /// ## Spec Reference
+    ///
+    /// This is called after gossip verification of the `SignedExecutionPayloadEnvelope`.
+    /// The fork choice tree uses `payload_revealed` to determine block viability.
+    pub fn on_execution_payload(
+        &mut self,
+        beacon_block_root: Hash256,
+    ) -> Result<(), Error<T::Error>> {
+        let block_index = self
+            .proto_array
+            .core_proto_array()
+            .indices
+            .get(&beacon_block_root)
+            .copied()
+            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
+
+        let nodes = &mut self
+            .proto_array
+            .core_proto_array_mut()
+            .nodes;
+
+        if let Some(node) = nodes.get_mut(block_index) {
+            node.payload_revealed = true;
+
+            debug!(
+                ?beacon_block_root,
+                slot = %node.slot,
+                "Marked payload as revealed via execution payload envelope"
+            );
+        }
+
+        Ok(())
+    }
+
     /// Call `on_tick` for all slots between `fc_store.get_current_slot()` and the provided
     /// `current_slot`. Returns the value of `self.fc_store.get_current_slot`.
     pub fn update_time(&mut self, current_slot: Slot) -> Result<Slot, Error<T::Error>> {

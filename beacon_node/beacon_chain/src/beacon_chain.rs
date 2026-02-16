@@ -2270,6 +2270,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
+    /// Applies a verified payload envelope to fork choice (gloas ePBS).
+    ///
+    /// Marks the block's payload as revealed, making it viable for head selection.
+    pub fn apply_payload_envelope_to_fork_choice(
+        &self,
+        verified_envelope: &crate::gloas_verification::VerifiedPayloadEnvelope<T>,
+    ) -> Result<(), Error> {
+        let beacon_block_root = verified_envelope.beacon_block_root();
+
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_execution_payload(beacon_block_root)
+            .map_err(Into::into)
+    }
+
     /// Applies a verified payload attestation to fork choice (gloas ePBS).
     pub fn apply_payload_attestation_to_fork_choice(
         &self,

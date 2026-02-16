@@ -21,14 +21,16 @@ use safe_arith::ArithError;
 use slot_clock::SlotClock;
 use state_processing;
 use state_processing::signature_sets::{
-    execution_payload_bid_signature_set, payload_attestation_signature_set,
+    execution_payload_bid_signature_set, execution_payload_envelope_signature_set,
+    payload_attestation_signature_set,
 };
 use std::borrow::Cow;
+use std::sync::Arc;
 use strum::AsRefStr;
 use tree_hash::TreeHash;
 use types::{
-    BeaconStateError, BuilderIndex, Hash256, PayloadAttestation,
-    SignedExecutionPayloadBid, Slot,
+    BeaconStateError, BuilderIndex, EthSpec, ExecutionBlockHash, Hash256, PayloadAttestation,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, Slot,
 };
 
 /// Returned when an execution payload bid was not successfully verified.
@@ -228,6 +230,102 @@ impl<T: BeaconChainTypes> VerifiedPayloadAttestation<T> {
     /// Consume self and return the underlying attestation.
     pub fn into_inner(self) -> PayloadAttestation<T::EthSpec> {
         self.attestation
+    }
+}
+
+/// Returned when a payload envelope was not successfully verified.
+#[derive(Debug, AsRefStr)]
+pub enum PayloadEnvelopeError {
+    /// The beacon block root is not known in fork choice.
+    ///
+    /// ## Peer scoring
+    /// May not have received the block yet, ignore.
+    BlockRootUnknown { block_root: Hash256 },
+    /// The envelope's slot doesn't match the block's slot.
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    SlotMismatch { block_slot: Slot, envelope_slot: Slot },
+    /// The envelope's builder_index doesn't match the committed bid.
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    BuilderIndexMismatch { committed_bid: u64, envelope: u64 },
+    /// The payload block_hash doesn't match the committed bid's block_hash.
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    BlockHashMismatch {
+        committed_bid: ExecutionBlockHash,
+        envelope: ExecutionBlockHash,
+    },
+    /// The builder signature is invalid.
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    InvalidSignature,
+    /// The builder index is unknown (not in builder registry).
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    UnknownBuilder { builder_index: u64 },
+    /// Could not retrieve the beacon block from the database.
+    ///
+    /// ## Peer scoring
+    /// Internal error, don't penalize.
+    MissingBeaconBlock { block_root: Hash256 },
+    /// The beacon block doesn't have a signed_execution_payload_bid (not a gloas block).
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    NotGloasBlock { block_root: Hash256 },
+    /// The envelope slot is prior to the latest finalized slot.
+    ///
+    /// ## Peer scoring
+    /// Stale message, ignore.
+    PriorToFinalization {
+        envelope_slot: Slot,
+        finalized_slot: Slot,
+    },
+    /// Beacon chain error occurred during validation.
+    BeaconChainError(BeaconChainError),
+    /// State error occurred during validation.
+    BeaconStateError(BeaconStateError),
+}
+
+impl From<BeaconChainError> for PayloadEnvelopeError {
+    fn from(e: BeaconChainError) -> Self {
+        PayloadEnvelopeError::BeaconChainError(e)
+    }
+}
+
+impl From<BeaconStateError> for PayloadEnvelopeError {
+    fn from(e: BeaconStateError) -> Self {
+        PayloadEnvelopeError::BeaconStateError(e)
+    }
+}
+
+/// A `SignedExecutionPayloadEnvelope` that has been validated for gossip.
+#[derive(Debug, Clone)]
+pub struct VerifiedPayloadEnvelope<T: BeaconChainTypes> {
+    envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    beacon_block_root: Hash256,
+}
+
+impl<T: BeaconChainTypes> VerifiedPayloadEnvelope<T> {
+    /// Returns a reference to the underlying envelope.
+    pub fn envelope(&self) -> &SignedExecutionPayloadEnvelope<T::EthSpec> {
+        &self.envelope
+    }
+
+    /// Returns the beacon block root this envelope is for.
+    pub fn beacon_block_root(&self) -> Hash256 {
+        self.beacon_block_root
+    }
+
+    /// Consume self and return the underlying envelope.
+    pub fn into_inner(self) -> Arc<SignedExecutionPayloadEnvelope<T::EthSpec>> {
+        self.envelope
     }
 }
 
@@ -489,6 +587,117 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(VerifiedPayloadAttestation {
             attestation,
             indexed_attestation_indices,
+        })
+    }
+
+    /// Verify a payload envelope received via gossip.
+    ///
+    /// This performs the following checks:
+    /// 1. Block root is known in fork choice
+    /// 2. Slot is not prior to finalization
+    /// 3. Slot matches the beacon block
+    /// 4. Builder index matches the committed bid
+    /// 5. Payload block_hash matches the committed bid's block_hash
+    /// 6. Signature is valid (using DOMAIN_BEACON_BUILDER)
+    pub fn verify_payload_envelope_for_gossip(
+        &self,
+        signed_envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) -> Result<VerifiedPayloadEnvelope<T>, PayloadEnvelopeError> {
+        let envelope = &signed_envelope.message;
+        let beacon_block_root = envelope.beacon_block_root;
+
+        // Check 1: Block root is known in fork choice
+        let fork_choice = self.canonical_head.fork_choice_read_lock();
+        let proto_block = fork_choice
+            .get_block(&beacon_block_root)
+            .ok_or(PayloadEnvelopeError::BlockRootUnknown {
+                block_root: beacon_block_root,
+            })?;
+        drop(fork_choice);
+
+        // Check 2: Not prior to finalization
+        let finalized_slot = self
+            .canonical_head
+            .cached_head()
+            .finalized_checkpoint()
+            .epoch
+            .start_slot(T::EthSpec::slots_per_epoch());
+        if envelope.slot < finalized_slot {
+            return Err(PayloadEnvelopeError::PriorToFinalization {
+                envelope_slot: envelope.slot,
+                finalized_slot,
+            });
+        }
+
+        // Check 3: Slot matches the block
+        if envelope.slot != proto_block.slot {
+            return Err(PayloadEnvelopeError::SlotMismatch {
+                block_slot: proto_block.slot,
+                envelope_slot: envelope.slot,
+            });
+        }
+
+        // Get the blinded block to access the committed bid
+        // (bid is a consensus field, available in both full and blinded blocks)
+        let block = self
+            .store
+            .get_blinded_block(&beacon_block_root)
+            .map_err(|e| PayloadEnvelopeError::BeaconChainError(e.into()))?
+            .ok_or(PayloadEnvelopeError::MissingBeaconBlock {
+                block_root: beacon_block_root,
+            })?;
+
+        let execution_bid = block
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .map_err(|_| PayloadEnvelopeError::NotGloasBlock {
+                block_root: beacon_block_root,
+            })?;
+
+        // Check 4: Builder index matches the committed bid
+        if envelope.builder_index != execution_bid.message.builder_index {
+            return Err(PayloadEnvelopeError::BuilderIndexMismatch {
+                committed_bid: execution_bid.message.builder_index,
+                envelope: envelope.builder_index,
+            });
+        }
+
+        // Check 5: Payload block_hash matches the committed bid's block_hash
+        if envelope.payload.block_hash != execution_bid.message.block_hash {
+            return Err(PayloadEnvelopeError::BlockHashMismatch {
+                committed_bid: execution_bid.message.block_hash,
+                envelope: envelope.payload.block_hash,
+            });
+        }
+
+        // Check 6: Signature verification
+        let head = self.canonical_head.cached_head();
+        let state = &head.snapshot.beacon_state;
+
+        let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
+            state
+                .builders()
+                .ok()?
+                .get(builder_idx as usize)
+                .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+        };
+
+        let signature_set = execution_payload_envelope_signature_set(
+            state,
+            get_builder_pubkey,
+            &signed_envelope,
+            &self.spec,
+        )
+        .map_err(|_| PayloadEnvelopeError::InvalidSignature)?;
+
+        if !signature_set.verify() {
+            return Err(PayloadEnvelopeError::InvalidSignature);
+        }
+
+        Ok(VerifiedPayloadEnvelope {
+            envelope: signed_envelope,
+            beacon_block_root,
         })
     }
 }

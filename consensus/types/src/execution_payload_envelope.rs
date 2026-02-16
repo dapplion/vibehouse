@@ -1,5 +1,5 @@
 use crate::{
-    EthSpec, ExecutionPayloadGloas, ExecutionRequests, ForkName, Hash256, Slot,
+    EthSpec, ExecutionPayloadGloas, ExecutionRequests, ForkName, Hash256, SignedRoot, Slot,
     test_utils::TestRandom,
 };
 use context_deserialize::context_deserialize;
@@ -41,6 +41,8 @@ pub struct ExecutionPayloadEnvelope<E: EthSpec> {
     /// Beacon state root after processing this payload
     pub state_root: Hash256,
 }
+
+impl<E: EthSpec> SignedRoot for ExecutionPayloadEnvelope<E> {}
 
 impl<E: EthSpec> ExecutionPayloadEnvelope<E> {
     /// Create an empty execution payload envelope (used for defaults/testing).

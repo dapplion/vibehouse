@@ -333,8 +333,6 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Create a new `Work` event for a gloas execution payload reveal (ePBS).
-    ///
-    /// NOTE: reveal processing is not yet implemented. For now we drop during sync and ignore.
     pub fn send_gossip_execution_payload(
         self: &Arc<Self>,
         message_id: MessageId,
@@ -343,9 +341,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = move || {
-            // TODO(gloas): implement execution payload reveal validation + import.
-            processor.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
-            drop(payload);
+            processor.process_gossip_execution_payload(message_id, peer_id, *payload);
         };
 
         self.try_send(BeaconWorkEvent {

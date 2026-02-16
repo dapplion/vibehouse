@@ -738,3 +738,39 @@ where
         message,
     ))
 }
+
+/// A signature set that is valid if an execution payload envelope was signed by the builder.
+///
+/// This checks the `SignedExecutionPayloadEnvelope` signature against the builder's public key
+/// using the `DOMAIN_BEACON_BUILDER` domain.
+pub fn execution_payload_envelope_signature_set<'a, E, F>(
+    state: &'a BeaconState<E>,
+    get_builder_pubkey: F,
+    signed_envelope: &'a types::SignedExecutionPayloadEnvelope<E>,
+    spec: &'a ChainSpec,
+) -> Result<SignatureSet<'a>>
+where
+    E: EthSpec,
+    F: Fn(u64) -> Option<Cow<'a, PublicKey>>,
+{
+    let builder_index = signed_envelope.message.builder_index;
+
+    let builder_pubkey = get_builder_pubkey(builder_index)
+        .ok_or(Error::ValidatorUnknown(builder_index))?;
+
+    let epoch = signed_envelope.message.slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let message = signed_envelope.message.signing_root(domain);
+
+    Ok(SignatureSet::single_pubkey(
+        &signed_envelope.signature,
+        builder_pubkey,
+        message,
+    ))
+}

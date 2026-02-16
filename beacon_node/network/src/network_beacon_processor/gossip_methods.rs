@@ -3299,6 +3299,109 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         }
     }
 
+    /// Process a gossip execution payload envelope from a builder (gloas ePBS).
+    pub fn process_gossip_execution_payload(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        signed_envelope: types::SignedExecutionPayloadEnvelope<T::EthSpec>,
+    ) {
+        use beacon_chain::gloas_verification::PayloadEnvelopeError;
+
+        let beacon_block_root = signed_envelope.message.beacon_block_root;
+        let builder_index = signed_envelope.message.builder_index;
+        let envelope = std::sync::Arc::new(signed_envelope);
+
+        let verified_envelope = match self.chain.verify_payload_envelope_for_gossip(envelope) {
+            Ok(verified) => verified,
+            Err(PayloadEnvelopeError::BlockRootUnknown { .. }) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    peer = %peer_id,
+                    "Ignoring payload envelope for unknown block root"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            Err(PayloadEnvelopeError::PriorToFinalization { .. }) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    peer = %peer_id,
+                    "Ignoring payload envelope prior to finalization"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            Err(PayloadEnvelopeError::InvalidSignature) => {
+                warn!(
+                    ?beacon_block_root,
+                    builder_index,
+                    %peer_id,
+                    "Rejecting payload envelope with invalid signature"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "payload_envelope_bad_signature",
+                );
+                return;
+            }
+            Err(
+                e @ PayloadEnvelopeError::SlotMismatch { .. }
+                | e @ PayloadEnvelopeError::BuilderIndexMismatch { .. }
+                | e @ PayloadEnvelopeError::BlockHashMismatch { .. }
+                | e @ PayloadEnvelopeError::NotGloasBlock { .. },
+            ) => {
+                warn!(
+                    ?beacon_block_root,
+                    builder_index,
+                    %peer_id,
+                    error = ?e,
+                    "Rejecting invalid payload envelope"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "invalid_gossip_payload_envelope",
+                );
+                return;
+            }
+            Err(e) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    %peer_id,
+                    error = ?e,
+                    "Dropping invalid payload envelope"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+        };
+
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+        // Import to fork choice — mark payload as revealed
+        if let Err(e) = self.chain.apply_payload_envelope_to_fork_choice(&verified_envelope) {
+            warn!(
+                ?beacon_block_root,
+                builder_index,
+                error = ?e,
+                "Failed to import payload envelope to fork choice"
+            );
+        } else {
+            debug!(
+                ?beacon_block_root,
+                builder_index,
+                "Successfully imported execution payload envelope"
+            );
+        }
+    }
+
     /// Process a gossip payload attestation from PTC members (gloas ePBS).
     pub fn process_gossip_payload_attestation(
         self: &Arc<Self>,
