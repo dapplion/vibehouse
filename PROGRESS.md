@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-02-15 - Phase 5: block verification pipeline for gloas
+
+### changes
+
+started Phase 5 (beacon chain integration). first step: allow gloas blocks through the block import pipeline.
+
+1. **bid KZG commitment check** — gossip verification now checks `signed_execution_payload_bid.blob_kzg_commitments` for gloas blocks instead of `block.body.blob_kzg_commitments`
+2. **bid parent root validation** — verifies `bid.parent_block_root == block.parent_root()`
+3. **gloas blocks always available** — gloas blocks are marked as `MaybeAvailableBlock::Available` with `NoData` since execution payload arrives separately via envelope
+4. **execution payload bypass** — `PayloadNotifier` returns `Irrelevant` for gloas; `validate_execution_payload_for_gossip` early-returns
+5. **DA cache skip** — gloas blocks don't enter `put_pre_execution_block` DA cache
+6. **peer penalization** — added `BidParentRootMismatch` error variant with `Reject` + `LowToleranceError`
+
+### files modified
+
+- `beacon_node/beacon_chain/src/block_verification.rs` — bid KZG check, parent root validation, availability handling
+- `beacon_node/beacon_chain/src/execution_payload.rs` — gloas early returns
+- `beacon_node/beacon_chain/src/beacon_chain.rs` — skip DA cache
+- `beacon_node/beacon_chain/src/data_availability_checker.rs` — added `AvailableBlock::new_no_data()` constructor
+- `beacon_node/network/src/network_beacon_processor/gossip_methods.rs` — handle new error variant
+
+### testing
+
+- 76/77 ef_tests pass (no regressions)
+- full build succeeds
+
+### commit
+
+- `18fc434ac` - phase 5: gloas block verification pipeline
+
+### next
+
+- payload envelope verification/import (how `SignedExecutionPayloadEnvelope` from builders is processed)
+- block production for gloas (replacing `GloasNotImplemented`)
+
+---
+
 ## 2026-02-15 - EF tests: 76/77 passing, all gloas tests pass
 
 ### test results
