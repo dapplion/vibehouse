@@ -3400,24 +3400,28 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         // consistency, processes execution requests, builder payment, sets availability).
         // This must happen BEFORE recompute_head so the EL knows the payload before
         // receiving forkchoice_updated with this block as head.
-        if let Err(e) = self.chain.process_payload_envelope(&verified_envelope).await {
-            warn!(
-                ?beacon_block_root,
-                builder_index,
-                error = ?e,
-                "Failed to process payload envelope state transition"
-            );
-        } else {
-            debug!(
-                ?beacon_block_root,
-                builder_index,
-                "Successfully processed execution payload envelope"
-            );
+        match self.chain.process_payload_envelope(&verified_envelope).await {
+            Ok(()) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    "Successfully processed execution payload envelope"
+                );
+                // Payload revealed + EL notified — recompute head so fork choice can
+                // select this block and send forkchoice_updated to the EL with correct
+                // head_hash. Only recompute after successful processing to avoid
+                // promoting a block whose payload the EL rejected.
+                self.chain.recompute_head_at_current_slot().await;
+            }
+            Err(e) => {
+                warn!(
+                    ?beacon_block_root,
+                    builder_index,
+                    error = ?e,
+                    "Failed to process payload envelope, skipping head recompute"
+                );
+            }
         }
-
-        // Payload revealed + EL notified — recompute head so fork choice can select
-        // this block and send forkchoice_updated to the EL with correct head_hash
-        self.chain.recompute_head_at_current_slot().await;
     }
 
     /// Process a gossip payload attestation from PTC members (gloas ePBS).

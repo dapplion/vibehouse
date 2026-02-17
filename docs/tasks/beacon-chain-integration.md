@@ -49,6 +49,11 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — skip head recompute on gossip envelope processing failure
+- **Bug**: In `gossip_methods.rs`, if `process_payload_envelope()` failed for a peer's envelope (EL rejection via `Invalid`/`InvalidBlockHash`, or state transition error), head recompute still ran. This could cause the EL to receive `forkchoice_updated` referencing a payload it never validated (or rejected), leading to a `Syncing` response.
+- **Fix**: Changed `if let Err` pattern to `match` — head recompute only runs after successful envelope processing. Fork choice still marks `payload_revealed = true` (per spec: `on_execution_payload` called on receipt of valid gossip envelope), but the node won't promote the block to head until processing completes.
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+
 ### 2026-02-17 — skip envelope broadcast on local processing failure
 - **Bug**: In `publish_blocks.rs`, if `process_self_build_envelope()` failed (e.g., EL rejection, state transition error), the invalid envelope was still broadcast to peers via gossip. This would propagate known-invalid envelopes to the network.
 - **Fix**: Changed `if let Err` pattern to `match` — envelope is only broadcast after successful local processing. On failure, the error is logged and broadcast is skipped. Block import itself still succeeds (the block was already imported before envelope processing).
