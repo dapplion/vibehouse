@@ -88,7 +88,9 @@ impl<E: EthSpec> BlockComponent<E> {
         match self {
             BlockComponent::Block(block) => block.value.parent_root(),
             BlockComponent::Blob(blob) => blob.value.block_parent_root(),
-            BlockComponent::DataColumn(column) => column.value.block_parent_root(),
+            BlockComponent::DataColumn(column) => {
+                column.value.block_parent_root().unwrap_or_default()
+            }
         }
     }
     fn get_type(&self) -> &'static str {

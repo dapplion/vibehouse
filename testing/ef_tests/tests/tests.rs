@@ -708,9 +708,13 @@ mod ssz_static {
 
     #[test]
     fn data_column_sidecar() {
-        SszStaticHandler::<DataColumnSidecar<MinimalEthSpec>, MinimalEthSpec>::fulu_and_later()
+        SszStaticHandler::<DataColumnSidecarFulu<MinimalEthSpec>, MinimalEthSpec>::fulu_only()
             .run();
-        SszStaticHandler::<DataColumnSidecar<MainnetEthSpec>, MainnetEthSpec>::fulu_and_later()
+        SszStaticHandler::<DataColumnSidecarFulu<MainnetEthSpec>, MainnetEthSpec>::fulu_only()
+            .run();
+        SszStaticHandler::<DataColumnSidecarGloas<MinimalEthSpec>, MinimalEthSpec>::gloas_only()
+            .run();
+        SszStaticHandler::<DataColumnSidecarGloas<MainnetEthSpec>, MainnetEthSpec>::gloas_only()
             .run();
     }
 

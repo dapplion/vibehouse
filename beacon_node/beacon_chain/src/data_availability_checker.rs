@@ -187,7 +187,7 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
         self.availability_cache
             .peek_pending_components(block_root, |components| {
                 components.is_some_and(|components| {
-                    let cached_column_opt = components.get_cached_data_column(data_column.index);
+                    let cached_column_opt = components.get_cached_data_column(data_column.index());
                     cached_column_opt.is_some_and(|cached| *cached == *data_column)
                 })
             })

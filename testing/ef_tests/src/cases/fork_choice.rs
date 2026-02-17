@@ -28,7 +28,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use types::{
     Attestation, AttestationRef, AttesterSlashing, AttesterSlashingRef, BeaconBlock, BeaconState,
-    BlobSidecar, BlobsList, BlockImportSource, Checkpoint, DataColumnSidecarList,
+    BlobSidecar, BlobsList, BlockImportSource, Checkpoint, DataColumnSidecar, DataColumnSidecarList,
     DataColumnSubnetId, ExecutionBlockHash, Hash256, IndexedAttestation, KzgProof,
     ProposerPreparationData, SignedBeaconBlock, Slot, Uint256,
 };
@@ -252,7 +252,13 @@ impl<E: EthSpec> LoadCase for ForkChoiceTest<E> {
                             columns_vec
                                 .into_iter()
                                 .map(|column| {
-                                    ssz_decode_file(&path.join(format!("{column}.ssz_snappy")))
+                                    ssz_decode_file_with(
+                                        &path.join(format!("{column}.ssz_snappy")),
+                                        |bytes| {
+                                            DataColumnSidecar::any_from_ssz_bytes(bytes)
+                                                .map(Arc::new)
+                                        },
+                                    )
                                 })
                                 .collect::<Result<Vec<_>, _>>()
                         })
@@ -530,7 +536,7 @@ impl<E: EthSpec> Tester<E> {
             let gossip_verified_data_columns = columns
                 .into_iter()
                 .map(|column| {
-                    let subnet_id = DataColumnSubnetId::from_column_index(column.index, &self.spec);
+                    let subnet_id = DataColumnSubnetId::from_column_index(column.index(), &self.spec);
                     GossipVerifiedDataColumn::new(column.clone(), subnet_id, &self.harness.chain)
                         .unwrap_or_else(|_| {
                             data_column_success = false;

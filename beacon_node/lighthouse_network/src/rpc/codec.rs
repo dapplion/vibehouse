@@ -693,7 +693,7 @@ fn handle_rpc_response<E: EthSpec>(
             Some(fork_name) => {
                 if fork_name.fulu_enabled() {
                     Ok(Some(RpcSuccessResponse::DataColumnsByRoot(Arc::new(
-                        DataColumnSidecar::from_ssz_bytes(decoded_buffer)?,
+                        DataColumnSidecar::any_from_ssz_bytes(decoded_buffer)?,
                     ))))
                 } else {
                     Err(RPCError::ErrorResponse(
@@ -714,7 +714,7 @@ fn handle_rpc_response<E: EthSpec>(
             Some(fork_name) => {
                 if fork_name.fulu_enabled() {
                     Ok(Some(RpcSuccessResponse::DataColumnsByRange(Arc::new(
-                        DataColumnSidecar::from_ssz_bytes(decoded_buffer)?,
+                        DataColumnSidecar::any_from_ssz_bytes(decoded_buffer)?,
                     ))))
                 } else {
                     Err(RPCError::ErrorResponse(

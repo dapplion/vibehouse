@@ -871,7 +871,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             SyncMessage::UnknownParentDataColumn(peer_id, data_column) => {
                 let data_column_slot = data_column.slot();
                 let block_root = data_column.block_root();
-                let parent_root = data_column.block_parent_root();
+                let parent_root = data_column.block_parent_root().unwrap_or_default();
                 debug!(%block_root, %parent_root, "Received unknown parent data column message");
                 self.handle_unknown_parent(
                     peer_id,

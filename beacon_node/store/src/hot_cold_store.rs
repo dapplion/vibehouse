@@ -112,7 +112,7 @@ impl<E: EthSpec> BlockCache<E> {
     pub fn put_data_column(&mut self, block_root: Hash256, data_column: Arc<DataColumnSidecar<E>>) {
         self.data_column_cache
             .get_or_insert_mut(block_root, Default::default)
-            .insert(data_column.index, data_column);
+            .insert(data_column.index(), data_column);
     }
     pub fn put_data_column_custody_info(
         &mut self,
@@ -967,7 +967,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     ) {
         ops.push(KeyValueStoreOp::PutKeyValue(
             DBColumn::BeaconDataColumn,
-            get_data_column_key(block_root, &data_column.index),
+            get_data_column_key(block_root, &data_column.index()),
             data_column.as_ssz_bytes(),
         ));
     }
@@ -1000,7 +1000,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         for data_column in data_columns {
             self.blobs_db.put_bytes(
                 DBColumn::BeaconDataColumn,
-                &get_data_column_key(block_root, &data_column.index),
+                &get_data_column_key(block_root, &data_column.index()),
                 &data_column.as_ssz_bytes(),
             )?;
             self.block_cache
@@ -1019,7 +1019,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         for data_column in data_columns {
             ops.push(KeyValueStoreOp::PutKeyValue(
                 DBColumn::BeaconDataColumn,
-                get_data_column_key(block_root, &data_column.index),
+                get_data_column_key(block_root, &data_column.index()),
                 data_column.as_ssz_bytes(),
             ));
         }
@@ -1464,7 +1464,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 let reverse_op = match op {
                     StoreOp::PutBlobs(block_root, _) => StoreOp::DeleteBlobs(*block_root),
                     StoreOp::PutDataColumns(block_root, data_columns) => {
-                        let indices = data_columns.iter().map(|c| c.index).collect();
+                        let indices = data_columns.iter().map(|c| c.index()).collect();
                         StoreOp::DeleteDataColumns(*block_root, indices)
                     }
                     StoreOp::DeleteBlobs(_) => match blobs_to_delete.pop() {
@@ -2594,7 +2594,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             &get_data_column_key(block_root, column_index),
         )? {
             Some(ref data_column_bytes) => {
-                let data_column = Arc::new(DataColumnSidecar::from_ssz_bytes(data_column_bytes)?);
+                let data_column = Arc::new(DataColumnSidecar::any_from_ssz_bytes(data_column_bytes)?);
                 self.block_cache.as_ref().inspect(|cache| {
                     cache
                         .lock()

@@ -163,7 +163,8 @@ pub use crate::config_and_preset::{
 pub use crate::consolidation_request::ConsolidationRequest;
 pub use crate::contribution_and_proof::ContributionAndProof;
 pub use crate::data_column_sidecar::{
-    ColumnIndex, DataColumnSidecar, DataColumnSidecarList, DataColumnsByRootIdentifier,
+    Cell, ColumnIndex, DataColumn, DataColumnSidecar, DataColumnSidecarFulu, DataColumnSidecarGloas,
+    DataColumnSidecarList, DataColumnsByRootIdentifier,
 };
 pub use crate::data_column_subnet_id::DataColumnSubnetId;
 pub use crate::deposit::{DEPOSIT_TREE_DEPTH, Deposit};

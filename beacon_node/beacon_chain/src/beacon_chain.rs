@@ -1141,7 +1141,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .or_else(|| self.early_attester_cache.get_data_columns(block_root));
 
         if let Some(mut all_cached_columns) = all_cached_columns_opt {
-            all_cached_columns.retain(|col| indices.contains(&col.index));
+            all_cached_columns.retain(|col| indices.contains(&col.index()));
             Ok(all_cached_columns)
         } else {
             indices
@@ -3532,7 +3532,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .cached_data_column_indexes(block_root)
                 .unwrap_or_default();
             let new_data_columns =
-                data_columns_iter.filter(|b| !imported_data_columns.contains(&b.index));
+                data_columns_iter.filter(|b| !imported_data_columns.contains(&b.index()));
 
             for data_column in new_data_columns {
                 event_handler.register(EventKind::DataColumnSidecar(
@@ -3572,13 +3572,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Reject RPC columns referencing unknown parents. Otherwise we allow potentially invalid data
         // into the da_checker, where invalid = descendant of invalid blocks.
         // Note: custody_columns should have at least one item and all items have the same parent root.
-        if let Some(parent_root) = custody_columns.iter().map(|c| c.block_parent_root()).next()
-            && !self
+        if let Some(parent_root) = custody_columns
+            .iter()
+            .find_map(|c| c.block_parent_root())
+        {
+            if !self
                 .canonical_head
                 .fork_choice_read_lock()
                 .contains_block(&parent_root)
-        {
-            return Err(BlockError::ParentUnknown { parent_root });
+            {
+                return Err(BlockError::ParentUnknown { parent_root });
+            }
         }
 
         self.emit_sse_data_column_sidecar_events(
@@ -3901,7 +3905,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) -> Result<AvailabilityProcessingStatus, BlockError> {
         if let Some(slasher) = self.slasher.as_ref() {
             for data_colum in &data_columns {
-                slasher.accept_block_header(data_colum.signed_block_header());
+                if let Some(header) = data_colum.signed_block_header() {
+                    slasher.accept_block_header(header);
+                }
             }
         }
 
@@ -4028,7 +4034,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // from RPC.
         for header in custody_columns
             .into_iter()
-            .map(|c| c.signed_block_header.clone())
+            .filter_map(|c| c.signed_block_header().ok().cloned())
             .unique()
         {
             // Return an error if *any* header signature is invalid, we do not want to import this
@@ -7773,7 +7779,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // Supernodes need to persist all sampled custody columns
                 if columns_to_custody.len() != self.spec.number_of_custody_groups as usize {
                     data_columns
-                        .retain(|data_column| columns_to_custody.contains(&data_column.index));
+                        .retain(|data_column| columns_to_custody.contains(&data_column.index()));
                 }
                 debug!(
                     %block_root,

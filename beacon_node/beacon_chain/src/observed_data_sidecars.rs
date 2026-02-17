@@ -51,11 +51,11 @@ impl<E: EthSpec> ObservableDataSidecar for DataColumnSidecar<E> {
     }
 
     fn block_proposer_index(&self) -> u64 {
-        self.block_proposer_index()
+        self.block_proposer_index().unwrap_or_default()
     }
 
     fn index(&self) -> u64 {
-        self.index
+        self.index()
     }
 
     fn max_num_of_items(_spec: &ChainSpec, _slot: Slot) -> usize {

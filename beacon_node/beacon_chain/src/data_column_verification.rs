@@ -9,7 +9,7 @@ use fork_choice::ProtoBlock;
 use kzg::{Error as KzgError, Kzg};
 use proto_array::Block;
 use slot_clock::SlotClock;
-use ssz_derive::{Decode, Encode};
+use ssz_derive::Encode;
 use ssz_types::VariableList;
 use std::iter;
 use std::marker::PhantomData;
@@ -209,15 +209,19 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
         subnet_id: DataColumnSubnetId,
         chain: &BeaconChain<T>,
     ) -> Result<Self, GossipDataColumnError> {
-        let header = column_sidecar.signed_block_header.clone();
+        let header = column_sidecar.signed_block_header().ok().cloned();
         // We only process slashing info if the gossip verification failed
         // since we do not process the data column any further in that case.
         validate_data_column_sidecar_for_gossip::<T, O>(column_sidecar, subnet_id, chain).map_err(
             |e| {
-                process_block_slash_info::<_, GossipDataColumnError>(
-                    chain,
-                    BlockSlashInfo::from_early_error_data_column(header, e),
-                )
+                if let Some(header) = header {
+                    process_block_slash_info::<_, GossipDataColumnError>(
+                        chain,
+                        BlockSlashInfo::from_early_error_data_column(header, e),
+                    )
+                } else {
+                    e
+                }
             },
         )
     }
@@ -283,11 +287,11 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
     }
 
     pub fn index(&self) -> ColumnIndex {
-        self.data_column.data.index
+        self.data_column.data.index()
     }
 
-    pub fn signed_block_header(&self) -> SignedBeaconBlockHeader {
-        self.data_column.data.signed_block_header.clone()
+    pub fn signed_block_header(&self) -> Option<SignedBeaconBlockHeader> {
+        self.data_column.data.signed_block_header().ok().cloned()
     }
 
     pub fn into_inner(self) -> KzgVerifiedDataColumn<T::EthSpec> {
@@ -296,7 +300,7 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
 }
 
 /// Wrapper over a `DataColumnSidecar` for which we have completed kzg verification.
-#[derive(Debug, Derivative, Clone, Encode, Decode)]
+#[derive(Debug, Derivative, Clone, Encode)]
 #[derivative(PartialEq, Eq)]
 #[ssz(struct_behaviour = "transparent")]
 pub struct KzgVerifiedDataColumn<E: EthSpec> {
@@ -345,7 +349,7 @@ impl<E: EthSpec> KzgVerifiedDataColumn<E> {
     }
 
     pub fn index(&self) -> ColumnIndex {
-        self.data.index
+        self.data.index()
     }
 }
 
@@ -353,7 +357,7 @@ pub type CustodyDataColumnList<E> =
     VariableList<CustodyDataColumn<E>, <E as EthSpec>::NumberOfColumns>;
 
 /// Data column that we must custody
-#[derive(Debug, Derivative, Clone, Encode, Decode)]
+#[derive(Debug, Derivative, Clone, Encode)]
 #[derivative(PartialEq, Eq, Hash(bound = "E: EthSpec"))]
 #[ssz(struct_behaviour = "transparent")]
 pub struct CustodyDataColumn<E: EthSpec> {
@@ -378,12 +382,12 @@ impl<E: EthSpec> CustodyDataColumn<E> {
         self.data.clone()
     }
     pub fn index(&self) -> u64 {
-        self.data.index
+        self.data.index()
     }
 }
 
 /// Data column that we must custody and has completed kzg verification
-#[derive(Debug, Derivative, Clone, Encode, Decode)]
+#[derive(Debug, Derivative, Clone, Encode)]
 #[derivative(PartialEq, Eq)]
 #[ssz(struct_behaviour = "transparent")]
 pub struct KzgVerifiedCustodyDataColumn<E: EthSpec> {
@@ -443,7 +447,7 @@ impl<E: EthSpec> KzgVerifiedCustodyDataColumn<E> {
         self.data.clone()
     }
     pub fn index(&self) -> ColumnIndex {
-        self.data.index
+        self.data.index()
     }
 }
 
@@ -514,15 +518,13 @@ pub fn validate_data_column_sidecar_for_gossip<T: BeaconChainTypes, O: Observati
     let kzg_verified_data_column = verify_kzg_for_data_column(data_column.clone(), kzg)
         .map_err(|(_, e)| GossipDataColumnError::InvalidKzgProof(e))?;
 
-    chain
-        .observed_slashable
-        .write()
-        .observe_slashable(
-            column_slot,
-            data_column.block_proposer_index(),
-            data_column.block_root(),
-        )
-        .map_err(|e| GossipDataColumnError::BeaconChainError(Box::new(e.into())))?;
+    if let Some(proposer_index) = data_column.block_proposer_index() {
+        chain
+            .observed_slashable
+            .write()
+            .observe_slashable(column_slot, proposer_index, data_column.block_root())
+            .map_err(|e| GossipDataColumnError::BeaconChainError(Box::new(e.into())))?;
+    }
 
     if O::observe() {
         observe_gossip_data_column(&data_column, chain)?;
@@ -540,30 +542,35 @@ fn verify_data_column_sidecar<E: EthSpec>(
     data_column: &DataColumnSidecar<E>,
     spec: &ChainSpec,
 ) -> Result<(), GossipDataColumnError> {
-    if data_column.index >= E::number_of_columns() as u64 {
-        return Err(GossipDataColumnError::InvalidColumnIndex(data_column.index));
-    }
-    if data_column.kzg_commitments.is_empty() {
-        return Err(GossipDataColumnError::UnexpectedDataColumn);
+    if data_column.index() >= E::number_of_columns() as u64 {
+        return Err(GossipDataColumnError::InvalidColumnIndex(data_column.index()));
     }
 
-    let cells_len = data_column.column.len();
-    let commitments_len = data_column.kzg_commitments.len();
-    let proofs_len = data_column.kzg_proofs.len();
+    let cells_len = data_column.column().len();
+    let proofs_len = data_column.kzg_proofs().len();
     let max_blobs_per_block = spec.max_blobs_per_block(data_column.epoch()) as usize;
 
-    if commitments_len > max_blobs_per_block {
-        return Err(GossipDataColumnError::MaxBlobsPerBlockExceeded {
-            max_blobs_per_block,
-            commitments_len,
-        });
-    }
+    // kzg_commitments is only present in Fulu sidecars
+    if let Ok(kzg_commitments) = data_column.kzg_commitments() {
+        if kzg_commitments.is_empty() {
+            return Err(GossipDataColumnError::UnexpectedDataColumn);
+        }
 
-    if cells_len != commitments_len {
-        return Err(GossipDataColumnError::InconsistentCommitmentsLength {
-            cells_len,
-            commitments_len,
-        });
+        let commitments_len = kzg_commitments.len();
+
+        if commitments_len > max_blobs_per_block {
+            return Err(GossipDataColumnError::MaxBlobsPerBlockExceeded {
+                max_blobs_per_block,
+                commitments_len,
+            });
+        }
+
+        if cells_len != commitments_len {
+            return Err(GossipDataColumnError::InconsistentCommitmentsLength {
+                cells_len,
+                commitments_len,
+            });
+        }
     }
 
     if cells_len != proofs_len {
@@ -589,9 +596,9 @@ fn verify_is_unknown_sidecar<T: BeaconChainTypes>(
         .map_err(|e| GossipDataColumnError::BeaconChainError(Box::new(e.into())))?
     {
         return Err(GossipDataColumnError::PriorKnown {
-            proposer: column_sidecar.block_proposer_index(),
+            proposer: column_sidecar.block_proposer_index().unwrap_or_default(),
             slot: column_sidecar.slot(),
-            index: column_sidecar.index,
+            index: column_sidecar.index(),
         });
     }
     Ok(())
@@ -629,7 +636,7 @@ fn verify_parent_block_and_finalized_descendant<T: BeaconChainTypes>(
 
     // We have already verified that the column is past finalization, so we can
     // just check fork choice for the block's parent.
-    let block_parent_root = data_column.block_parent_root();
+    let block_parent_root = data_column.block_parent_root().unwrap_or_default();
     let Some(parent_block) = fork_choice.get_block(&block_parent_root) else {
         return Err(GossipDataColumnError::ParentUnknown {
             parent_root: block_parent_root,
@@ -653,9 +660,9 @@ fn verify_proposer_and_signature<T: BeaconChainTypes>(
     let column_slot = data_column.slot();
     let slots_per_epoch = T::EthSpec::slots_per_epoch();
     let column_epoch = column_slot.epoch(slots_per_epoch);
-    let column_index = data_column.index;
+    let column_index = data_column.index();
     let block_root = data_column.block_root();
-    let block_parent_root = data_column.block_parent_root();
+    let block_parent_root = data_column.block_parent_root().unwrap_or_default();
 
     let proposer_shuffling_root =
         parent_block.proposer_shuffling_root_for_child_block(column_epoch, &chain.spec);
@@ -694,7 +701,11 @@ fn verify_proposer_and_signature<T: BeaconChainTypes>(
         let pubkey = pubkey_cache
             .get(proposer_index)
             .ok_or_else(|| GossipDataColumnError::UnknownValidator(proposer_index as u64))?;
-        let signed_block_header = &data_column.signed_block_header;
+        let signed_block_header = data_column
+            .signed_block_header()
+            .map_err(|e| GossipDataColumnError::BeaconChainError(
+                Box::new(BeaconChainError::BeaconStateError(e)),
+            ))?;
         signed_block_header.verify_signature::<T::EthSpec>(
             pubkey,
             &fork,
@@ -707,7 +718,7 @@ fn verify_proposer_and_signature<T: BeaconChainTypes>(
         return Err(GossipDataColumnError::ProposalSignatureInvalid);
     }
 
-    let column_proposer_index = data_column.block_proposer_index();
+    let column_proposer_index = data_column.block_proposer_index().unwrap_or_default();
     if proposer_index != column_proposer_index as usize {
         return Err(GossipDataColumnError::ProposerIndexMismatch {
             sidecar: column_proposer_index as usize,
@@ -723,7 +734,7 @@ fn verify_index_matches_subnet<E: EthSpec>(
     subnet: DataColumnSubnetId,
     spec: &ChainSpec,
 ) -> Result<(), GossipDataColumnError> {
-    let expected_subnet = DataColumnSubnetId::from_column_index(data_column.index, spec);
+    let expected_subnet = DataColumnSubnetId::from_column_index(data_column.index(), spec);
     if expected_subnet != subnet {
         return Err(GossipDataColumnError::InvalidSubnetId {
             received: subnet.into(),
@@ -790,9 +801,9 @@ pub fn observe_gossip_data_column<T: BeaconChainTypes>(
         .map_err(|e| GossipDataColumnError::BeaconChainError(Box::new(e.into())))?
     {
         return Err(GossipDataColumnError::PriorKnown {
-            proposer: data_column_sidecar.block_proposer_index(),
+            proposer: data_column_sidecar.block_proposer_index().unwrap_or_default(),
             slot: data_column_sidecar.slot(),
-            index: data_column_sidecar.index,
+            index: data_column_sidecar.index(),
         });
     }
     Ok(())
@@ -810,7 +821,10 @@ mod test {
     use eth2::types::BlobsBundle;
     use execution_layer::test_utils::generate_blobs;
     use std::sync::Arc;
-    use types::{DataColumnSidecar, DataColumnSubnetId, EthSpec, ForkName, MainnetEthSpec};
+    use types::{
+        DataColumnSidecar, DataColumnSidecarFulu, DataColumnSubnetId, EthSpec, ForkName,
+        MainnetEthSpec,
+    };
 
     type E = MainnetEthSpec;
 
@@ -827,7 +841,7 @@ mod test {
         harness.advance_slot();
 
         let verify_fn = |column_sidecar: DataColumnSidecar<E>| {
-            let col_index = column_sidecar.index;
+            let col_index = column_sidecar.index();
             validate_data_column_sidecar_for_gossip::<_, Observe>(
                 column_sidecar.into(),
                 DataColumnSubnetId::from_column_index(col_index, &harness.spec),
@@ -889,7 +903,7 @@ mod test {
             .await;
 
         let index = 0;
-        let column_sidecar = DataColumnSidecar::<E> {
+        let column_sidecar = DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index,
             column: vec![].into(),
             kzg_commitments: vec![].into(),
@@ -900,7 +914,7 @@ mod test {
                 .body()
                 .kzg_commitments_merkle_proof()
                 .unwrap(),
-        };
+        });
 
         let result = verify_fn(column_sidecar);
         assert!(matches!(

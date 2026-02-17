@@ -2448,7 +2448,7 @@ where
                 // currently have any knowledge of the columns being custodied.
                 let columns = generate_data_column_sidecars_from_block(&block, &self.spec)
                     .into_iter()
-                    .filter(|d| sampling_columns.contains(&d.index))
+                    .filter(|d| sampling_columns.contains(&d.index()))
                     .map(CustodyDataColumn::from_asserted_custody)
                     .collect::<Vec<_>>();
                 RpcBlock::new_with_custody_columns(Some(block_root), block, columns)?
@@ -3188,10 +3188,10 @@ where
 
             let verified_columns = generate_data_column_sidecars_from_block(block, &self.spec)
                 .into_iter()
-                .filter(|c| custody_columns.contains(&c.index))
+                .filter(|c| custody_columns.contains(&c.index()))
                 .map(|sidecar| {
                     let subnet_id =
-                        DataColumnSubnetId::from_column_index(sidecar.index, &self.spec);
+                        DataColumnSubnetId::from_column_index(sidecar.index(), &self.spec);
                     self.chain
                         .verify_data_column_sidecar_for_gossip(sidecar, subnet_id)
                 })
@@ -3374,16 +3374,18 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
     let signed_block_header = block.signed_block_header();
 
     // load the precomputed column sidecar to avoid computing them for every block in the tests.
-    let template_data_columns = RuntimeVariableList::<DataColumnSidecar<E>>::from_ssz_bytes(
-        TEST_DATA_COLUMN_SIDECARS_SSZ,
-        E::number_of_columns(),
-    )
-    .unwrap();
+    // The precomputed SSZ data is from the Fulu era, so decode as DataColumnSidecarFulu.
+    let template_data_columns =
+        RuntimeVariableList::<DataColumnSidecarFulu<E>>::from_ssz_bytes(
+            TEST_DATA_COLUMN_SIDECARS_SSZ,
+            E::number_of_columns(),
+        )
+        .unwrap();
 
-    let (cells, proofs) = template_data_columns
+    let (cells, proofs): (Vec<_>, Vec<_>) = template_data_columns
         .into_iter()
         .map(|sidecar| {
-            let DataColumnSidecar {
+            let DataColumnSidecarFulu {
                 column, kzg_proofs, ..
             } = sidecar;
             // There's only one cell per column for a single blob
@@ -3392,7 +3394,7 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
             let kzg_proof = kzg_proofs.into_iter().next().unwrap();
             (kzg_cell, kzg_proof)
         })
-        .collect::<(Vec<_>, Vec<_>)>();
+        .collect();
 
     // Repeat the cells and proofs for every blob
     let blob_cells_and_proofs_vec =

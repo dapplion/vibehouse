@@ -345,7 +345,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
 
         for column in data_columns {
             let block_root = column.block_root();
-            let index = column.index;
+            let index = column.index();
             if data_columns_by_block
                 .entry(block_root)
                 .or_default()

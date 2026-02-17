@@ -370,7 +370,7 @@ async fn compute_custody_columns_to_import<T: BeaconChainTypes>(
                     .map(|data_columns| {
                         data_columns
                             .into_iter()
-                            .filter(|col| custody_columns_indices.contains(&col.index))
+                            .filter(|col| custody_columns_indices.contains(&col.index()))
                             .map(|col| {
                                 KzgVerifiedCustodyDataColumn::from_asserted_custody(
                                     KzgVerifiedDataColumn::from_execution_verified(col),
