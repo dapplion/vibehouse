@@ -280,6 +280,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 is_locally_built_block,
                 seen_timestamp,
                 &chain,
+                network_tx,
             )
             .await
         }
@@ -292,6 +293,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                     is_locally_built_block,
                     seen_timestamp,
                     &chain,
+                    network_tx,
                 )
                 .await
             } else {
@@ -330,6 +332,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 is_locally_built_block,
                 seen_timestamp,
                 &chain,
+                network_tx,
             )
             .await
         }
@@ -537,6 +540,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
     is_locally_built_block: bool,
     seen_timestamp: Duration,
     chain: &Arc<BeaconChain<T>>,
+    network_tx: &UnboundedSender<NetworkMessage<T::EthSpec>>,
 ) -> Result<Response, Rejection> {
     match result {
         // The `DuplicateFullyImported` case here captures the case where the block finishes
@@ -562,6 +566,21 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
                 root,
                 &chain.slot_clock,
             );
+
+            // Gloas ePBS: broadcast the pending self-build envelope alongside the block.
+            if is_locally_built_block {
+                if let Some(envelope) = chain.pending_self_build_envelope.lock().take() {
+                    info!(
+                        slot = %block.slot(),
+                        block_hash = ?envelope.message.payload.block_hash,
+                        "Broadcasting self-build execution payload envelope"
+                    );
+                    let _ = crate::publish_pubsub_message(
+                        network_tx,
+                        PubsubMessage::ExecutionPayload(Box::new(envelope)),
+                    );
+                }
+            }
 
             // Update the head since it's likely this block will become the new
             // head.

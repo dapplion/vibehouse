@@ -20,6 +20,7 @@ pub fn build_block_contents<E: EthSpec>(
                     blob_items,
                     execution_payload_value: _,
                     consensus_block_value: _,
+                    execution_payload_envelope: _,
                 } = block;
 
                 let Some((kzg_proofs, blobs)) = blob_items else {

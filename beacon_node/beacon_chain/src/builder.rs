@@ -1057,6 +1057,7 @@ where
             ),
             kzg: self.kzg.clone(),
             rng: Arc::new(Mutex::new(rng)),
+            pending_self_build_envelope: Mutex::new(None),
         };
 
         let head = beacon_chain.head_snapshot();

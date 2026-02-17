@@ -486,6 +486,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub kzg: Arc<Kzg>,
     /// RNG instance used by the chain. Currently used for shuffling column sidecars in block publishing.
     pub rng: Arc<Mutex<Box<dyn RngCore + Send>>>,
+    /// Gloas ePBS: pending self-build envelope to broadcast alongside the next block.
+    /// Set during block production, consumed during block publishing.
+    pub pending_self_build_envelope:
+        Mutex<Option<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
 }
 
 pub enum BeaconBlockResponseWrapper<E: EthSpec> {
@@ -536,6 +540,10 @@ pub struct BeaconBlockResponse<E: EthSpec, Payload: AbstractExecPayload<E>> {
     pub execution_payload_value: Uint256,
     /// The consensus layer reward to the proposer
     pub consensus_block_value: u64,
+    /// Gloas ePBS: the execution payload envelope for self-build blocks.
+    /// Created during block production so the beacon node can broadcast it
+    /// alongside the block.
+    pub execution_payload_envelope: Option<SignedExecutionPayloadEnvelope<E>>,
 }
 
 impl FinalizationAndCanonicity {
@@ -2435,6 +2443,87 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         );
 
         Ok(())
+    }
+
+    /// Construct a `SignedExecutionPayloadEnvelope` for a self-built Gloas block.
+    ///
+    /// In ePBS, when a proposer self-builds (no external builder), they need to create
+    /// both the block (containing the bid) and the envelope (containing the actual payload).
+    /// This method computes the post-envelope state root by applying `process_execution_payload_envelope`
+    /// to a clone of the post-block state.
+    fn build_self_build_envelope<Payload: AbstractExecPayload<T::EthSpec>>(
+        &self,
+        block: &BeaconBlock<T::EthSpec, Payload>,
+        post_block_state: &BeaconState<T::EthSpec>,
+        gloas_payload: ExecutionPayloadGloas<T::EthSpec>,
+        execution_requests: ExecutionRequests<T::EthSpec>,
+    ) -> Option<SignedExecutionPayloadEnvelope<T::EthSpec>> {
+        let beacon_block_root = block.tree_hash_root();
+        let block_state_root = block.state_root();
+        let slot = block.slot();
+        let builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
+
+        // Create a temporary envelope with a placeholder state_root. We'll run
+        // process_execution_payload_envelope on a cloned state to discover the
+        // actual post-envelope state root.
+        let temp_envelope = SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload: gloas_payload.clone(),
+                execution_requests: execution_requests.clone(),
+                builder_index,
+                beacon_block_root,
+                slot,
+                state_root: Hash256::zero(),
+            },
+            signature: Signature::empty(),
+        };
+
+        let mut envelope_state = post_block_state.clone();
+        match state_processing::envelope_processing::process_execution_payload_envelope(
+            &mut envelope_state,
+            Some(block_state_root),
+            &temp_envelope,
+            state_processing::VerifySignatures::False,
+            &self.spec,
+        ) {
+            Ok(()) => {
+                // Placeholder state_root happened to match (extremely unlikely)
+                warn!("Self-build envelope state root unexpectedly matched zero placeholder");
+                None
+            }
+            Err(state_processing::envelope_processing::EnvelopeProcessingError::InvalidStateRoot {
+                state: actual_root,
+                ..
+            }) => {
+                // Expected path: all checks passed, state was mutated, but state_root
+                // didn't match our placeholder. Use the actual root.
+                let envelope = SignedExecutionPayloadEnvelope {
+                    message: ExecutionPayloadEnvelope {
+                        payload: gloas_payload,
+                        execution_requests,
+                        builder_index,
+                        beacon_block_root,
+                        slot,
+                        state_root: actual_root,
+                    },
+                    signature: Signature::empty(),
+                };
+                debug!(
+                    %beacon_block_root,
+                    envelope_state_root = %actual_root,
+                    "Constructed self-build execution payload envelope"
+                );
+                Some(envelope)
+            }
+            Err(e) => {
+                // Unexpected error — log but don't fail block production
+                warn!(
+                    error = ?e,
+                    "Failed to construct self-build envelope during block production"
+                );
+                None
+            }
+        }
     }
 
     /// Applies a verified payload attestation to fork choice (gloas ePBS).
@@ -5323,9 +5412,31 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if let Some(block_contents_type) = block_contents_type_option {
             match block_contents_type {
                 BlockProposalContentsType::Full(block_contents) => {
+                    // Gloas self-build: extract the execution payload and requests
+                    // from block_contents before it's consumed by complete_partial_beacon_block.
+                    // These are needed to construct the execution payload envelope.
+                    let gloas_envelope_data = if partial_beacon_block.state.fork_name_unchecked()
+                        == ForkName::Gloas
+                    {
+                        let payload = block_contents
+                            .payload()
+                            .execution_payload_gloas()
+                            .ok()
+                            .cloned();
+                        let requests = match &block_contents {
+                            BlockProposalContents::PayloadAndBlobs { requests, .. } => {
+                                requests.clone()
+                            }
+                            _ => None,
+                        };
+                        payload.zip(requests)
+                    } else {
+                        None
+                    };
+
                     let chain = self.clone();
                     let span = Span::current();
-                    let beacon_block_response = self
+                    let mut beacon_block_response = self
                         .task_executor
                         .spawn_blocking_handle(
                             move || {
@@ -5343,6 +5454,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         .ok_or(BlockProductionError::ShuttingDown)?
                         .await
                         .map_err(BlockProductionError::TokioJoin)??;
+
+                    // Gloas self-build: construct the execution payload envelope now that
+                    // the block is complete (with state_root and block root finalized).
+                    if let Some((gloas_payload, execution_requests)) = gloas_envelope_data {
+                        let envelope = self.build_self_build_envelope(
+                            &beacon_block_response.block,
+                            &beacon_block_response.state,
+                            gloas_payload,
+                            execution_requests,
+                        );
+                        // Store in cache for broadcasting during block publication.
+                        if let Some(ref env) = envelope {
+                            *self.pending_self_build_envelope.lock() = Some(env.clone());
+                        }
+                        beacon_block_response.execution_payload_envelope = envelope;
+                    }
 
                     Ok(BeaconBlockResponseWrapper::Full(beacon_block_response))
                 }
@@ -6089,6 +6216,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             blob_items,
             execution_payload_value,
             consensus_block_value,
+            execution_payload_envelope: None,
         })
     }
 
