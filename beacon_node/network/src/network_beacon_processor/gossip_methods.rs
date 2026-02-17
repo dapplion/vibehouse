@@ -5,6 +5,9 @@ use crate::{
     sync::SyncMessage,
 };
 use beacon_chain::blob_verification::{GossipBlobError, GossipVerifiedBlob};
+use beacon_chain::events::{
+    EventKind, SseExecutionBid, SseExecutionPayload, SsePayloadAttestation,
+};
 use beacon_chain::block_verification_types::AsBlock;
 use beacon_chain::data_column_verification::{GossipDataColumnError, GossipVerifiedDataColumn};
 use beacon_chain::store::Error;
@@ -3295,6 +3298,19 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         } else {
             debug!(builder_index, "Successfully imported execution bid");
             metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL);
+
+            if let Some(event_handler) = self.chain.event_handler.as_ref()
+                && event_handler.has_execution_bid_subscribers()
+            {
+                let bid = verified_bid.bid();
+                event_handler.register(EventKind::ExecutionBid(SseExecutionBid {
+                    slot: bid.message.slot,
+                    block: bid.message.parent_block_root,
+                    builder_index: bid.message.builder_index,
+                    block_hash: bid.message.block_hash.into_root(),
+                    value: bid.message.value,
+                }));
+            }
         }
     }
 
@@ -3406,6 +3422,19 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     builder_index,
                     "Successfully processed execution payload envelope"
                 );
+
+                if let Some(event_handler) = self.chain.event_handler.as_ref()
+                    && event_handler.has_execution_payload_subscribers()
+                {
+                    let envelope = verified_envelope.envelope();
+                    event_handler.register(EventKind::ExecutionPayload(SseExecutionPayload {
+                        slot: envelope.message.slot,
+                        beacon_block_root: envelope.message.beacon_block_root,
+                        builder_index: envelope.message.builder_index,
+                        block_hash: envelope.message.payload.block_hash.into_root(),
+                    }));
+                }
+
                 // Payload revealed + EL notified — recompute head so fork choice can
                 // select this block and send forkchoice_updated to the EL with correct
                 // head_hash. Only recompute after successful processing to avoid
@@ -3509,6 +3538,18 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         } else {
             debug!(%slot, ?beacon_block_root, "Successfully imported payload attestation");
             metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL);
+
+            if let Some(event_handler) = self.chain.event_handler.as_ref()
+                && event_handler.has_payload_attestation_subscribers()
+            {
+                let att = verified_attestation.attestation();
+                event_handler.register(EventKind::PayloadAttestation(SsePayloadAttestation {
+                    slot: att.data.slot,
+                    beacon_block_root: att.data.beacon_block_root,
+                    payload_present: att.data.payload_present,
+                    blob_data_available: att.data.blob_data_available,
+                }));
+            }
 
             // PTC vote may have triggered payload_revealed — recompute head
             self.chain.recompute_head_at_current_slot().await;

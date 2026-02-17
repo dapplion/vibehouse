@@ -1075,6 +1075,34 @@ impl SseDataColumnSidecar {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct SseExecutionBid {
+    pub slot: Slot,
+    pub block: Hash256,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub builder_index: u64,
+    pub block_hash: Hash256,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub value: u64,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct SseExecutionPayload {
+    pub slot: Slot,
+    pub beacon_block_root: Hash256,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub builder_index: u64,
+    pub block_hash: Hash256,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct SsePayloadAttestation {
+    pub slot: Slot,
+    pub beacon_block_root: Hash256,
+    pub payload_present: bool,
+    pub blob_data_available: bool,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseFinalizedCheckpoint {
     pub block: Hash256,
     pub state: Hash256,
@@ -1240,6 +1268,9 @@ pub enum EventKind<E: EthSpec> {
     AttesterSlashing(Box<AttesterSlashing<E>>),
     BlsToExecutionChange(Box<SignedBlsToExecutionChange>),
     BlockGossip(Box<BlockGossip>),
+    ExecutionBid(SseExecutionBid),
+    ExecutionPayload(SseExecutionPayload),
+    PayloadAttestation(SsePayloadAttestation),
 }
 
 impl<E: EthSpec> EventKind<E> {
@@ -1265,6 +1296,9 @@ impl<E: EthSpec> EventKind<E> {
             EventKind::AttesterSlashing(_) => "attester_slashing",
             EventKind::BlsToExecutionChange(_) => "bls_to_execution_change",
             EventKind::BlockGossip(_) => "block_gossip",
+            EventKind::ExecutionBid(_) => "execution_bid",
+            EventKind::ExecutionPayload(_) => "execution_payload",
+            EventKind::PayloadAttestation(_) => "payload_attestation",
         }
     }
 
@@ -1358,6 +1392,21 @@ impl<E: EthSpec> EventKind<E> {
             "block_gossip" => Ok(EventKind::BlockGossip(serde_json::from_str(data).map_err(
                 |e| ServerError::InvalidServerSentEvent(format!("Block Gossip: {:?}", e)),
             )?)),
+            "execution_bid" => Ok(EventKind::ExecutionBid(
+                serde_json::from_str(data).map_err(|e| {
+                    ServerError::InvalidServerSentEvent(format!("Execution Bid: {:?}", e))
+                })?,
+            )),
+            "execution_payload" => Ok(EventKind::ExecutionPayload(
+                serde_json::from_str(data).map_err(|e| {
+                    ServerError::InvalidServerSentEvent(format!("Execution Payload: {:?}", e))
+                })?,
+            )),
+            "payload_attestation" => Ok(EventKind::PayloadAttestation(
+                serde_json::from_str(data).map_err(|e| {
+                    ServerError::InvalidServerSentEvent(format!("Payload Attestation: {:?}", e))
+                })?,
+            )),
             _ => Err(ServerError::InvalidServerSentEvent(
                 "Could not parse event tag".to_string(),
             )),
@@ -1395,6 +1444,9 @@ pub enum EventTopic {
     ProposerSlashing,
     BlsToExecutionChange,
     BlockGossip,
+    ExecutionBid,
+    ExecutionPayload,
+    PayloadAttestation,
 }
 
 impl FromStr for EventTopic {
@@ -1422,6 +1474,9 @@ impl FromStr for EventTopic {
             "proposer_slashing" => Ok(EventTopic::ProposerSlashing),
             "bls_to_execution_change" => Ok(EventTopic::BlsToExecutionChange),
             "block_gossip" => Ok(EventTopic::BlockGossip),
+            "execution_bid" => Ok(EventTopic::ExecutionBid),
+            "execution_payload" => Ok(EventTopic::ExecutionPayload),
+            "payload_attestation" => Ok(EventTopic::PayloadAttestation),
             _ => Err("event topic cannot be parsed.".to_string()),
         }
     }
@@ -1450,6 +1505,9 @@ impl fmt::Display for EventTopic {
             EventTopic::ProposerSlashing => write!(f, "proposer_slashing"),
             EventTopic::BlsToExecutionChange => write!(f, "bls_to_execution_change"),
             EventTopic::BlockGossip => write!(f, "block_gossip"),
+            EventTopic::ExecutionBid => write!(f, "execution_bid"),
+            EventTopic::ExecutionPayload => write!(f, "execution_payload"),
+            EventTopic::PayloadAttestation => write!(f, "payload_attestation"),
         }
     }
 }

@@ -4895,6 +4895,15 @@ pub fn serve<T: BeaconChainTypes>(
                                 api_types::EventTopic::BlockGossip => {
                                     event_handler.subscribe_block_gossip()
                                 }
+                                api_types::EventTopic::ExecutionBid => {
+                                    event_handler.subscribe_execution_bid()
+                                }
+                                api_types::EventTopic::ExecutionPayload => {
+                                    event_handler.subscribe_execution_payload()
+                                }
+                                api_types::EventTopic::PayloadAttestation => {
+                                    event_handler.subscribe_payload_attestation()
+                                }
                             };
 
                             receivers.push(
