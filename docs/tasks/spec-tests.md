@@ -7,9 +7,11 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 
 ### Current results
 - **78/78 ef_tests pass** (as of 2026-02-17)
-- **136/136 mainnet ssz_static pass** (Fulu + Gloas DataColumnSidecar variants both pass)
+- **136/136 fake_crypto pass** (Fulu + Gloas DataColumnSidecar variants both pass)
+- **check_all_files_accessed passes** — 209,677 files accessed, 122,748 intentionally excluded
 - All gloas fork_choice_reorg tests pass (4 previously failing now pass)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
+- rewards/inactivity_scores tests running across all forks (was missing)
 - 3 altair proposer_boost tests skipped as known upstream failures (sigp/lighthouse#8689)
 
 ### Tasks
@@ -25,6 +27,19 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### 2026-02-17 — fix check_all_files_accessed (was failing with 66,302 missed files)
+- **Root cause**: v1.7.0-alpha.2 test vectors added `manifest.yaml` to every test case (~62K files) + new SSZ generic/static types
+- **Fix 1**: Added `inactivity_scores` to rewards test handler — was missing across ALL forks (not just gloas), adds real test coverage
+- **Fix 2**: Added exclusions for new unimplemented test categories:
+  - `manifest.yaml` files (metadata not read by harness)
+  - `compatible_unions` + `progressive_containers` SSZ generic tests
+  - `light_client/update_ranking` tests
+  - `ForkChoiceNode` SSZ static (internal fork choice type)
+  - `ProposerPreferences` / `SignedProposerPreferences` SSZ static (external builder path, not yet implemented)
+- **Fix 3**: Extended `MatrixEntry` exclusion to cover gloas (was fulu-only)
+- Result: 209,677 accessed + 122,748 excluded = all files accounted for
+- Commit: `f7554befa`
 
 ### 2026-02-17 — 78/78 passing (execution_payload envelope tests added)
 - Added `ExecutionPayloadEnvelopeOp` test handler for gloas `process_execution_payload` spec tests
