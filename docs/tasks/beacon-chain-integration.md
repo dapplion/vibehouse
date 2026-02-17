@@ -20,6 +20,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Gloas preset values: populated GloasPreset struct, fixed minimal spec (PTC_SIZE=2, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=16)
 - ✅ Envelope signature verification: `process_execution_payload_envelope` now verifies builder/proposer signatures with `BUILDER_INDEX_SELF_BUILD` support
 - ✅ EF spec tests for envelope processing: 40/40 gloas `execution_payload` tests pass (78/78 total)
+- ✅ Gossip signature verification: bid + envelope handlers now handle `BUILDER_INDEX_SELF_BUILD` (uses proposer pubkey)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -35,6 +36,13 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Fix BUILDER_INDEX_SELF_BUILD in gossip signature verification
+- **Bug**: Gossip verification for both bid and envelope signatures only looked up pubkeys from `state.builders()`, which would fail for `BUILDER_INDEX_SELF_BUILD` (u64::MAX) since there's no builder at that index
+- **Impact**: Self-built envelope and bid gossip would fail signature verification — **critical devnet-0 blocker** since devnet-0 only uses self-built payloads
+- **Fix**: Updated both `get_builder_pubkey` closures in `gloas_verification.rs` to check for `BUILDER_INDEX_SELF_BUILD` and use the proposer's validator pubkey (matching the pattern already applied in `envelope_processing.rs`)
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `7aac641f5`
 
 ### 2026-02-17 — Envelope signature verification + EF spec tests
 - **Problem 1**: `process_execution_payload_envelope` had a TODO for signature verification — envelope signatures were never verified
