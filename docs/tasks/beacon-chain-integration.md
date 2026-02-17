@@ -34,6 +34,14 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — DataColumnSidecar superstruct for Fulu/Gloas
+- **Problem**: Gloas spec changed DataColumnSidecar structure — removed `kzg_commitments`, `signed_block_header`, `kzg_commitments_inclusion_proof`; added `slot` and `beacon_block_root`. SSZ static test was failing because single struct couldn't match both fork fixtures.
+- **Fix**: Implemented superstruct pattern with Fulu and Gloas variants, updated all 29 files that access DataColumnSidecar fields to use getter methods
+- `block_parent_root()` and `block_proposer_index()` now return `Option` (not available in Gloas variant)
+- SSZ test handler split into separate Fulu-only and Gloas-only handlers
+- All 77/77 EF tests pass (was 76/77), 136/136 mainnet SSZ static pass
+- Commit: `b7ce41079`
+
 ### 2026-02-17 — Populate gloas preset values and fix minimal spec
 - **Bug**: `GloasPreset` struct was empty — preset YAML files had no values, and the minimal chain spec inherited mainnet values (PTC_SIZE=512, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=16384) which are wrong for devnet-0
 - **Fix 1**: Added 5 fields to `GloasPreset` struct matching consensus-specs preset: `ptc_size`, `max_payload_attestations`, `builder_registry_limit`, `builder_pending_withdrawals_limit`, `max_builders_per_withdrawals_sweep`

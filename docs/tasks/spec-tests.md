@@ -6,10 +6,10 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: IN PROGRESS
 
 ### Current results
-- **76/77 ef_tests pass** (as of 2026-02-16)
+- **77/77 ef_tests pass** (as of 2026-02-17)
+- **136/136 mainnet ssz_static pass** (Fulu + Gloas DataColumnSidecar variants both pass)
 - All gloas fork_choice_reorg tests pass (4 previously failing now pass)
 - 3 altair proposer_boost tests skipped as known upstream failures (sigp/lighthouse#8689)
-- 1 KZG SIGABRT (environment issue, not code)
 
 ### Tasks
 - [ ] Audit spec test runner — understand download, cache, run flow
@@ -24,6 +24,14 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### 2026-02-17 — 77/77 passing (DataColumnSidecar SSZ fixed)
+- Implemented DataColumnSidecar superstruct with Fulu and Gloas variants
+- Fulu variant: index, column, kzg_commitments, kzg_proofs, signed_block_header, kzg_commitments_inclusion_proof
+- Gloas variant: index, column, kzg_proofs, slot, beacon_block_root (per spec change)
+- Updated all field accesses across 29 files to use superstruct getter methods
+- SSZ static test handler split into separate Fulu and Gloas handlers
+- Commit: `b7ce41079`
 
 ### 2026-02-15 — 76/77 passing
 - All gloas fork_choice_reorg tests fixed (root, payload_status model correct)

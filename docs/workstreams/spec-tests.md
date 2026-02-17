@@ -6,9 +6,10 @@
 
 Ensure vibehouse runs the latest consensus spec tests for all forks, including gloas.
 
-## current state (2026-02-15)
+## current state (2026-02-17)
 
 **77 tests total, 77 pass, 3 skipped (known)**
+**136 mainnet SSZ static tests pass (including Fulu + Gloas DataColumnSidecar)**
 
 ```
 cargo nextest run -p ef_tests --features ef_tests --no-fail-fast
@@ -84,12 +85,12 @@ cargo nextest run -p ef_tests --features ef_tests -E 'test(operations_payload_at
 
 ## next steps
 
-1. Investigate kzg SIGABRT (environment-specific, low priority)
-2. Run `make test-ef` (release build + fake_crypto pass)
-3. Set up CI to run EF tests on every push
+1. Set up CI to run EF tests on every push
+2. Monitor for new spec test releases
 
 ## log
 
+- 2026-02-17: 77/77 passing + 136/136 mainnet. DataColumnSidecar SSZ fixed via superstruct (Fulu/Gloas variants). All SSZ static tests green.
 - 2026-02-15: 77/77 passing. KZG SIGABRT resolved (env issue). all tests green.
 - 2026-02-15: 76/77 passing. added upstream known-failure skips for 3 altair proposer_boost tests. fork_choice_reorg all pass now.
 - 2026-02-14: 73/77 passing after fixing all state_processing issues
