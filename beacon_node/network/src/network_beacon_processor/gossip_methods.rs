@@ -3396,6 +3396,9 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             return;
         }
 
+        // Payload revealed — recompute head so fork choice can now select this block
+        self.chain.recompute_head_at_current_slot().await;
+
         // Notify EL via newPayload + apply envelope state transition (validates bid
         // consistency, processes execution requests, builder payment, sets availability)
         if let Err(e) = self.chain.process_payload_envelope(&verified_envelope).await {
@@ -3415,7 +3418,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Process a gossip payload attestation from PTC members (gloas ePBS).
-    pub fn process_gossip_payload_attestation(
+    pub async fn process_gossip_payload_attestation(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -3476,7 +3479,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
-        // Import to fork choice (TODO: implement apply_payload_attestation_to_fork_choice)
+        // Import to fork choice
         if let Err(e) = self.chain.apply_payload_attestation_to_fork_choice(&verified_attestation) {
             warn!(
                 %slot,
@@ -3487,6 +3490,9 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         } else {
             debug!(%slot, ?beacon_block_root, "Successfully imported payload attestation");
             metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_IMPORTED_TOTAL);
+
+            // PTC vote may have triggered payload_revealed — recompute head
+            self.chain.recompute_head_at_current_slot().await;
         }
     }
 }
