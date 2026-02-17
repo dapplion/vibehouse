@@ -25,6 +25,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Local self-build envelope processing: `process_self_build_envelope` calls `newPayload` on EL locally (gossipsub doesn't echo own messages)
 - ✅ FCU ordering fix: `recompute_head` moved after `process_payload_envelope` in gossip handler (EL needs `newPayload` before `forkchoice_updated`)
 - ✅ EL payload request: `get_execution_payload` handles Gloas states (uses `latest_block_hash` and `latest_execution_payload_bid.gas_limit`)
+- ✅ Gloas withdrawals for EL: `get_expected_withdrawals_gloas` uses ePBS algorithm (is_parent_block_full check, builder sweep)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -40,6 +41,13 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Use Gloas withdrawal algorithm for EL payload attributes
+- **Bug**: EL received withdrawals computed by `get_expected_withdrawals` (Electra algorithm) but `process_execution_payload_envelope` validates against `process_withdrawals_gloas` output. Key differences: Gloas checks `is_parent_block_full` (returns empty if parent payload wasn't delivered), includes builder pending withdrawals and builder sweep, reserves `max_withdrawals - 1` for non-validator withdrawals.
+- **Impact**: EL builds payload with wrong withdrawals → `WithdrawalsRootMismatch` in envelope processing → `build_self_build_envelope` silently returns `None` → no envelope broadcast → block unusable as self-build
+- **Fix**: Added `get_expected_withdrawals_gloas` read-only function mirroring `process_withdrawals_gloas`. Used in `get_execution_payload` and `BeaconChain::get_expected_withdrawals` for Gloas states.
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `9f4644a05`
 
 ### 2026-02-17 — Fix get_execution_payload crash for Gloas states
 - **Bug**: `get_execution_payload` calls `state.latest_execution_payload_header()` which returns `Err(IncorrectStateVariant)` for Gloas (replaced by `latest_execution_payload_bid`). No Gloas block could ever be produced — the function crashes before reaching the EL.
