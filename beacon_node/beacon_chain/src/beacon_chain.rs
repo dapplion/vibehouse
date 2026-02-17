@@ -5312,9 +5312,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // block application.
         let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
         if head_state.current_epoch() == proposal_epoch {
-            return get_expected_withdrawals(&unadvanced_state, &self.spec)
-                .map(|(withdrawals, _)| withdrawals)
-                .map_err(Error::PrepareProposerFailed);
+            return if unadvanced_state.fork_name_unchecked().gloas_enabled() {
+                state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas(
+                    &unadvanced_state,
+                    &self.spec,
+                )
+                .map(|w| w.into())
+                .map_err(|e| Error::PrepareProposerFailed(e.into()))
+            } else {
+                get_expected_withdrawals(&unadvanced_state, &self.spec)
+                    .map(|(withdrawals, _)| withdrawals)
+                    .map_err(Error::PrepareProposerFailed)
+            };
         }
 
         // Advance the state using the partial method.
@@ -5330,9 +5339,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             proposal_epoch.start_slot(T::EthSpec::slots_per_epoch()),
             &self.spec,
         )?;
-        get_expected_withdrawals(&advanced_state, &self.spec)
-            .map(|(withdrawals, _)| withdrawals)
-            .map_err(Error::PrepareProposerFailed)
+        if advanced_state.fork_name_unchecked().gloas_enabled() {
+            state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas(
+                &advanced_state,
+                &self.spec,
+            )
+            .map(|w| w.into())
+            .map_err(|e| Error::PrepareProposerFailed(e.into()))
+        } else {
+            get_expected_withdrawals(&advanced_state, &self.spec)
+                .map(|(withdrawals, _)| withdrawals)
+                .map_err(Error::PrepareProposerFailed)
+        }
     }
 
     /// Determine whether a fork choice update to the execution layer should be overridden.

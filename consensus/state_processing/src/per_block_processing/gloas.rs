@@ -744,3 +744,190 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
     Ok(())
 }
+
+/// Compute expected withdrawals for a Gloas block without mutating state.
+///
+/// This mirrors the withdrawal computation in `process_withdrawals_gloas` but is read-only,
+/// suitable for providing withdrawal lists to the EL via payload attributes.
+/// Returns an empty list if the parent block's payload was not delivered.
+pub fn get_expected_withdrawals_gloas<E: EthSpec>(
+    state: &BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<Vec<Withdrawal>, BlockProcessingError> {
+    // Return empty if the parent block's payload was not delivered
+    if !is_parent_block_full::<E>(state)? {
+        return Ok(vec![]);
+    }
+
+    let epoch = state.current_epoch();
+    let fork_name = state.fork_name_unchecked();
+    let max_withdrawals = E::max_withdrawals_per_payload();
+    let reserved_limit = max_withdrawals.saturating_sub(1);
+    let mut withdrawal_index = state.next_withdrawal_index()?;
+    let mut withdrawals = Vec::<Withdrawal>::new();
+
+    // 1. Builder pending withdrawals
+    {
+        let state_gloas = state.as_gloas().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        let builders_count = state_gloas.builders.len() as u64;
+        for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
+            if withdrawals.len() >= reserved_limit {
+                break;
+            }
+            let builder_index = withdrawal.builder_index;
+            if builder_index >= builders_count {
+                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index,
+                    builders_count,
+                });
+            }
+            withdrawals.push(Withdrawal {
+                index: withdrawal_index,
+                validator_index: builder_index | BUILDER_INDEX_FLAG,
+                address: withdrawal.fee_recipient,
+                amount: withdrawal.amount,
+            });
+            withdrawal_index.safe_add_assign(1)?;
+        }
+    }
+
+    // 2. Pending partial withdrawals (validator)
+    {
+        let partials_limit = std::cmp::min(
+            withdrawals.len().saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
+            reserved_limit,
+        );
+        if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
+            for withdrawal_req in pending_partial_withdrawals {
+                let is_withdrawable = withdrawal_req.withdrawable_epoch <= epoch;
+                let has_reached_limit = withdrawals.len() >= partials_limit;
+                if !is_withdrawable || has_reached_limit {
+                    break;
+                }
+
+                let validator = state.get_validator(withdrawal_req.validator_index as usize)?;
+                let has_sufficient_effective_balance =
+                    validator.effective_balance >= spec.min_activation_balance;
+                let total_withdrawn: u64 = withdrawals
+                    .iter()
+                    .filter(|w| w.validator_index == withdrawal_req.validator_index)
+                    .map(|w| w.amount)
+                    .sum();
+                let balance = state
+                    .get_balance(withdrawal_req.validator_index as usize)?
+                    .saturating_sub(total_withdrawn);
+                let has_excess_balance = balance > spec.min_activation_balance;
+
+                if validator.exit_epoch == spec.far_future_epoch
+                    && has_sufficient_effective_balance
+                    && has_excess_balance
+                {
+                    let withdrawable_balance = std::cmp::min(
+                        balance.saturating_sub(spec.min_activation_balance),
+                        withdrawal_req.amount,
+                    );
+                    withdrawals.push(Withdrawal {
+                        index: withdrawal_index,
+                        validator_index: withdrawal_req.validator_index,
+                        address: validator
+                            .get_execution_withdrawal_address(spec)
+                            .ok_or(BeaconStateError::NonExecutionAddressWithdrawalCredential)?,
+                        amount: withdrawable_balance,
+                    });
+                    withdrawal_index.safe_add_assign(1)?;
+                }
+            }
+        }
+    }
+
+    // 3. Builder sweep
+    {
+        let state_gloas = state.as_gloas().map_err(|e| {
+            BlockProcessingError::BeaconStateError(e)
+        })?;
+        let builders_count = state_gloas.builders.len();
+        if builders_count > 0 {
+            let builders_limit = std::cmp::min(
+                builders_count,
+                spec.max_builders_per_withdrawals_sweep as usize,
+            );
+            let mut builder_index = state_gloas.next_withdrawal_builder_index;
+            if builder_index >= builders_count as u64 {
+                return Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index,
+                    builders_count: builders_count as u64,
+                });
+            }
+            for _ in 0..builders_limit {
+                if withdrawals.len() >= reserved_limit {
+                    break;
+                }
+                if let Some(builder) = state_gloas.builders.get(builder_index as usize) {
+                    if builder.withdrawable_epoch <= epoch && builder.balance > 0 {
+                        withdrawals.push(Withdrawal {
+                            index: withdrawal_index,
+                            validator_index: builder_index | BUILDER_INDEX_FLAG,
+                            address: builder.execution_address,
+                            amount: builder.balance,
+                        });
+                        withdrawal_index.safe_add_assign(1)?;
+                    }
+                }
+                builder_index = (builder_index + 1) % builders_count as u64;
+            }
+        }
+    }
+
+    // 4. Validator sweep
+    {
+        let mut validator_index = state.next_withdrawal_validator_index()?;
+        let bound = std::cmp::min(
+            state.validators().len() as u64,
+            spec.max_validators_per_withdrawals_sweep,
+        );
+        for _ in 0..bound {
+            if withdrawals.len() >= max_withdrawals {
+                break;
+            }
+
+            let validator = state.get_validator(validator_index as usize)?;
+            let partially_withdrawn_balance: u64 = withdrawals
+                .iter()
+                .filter(|w| w.validator_index == validator_index)
+                .map(|w| w.amount)
+                .sum();
+            let balance = state
+                .get_balance(validator_index as usize)?
+                .saturating_sub(partially_withdrawn_balance);
+            if validator.is_fully_withdrawable_validator(balance, epoch, spec, fork_name) {
+                withdrawals.push(Withdrawal {
+                    index: withdrawal_index,
+                    validator_index,
+                    address: validator
+                        .get_execution_withdrawal_address(spec)
+                        .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
+                    amount: balance,
+                });
+                withdrawal_index.safe_add_assign(1)?;
+            } else if validator.is_partially_withdrawable_validator(balance, spec, fork_name) {
+                withdrawals.push(Withdrawal {
+                    index: withdrawal_index,
+                    validator_index,
+                    address: validator
+                        .get_execution_withdrawal_address(spec)
+                        .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
+                    amount: balance.saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
+                });
+                withdrawal_index.safe_add_assign(1)?;
+            }
+
+            validator_index = validator_index
+                .safe_add(1)?
+                .safe_rem(state.validators().len() as u64)?;
+        }
+    }
+
+    Ok(withdrawals)
+}

@@ -389,7 +389,16 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
             let header = state.latest_execution_payload_header()?;
             (header.block_hash(), header.gas_limit())
         };
-    let withdrawals = if state.fork_name_unchecked().capella_enabled() {
+    let withdrawals = if state.fork_name_unchecked().gloas_enabled() {
+        // Gloas computes withdrawals differently: checks is_parent_block_full, includes
+        // builder pending withdrawals and builder sweep alongside validator withdrawals.
+        Some(
+            state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas(
+                state, spec,
+            )?
+            .into(),
+        )
+    } else if state.fork_name_unchecked().capella_enabled() {
         Some(get_expected_withdrawals(state, spec)?.0.into())
     } else {
         None
