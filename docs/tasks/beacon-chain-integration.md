@@ -21,6 +21,9 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Envelope signature verification: `process_execution_payload_envelope` now verifies builder/proposer signatures with `BUILDER_INDEX_SELF_BUILD` support
 - ✅ EF spec tests for envelope processing: 40/40 gloas `execution_payload` tests pass (78/78 total)
 - ✅ Gossip signature verification: bid + envelope handlers now handle `BUILDER_INDEX_SELF_BUILD` (uses proposer pubkey)
+- ✅ Self-build bid signature: `Signature::infinity()` instead of `Signature::empty()` (was blocking all Gloas block production)
+- ✅ Local self-build envelope processing: `process_self_build_envelope` calls `newPayload` on EL locally (gossipsub doesn't echo own messages)
+- ✅ FCU ordering fix: `recompute_head` moved after `process_payload_envelope` in gossip handler (EL needs `newPayload` before `forkchoice_updated`)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -36,6 +39,16 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Fix three critical devnet-0 blockers in self-build ePBS flow
+- **Bug 1 (Blocks can't be produced)**: Self-build bid used `Signature::empty()` (all-zero bytes) but `process_execution_payload_bid` unconditionally requires `is_infinity()` for `BUILDER_INDEX_SELF_BUILD`. `Signature::empty()` ≠ `Signature::infinity()` in BLS. All Gloas block production would fail.
+- **Fix 1**: Changed to `Signature::infinity().expect(...)` in `beacon_chain.rs` line 6136
+- **Bug 2 (EL never receives payload)**: After block production, the self-build envelope was broadcast via gossip but libp2p gossipsub does not echo back your own messages. `process_payload_envelope` (which calls `newPayload`) was only reachable from the gossip handler. The local EL never learned about the payload, so it couldn't build the next block.
+- **Fix 2**: Added `process_self_build_envelope()` method on `BeaconChain` that does fork choice update + `newPayload` + state transition locally. Called from `publish_blocks.rs` before gossip broadcast.
+- **Bug 3 (FCU before newPayload)**: In the gossip handler, `recompute_head_at_current_slot()` (which triggers `forkchoice_updated`) was called before `process_payload_envelope` (which calls `newPayload`). The EL received FCU with a `head_hash` it hadn't seen yet, responding `Syncing`.
+- **Fix 3**: Moved `recompute_head` to after `process_payload_envelope` in `process_gossip_execution_payload`
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `5979d72de`
 
 ### 2026-02-17 — Fix BUILDER_INDEX_SELF_BUILD in gossip signature verification
 - **Bug**: Gossip verification for both bid and envelope signatures only looked up pubkeys from `state.builders()`, which would fail for `BUILDER_INDEX_SELF_BUILD` (u64::MAX) since there's no builder at that index
