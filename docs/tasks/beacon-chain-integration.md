@@ -31,20 +31,36 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
 - [ ] `ProposerPreferences` gossip topic (not needed for devnet-0 self-build)
+- [ ] Validator client payload attestation service (fetch PTC duties, produce attestations)
 - [x] Implement payload timeliness committee logic (PTC attestation pool + block inclusion)
 - [x] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
+- [x] PTC duty + payload attestation REST API endpoints (BN side)
 
 ## Key files
-- `beacon_node/beacon_chain/src/beacon_chain.rs` — block production, fork choice bridge
+- `beacon_node/beacon_chain/src/beacon_chain.rs` — block production, fork choice bridge, PTC duty computation
 - `consensus/state_processing/src/envelope_processing.rs` — envelope state transition
 - `beacon_node/beacon_chain/src/block_verification.rs` — block import pipeline
 - `beacon_node/beacon_chain/src/execution_payload.rs` — EL integration
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
+- `beacon_node/http_api/src/ptc_duties.rs` — PTC duty discovery endpoint
 - `validator_client/signing_method/src/lib.rs` — envelope signing (SignableMessage)
 - `validator_client/lighthouse_validator_store/src/lib.rs` — envelope signing implementation
-- `common/eth2/src/types.rs` — API types for envelope transport (BN↔VC)
+- `common/eth2/src/types.rs` — API types (PtcDutyData, PayloadAttestationDataQuery, etc.)
 
 ## Progress log
+
+### 2026-02-17 — PTC duty and payload attestation REST API endpoints
+- **Problem**: The validator client had no way to discover PTC duties or submit payload attestations. Without these endpoints, no PTC attestations would be produced in devnet-0, and fork choice couldn't properly handle ePBS blocks.
+- **New endpoints**:
+  - `POST /eth/v1/validator/duties/ptc/{epoch}`: Computes PTC committee for each slot in the epoch using `get_ptc_committee`, returns validator assignments with slot and position within the PTC.
+  - `GET /eth/v1/validator/payload_attestation_data?slot`: Returns `PayloadAttestationData` for a slot by checking fork choice for `payload_revealed` status.
+  - `POST /eth/v1/beacon/pool/payload_attestations`: Accepts `PayloadAttestationMessage` from VC, converts to aggregated `PayloadAttestation` (single-bit), verifies via gossip path, imports to fork choice + pool, broadcasts on gossip.
+- **New types**: `PtcDutyData`, `ValidatorPayloadAttestationDataQuery` in `common/eth2/src/types.rs`
+- **New methods on BeaconChain**: `validator_ptc_duties`, `get_payload_attestation_data`, `import_payload_attestation_message`
+- **New error variants**: `PayloadAttestationValidatorNotInPtc`, `PayloadAttestationBitOutOfBounds`, `PayloadAttestationVerificationFailed`, `BlockProcessingError`
+- 5 files changed (383 insertions, 4 deletions)
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `d11bb3d73`
 
 ### 2026-02-17 — Sign self-build envelope via validator client
 - **Bug**: Self-build envelope used `Signature::empty()` (all-zero bytes) or `Signature::infinity()` placeholder. The spec requires `bls.Verify(proposer_pubkey, signing_root, envelope_signature)` for self-build envelopes — a REAL BLS signature with `DOMAIN_BEACON_BUILDER`. Other nodes would reject envelopes from vibehouse, breaking multi-client interop.
