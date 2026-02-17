@@ -397,19 +397,47 @@ impl<E: EthSpec> PubsubMessage<E> {
                         )))
                     }
                     GossipKind::ExecutionBid => {
-                        let execution_bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
-                        Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
+                        match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
+                            Some(fork) if fork.gloas_enabled() => {
+                                let execution_bid = SignedExecutionPayloadBid::from_ssz_bytes(data)
+                                    .map_err(|e| format!("{:?}", e))?;
+                                Ok(PubsubMessage::ExecutionBid(Box::new(execution_bid)))
+                            }
+                            Some(_) | None => Err(format!(
+                                "execution_bid topic invalid for given fork digest {:?}",
+                                gossip_topic.fork_digest
+                            )),
+                        }
                     }
                     GossipKind::ExecutionPayload => {
-                        let execution_payload = SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
-                        Ok(PubsubMessage::ExecutionPayload(Box::new(execution_payload)))
+                        match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
+                            Some(fork) if fork.gloas_enabled() => {
+                                let execution_payload =
+                                    SignedExecutionPayloadEnvelope::from_ssz_bytes(data)
+                                        .map_err(|e| format!("{:?}", e))?;
+                                Ok(PubsubMessage::ExecutionPayload(Box::new(execution_payload)))
+                            }
+                            Some(_) | None => Err(format!(
+                                "execution_payload topic invalid for given fork digest {:?}",
+                                gossip_topic.fork_digest
+                            )),
+                        }
                     }
                     GossipKind::PayloadAttestation => {
-                        let payload_attestation = PayloadAttestation::from_ssz_bytes(data)
-                            .map_err(|e| format!("{:?}", e))?;
-                        Ok(PubsubMessage::PayloadAttestation(Box::new(payload_attestation)))
+                        match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
+                            Some(fork) if fork.gloas_enabled() => {
+                                let payload_attestation =
+                                    PayloadAttestation::from_ssz_bytes(data)
+                                        .map_err(|e| format!("{:?}", e))?;
+                                Ok(PubsubMessage::PayloadAttestation(Box::new(
+                                    payload_attestation,
+                                )))
+                            }
+                            Some(_) | None => Err(format!(
+                                "payload_attestation topic invalid for given fork digest {:?}",
+                                gossip_topic.fork_digest
+                            )),
+                        }
                     }
                 }
             }

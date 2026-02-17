@@ -49,6 +49,12 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — fork validation for Gloas gossip message decoding
+- **Issue**: `ExecutionBid`, `ExecutionPayload`, and `PayloadAttestation` gossip messages were decoded in `pubsub.rs` without validating that the fork digest corresponds to a Gloas-enabled fork. Other fork-specific messages (BlobSidecar, DataColumnSidecar) properly check fork context before decoding.
+- **Fix**: Added `fork_context.get_fork_from_context_bytes()` + `fork.gloas_enabled()` guard for all three Gloas ePBS message types, matching the DataColumnSidecar pattern. Invalid fork digests now return descriptive error messages.
+- Defense-in-depth: prevents accidental deserialization of pre-Gloas data as ePBS message types.
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+
 ### 2026-02-17 — fork choice: add TooOld validation for payload attestations
 - **Issue**: `on_payload_attestation` in fork choice checked for future-slot attestations but had no staleness check. The `InvalidPayloadAttestation::TooOld` error variant existed but was never used. While the gossip verification layer already filters stale attestations (via `earliest_permissible_slot` in `verify_payload_attestation_for_gossip`), and the REST API path also goes through the same gossip verification, fork choice itself had no defense against old attestations.
 - **Fix**: Added staleness check rejecting payload attestations older than 1 epoch (`current_slot > attestation_slot + slots_per_epoch`) in `on_payload_attestation`. Defense-in-depth — prevents stale attestations from influencing head selection even if they bypass gossip filtering.
