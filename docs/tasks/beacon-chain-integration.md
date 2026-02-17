@@ -31,8 +31,8 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
 - [ ] `ProposerPreferences` gossip topic (not needed for devnet-0 self-build)
-- [ ] Fork choice `payload_data_availability_vote` tracking (spec has separate vote for `blob_data_available`, not yet implemented — currently piggybacks on `payload_revealed`)
-- [ ] Fork choice `is_payload_data_available` / `should_extend_payload` functions (uses `DATA_AVAILABILITY_TIMELY_THRESHOLD`)
+- [x] Fork choice `payload_data_availability_vote` tracking (separate `blob_data_available` vote, `ptc_blob_data_available_weight` + `payload_data_available` on ProtoNode)
+- [x] Fork choice `is_payload_data_available` / `should_extend_payload` functions (full spec version with proposer boost conditions)
 - [x] Validator client payload attestation service (fetch PTC duties, produce attestations)
 - [x] Implement payload timeliness committee logic (PTC attestation pool + block inclusion)
 - [x] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
@@ -50,6 +50,16 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `common/eth2/src/types.rs` — API types (PtcDutyData, PayloadAttestationDataQuery, etc.)
 
 ## Progress log
+
+### 2026-02-17 — fork choice: separate blob data availability tracking + full should_extend_payload
+- **Spec gap closed**: Previously, `blob_data_available` piggy-backed on `payload_revealed` — both PTC vote dimensions mapped to a single counter. The spec tracks `payload_timeliness_vote` and `payload_data_availability_vote` as separate per-block bitvectors.
+- **New fields on ProtoNode**: `ptc_blob_data_available_weight` (counter for blob_data_available=true votes) and `payload_data_available` (boolean, set when blob data availability quorum reached)
+- **`on_payload_attestation` fix**: Only counts `payload_present=true` attesters toward `ptc_weight`, and only `blob_data_available=true` attesters toward `ptc_blob_data_available_weight`. Previously ALL attesters were counted regardless of vote value — this was a bug when receiving mixed-vote attestations.
+- **`on_execution_payload` update**: When envelope is received locally, sets both `payload_revealed=true` AND `payload_data_available=true` (local data is obviously available)
+- **`should_extend_payload` full spec implementation**: Now checks `(is_payload_timely && is_payload_data_available) || no_proposer_boost || boosted_parent_not_this_root || is_parent_node_full`. Previously was a simplified `payload_revealed` check.
+- **`get_payload_attestation_data` update**: Returns separate `payload_present` and `blob_data_available` values from fork choice instead of both being `payload_revealed`.
+- 136/136 EF tests pass, check_all_files_accessed passes, 18/18 proto_array tests pass, clippy clean
+- 5 files changed across proto_array, fork_choice, and beacon_chain
 
 ### 2026-02-17 — devnet-0 readiness audit: all clear
 - **Comprehensive audit** of block import pipeline, EL integration, fork transition, gossip verification, and configuration flow

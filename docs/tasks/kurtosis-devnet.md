@@ -76,7 +76,7 @@ dora_params:
 - **Fork transition**: upgrade_to_gloas properly gated in per_slot_processing, gossip topics subscribe on fork activation
 - **Configuration**: gloas_fork_epoch parsed from YAML through full Config→ChainSpec→runtime chain. Kurtosis YAML works.
 - **VC integration**: PayloadAttestationService fully implemented and wired, PTC duty endpoints working
-- **Spec gap (non-blocking)**: Fork choice missing payload_data_availability_vote (blob_data_available separate from payload_present). Not needed for devnet-0 self-build.
+- ~~**Spec gap (non-blocking)**: Fork choice missing payload_data_availability_vote~~ — **FIXED**: separate `ptc_blob_data_available_weight` + `payload_data_available` tracking, full `should_extend_payload` implementation
 - **Blocker**: Docker still not available
 
 ### 2026-02-17: comprehensive devnet-0 readiness audit (clean)

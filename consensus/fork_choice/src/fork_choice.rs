@@ -997,6 +997,8 @@ where
                     .map(|bid| bid.message.builder_index),
                 payload_revealed: false,
                 ptc_weight: 0,
+                ptc_blob_data_available_weight: 0,
+                payload_data_available: false,
                 bid_block_hash: block
                     .body()
                     .signed_execution_payload_bid()
@@ -1306,8 +1308,10 @@ where
             // (will be set to true when builder publishes the execution payload envelope)
             node.payload_revealed = false;
             
-            // Initialize PTC weight to 0 (will accumulate via on_payload_attestation)
+            // Initialize PTC weights to 0 (will accumulate via on_payload_attestation)
             node.ptc_weight = 0;
+            node.ptc_blob_data_available_weight = 0;
+            node.payload_data_available = false;
         }
 
         debug!(
@@ -1397,47 +1401,63 @@ where
         // Count the attesters (weight each as 1)
         let attester_count = indexed_attestation.attesting_indices.len() as u64;
 
-        // Update the proto_array node with accumulated PTC weight
+        // Update the proto_array node with accumulated PTC weight.
+        // Per spec, payload_timeliness_vote and payload_data_availability_vote
+        // are separate per-PTC-member bitvectors. We track them as counters of
+        // True votes since gossip validation prevents duplicate attestations.
         let nodes = &mut self
             .proto_array
             .core_proto_array_mut()
             .nodes;
-        
+
         if let Some(node) = nodes.get_mut(block_index) {
-            // Accumulate weight from this attestation
-            node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
-
-            // Check if we've reached quorum (strictly greater than threshold per spec)
-            if node.ptc_weight > quorum_threshold {
-                // Only mark revealed if the attestation signals payload was present
-                if attestation.data.payload_present {
-                    node.payload_revealed = true;
-                    // If the envelope path hasn't already set execution_status,
-                    // use the bid_block_hash so head_hash is available for forkchoice_updated.
-                    if !node.execution_status.is_execution_enabled()
-                        && let Some(block_hash) = node.bid_block_hash
-                    {
-                        node.execution_status = ExecutionStatus::Optimistic(block_hash);
-                    }
-
-                    debug!(
-                        ?beacon_block_root,
-                        ptc_weight = node.ptc_weight,
-                        quorum_threshold = quorum_threshold,
-                        slot = %node.slot,
-                        "Payload quorum reached and payload present"
-                    );
-                } else {
-                    // Quorum says payload was NOT present (builder withholding)
-                    warn!(
-                        ?beacon_block_root,
-                        builder_index = ?node.builder_index,
-                        ptc_weight = node.ptc_weight,
-                        slot = %node.slot,
-                        "Payload quorum reached but payload NOT present - builder withholding"
-                    );
-                }
+            // Accumulate payload_present votes (spec: payload_timeliness_vote)
+            if attestation.data.payload_present {
+                node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
             }
+
+            // Accumulate blob_data_available votes (spec: payload_data_availability_vote)
+            if attestation.data.blob_data_available {
+                node.ptc_blob_data_available_weight = node
+                    .ptc_blob_data_available_weight
+                    .saturating_add(attester_count);
+            }
+
+            // Check payload timeliness quorum (strictly greater than threshold per spec)
+            if node.ptc_weight > quorum_threshold && !node.payload_revealed {
+                node.payload_revealed = true;
+                // If the envelope path hasn't already set execution_status,
+                // use the bid_block_hash so head_hash is available for forkchoice_updated.
+                if !node.execution_status.is_execution_enabled()
+                    && let Some(block_hash) = node.bid_block_hash
+                {
+                    node.execution_status = ExecutionStatus::Optimistic(block_hash);
+                }
+
+                debug!(
+                    ?beacon_block_root,
+                    ptc_weight = node.ptc_weight,
+                    quorum_threshold = quorum_threshold,
+                    slot = %node.slot,
+                    "Payload timeliness quorum reached"
+                );
+            }
+
+            // Check blob data availability quorum
+            if node.ptc_blob_data_available_weight > quorum_threshold
+                && !node.payload_data_available
+            {
+                node.payload_data_available = true;
+
+                debug!(
+                    ?beacon_block_root,
+                    blob_weight = node.ptc_blob_data_available_weight,
+                    quorum_threshold = quorum_threshold,
+                    slot = %node.slot,
+                    "Blob data availability quorum reached"
+                );
+            }
+
         }
 
         Ok(())
@@ -1472,6 +1492,8 @@ where
 
         if let Some(node) = nodes.get_mut(block_index) {
             node.payload_revealed = true;
+            // When the envelope is received locally, blob data is also available
+            node.payload_data_available = true;
             // Set execution status so that head_hash is available for forkchoice_updated.
             // Starts as Optimistic until the EL confirms via newPayload.
             node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);

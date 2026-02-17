@@ -184,8 +184,12 @@ pub struct Block {
     pub builder_index: Option<types::BuilderIndex>,
     /// Gloas ePBS: Has the builder revealed the execution payload?
     pub payload_revealed: bool,
-    /// Gloas ePBS: Initial PTC weight (usually 0 at block insertion).
+    /// Gloas ePBS: Initial PTC payload_present weight (usually 0 at block insertion).
     pub ptc_weight: u64,
+    /// Gloas ePBS: Initial PTC blob_data_available weight (usually 0 at block insertion).
+    pub ptc_blob_data_available_weight: u64,
+    /// Gloas ePBS: Has the PTC quorum confirmed blob data availability?
+    pub payload_data_available: bool,
     /// Gloas ePBS: The execution block hash from this block's bid.
     pub bid_block_hash: Option<ExecutionBlockHash>,
     /// Gloas ePBS: The parent execution block hash from this block's bid.
@@ -485,6 +489,8 @@ impl ProtoArrayForkChoice {
             builder_index: None,
             payload_revealed: false,
             ptc_weight: 0,
+            ptc_blob_data_available_weight: 0,
+            payload_data_available: false,
             bid_block_hash: None,
             bid_parent_block_hash: None,
             proposer_index: 0,
@@ -929,6 +935,8 @@ impl ProtoArrayForkChoice {
             builder_index: block.builder_index,
             payload_revealed: block.payload_revealed,
             ptc_weight: block.ptc_weight,
+            ptc_blob_data_available_weight: block.ptc_blob_data_available_weight,
+            payload_data_available: block.payload_data_available,
             bid_block_hash: block.bid_block_hash,
             bid_parent_block_hash: block.bid_parent_block_hash,
             proposer_index: block.proposer_index,
@@ -1466,8 +1474,6 @@ impl ProtoArrayForkChoice {
             1
         } else {
             // FULL: use 2 if should extend payload, else 0.
-            // For now, without full should_extend_payload logic, default to 0
-            // (EMPTY wins tiebreaker when no payload has been delivered).
             if self.should_extend_payload(node) {
                 2
             } else {
@@ -1476,14 +1482,59 @@ impl ProtoArrayForkChoice {
         }
     }
 
-    /// Simplified should_extend_payload: checks if the payload was revealed.
-    /// Full spec version also considers PTC timeliness and proposer boost context.
+    /// Spec: should_extend_payload(store, root)
+    ///
+    /// Returns true when:
+    /// - (is_payload_timely AND is_payload_data_available), OR
+    /// - no proposer boost root, OR
+    /// - boosted block's parent is not this root, OR
+    /// - boosted block's parent is already FULL
     fn should_extend_payload(&self, node: &GloasForkChoiceNode) -> bool {
         let pa = &self.proto_array;
-        pa.indices
+
+        // Check if payload is both timely and data-available
+        let is_timely_and_available = pa
+            .indices
             .get(&node.root)
             .and_then(|&idx| pa.nodes.get(idx))
-            .is_some_and(|n| n.payload_revealed)
+            .is_some_and(|n| n.payload_revealed && n.payload_data_available);
+
+        if is_timely_and_available {
+            return true;
+        }
+
+        // No proposer boost root
+        let proposer_boost_root = pa.previous_proposer_boost.root;
+        if proposer_boost_root.is_zero() {
+            return true;
+        }
+
+        // Check if boosted block's parent is this root
+        if let Some(&boosted_idx) = pa.indices.get(&proposer_boost_root) {
+            if let Some(boosted_node) = pa.nodes.get(boosted_idx) {
+                // Boosted block's parent is not this root
+                if let Some(parent_idx) = boosted_node.parent {
+                    if let Some(parent_node) = pa.nodes.get(parent_idx) {
+                        if parent_node.root != node.root {
+                            return true;
+                        }
+                        // Boosted block's parent IS this root — check if parent is already FULL
+                        // (i.e., the parent's parent had its payload revealed)
+                        if parent_node.payload_revealed {
+                            return true;
+                        }
+                    }
+                } else {
+                    // Boosted block has no parent — can't extend from this root
+                    return true;
+                }
+            }
+        } else {
+            // Boosted block not in fork choice — treat as no boost
+            return true;
+        }
+
+        false
     }
 }
 
@@ -1656,6 +1707,8 @@ mod test_compute_deltas {
                     builder_index: None,
                     payload_revealed: false,
                     ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
                     bid_block_hash: None,
                     bid_parent_block_hash: None,
                     proposer_index: 0,
@@ -1686,6 +1739,8 @@ mod test_compute_deltas {
                     builder_index: None,
                     payload_revealed: false,
                     ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
                     bid_block_hash: None,
                     bid_parent_block_hash: None,
                     proposer_index: 0,
@@ -1805,6 +1860,8 @@ mod test_compute_deltas {
                         builder_index: None,
                         payload_revealed: false,
                         ptc_weight: 0,
+                        ptc_blob_data_available_weight: 0,
+                        payload_data_available: false,
                         bid_block_hash: None,
                         bid_parent_block_hash: None,
                         proposer_index: 0,

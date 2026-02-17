@@ -1777,9 +1777,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let fc = self.canonical_head.fork_choice_read_lock();
         let (payload_present, blob_data_available) =
             if let Some(block) = fc.get_block(&block_root) {
-                // payload_present: payload was revealed (envelope processed)
-                // blob_data_available: for self-build devnet-0, same as payload_present
-                (block.payload_revealed, block.payload_revealed)
+                // payload_present: payload was revealed (envelope processed or PTC quorum)
+                // blob_data_available: blob data availability confirmed (envelope or PTC quorum)
+                (block.payload_revealed, block.payload_data_available)
             } else {
                 (false, false)
             };

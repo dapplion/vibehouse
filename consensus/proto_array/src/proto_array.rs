@@ -116,9 +116,15 @@ pub struct ProtoNode {
     /// Gloas ePBS: Has the builder revealed the execution payload for this block?
     /// Always true for self-build and pre-gloas blocks.
     pub payload_revealed: bool,
-    /// Gloas ePBS: Accumulated weight from PTC attestations for payload availability.
-    /// Used to determine if payload quorum has been reached.
+    /// Gloas ePBS: Accumulated PTC votes for payload_present=true.
+    /// Used to determine if payload timeliness quorum has been reached.
     pub ptc_weight: u64,
+    /// Gloas ePBS: Accumulated PTC votes for blob_data_available=true.
+    /// Used to determine if blob data availability quorum has been reached.
+    pub ptc_blob_data_available_weight: u64,
+    /// Gloas ePBS: Has the PTC quorum confirmed blob data availability?
+    /// Set when ptc_blob_data_available_weight > PTC_SIZE / 2.
+    pub payload_data_available: bool,
     /// Gloas ePBS: The execution block hash from this block's bid.
     /// Used to determine parent payload status (FULL vs EMPTY).
     pub bid_block_hash: Option<ExecutionBlockHash>,
@@ -358,6 +364,8 @@ impl ProtoArray {
             builder_index: block.builder_index,
             payload_revealed: block.payload_revealed,
             ptc_weight: block.ptc_weight,
+            ptc_blob_data_available_weight: block.ptc_blob_data_available_weight,
+            payload_data_available: block.payload_data_available,
             bid_block_hash: block.bid_block_hash,
             bid_parent_block_hash: block.bid_parent_block_hash,
             proposer_index: block.proposer_index,

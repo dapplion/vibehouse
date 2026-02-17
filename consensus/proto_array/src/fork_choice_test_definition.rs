@@ -213,6 +213,8 @@ impl ForkChoiceTestDefinition {
                         builder_index: None,
                         payload_revealed: false,
                         ptc_weight: 0,
+                        ptc_blob_data_available_weight: 0,
+                        payload_data_available: false,
                         bid_block_hash: None,
                         bid_parent_block_hash: None,
                         proposer_index: 0,
