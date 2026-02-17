@@ -12,9 +12,9 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Envelope processing state transition (`process_execution_payload_envelope` — 273 lines, spec-compliant)
 - ✅ Envelope processing wired into beacon chain import pipeline
 - ✅ EL integration: `newPayload` call for gloas payloads via envelope processing
+- ✅ Envelope creation and broadcast after block production (self-build flow)
 
 ### Remaining
-- [ ] Envelope creation and broadcast after block production (self-build flow)
 - [ ] Update chain head tracking for ePBS
 - [ ] Handle the two-phase block: proposer commits, builder reveals
 - [ ] Implement payload timeliness committee logic
@@ -27,6 +27,16 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Self-build envelope creation and broadcast
+- During block production (`produce_block_on_state`), extracts `ExecutionPayloadGloas` and `ExecutionRequests` from `BlockProposalContents` before it's consumed
+- `build_self_build_envelope()` computes the post-envelope state root by running `process_execution_payload_envelope` on a cloned post-block state with a placeholder state_root, then extracts the actual root from the `InvalidStateRoot` error
+- Envelope cached in `BeaconChain::pending_self_build_envelope` (new field)
+- After block import succeeds in `publish_block`, the pending envelope is broadcast via `PubsubMessage::ExecutionPayload`
+- Added `execution_payload_envelope` field to `BeaconBlockResponse` for future use
+- Signature is empty (infinity point) for `BUILDER_INDEX_SELF_BUILD`
+- Pre-existing EF test results unchanged (86/87 pass, data_column_sidecar SSZ failure pre-existing)
+- Commit: `8cccdb5a8`
 
 ### 2026-02-17 — newPayload EL call wired into envelope processing
 - `process_payload_envelope` now async: sends `engine_newPayloadV4` to EL before state transition
