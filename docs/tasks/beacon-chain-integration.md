@@ -13,11 +13,12 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Envelope processing wired into beacon chain import pipeline
 - ✅ EL integration: `newPayload` call for gloas payloads via envelope processing
 - ✅ Envelope creation and broadcast after block production (self-build flow)
+- ✅ Chain head recompute after payload reveal and PTC attestations
 
 ### Remaining
-- [ ] Update chain head tracking for ePBS
 - [ ] Handle the two-phase block: proposer commits, builder reveals
 - [ ] Implement payload timeliness committee logic
+- [ ] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
 
 ## Key files
 - `beacon_node/beacon_chain/src/beacon_chain.rs` — block production, fork choice bridge
@@ -27,6 +28,14 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Chain head recompute after payload reveal and PTC attestations
+- Added `recompute_head_at_current_slot()` call after successful envelope fork choice import in `process_gossip_execution_payload`
+- Added `recompute_head_at_current_slot()` call after successful PTC attestation fork choice import in `process_gossip_payload_attestation`
+- Changed `GossipPayloadAttestation` work type from `BlockingFn` to `AsyncFn` to support the async head recompute call
+- Without this, a block whose payload was just revealed (via envelope or PTC quorum) would not become the chain head until the next periodic recompute tick
+- Pre-existing EF test results unchanged (87/88 pass, data_column_sidecar SSZ failure pre-existing)
+- Commit: `b5f9af3a3`
 
 ### 2026-02-17 — Self-build envelope creation and broadcast
 - During block production (`produce_block_on_state`), extracts `ExecutionPayloadGloas` and `ExecutionRequests` from `BlockProposalContents` before it's consumed
