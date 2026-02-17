@@ -328,6 +328,7 @@ pub enum BlockProductionError {
     KzgError(kzg::Error),
     FailedToBuildBlobSidecars(String),
     MissingExecutionRequests,
+    MissingExecutionBlockHash,
 }
 
 easy_from_to!(BlockProcessingError, BlockProductionError);

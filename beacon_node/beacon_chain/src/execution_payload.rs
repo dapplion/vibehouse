@@ -381,8 +381,19 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
     // and latest_block_hash. Extract parent hash and gas limit from the right source.
     let (latest_execution_payload_header_block_hash, latest_execution_payload_header_gas_limit) =
         if state.fork_name_unchecked().gloas_enabled() {
+            // For Gloas, the state's `latest_block_hash` may be stale because it's only
+            // updated during envelope processing, which runs asynchronously and doesn't
+            // persist its state back to the store. The fork choice head hash is authoritative
+            // because it's updated by `on_execution_payload` during envelope processing and
+            // persisted in the cached head's `forkchoice_update_parameters`.
+            let head_hash = chain
+                .canonical_head
+                .cached_head()
+                .forkchoice_update_parameters()
+                .head_hash
+                .ok_or(BlockProductionError::MissingExecutionBlockHash)?;
             (
-                *state.latest_block_hash()?,
+                head_hash,
                 state.latest_execution_payload_bid()?.gas_limit,
             )
         } else {

@@ -115,3 +115,18 @@ dora_params:
 - Clippy clean
 - Commit: `cf1078fac`
 - **Blocker**: Still need Docker for image build + kurtosis
+
+## Environment
+- Docker: installed, `openclaw` user in docker group (use `sg docker "cmd"` for group access)
+- Kurtosis: v1.15.2 installed, engine running
+- sudo: available, no password required
+- **Blocker resolved**: Docker + Kurtosis ready. Build image and launch devnet NOW.
+
+### 2026-02-18: fix gloas block production — use fork choice head_hash not state.latest_block_hash()
+- In `get_execution_payload`, for Gloas the `state.latest_block_hash()` can be stale because envelope
+  processing runs async and doesn't persist state back to the store.
+- Fixed: use `chain.canonical_head.cached_head().forkchoice_update_parameters().head_hash` which is
+  authoritative — updated by `on_execution_payload` during envelope processing.
+- Added `BlockProductionError::MissingExecutionBlockHash` variant for the `ok_or` error path.
+- 136/136 EF tests pass, clippy clean.
+- Next: build Docker image, run kurtosis devnet.
