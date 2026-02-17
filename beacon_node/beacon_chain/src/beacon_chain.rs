@@ -107,6 +107,7 @@ use state_processing::{
     per_block_processing,
     per_block_processing::{
         VerifySignatures, errors::AttestationValidationError, get_expected_withdrawals,
+        gloas::get_ptc_committee,
         verify_attestation_for_block_inclusion,
     },
     per_slot_processing,
@@ -1663,6 +1664,135 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok((duties, dependent_root, execution_status))
     }
 
+    /// Returns PTC (Payload Timeliness Committee) duties for the given validator indices
+    /// and epoch. Each duty tells a validator which slot it's on the PTC for, and its
+    /// position within the PTC committee.
+    pub fn validator_ptc_duties(
+        &self,
+        validator_indices: &[u64],
+        epoch: Epoch,
+    ) -> Result<(Vec<eth2::types::PtcDutyData>, Hash256), Error> {
+        let head = self.canonical_head.cached_head();
+        let mut state = head.snapshot.beacon_state.clone();
+
+        // Advance state to cover the requested epoch if needed
+        if state.current_epoch() < epoch {
+            let target_slot = epoch.start_slot(T::EthSpec::slots_per_epoch());
+            let state_root = state.update_tree_hash_cache().map_err(Error::from)?;
+            partial_state_advance(&mut state, Some(state_root), target_slot, &self.spec)
+                .map_err(Error::from)?;
+        }
+
+        // Build committee caches needed by get_beacon_committees_at_slot
+        state
+            .build_committee_cache(RelativeEpoch::Current, &self.spec)
+            .map_err(Error::from)?;
+        if state.current_epoch().safe_add(1u64).ok() == Some(epoch) {
+            state
+                .build_committee_cache(RelativeEpoch::Next, &self.spec)
+                .map_err(Error::from)?;
+        }
+
+        // Build a set of requested indices for fast lookup
+        let requested: HashSet<u64> = validator_indices.iter().copied().collect();
+        let mut duties = Vec::new();
+
+        // Iterate over all slots in the epoch
+        let slots_per_epoch = T::EthSpec::slots_per_epoch();
+        let start_slot = epoch.start_slot(slots_per_epoch);
+        let end_slot = start_slot.safe_add(slots_per_epoch).map_err(Error::from)?;
+
+        for slot_num in start_slot.as_u64()..end_slot.as_u64() {
+            let slot = Slot::new(slot_num);
+            let ptc = get_ptc_committee::<T::EthSpec>(&state, slot, &self.spec)
+                .map_err(Error::BlockProcessingError)?;
+
+            for (ptc_position, &validator_index) in ptc.iter().enumerate() {
+                if requested.contains(&validator_index) {
+                    let pubkey = self
+                        .validator_pubkey_bytes(validator_index as usize)?
+                        .ok_or(Error::ValidatorPubkeyCacheIncomplete(
+                            validator_index as usize,
+                        ))?;
+
+                    duties.push(eth2::types::PtcDutyData {
+                        pubkey,
+                        validator_index,
+                        slot,
+                        ptc_committee_index: ptc_position as u64,
+                    });
+                }
+            }
+        }
+
+        // Dependent root: the block root that determines the shuffling for this epoch
+        let dependent_root = state
+            .attester_shuffling_decision_root(self.genesis_block_root, RelativeEpoch::Current)
+            .map_err(Error::from)?;
+
+        Ok((duties, dependent_root))
+    }
+
+    /// Returns the payload attestation data for a given slot.
+    ///
+    /// PTC validators call this to know what to attest about: the block root at the given slot,
+    /// whether the payload was revealed, and whether blob data is available.
+    pub fn get_payload_attestation_data(
+        &self,
+        slot: Slot,
+    ) -> Result<PayloadAttestationData, Error> {
+        // The PTC attests about the block at `slot`. We need to find the block root
+        // for that slot and check the fork choice for payload_revealed.
+        let head = self.canonical_head.cached_head();
+        let head_block_root = head.head_block_root();
+        let head_slot = head.head_slot();
+
+        // Find the block root at the requested slot
+        let block_root = if head_slot == slot {
+            head_block_root
+        } else {
+            // Look through fork choice for the block at this slot
+            let fc = self.canonical_head.fork_choice_read_lock();
+            let proto_block = fc.get_block(&head_block_root);
+            drop(fc);
+
+            // Walk back from head to find the block at the requested slot
+            if let Some(block) = proto_block {
+                if block.slot == slot {
+                    head_block_root
+                } else {
+                    // The block at the requested slot might be an ancestor of head.
+                    // Use the state to find the block root.
+                    let state = &head.snapshot.beacon_state;
+                    *state
+                        .get_block_root(slot)
+                        .map_err(Error::from)?
+                }
+            } else {
+                return Err(Error::MissingBeaconBlock(head_block_root));
+            }
+        };
+
+        // Check fork choice for payload_revealed
+        let fc = self.canonical_head.fork_choice_read_lock();
+        let (payload_present, blob_data_available) =
+            if let Some(block) = fc.get_block(&block_root) {
+                // payload_present: payload was revealed (envelope processed)
+                // blob_data_available: for self-build devnet-0, same as payload_present
+                (block.payload_revealed, block.payload_revealed)
+            } else {
+                (false, false)
+            };
+        drop(fc);
+
+        Ok(PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present,
+            blob_data_available,
+        })
+    }
+
     pub fn get_aggregated_attestation(
         &self,
         attestation: AttestationRef<T::EthSpec>,
@@ -2697,6 +2827,72 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &self.spec,
             )
             .map_err(Into::into)
+    }
+
+    /// Imports a `PayloadAttestationMessage` submitted via the REST API.
+    ///
+    /// Converts the individual message to an aggregated `PayloadAttestation` with a single bit,
+    /// verifies it via the gossip verification path, and inserts into fork choice + pool.
+    pub fn import_payload_attestation_message(
+        &self,
+        message: PayloadAttestationMessage,
+    ) -> Result<PayloadAttestation<T::EthSpec>, Error> {
+        // Get PTC committee to find this validator's position
+        let head = self.canonical_head.cached_head();
+        let state = &head.snapshot.beacon_state;
+
+        let ptc_indices = get_ptc_committee::<T::EthSpec>(
+            state,
+            message.data.slot,
+            &self.spec,
+        )
+        .map_err(Error::BlockProcessingError)?;
+
+        // Find the validator's position in the PTC
+        let ptc_position = ptc_indices
+            .iter()
+            .position(|&idx| idx == message.validator_index)
+            .ok_or_else(|| Error::PayloadAttestationValidatorNotInPtc {
+                validator_index: message.validator_index,
+                slot: message.data.slot,
+            })?;
+
+        // Create aggregated PayloadAttestation with single bit set
+        let mut aggregation_bits = BitVector::default();
+        aggregation_bits
+            .set(ptc_position, true)
+            .map_err(|_| Error::PayloadAttestationBitOutOfBounds {
+                position: ptc_position,
+            })?;
+
+        // Convert individual signature to aggregate signature
+        let agg_sig = AggregateSignature::from(&message.signature);
+
+        let attestation = PayloadAttestation {
+            aggregation_bits,
+            data: message.data,
+            signature: agg_sig,
+        };
+
+        // Verify using the same gossip verification path
+        let verified = self
+            .verify_payload_attestation_for_gossip(attestation.clone())
+            .map_err(|e| Error::PayloadAttestationVerificationFailed(format!("{:?}", e)))?;
+
+        // Insert into fork choice
+        if let Err(e) = self.apply_payload_attestation_to_fork_choice(&verified) {
+            let att_slot = verified.attestation().data.slot;
+            warn!(
+                error = ?e,
+                slot = %att_slot,
+                "Failed to import payload attestation to fork choice"
+            );
+        }
+
+        // Insert into pool for block inclusion
+        self.insert_payload_attestation_to_pool(verified.attestation().clone());
+
+        Ok(verified.attestation().clone())
     }
 
     /// Inserts a verified payload attestation into the pool for later block inclusion (gloas ePBS).

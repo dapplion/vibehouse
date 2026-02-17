@@ -249,6 +249,15 @@ pub enum BeaconChainError {
     SkipProposerPreparation,
     FailedColumnCustodyInfoUpdate,
     EnvelopeProcessingError(String),
+    PayloadAttestationValidatorNotInPtc {
+        validator_index: u64,
+        slot: Slot,
+    },
+    PayloadAttestationBitOutOfBounds {
+        position: usize,
+    },
+    PayloadAttestationVerificationFailed(String),
+    BlockProcessingError(BlockProcessingError),
 }
 
 easy_from_to!(SlotProcessingError, BeaconChainError);

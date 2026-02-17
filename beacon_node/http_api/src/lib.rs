@@ -20,6 +20,7 @@ mod metrics;
 mod peer;
 mod produce_block;
 mod proposer_duties;
+mod ptc_duties;
 mod publish_attestations;
 mod publish_blocks;
 mod standard_block_rewards;
@@ -91,10 +92,10 @@ use tracing::{debug, error, info, warn};
 use types::{
     Attestation, AttestationData, AttestationShufflingId, AttesterSlashing, BeaconStateError,
     ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Epoch, EthSpec, ForkName, Hash256,
-    ProposerPreparationData, ProposerSlashing, RelativeEpoch, SignedAggregateAndProof,
-    SignedBlindedBeaconBlock, SignedBlsToExecutionChange, SignedContributionAndProof,
-    SignedValidatorRegistrationData, SignedVoluntaryExit, SingleAttestation, Slot,
-    SyncCommitteeMessage, SyncContributionData,
+    PayloadAttestationMessage, ProposerPreparationData, ProposerSlashing, RelativeEpoch,
+    SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
+    SignedContributionAndProof, SignedValidatorRegistrationData, SignedVoluntaryExit,
+    SingleAttestation, Slot, SyncCommitteeMessage, SyncContributionData,
 };
 use validator::pubkey_to_validator_index;
 use version::{
@@ -2462,6 +2463,50 @@ pub fn serve<T: BeaconChainTypes>(
             },
         );
 
+    // POST beacon/pool/payload_attestations
+    let post_beacon_pool_payload_attestations = beacon_pool_path
+        .clone()
+        .and(warp::path("payload_attestations"))
+        .and(warp::path::end())
+        .and(warp_utils::json::json())
+        .and(network_tx_filter.clone())
+        .then(
+            |task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>,
+             messages: Vec<PayloadAttestationMessage>,
+             network_tx: UnboundedSender<NetworkMessage<T::EthSpec>>| {
+                task_spawner.blocking_json_task(Priority::P0, move || {
+                    let mut failures = vec![];
+
+                    for (index, message) in messages.into_iter().enumerate() {
+                        match chain.import_payload_attestation_message(message) {
+                            Ok(attestation) => {
+                                publish_pubsub_message(
+                                    &network_tx,
+                                    PubsubMessage::PayloadAttestation(Box::new(attestation)),
+                                )?;
+                            }
+                            Err(e) => {
+                                failures.push(api_types::Failure::new(
+                                    index,
+                                    format!("invalid: {:?}", e),
+                                ));
+                            }
+                        }
+                    }
+
+                    if failures.is_empty() {
+                        Ok(())
+                    } else {
+                        Err(warp_utils::reject::indexed_bad_request(
+                            "some payload attestations failed to import".into(),
+                            failures,
+                        ))
+                    }
+                })
+            },
+        );
+
     let beacon_rewards_path = eth_v1
         .and(warp::path("beacon"))
         .and(warp::path("rewards"))
@@ -3503,6 +3548,30 @@ pub fn serve<T: BeaconChainTypes>(
             },
         );
 
+    // GET validator/payload_attestation_data?slot
+    let get_validator_payload_attestation_data = eth_v1
+        .and(warp::path("validator"))
+        .and(warp::path("payload_attestation_data"))
+        .and(warp::path::end())
+        .and(warp::query::<api_types::ValidatorPayloadAttestationDataQuery>())
+        .and(not_while_syncing_filter.clone())
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone())
+        .then(
+            |query: api_types::ValidatorPayloadAttestationDataQuery,
+             not_synced_filter: Result<(), Rejection>,
+             task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>| {
+                task_spawner.blocking_json_task(Priority::P0, move || {
+                    not_synced_filter?;
+                    chain
+                        .get_payload_attestation_data(query.slot)
+                        .map(api_types::GenericResponse::from)
+                        .map_err(warp_utils::reject::unhandled_error)
+                })
+            },
+        );
+
     // GET validator/aggregate_attestation?attestation_data_root,slot
     let get_validator_aggregate_attestation = any_version
         .and(warp::path("validator"))
@@ -3555,6 +3624,34 @@ pub fn serve<T: BeaconChainTypes>(
                 task_spawner.blocking_json_task(Priority::P0, move || {
                     not_synced_filter?;
                     attester_duties::attester_duties(epoch, &indices.0, &chain)
+                })
+            },
+        );
+
+    // POST validator/duties/ptc/{epoch}
+    let post_validator_duties_ptc = eth_v1
+        .and(warp::path("validator"))
+        .and(warp::path("duties"))
+        .and(warp::path("ptc"))
+        .and(warp::path::param::<Epoch>().or_else(|_| async {
+            Err(warp_utils::reject::custom_bad_request(
+                "Invalid epoch".to_string(),
+            ))
+        }))
+        .and(warp::path::end())
+        .and(not_while_syncing_filter.clone())
+        .and(warp_utils::json::json())
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone())
+        .then(
+            |epoch: Epoch,
+             not_synced_filter: Result<(), Rejection>,
+             indices: api_types::ValidatorIndexData,
+             task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>| {
+                task_spawner.blocking_json_task(Priority::P0, move || {
+                    not_synced_filter?;
+                    ptc_duties::ptc_duties(epoch, &indices.0, &chain)
                 })
             },
         );
@@ -4934,6 +5031,7 @@ pub fn serve<T: BeaconChainTypes>(
                 .uor(get_validator_blocks)
                 .uor(get_validator_blinded_blocks)
                 .uor(get_validator_attestation_data)
+                .uor(get_validator_payload_attestation_data)
                 .uor(get_validator_aggregate_attestation)
                 .uor(get_validator_sync_committee_contribution)
                 .uor(get_lighthouse_health)
@@ -4983,12 +5081,14 @@ pub fn serve<T: BeaconChainTypes>(
                     .uor(post_beacon_pool_voluntary_exits)
                     .uor(post_beacon_pool_sync_committees)
                     .uor(post_beacon_pool_bls_to_execution_changes)
+                    .uor(post_beacon_pool_payload_attestations)
                     .uor(post_beacon_state_validators)
                     .uor(post_beacon_state_validator_balances)
                     .uor(post_beacon_state_validator_identities)
                     .uor(post_beacon_rewards_attestations)
                     .uor(post_beacon_rewards_sync_committee)
                     .uor(post_validator_duties_attester)
+                    .uor(post_validator_duties_ptc)
                     .uor(post_validator_duties_sync)
                     .uor(post_validator_aggregate_and_proofs)
                     .uor(post_validator_contribution_and_proofs)

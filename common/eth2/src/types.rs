@@ -772,6 +772,21 @@ impl AttesterData {
     }
 }
 
+/// PTC (Payload Timeliness Committee) duty data for a validator.
+///
+/// Tells the validator client which slot it needs to produce a payload attestation for,
+/// and its position within the PTC committee (for aggregation_bits).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PtcDutyData {
+    pub pubkey: PublicKeyBytes,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub validator_index: u64,
+    pub slot: Slot,
+    /// Position of this validator within the PTC committee (index into aggregation_bits).
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub ptc_committee_index: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProposerData {
     pub pubkey: PublicKeyBytes,
@@ -815,6 +830,11 @@ impl TryFrom<Option<String>> for SkipRandaoVerification {
 pub struct ValidatorAttestationDataQuery {
     pub slot: Slot,
     pub committee_index: CommitteeIndex,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ValidatorPayloadAttestationDataQuery {
+    pub slot: Slot,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
