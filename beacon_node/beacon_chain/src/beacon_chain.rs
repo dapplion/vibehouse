@@ -490,6 +490,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Set during block production, consumed during block publishing.
     pub pending_self_build_envelope:
         Mutex<Option<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
+    /// Gloas ePBS: pool of verified payload attestations for block inclusion.
+    /// Keyed by the slot the attestation targets (i.e., data.slot).
+    pub payload_attestation_pool:
+        Mutex<HashMap<Slot, Vec<PayloadAttestation<T::EthSpec>>>>,
 }
 
 pub enum BeaconBlockResponseWrapper<E: EthSpec> {
@@ -2550,6 +2554,43 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &self.spec,
             )
             .map_err(Into::into)
+    }
+
+    /// Inserts a verified payload attestation into the pool for later block inclusion (gloas ePBS).
+    pub fn insert_payload_attestation_to_pool(
+        &self,
+        attestation: PayloadAttestation<T::EthSpec>,
+    ) {
+        let slot = attestation.data.slot;
+        let mut pool = self.payload_attestation_pool.lock();
+        pool.entry(slot).or_default().push(attestation);
+
+        // Prune attestations older than 2 epochs to bound memory.
+        let current_slot = self.slot().unwrap_or(slot);
+        let prune_before = current_slot.saturating_sub(
+            T::EthSpec::slots_per_epoch().saturating_mul(2),
+        );
+        pool.retain(|&s, _| s >= prune_before);
+    }
+
+    /// Retrieves payload attestations from the pool for block inclusion at the given slot.
+    ///
+    /// Returns attestations targeting `slot - 1` (the previous slot), limited to
+    /// `max_payload_attestations`.
+    pub fn get_payload_attestations_for_block(
+        &self,
+        block_slot: Slot,
+    ) -> Vec<PayloadAttestation<T::EthSpec>> {
+        let target_slot = block_slot.saturating_sub(1u64);
+        let pool = self.payload_attestation_pool.lock();
+        pool.get(&target_slot)
+            .map(|atts| {
+                atts.iter()
+                    .take(T::EthSpec::max_payload_attestations())
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Accepts an `VerifiedUnaggregatedAttestation` and attempts to apply it to the "naive
@@ -6089,9 +6130,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     signature: Signature::empty(),
                 };
 
-                // TODO: Include payload attestations from the op pool for the previous slot's
-                // payload. For devnet-0 self-build, empty list is acceptable.
-                let payload_attestations = VariableList::empty();
+                // Include payload attestations from the pool for the previous slot's payload.
+                let payload_attestations: VariableList<_, _> =
+                    self.get_payload_attestations_for_block(slot).into();
 
                 (
                     BeaconBlock::Gloas(BeaconBlockGloas {

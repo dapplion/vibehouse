@@ -34,6 +34,7 @@ use rayon::prelude::*;
 use slasher::Slasher;
 use slot_clock::{SlotClock, TestingSlotClock};
 use state_processing::{AllCaches, per_slot_processing};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
@@ -1058,6 +1059,7 @@ where
             kzg: self.kzg.clone(),
             rng: Arc::new(Mutex::new(rng)),
             pending_self_build_envelope: Mutex::new(None),
+            payload_attestation_pool: Mutex::new(HashMap::new()),
         };
 
         let head = beacon_chain.head_snapshot();
