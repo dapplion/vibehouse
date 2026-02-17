@@ -17,6 +17,7 @@ pub mod types;
 use self::mixin::{RequestAccept, ResponseOptional};
 use self::types::{Error as ResponseError, *};
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
+use ::types::{PayloadAttestationData, PayloadAttestationMessage};
 use derivative::Derivative;
 use futures::Stream;
 use futures_util::StreamExt;
@@ -2598,6 +2599,66 @@ impl BeaconNodeHttpClient {
             .append_pair("committee_index", &committee_index.to_string());
 
         self.get_with_timeout(path, self.timeouts.attestation).await
+    }
+
+    /// `GET v1/validator/payload_attestation_data?slot`
+    pub async fn get_validator_payload_attestation_data(
+        &self,
+        slot: Slot,
+    ) -> Result<GenericResponse<PayloadAttestationData>, Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("validator")
+            .push("payload_attestation_data");
+
+        path.query_pairs_mut()
+            .append_pair("slot", &slot.to_string());
+
+        self.get_with_timeout(path, self.timeouts.attestation).await
+    }
+
+    /// `POST v1/validator/duties/ptc/{epoch}`
+    pub async fn post_validator_duties_ptc(
+        &self,
+        epoch: Epoch,
+        indices: &[u64],
+    ) -> Result<DutiesResponse<Vec<PtcDutyData>>, Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("validator")
+            .push("duties")
+            .push("ptc")
+            .push(&epoch.to_string());
+
+        self.post_with_timeout_and_response(
+            path,
+            &ValidatorIndexDataRef(indices),
+            self.timeouts.attester_duties,
+        )
+        .await
+    }
+
+    /// `POST v1/beacon/pool/payload_attestations`
+    pub async fn post_beacon_pool_payload_attestations(
+        &self,
+        messages: &[PayloadAttestationMessage],
+    ) -> Result<(), Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("pool")
+            .push("payload_attestations");
+
+        self.post_with_timeout(path, &messages, self.timeouts.attestation)
+            .await?;
+
+        Ok(())
     }
 
     /// `GET v1/validator/aggregate_attestation?slot,attestation_data_root`

@@ -43,6 +43,7 @@ use validator_services::{
     block_service::{BlockService, BlockServiceBuilder},
     duties_service::{self, DutiesService, DutiesServiceBuilder},
     latency_service,
+    payload_attestation_service::{PayloadAttestationService, PayloadAttestationServiceBuilder},
     preparation_service::{PreparationService, PreparationServiceBuilder},
     sync_committee_service::SyncCommitteeService,
 };
@@ -80,6 +81,7 @@ pub struct ProductionValidatorClient<E: EthSpec> {
     duties_service: Arc<DutiesService<ValidatorStore<E>, SystemTimeSlotClock>>,
     block_service: BlockService<ValidatorStore<E>, SystemTimeSlotClock>,
     attestation_service: AttestationService<ValidatorStore<E>, SystemTimeSlotClock>,
+    payload_attestation_service: PayloadAttestationService<ValidatorStore<E>, SystemTimeSlotClock>,
     sync_committee_service: SyncCommitteeService<ValidatorStore<E>, SystemTimeSlotClock>,
     doppelganger_service: Option<Arc<DoppelgangerService>>,
     preparation_service: PreparationService<ValidatorStore<E>, SystemTimeSlotClock>,
@@ -505,6 +507,13 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             .disable(config.disable_attesting)
             .build()?;
 
+        let payload_attestation_service = PayloadAttestationServiceBuilder::new()
+            .slot_clock(slot_clock.clone())
+            .validator_store(validator_store.clone())
+            .beacon_nodes(beacon_nodes.clone())
+            .executor(context.executor.clone())
+            .build()?;
+
         let preparation_service = PreparationServiceBuilder::new()
             .slot_clock(slot_clock.clone())
             .validator_store(validator_store.clone())
@@ -527,6 +536,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             duties_service,
             block_service,
             attestation_service,
+            payload_attestation_service,
             sync_committee_service,
             doppelganger_service,
             preparation_service,
@@ -593,6 +603,11 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             .clone()
             .start_update_service(&self.context.eth2_config.spec)
             .map_err(|e| format!("Unable to start attestation service: {}", e))?;
+
+        self.payload_attestation_service
+            .clone()
+            .start_update_service(&self.context.eth2_config.spec)
+            .map_err(|e| format!("Unable to start payload attestation service: {}", e))?;
 
         self.sync_committee_service
             .clone()

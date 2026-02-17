@@ -19,8 +19,9 @@ use tracing::{error, info, warn};
 use types::{
     AbstractExecPayload, Address, AggregateAndProof, Attestation, BeaconBlock, BlindedPayload,
     ChainSpec, ContributionAndProof, Domain, Epoch, EthSpec, ExecutionPayloadEnvelope, Fork,
-    Graffiti, Hash256, PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof,
-    SignedBeaconBlock, SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedRoot,
+    Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage, PublicKeyBytes,
+    SelectionProof, Signature, SignedAggregateAndProof, SignedBeaconBlock,
+    SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedRoot,
     SignedValidatorRegistrationData, SignedVoluntaryExit, Slot, SyncAggregatorSelectionData,
     SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
     ValidatorRegistrationData, VoluntaryExit, graffiti::GraffitiString,
@@ -781,6 +782,32 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for LighthouseValidatorS
 
         Ok(SignedExecutionPayloadEnvelope {
             message: envelope.clone(),
+            signature,
+        })
+    }
+
+    async fn sign_payload_attestation(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        data: &PayloadAttestationData,
+        validator_index: u64,
+    ) -> Result<PayloadAttestationMessage, Error> {
+        let signing_epoch = data.slot.epoch(E::slots_per_epoch());
+        let signing_context = self.signing_context(Domain::PtcAttester, signing_epoch);
+        let signing_method = self.doppelganger_bypassed_signing_method(validator_pubkey)?;
+
+        let signature = signing_method
+            .get_signature::<E, BlindedPayload<E>>(
+                SignableMessage::PayloadAttestationData(data),
+                signing_context,
+                &self.spec,
+                &self.task_executor,
+            )
+            .await?;
+
+        Ok(PayloadAttestationMessage {
+            validator_index,
+            data: data.clone(),
             signature,
         })
     }
