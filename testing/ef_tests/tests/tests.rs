@@ -1137,7 +1137,7 @@ fn kzg_inclusion_merkle_proof_validity() {
 
 #[test]
 fn rewards() {
-    for handler in &["basic", "leak", "random"] {
+    for handler in &["basic", "inactivity_scores", "leak", "random"] {
         RewardsHandler::<MinimalEthSpec>::new(handler).run();
         RewardsHandler::<MainnetEthSpec>::new(handler).run();
     }

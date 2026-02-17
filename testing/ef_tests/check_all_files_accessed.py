@@ -48,7 +48,7 @@ excluded_paths = [
     "tests/.*/eip7732",
     "tests/.*/eip7805",
     # Ignore MatrixEntry SSZ tests for now.
-    "tests/.*/fulu/ssz_static/MatrixEntry/.*",
+    "tests/.*/.*/ssz_static/MatrixEntry/.*",
     # EIP-7916 is still in draft and hasn't been implemented yet https://eips.ethereum.org/EIPS/eip-7916
     "tests/general/phase0/ssz_generic/progressive_bitlist",
     "tests/general/phase0/ssz_generic/basic_progressive_list",
@@ -60,6 +60,18 @@ excluded_paths = [
     # Ignore KZG tests that target internal kzg library functions
     "tests/.*/compute_verify_cell_kzg_proof_batch_challenge/.*",
     "tests/.*/compute_challenge/.*",
+    # manifest.yaml files are metadata not read by the test harness
+    ".*/manifest.yaml",
+    # SSZ generic compatible_unions and progressive_containers are not implemented
+    "tests/general/phase0/ssz_generic/compatible_unions",
+    "tests/general/phase0/ssz_generic/progressive_containers",
+    # Light client update_ranking is not implemented
+    "tests/.*/.*/light_client/update_ranking",
+    # ForkChoiceNode is an internal fork choice type not in consensus/types
+    "tests/.*/.*/ssz_static/ForkChoiceNode/.*",
+    # ProposerPreferences types not yet implemented (external builder path)
+    "tests/.*/.*/ssz_static/ProposerPreferences/.*",
+    "tests/.*/.*/ssz_static/SignedProposerPreferences/.*",
 ]
 
 
