@@ -16,7 +16,10 @@ vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/rele
 
 ## priorities
 
-### 1. Gloas fork (Glamsterdam consensus layer) — ePBS (EIP-7732)
+### 1. 🔥 Kurtosis solo devnet — vibehouse only
+[docs/tasks/kurtosis-devnet.md](docs/tasks/kurtosis-devnet.md) — **URGENT: get a kurtosis devnet running with only vibehouse (no other clients). This is the #1 priority. Everything else waits.**
+
+### 2. Gloas fork (Glamsterdam consensus layer) — ePBS (EIP-7732)
 
 | Phase | Status | Task doc |
 |-------|--------|----------|
@@ -34,19 +37,19 @@ Reference:
 - ePBS spec: https://eips.ethereum.org/EIPS/eip-7732
 - Upstream WIP: [sigp/lighthouse#8806](https://github.com/sigp/lighthouse/pull/8806)
 
-### 2. Spec tests
+### 3. Spec tests
 [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 passing
 
-### 3. Testing coverage
+### 4. Testing coverage
 [docs/tasks/testing-coverage.md](docs/tasks/testing-coverage.md) — NOT STARTED
 
-### 4. Kurtosis / epbs-devnet-0
+### 5. Kurtosis / epbs-devnet-0
 [docs/tasks/kurtosis-devnet.md](docs/tasks/kurtosis-devnet.md) — target Feb 18, 2026
 
-### 5. Community features
+### 6. Community features
 Track via GitHub Issues. Triage, label, implement, test, merge.
 
-### 6. Upstream sync
+### 7. Upstream sync
 [docs/tasks/upstream-sync.md](docs/tasks/upstream-sync.md) — ONGOING
 
 ---
