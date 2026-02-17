@@ -12,12 +12,20 @@ use types::{ChainSpec, Epoch, EthSpec};
 use validator_store::{DoppelgangerStatus, ValidatorStore};
 
 /// Builds a `PayloadAttestationService`.
-#[derive(Default)]
 pub struct PayloadAttestationServiceBuilder<S: ValidatorStore, T: SlotClock + 'static> {
     validator_store: Option<Arc<S>>,
     slot_clock: Option<T>,
     beacon_nodes: Option<Arc<BeaconNodeFallback<T>>>,
     executor: Option<TaskExecutor>,
+    gloas_fork_epoch: Option<Epoch>,
+}
+
+impl<S: ValidatorStore + 'static, T: SlotClock + 'static> Default
+    for PayloadAttestationServiceBuilder<S, T>
+{
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
@@ -29,6 +37,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
             slot_clock: None,
             beacon_nodes: None,
             executor: None,
+            gloas_fork_epoch: None,
         }
     }
 
@@ -52,6 +61,11 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
         self
     }
 
+    pub fn spec(mut self, spec: &ChainSpec) -> Self {
+        self.gloas_fork_epoch = spec.gloas_fork_epoch;
+        self
+    }
+
     pub fn build(self) -> Result<PayloadAttestationService<S, T>, String> {
         Ok(PayloadAttestationService {
             inner: Arc::new(Inner {
@@ -68,6 +82,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
                     .executor
                     .ok_or("Cannot build PayloadAttestationService without executor")?,
                 duties_cache: RwLock::new(DutiesCache::default()),
+                gloas_fork_epoch: self.gloas_fork_epoch,
             }),
         })
     }
@@ -85,6 +100,7 @@ pub struct Inner<S, T> {
     beacon_nodes: Arc<BeaconNodeFallback<T>>,
     executor: TaskExecutor,
     duties_cache: RwLock<DutiesCache>,
+    gloas_fork_epoch: Option<Epoch>,
 }
 
 /// Produces payload timeliness attestations for PTC (Payload Timeliness Committee) duties.
@@ -111,8 +127,26 @@ impl<S, T> Deref for PayloadAttestationService<S, T> {
 }
 
 impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationService<S, T> {
+    /// Check if the Gloas fork has been activated and therefore PTC duties should be performed.
+    ///
+    /// Slot clock errors are mapped to `false`.
+    fn gloas_fork_activated(&self) -> bool {
+        self.gloas_fork_epoch
+            .and_then(|fork_epoch| {
+                let current_epoch = self.slot_clock.now()?.epoch(S::E::slots_per_epoch());
+                Some(current_epoch >= fork_epoch)
+            })
+            .unwrap_or(false)
+    }
+
     /// Starts the service which periodically produces payload attestations at 3/4 of each slot.
     pub fn start_update_service(self, spec: &ChainSpec) -> Result<(), String> {
+        // If Gloas is not scheduled at all, don't start the service.
+        if !spec.is_gloas_scheduled() {
+            info!("Payload attestation service disabled (Gloas not scheduled)");
+            return Ok(());
+        }
+
         let slot_duration = Duration::from_secs(spec.seconds_per_slot);
         let duration_to_next_slot = self
             .slot_clock
@@ -131,6 +165,11 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
                 if let Some(duration_to_next_slot) = self.slot_clock.duration_to_next_slot() {
                     // PTC attestations happen at 3/4 of the slot.
                     sleep(duration_to_next_slot + slot_duration * 3 / 4).await;
+
+                    // Do nothing if the Gloas fork has not yet occurred.
+                    if !self.gloas_fork_activated() {
+                        continue;
+                    }
 
                     self.spawn_payload_attestation_tasks();
                 } else {

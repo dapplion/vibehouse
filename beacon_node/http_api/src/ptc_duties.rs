@@ -14,6 +14,12 @@ pub fn ptc_duties<T: BeaconChainTypes>(
     request_indices: &[u64],
     chain: &BeaconChain<T>,
 ) -> Result<ApiDuties, warp::reject::Rejection> {
+    if !chain.spec.is_gloas_scheduled() {
+        return Err(warp_utils::reject::custom_bad_request(
+            "Gloas is not scheduled".to_string(),
+        ));
+    }
+
     let current_epoch = chain
         .slot_clock
         .now_or_genesis()
