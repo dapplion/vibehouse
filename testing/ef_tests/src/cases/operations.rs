@@ -11,6 +11,7 @@ use state_processing::per_block_processing::process_operations::{
 };
 use state_processing::{
     ConsensusContext,
+    envelope_processing::process_execution_payload_envelope,
     per_block_processing::{
         VerifyBlockRoot, VerifySignatures,
         errors::BlockProcessingError,
@@ -30,8 +31,8 @@ use types::{
     BeaconBlockBodyGloas,
     BeaconState, BlindedPayload, ConsolidationRequest, Deposit, DepositRequest, ExecutionPayload,
     ForkVersionDecode, FullPayload, Hash256, PayloadAttestation, ProposerSlashing,
-    SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedVoluntaryExit, Slot,
-    SyncAggregate, WithdrawalRequest,
+    SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedVoluntaryExit, Slot, SyncAggregate, WithdrawalRequest,
 };
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -723,5 +724,62 @@ impl<E: EthSpec> Operation<E> for PayloadAttestation<E> {
         _: &Operations<E, Self>,
     ) -> Result<(), BlockProcessingError> {
         process_payload_attestation(state, self, VerifySignatures::True, spec)
+    }
+}
+
+/// Wrapper for gloas execution payload envelope tests.
+/// In gloas, `process_execution_payload` operates on a `SignedExecutionPayloadEnvelope`
+/// instead of a block body. The test fixtures use `signed_envelope.ssz_snappy`.
+#[derive(Debug, Clone)]
+pub struct ExecutionPayloadEnvelopeOp<E: EthSpec> {
+    pub signed_envelope: SignedExecutionPayloadEnvelope<E>,
+}
+
+impl<E: EthSpec> Operation<E> for ExecutionPayloadEnvelopeOp<E> {
+    fn handler_name() -> String {
+        "execution_payload".into()
+    }
+
+    fn filename() -> String {
+        "signed_envelope.ssz_snappy".into()
+    }
+
+    fn is_enabled_for_fork(fork_name: ForkName) -> bool {
+        fork_name.gloas_enabled()
+    }
+
+    fn decode(path: &Path, _fork_name: ForkName, _spec: &ChainSpec) -> Result<Self, Error> {
+        let signed_envelope: SignedExecutionPayloadEnvelope<E> = ssz_decode_file(path)?;
+        Ok(ExecutionPayloadEnvelopeOp { signed_envelope })
+    }
+
+    fn apply_to(
+        &self,
+        state: &mut BeaconState<E>,
+        spec: &ChainSpec,
+        extra: &Operations<E, Self>,
+    ) -> Result<(), BlockProcessingError> {
+        let valid = extra
+            .execution_metadata
+            .as_ref()
+            .is_some_and(|e| e.execution_valid);
+        if !valid {
+            return Err(BlockProcessingError::ExecutionInvalid);
+        }
+
+        // Compute the parent state root before processing (the pre-state's root
+        // is needed to fill in latest_block_header.state_root).
+        let parent_state_root = state
+            .canonical_root()
+            .map_err(BlockProcessingError::BeaconStateError)?;
+
+        process_execution_payload_envelope(
+            state,
+            Some(parent_state_root),
+            &self.signed_envelope,
+            VerifySignatures::True,
+            spec,
+        )
+        .map_err(|e| BlockProcessingError::EnvelopeProcessingError(format!("{e:?}")))
     }
 }

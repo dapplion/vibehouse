@@ -99,6 +99,7 @@ pub enum BlockProcessingError {
         reason: String,
     },
     PayloadAttestationInvalid(PayloadAttestationInvalid),
+    EnvelopeProcessingError(String),
     InvalidSlot(u64),
     InvalidSlotIndex(usize),
 }

@@ -18,6 +18,8 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Gossip topic names fixed to match spec (`execution_payload_bid`, `payload_attestation_message`)
 - ✅ Code cleanup: removed unused imports and dead `GloasNotImplemented` error variant
 - ✅ Gloas preset values: populated GloasPreset struct, fixed minimal spec (PTC_SIZE=2, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=16)
+- ✅ Envelope signature verification: `process_execution_payload_envelope` now verifies builder/proposer signatures with `BUILDER_INDEX_SELF_BUILD` support
+- ✅ EF spec tests for envelope processing: 40/40 gloas `execution_payload` tests pass (78/78 total)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -33,6 +35,17 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Envelope signature verification + EF spec tests
+- **Problem 1**: `process_execution_payload_envelope` had a TODO for signature verification — envelope signatures were never verified
+- **Fix**: Added `verify_execution_payload_envelope_signature` to `process_execution_payload_envelope`, matching the spec:
+  - For `BUILDER_INDEX_SELF_BUILD` (u64::MAX): uses the proposer's validator pubkey from `state.validators`
+  - For external builders: uses the builder's pubkey from `state.builders` registry
+  - Uses `DOMAIN_BEACON_BUILDER` domain and `execution_payload_envelope_signature_set` from signature_sets module
+- **Problem 2**: No EF spec tests were running for gloas `process_execution_payload` (the envelope variant)
+- **Fix**: Added `ExecutionPayloadEnvelopeOp` test handler that reads `signed_envelope.ssz_snappy` and runs `process_execution_payload_envelope`
+- 40 gloas execution_payload tests pass: 17 valid + 23 expected failures
+- All 78/78 EF tests pass (was 77/77), 136/136 fake_crypto pass
 
 ### 2026-02-17 — DataColumnSidecar superstruct for Fulu/Gloas
 - **Problem**: Gloas spec changed DataColumnSidecar structure — removed `kzg_commitments`, `signed_block_header`, `kzg_commitments_inclusion_proof`; added `slot` and `beacon_block_root`. SSZ static test was failing because single struct couldn't match both fork fixtures.

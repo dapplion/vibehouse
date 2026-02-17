@@ -132,6 +132,15 @@ fn operations_payload_attestation() {
 }
 
 #[test]
+#[cfg(not(feature = "fake_crypto"))]
+fn operations_execution_payload_envelope() {
+    OperationsHandler::<MinimalEthSpec, ExecutionPayloadEnvelopeOp<MinimalEthSpec>>::default()
+        .run();
+    OperationsHandler::<MainnetEthSpec, ExecutionPayloadEnvelopeOp<MainnetEthSpec>>::default()
+        .run();
+}
+
+#[test]
 fn sanity_blocks() {
     SanityBlocksHandler::<MinimalEthSpec>::default().run();
     SanityBlocksHandler::<MainnetEthSpec>::default().run();

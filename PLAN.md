@@ -35,7 +35,7 @@ Reference:
 - Upstream WIP: [sigp/lighthouse#8806](https://github.com/sigp/lighthouse/pull/8806)
 
 ### 2. Spec tests
-[docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 76/77 passing
+[docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 passing
 
 ### 3. Testing coverage
 [docs/tasks/testing-coverage.md](docs/tasks/testing-coverage.md) — NOT STARTED

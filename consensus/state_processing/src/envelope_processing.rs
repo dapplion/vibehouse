@@ -4,11 +4,14 @@ use crate::per_block_processing::compute_timestamp_at_slot;
 use crate::per_block_processing::process_operations::{
     process_consolidation_requests, process_deposit_requests, process_withdrawal_requests,
 };
+use crate::signature_sets::execution_payload_envelope_signature_set;
 use safe_arith::{ArithError, SafeArith};
+use std::borrow::Cow;
 use tree_hash::TreeHash;
 use types::{
     BeaconState, BeaconStateError, BuilderIndex, BuilderPendingPayment, ChainSpec, EthSpec,
-    ExecutionBlockHash, Hash256, SignedExecutionPayloadEnvelope, Slot,
+    ExecutionBlockHash, Hash256, PublicKey, SignedExecutionPayloadEnvelope, Slot,
+    consts::gloas::BUILDER_INDEX_SELF_BUILD,
 };
 
 macro_rules! envelope_verify {
@@ -115,10 +118,33 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<(), EnvelopeProcessingError> {
-    // TODO: Verify signed envelope signature when verify_signatures is true.
-    // For devnet-0 self-build, the signature is the infinity point (empty).
-    // Full signature verification will be needed for external builders.
-    let _ = verify_signatures;
+    if verify_signatures.is_true() {
+        let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
+            if builder_idx == BUILDER_INDEX_SELF_BUILD {
+                // Self-build: use the proposer's validator pubkey
+                let proposer_index = state.latest_block_header().proposer_index as usize;
+                state
+                    .validators()
+                    .get(proposer_index)
+                    .and_then(|v| v.pubkey.decompress().ok().map(Cow::Owned))
+            } else {
+                // Builder-submitted: use the builder's pubkey from the registry
+                state
+                    .builders()
+                    .ok()?
+                    .get(builder_idx as usize)
+                    .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            }
+        };
+
+        let signature_set =
+            execution_payload_envelope_signature_set(state, get_builder_pubkey, signed_envelope, spec)
+                .map_err(|_| EnvelopeProcessingError::BadSignature)?;
+
+        if !signature_set.verify() {
+            return Err(EnvelopeProcessingError::BadSignature);
+        }
+    }
 
     let envelope = &signed_envelope.message;
     let payload = &envelope.payload;
