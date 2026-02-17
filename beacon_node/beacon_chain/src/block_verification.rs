@@ -52,7 +52,7 @@ use crate::beacon_snapshot::PreProcessingSnapshot;
 use crate::blob_verification::GossipBlobError;
 use crate::block_verification_types::{AsBlock, BlockImportData, RpcBlock};
 use crate::data_availability_checker::{
-    AvailabilityCheckError, AvailableBlock, AvailableBlockData, MaybeAvailableBlock,
+    AvailabilityCheckError, AvailableBlock, MaybeAvailableBlock,
 };
 use crate::data_column_verification::GossipDataColumnError;
 use crate::execution_payload::{

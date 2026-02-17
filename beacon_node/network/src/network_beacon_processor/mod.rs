@@ -18,7 +18,7 @@ use lighthouse_network::rpc::methods::{
 };
 use lighthouse_network::service::api_types::CustodyBackfillBatchId;
 use lighthouse_network::{
-    Client, MessageAcceptance, MessageId, NetworkGlobals, PeerId, PubsubMessage,
+    Client, MessageId, NetworkGlobals, PeerId, PubsubMessage,
     rpc::{BlocksByRangeRequest, BlocksByRootRequest, LightClientBootstrapRequest, StatusMessage},
 };
 use rand::prelude::SliceRandom;
