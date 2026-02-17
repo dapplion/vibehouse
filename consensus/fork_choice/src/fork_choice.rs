@@ -949,6 +949,16 @@ where
                     }
                 }
             }
+        } else if let Ok(bid) = block.body().signed_execution_payload_bid() {
+            // Gloas ePBS: block contains a bid, not a payload. Use the bid's block_hash
+            // so head_hash is available for forkchoice_updated (especially for self-build
+            // blocks which are immediately viable for head).
+            let block_hash = bid.message.block_hash;
+            if block_hash == ExecutionBlockHash::zero() {
+                ExecutionStatus::irrelevant()
+            } else {
+                ExecutionStatus::Optimistic(block_hash)
+            }
         } else {
             // There is no payload to verify.
             ExecutionStatus::irrelevant()
@@ -1386,13 +1396,20 @@ where
         if let Some(node) = nodes.get_mut(block_index) {
             // Accumulate weight from this attestation
             node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
-            
+
             // Check if we've reached quorum (strictly greater than threshold per spec)
             if node.ptc_weight > quorum_threshold {
                 // Only mark revealed if the attestation signals payload was present
                 if attestation.data.payload_present {
                     node.payload_revealed = true;
-                    
+                    // If the envelope path hasn't already set execution_status,
+                    // use the bid_block_hash so head_hash is available for forkchoice_updated.
+                    if !node.execution_status.is_execution_enabled() {
+                        if let Some(block_hash) = node.bid_block_hash {
+                            node.execution_status = ExecutionStatus::Optimistic(block_hash);
+                        }
+                    }
+
                     debug!(
                         ?beacon_block_root,
                         ptc_weight = node.ptc_weight,
@@ -1428,6 +1445,7 @@ where
     pub fn on_execution_payload(
         &mut self,
         beacon_block_root: Hash256,
+        payload_block_hash: ExecutionBlockHash,
     ) -> Result<(), Error<T::Error>> {
         let block_index = self
             .proto_array
@@ -1444,9 +1462,13 @@ where
 
         if let Some(node) = nodes.get_mut(block_index) {
             node.payload_revealed = true;
+            // Set execution status so that head_hash is available for forkchoice_updated.
+            // Starts as Optimistic until the EL confirms via newPayload.
+            node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);
 
             debug!(
                 ?beacon_block_root,
+                ?payload_block_hash,
                 slot = %node.slot,
                 "Marked payload as revealed via execution payload envelope"
             );

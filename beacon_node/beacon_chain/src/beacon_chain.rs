@@ -2286,10 +2286,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         verified_envelope: &crate::gloas_verification::VerifiedPayloadEnvelope<T>,
     ) -> Result<(), Error> {
         let beacon_block_root = verified_envelope.beacon_block_root();
+        let payload_block_hash = verified_envelope.envelope().message.payload.block_hash;
 
         self.canonical_head
             .fork_choice_write_lock()
-            .on_execution_payload(beacon_block_root)
+            .on_execution_payload(beacon_block_root, payload_block_hash)
             .map_err(Into::into)
     }
 
