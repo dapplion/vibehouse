@@ -49,6 +49,11 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — skip envelope broadcast on local processing failure
+- **Bug**: In `publish_blocks.rs`, if `process_self_build_envelope()` failed (e.g., EL rejection, state transition error), the invalid envelope was still broadcast to peers via gossip. This would propagate known-invalid envelopes to the network.
+- **Fix**: Changed `if let Err` pattern to `match` — envelope is only broadcast after successful local processing. On failure, the error is logged and broadcast is skipped. Block import itself still succeeds (the block was already imported before envelope processing).
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+
 ### 2026-02-17 — fork validation for Gloas gossip message decoding
 - **Issue**: `ExecutionBid`, `ExecutionPayload`, and `PayloadAttestation` gossip messages were decoded in `pubsub.rs` without validating that the fork digest corresponds to a Gloas-enabled fork. Other fork-specific messages (BlobSidecar, DataColumnSidecar) properly check fork context before decoding.
 - **Fix**: Added `fork_context.get_fork_from_context_bytes()` + `fork.gloas_enabled()` guard for all three Gloas ePBS message types, matching the DataColumnSidecar pattern. Invalid fork digests now return descriptive error messages.

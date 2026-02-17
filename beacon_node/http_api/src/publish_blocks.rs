@@ -596,19 +596,24 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
                 // Process locally first (newPayload to EL + fork choice + state transition).
                 // Without this, the EL never receives the payload for self-built blocks
                 // because libp2p gossipsub does not echo back your own messages.
-                if let Err(e) = chain.process_self_build_envelope(&envelope).await {
-                    error!(
-                        slot = %block.slot(),
-                        error = ?e,
-                        "Failed to process self-build envelope locally"
-                    );
+                match chain.process_self_build_envelope(&envelope).await {
+                    Ok(()) => {
+                        // Only broadcast to peers after successful local processing.
+                        // Broadcasting an envelope that failed locally would propagate
+                        // invalid data to the network.
+                        let _ = crate::publish_pubsub_message(
+                            network_tx,
+                            PubsubMessage::ExecutionPayload(Box::new(envelope)),
+                        );
+                    }
+                    Err(e) => {
+                        error!(
+                            slot = %block.slot(),
+                            error = ?e,
+                            "Failed to process self-build envelope locally, skipping broadcast"
+                        );
+                    }
                 }
-
-                // Broadcast to peers
-                let _ = crate::publish_pubsub_message(
-                    network_tx,
-                    PubsubMessage::ExecutionPayload(Box::new(envelope)),
-                );
             }
 
             // Update the head since it's likely this block will become the new
