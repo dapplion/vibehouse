@@ -1,4 +1,5 @@
 use crate::EpochProcessingError;
+use safe_arith::SafeArith;
 use types::{BeaconState, BuilderPendingPayment, ChainSpec, EthSpec};
 
 /// Processes the builder pending payments from the previous epoch.
@@ -17,20 +18,20 @@ pub fn process_builder_pending_payments<E: EthSpec>(
     // per_slot_balance = total_active_balance // SLOTS_PER_EPOCH
     // quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR
     let total_active_balance = state.get_total_active_balance()?;
-    let per_slot_balance = total_active_balance / E::slots_per_epoch();
+    let per_slot_balance = total_active_balance.safe_div(E::slots_per_epoch())?;
     let quorum = per_slot_balance
         .saturating_mul(spec.builder_payment_threshold_numerator)
-        / spec.builder_payment_threshold_denominator;
+        .safe_div(spec.builder_payment_threshold_denominator)?;
 
     let state_gloas = state.as_gloas_mut()?;
 
     // Check first SLOTS_PER_EPOCH entries against quorum, append qualifying withdrawals
     for i in 0..slots_per_epoch {
-        if let Some(payment) = state_gloas.builder_pending_payments.get(i) {
-            if payment.weight >= quorum {
-                let withdrawal = payment.withdrawal.clone();
-                state_gloas.builder_pending_withdrawals.push(withdrawal)?;
-            }
+        if let Some(payment) = state_gloas.builder_pending_payments.get(i)
+            && payment.weight >= quorum
+        {
+            let withdrawal = payment.withdrawal.clone();
+            state_gloas.builder_pending_withdrawals.push(withdrawal)?;
         }
     }
 

@@ -395,8 +395,7 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
         Some(
             state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas(
                 state, spec,
-            )?
-            .into(),
+            )?,
         )
     } else if state.fork_name_unchecked().capella_enabled() {
         Some(get_expected_withdrawals(state, spec)?.0.into())

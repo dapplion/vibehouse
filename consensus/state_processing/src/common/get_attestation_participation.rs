@@ -64,7 +64,8 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
             true
         } else {
             // Historical: check execution_payload_availability
-            let slot_index = data.slot.as_usize() % E::slots_per_historical_root();
+            let slot_index = data.slot.as_usize()
+                .safe_rem(E::slots_per_historical_root())?;
             let availability = state
                 .as_gloas()
                 .map(|s| {

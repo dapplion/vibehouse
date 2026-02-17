@@ -1,3 +1,5 @@
+#![allow(clippy::vec_init_then_push)]
+
 use super::*;
 
 pub fn get_ffg_case_01_test_definition() -> ForkChoiceTestDefinition {

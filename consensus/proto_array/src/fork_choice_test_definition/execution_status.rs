@@ -1,3 +1,5 @@
+#![allow(clippy::vec_init_then_push)]
+
 use super::*;
 
 pub fn get_execution_status_test_definition_01() -> ForkChoiceTestDefinition {

@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod builder;
 mod builder_pending_payment;
 mod builder_pending_withdrawal;

@@ -71,9 +71,7 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
         let mut column_to_peer_id: HashMap<u64, PeerId> = HashMap::new();
 
         for req in self.requests.values() {
-            let Some(columns) = req.to_finished() else {
-                return None;
-            };
+            let columns = req.to_finished()?;
 
             for column in columns {
                 received_columns_for_slot
@@ -246,13 +244,12 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
                             .signed_block_header()
                             .ok()
                             .map(|h| h.signature.clone());
-                        if let Some(ref s) = sig {
-                            if column_block_signatures.contains(s)
-                                && block.signature() != s
-                                && let Some(naughty_peer) = column_to_peer.get(&column.index())
-                            {
-                                naughty_peers.push((column.index(), *naughty_peer));
-                            }
+                        if let Some(ref s) = sig
+                            && column_block_signatures.contains(s)
+                            && block.signature() != s
+                            && let Some(naughty_peer) = column_to_peer.get(&column.index())
+                        {
+                            naughty_peers.push((column.index(), *naughty_peer));
                         }
                     }
                     continue;

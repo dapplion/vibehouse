@@ -96,6 +96,7 @@ pub type CustodyByRootResult<T> =
     Result<(DataColumnSidecarList<T>, PeerGroup, Duration), RpcResponseError>;
 
 #[derive(Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum RpcResponseError {
     RpcError(#[allow(dead_code)] RPCError),
     VerifyError(LookupVerifyError),

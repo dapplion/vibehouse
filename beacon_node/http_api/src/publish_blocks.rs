@@ -547,6 +547,7 @@ fn publish_column_sidecars<T: BeaconChainTypes>(
         .map_err(|_| BlockError::BeaconChainError(Box::new(BeaconChainError::UnableToPublish)))
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
     result: Result<AvailabilityProcessingStatus, BlockError>,
     validation_level: BroadcastValidation,

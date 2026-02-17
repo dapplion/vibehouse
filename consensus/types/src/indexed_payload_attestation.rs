@@ -46,7 +46,9 @@ impl<E: EthSpec> IndexedPayloadAttestation<E> {
 
     /// Checks if the attesting_indices list is sorted (required for validity).
     pub fn is_sorted(&self) -> bool {
-        self.attesting_indices.windows(2).all(|w| w[0] < w[1])
+        self.attesting_indices
+            .windows(2)
+            .all(|w| matches!(w, [a, b] if a < b))
     }
 
     /// Create an empty indexed payload attestation (used for defaults/testing).

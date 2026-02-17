@@ -129,7 +129,7 @@ fn cache_state<E: EthSpec>(
     // so state.slot() already represents the "next slot" from the spec's perspective.
     if state.fork_name_unchecked().gloas_enabled() {
         let next_slot_index = state.slot().as_usize()
-            % E::SlotsPerHistoricalRoot::to_usize();
+            .safe_rem(E::SlotsPerHistoricalRoot::to_usize())?;
         if let Ok(gloas_state) = state.as_gloas_mut() {
             gloas_state
                 .execution_payload_availability

@@ -90,6 +90,7 @@ pub enum BlockProcessingError {
         found: Hash256,
     },
         WithdrawalCredentialsInvalid,
+    InvalidBuilderCredentials,
     WithdrawalBuilderIndexInvalid {
         builder_index: u64,
         builders_count: u64,

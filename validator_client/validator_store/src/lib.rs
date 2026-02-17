@@ -183,12 +183,14 @@ pub trait ValidatorStore: Send + Sync {
     fn proposal_data(&self, pubkey: &PublicKeyBytes) -> Option<ProposalData>;
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum UnsignedBlock<E: EthSpec> {
     Full(FullBlockContents<E>),
     Blinded(BlindedBeaconBlock<E>),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum SignedBlock<E: EthSpec> {
     Full(PublishBlockRequest<E>),

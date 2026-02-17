@@ -1704,6 +1704,7 @@ mod tests {
 
 #[derive(Debug, Encode, Serialize)]
 #[serde(untagged)]
+#[allow(clippy::large_enum_variant)]
 #[serde(bound = "E: EthSpec")]
 #[ssz(enum_behaviour = "transparent")]
 pub enum ProduceBlockV3Response<E: EthSpec> {
@@ -1716,6 +1717,7 @@ pub type JsonProduceBlockV3Response<E> =
 
 /// A wrapper over a [`BeaconBlock`] or a [`BlockContents`].
 #[derive(Debug, Encode, Serialize)]
+#[allow(clippy::large_enum_variant)]
 #[serde(untagged)]
 #[serde(bound = "E: EthSpec")]
 #[ssz(enum_behaviour = "transparent")]
@@ -1934,6 +1936,7 @@ impl TryFrom<&HeaderMap> for ProduceBlockV3Metadata {
 }
 
 /// A wrapper over a [`SignedBeaconBlock`] or a [`SignedBlockContents`].
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Encode, Serialize)]
 #[serde(untagged)]
 #[serde(bound = "E: EthSpec")]

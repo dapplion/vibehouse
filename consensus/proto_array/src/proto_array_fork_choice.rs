@@ -1106,10 +1106,8 @@ impl ProtoArrayForkChoice {
         // Propagate upward: mark parents of any filtered node.
         // Nodes are ordered parent-before-child, so reverse iteration propagates correctly.
         for i in (0..pa.nodes.len()).rev() {
-            if filtered[i] {
-                if let Some(parent_idx) = pa.nodes[i].parent {
-                    filtered[parent_idx] = true;
-                }
+            if filtered[i] && let Some(parent_idx) = pa.nodes[i].parent {
+                filtered[parent_idx] = true;
             }
         }
 
@@ -1140,15 +1138,14 @@ impl ProtoArrayForkChoice {
                 }];
 
                 // Include FULL child only if execution payload has been revealed
-                if let Some(&idx) = pa.indices.get(&node.root) {
-                    if let Some(proto_node) = pa.nodes.get(idx) {
-                        if proto_node.payload_revealed {
-                            children.push(GloasForkChoiceNode {
-                                root: node.root,
-                                payload_status: GloasPayloadStatus::Full,
-                            });
-                        }
-                    }
+                if let Some(&idx) = pa.indices.get(&node.root)
+                    && let Some(proto_node) = pa.nodes.get(idx)
+                    && proto_node.payload_revealed
+                {
+                    children.push(GloasForkChoiceNode {
+                        root: node.root,
+                        payload_status: GloasPayloadStatus::Full,
+                    });
                 }
 
                 children
@@ -1315,14 +1312,12 @@ impl ProtoArrayForkChoice {
         let pa = &self.proto_array;
 
         // Non-PENDING nodes from previous slot get 0 weight
-        if node.payload_status != GloasPayloadStatus::Pending {
-            if let Some(&idx) = pa.indices.get(&node.root) {
-                if let Some(proto_node) = pa.nodes.get(idx) {
-                    if proto_node.slot + 1 == current_slot {
-                        return 0;
-                    }
-                }
-            }
+        if node.payload_status != GloasPayloadStatus::Pending
+            && let Some(&idx) = pa.indices.get(&node.root)
+            && let Some(proto_node) = pa.nodes.get(idx)
+            && proto_node.slot + 1 == current_slot
+        {
+            return 0;
         }
 
         // Sum attestation scores from supporting votes
@@ -1346,20 +1341,20 @@ impl ProtoArrayForkChoice {
         }
 
         // Proposer boost: treated as a synthetic vote at current_slot
-        if !proposer_boost_root.is_zero() && apply_proposer_boost {
-            if let Some(boost_pct) = spec.proposer_score_boost {
-                let boost_vote = VoteTracker {
-                    current_root: proposer_boost_root,
-                    current_slot,
-                    ..VoteTracker::default()
-                };
-                if self.is_supporting_vote_gloas(node, &boost_vote) {
-                    if let Some(score) =
-                        calculate_committee_fraction::<E>(&self.balances, boost_pct)
-                    {
-                        weight = weight.saturating_add(score);
-                    }
-                }
+        if !proposer_boost_root.is_zero()
+            && apply_proposer_boost
+            && let Some(boost_pct) = spec.proposer_score_boost
+        {
+            let boost_vote = VoteTracker {
+                current_root: proposer_boost_root,
+                current_slot,
+                ..VoteTracker::default()
+            };
+            if self.is_supporting_vote_gloas(node, &boost_vote)
+                && let Some(score) =
+                    calculate_committee_fraction::<E>(&self.balances, boost_pct)
+            {
+                weight = weight.saturating_add(score);
             }
         }
 
@@ -1463,7 +1458,7 @@ impl ProtoArrayForkChoice {
             .indices
             .get(&node.root)
             .and_then(|&idx| pa.nodes.get(idx))
-            .map_or(false, |n| n.slot + 1 == current_slot);
+            .is_some_and(|n| n.slot + 1 == current_slot);
 
         if node.payload_status == GloasPayloadStatus::Pending || !is_previous_slot {
             node.payload_status as u8
@@ -1488,7 +1483,7 @@ impl ProtoArrayForkChoice {
         pa.indices
             .get(&node.root)
             .and_then(|&idx| pa.nodes.get(idx))
-            .map_or(false, |n| n.payload_revealed)
+            .is_some_and(|n| n.payload_revealed)
     }
 }
 

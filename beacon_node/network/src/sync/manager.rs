@@ -179,6 +179,7 @@ pub enum SyncMessage<E: EthSpec> {
 
 /// The type of processing specified for a received block.
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum BlockProcessType {
     SingleBlock { id: Id },
     SingleBlob { id: Id },

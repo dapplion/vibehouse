@@ -184,7 +184,9 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     if amount > 0 {
         // Spec: state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH]
         let slots_per_epoch = E::slots_per_epoch();
-        let slot_index = (slots_per_epoch + bid.slot.as_u64() % slots_per_epoch) as usize;
+        let slot_index = slots_per_epoch
+            .safe_add(bid.slot.as_u64().safe_rem(slots_per_epoch)?)?
+            as usize;
 
         let pending_payment = BuilderPendingPayment {
             weight: 0,
@@ -271,8 +273,8 @@ pub fn process_payload_attestation<E: EthSpec>(
         }
 
         // Verify indices are sorted (non-decreasing, duplicates allowed)
-        for i in 1..indices.len() {
-            if indices[i] < indices[i - 1] {
+        for w in indices.windows(2) {
+            if matches!(w, [a, b] if b < a) {
                 return Err(BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds,
                 ));
@@ -352,11 +354,7 @@ fn get_indexed_payload_attestation<E: EthSpec>(
     attesting_indices.sort_unstable();
 
     Ok(IndexedPayloadAttestation {
-        attesting_indices: attesting_indices.try_into().map_err(|_| {
-            BlockProcessingError::PayloadAttestationInvalid(
-                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            )
-        })?,
+        attesting_indices: attesting_indices.into(),
         data: attestation.data.clone(),
         signature: attestation.signature.clone(),
     })
@@ -407,22 +405,32 @@ pub fn get_ptc_committee<E: EthSpec>(
     }
 
     let max_effective_balance = spec.max_effective_balance_electra;
-    let max_random_value: u64 = (1u64 << 16) - 1; // 2^16 - 1
+    let max_random_value: u64 = (1u64 << 16).saturating_sub(1); // 2^16 - 1
 
     let mut selected: Vec<u64> = Vec::with_capacity(ptc_size);
     let mut i: u64 = 0;
     while selected.len() < ptc_size {
-        let next_index = (i % total as u64) as usize;
+        let next_index = i.safe_rem(total as u64)? as usize;
         // shuffle_indices=False, so just use next_index directly
-        let candidate_index = indices[next_index];
+        let candidate_index = *indices.get(next_index)
+            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?;
 
         // compute_balance_weighted_acceptance
         let random_bytes = hash(
-            &[&seed[..], &int_to_bytes8(i / 16)].concat(),
+            &[&seed[..], &int_to_bytes8(i.safe_div(16)?)].concat(),
         );
-        let offset = ((i % 16) * 2) as usize;
-        let random_value =
-            u16::from_le_bytes([random_bytes[offset], random_bytes[offset + 1]]) as u64;
+        let offset = i.safe_rem(16)?.safe_mul(2)? as usize;
+        let random_byte_0 = *random_bytes.get(offset)
+            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?;
+        let random_byte_1 = *random_bytes.get(offset.safe_add(1)?)
+            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?;
+        let random_value = u16::from_le_bytes([random_byte_0, random_byte_1]) as u64;
 
         let effective_balance = state
             .validators()
@@ -432,10 +440,12 @@ pub fn get_ptc_committee<E: EthSpec>(
             ))?
             .effective_balance;
 
-        if effective_balance * max_random_value >= max_effective_balance * random_value {
+        if effective_balance.safe_mul(max_random_value)?
+            >= max_effective_balance.safe_mul(random_value)?
+        {
             selected.push(candidate_index);
         }
-        i += 1;
+        i.safe_add_assign(1)?;
     }
 
     Ok(selected)
@@ -499,7 +509,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 amount: withdrawal.amount,
             });
             withdrawal_index.safe_add_assign(1)?;
-            processed_builder_withdrawals_count += 1;
+            processed_builder_withdrawals_count.safe_add_assign(1)?;
         }
     }
 
@@ -527,7 +537,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                     .iter()
                     .filter(|w| w.validator_index == withdrawal_req.validator_index)
                     .map(|w| w.amount)
-                    .sum();
+                    .try_fold(0u64, |acc, amt| acc.safe_add(amt))?;
                 let balance = state
                     .get_balance(withdrawal_req.validator_index as usize)?
                     .saturating_sub(total_withdrawn);
@@ -551,7 +561,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                     });
                     withdrawal_index.safe_add_assign(1)?;
                 }
-                processed_partial_withdrawals_count += 1;
+                processed_partial_withdrawals_count.safe_add_assign(1)?;
             }
         }
     }
@@ -581,20 +591,21 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                     break;
                 }
 
-                if let Some(builder) = state_gloas.builders.get(builder_index as usize) {
-                    if builder.withdrawable_epoch <= epoch && builder.balance > 0 {
-                        withdrawals.push(Withdrawal {
-                            index: withdrawal_index,
-                            validator_index: builder_index | BUILDER_INDEX_FLAG,
-                            address: builder.execution_address,
-                            amount: builder.balance,
-                        });
-                        withdrawal_index.safe_add_assign(1)?;
-                    }
+                if let Some(builder) = state_gloas.builders.get(builder_index as usize)
+                    && builder.withdrawable_epoch <= epoch
+                    && builder.balance > 0
+                {
+                    withdrawals.push(Withdrawal {
+                        index: withdrawal_index,
+                        validator_index: builder_index | BUILDER_INDEX_FLAG,
+                        address: builder.execution_address,
+                        amount: builder.balance,
+                    });
+                    withdrawal_index.safe_add_assign(1)?;
                 }
 
-                builder_index = (builder_index + 1) % builders_count as u64;
-                processed_builders_sweep_count += 1;
+                builder_index = builder_index.safe_add(1)?.safe_rem(builders_count as u64)?;
+                processed_builders_sweep_count.safe_add_assign(1)?;
             }
         }
     }
@@ -616,7 +627,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 .iter()
                 .filter(|w| w.validator_index == validator_index)
                 .map(|w| w.amount)
-                .sum();
+                .try_fold(0u64, |acc, amt| acc.safe_add(amt))?;
             let balance = state
                 .get_balance(validator_index as usize)?
                 .saturating_sub(partially_withdrawn_balance);
@@ -668,8 +679,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     }
 
     // Update next_withdrawal_index
-    if !withdrawals.is_empty() {
-        let latest_withdrawal = withdrawals.last().unwrap();
+    if let Some(latest_withdrawal) = withdrawals.last() {
         *state.next_withdrawal_index_mut()? = latest_withdrawal.index.safe_add(1)?;
     }
 
@@ -679,7 +689,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             BlockProcessingError::BeaconStateError(e)
         })?;
         state_gloas.payload_expected_withdrawals = List::new(withdrawals.clone())
-            .map_err(|e| BlockProcessingError::MilhouseError(e))?;
+            .map_err(BlockProcessingError::MilhouseError)?;
     }
 
     // Update builder_pending_withdrawals (remove processed)
@@ -694,7 +704,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             .cloned()
             .collect();
         state_gloas.builder_pending_withdrawals = List::new(remaining)
-            .map_err(|e| BlockProcessingError::MilhouseError(e))?;
+            .map_err(BlockProcessingError::MilhouseError)?;
     }
 
     // Update pending_partial_withdrawals (remove processed)
@@ -714,7 +724,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             let next_index = state_gloas
                 .next_withdrawal_builder_index
                 .saturating_add(processed_builders_sweep_count as u64);
-            state_gloas.next_withdrawal_builder_index = next_index % builders_count as u64;
+            state_gloas.next_withdrawal_builder_index = next_index.safe_rem(builders_count as u64)?;
         }
     }
 
@@ -814,7 +824,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
                     .iter()
                     .filter(|w| w.validator_index == withdrawal_req.validator_index)
                     .map(|w| w.amount)
-                    .sum();
+                    .try_fold(0u64, |acc, amt| acc.safe_add(amt))?;
                 let balance = state
                     .get_balance(withdrawal_req.validator_index as usize)?
                     .saturating_sub(total_withdrawn);
@@ -864,18 +874,19 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
                 if withdrawals.len() >= reserved_limit {
                     break;
                 }
-                if let Some(builder) = state_gloas.builders.get(builder_index as usize) {
-                    if builder.withdrawable_epoch <= epoch && builder.balance > 0 {
-                        withdrawals.push(Withdrawal {
-                            index: withdrawal_index,
-                            validator_index: builder_index | BUILDER_INDEX_FLAG,
-                            address: builder.execution_address,
-                            amount: builder.balance,
-                        });
-                        withdrawal_index.safe_add_assign(1)?;
-                    }
+                if let Some(builder) = state_gloas.builders.get(builder_index as usize)
+                    && builder.withdrawable_epoch <= epoch
+                    && builder.balance > 0
+                {
+                    withdrawals.push(Withdrawal {
+                        index: withdrawal_index,
+                        validator_index: builder_index | BUILDER_INDEX_FLAG,
+                        address: builder.execution_address,
+                        amount: builder.balance,
+                    });
+                    withdrawal_index.safe_add_assign(1)?;
                 }
-                builder_index = (builder_index + 1) % builders_count as u64;
+                builder_index = builder_index.safe_add(1)?.safe_rem(builders_count as u64)?;
             }
         }
     }
@@ -897,7 +908,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
                 .iter()
                 .filter(|w| w.validator_index == validator_index)
                 .map(|w| w.amount)
-                .sum();
+                .try_fold(0u64, |acc, amt| acc.safe_add(amt))?;
             let balance = state
                 .get_balance(validator_index as usize)?
                 .saturating_sub(partially_withdrawn_balance);

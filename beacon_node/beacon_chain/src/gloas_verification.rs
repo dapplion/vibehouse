@@ -340,6 +340,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// 4. No conflicting bid from this builder for this slot (equivocation check)
     /// 5. Parent root matches head (fork choice)
     /// 6. Signature is valid
+    #[allow(clippy::result_large_err)]
     pub fn verify_execution_bid_for_gossip(
         &self,
         bid: SignedExecutionPayloadBid<T::EthSpec>,
@@ -376,7 +377,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Check 2: Builder exists and is active
         let builder = state
             .builders()
-            .map_err(|e| BeaconChainError::BeaconStateError(e))?
+            .map_err(BeaconChainError::BeaconStateError)?
             .get(builder_index as usize)
             .ok_or(ExecutionBidError::UnknownBuilder { builder_index })?;
         
@@ -474,6 +475,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// 4. No conflicting attestation from any validator (equivocation check)
     /// 5. Aggregation bits are valid
     /// 6. Signature is valid
+    #[allow(clippy::result_large_err)]
     pub fn verify_payload_attestation_for_gossip(
         &self,
         attestation: PayloadAttestation<T::EthSpec>,
@@ -609,6 +611,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// 4. Builder index matches the committed bid
     /// 5. Payload block_hash matches the committed bid's block_hash
     /// 6. Signature is valid (using DOMAIN_BEACON_BUILDER)
+    #[allow(clippy::result_large_err)]
     pub fn verify_payload_envelope_for_gossip(
         &self,
         signed_envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,

@@ -45,6 +45,7 @@ pub const LATEST_TAG: &str = "latest";
 
 pub type PayloadId = [u8; 8];
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug)]
 pub enum Error {
     HttpClient(PrettyReqwestError),
@@ -770,7 +771,7 @@ impl ClientVersionV1 {
             self.commit
                 .0
                 .get(..4)
-                .map_or_else(|| self.commit.0.as_str(), |s| s)
+                .unwrap_or(self.commit.0.as_str())
                 .to_lowercase(),
             lighthouse_commit_prefix
                 .0

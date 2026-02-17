@@ -377,13 +377,10 @@ impl<E: EthSpec> CustodyContext<E> {
         current_slot: Slot,
         spec: &ChainSpec,
     ) -> Option<CustodyCountChanged> {
-        let Some((effective_epoch, new_validator_custody)) = self
+        let (effective_epoch, new_validator_custody) = self
             .validator_registrations
             .write()
-            .register_validators::<E>(validators_and_balance, current_slot, spec)
-        else {
-            return None;
-        };
+            .register_validators::<E>(validators_and_balance, current_slot, spec)?;
 
         let current_cgc = self.validator_custody_count.load(Ordering::Relaxed);
 

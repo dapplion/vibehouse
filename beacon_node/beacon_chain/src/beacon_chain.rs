@@ -2344,7 +2344,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let block = self
                 .store
                 .get_blinded_block(&beacon_block_root)
-                .map_err(|e| Error::DBError(e))?
+                .map_err(Error::DBError)?
                 .ok_or_else(|| {
                     Error::EnvelopeProcessingError(format!(
                         "Missing beacon block {:?} for newPayload",
@@ -2483,7 +2483,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let block = self
                 .store
                 .get_blinded_block(&beacon_block_root)
-                .map_err(|e| Error::DBError(e))?
+                .map_err(Error::DBError)?
                 .ok_or_else(|| {
                     Error::EnvelopeProcessingError(format!(
                         "Missing beacon block {:?} for newPayload",
@@ -3718,14 +3718,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if let Some(parent_root) = custody_columns
             .iter()
             .find_map(|c| c.block_parent_root())
-        {
-            if !self
+            && !self
                 .canonical_head
                 .fork_choice_read_lock()
                 .contains_block(&parent_root)
-            {
-                return Err(BlockError::ParentUnknown { parent_root });
-            }
+        {
+            return Err(BlockError::ParentUnknown { parent_root });
         }
 
         self.emit_sse_data_column_sidecar_events(
@@ -5318,7 +5316,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     &self.spec,
                 )
                 .map(|w| w.into())
-                .map_err(|e| Error::PrepareProposerFailed(e.into()))
+                .map_err(Error::PrepareProposerFailed)
             } else {
                 get_expected_withdrawals(&unadvanced_state, &self.spec)
                     .map(|(withdrawals, _)| withdrawals)
@@ -5345,7 +5343,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 &self.spec,
             )
             .map(|w| w.into())
-            .map_err(|e| Error::PrepareProposerFailed(e.into()))
+            .map_err(Error::PrepareProposerFailed)
         } else {
             get_expected_withdrawals(&advanced_state, &self.spec)
                 .map(|(withdrawals, _)| withdrawals)

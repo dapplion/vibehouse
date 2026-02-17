@@ -229,22 +229,21 @@ pub mod altair_deneb {
             // [New in Gloas:EIP7732] Add weight for same-slot attestations
             if is_gloas && will_set_new_flag && same_slot {
                 let slots_per_epoch = E::slots_per_epoch();
+                let slot_mod = data.slot.as_u64().safe_rem(slots_per_epoch)?;
                 let payment_slot_index = if data.target.epoch == current_epoch {
-                    (slots_per_epoch + data.slot.as_u64() % slots_per_epoch) as usize
+                    slots_per_epoch.safe_add(slot_mod)? as usize
                 } else {
-                    (data.slot.as_u64() % slots_per_epoch) as usize
+                    slot_mod as usize
                 };
 
-                if let Ok(state_gloas) = state.as_gloas_mut() {
-                    if let Some(payment) =
+                if let Ok(state_gloas) = state.as_gloas_mut()
+                    && let Some(payment) =
                         state_gloas.builder_pending_payments.get_mut(payment_slot_index)
-                    {
-                        if payment.withdrawal.amount > 0 {
-                            payment.weight = payment
-                                .weight
-                                .saturating_add(validator_effective_balance);
-                        }
-                    }
+                    && payment.withdrawal.amount > 0
+                {
+                    payment.weight = payment
+                        .weight
+                        .saturating_add(validator_effective_balance);
                 }
             }
         }
@@ -301,10 +300,11 @@ pub fn process_proposer_slashings<E: EthSpec>(
                 let current_epoch = state.current_epoch();
                 let previous_epoch = current_epoch.saturating_sub(1u64);
 
+                let slot_mod = slot.as_u64().safe_rem(slots_per_epoch)?;
                 let payment_index = if proposal_epoch == current_epoch {
-                    Some((slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize)
+                    Some(slots_per_epoch.safe_add(slot_mod)? as usize)
                 } else if proposal_epoch == previous_epoch {
-                    Some((slot.as_u64() % slots_per_epoch) as usize)
+                    Some(slot_mod as usize)
                 } else {
                     None
                 };
@@ -739,7 +739,11 @@ fn process_deposit_request_gloas<E: EthSpec>(
 
 /// [New in Gloas:EIP7732] Check if withdrawal credentials have builder prefix (0x03).
 fn is_builder_withdrawal_credential(withdrawal_credentials: Hash256) -> bool {
-    withdrawal_credentials.as_slice()[0] == 0x03
+    withdrawal_credentials
+        .as_slice()
+        .first()
+        .copied()
+        == Some(0x03)
 }
 
 /// [New in Gloas:EIP7732] Check if a pubkey already has a pending validator deposit with a valid signature.
@@ -811,12 +815,19 @@ fn apply_deposit_for_builder<E: EthSpec>(
             .epoch(E::slots_per_epoch());
         let new_index = get_index_for_new_builder::<E>(&state_gloas.builders, current_epoch, spec);
 
+        let cred_slice = request.withdrawal_credentials.as_slice();
+        let version = cred_slice
+            .first()
+            .copied()
+            .ok_or(BlockProcessingError::InvalidBuilderCredentials)?;
+        let address_bytes = cred_slice
+            .get(12..)
+            .ok_or(BlockProcessingError::InvalidBuilderCredentials)?;
+
         let builder = types::Builder {
             pubkey: request.pubkey,
-            version: request.withdrawal_credentials.as_slice()[0],
-            execution_address: Address::from_slice(
-                &request.withdrawal_credentials.as_slice()[12..],
-            ),
+            version,
+            execution_address: Address::from_slice(address_bytes),
             balance: request.amount,
             deposit_epoch: slot.epoch(E::slots_per_epoch()),
             withdrawable_epoch: spec.far_future_epoch,
@@ -831,7 +842,7 @@ fn apply_deposit_for_builder<E: EthSpec>(
             state_gloas
                 .builders
                 .push(builder)
-                .map_err(|e| BlockProcessingError::MilhouseError(e))?;
+                .map_err(BlockProcessingError::MilhouseError)?;
         }
     }
 

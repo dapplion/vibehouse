@@ -1,3 +1,5 @@
+#![allow(clippy::vec_init_then_push)]
+
 use super::*;
 
 pub fn get_votes_test_definition() -> ForkChoiceTestDefinition {

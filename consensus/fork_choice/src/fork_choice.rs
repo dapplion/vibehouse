@@ -1404,10 +1404,10 @@ where
                     node.payload_revealed = true;
                     // If the envelope path hasn't already set execution_status,
                     // use the bid_block_hash so head_hash is available for forkchoice_updated.
-                    if !node.execution_status.is_execution_enabled() {
-                        if let Some(block_hash) = node.bid_block_hash {
-                            node.execution_status = ExecutionStatus::Optimistic(block_hash);
-                        }
+                    if !node.execution_status.is_execution_enabled()
+                        && let Some(block_hash) = node.bid_block_hash
+                    {
+                        node.execution_status = ExecutionStatus::Optimistic(block_hash);
                     }
 
                     debug!(

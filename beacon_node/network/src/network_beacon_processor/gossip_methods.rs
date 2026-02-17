@@ -3434,7 +3434,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         let verified_attestation = match self.chain.verify_payload_attestation_for_gossip(attestation) {
             Ok(verified) => verified,
-            Err(PayloadAttestationError::DuplicateAttestation { .. }) => {
+            Err(PayloadAttestationError::DuplicateAttestation) => {
                 debug!(
                     %slot,
                     ?beacon_block_root,
