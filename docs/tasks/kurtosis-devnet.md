@@ -67,4 +67,13 @@ dora_params:
 ```
 
 ## Progress log
-(none yet)
+
+### 2026-02-17: devnet readiness assessment & clippy cleanup
+- **Compilation**: `cargo check --release` passes cleanly
+- **EF spec tests**: 78/78 + 136/136 (fake_crypto) all pass
+- **Clippy**: Fixed 80+ lint errors across 32 files to pass `cargo clippy --release --workspace -- -D warnings`. Key fixes: safe_arith in consensus code, indexing → `.get()`, collapsed if statements, redundant closures.
+- **Dockerfile**: Reviewed — correctly builds lighthouse binary and copies to `/usr/local/bin/lighthouse`
+- **Kurtosis configs**: `kurtosis/vibehouse-epbs.yaml` and `kurtosis/epbs-devnet-0.yaml` exist and look correct
+- **No runtime blockers**: No `todo!()`, `unimplemented!()`, or `GloasNotImplemented` remain in the codebase
+- **Blocker**: Docker not available on current machine — need Docker to build image and run kurtosis
+- **Next**: Install Docker, build image, run kurtosis solo devnet
