@@ -599,7 +599,7 @@ pub enum Work<E: EthSpec> {
     GossipLightClientOptimisticUpdate(BlockingFn),
     // Gloas ePBS gossip.
     GossipExecutionBid(BlockingFn),
-    GossipExecutionPayload(BlockingFn),
+    GossipExecutionPayload(AsyncFn),
     GossipPayloadAttestation(BlockingFn),
     RpcBlock {
         process_fn: AsyncFn,
@@ -1655,6 +1655,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                 BlockingOrAsync::Blocking(process_fn) => task_spawner.spawn_blocking(process_fn),
                 BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
             },
+            Work::GossipExecutionPayload(process_fn) => {
+                task_spawner.spawn_async(process_fn)
+            }
             Work::GossipVoluntaryExit(process_fn)
             | Work::GossipProposerSlashing(process_fn)
             | Work::GossipAttesterSlashing(process_fn)
@@ -1663,7 +1666,6 @@ impl<E: EthSpec> BeaconProcessor<E> {
             | Work::GossipLightClientFinalityUpdate(process_fn)
             | Work::GossipLightClientOptimisticUpdate(process_fn)
             | Work::GossipExecutionBid(process_fn)
-            | Work::GossipExecutionPayload(process_fn)
             | Work::GossipPayloadAttestation(process_fn)
             | Work::Status(process_fn)
             | Work::GossipBlsToExecutionChange(process_fn)

@@ -3300,7 +3300,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Process a gossip execution payload envelope from a builder (gloas ePBS).
-    pub fn process_gossip_execution_payload(
+    pub async fn process_gossip_execution_payload(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
@@ -3396,9 +3396,9 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             return;
         }
 
-        // Apply envelope state transition (validates bid consistency, processes
-        // execution requests, builder payment, sets availability)
-        if let Err(e) = self.chain.process_payload_envelope(&verified_envelope) {
+        // Notify EL via newPayload + apply envelope state transition (validates bid
+        // consistency, processes execution requests, builder payment, sets availability)
+        if let Err(e) = self.chain.process_payload_envelope(&verified_envelope).await {
             warn!(
                 ?beacon_block_root,
                 builder_index,

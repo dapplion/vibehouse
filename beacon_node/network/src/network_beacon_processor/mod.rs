@@ -340,13 +340,15 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         payload: Box<types::SignedExecutionPayloadEnvelope<T::EthSpec>>,
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
-        let process_fn = move || {
-            processor.process_gossip_execution_payload(message_id, peer_id, *payload);
+        let process_fn = async move {
+            processor
+                .process_gossip_execution_payload(message_id, peer_id, *payload)
+                .await;
         };
 
         self.try_send(BeaconWorkEvent {
             drop_during_sync: true,
-            work: Work::GossipExecutionPayload(Box::new(process_fn)),
+            work: Work::GossipExecutionPayload(Box::pin(process_fn)),
         })
     }
 

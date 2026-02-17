@@ -216,8 +216,8 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
         }
     );
 
-    // TODO: newPayload call to execution engine happens here
-    // For devnet-0, this will be wired to the execution layer client (geth)
+    // Note: the newPayload EL call is performed in the beacon chain layer
+    // (BeaconChain::process_payload_envelope) before this function is invoked.
 
     // Process execution requests (moved from block processing to envelope processing in Gloas)
     // TODO: Use process_deposit_requests_post_gloas for builder deposit handling
