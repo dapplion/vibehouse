@@ -2596,6 +2596,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let beacon_block_root = signed_envelope.message.beacon_block_root;
         let payload_block_hash = signed_envelope.message.payload.block_hash;
 
+        // Fetch the beacon block from the store (needed for newPayload + state lookup).
+        let block = self
+            .store
+            .get_blinded_block(&beacon_block_root)
+            .map_err(Error::DBError)?
+            .ok_or_else(|| {
+                Error::EnvelopeProcessingError(format!(
+                    "Missing beacon block {:?} for self-build envelope processing",
+                    beacon_block_root
+                ))
+            })?;
+
         // 1. Update fork choice: mark payload as revealed
         self.canonical_head
             .fork_choice_write_lock()
@@ -2609,17 +2621,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
 
             let envelope = &signed_envelope.message;
-
-            let block = self
-                .store
-                .get_blinded_block(&beacon_block_root)
-                .map_err(Error::DBError)?
-                .ok_or_else(|| {
-                    Error::EnvelopeProcessingError(format!(
-                        "Missing beacon block {:?} for newPayload",
-                        beacon_block_root
-                    ))
-                })?;
 
             let bid = block
                 .message()
@@ -2698,10 +2699,19 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // 3. Apply the envelope state transition (skip signature verification for self-build)
-        let head = self.canonical_head.cached_head();
-        let mut state = head.snapshot.beacon_state.clone();
-        let state_root = head.head_state_root();
-        drop(head);
+        // Fetch the post-block state from the store using the block's state root.
+        // We can't use canonical_head.cached_head() because at this point the block
+        // has been imported but recompute_head hasn't run yet, so cached_head still
+        // points to the previous block's state.
+        let state_root = block.message().state_root();
+        let mut state = self
+            .get_state(&state_root, Some(signed_envelope.message.slot), false)?
+            .ok_or_else(|| {
+                Error::EnvelopeProcessingError(format!(
+                    "Missing post-block state {:?} for envelope state transition",
+                    state_root
+                ))
+            })?;
 
         state_processing::envelope_processing::process_execution_payload_envelope(
             &mut state,
@@ -2765,9 +2775,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             &self.spec,
         ) {
             Ok(()) => {
-                // Placeholder state_root happened to match (extremely unlikely)
-                warn!("Self-build envelope state root unexpectedly matched zero placeholder");
-                None
+                // Placeholder state_root happened to match (extremely unlikely but valid)
+                debug!(
+                    %beacon_block_root,
+                    "Constructed self-build execution payload envelope (state_root matched placeholder)"
+                );
+                Some(temp_envelope)
             }
             Err(state_processing::envelope_processing::EnvelopeProcessingError::InvalidStateRoot {
                 state: actual_root,

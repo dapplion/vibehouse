@@ -515,7 +515,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(PayloadAttestationError::EmptyAggregationBits);
         }
 
-        // Check 3: Get PTC committee for this slot
+        // Check 3: Beacon block root is known in fork choice
+        {
+            let fork_choice = self.canonical_head.fork_choice_read_lock();
+            if fork_choice.get_block(&attestation.data.beacon_block_root).is_none() {
+                return Err(PayloadAttestationError::UnknownBeaconBlockRoot {
+                    root: attestation.data.beacon_block_root,
+                });
+            }
+        }
+
+        // Check 4: Get PTC committee for this slot
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
         
@@ -543,10 +553,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(PayloadAttestationError::EmptyAggregationBits);
         }
 
-        // Check 4: Equivocation detection
+        // Check 5: Equivocation detection
         let beacon_block_root = attestation.data.beacon_block_root;
         let payload_present = attestation.data.payload_present;
-        
+
         let mut observed_attestations = self.observed_payload_attestations.lock();
         for &validator_index in &indexed_attestation_indices {
             let outcome = observed_attestations.observe_attestation(
@@ -576,7 +586,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         }
 
-        // Check 5: Signature verification
+        // Check 6: Signature verification
         let get_pubkey = |validator_idx: usize| -> Option<Cow<PublicKey>> {
             state.validators()
                 .get(validator_idx)

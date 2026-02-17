@@ -3464,6 +3464,16 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL);
                 return;
             }
+            Err(PayloadAttestationError::UnknownBeaconBlockRoot { .. }) => {
+                debug!(
+                    %slot,
+                    ?beacon_block_root,
+                    peer = %peer_id,
+                    "Ignoring payload attestation for unknown block root"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
             Err(e) => {
                 debug!(
                     %slot,
