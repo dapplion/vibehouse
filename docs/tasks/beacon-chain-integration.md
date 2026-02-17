@@ -49,6 +49,15 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — fix spec compliance: deposit routing, bid payment validation
+- **Bug 1 (SPEC)**: `process_deposit_request_gloas` had an extra `is_pending_validator` check not in the spec. The spec routes to builder if `is_builder || (is_builder_prefix && !is_validator)`. The `is_pending` check would incorrectly prevent builder registration for pubkeys with pending validator deposits.
+- **Fix 1**: Removed `is_pending` check and deleted the unused `is_pending_validator` function.
+- **Bug 2 (SPEC)**: Execution bid gossip validation had inverted `execution_payment` check. Spec says `[REJECT] bid.execution_payment is zero` (reject zero-payment bids from external builders), but code rejected non-zero payment. Would block all external builder bids in multi-client devnets.
+- **Fix 2**: Changed condition from `!= 0` to `== 0`, renamed error variant to `ZeroExecutionPayment`.
+- **Cleanup**: Removed two stale TODOs — builder deposit handling already implemented in `process_deposit_requests`, bid signature verification already in `verify_execution_bid_for_gossip`.
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `0aeabc122`
+
 ### 2026-02-17 — fix three devnet-0 bugs found during audit
 - **Bug 1 (CRITICAL)**: `process_self_build_envelope` used `canonical_head.cached_head()` to get the state for envelope processing. But at this point the block has been imported but `recompute_head` hasn't run yet, so `cached_head` still points to the previous block's state. Envelope processing would fail with `LatestBlockHeaderMismatch` or `SlotMismatch`.
 - **Fix 1**: Fetch the post-block state from the store using the block's `state_root` instead of relying on `cached_head`.

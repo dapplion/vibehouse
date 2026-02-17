@@ -68,6 +68,14 @@ dora_params:
 
 ## Progress log
 
+### 2026-02-17: spec compliance fixes for deposit routing + bid validation
+- **Fix 1**: `process_deposit_request_gloas` routing had extra `is_pending_validator` check not in spec — removed
+- **Fix 2**: Execution bid gossip validation had inverted `execution_payment` check (rejected non-zero instead of zero) — fixed
+- **Cleanup**: Removed stale TODOs that referred to already-implemented features
+- All 136/136 EF tests + check_all_files_accessed pass, clippy clean
+- Commit: `0aeabc122`
+- **Blocker**: Still need Docker for image build + kurtosis
+
 ### 2026-02-17: devnet readiness assessment & clippy cleanup
 - **Compilation**: `cargo check --release` passes cleanly
 - **EF spec tests**: 78/78 + 136/136 (fake_crypto) all pass
