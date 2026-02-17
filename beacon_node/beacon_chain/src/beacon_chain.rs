@@ -2450,6 +2450,149 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(())
     }
 
+    /// Process a locally-produced self-build envelope directly (no gossip verification).
+    ///
+    /// This is called after block import for self-built Gloas blocks. It:
+    /// 1. Applies `on_execution_payload` to fork choice (marks payload revealed)
+    /// 2. Sends `newPayload` to the EL
+    /// 3. Applies the envelope state transition
+    ///
+    /// Without this, the local EL would never receive `newPayload` for self-built blocks
+    /// because libp2p gossipsub does not echo back your own messages.
+    pub async fn process_self_build_envelope(
+        &self,
+        signed_envelope: &SignedExecutionPayloadEnvelope<T::EthSpec>,
+    ) -> Result<(), Error> {
+        let beacon_block_root = signed_envelope.message.beacon_block_root;
+        let payload_block_hash = signed_envelope.message.payload.block_hash;
+
+        // 1. Update fork choice: mark payload as revealed
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_execution_payload(beacon_block_root, payload_block_hash)
+            .map_err(Into::<Error>::into)?;
+
+        // 2. Send newPayload to the EL
+        if let Some(execution_layer) = self.execution_layer.as_ref() {
+            use execution_layer::NewPayloadRequest;
+            use execution_layer::NewPayloadRequestGloas;
+            use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
+
+            let envelope = &signed_envelope.message;
+
+            let block = self
+                .store
+                .get_blinded_block(&beacon_block_root)
+                .map_err(|e| Error::DBError(e))?
+                .ok_or_else(|| {
+                    Error::EnvelopeProcessingError(format!(
+                        "Missing beacon block {:?} for newPayload",
+                        beacon_block_root
+                    ))
+                })?;
+
+            let bid = block
+                .message()
+                .body()
+                .signed_execution_payload_bid()
+                .map_err(|_| {
+                    Error::EnvelopeProcessingError(
+                        "Block is not a Gloas block (no bid)".to_string(),
+                    )
+                })?;
+
+            let versioned_hashes = bid
+                .message
+                .blob_kzg_commitments
+                .iter()
+                .map(kzg_commitment_to_versioned_hash)
+                .collect();
+
+            let parent_beacon_block_root = block.message().parent_root();
+
+            let new_payload_request =
+                NewPayloadRequest::Gloas(NewPayloadRequestGloas {
+                    execution_payload: &envelope.payload,
+                    versioned_hashes,
+                    parent_beacon_block_root,
+                    execution_requests: &envelope.execution_requests,
+                });
+
+            let payload_status = execution_layer
+                .notify_new_payload(new_payload_request)
+                .await
+                .map_err(|e| {
+                    Error::EnvelopeProcessingError(format!("newPayload failed: {:?}", e))
+                })?;
+
+            match payload_status {
+                PayloadStatus::Valid => {
+                    debug!(
+                        ?beacon_block_root,
+                        block_hash = ?envelope.payload.block_hash,
+                        "Self-build execution payload validated by EL"
+                    );
+                }
+                PayloadStatus::Syncing | PayloadStatus::Accepted => {
+                    debug!(
+                        ?beacon_block_root,
+                        block_hash = ?envelope.payload.block_hash,
+                        ?payload_status,
+                        "Self-build execution payload accepted optimistically by EL"
+                    );
+                }
+                PayloadStatus::Invalid { ref latest_valid_hash, ref validation_error } => {
+                    warn!(
+                        ?beacon_block_root,
+                        block_hash = ?envelope.payload.block_hash,
+                        ?latest_valid_hash,
+                        ?validation_error,
+                        "Self-build execution payload deemed INVALID by EL"
+                    );
+                    return Err(Error::EnvelopeProcessingError(
+                        "Self-build execution payload invalid".to_string(),
+                    ));
+                }
+                PayloadStatus::InvalidBlockHash { ref validation_error } => {
+                    warn!(
+                        ?beacon_block_root,
+                        block_hash = ?envelope.payload.block_hash,
+                        ?validation_error,
+                        "Self-build execution payload has invalid block hash"
+                    );
+                    return Err(Error::EnvelopeProcessingError(
+                        "Self-build execution payload invalid block hash".to_string(),
+                    ));
+                }
+            }
+        }
+
+        // 3. Apply the envelope state transition (skip signature verification for self-build)
+        let head = self.canonical_head.cached_head();
+        let mut state = head.snapshot.beacon_state.clone();
+        let state_root = head.head_state_root();
+        drop(head);
+
+        state_processing::envelope_processing::process_execution_payload_envelope(
+            &mut state,
+            Some(state_root),
+            signed_envelope,
+            state_processing::VerifySignatures::False,
+            &self.spec,
+        )
+        .map_err(|e| {
+            Error::EnvelopeProcessingError(format!("{:?}", e))
+        })?;
+
+        debug!(
+            ?beacon_block_root,
+            block_hash = ?signed_envelope.message.payload.block_hash,
+            "Successfully processed self-build envelope locally"
+        );
+
+        Ok(())
+    }
+
     /// Construct a `SignedExecutionPayloadEnvelope` for a self-built Gloas block.
     ///
     /// In ePBS, when a proposer self-builds (no external builder), they need to create
@@ -6133,7 +6276,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                 let signed_bid = SignedExecutionPayloadBid {
                     message: execution_payload_bid,
-                    signature: Signature::empty(),
+                    signature: Signature::infinity()
+                        .expect("infinity signature is valid"),
                 };
 
                 // Include payload attestations from the pool for the previous slot's payload.

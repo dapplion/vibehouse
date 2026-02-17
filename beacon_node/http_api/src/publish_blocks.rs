@@ -567,19 +567,36 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
                 &chain.slot_clock,
             );
 
-            // Gloas ePBS: broadcast the pending self-build envelope alongside the block.
-            if is_locally_built_block {
-                if let Some(envelope) = chain.pending_self_build_envelope.lock().take() {
-                    info!(
+            // Gloas ePBS: process and broadcast the pending self-build envelope.
+            // Take the envelope out of the lock before any await points.
+            let pending_envelope = if is_locally_built_block {
+                chain.pending_self_build_envelope.lock().take()
+            } else {
+                None
+            };
+            if let Some(envelope) = pending_envelope {
+                info!(
+                    slot = %block.slot(),
+                    block_hash = ?envelope.message.payload.block_hash,
+                    "Processing and broadcasting self-build execution payload envelope"
+                );
+
+                // Process locally first (newPayload to EL + fork choice + state transition).
+                // Without this, the EL never receives the payload for self-built blocks
+                // because libp2p gossipsub does not echo back your own messages.
+                if let Err(e) = chain.process_self_build_envelope(&envelope).await {
+                    error!(
                         slot = %block.slot(),
-                        block_hash = ?envelope.message.payload.block_hash,
-                        "Broadcasting self-build execution payload envelope"
-                    );
-                    let _ = crate::publish_pubsub_message(
-                        network_tx,
-                        PubsubMessage::ExecutionPayload(Box::new(envelope)),
+                        error = ?e,
+                        "Failed to process self-build envelope locally"
                     );
                 }
+
+                // Broadcast to peers
+                let _ = crate::publish_pubsub_message(
+                    network_tx,
+                    PubsubMessage::ExecutionPayload(Box::new(envelope)),
+                );
             }
 
             // Update the head since it's likely this block will become the new

@@ -3396,11 +3396,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             return;
         }
 
-        // Payload revealed — recompute head so fork choice can now select this block
-        self.chain.recompute_head_at_current_slot().await;
-
         // Notify EL via newPayload + apply envelope state transition (validates bid
-        // consistency, processes execution requests, builder payment, sets availability)
+        // consistency, processes execution requests, builder payment, sets availability).
+        // This must happen BEFORE recompute_head so the EL knows the payload before
+        // receiving forkchoice_updated with this block as head.
         if let Err(e) = self.chain.process_payload_envelope(&verified_envelope).await {
             warn!(
                 ?beacon_block_root,
@@ -3415,6 +3414,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 "Successfully processed execution payload envelope"
             );
         }
+
+        // Payload revealed + EL notified — recompute head so fork choice can select
+        // this block and send forkchoice_updated to the EL with correct head_hash
+        self.chain.recompute_head_at_current_slot().await;
     }
 
     /// Process a gossip payload attestation from PTC members (gloas ePBS).
