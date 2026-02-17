@@ -4,10 +4,12 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::sync::Arc;
 use types::{
-    Address, Attestation, AttestationError, BlindedBeaconBlock, Epoch, EthSpec, Graffiti, Hash256,
-    PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof, SignedBlindedBeaconBlock,
-    SignedContributionAndProof, SignedValidatorRegistrationData, Slot, SyncCommitteeContribution,
-    SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData,
+    Address, Attestation, AttestationError, BlindedBeaconBlock, Epoch, EthSpec,
+    ExecutionPayloadEnvelope, Graffiti, Hash256, PublicKeyBytes, SelectionProof, Signature,
+    SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedContributionAndProof,
+    SignedExecutionPayloadEnvelope, SignedValidatorRegistrationData, Slot,
+    SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
+    ValidatorRegistrationData,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -101,6 +103,15 @@ pub trait ValidatorStore: Send + Sync {
         block: UnsignedBlock<Self::E>,
         current_slot: Slot,
     ) -> impl Future<Output = Result<SignedBlock<Self::E>, Error<Self::Error>>> + Send;
+
+    /// Sign an execution payload envelope with DOMAIN_BEACON_BUILDER (gloas ePBS).
+    fn sign_execution_payload_envelope(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        envelope: &ExecutionPayloadEnvelope<Self::E>,
+    ) -> impl Future<
+        Output = Result<SignedExecutionPayloadEnvelope<Self::E>, Error<Self::Error>>,
+    > + Send;
 
     fn sign_attestation(
         &self,

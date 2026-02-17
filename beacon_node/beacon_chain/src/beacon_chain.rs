@@ -5666,18 +5666,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                     // Gloas self-build: construct the execution payload envelope now that
                     // the block is complete (with state_root and block root finalized).
+                    // The envelope is returned to the VC for signing, then sent back
+                    // in the publish request with a valid signature.
                     if let Some((gloas_payload, execution_requests)) = gloas_envelope_data {
-                        let envelope = self.build_self_build_envelope(
-                            &beacon_block_response.block,
-                            &beacon_block_response.state,
-                            gloas_payload,
-                            execution_requests,
-                        );
-                        // Store in cache for broadcasting during block publication.
-                        if let Some(ref env) = envelope {
-                            *self.pending_self_build_envelope.lock() = Some(env.clone());
-                        }
-                        beacon_block_response.execution_payload_envelope = envelope;
+                        beacon_block_response.execution_payload_envelope =
+                            self.build_self_build_envelope(
+                                &beacon_block_response.block,
+                                &beacon_block_response.state,
+                                gloas_payload,
+                                execution_requests,
+                            );
                     }
 
                     Ok(BeaconBlockResponseWrapper::Full(beacon_block_response))

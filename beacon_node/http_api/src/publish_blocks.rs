@@ -31,6 +31,7 @@ use types::{
     AbstractExecPayload, BeaconBlockRef, BlobSidecar, BlobsList, BlockImportSource,
     DataColumnSubnetId, EthSpec, ExecPayload, ExecutionBlockHash, ForkName, FullPayload,
     FullPayloadBellatrix, Hash256, KzgProofs, SignedBeaconBlock, SignedBlindedBeaconBlock,
+    SignedExecutionPayloadEnvelope,
 };
 use warp::http::StatusCode;
 use warp::{Rejection, Reply, reply::Response};
@@ -59,16 +60,25 @@ impl<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>> ProvenancedBlock<T, B> 
 }
 
 impl<T: BeaconChainTypes> ProvenancedBlock<T, Arc<SignedBeaconBlock<T::EthSpec>>> {
-    pub fn local_from_publish_request(request: PublishBlockRequest<T::EthSpec>) -> Self {
+    pub fn local_from_publish_request(
+        request: PublishBlockRequest<T::EthSpec>,
+    ) -> (
+        Self,
+        Option<SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) {
         match request {
-            PublishBlockRequest::Block(block) => Self::local(block, None),
+            PublishBlockRequest::Block(block) => (Self::local(block, None), None),
             PublishBlockRequest::BlockContents(block_contents) => {
                 let SignedBlockContents {
                     signed_block,
                     kzg_proofs,
                     blobs,
+                    signed_execution_payload_envelope,
                 } = block_contents;
-                Self::local(signed_block, Some((kzg_proofs, blobs)))
+                (
+                    Self::local(signed_block, Some((kzg_proofs, blobs))),
+                    signed_execution_payload_envelope,
+                )
             }
         }
     }
@@ -85,6 +95,7 @@ impl<T: BeaconChainTypes> ProvenancedBlock<T, Arc<SignedBeaconBlock<T::EthSpec>>
 pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
     block_root: Option<Hash256>,
     provenanced_block: ProvenancedBlock<T, B>,
+    mut signed_envelope: Option<SignedExecutionPayloadEnvelope<T::EthSpec>>,
     chain: Arc<BeaconChain<T>>,
     network_tx: &UnboundedSender<NetworkMessage<T::EthSpec>>,
     validation_level: BroadcastValidation,
@@ -278,6 +289,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 validation_level,
                 block,
                 is_locally_built_block,
+                signed_envelope.take(),
                 seen_timestamp,
                 &chain,
                 network_tx,
@@ -291,6 +303,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                     validation_level,
                     block,
                     is_locally_built_block,
+                    signed_envelope.take(),
                     seen_timestamp,
                     &chain,
                     network_tx,
@@ -330,6 +343,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 validation_level,
                 block,
                 is_locally_built_block,
+                signed_envelope.take(),
                 seen_timestamp,
                 &chain,
                 network_tx,
@@ -538,6 +552,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
     validation_level: BroadcastValidation,
     block: Arc<SignedBeaconBlock<T::EthSpec>>,
     is_locally_built_block: bool,
+    signed_envelope: Option<SignedExecutionPayloadEnvelope<T::EthSpec>>,
     seen_timestamp: Duration,
     chain: &Arc<BeaconChain<T>>,
     network_tx: &UnboundedSender<NetworkMessage<T::EthSpec>>,
@@ -567,14 +582,10 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
                 &chain.slot_clock,
             );
 
-            // Gloas ePBS: process and broadcast the pending self-build envelope.
-            // Take the envelope out of the lock before any await points.
-            let pending_envelope = if is_locally_built_block {
-                chain.pending_self_build_envelope.lock().take()
-            } else {
-                None
-            };
-            if let Some(envelope) = pending_envelope {
+            // Gloas ePBS: process and broadcast the signed self-build envelope.
+            // The envelope is signed by the validator client with DOMAIN_BEACON_BUILDER
+            // and passed through the publish request.
+            if let Some(envelope) = signed_envelope {
                 info!(
                     slot = %block.slot(),
                     block_hash = ?envelope.message.payload.block_hash,
@@ -662,6 +673,7 @@ pub async fn publish_blinded_block<T: BeaconChainTypes>(
         publish_block::<T, _>(
             Some(block_root),
             full_block,
+            None, // blinded blocks don't carry envelopes
             chain,
             network_tx,
             validation_level,

@@ -409,6 +409,7 @@ pub async fn consensus_partial_pass_only_consensus() {
     let publication_result = publish_block(
         None,
         ProvenancedBlock::local(gossip_block_b.unwrap(), blobs_b),
+        None,
         tester.harness.chain.clone(),
         &channel.0,
         validation_level,
@@ -728,6 +729,7 @@ pub async fn equivocation_consensus_late_equivocation() {
     let publication_result = publish_block(
         None,
         ProvenancedBlock::local(gossip_block_b.unwrap(), blobs_b),
+        None,
         tester.harness.chain,
         &channel.0,
         validation_level,

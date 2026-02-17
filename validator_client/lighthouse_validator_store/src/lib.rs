@@ -18,12 +18,12 @@ use task_executor::TaskExecutor;
 use tracing::{error, info, warn};
 use types::{
     AbstractExecPayload, Address, AggregateAndProof, Attestation, BeaconBlock, BlindedPayload,
-    ChainSpec, ContributionAndProof, Domain, Epoch, EthSpec, Fork, Graffiti, Hash256,
-    PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedContributionAndProof, SignedRoot, SignedValidatorRegistrationData, SignedVoluntaryExit,
-    Slot, SyncAggregatorSelectionData, SyncCommitteeContribution, SyncCommitteeMessage,
-    SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData, VoluntaryExit,
-    graffiti::GraffitiString,
+    ChainSpec, ContributionAndProof, Domain, Epoch, EthSpec, ExecutionPayloadEnvelope, Fork,
+    Graffiti, Hash256, PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedRoot,
+    SignedValidatorRegistrationData, SignedVoluntaryExit, Slot, SyncAggregatorSelectionData,
+    SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
+    ValidatorRegistrationData, VoluntaryExit, graffiti::GraffitiString,
 };
 use validator_store::{
     DoppelgangerStatus, Error as ValidatorStoreError, ProposalData, SignedBlock, UnsignedBlock,
@@ -730,19 +730,59 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for LighthouseValidatorS
         current_slot: Slot,
     ) -> Result<SignedBlock<E>, Error> {
         match block {
-            UnsignedBlock::Full(block) => {
-                let (block, blobs) = block.deconstruct();
-                self.sign_abstract_block(validator_pubkey, block, current_slot)
-                    .await
-                    .map(|block| {
-                        SignedBlock::Full(PublishBlockRequest::new(Arc::new(block), blobs))
-                    })
+            UnsignedBlock::Full(mut block_contents) => {
+                // Take the unsigned envelope before deconstructing (gloas ePBS).
+                let unsigned_envelope = block_contents.take_execution_payload_envelope();
+
+                let (block, blobs) = block_contents.deconstruct();
+                let signed_block = self
+                    .sign_abstract_block(validator_pubkey, block, current_slot)
+                    .await?;
+
+                let mut request =
+                    PublishBlockRequest::new(Arc::new(signed_block), blobs);
+
+                // Sign the envelope if present (gloas ePBS self-build).
+                if let Some(envelope) = unsigned_envelope {
+                    let signed_envelope = self
+                        .sign_execution_payload_envelope(validator_pubkey, &envelope)
+                        .await?;
+                    request.set_signed_envelope(signed_envelope);
+                }
+
+                Ok(SignedBlock::Full(request))
             }
             UnsignedBlock::Blinded(block) => self
                 .sign_abstract_block(validator_pubkey, block, current_slot)
                 .await
                 .map(|block| SignedBlock::Blinded(Arc::new(block))),
         }
+    }
+
+    /// Sign an execution payload envelope with DOMAIN_BEACON_BUILDER (gloas ePBS).
+    /// In self-build mode, the proposer acts as the builder and signs the envelope.
+    async fn sign_execution_payload_envelope(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        envelope: &ExecutionPayloadEnvelope<E>,
+    ) -> Result<SignedExecutionPayloadEnvelope<E>, Error> {
+        let signing_epoch = envelope.slot.epoch(E::slots_per_epoch());
+        let signing_context = self.signing_context(Domain::BeaconBuilder, signing_epoch);
+        let signing_method = self.doppelganger_checked_signing_method(validator_pubkey)?;
+
+        let signature = signing_method
+            .get_signature::<E, BlindedPayload<E>>(
+                SignableMessage::ExecutionPayloadEnvelope(envelope),
+                signing_context,
+                &self.spec,
+                &self.task_executor,
+            )
+            .await?;
+
+        Ok(SignedExecutionPayloadEnvelope {
+            message: envelope.clone(),
+            signature,
+        })
     }
 
     async fn sign_attestation(

@@ -141,6 +141,7 @@ async fn get_block_from_source<T: EthSpec>(
             signed_block: Arc::new(block_from_source),
             kzg_proofs: kzg_proofs.into(),
             blobs: blobs.into(),
+            signed_execution_payload_envelope: None,
         };
         let publish_block_req = PublishBlockRequest::BlockContents(block_contents);
 

@@ -1757,8 +1757,35 @@ impl<E: EthSpec> FullBlockContents<E> {
                 block,
                 kzg_proofs,
                 blobs,
+                execution_payload_envelope: None,
             }),
             None => Self::Block(block),
+        }
+    }
+
+    /// Set the unsigned execution payload envelope (gloas ePBS self-build).
+    pub fn set_execution_payload_envelope(
+        &mut self,
+        envelope: ExecutionPayloadEnvelope<E>,
+    ) {
+        if let Self::BlockContents(contents) = self {
+            contents.execution_payload_envelope = Some(envelope);
+        }
+    }
+
+    /// Get the unsigned execution payload envelope, if any.
+    pub fn execution_payload_envelope(&self) -> Option<&ExecutionPayloadEnvelope<E>> {
+        match self {
+            Self::BlockContents(contents) => contents.execution_payload_envelope.as_ref(),
+            Self::Block(_) => None,
+        }
+    }
+
+    /// Take the unsigned execution payload envelope, if any.
+    pub fn take_execution_payload_envelope(&mut self) -> Option<ExecutionPayloadEnvelope<E>> {
+        match self {
+            Self::BlockContents(contents) => contents.execution_payload_envelope.take(),
+            Self::Block(_) => None,
         }
     }
 
@@ -1946,8 +1973,27 @@ impl<E: EthSpec> PublishBlockRequest<E> {
                 signed_block: block,
                 kzg_proofs,
                 blobs,
+                signed_execution_payload_envelope: None,
             }),
             None => Self::Block(block),
+        }
+    }
+
+    /// Set the signed execution payload envelope (gloas ePBS self-build).
+    pub fn set_signed_envelope(
+        &mut self,
+        envelope: SignedExecutionPayloadEnvelope<E>,
+    ) {
+        if let Self::BlockContents(contents) = self {
+            contents.signed_execution_payload_envelope = Some(envelope);
+        }
+    }
+
+    /// Get the signed execution payload envelope, if any.
+    pub fn signed_envelope(&self) -> Option<&SignedExecutionPayloadEnvelope<E>> {
+        match self {
+            Self::BlockContents(contents) => contents.signed_execution_payload_envelope.as_ref(),
+            Self::Block(_) => None,
         }
     }
 
@@ -2019,6 +2065,11 @@ pub struct SignedBlockContents<E: EthSpec> {
     pub kzg_proofs: KzgProofs<E>,
     #[serde(with = "ssz_types::serde_utils::list_of_hex_fixed_vec")]
     pub blobs: BlobsList<E>,
+    /// Gloas ePBS: signed execution payload envelope for self-build blocks.
+    /// Signed by the proposer (validator client) with DOMAIN_BEACON_BUILDER.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[ssz(skip_serializing, skip_deserializing)]
+    pub signed_execution_payload_envelope: Option<SignedExecutionPayloadEnvelope<E>>,
 }
 
 impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for SignedBlockContents<E> {
@@ -2033,6 +2084,8 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for SignedBlockContents<
             kzg_proofs: KzgProofs<E>,
             #[serde(with = "ssz_types::serde_utils::list_of_hex_fixed_vec")]
             blobs: BlobsList<E>,
+            #[serde(default)]
+            signed_execution_payload_envelope: Option<SignedExecutionPayloadEnvelope<E>>,
         }
         let helper = Helper::<E>::deserialize(deserializer).map_err(serde::de::Error::custom)?;
 
@@ -2043,6 +2096,7 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for SignedBlockContents<
             signed_block: Arc::new(block),
             kzg_proofs: helper.kzg_proofs,
             blobs: helper.blobs,
+            signed_execution_payload_envelope: helper.signed_execution_payload_envelope,
         })
     }
 }
@@ -2054,6 +2108,11 @@ pub struct BlockContents<E: EthSpec> {
     pub kzg_proofs: KzgProofs<E>,
     #[serde(with = "ssz_types::serde_utils::list_of_hex_fixed_vec")]
     pub blobs: BlobsList<E>,
+    /// Gloas ePBS: unsigned execution payload envelope for self-build blocks.
+    /// The validator client signs this with DOMAIN_BEACON_BUILDER.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[ssz(skip_serializing, skip_deserializing)]
+    pub execution_payload_envelope: Option<ExecutionPayloadEnvelope<E>>,
 }
 
 impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for BlockContents<E> {
@@ -2068,6 +2127,8 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for BlockContents<E> {
             kzg_proofs: KzgProofs<E>,
             #[serde(with = "ssz_types::serde_utils::list_of_hex_fixed_vec")]
             blobs: BlobsList<E>,
+            #[serde(default)]
+            execution_payload_envelope: Option<ExecutionPayloadEnvelope<E>>,
         }
         let helper = Helper::<E>::deserialize(deserializer).map_err(serde::de::Error::custom)?;
 
@@ -2078,6 +2139,7 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for BlockContents<E> {
             block,
             kzg_proofs: helper.kzg_proofs,
             blobs: helper.blobs,
+            execution_payload_envelope: helper.execution_payload_envelope,
         })
     }
 }
@@ -2373,6 +2435,7 @@ mod test {
                     signed_block: Arc::new(signed_beacon_block),
                     kzg_proofs,
                     blobs,
+                    signed_execution_payload_envelope: None,
                 };
                 PublishBlockRequest::BlockContents(block_contents)
             } else {
@@ -2406,6 +2469,7 @@ mod test {
                 signed_block: Arc::new(signed_beacon_block),
                 kzg_proofs,
                 blobs,
+                signed_execution_payload_envelope: None,
             };
             round_trip_test(block_contents);
             println!("fork_name: {:?} PASSED", fork_name);

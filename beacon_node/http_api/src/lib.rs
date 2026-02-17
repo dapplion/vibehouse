@@ -1452,9 +1452,12 @@ pub fn serve<T: BeaconChainTypes>(
                     .map_err(|e| {
                         warp_utils::reject::custom_bad_request(format!("invalid JSON: {e:?}"))
                     })?;
+                    let (provenanced_block, signed_envelope) =
+                        ProvenancedBlock::local_from_publish_request(request);
                     publish_blocks::publish_block(
                         None,
-                        ProvenancedBlock::local_from_publish_request(request),
+                        provenanced_block,
+                        signed_envelope,
                         chain,
                         &network_tx,
                         BroadcastValidation::default(),
@@ -1488,9 +1491,12 @@ pub fn serve<T: BeaconChainTypes>(
                     .map_err(|e| {
                         warp_utils::reject::custom_bad_request(format!("invalid SSZ: {e:?}"))
                     })?;
+                    let (provenanced_block, signed_envelope) =
+                        ProvenancedBlock::local_from_publish_request(block_contents);
                     publish_blocks::publish_block(
                         None,
-                        ProvenancedBlock::local_from_publish_request(block_contents),
+                        provenanced_block,
+                        signed_envelope,
                         chain,
                         &network_tx,
                         BroadcastValidation::default(),
@@ -1527,9 +1533,12 @@ pub fn serve<T: BeaconChainTypes>(
                         warp_utils::reject::custom_bad_request(format!("invalid JSON: {e:?}"))
                     })?;
 
+                    let (provenanced_block, signed_envelope) =
+                        ProvenancedBlock::local_from_publish_request(request);
                     publish_blocks::publish_block(
                         None,
-                        ProvenancedBlock::local_from_publish_request(request),
+                        provenanced_block,
+                        signed_envelope,
                         chain,
                         &network_tx,
                         validation_level.broadcast_validation,
@@ -1565,9 +1574,12 @@ pub fn serve<T: BeaconChainTypes>(
                     .map_err(|e| {
                         warp_utils::reject::custom_bad_request(format!("invalid SSZ: {e:?}"))
                     })?;
+                    let (provenanced_block, signed_envelope) =
+                        ProvenancedBlock::local_from_publish_request(block_contents);
                     publish_blocks::publish_block(
                         None,
-                        ProvenancedBlock::local_from_publish_request(block_contents),
+                        provenanced_block,
+                        signed_envelope,
                         chain,
                         &network_tx,
                         validation_level.broadcast_validation,
