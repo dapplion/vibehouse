@@ -24,9 +24,9 @@ pub const SYNC_COMMITTEE_PREFIX_TOPIC: &str = "sync_committee_";
 pub const BLS_TO_EXECUTION_CHANGE_TOPIC: &str = "bls_to_execution_change";
 pub const LIGHT_CLIENT_FINALITY_UPDATE: &str = "light_client_finality_update";
 pub const LIGHT_CLIENT_OPTIMISTIC_UPDATE: &str = "light_client_optimistic_update";
-pub const EXECUTION_BID_TOPIC: &str = "execution_bid";
+pub const EXECUTION_BID_TOPIC: &str = "execution_payload_bid";
 pub const EXECUTION_PAYLOAD_TOPIC: &str = "execution_payload";
-pub const PAYLOAD_ATTESTATION_TOPIC: &str = "payload_attestation";
+pub const PAYLOAD_ATTESTATION_TOPIC: &str = "payload_attestation_message";
 
 #[derive(Debug)]
 pub struct TopicConfig {
