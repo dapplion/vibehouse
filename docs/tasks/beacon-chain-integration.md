@@ -24,6 +24,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Self-build bid signature: `Signature::infinity()` instead of `Signature::empty()` (was blocking all Gloas block production)
 - ✅ Local self-build envelope processing: `process_self_build_envelope` calls `newPayload` on EL locally (gossipsub doesn't echo own messages)
 - ✅ FCU ordering fix: `recompute_head` moved after `process_payload_envelope` in gossip handler (EL needs `newPayload` before `forkchoice_updated`)
+- ✅ EL payload request: `get_execution_payload` handles Gloas states (uses `latest_block_hash` and `latest_execution_payload_bid.gas_limit`)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -39,6 +40,12 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Fix get_execution_payload crash for Gloas states
+- **Bug**: `get_execution_payload` calls `state.latest_execution_payload_header()` which returns `Err(IncorrectStateVariant)` for Gloas (replaced by `latest_execution_payload_bid`). No Gloas block could ever be produced — the function crashes before reaching the EL.
+- **Fix**: For Gloas states, extract parent hash from `state.latest_block_hash()` and gas limit from `state.latest_execution_payload_bid().gas_limit`
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `69b51c9ec`
 
 ### 2026-02-17 — Fix three critical devnet-0 blockers in self-build ePBS flow
 - **Bug 1 (Blocks can't be produced)**: Self-build bid used `Signature::empty()` (all-zero bytes) but `process_execution_payload_bid` unconditionally requires `is_infinity()` for `BUILDER_INDEX_SELF_BUILD`. `Signature::empty()` ≠ `Signature::infinity()` in BLS. All Gloas block production would fail.
