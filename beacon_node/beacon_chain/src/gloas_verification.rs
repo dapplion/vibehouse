@@ -47,15 +47,13 @@ pub enum ExecutionBidError {
         bid_slot: Slot,
         current_slot: Slot,
     },
-    /// The bid's execution_payment field is not zero.
+    /// The bid's execution_payment field is zero.
     ///
     /// Spec: `[REJECT] bid.execution_payment is zero.`
     ///
     /// ## Peer scoring
     /// The peer has sent an invalid message.
-    NonZeroExecutionPayment {
-        execution_payment: u64,
-    },
+    ZeroExecutionPayment,
     /// The builder index does not exist in the builder registry.
     ///
     /// ## Peer scoring
@@ -194,7 +192,6 @@ impl From<BeaconStateError> for PayloadAttestationError {
 #[derive(Debug, Clone)]
 pub struct VerifiedExecutionBid<T: BeaconChainTypes> {
     bid: SignedExecutionPayloadBid<T::EthSpec>,
-    // TODO: Add builder_pubkey field when we implement full signature verification
 }
 
 impl<T: BeaconChainTypes> VerifiedExecutionBid<T> {
@@ -364,10 +361,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 1b: Spec: [REJECT] bid.execution_payment is zero.
-        if bid.message.execution_payment != 0 {
-            return Err(ExecutionBidError::NonZeroExecutionPayment {
-                execution_payment: bid.message.execution_payment,
-            });
+        if bid.message.execution_payment == 0 {
+            return Err(ExecutionBidError::ZeroExecutionPayment);
         }
 
         // Get head state for validation

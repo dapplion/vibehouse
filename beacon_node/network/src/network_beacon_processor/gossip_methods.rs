@@ -3241,18 +3241,17 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_EQUIVOCATING_TOTAL);
                 return;
             }
-            Err(ExecutionBidError::NonZeroExecutionPayment { execution_payment }) => {
+            Err(ExecutionBidError::ZeroExecutionPayment) => {
                 warn!(
                     builder_index,
-                    execution_payment,
                     %peer_id,
-                    "Rejecting bid with non-zero execution_payment"
+                    "Rejecting bid with zero execution_payment"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
                 self.gossip_penalize_peer(
                     peer_id,
                     PeerAction::LowToleranceError,
-                    "execution_bid_non_zero_payment",
+                    "execution_bid_zero_payment",
                 );
                 return;
             }

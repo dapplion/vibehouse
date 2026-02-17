@@ -717,11 +717,8 @@ fn process_deposit_request_gloas<E: EthSpec>(
 
     let is_builder_prefix = is_builder_withdrawal_credential(request.withdrawal_credentials);
 
-    // Check if there's already a pending validator deposit for this pubkey
-    let is_pending = is_pending_validator(state, &request.pubkey, spec);
-
-    // Route to builder if: existing builder OR (builder prefix AND not existing validator AND not pending)
-    if is_builder || (is_builder_prefix && !is_validator && !is_pending) {
+    // Route to builder if: existing builder OR (builder prefix AND not existing validator)
+    if is_builder || (is_builder_prefix && !is_validator) {
         apply_deposit_for_builder(state, request, slot, spec)?;
     } else {
         // Add to pending validator deposits
@@ -744,32 +741,6 @@ fn is_builder_withdrawal_credential(withdrawal_credentials: Hash256) -> bool {
         .first()
         .copied()
         == Some(0x03)
-}
-
-/// [New in Gloas:EIP7732] Check if a pubkey already has a pending validator deposit with a valid signature.
-fn is_pending_validator<E: EthSpec>(
-    state: &BeaconState<E>,
-    pubkey: &PublicKeyBytes,
-    spec: &ChainSpec,
-) -> bool {
-    if let Ok(pending_deposits) = state.pending_deposits() {
-        for deposit in pending_deposits.iter() {
-            if &deposit.pubkey == pubkey {
-                let deposit_data = DepositData {
-                    pubkey: deposit.pubkey,
-                    withdrawal_credentials: deposit.withdrawal_credentials,
-                    amount: deposit.amount,
-                    signature: deposit.signature.clone(),
-                };
-                if crate::per_block_processing::is_valid_deposit_signature(&deposit_data, spec)
-                    .is_ok()
-                {
-                    return true;
-                }
-            }
-        }
-    }
-    false
 }
 
 /// [New in Gloas:EIP7732] Apply a deposit for a builder (new or top-up).

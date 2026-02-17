@@ -246,7 +246,6 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     // (BeaconChain::process_payload_envelope) before this function is invoked.
 
     // Process execution requests (moved from block processing to envelope processing in Gloas)
-    // TODO: Use process_deposit_requests_post_gloas for builder deposit handling
     process_deposit_requests(state, &execution_requests.deposits, spec)?;
     process_withdrawal_requests(state, &execution_requests.withdrawals, spec)?;
     process_consolidation_requests(state, &execution_requests.consolidations, spec)?;
