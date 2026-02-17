@@ -321,11 +321,28 @@ impl FuluPreset {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
-pub struct GloasPreset {}
+pub struct GloasPreset {
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub ptc_size: u64,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub max_payload_attestations: u64,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub builder_registry_limit: u64,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub builder_pending_withdrawals_limit: u64,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub max_builders_per_withdrawals_sweep: u64,
+}
 
 impl GloasPreset {
-    pub fn from_chain_spec<E: EthSpec>(_spec: &ChainSpec) -> Self {
-        Self {}
+    pub fn from_chain_spec<E: EthSpec>(spec: &ChainSpec) -> Self {
+        Self {
+            ptc_size: spec.ptc_size,
+            max_payload_attestations: spec.max_payload_attestations,
+            builder_registry_limit: spec.builder_registry_limit,
+            builder_pending_withdrawals_limit: spec.builder_pending_withdrawals_limit,
+            max_builders_per_withdrawals_sweep: spec.max_builders_per_withdrawals_sweep,
+        }
     }
 }
 

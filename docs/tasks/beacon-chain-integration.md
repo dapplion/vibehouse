@@ -17,6 +17,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Payload attestation pool for block inclusion (gossip → pool → block production)
 - ✅ Gossip topic names fixed to match spec (`execution_payload_bid`, `payload_attestation_message`)
 - ✅ Code cleanup: removed unused imports and dead `GloasNotImplemented` error variant
+- ✅ Gloas preset values: populated GloasPreset struct, fixed minimal spec (PTC_SIZE=2, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=16)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -32,6 +33,15 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Populate gloas preset values and fix minimal spec
+- **Bug**: `GloasPreset` struct was empty — preset YAML files had no values, and the minimal chain spec inherited mainnet values (PTC_SIZE=512, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=16384) which are wrong for devnet-0
+- **Fix 1**: Added 5 fields to `GloasPreset` struct matching consensus-specs preset: `ptc_size`, `max_payload_attestations`, `builder_registry_limit`, `builder_pending_withdrawals_limit`, `max_builders_per_withdrawals_sweep`
+- **Fix 2**: `ChainSpec::minimal()` now overrides `ptc_size: 2` and `max_builders_per_withdrawals_sweep: 16` (vs mainnet 512/16384)
+- **Fix 3**: Updated all three preset YAML files (mainnet, minimal, gnosis) with actual values from consensus-specs
+- Without this fix, devnet-0 (minimal preset) would use wrong PTC quorum threshold (256 instead of 1) in fork choice
+- All preset consistency tests pass (mainnet, minimal, gnosis)
+- Pre-existing EF test results unchanged (86/87 pass, data_column_sidecar SSZ failure pre-existing)
 
 ### 2026-02-17 — Fix gossip topic names + code cleanup
 - **Bug**: Gossip topic names didn't match consensus spec v1.7.0-alpha.2
