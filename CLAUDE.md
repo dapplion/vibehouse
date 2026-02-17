@@ -165,3 +165,51 @@ If you learn something about the codebase architecture or patterns:
 - Minor preference differences (not worth documenting)
 - One-off edge cases unlikely to recur
 - Already covered by existing documentation
+
+## Devnet Testing (Kurtosis)
+
+### Quick Commands
+
+```bash
+# Build Docker image (fast — uses host cargo cache, ~30s incremental)
+scripts/build-docker.sh
+
+# Run full devnet lifecycle (build + start + assertoor check + teardown)
+scripts/kurtosis-run.sh
+
+# Skip build (reuse existing vibehouse:local image)
+scripts/kurtosis-run.sh --no-build
+
+# Leave enclave running after test (for manual inspection)
+scripts/kurtosis-run.sh --no-teardown
+```
+
+### How the Devnet Works
+
+- Minimal preset: 8 slots/epoch, 6s/slot
+- Gloas (ePBS) fork at epoch 1
+- Single node: vibehouse CL + geth EL
+- Assertoor automatically checks finalization, block proposals, and sync status
+- 5-minute timeout — if assertoor hasn't passed by then, the run fails
+
+### Bot Workflow
+
+1. Make code change
+2. Run `scripts/kurtosis-run.sh`
+3. On failure: read dump logs in `/tmp/kurtosis-dump-*` (check CL logs first, then EL)
+4. Fix the issue
+5. Repeat
+
+### Common Issues
+
+- **Fork transition failures**: Check CL logs around epoch 1 boundary (slot 8)
+- **Self-build envelope errors**: Check `process_self_build_envelope` and `get_execution_payload` paths
+- **Engine API failures**: Check EL logs for `newPayload` / `forkchoiceUpdated` errors
+- **Stale head hash**: Gloas uses fork choice head_hash, not `state.latest_block_hash()`
+
+### Rules
+
+- **NEVER** use the main `Dockerfile` for dev builds — it does a full Rust rebuild in Docker (5-10 min)
+- **NEVER** run `kurtosis run` directly — old enclaves accumulate and waste resources
+- **ALWAYS** use `scripts/kurtosis-run.sh` — it handles cleanup, assertoor polling, and timeout
+- **ALWAYS** use `scripts/build-docker.sh` — it builds on host with incremental cargo cache

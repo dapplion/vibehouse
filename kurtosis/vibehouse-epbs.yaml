@@ -9,6 +9,12 @@ network_params:
   preset: minimal
 additional_services:
   - dora
+  - assertoor
+  - spamoor
+assertoor_params:
+  run_stability_check: true
+  run_block_proposal_check: true
+  run_transaction_test: true
 snooper_enabled: true
 global_log_level: debug
 dora_params:

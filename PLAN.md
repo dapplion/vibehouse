@@ -2,12 +2,6 @@
 
 > the vibemap. not a roadmap. roadmaps have deadlines. vibemaps have directions.
 
-## 🚨 CRITICAL: ALWAYS RUN TESTS BEFORE PUSHING 🚨
-
-**`make test-ef`** — Run this EVERY TIME before pushing code!
-
----
-
 ## fork point
 
 vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/releases/tag/v8.0.1), the last stable release covering the Fulu mainnet fork. Everything before v8.0.1 is inherited. Everything after is vibes.
@@ -16,21 +10,49 @@ vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/rele
 
 ## priorities
 
-### 1. 🔥 Kurtosis solo devnet — vibehouse only
-[docs/tasks/kurtosis-devnet.md](docs/tasks/kurtosis-devnet.md) — **URGENT: get a kurtosis devnet running with only vibehouse (no other clients). This is the #1 priority. Everything else waits.**
+### 1. Kurtosis solo devnet — vibehouse only
+
+Get a kurtosis devnet running with only vibehouse (no other clients).
+
+- Config: minimal preset, gloas fork at epoch 1, single node (vibehouse CL + geth EL)
+- Assertoor checks finalization, block proposals, sync status (5-min timeout)
+- Consensus specs: v1.7.0-alpha.2
+- Reference: https://notes.ethereum.org/@ethpandaops/epbs-devnet-0
+
+**Steps:**
+1. Build Docker image: `scripts/build-docker.sh` (host cargo build + Dockerfile.dev, ~30s incremental)
+2. Run devnet: `scripts/kurtosis-run.sh` (clean enclave, start, poll assertoor, teardown)
+3. Fix failures: check CL logs first, then EL in `/tmp/kurtosis-dump-*`
+
+**Unstaged files ready to commit:**
+- `Dockerfile.dev` — minimal Ubuntu image, copies pre-built binary
+- `scripts/build-docker.sh` — builds on host with cargo cache
+- `scripts/kurtosis-run.sh` — full lifecycle with assertoor polling
+- `CLAUDE.md` — devnet testing docs section
+- `kurtosis/vibehouse-epbs.yaml` — added assertoor + spamoor services
+
+**Environment:**
+- Docker installed, `openclaw` user in docker group (use `sg docker "cmd"`)
+- Kurtosis v1.15.2 installed, engine running
 
 ### 2. Gloas fork (Glamsterdam consensus layer) — ePBS (EIP-7732)
 
-| Phase | Status | Task doc |
-|-------|--------|----------|
-| 1. Types & Constants | ✅ COMPLETE | — |
-| 2. State Transition | ✅ COMPLETE | — |
-| 3. Fork Choice | ✅ COMPLETE | — |
-| 4. P2P Networking | ✅ COMPLETE | — |
-| 5. Beacon Chain Integration | 🚧 IN PROGRESS | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
-| 6. Validator Client | NOT STARTED | [docs/tasks/validator-client.md](docs/tasks/validator-client.md) |
-| 7. REST API | NOT STARTED | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
-| 8. Testing | NOT STARTED | — |
+| Phase | Status | Detail |
+|-------|--------|--------|
+| 1. Types & Constants | DONE | 16 new types, BeaconBlockBody/BeaconState superstruct variants |
+| 2. State Transitions | DONE | bid processing, PTC attestations, builder payments, withdrawals |
+| 3. Fork Choice | DONE | 3-state payload model, all 8 reorg tests pass |
+| 4. P2P Networking | DONE | gossip topics, validation, beacon processor integration |
+| 5. Beacon Chain Integration | 95% | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
+| 6. Validator Client | IN PROGRESS | [docs/tasks/validator-client.md](docs/tasks/validator-client.md) |
+| 7. REST API | IN PROGRESS | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
+| 8. Spec Tests | DONE | 78/78 + 136/136 passing, check_all_files_accessed passes |
+
+**Phase 5 remaining:** external builder path, ProposerPreferences topic (neither needed for self-build devnet)
+
+**Phase 6 remaining:** block proposal flow with bid selection, fallback when no bids received
+
+**Phase 7 remaining:** blinded blocks endpoint, bid submission endpoint, proposer lookahead
 
 Reference:
 - CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/gloas
@@ -38,19 +60,18 @@ Reference:
 - Upstream WIP: [sigp/lighthouse#8806](https://github.com/sigp/lighthouse/pull/8806)
 
 ### 3. Spec tests
+
 [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 + 136/136 passing, check_all_files_accessed passes
 
-### 4. Testing coverage
-[docs/tasks/testing-coverage.md](docs/tasks/testing-coverage.md) — NOT STARTED
+### 4. Upstream sync
 
-### 5. Kurtosis / epbs-devnet-0
-[docs/tasks/kurtosis-devnet.md](docs/tasks/kurtosis-devnet.md) — target Feb 18, 2026
+[docs/tasks/upstream-sync.md](docs/tasks/upstream-sync.md) — monitoring upstream PRs, cherry-picking non-gloas fixes
 
-### 6. Community features
-Track via GitHub Issues. Triage, label, implement, test, merge.
+### 5. Backlog
 
-### 7. Upstream sync
-[docs/tasks/upstream-sync.md](docs/tasks/upstream-sync.md) — ONGOING
+- **Peer scoring** — design complete, not yet implemented (functional at defaults)
+- **Test coverage tooling** — not started
+- **CI spec test job** — not set up
 
 ---
 
@@ -93,6 +114,27 @@ Every piece of work must be tracked in a task document under `docs/tasks/`. This
 
 - `main` — always compiles, tests pass
 - feature branches as needed, named descriptively
+
+---
+
+## key commands
+
+```bash
+# Rust environment
+export CARGO_HOME=/home/openclaw-sigp/.openclaw/.cargo
+export RUSTUP_HOME=/home/openclaw-sigp/.openclaw/.rustup
+export PATH=/home/openclaw-sigp/.openclaw/.cargo/bin:$PATH
+
+# Build + test
+cargo build --release
+RUST_MIN_STACK=8388608 cargo test --release -p ef_tests --features "ef_tests" --test "tests"
+
+# Devnet
+scripts/build-docker.sh                # Build Docker image
+scripts/kurtosis-run.sh                # Full lifecycle
+scripts/kurtosis-run.sh --no-build     # Skip build, reuse image
+scripts/kurtosis-run.sh --no-teardown  # Leave enclave running
+```
 
 ---
 
