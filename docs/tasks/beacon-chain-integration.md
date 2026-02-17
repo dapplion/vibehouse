@@ -49,6 +49,14 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — fork choice: add TooOld validation for payload attestations
+- **Issue**: `on_payload_attestation` in fork choice checked for future-slot attestations but had no staleness check. The `InvalidPayloadAttestation::TooOld` error variant existed but was never used. While the gossip verification layer already filters stale attestations (via `earliest_permissible_slot` in `verify_payload_attestation_for_gossip`), and the REST API path also goes through the same gossip verification, fork choice itself had no defense against old attestations.
+- **Fix**: Added staleness check rejecting payload attestations older than 1 epoch (`current_slot > attestation_slot + slots_per_epoch`) in `on_payload_attestation`. Defense-in-depth — prevents stale attestations from influencing head selection even if they bypass gossip filtering.
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- **Audit**: Ran comprehensive 4-agent code audit of all ePBS critical paths (block production, envelope processing, payload attestation VC flow, fork choice). Only this one defense-in-depth gap found. Other audit findings were false positives after manual verification:
+  - "Signature::empty in envelopes" — NOT A BUG: placeholder replaced by VC signing pipeline
+  - "Builder payment index calculation" — NOT A BUG: formula matches spec (`SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH`)
+
 ### 2026-02-17 — PTC duty and payload attestation REST API endpoints
 - **Problem**: The validator client had no way to discover PTC duties or submit payload attestations. Without these endpoints, no PTC attestations would be produced in devnet-0, and fork choice couldn't properly handle ePBS blocks.
 - **New endpoints**:

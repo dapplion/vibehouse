@@ -1353,6 +1353,16 @@ where
             .into());
         }
 
+        // Validate attestation is not too old (beyond 1 epoch)
+        let slots_per_epoch = Slot::new(E::slots_per_epoch());
+        if current_slot > attestation.data.slot + slots_per_epoch {
+            return Err(InvalidPayloadAttestation::TooOld {
+                attestation_slot: attestation.data.slot,
+                current_slot,
+            }
+            .into());
+        }
+
         // Get the block this attestation is for
         let block_index = self
             .proto_array
