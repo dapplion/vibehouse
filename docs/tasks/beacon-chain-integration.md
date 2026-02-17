@@ -26,6 +26,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ FCU ordering fix: `recompute_head` moved after `process_payload_envelope` in gossip handler (EL needs `newPayload` before `forkchoice_updated`)
 - ✅ EL payload request: `get_execution_payload` handles Gloas states (uses `latest_block_hash` and `latest_execution_payload_bid.gas_limit`)
 - ✅ Gloas withdrawals for EL: `get_expected_withdrawals_gloas` uses ePBS algorithm (is_parent_block_full check, builder sweep)
+- ✅ Self-build envelope signing via validator client (proper BLS signature with DOMAIN_BEACON_BUILDER)
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
@@ -39,8 +40,25 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/block_verification.rs` — block import pipeline
 - `beacon_node/beacon_chain/src/execution_payload.rs` — EL integration
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
+- `validator_client/signing_method/src/lib.rs` — envelope signing (SignableMessage)
+- `validator_client/lighthouse_validator_store/src/lib.rs` — envelope signing implementation
+- `common/eth2/src/types.rs` — API types for envelope transport (BN↔VC)
 
 ## Progress log
+
+### 2026-02-17 — Sign self-build envelope via validator client
+- **Bug**: Self-build envelope used `Signature::empty()` (all-zero bytes) or `Signature::infinity()` placeholder. The spec requires `bls.Verify(proposer_pubkey, signing_root, envelope_signature)` for self-build envelopes — a REAL BLS signature with `DOMAIN_BEACON_BUILDER`. Other nodes would reject envelopes from vibehouse, breaking multi-client interop.
+- **Root cause**: The beacon node produced envelopes but the validator client (which holds signing keys) was never involved in signing them. The envelope was created entirely on the BN side with a placeholder signature.
+- **Fix**: Threaded unsigned envelope through the full produce_block → validator_client → publish_block pipeline:
+  - Added `ExecutionPayloadEnvelope` variant to `SignableMessage` enum in signing_method
+  - Added `sign_execution_payload_envelope` method to `ValidatorStore` trait and `LighthouseValidatorStore` impl (uses `Domain::BeaconBuilder`)
+  - Added optional envelope fields to `FullBlockContents`, `BlockContents`, `SignedBlockContents`, `PublishBlockRequest`
+  - Updated `build_block_contents.rs` to pass unsigned envelope from BN to VC
+  - Updated `sign_block` in lighthouse_validator_store to sign envelope alongside the block
+  - Updated `publish_blocks.rs` to use the properly-signed envelope from the request instead of `pending_self_build_envelope` cache
+- 10 files changed (201 insertions, 44 deletions)
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `6c7e09dbe`
 
 ### 2026-02-17 — Use Gloas withdrawal algorithm for EL payload attributes
 - **Bug**: EL received withdrawals computed by `get_expected_withdrawals` (Electra algorithm) but `process_execution_payload_envelope` validates against `process_withdrawals_gloas` output. Key differences: Gloas checks `is_parent_block_full` (returns empty if parent payload wasn't delivered), includes builder pending withdrawals and builder sweep, reserves `max_withdrawals - 1` for non-validator withdrawals.
