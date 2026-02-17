@@ -29,8 +29,9 @@ use std::sync::Arc;
 use strum::AsRefStr;
 use tree_hash::TreeHash;
 use types::{
-    BeaconStateError, BuilderIndex, EthSpec, ExecutionBlockHash, Hash256, PayloadAttestation,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, Slot,
+    consts::gloas::BUILDER_INDEX_SELF_BUILD, BeaconStateError, BuilderIndex, EthSpec,
+    ExecutionBlockHash, Hash256, PayloadAttestation, SignedExecutionPayloadBid,
+    SignedExecutionPayloadEnvelope, Slot,
 };
 
 /// Returned when an execution payload bid was not successfully verified.
@@ -431,11 +432,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         
         // Check 5: Signature verification
         let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
-            state
-                .builders()
-                .ok()?
-                .get(builder_idx as usize)
-                .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            if builder_idx == BUILDER_INDEX_SELF_BUILD {
+                let proposer_index =
+                    state.latest_block_header().proposer_index as usize;
+                state
+                    .validators()
+                    .get(proposer_index)
+                    .and_then(|v| v.pubkey.decompress().ok().map(Cow::Owned))
+            } else {
+                state
+                    .builders()
+                    .ok()?
+                    .get(builder_idx as usize)
+                    .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            }
         };
         
         let signature_set = execution_payload_bid_signature_set(
@@ -676,11 +686,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let state = &head.snapshot.beacon_state;
 
         let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
-            state
-                .builders()
-                .ok()?
-                .get(builder_idx as usize)
-                .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            if builder_idx == BUILDER_INDEX_SELF_BUILD {
+                let proposer_index =
+                    state.latest_block_header().proposer_index as usize;
+                state
+                    .validators()
+                    .get(proposer_index)
+                    .and_then(|v| v.pubkey.decompress().ok().map(Cow::Owned))
+            } else {
+                state
+                    .builders()
+                    .ok()?
+                    .get(builder_idx as usize)
+                    .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            }
         };
 
         let signature_set = execution_payload_envelope_signature_set(
