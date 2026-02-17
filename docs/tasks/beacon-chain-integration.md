@@ -31,7 +31,9 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
 - [ ] `ProposerPreferences` gossip topic (not needed for devnet-0 self-build)
-- [ ] Validator client payload attestation service (fetch PTC duties, produce attestations)
+- [ ] Fork choice `payload_data_availability_vote` tracking (spec has separate vote for `blob_data_available`, not yet implemented — currently piggybacks on `payload_revealed`)
+- [ ] Fork choice `is_payload_data_available` / `should_extend_payload` functions (uses `DATA_AVAILABILITY_TIMELY_THRESHOLD`)
+- [x] Validator client payload attestation service (fetch PTC duties, produce attestations)
 - [x] Implement payload timeliness committee logic (PTC attestation pool + block inclusion)
 - [x] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
 - [x] PTC duty + payload attestation REST API endpoints (BN side)
@@ -48,6 +50,16 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `common/eth2/src/types.rs` — API types (PtcDutyData, PayloadAttestationDataQuery, etc.)
 
 ## Progress log
+
+### 2026-02-17 — devnet-0 readiness audit: all clear
+- **Comprehensive audit** of block import pipeline, EL integration, fork transition, gossip verification, and configuration flow
+- **Fork transition**: `upgrade_to_gloas` properly wired in `per_slot_processing`, gossip topics subscribe on fork activation, state upgrade correct
+- **Block import**: Gloas blocks correctly skip `validate_execution_payload_for_gossip`, bid validations in block verification correct, DA checker marks Gloas blocks as `Available(NoData)`
+- **EL integration**: `newPayload` correctly called via envelope pipeline (not block import), `execution_requests` properly sent as 4th parameter, Gloas variant in `NewPayloadRequest` complete
+- **Configuration**: `gloas_fork_epoch` properly parsed from YAML config through full chain (Config → ChainSpec → runtime). Kurtosis YAML `gloas_fork_epoch: 1` will work.
+- **Spec gap identified**: Fork choice missing `payload_data_availability_vote` tracking — spec has separate `blob_data_available` vote, currently piggybacks on `payload_revealed`. Not blocking for devnet-0 (self-build has blobs locally), added to remaining items.
+- **VC payload attestation service**: confirmed fully implemented and wired into startup
+- 136/136 EF tests pass, check_all_files_accessed passes (209,677 files)
 
 ### 2026-02-17 — fix spec compliance: deposit routing, bid payment validation
 - **Bug 1 (SPEC)**: `process_deposit_request_gloas` had an extra `is_pending_validator` check not in the spec. The spec routes to builder if `is_builder || (is_builder_prefix && !is_validator)`. The `is_pending` check would incorrectly prevent builder registration for pubkeys with pending validator deposits.

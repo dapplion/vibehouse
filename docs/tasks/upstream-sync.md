@@ -19,11 +19,11 @@ Stay current with upstream lighthouse fixes and improvements.
 - [#8786 - HTTP client user-agent](https://github.com/sigp/lighthouse/pull/8786)
 
 ### Recent spec changes (consensus-specs) needing attention
-- `06396308` — payload data availability vote (new `DATA_AVAILABILITY_TIMELY_THRESHOLD`)
-- `b3341d00` — check pending deposit before applying to builder
-- `40504e4c` — refactor builder deposit conditions in process_deposit_request
-- `36a73141` — replace pubkey with validator_index in SignedExecutionProof
-- `278cbe7b` — add voluntary exit tests for builders
+- `06396308` — payload data availability vote (new `DATA_AVAILABILITY_TIMELY_THRESHOLD`) — **CONFIRMED GAP**: fork choice missing `payload_data_availability_vote` tracking. Currently piggybacks `blob_data_available` on `payload_revealed`. Spec has separate `Store.payload_data_availability_vote` dict, `is_payload_data_available()` function, and `should_extend_payload()` using `DATA_AVAILABILITY_TIMELY_THRESHOLD = PTC_SIZE // 2`. Not blocking devnet-0 self-build but needed for multi-client interop.
+- `b3341d00` — check pending deposit before applying to builder — **ASSESSED**: our code already removed the incorrect `is_pending_validator` check (commit `0aeabc122`). Current routing logic matches spec.
+- `40504e4c` — refactor builder deposit conditions in process_deposit_request — **ASSESSED**: current implementation matches refactored spec logic.
+- `36a73141` — replace pubkey with validator_index in SignedExecutionProof — **ASSESSED**: our `SignedExecutionPayloadEnvelope` already uses `builder_index` (u64).
+- `278cbe7b` — add voluntary exit tests for builders — NOT YET ASSESSED
 
 ## Progress log
 

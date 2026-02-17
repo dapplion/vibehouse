@@ -68,6 +68,17 @@ dora_params:
 
 ## Progress log
 
+### 2026-02-17: deep devnet-0 readiness audit — all clear
+- **EF tests**: 136/136 pass, check_all_files_accessed passes (209,677 files, 122,748 excluded)
+- **Compilation**: cargo check --release clean, no clippy warnings
+- **Block import pipeline**: Gloas blocks correctly bypass execution payload gossip validation, DA checker marks as Available(NoData), bid validations in block_verification.rs correct
+- **EL integration**: newPayload correctly called via envelope pipeline, execution_requests sent as 4th param, fork choice marked Optimistic before EL validation (correct per spec)
+- **Fork transition**: upgrade_to_gloas properly gated in per_slot_processing, gossip topics subscribe on fork activation
+- **Configuration**: gloas_fork_epoch parsed from YAML through full Config→ChainSpec→runtime chain. Kurtosis YAML works.
+- **VC integration**: PayloadAttestationService fully implemented and wired, PTC duty endpoints working
+- **Spec gap (non-blocking)**: Fork choice missing payload_data_availability_vote (blob_data_available separate from payload_present). Not needed for devnet-0 self-build.
+- **Blocker**: Docker still not available
+
 ### 2026-02-17: comprehensive devnet-0 readiness audit (clean)
 - **Compilation**: `cargo check --release` — clean
 - **Clippy**: `cargo clippy --release --workspace -- -D warnings` — zero warnings
