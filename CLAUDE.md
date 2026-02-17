@@ -6,9 +6,9 @@ This file provides guidance for AI assistants (Claude Code, Codex, etc.) working
 
 Vibehouse is a fork of [Lighthouse](https://github.com/sigp/lighthouse) from v8.0.1 (post-Fulu).
 
-- **Read `plan.md` first** - it defines the work process, priorities, and the claude loop
-- **Read `PROGRESS.md`** - it has the log of all work done so far
-- **Read `docs/workstreams/`** - active workstream status and next steps
+- **Read `PLAN.md` first** - it defines the work process, priorities, and phase status
+- **Read `docs/tasks/`** - active task docs with detailed progress logs
+- **Read `docs/workstreams/`** - implementation design docs and reference
 - All work must be tracked in committed markdown docs (see plan.md "documentation-driven development")
 - Commit messages: lowercase, human-readable, no conventional commits
 - Branch from `main` (not `unstable` - that's upstream's branch)
@@ -22,18 +22,106 @@ The rest of this file is inherited from upstream Lighthouse and still applies to
 
 ```bash
 # Build
-make install                              # Build and install Lighthouse
-cargo build --release                     # Standard release build
-
-# Test (prefer targeted tests when iterating)
-cargo nextest run -p <package>            # Test specific package
-cargo nextest run -p <package> <test>     # Run individual test
-make test                                 # Full test suite (~20 min)
+cargo build --release
 
 # Lint
-make lint                                 # Run Clippy
-cargo fmt --all && make lint-fix          # Format and fix
+cargo fmt --all && make lint-fix
+make lint
 ```
+
+## Testing — Run the Right Tests for What You Changed
+
+Do NOT run `make test-ef` or `make test-full` on every change. Run targeted tests based on which code you touched.
+
+### consensus/types/ — Type definitions, SSZ, superstruct
+
+```bash
+cargo nextest run --release -p types
+# Then: SSZ static tests to catch serialization regressions
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto" ssz_static
+```
+
+### consensus/state_processing/ — State transitions, block/epoch processing
+
+```bash
+cargo nextest run --release -p state_processing
+# Then: EF operations + epoch + sanity tests (fake_crypto = 2-3x faster)
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto" -E 'test(/operations_|epoch_processing_|sanity_/)'
+```
+
+If you touched a specific operation (e.g. withdrawals), narrow further:
+```bash
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto" operations_withdrawals
+```
+
+### consensus/fork_choice/ or consensus/proto_array/ — Fork choice
+
+```bash
+cargo nextest run --release -p proto_array    # unit tests, fast (~1s)
+cargo nextest run --release -p fork_choice
+# Then: EF fork choice tests
+cargo nextest run --release -p ef_tests --features "ef_tests" -E 'test(/fork_choice_/)'
+```
+
+### beacon_node/network/ — P2P, gossip, networking
+
+```bash
+# Run for gloas fork only (not all 8 forks)
+env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
+```
+
+If your change is fork-agnostic, pick one recent fork to save time:
+```bash
+env FORK_NAME=fulu cargo nextest run --release --features "fork_from_env" -p network
+```
+
+### beacon_node/beacon_chain/ — Block import, chain management
+
+```bash
+# Run for the fork you're working on
+env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
+```
+
+### beacon_node/http_api/ — REST API endpoints
+
+```bash
+env FORK_NAME=fulu cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
+```
+
+### beacon_node/operation_pool/ — Attestation/op pool
+
+```bash
+env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p operation_pool
+```
+
+### validator_client/ — Validator duties, signing
+
+```bash
+cargo nextest run --release -p validator_client
+```
+
+### Before pushing — verify nothing is broken across the workspace
+
+```bash
+# Quick workspace check (excludes heavy packages — ~2 min)
+cargo nextest run --workspace --release \
+  --exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network --exclude http_api
+```
+
+### Full EF spec tests — only when touching consensus-critical code
+
+```bash
+# Real crypto + fake crypto + check_all_files_accessed (the full suite)
+make run-ef-tests
+```
+
+### Tips
+
+- `fake_crypto` skips BLS verification — 2-3x faster, good for logic-only changes
+- `FORK_NAME=gloas` runs tests for one fork only — 8x faster than testing all forks
+- `cargo nextest run -p ef_tests --features "ef_tests,fake_crypto" <filter>` — filter is a substring match on test name
+- Filter with `-E 'test(/pattern/)'` for regex matching on test names
+- All tests require `--release` for reasonable performance
 
 ## Before You Start
 
