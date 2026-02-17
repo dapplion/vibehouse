@@ -14,10 +14,11 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ EL integration: `newPayload` call for gloas payloads via envelope processing
 - ✅ Envelope creation and broadcast after block production (self-build flow)
 - ✅ Chain head recompute after payload reveal and PTC attestations
+- ✅ Payload attestation pool for block inclusion (gossip → pool → block production)
 
 ### Remaining
 - [ ] Handle the two-phase block: proposer commits, builder reveals
-- [ ] Implement payload timeliness committee logic
+- [x] Implement payload timeliness committee logic (PTC attestation pool + block inclusion)
 - [x] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
 
 ## Key files
@@ -28,6 +29,15 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Payload attestation pool for block inclusion
+- **Problem**: Verified PTC attestations from gossip were applied to fork choice but discarded — blocks were produced with empty `payload_attestations` list
+- **Fix**: Added `payload_attestation_pool` (HashMap<Slot, Vec<PayloadAttestation>>) on BeaconChain
+- Gossip handler now inserts verified attestations into the pool after verification
+- Block production retrieves attestations for `slot - 1` from the pool, limited to `max_payload_attestations` (4 mainnet, 2 minimal)
+- Pool auto-prunes entries older than 2 epochs to bound memory
+- Pre-existing EF test results unchanged (86/87 pass, data_column_sidecar SSZ failure pre-existing)
+- Commit: `028ce5264`
 
 ### 2026-02-17 — Set execution block hash in fork choice for gloas ePBS blocks
 - **Problem**: Gloas blocks contain bids (not payloads), so `execution_status` was `Irrelevant` and `head_hash` was `None` when `forkchoice_updated` was sent to the EL
