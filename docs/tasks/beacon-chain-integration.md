@@ -15,9 +15,12 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Envelope creation and broadcast after block production (self-build flow)
 - ✅ Chain head recompute after payload reveal and PTC attestations
 - ✅ Payload attestation pool for block inclusion (gossip → pool → block production)
+- ✅ Gossip topic names fixed to match spec (`execution_payload_bid`, `payload_attestation_message`)
+- ✅ Code cleanup: removed unused imports and dead `GloasNotImplemented` error variant
 
 ### Remaining
-- [ ] Handle the two-phase block: proposer commits, builder reveals
+- [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
+- [ ] `ProposerPreferences` gossip topic (not needed for devnet-0 self-build)
 - [x] Implement payload timeliness committee logic (PTC attestation pool + block inclusion)
 - [x] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
 
@@ -29,6 +32,16 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Fix gossip topic names + code cleanup
+- **Bug**: Gossip topic names didn't match consensus spec v1.7.0-alpha.2
+  - `execution_bid` → `execution_payload_bid` (spec name)
+  - `payload_attestation` → `payload_attestation_message` (spec name)
+  - `execution_payload` was already correct
+- This would have prevented cross-client interop in devnet-0
+- Also removed unused imports (`AvailableBlockData`, `FixedBytesExtended`, `MessageAcceptance`) and dead `GloasNotImplemented` error variant
+- Pre-existing EF test results unchanged (86/87 pass, data_column_sidecar SSZ failure pre-existing)
+- Commits: `590a9a238`, `1ee5572e0`
 
 ### 2026-02-17 — Payload attestation pool for block inclusion
 - **Problem**: Verified PTC attestations from gossip were applied to fork choice but discarded — blocks were produced with empty `payload_attestations` list
