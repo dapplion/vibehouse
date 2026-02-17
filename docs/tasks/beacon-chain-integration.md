@@ -18,7 +18,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 ### Remaining
 - [ ] Handle the two-phase block: proposer commits, builder reveals
 - [ ] Implement payload timeliness committee logic
-- [ ] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
+- [x] Update `CachedHead.head_hash` for ePBS (EL execution_status after envelope)
 
 ## Key files
 - `beacon_node/beacon_chain/src/beacon_chain.rs` — block production, fork choice bridge
@@ -28,6 +28,15 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `beacon_node/beacon_chain/src/gloas_verification.rs` — gossip verification
 
 ## Progress log
+
+### 2026-02-17 — Set execution block hash in fork choice for gloas ePBS blocks
+- **Problem**: Gloas blocks contain bids (not payloads), so `execution_status` was `Irrelevant` and `head_hash` was `None` when `forkchoice_updated` was sent to the EL
+- **Fix 1**: `on_block()` now sets `execution_status = Optimistic(bid.block_hash)` for gloas blocks, so self-build blocks have `head_hash` immediately when elected as head
+- **Fix 2**: `on_execution_payload()` now accepts `payload_block_hash` parameter and updates `execution_status` when the payload envelope is revealed
+- **Fix 3**: `on_payload_attestation()` sets `execution_status` from `bid_block_hash` when PTC quorum marks payload as revealed (fallback if envelope path hasn't set it)
+- All three paths ensure `head_hash` is available for `forkchoice_updated` calls to the EL
+- Pre-existing EF test results unchanged (87/88 pass, data_column_sidecar SSZ failure pre-existing)
+- Commit: `2707325ab`
 
 ### 2026-02-17 — Chain head recompute after payload reveal and PTC attestations
 - Added `recompute_head_at_current_slot()` call after successful envelope fork choice import in `process_gossip_execution_payload`
