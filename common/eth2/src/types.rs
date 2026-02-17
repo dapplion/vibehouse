@@ -1886,6 +1886,14 @@ impl<E: EthSpec> FullBlockContents<E> {
     /// SSZ decode with fork variant passed in explicitly.
     pub fn from_ssz_bytes_for_fork(bytes: &[u8], fork_name: ForkName) -> Result<Self, DecodeError> {
         if fork_name.deneb_enabled() {
+            // For Gloas, try decoding with 4 items (block + proofs + blobs + envelope).
+            // If that fails (e.g., no envelope present), fall back to 3 items.
+            if fork_name.gloas_enabled()
+                && let Ok(result) = Self::from_ssz_bytes_with_envelope(bytes, fork_name)
+            {
+                return Ok(result);
+            }
+
             let mut builder = ssz::SszDecoderBuilder::new(bytes);
 
             builder.register_anonymous_variable_length_item()?;
@@ -1903,6 +1911,27 @@ impl<E: EthSpec> FullBlockContents<E> {
             BeaconBlock::from_ssz_bytes_for_fork(bytes, fork_name)
                 .map(|block| FullBlockContents::Block(block))
         }
+    }
+
+    /// SSZ decode with 4 items: block + proofs + blobs + execution_payload_envelope.
+    fn from_ssz_bytes_with_envelope(bytes: &[u8], fork_name: ForkName) -> Result<Self, DecodeError> {
+        let mut builder = ssz::SszDecoderBuilder::new(bytes);
+
+        builder.register_anonymous_variable_length_item()?;
+        builder.register_type::<KzgProofs<E>>()?;
+        builder.register_type::<BlobsList<E>>()?;
+        builder.register_anonymous_variable_length_item()?;
+
+        let mut decoder = builder.build()?;
+        let block = decoder
+            .decode_next_with(|bytes| BeaconBlock::from_ssz_bytes_for_fork(bytes, fork_name))?;
+        let kzg_proofs = decoder.decode_next()?;
+        let blobs = decoder.decode_next()?;
+        let envelope: ExecutionPayloadEnvelope<E> = decoder.decode_next()?;
+
+        let mut contents = FullBlockContents::new(block, Some((kzg_proofs, blobs)));
+        contents.set_execution_payload_envelope(envelope);
+        Ok(contents)
     }
 
     pub fn block(&self) -> &BeaconBlock<E> {
@@ -2081,6 +2110,13 @@ impl<E: EthSpec> PublishBlockRequest<E> {
     /// SSZ decode with fork variant determined by `fork_name`.
     pub fn from_ssz_bytes(bytes: &[u8], fork_name: ForkName) -> Result<Self, DecodeError> {
         if fork_name.deneb_enabled() {
+            // For Gloas, try decoding with 4 items (block + proofs + blobs + signed_envelope).
+            if fork_name.gloas_enabled()
+                && let Ok(result) = Self::from_ssz_bytes_with_envelope(bytes, fork_name)
+            {
+                return Ok(result);
+            }
+
             let mut builder = ssz::SszDecoderBuilder::new(bytes);
             builder.register_anonymous_variable_length_item()?;
             builder.register_type::<KzgProofs<E>>()?;
@@ -2100,6 +2136,27 @@ impl<E: EthSpec> PublishBlockRequest<E> {
             SignedBeaconBlock::from_ssz_bytes_by_fork(bytes, fork_name)
                 .map(|block| PublishBlockRequest::Block(Arc::new(block)))
         }
+    }
+
+    /// SSZ decode with 4 items: signed_block + proofs + blobs + signed_envelope.
+    fn from_ssz_bytes_with_envelope(bytes: &[u8], fork_name: ForkName) -> Result<Self, DecodeError> {
+        let mut builder = ssz::SszDecoderBuilder::new(bytes);
+        builder.register_anonymous_variable_length_item()?;
+        builder.register_type::<KzgProofs<E>>()?;
+        builder.register_type::<BlobsList<E>>()?;
+        builder.register_anonymous_variable_length_item()?;
+
+        let mut decoder = builder.build()?;
+        let block = decoder.decode_next_with(|bytes| {
+            SignedBeaconBlock::from_ssz_bytes_by_fork(bytes, fork_name)
+        })?;
+        let kzg_proofs = decoder.decode_next()?;
+        let blobs = decoder.decode_next()?;
+        let signed_envelope: SignedExecutionPayloadEnvelope<E> = decoder.decode_next()?;
+
+        let mut request = PublishBlockRequest::new(Arc::new(block), Some((kzg_proofs, blobs)));
+        request.set_signed_envelope(signed_envelope);
+        Ok(request)
     }
 
     pub fn signed_block(&self) -> &Arc<SignedBeaconBlock<E>> {
@@ -2139,7 +2196,7 @@ impl<E: EthSpec> From<SignedBlockContentsTuple<E>> for PublishBlockRequest<E> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Encode)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(bound = "E: EthSpec")]
 pub struct SignedBlockContents<E: EthSpec> {
     pub signed_block: Arc<SignedBeaconBlock<E>>,
@@ -2149,8 +2206,38 @@ pub struct SignedBlockContents<E: EthSpec> {
     /// Gloas ePBS: signed execution payload envelope for self-build blocks.
     /// Signed by the proposer (validator client) with DOMAIN_BEACON_BUILDER.
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    #[ssz(skip_serializing, skip_deserializing)]
     pub signed_execution_payload_envelope: Option<SignedExecutionPayloadEnvelope<E>>,
+}
+
+/// Custom SSZ Encode for SignedBlockContents that includes the signed envelope when present.
+impl<E: EthSpec> ssz::Encode for SignedBlockContents<E> {
+    fn is_ssz_fixed_len() -> bool {
+        false
+    }
+
+    fn ssz_bytes_len(&self) -> usize {
+        let mut len = self.signed_block.ssz_bytes_len()
+            + self.kzg_proofs.ssz_bytes_len()
+            + self.blobs.ssz_bytes_len()
+            + 3 * ssz::BYTES_PER_LENGTH_OFFSET;
+        if let Some(ref envelope) = self.signed_execution_payload_envelope {
+            len += envelope.ssz_bytes_len() + ssz::BYTES_PER_LENGTH_OFFSET;
+        }
+        len
+    }
+
+    fn ssz_append(&self, buf: &mut Vec<u8>) {
+        let num_offsets = if self.signed_execution_payload_envelope.is_some() { 4 } else { 3 };
+        let num_fixed_bytes = num_offsets * ssz::BYTES_PER_LENGTH_OFFSET;
+        let mut encoder = ssz::SszEncoder::container(buf, num_fixed_bytes);
+        encoder.append(&*self.signed_block);
+        encoder.append(&self.kzg_proofs);
+        encoder.append(&self.blobs);
+        if let Some(ref envelope) = self.signed_execution_payload_envelope {
+            encoder.append(envelope);
+        }
+        encoder.finalize();
+    }
 }
 
 impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for SignedBlockContents<E> {
@@ -2182,7 +2269,7 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for SignedBlockContents<
     }
 }
 
-#[derive(Debug, Clone, Serialize, Encode)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound = "E: EthSpec")]
 pub struct BlockContents<E: EthSpec> {
     pub block: BeaconBlock<E>,
@@ -2192,8 +2279,40 @@ pub struct BlockContents<E: EthSpec> {
     /// Gloas ePBS: unsigned execution payload envelope for self-build blocks.
     /// The validator client signs this with DOMAIN_BEACON_BUILDER.
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    #[ssz(skip_serializing, skip_deserializing)]
     pub execution_payload_envelope: Option<ExecutionPayloadEnvelope<E>>,
+}
+
+/// Custom SSZ Encode for BlockContents that includes the envelope when present.
+/// Pre-Gloas: [block, kzg_proofs, blobs] (3 variable-length items)
+/// Gloas with envelope: [block, kzg_proofs, blobs, envelope] (4 variable-length items)
+impl<E: EthSpec> ssz::Encode for BlockContents<E> {
+    fn is_ssz_fixed_len() -> bool {
+        false
+    }
+
+    fn ssz_bytes_len(&self) -> usize {
+        let mut len = self.block.ssz_bytes_len()
+            + self.kzg_proofs.ssz_bytes_len()
+            + self.blobs.ssz_bytes_len()
+            + 3 * ssz::BYTES_PER_LENGTH_OFFSET;
+        if let Some(ref envelope) = self.execution_payload_envelope {
+            len += envelope.ssz_bytes_len() + ssz::BYTES_PER_LENGTH_OFFSET;
+        }
+        len
+    }
+
+    fn ssz_append(&self, buf: &mut Vec<u8>) {
+        let num_offsets = if self.execution_payload_envelope.is_some() { 4 } else { 3 };
+        let num_fixed_bytes = num_offsets * ssz::BYTES_PER_LENGTH_OFFSET;
+        let mut encoder = ssz::SszEncoder::container(buf, num_fixed_bytes);
+        encoder.append(&self.block);
+        encoder.append(&self.kzg_proofs);
+        encoder.append(&self.blobs);
+        if let Some(ref envelope) = self.execution_payload_envelope {
+            encoder.append(envelope);
+        }
+        encoder.finalize();
+    }
 }
 
 impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for BlockContents<E> {

@@ -166,24 +166,32 @@ impl<E: EthSpec> CachedHead<E> {
     /// the head's execution payload because it is unavailable in the beacon state's RANDAO mixes
     /// array after being overwritten by the head block's RANDAO mix.
     ///
+    /// For Gloas blocks (ePBS), the prev_randao is in the execution payload bid instead.
+    ///
     /// This will error if the head block is not execution-enabled (post Bellatrix).
     pub fn parent_random(&self) -> Result<Hash256, BeaconStateError> {
-        self.snapshot
-            .beacon_block
-            .message()
-            .execution_payload()
-            .map(|payload| payload.prev_randao())
+        let block = self.snapshot.beacon_block.message();
+        // Gloas blocks have bids instead of execution payloads.
+        if let Ok(bid) = block.body().signed_execution_payload_bid() {
+            return Ok(bid.message.prev_randao);
+        }
+        block.execution_payload().map(|payload| payload.prev_randao())
     }
 
     /// Returns the execution block number of the block at the head of the chain.
     ///
     /// Returns an error if the chain is prior to Bellatrix.
+    /// For Gloas blocks (ePBS), the block number is not in the block body (it's in the
+    /// execution payload envelope which is separate). Returns 0 as a fallback since this
+    /// value is only used for SSE events and the EL tracks block numbers internally.
     pub fn head_block_number(&self) -> Result<u64, BeaconStateError> {
-        self.snapshot
-            .beacon_block
-            .message()
-            .execution_payload()
-            .map(|payload| payload.block_number())
+        let block = self.snapshot.beacon_block.message();
+        // Gloas blocks don't have execution payloads (they have bids).
+        // The block number is in the envelope, not the block.
+        if block.body().signed_execution_payload_bid().is_ok() {
+            return Ok(0);
+        }
+        block.execution_payload().map(|payload| payload.block_number())
     }
 
     /// Returns the active validator count for the current epoch of the head state.
