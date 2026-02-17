@@ -77,3 +77,13 @@ dora_params:
 - **No runtime blockers**: No `todo!()`, `unimplemented!()`, or `GloasNotImplemented` remain in the codebase
 - **Blocker**: Docker not available on current machine — need Docker to build image and run kurtosis
 - **Next**: Install Docker, build image, run kurtosis solo devnet
+
+### 2026-02-17: devnet-0 code audit + 3 bug fixes
+- **Audit**: Ran comprehensive 3-agent code audit of all ePBS critical paths (self-build flow, VC payload attestation, gossip networking)
+- **Bug 1 (CRITICAL)**: `process_self_build_envelope` used stale `cached_head` state — would fail envelope processing after block import. Fixed by fetching post-block state from store.
+- **Bug 2 (MINOR)**: `build_self_build_envelope` returned `None` on `Ok(())` path — fixed to return the envelope.
+- **Bug 3 (IMPORTANT)**: `verify_payload_attestation_for_gossip` never validated `beacon_block_root` against fork choice — attestations for unknown blocks were accepted. Fixed with fork choice check.
+- All 136/136 EF tests + check_all_files_accessed pass
+- Clippy clean
+- Commit: `cf1078fac`
+- **Blocker**: Still need Docker for image build + kurtosis

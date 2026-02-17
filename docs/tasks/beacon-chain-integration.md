@@ -49,6 +49,16 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-17 — fix three devnet-0 bugs found during audit
+- **Bug 1 (CRITICAL)**: `process_self_build_envelope` used `canonical_head.cached_head()` to get the state for envelope processing. But at this point the block has been imported but `recompute_head` hasn't run yet, so `cached_head` still points to the previous block's state. Envelope processing would fail with `LatestBlockHeaderMismatch` or `SlotMismatch`.
+- **Fix 1**: Fetch the post-block state from the store using the block's `state_root` instead of relying on `cached_head`.
+- **Bug 2 (MINOR)**: `build_self_build_envelope` returned `None` when the placeholder `Hash256::zero()` state root happened to match `Ok(())`. While astronomically unlikely, this was incorrect — the envelope should still be returned.
+- **Fix 2**: Return `Some(temp_envelope)` instead of `None` on the `Ok(())` path.
+- **Bug 3 (IMPORTANT)**: `verify_payload_attestation_for_gossip` never checked that the attestation's `beacon_block_root` exists in fork choice. The `UnknownBeaconBlockRoot` error variant was defined but never returned. Payload attestations for non-existent blocks would pass gossip validation, pollute the pool, and potentially cause issues during block production.
+- **Fix 3**: Added fork choice `get_block()` check before PTC committee lookup. Gossip handler returns `Ignore` (not `Reject`) for unknown blocks since the block may arrive later.
+- 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
+- Commit: `cf1078fac`
+
 ### 2026-02-17 — skip head recompute on gossip envelope processing failure
 - **Bug**: In `gossip_methods.rs`, if `process_payload_envelope()` failed for a peer's envelope (EL rejection via `Invalid`/`InvalidBlockHash`, or state transition error), head recompute still ran. This could cause the EL to receive `forkchoice_updated` referencing a payload it never validated (or rejected), leading to a `Syncing` response.
 - **Fix**: Changed `if let Err` pattern to `match` — head recompute only runs after successful envelope processing. Fork choice still marks `payload_revealed = true` (per spec: `on_execution_payload` called on receipt of valid gossip envelope), but the node won't promote the block to head until processing completes.
