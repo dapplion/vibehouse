@@ -3285,7 +3285,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
-        // Import to fork choice (TODO: implement apply_execution_bid_to_fork_choice)
+        // Import to fork choice
         if let Err(e) = self.chain.apply_execution_bid_to_fork_choice(&verified_bid) {
             warn!(
                 builder_index,
