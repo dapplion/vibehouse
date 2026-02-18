@@ -9,10 +9,11 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - [x] SSE events for ePBS: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] `GET /eth/v1/beacon/states/{state_id}/proposer_lookahead` — Fulu/Gloas only, returns `proposer_lookahead` vector
 - [x] `POST /eth/v1/builder/bids` — accepts `SignedExecutionPayloadBid`, verifies, imports to fork choice, gossips
+- [x] `POST /eth/v1/beacon/execution_payload_envelope` — accepts `SignedExecutionPayloadEnvelope`, verifies (gossip checks), gossips on `execution_payload`, runs state transition (newPayload + process_execution_payload)
 
 ### Tasks
-- [ ] Add `/eth/v1/beacon/blinded_blocks` updates for ePBS
-- [ ] Update block retrieval endpoints to handle two-phase blocks
+- [ ] Add `/eth/v1/beacon/blinded_blocks` updates for ePBS (assessed: current impl works for Gloas via `try_into_full_block(None)`)
+- [ ] Update block retrieval endpoints to handle two-phase blocks (blocked: envelope not stored in DB; requires new `DBColumn::BeaconEnvelope` + `StoreOp::PutPayloadEnvelope` + `get_payload_envelope()` — upstream has this in gloas-devnet-0)
 
 ## Progress log
 
@@ -47,4 +48,15 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - **Files changed**: 2 files
   - `beacon_node/http_api/src/lib.rs`: Added `POST /eth/v1/builder/bids` route + `starts_with("v1/builder/bids")` reverse proxy filter; `SignedExecutionPayloadBid` added to imports
   - `common/eth2/src/lib.rs`: Added `post_builder_bids<E>` client method; `SignedExecutionPayloadBid` added to imports
+- 181/181 http_api tests pass
+
+### 2026-02-18 — execution payload envelope submission endpoint
+- **Endpoint**: `POST /eth/v1/beacon/execution_payload_envelope`
+- **What it does**: External builders submit a `SignedExecutionPayloadEnvelope` via HTTP. The BN runs gossip verification (block root known in fork choice, not finalized, slot match, builder index match, block_hash match, signature valid), gossips on the `execution_payload` P2P topic, then runs the full state transition asynchronously (notifies EL via `newPayload`, applies `process_execution_payload`, updates fork choice payload-revealed status).
+- **Error handling**: Stale envelopes (`PriorToFinalization`) → 200 OK; all other errors → 400.
+- **Fork guard**: Returns 400 "Gloas is not scheduled" if called pre-Gloas.
+- **Design choice**: Gossip before process (so other nodes see it immediately), process after (async state transition).
+- **Files changed**: 2 files
+  - `beacon_node/http_api/src/lib.rs`: Added `POST /eth/v1/beacon/execution_payload_envelope` route using `spawn_async_with_rejection` (needed for async `process_payload_envelope`); `SignedExecutionPayloadEnvelope` added to imports
+  - `common/eth2/src/lib.rs`: Added `post_beacon_execution_payload_envelope<E>` client method; `SignedExecutionPayloadEnvelope` added to imports
 - 181/181 http_api tests pass
