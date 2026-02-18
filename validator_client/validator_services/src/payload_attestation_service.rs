@@ -1,18 +1,17 @@
+use crate::duties_service::DutiesService;
 use beacon_node_fallback::{ApiTopic, BeaconNodeFallback};
-use eth2::types::PtcDutyData;
 use slot_clock::SlotClock;
-use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 use task_executor::TaskExecutor;
-use tokio::sync::RwLock;
 use tokio::time::{Duration, sleep};
 use tracing::{debug, error, info, trace};
 use types::{ChainSpec, Epoch, EthSpec};
-use validator_store::{DoppelgangerStatus, ValidatorStore};
+use validator_store::ValidatorStore;
 
 /// Builds a `PayloadAttestationService`.
 pub struct PayloadAttestationServiceBuilder<S: ValidatorStore, T: SlotClock + 'static> {
+    duties_service: Option<Arc<DutiesService<S, T>>>,
     validator_store: Option<Arc<S>>,
     slot_clock: Option<T>,
     beacon_nodes: Option<Arc<BeaconNodeFallback<T>>>,
@@ -28,17 +27,21 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> Default
     }
 }
 
-impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
-    PayloadAttestationServiceBuilder<S, T>
-{
+impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServiceBuilder<S, T> {
     pub fn new() -> Self {
         Self {
+            duties_service: None,
             validator_store: None,
             slot_clock: None,
             beacon_nodes: None,
             executor: None,
             gloas_fork_epoch: None,
         }
+    }
+
+    pub fn duties_service(mut self, duties_service: Arc<DutiesService<S, T>>) -> Self {
+        self.duties_service = Some(duties_service);
+        self
     }
 
     pub fn validator_store(mut self, store: Arc<S>) -> Self {
@@ -69,6 +72,9 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
     pub fn build(self) -> Result<PayloadAttestationService<S, T>, String> {
         Ok(PayloadAttestationService {
             inner: Arc::new(Inner {
+                duties_service: self
+                    .duties_service
+                    .ok_or("Cannot build PayloadAttestationService without duties_service")?,
                 validator_store: self
                     .validator_store
                     .ok_or("Cannot build PayloadAttestationService without validator_store")?,
@@ -81,31 +87,26 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static>
                 executor: self
                     .executor
                     .ok_or("Cannot build PayloadAttestationService without executor")?,
-                duties_cache: RwLock::new(DutiesCache::default()),
                 gloas_fork_epoch: self.gloas_fork_epoch,
             }),
         })
     }
 }
 
-/// Cached PTC duties for the current and next epoch.
-#[derive(Default)]
-struct DutiesCache {
-    duties: HashMap<Epoch, Vec<PtcDutyData>>,
-}
-
 pub struct Inner<S, T> {
+    duties_service: Arc<DutiesService<S, T>>,
     validator_store: Arc<S>,
     slot_clock: T,
     beacon_nodes: Arc<BeaconNodeFallback<T>>,
     executor: TaskExecutor,
-    duties_cache: RwLock<DutiesCache>,
     gloas_fork_epoch: Option<Epoch>,
 }
 
 /// Produces payload timeliness attestations for PTC (Payload Timeliness Committee) duties.
 ///
 /// PTC members attest at 3/4 of each slot to whether the execution payload was revealed on time.
+/// Duties are fetched proactively by the `DutiesService` PTC polling task and read from
+/// `DutiesService.ptc_duties`.
 pub struct PayloadAttestationService<S, T> {
     inner: Arc<Inner<S, T>>,
 }
@@ -187,72 +188,23 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
     /// Spawns a task to produce and publish payload attestations for the current slot.
     fn spawn_payload_attestation_tasks(&self) {
         let service = self.clone();
-        self.executor
-            .spawn_ignoring_error(service.produce_payload_attestations(), "payload_attestation");
+        self.executor.spawn_ignoring_error(
+            service.produce_payload_attestations(),
+            "payload_attestation",
+        );
     }
 
-    /// Fetches PTC duties for the given epoch, using a cache to avoid redundant requests.
-    async fn get_duties_for_epoch(&self, epoch: Epoch) -> Result<Vec<PtcDutyData>, String> {
-        // Check cache first.
-        {
-            let cache = self.duties_cache.read().await;
-            if let Some(duties) = cache.duties.get(&epoch) {
-                return Ok(duties.clone());
-            }
-        }
-
-        // Fetch from BN. Use `ignored` filter since we're collecting duties, not signing.
-        let indices: Vec<u64> = self
-            .validator_store
-            .voting_pubkeys::<Vec<_>, _>(DoppelgangerStatus::ignored)
-            .into_iter()
-            .filter_map(|pubkey| self.validator_store.validator_index(&pubkey))
-            .collect();
-
-        if indices.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let duties_response = self
-            .beacon_nodes
-            .first_success(|beacon_node| {
-                let indices = indices.clone();
-                async move {
-                    beacon_node
-                        .post_validator_duties_ptc(epoch, &indices)
-                        .await
-                        .map_err(|e| e.to_string())
-                }
-            })
-            .await
-            .map_err(|e| format!("Failed to get PTC duties: {}", e))?;
-
-        let duties = duties_response.data;
-
-        // Update cache and prune old epochs.
-        {
-            let mut cache = self.duties_cache.write().await;
-            cache.duties.insert(epoch, duties.clone());
-            cache.duties.retain(|&e, _| e >= epoch.saturating_sub(1u64));
-        }
-
-        Ok(duties)
-    }
-
-    /// Main routine: fetch duties, get attestation data, sign, and submit.
+    /// Main routine: read duties from DutiesService, get attestation data, sign, and submit.
     async fn produce_payload_attestations(self) -> Result<(), ()> {
         let slot = self.slot_clock.now().ok_or_else(|| {
             error!("Failed to read slot clock");
         })?;
 
-        let epoch = slot.epoch(S::E::slots_per_epoch());
-
-        let duties = self.get_duties_for_epoch(epoch).await.map_err(|e| {
-            error!(error = %e, "Failed to get PTC duties");
-        })?;
-
-        // Filter duties for the current slot.
-        let slot_duties: Vec<&PtcDutyData> = duties.iter().filter(|d| d.slot == slot).collect();
+        // Read PTC duties for this slot from the centralized DutiesService.
+        let slot_duties = self
+            .duties_service
+            .ptc_duties
+            .duties_for_slot(slot, S::E::slots_per_epoch());
 
         if slot_duties.is_empty() {
             trace!(slot = slot.as_u64(), "No PTC duties for this slot");

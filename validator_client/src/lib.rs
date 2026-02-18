@@ -508,6 +508,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             .build()?;
 
         let payload_attestation_service = PayloadAttestationServiceBuilder::new()
+            .duties_service(duties_service.clone())
             .slot_clock(slot_clock.clone())
             .validator_store(validator_store.clone())
             .beacon_nodes(beacon_nodes.clone())

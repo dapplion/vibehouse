@@ -7,6 +7,8 @@
 //! block production.
 
 use crate::block_service::BlockServiceNotification;
+use crate::ptc::PtcDutiesMap;
+use crate::ptc::poll_ptc_duties;
 use crate::sync::SyncDutiesMap;
 use crate::sync::poll_sync_committee_duties;
 use beacon_node_fallback::{ApiTopic, BeaconNodeFallback};
@@ -376,6 +378,7 @@ impl<S, T> DutiesServiceBuilder<S, T> {
             attesters: Default::default(),
             proposers: Default::default(),
             sync_duties: SyncDutiesMap::new(self.sync_selection_proof_config),
+            ptc_duties: PtcDutiesMap::new(),
             validator_store: self
                 .validator_store
                 .ok_or("Cannot build DutiesService without validator_store")?,
@@ -406,6 +409,8 @@ pub struct DutiesService<S, T> {
     pub proposers: RwLock<ProposerMap>,
     /// Map from validator index to sync committee duties.
     pub sync_duties: SyncDutiesMap,
+    /// PTC (Payload Timeliness Committee) duties for Gloas.
+    pub ptc_duties: PtcDutiesMap,
     /// Provides the canonical list of locally-managed validators.
     pub validator_store: Arc<S>,
     /// Maps unknown validator pubkeys to the next slot time when a poll should be conducted again.
@@ -462,6 +467,14 @@ impl<S: ValidatorStore, T: SlotClock + 'static> DutiesService<S, T> {
             .map(|(_, duty_and_proof)| duty_and_proof)
             .filter(|duty_and_proof| signing_pubkeys.contains(&duty_and_proof.duty.pubkey))
             .count()
+    }
+
+    /// Returns the total number of validators with PTC duties in the given epoch.
+    pub fn ptc_attester_count(&self, epoch: Epoch) -> usize {
+        let signing_pubkeys: HashSet<_> = self
+            .validator_store
+            .voting_pubkeys(DoppelgangerStatus::only_safe);
+        self.ptc_duties.duty_count(epoch, &signing_pubkeys)
     }
 
     /// Returns the total number of validators that are in a doppelganger detection period.
@@ -653,6 +666,29 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
             }
         },
         "duties_service_sync_committee",
+    );
+
+    // Spawn the task which keeps track of local PTC (Payload Timeliness Committee) duties.
+    let duties_service = core_duties_service.clone();
+    core_duties_service.executor.spawn(
+        async move {
+            loop {
+                if let Err(e) = poll_ptc_duties(&duties_service).await {
+                    error!(
+                        error = ?e,
+                       "Failed to poll PTC duties"
+                    );
+                }
+
+                if let Some(duration) = duties_service.slot_clock.duration_to_next_slot() {
+                    sleep(duration).await;
+                } else {
+                    sleep(duties_service.slot_clock.slot_duration()).await;
+                    continue;
+                }
+            }
+        },
+        "duties_service_ptc",
     );
 }
 

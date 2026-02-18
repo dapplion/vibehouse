@@ -5,5 +5,6 @@ pub mod latency_service;
 pub mod notifier_service;
 pub mod payload_attestation_service;
 pub mod preparation_service;
+pub mod ptc;
 pub mod sync;
 pub mod sync_committee_service;
