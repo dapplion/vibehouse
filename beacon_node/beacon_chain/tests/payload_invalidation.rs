@@ -406,6 +406,7 @@ async fn valid_invalid_syncing() {
 /// Ensure that an invalid payload can invalidate its parent too (given the right
 /// `latest_valid_hash`.
 #[tokio::test]
+#[allow(clippy::large_stack_frames)]
 async fn invalid_payload_invalidates_parent() {
     let mut rig = InvalidPayloadRig::new().enable_attestations();
     rig.move_to_terminal_block();

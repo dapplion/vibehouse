@@ -26,13 +26,6 @@ pub struct PayloadAttestationData {
 
 impl SignedRoot for PayloadAttestationData {}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    ssz_and_tree_hash_tests!(PayloadAttestationData);
-}
-
 impl TestRandom for PayloadAttestationData {
     fn random_for_test(rng: &mut impl rand::RngCore) -> Self {
         Self {
@@ -42,4 +35,11 @@ impl TestRandom for PayloadAttestationData {
             blob_data_available: bool::random_for_test(rng),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    ssz_and_tree_hash_tests!(PayloadAttestationData);
 }
