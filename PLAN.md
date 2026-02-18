@@ -59,7 +59,10 @@ Reference:
 ### 5. ZK execution validity proofs for builder payloads
 [GitHub #28](https://github.com/dapplion/vibehouse/issues/28) — Optional ZK proofs alongside execution payload envelopes. Builders attach a proof of execution correctness; CL can skip EL validation for proved payloads. Can be run by a subset of nodes. **Start after Gloas is solid.**
 
-### 6. Backlog
+### 6. ROCQ formal proofs for consensus-critical invariants
+[GitHub #29](https://github.com/dapplion/vibehouse/issues/29) — Hand-model consensus-critical Rust in ROCQ, prove soundness/completeness properties, CI integration. Tiers: proto-array fork choice, PTC quorum/payment arithmetic, envelope state transition. Builds on Runtime Verification's Gasper Coq proofs. **Start after Gloas is stable and deployed.**
+
+### 7. Backlog
 
 - **Peer scoring** — design complete, not yet implemented (functional at defaults)
 - **Test coverage tooling** — not started
