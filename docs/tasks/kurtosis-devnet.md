@@ -3,7 +3,7 @@
 ## Objective
 Participate in epbs-devnet-0 (launch target: Feb 18, 2026). Run vibehouse + geth in kurtosis, verify gloas fork works.
 
-## Status: IN PROGRESS — scaling to 4-node devnet
+## Status: DONE — 4-node devnet reaches finalized_epoch=8
 
 ### Specs
 - Consensus specs: `v1.7.0-alpha.2` (we're already on this ✅)
@@ -27,21 +27,21 @@ Participate in epbs-devnet-0 (launch target: Feb 18, 2026). Run vibehouse + geth
 #### Step 3: Run kurtosis with vibehouse
 - [x] vibehouse CL + geth EL — boots, connects to geth
 - [x] Does it produce blocks pre-fork? — YES, slots 0-7 work
-- [ ] Does it survive gloas fork at epoch 1? — **NO, stalls at slot 7**
-- [ ] Does it produce gloas blocks (self-built payloads)?
-- [ ] Does chain finalize post-fork?
+- [x] Does it survive gloas fork at epoch 1? — YES
+- [x] Does it produce gloas blocks (self-built payloads)? — YES
+- [x] Does chain finalize post-fork? — YES, finalized_epoch=8
 
 #### Step 4: Fix issues
 - [x] Boot/startup failures — fixed (spec-minimal feature flag)
-- [ ] **Fork transition / block publishing** — gloas blocks are produced but fail to publish: `Invalid data column - not publishing data columns, error: PreDeneb, slot: 13`. The block publishing path incorrectly routes gloas blocks through data column logic which rejects them as "PreDeneb".
-- [ ] Block production 400s — VC gets repeated 400s from `/eth/v3/validator/blocks/{slot}` with "Duplicate payload cached"
-- [ ] payload_attestation_data 500s — `/eth/v1/validator/payload_attestation_data` returns 500
+- [x] Fork transition / block publishing — fixed data column bypass, self-build envelope flow
+- [x] Block production 400s — fixed payload bid validation, state caching
+- [x] payload_attestation_data 500s — fixed endpoint implementation
 
-#### Step 5: 4-node devnet (TOP PRIORITY)
-- [ ] Run 4 vibehouse CL + geth EL nodes in kurtosis
-- [ ] Transactions via spamoor finalize through epoch 8
-- [ ] All 4 nodes stay synced and producing blocks
-- [ ] Chain doesn't stall across multi-node gossip
+#### Step 5: 4-node devnet (DONE)
+- [x] Run 4 vibehouse CL + geth EL nodes in kurtosis
+- [x] Transactions via spamoor finalize through epoch 8 — finalized_epoch=8, slot 80
+- [x] All 4 nodes stay synced and producing blocks
+- [x] Chain doesn't stall across multi-node gossip
 
 ### Blockers
 1. Block production — needs self-build (DONE ✅)
@@ -144,3 +144,39 @@ See `kurtosis/vibehouse-epbs.yaml`. Key params: gloas_fork_epoch=1, preset=minim
   - VC sends duplicate block production requests → "Duplicate payload cached" warnings
   - `/eth/v1/events` returns 400 Bad Request
 - **Next**: Fix the block publishing path — gloas blocks should bypass data column publishing (ePBS blocks don't carry data columns in the block, they're in the envelope).
+
+### 2026-02-18: 4-node devnet PASSES — finalized_epoch=8 achieved
+
+Fixed all remaining issues blocking devnet finalization (commit `6351db47d`):
+
+**Post-envelope state caching fix (critical)**:
+- Post-envelope state was cached under envelope's state_root, but block verification and
+  state advance use block's state_root to look up state. This caused the pre-envelope state
+  (with wrong `latest_block_hash`) to be used for the next block's bid validation, failing
+  with "bid parent_block_hash does not match state latest_block_hash".
+- Fix: cache post-envelope state under block's state_root using delete+put pattern (since
+  `put_state` rejects duplicates, we must delete the pre-envelope entry first).
+
+**Gossip envelope buffering (critical)**:
+- Envelopes arriving before their block (common timing race) were permanently dropped because
+  `verify_payload_envelope_for_gossip` requires the block root to exist in fork choice.
+- Fix: buffer unknown-block envelopes in `pending_gossip_envelopes`, process after block import
+  via `process_pending_envelope` called from the block gossip handler.
+
+**Execution validity marking**:
+- After EL validates an envelope's payload via newPayload, the block stayed Optimistic because
+  recompute_head returned "no change" and never issued forkchoiceUpdated.
+- Fix: explicitly call `on_valid_execution_payload` after successful newPayload.
+
+**Other fixes**:
+- Load envelope state from store by block.state_root() instead of cached head (race condition)
+- Skip BLS signature verification for self-build envelopes (infinity signature)
+- Filter payload attestations by parent_block_root for correct block inclusion
+- Silently ignore payload attestation slot mismatches per spec
+- Add Gloas gossip topics to subscription whitelist
+- Don't ban peers for DataColumnsByRange ResourceUnavailable during custody backfill
+
+**Test results**: 52/52 fork_choice, 38/38 state_processing, 17/17 EF operations/sanity, 8/8 EF fork_choice — all pass.
+
+**Devnet result**: 4 vibehouse CL + geth EL nodes, gloas fork at epoch 1, spamoor tx load.
+Chain reached slot 80, epoch 10, finalized_epoch=8, justified_epoch=9. No stalls.
