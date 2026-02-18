@@ -4732,6 +4732,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .map_err(BeaconChainError::from)?;
         }
 
+        // Compute the expected proposer index for the current slot from the canonical head.
+        // This is used by fork choice to only apply proposer boost to blocks produced by the
+        // expected proposer on the canonical chain (spec: consensus-specs PR #4807).
+        let canonical_head_proposer_index = {
+            let cached_head = self.canonical_head.cached_head();
+            let head_state = &cached_head.snapshot.beacon_state;
+            if current_slot.epoch(T::EthSpec::slots_per_epoch()) == head_state.current_epoch() {
+                head_state
+                    .get_beacon_proposer_index(current_slot, &self.spec)
+                    .ok()
+                    .map(|idx| idx as u64)
+            } else {
+                // Different epoch — can't compute proposer from cached head without advancing
+                // state. Skip the check (allow boost).
+                None
+            }
+        };
+
         // Take an upgradable read lock on fork choice so we can check if this block has already
         // been imported. We don't want to repeat work importing a block that is already imported.
         let fork_choice_reader = self.canonical_head.fork_choice_upgradable_read_lock();
@@ -4763,6 +4781,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     block_delay,
                     &state,
                     payload_verification_status,
+                    canonical_head_proposer_index,
                     &self.spec,
                 )
                 .map_err(|e| BlockError::BeaconChainError(Box::new(e.into())))?;

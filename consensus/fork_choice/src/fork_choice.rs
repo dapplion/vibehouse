@@ -738,6 +738,7 @@ where
         block_delay: Duration,
         state: &BeaconState<E>,
         payload_verification_status: PayloadVerificationStatus,
+        canonical_head_proposer_index: Option<u64>,
         spec: &ChainSpec,
     ) -> Result<(), Error<T::Error>> {
         let _timer = metrics::start_timer(&metrics::FORK_CHOICE_ON_BLOCK_TIMES);
@@ -800,13 +801,23 @@ where
             }));
         }
 
-        // Add proposer score boost if the block is timely.
+        // Add proposer score boost if the block is timely and the proposer matches
+        // the expected proposer on the canonical chain.
+        //
+        // Spec: `update_proposer_boost_root` (consensus-specs PR #4807)
         let is_before_attesting_interval =
             block_delay < Duration::from_secs(spec.seconds_per_slot / INTERVALS_PER_SLOT);
 
         let is_first_block = self.fc_store.proposer_boost_root().is_zero();
         if current_slot == block.slot() && is_before_attesting_interval && is_first_block {
-            self.fc_store.set_proposer_boost_root(block_root);
+            // Only boost if the block's proposer matches the canonical chain's expected
+            // proposer for this slot. This prevents sidechain blocks from receiving boost
+            // when they exploit a different shuffling.
+            let proposer_matches = canonical_head_proposer_index
+                .map_or(true, |expected| block.proposer_index() == expected);
+            if proposer_matches {
+                self.fc_store.set_proposer_boost_root(block_root);
+            }
         }
 
         // Update store with checkpoints if necessary

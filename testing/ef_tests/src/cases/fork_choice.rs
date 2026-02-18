@@ -738,6 +738,7 @@ impl<E: EthSpec> Tester<E> {
                     block_delay,
                     &state,
                     PayloadVerificationStatus::Irrelevant,
+                    None,
                     &self.harness.chain.spec,
                 );
 
