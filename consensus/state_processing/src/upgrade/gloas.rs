@@ -146,17 +146,24 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
 
         // Check if it's an existing builder or has builder credentials
         let state_gloas = state.as_gloas().map_err(|_| Error::IncorrectStateVariant)?;
-        let is_existing_builder = state_gloas.builders.iter().any(|b| b.pubkey == deposit.pubkey);
-        let has_builder_credentials = deposit
-            .withdrawal_credentials
-            .as_slice()
-            .first()
-            .copied()
-            == Some(0x03); // BUILDER_WITHDRAWAL_PREFIX
+        let is_existing_builder = state_gloas
+            .builders
+            .iter()
+            .any(|b| b.pubkey == deposit.pubkey);
+        let has_builder_credentials =
+            deposit.withdrawal_credentials.as_slice().first().copied() == Some(0x03); // BUILDER_WITHDRAWAL_PREFIX
 
         if is_existing_builder || has_builder_credentials {
             // Apply as builder deposit
-            apply_builder_deposit::<E>(state, deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, &deposit.signature, deposit.slot, spec)?;
+            apply_builder_deposit::<E>(
+                state,
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                &deposit.signature,
+                deposit.slot,
+                spec,
+            )?;
             continue;
         }
 
@@ -190,13 +197,12 @@ fn apply_builder_deposit<E: EthSpec>(
     slot: types::Slot,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let state_gloas = state.as_gloas_mut().map_err(|_| Error::IncorrectStateVariant)?;
+    let state_gloas = state
+        .as_gloas_mut()
+        .map_err(|_| Error::IncorrectStateVariant)?;
 
     // Check if builder already exists
-    let builder_index = state_gloas
-        .builders
-        .iter()
-        .position(|b| b.pubkey == pubkey);
+    let builder_index = state_gloas.builders.iter().position(|b| b.pubkey == pubkey);
 
     if let Some(index) = builder_index {
         // Top-up existing builder
@@ -229,9 +235,7 @@ fn apply_builder_deposit<E: EthSpec>(
                 .first()
                 .copied()
                 .ok_or(Error::IncorrectStateVariant)?;
-            let address_bytes = cred_slice
-                .get(12..)
-                .ok_or(Error::IncorrectStateVariant)?;
+            let address_bytes = cred_slice.get(12..).ok_or(Error::IncorrectStateVariant)?;
 
             let builder = Builder {
                 pubkey,

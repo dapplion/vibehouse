@@ -5,11 +5,10 @@ use std::future::Future;
 use std::sync::Arc;
 use types::{
     Address, Attestation, AttestationError, BlindedBeaconBlock, Epoch, EthSpec,
-    ExecutionPayloadEnvelope, Graffiti, Hash256, PayloadAttestationData,
-    PayloadAttestationMessage, PublicKeyBytes, SelectionProof, Signature,
-    SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedContributionAndProof,
-    SignedExecutionPayloadEnvelope, SignedValidatorRegistrationData, Slot,
-    SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
+    ExecutionPayloadEnvelope, Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage,
+    PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof, SignedBlindedBeaconBlock,
+    SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedValidatorRegistrationData,
+    Slot, SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
     ValidatorRegistrationData,
 };
 
@@ -110,9 +109,7 @@ pub trait ValidatorStore: Send + Sync {
         &self,
         validator_pubkey: PublicKeyBytes,
         envelope: &ExecutionPayloadEnvelope<Self::E>,
-    ) -> impl Future<
-        Output = Result<SignedExecutionPayloadEnvelope<Self::E>, Error<Self::Error>>,
-    > + Send;
+    ) -> impl Future<Output = Result<SignedExecutionPayloadEnvelope<Self::E>, Error<Self::Error>>> + Send;
 
     /// Sign payload attestation data with DOMAIN_PTC_ATTESTER (gloas ePBS).
     fn sign_payload_attestation(

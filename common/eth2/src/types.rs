@@ -1844,10 +1844,7 @@ impl<E: EthSpec> FullBlockContents<E> {
     }
 
     /// Set the unsigned execution payload envelope (gloas ePBS self-build).
-    pub fn set_execution_payload_envelope(
-        &mut self,
-        envelope: ExecutionPayloadEnvelope<E>,
-    ) {
+    pub fn set_execution_payload_envelope(&mut self, envelope: ExecutionPayloadEnvelope<E>) {
         if let Self::BlockContents(contents) = self {
             contents.execution_payload_envelope = Some(envelope);
         }
@@ -1914,7 +1911,10 @@ impl<E: EthSpec> FullBlockContents<E> {
     }
 
     /// SSZ decode with 4 items: block + proofs + blobs + execution_payload_envelope.
-    fn from_ssz_bytes_with_envelope(bytes: &[u8], fork_name: ForkName) -> Result<Self, DecodeError> {
+    fn from_ssz_bytes_with_envelope(
+        bytes: &[u8],
+        fork_name: ForkName,
+    ) -> Result<Self, DecodeError> {
         let mut builder = ssz::SszDecoderBuilder::new(bytes);
 
         builder.register_anonymous_variable_length_item()?;
@@ -2090,10 +2090,7 @@ impl<E: EthSpec> PublishBlockRequest<E> {
     }
 
     /// Set the signed execution payload envelope (gloas ePBS self-build).
-    pub fn set_signed_envelope(
-        &mut self,
-        envelope: SignedExecutionPayloadEnvelope<E>,
-    ) {
+    pub fn set_signed_envelope(&mut self, envelope: SignedExecutionPayloadEnvelope<E>) {
         if let Self::BlockContents(contents) = self {
             contents.signed_execution_payload_envelope = Some(envelope);
         }
@@ -2139,7 +2136,10 @@ impl<E: EthSpec> PublishBlockRequest<E> {
     }
 
     /// SSZ decode with 4 items: signed_block + proofs + blobs + signed_envelope.
-    fn from_ssz_bytes_with_envelope(bytes: &[u8], fork_name: ForkName) -> Result<Self, DecodeError> {
+    fn from_ssz_bytes_with_envelope(
+        bytes: &[u8],
+        fork_name: ForkName,
+    ) -> Result<Self, DecodeError> {
         let mut builder = ssz::SszDecoderBuilder::new(bytes);
         builder.register_anonymous_variable_length_item()?;
         builder.register_type::<KzgProofs<E>>()?;
@@ -2227,7 +2227,11 @@ impl<E: EthSpec> ssz::Encode for SignedBlockContents<E> {
     }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
-        let num_offsets = if self.signed_execution_payload_envelope.is_some() { 4 } else { 3 };
+        let num_offsets = if self.signed_execution_payload_envelope.is_some() {
+            4
+        } else {
+            3
+        };
         let num_fixed_bytes = num_offsets * ssz::BYTES_PER_LENGTH_OFFSET;
         let mut encoder = ssz::SszEncoder::container(buf, num_fixed_bytes);
         encoder.append(&*self.signed_block);
@@ -2302,7 +2306,11 @@ impl<E: EthSpec> ssz::Encode for BlockContents<E> {
     }
 
     fn ssz_append(&self, buf: &mut Vec<u8>) {
-        let num_offsets = if self.execution_payload_envelope.is_some() { 4 } else { 3 };
+        let num_offsets = if self.execution_payload_envelope.is_some() {
+            4
+        } else {
+            3
+        };
         let num_fixed_bytes = num_offsets * ssz::BYTES_PER_LENGTH_OFFSET;
         let mut encoder = ssz::SszEncoder::container(buf, num_fixed_bytes);
         encoder.append(&self.block);

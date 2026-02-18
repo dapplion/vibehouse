@@ -5,11 +5,11 @@ use crate::{
     sync::SyncMessage,
 };
 use beacon_chain::blob_verification::{GossipBlobError, GossipVerifiedBlob};
+use beacon_chain::block_verification_types::AsBlock;
+use beacon_chain::data_column_verification::{GossipDataColumnError, GossipVerifiedDataColumn};
 use beacon_chain::events::{
     EventKind, SseExecutionBid, SseExecutionPayload, SsePayloadAttestation,
 };
-use beacon_chain::block_verification_types::AsBlock;
-use beacon_chain::data_column_verification::{GossipDataColumnError, GossipVerifiedDataColumn};
 use beacon_chain::store::Error;
 use beacon_chain::{
     AvailabilityProcessingStatus, BeaconChainError, BeaconChainTypes, BlockError, ForkChoiceError,
@@ -3408,7 +3408,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
         // Import to fork choice — mark payload as revealed
-        if let Err(e) = self.chain.apply_payload_envelope_to_fork_choice(&verified_envelope) {
+        if let Err(e) = self
+            .chain
+            .apply_payload_envelope_to_fork_choice(&verified_envelope)
+        {
             warn!(
                 ?beacon_block_root,
                 builder_index,
@@ -3422,12 +3425,15 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         // consistency, processes execution requests, builder payment, sets availability).
         // This must happen BEFORE recompute_head so the EL knows the payload before
         // receiving forkchoice_updated with this block as head.
-        match self.chain.process_payload_envelope(&verified_envelope).await {
+        match self
+            .chain
+            .process_payload_envelope(&verified_envelope)
+            .await
+        {
             Ok(()) => {
                 debug!(
                     ?beacon_block_root,
-                    builder_index,
-                    "Successfully processed execution payload envelope"
+                    builder_index, "Successfully processed execution payload envelope"
                 );
 
                 if let Some(event_handler) = self.chain.event_handler.as_ref()
@@ -3471,7 +3477,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         let slot = attestation.data.slot;
         let beacon_block_root = attestation.data.beacon_block_root;
 
-        let verified_attestation = match self.chain.verify_payload_attestation_for_gossip(attestation) {
+        let verified_attestation = match self
+            .chain
+            .verify_payload_attestation_for_gossip(attestation)
+        {
             Ok(verified) => verified,
             Err(PayloadAttestationError::DuplicateAttestation) => {
                 debug!(
@@ -3496,7 +3505,9 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::LowToleranceError,
                     "payload_attestation_equivocation",
                 );
-                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL);
+                metrics::inc_counter(
+                    &metrics::BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL,
+                );
                 return;
             }
             Err(PayloadAttestationError::UnknownBeaconBlockRoot { .. }) => {
@@ -3532,10 +3543,14 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
         // Store in payload attestation pool for block inclusion
-        self.chain.insert_payload_attestation_to_pool(verified_attestation.attestation().clone());
+        self.chain
+            .insert_payload_attestation_to_pool(verified_attestation.attestation().clone());
 
         // Import to fork choice
-        if let Err(e) = self.chain.apply_payload_attestation_to_fork_choice(&verified_attestation) {
+        if let Err(e) = self
+            .chain
+            .apply_payload_attestation_to_fork_choice(&verified_attestation)
+        {
             warn!(
                 %slot,
                 ?beacon_block_root,

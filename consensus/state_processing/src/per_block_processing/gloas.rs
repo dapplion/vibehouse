@@ -1,9 +1,9 @@
+use crate::VerifySignatures;
 use crate::common::decrease_balance;
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
-use crate::VerifySignatures;
-use safe_arith::SafeArith;
 use ethereum_hashing::hash;
 use int_to_bytes::int_to_bytes8;
+use safe_arith::SafeArith;
 use tree_hash::TreeHash;
 use types::consts::gloas::BUILDER_INDEX_FLAG;
 use types::{
@@ -48,11 +48,12 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         let fork = state.fork();
         let genesis_validators_root = state.genesis_validators_root();
 
-        let state_gloas = state.as_gloas().map_err(|_| {
-            BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            }
-        })?;
+        let state_gloas =
+            state
+                .as_gloas()
+                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                    reason: "state is not Gloas".into(),
+                })?;
 
         let builder = state_gloas
             .builders
@@ -87,9 +88,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         let min_balance = spec
             .min_deposit_amount
             .saturating_add(pending_withdrawals_amount);
-        if builder.balance < min_balance
-            || builder.balance.saturating_sub(min_balance) < amount
-        {
+        if builder.balance < min_balance || builder.balance.saturating_sub(min_balance) < amount {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
                     "builder balance {} insufficient for bid value {} (min_balance {})",
@@ -113,12 +112,11 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             }
             .tree_hash_root();
 
-            let pubkey = builder
-                .pubkey
-                .decompress()
-                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+            let pubkey = builder.pubkey.decompress().map_err(|_| {
+                BlockProcessingError::PayloadBidInvalid {
                     reason: format!("failed to decompress builder {} pubkey", builder_index),
-                })?;
+                }
+            })?;
 
             if !signed_bid.signature.verify(&pubkey, signing_root) {
                 return Err(BlockProcessingError::PayloadBidInvalid {
@@ -151,11 +149,14 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     }
 
     // Verify that the bid is for the right parent block
-    if bid.parent_block_hash != state.as_gloas().map_err(|_| {
-        BlockProcessingError::PayloadBidInvalid {
-            reason: "state is not Gloas".into(),
-        }
-    })?.latest_block_hash {
+    if bid.parent_block_hash
+        != state
+            .as_gloas()
+            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                reason: "state is not Gloas".into(),
+            })?
+            .latest_block_hash
+    {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: "bid parent_block_hash does not match state latest_block_hash".into(),
         });
@@ -184,9 +185,8 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     if amount > 0 {
         // Spec: state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH]
         let slots_per_epoch = E::slots_per_epoch();
-        let slot_index = slots_per_epoch
-            .safe_add(bid.slot.as_u64().safe_rem(slots_per_epoch)?)?
-            as usize;
+        let slot_index =
+            slots_per_epoch.safe_add(bid.slot.as_u64().safe_rem(slots_per_epoch)?)? as usize;
 
         let pending_payment = BuilderPendingPayment {
             weight: 0,
@@ -197,26 +197,31 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             },
         };
 
-        let state_gloas = state.as_gloas_mut().map_err(|_| {
-            BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            }
-        })?;
+        let state_gloas =
+            state
+                .as_gloas_mut()
+                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                    reason: "state is not Gloas".into(),
+                })?;
 
         *state_gloas
             .builder_pending_payments
             .get_mut(slot_index)
             .ok_or(BlockProcessingError::PayloadBidInvalid {
-                reason: format!("slot index {} out of bounds for builder_pending_payments", slot_index),
+                reason: format!(
+                    "slot index {} out of bounds for builder_pending_payments",
+                    slot_index
+                ),
             })? = pending_payment;
     }
 
     // Cache the signed execution payload bid
-    let state_gloas = state.as_gloas_mut().map_err(|_| {
-        BlockProcessingError::PayloadBidInvalid {
-            reason: "state is not Gloas".into(),
-        }
-    })?;
+    let state_gloas =
+        state
+            .as_gloas_mut()
+            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                reason: "state is not Gloas".into(),
+            })?;
     state_gloas.latest_execution_payload_bid = bid.clone();
 
     Ok(())
@@ -296,12 +301,11 @@ pub fn process_payload_attestation<E: EthSpec>(
 
         let mut pubkeys = Vec::with_capacity(indices.len());
         for &validator_index in indices.iter() {
-            let validator = state
-                .validators()
-                .get(validator_index as usize)
-                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+            let validator = state.validators().get(validator_index as usize).ok_or(
+                BlockProcessingError::PayloadAttestationInvalid(
                     PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-                ))?;
+                ),
+            )?;
 
             let pubkey = validator.pubkey.decompress().map_err(|_| {
                 BlockProcessingError::PayloadAttestationInvalid(
@@ -412,24 +416,27 @@ pub fn get_ptc_committee<E: EthSpec>(
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;
         // shuffle_indices=False, so just use next_index directly
-        let candidate_index = *indices.get(next_index)
-            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
-                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?;
+        let candidate_index =
+            *indices
+                .get(next_index)
+                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                ))?;
 
         // compute_balance_weighted_acceptance
-        let random_bytes = hash(
-            &[&seed[..], &int_to_bytes8(i.safe_div(16)?)].concat(),
-        );
+        let random_bytes = hash(&[&seed[..], &int_to_bytes8(i.safe_div(16)?)].concat());
         let offset = i.safe_rem(16)?.safe_mul(2)? as usize;
-        let random_byte_0 = *random_bytes.get(offset)
-            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+        let random_byte_0 =
+            *random_bytes
+                .get(offset)
+                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                ))?;
+        let random_byte_1 = *random_bytes.get(offset.safe_add(1)?).ok_or(
+            BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?;
-        let random_byte_1 = *random_bytes.get(offset.safe_add(1)?)
-            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
-                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-            ))?;
+            ),
+        )?;
         let random_value = u16::from_le_bytes([random_byte_0, random_byte_1]) as u64;
 
         let effective_balance = state
@@ -455,9 +462,9 @@ pub fn get_ptc_committee<E: EthSpec>(
 pub fn is_parent_block_full<E: EthSpec>(
     state: &BeaconState<E>,
 ) -> Result<bool, BlockProcessingError> {
-    let state_gloas = state.as_gloas().map_err(|e| {
-        BlockProcessingError::BeaconStateError(e)
-    })?;
+    let state_gloas = state
+        .as_gloas()
+        .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
     Ok(state_gloas.latest_execution_payload_bid.block_hash == state_gloas.latest_block_hash)
 }
 
@@ -486,9 +493,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     // 1. Builder pending withdrawals (limit: MAX_WITHDRAWALS_PER_PAYLOAD - 1)
     let mut processed_builder_withdrawals_count: usize = 0;
     {
-        let state_gloas = state.as_gloas().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
+        let state_gloas = state
+            .as_gloas()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
         let builders_count = state_gloas.builders.len() as u64;
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawals.len() >= reserved_limit {
@@ -518,7 +525,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     let mut processed_partial_withdrawals_count: usize = 0;
     {
         let partials_limit = std::cmp::min(
-            withdrawals.len().saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
+            withdrawals
+                .len()
+                .saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
             reserved_limit,
         );
         if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
@@ -569,9 +578,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     // 3. Builder sweep (exiting builders with balance, limit: MAX_WITHDRAWALS - 1)
     let mut processed_builders_sweep_count: usize = 0;
     {
-        let state_gloas = state.as_gloas().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
+        let state_gloas = state
+            .as_gloas()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
         let builders_count = state_gloas.builders.len();
         if builders_count > 0 {
             let builders_limit = std::cmp::min(
@@ -648,7 +657,8 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                     address: validator
                         .get_execution_withdrawal_address(spec)
                         .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
-                    amount: balance.saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
+                    amount: balance
+                        .saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
                 });
                 withdrawal_index.safe_add_assign(1)?;
             }
@@ -664,9 +674,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         if (withdrawal.validator_index & BUILDER_INDEX_FLAG) != 0 {
             // Builder withdrawal
             let builder_index = (withdrawal.validator_index & !BUILDER_INDEX_FLAG) as usize;
-            let state_gloas = state.as_gloas_mut().map_err(|e| {
-                BlockProcessingError::BeaconStateError(e)
-            })?;
+            let state_gloas = state
+                .as_gloas_mut()
+                .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
             if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
                 builder.balance = builder
                     .balance
@@ -674,7 +684,11 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             }
         } else {
             // Validator withdrawal
-            decrease_balance(state, withdrawal.validator_index as usize, withdrawal.amount)?;
+            decrease_balance(
+                state,
+                withdrawal.validator_index as usize,
+                withdrawal.amount,
+            )?;
         }
     }
 
@@ -685,26 +699,26 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
     // Store payload_expected_withdrawals
     {
-        let state_gloas = state.as_gloas_mut().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
-        state_gloas.payload_expected_withdrawals = List::new(withdrawals.clone())
-            .map_err(BlockProcessingError::MilhouseError)?;
+        let state_gloas = state
+            .as_gloas_mut()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+        state_gloas.payload_expected_withdrawals =
+            List::new(withdrawals.clone()).map_err(BlockProcessingError::MilhouseError)?;
     }
 
     // Update builder_pending_withdrawals (remove processed)
     {
-        let state_gloas = state.as_gloas_mut().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
+        let state_gloas = state
+            .as_gloas_mut()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
         let remaining: Vec<_> = state_gloas
             .builder_pending_withdrawals
             .iter()
             .skip(processed_builder_withdrawals_count)
             .cloned()
             .collect();
-        state_gloas.builder_pending_withdrawals = List::new(remaining)
-            .map_err(BlockProcessingError::MilhouseError)?;
+        state_gloas.builder_pending_withdrawals =
+            List::new(remaining).map_err(BlockProcessingError::MilhouseError)?;
     }
 
     // Update pending_partial_withdrawals (remove processed)
@@ -716,15 +730,16 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
 
     // Update next_withdrawal_builder_index
     {
-        let state_gloas = state.as_gloas_mut().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
+        let state_gloas = state
+            .as_gloas_mut()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
         let builders_count = state_gloas.builders.len();
         if builders_count > 0 {
             let next_index = state_gloas
                 .next_withdrawal_builder_index
                 .saturating_add(processed_builders_sweep_count as u64);
-            state_gloas.next_withdrawal_builder_index = next_index.safe_rem(builders_count as u64)?;
+            state_gloas.next_withdrawal_builder_index =
+                next_index.safe_rem(builders_count as u64)?;
         }
     }
 
@@ -735,13 +750,9 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         let validators_len = state.validators().len() as u64;
         if validators_len > 0 {
             let next_validator_index = if withdrawals.len() == max_withdrawals {
-                let last_validator_index = withdrawals
-                    .last()
-                    .map(|w| w.validator_index)
-                    .unwrap_or(0);
-                last_validator_index
-                    .safe_add(1)?
-                    .safe_rem(validators_len)?
+                let last_validator_index =
+                    withdrawals.last().map(|w| w.validator_index).unwrap_or(0);
+                last_validator_index.safe_add(1)?.safe_rem(validators_len)?
             } else {
                 state
                     .next_withdrawal_validator_index()?
@@ -778,9 +789,9 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
 
     // 1. Builder pending withdrawals
     {
-        let state_gloas = state.as_gloas().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
+        let state_gloas = state
+            .as_gloas()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
         let builders_count = state_gloas.builders.len() as u64;
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawals.len() >= reserved_limit {
@@ -806,7 +817,9 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     // 2. Pending partial withdrawals (validator)
     {
         let partials_limit = std::cmp::min(
-            withdrawals.len().saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
+            withdrawals
+                .len()
+                .saturating_add(spec.max_pending_partials_per_withdrawals_sweep as usize),
             reserved_limit,
         );
         if let Ok(pending_partial_withdrawals) = state.pending_partial_withdrawals() {
@@ -854,9 +867,9 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
 
     // 3. Builder sweep
     {
-        let state_gloas = state.as_gloas().map_err(|e| {
-            BlockProcessingError::BeaconStateError(e)
-        })?;
+        let state_gloas = state
+            .as_gloas()
+            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
         let builders_count = state_gloas.builders.len();
         if builders_count > 0 {
             let builders_limit = std::cmp::min(
@@ -929,7 +942,8 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
                     address: validator
                         .get_execution_withdrawal_address(spec)
                         .ok_or(BlockProcessingError::WithdrawalCredentialsInvalid)?,
-                    amount: balance.saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
+                    amount: balance
+                        .saturating_sub(validator.get_max_effective_balance(spec, fork_name)),
                 });
                 withdrawal_index.safe_add_assign(1)?;
             }

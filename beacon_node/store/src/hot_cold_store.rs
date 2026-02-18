@@ -2487,7 +2487,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // full envelope processing (execution requests, builder payments, etc.)
         let mut envelopes = std::collections::HashMap::new();
         for block in &blocks {
-            if block.message().body().signed_execution_payload_bid().is_ok() {
+            if block
+                .message()
+                .body()
+                .signed_execution_payload_bid()
+                .is_ok()
+            {
                 let block_root = block.canonical_root();
                 if let Ok(Some(envelope)) = self.get_payload_envelope(&block_root) {
                     envelopes.insert(block_root, envelope);
@@ -2642,7 +2647,8 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             &get_data_column_key(block_root, column_index),
         )? {
             Some(ref data_column_bytes) => {
-                let data_column = Arc::new(DataColumnSidecar::any_from_ssz_bytes(data_column_bytes)?);
+                let data_column =
+                    Arc::new(DataColumnSidecar::any_from_ssz_bytes(data_column_bytes)?);
                 self.block_cache.as_ref().inspect(|cache| {
                     cache
                         .lock()

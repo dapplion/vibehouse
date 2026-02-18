@@ -690,7 +690,12 @@ async fn block_replayer_hooks() {
     // Load Gloas envelopes for block replay.
     let mut envelopes = std::collections::HashMap::new();
     for block in &blocks {
-        if block.message().body().signed_execution_payload_bid().is_ok() {
+        if block
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .is_ok()
+        {
             let block_root = block.canonical_root();
             if let Ok(Some(envelope)) = store.get_payload_envelope(&block_root) {
                 envelopes.insert(block_root, envelope);
@@ -733,10 +738,7 @@ async fn block_replayer_hooks() {
     if !envelopes.is_empty() {
         replayer = replayer.envelopes(envelopes);
     }
-    let mut replay_state = replayer
-        .apply_blocks(blocks, None)
-        .unwrap()
-        .into_state();
+    let mut replay_state = replayer.apply_blocks(blocks, None).unwrap().into_state();
 
     // All but last slot seen by pre-slot hook
     assert_eq!(&pre_slots, all_slots.split_last().unwrap().1);
@@ -5353,16 +5355,26 @@ fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_l
                 // The genesis block (slot 0) has no envelope.
                 if slot > 0 {
                     assert!(
-                        harness.chain.store.payload_envelope_exists(&block_root).unwrap(),
+                        harness
+                            .chain
+                            .store
+                            .payload_envelope_exists(&block_root)
+                            .unwrap(),
                         "incorrect envelope storage for block at slot {}: {:?}",
-                        slot, block_root,
+                        slot,
+                        block_root,
                     );
                 }
             } else {
                 assert!(
-                    harness.chain.store.execution_payload_exists(&block_root).unwrap(),
+                    harness
+                        .chain
+                        .store
+                        .execution_payload_exists(&block_root)
+                        .unwrap(),
                     "incorrect payload storage for block at slot {}: {:?}",
-                    slot, block_root,
+                    slot,
+                    block_root,
                 );
             }
         }

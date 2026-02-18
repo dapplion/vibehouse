@@ -236,7 +236,13 @@ impl ForkChoiceTestDefinition {
                     target_epoch,
                 } => {
                     fork_choice
-                        .process_attestation(validator_index, block_root, target_epoch, Slot::new(0), false)
+                        .process_attestation(
+                            validator_index,
+                            block_root,
+                            target_epoch,
+                            Slot::new(0),
+                            false,
+                        )
                         .unwrap_or_else(|_| {
                             panic!(
                                 "process_attestation op at index {} returned error",

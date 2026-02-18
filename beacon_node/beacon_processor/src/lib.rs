@@ -1459,7 +1459,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::GossipAttesterSlashing => gossip_attester_slashing_queue.len(),
                         WorkType::GossipExecutionBid => gossip_execution_bid_queue.len(),
                         WorkType::GossipExecutionPayload => gossip_execution_payload_queue.len(),
-                        WorkType::GossipPayloadAttestation => gossip_payload_attestation_queue.len(),
+                        WorkType::GossipPayloadAttestation => {
+                            gossip_payload_attestation_queue.len()
+                        }
                         WorkType::GossipSyncSignature => sync_message_queue.len(),
                         WorkType::GossipSyncContribution => sync_contribution_queue.len(),
                         WorkType::GossipLightClientFinalityUpdate => {
@@ -1656,9 +1658,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                 BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
             },
             Work::GossipExecutionPayload(process_fn)
-            | Work::GossipPayloadAttestation(process_fn) => {
-                task_spawner.spawn_async(process_fn)
-            }
+            | Work::GossipPayloadAttestation(process_fn) => task_spawner.spawn_async(process_fn),
             Work::GossipVoluntaryExit(process_fn)
             | Work::GossipProposerSlashing(process_fn)
             | Work::GossipAttesterSlashing(process_fn)

@@ -426,9 +426,8 @@ impl<E: EthSpec> PubsubMessage<E> {
                     GossipKind::PayloadAttestation => {
                         match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
                             Some(fork) if fork.gloas_enabled() => {
-                                let payload_attestation =
-                                    PayloadAttestation::from_ssz_bytes(data)
-                                        .map_err(|e| format!("{:?}", e))?;
+                                let payload_attestation = PayloadAttestation::from_ssz_bytes(data)
+                                    .map_err(|e| format!("{:?}", e))?;
                                 Ok(PubsubMessage::PayloadAttestation(Box::new(
                                     payload_attestation,
                                 )))

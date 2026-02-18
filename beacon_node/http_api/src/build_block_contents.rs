@@ -38,8 +38,7 @@ pub fn build_block_contents<E: EthSpec>(
 
                 // Extract the unsigned envelope message from the
                 // SignedExecutionPayloadEnvelope (signature is a placeholder).
-                let unsigned_envelope =
-                    execution_payload_envelope.map(|signed| signed.message);
+                let unsigned_envelope = execution_payload_envelope.map(|signed| signed.message);
 
                 Ok(ProduceBlockV3Response::Full(
                     FullBlockContents::BlockContents(BlockContents {

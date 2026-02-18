@@ -678,9 +678,9 @@ where
     F: Fn(u64) -> Option<Cow<'a, PublicKey>>,
 {
     let builder_index = signed_bid.message.builder_index;
-    
-    let builder_pubkey = get_builder_pubkey(builder_index)
-        .ok_or(Error::ValidatorUnknown(builder_index))?;
+
+    let builder_pubkey =
+        get_builder_pubkey(builder_index).ok_or(Error::ValidatorUnknown(builder_index))?;
 
     let epoch = signed_bid.message.slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
@@ -717,8 +717,8 @@ where
     // Collect public keys for all attesting validators
     let mut pubkeys = Vec::with_capacity(attesting_indices.len());
     for &validator_index in attesting_indices.iter() {
-        let pubkey = get_pubkey(validator_index as usize)
-            .ok_or(Error::ValidatorUnknown(validator_index))?;
+        let pubkey =
+            get_pubkey(validator_index as usize).ok_or(Error::ValidatorUnknown(validator_index))?;
         pubkeys.push(pubkey);
     }
 
@@ -755,8 +755,8 @@ where
 {
     let builder_index = signed_envelope.message.builder_index;
 
-    let builder_pubkey = get_builder_pubkey(builder_index)
-        .ok_or(Error::ValidatorUnknown(builder_index))?;
+    let builder_pubkey =
+        get_builder_pubkey(builder_index).ok_or(Error::ValidatorUnknown(builder_index))?;
 
     let epoch = signed_envelope.message.slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(

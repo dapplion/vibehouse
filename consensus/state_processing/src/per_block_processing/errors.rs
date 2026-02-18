@@ -89,7 +89,7 @@ pub enum BlockProcessingError {
         expected: Hash256,
         found: Hash256,
     },
-        WithdrawalCredentialsInvalid,
+    WithdrawalCredentialsInvalid,
     InvalidBuilderCredentials,
     WithdrawalBuilderIndexInvalid {
         builder_index: u64,
@@ -501,4 +501,3 @@ pub enum PayloadAttestationInvalid {
     /// Not enough validators to form a full PTC (less than 512)
     InsufficientValidators,
 }
-

@@ -398,30 +398,32 @@ pub fn reconstruct_data_columns<E: EthSpec>(
 
     let num_of_blobs = first_data_column.kzg_commitments().unwrap().len();
 
-    let blob_cells_and_proofs_vec =
-        (0..num_of_blobs)
-            .into_par_iter()
-            .map(|row_index| {
-                let mut cells: Vec<KzgCellRef> = vec![];
-                let mut cell_ids: Vec<u64> = vec![];
-                for data_column in &data_columns {
-                    let cell = data_column.column().get(row_index).ok_or(
-                        KzgError::InconsistentArrayLength(format!(
-                            "Missing data column at row index {row_index}"
-                        )),
-                    )?;
+    let blob_cells_and_proofs_vec = (0..num_of_blobs)
+        .into_par_iter()
+        .map(|row_index| {
+            let mut cells: Vec<KzgCellRef> = vec![];
+            let mut cell_ids: Vec<u64> = vec![];
+            for data_column in &data_columns {
+                let cell = data_column.column().get(row_index).ok_or(
+                    KzgError::InconsistentArrayLength(format!(
+                        "Missing data column at row index {row_index}"
+                    )),
+                )?;
 
-                    cells.push(ssz_cell_to_crypto_cell::<E>(cell)?);
-                    cell_ids.push(data_column.index());
-                }
-                kzg.recover_cells_and_compute_kzg_proofs(&cell_ids, &cells)
-            })
-            .collect::<Result<Vec<_>, KzgError>>()?;
+                cells.push(ssz_cell_to_crypto_cell::<E>(cell)?);
+                cell_ids.push(data_column.index());
+            }
+            kzg.recover_cells_and_compute_kzg_proofs(&cell_ids, &cells)
+        })
+        .collect::<Result<Vec<_>, KzgError>>()?;
 
     // Clone sidecar elements from existing data column, no need to re-compute
     build_data_column_sidecars(
         first_data_column.kzg_commitments().unwrap().clone(),
-        first_data_column.kzg_commitments_inclusion_proof().unwrap().clone(),
+        first_data_column
+            .kzg_commitments_inclusion_proof()
+            .unwrap()
+            .clone(),
         first_data_column.signed_block_header().unwrap().clone(),
         blob_cells_and_proofs_vec,
         spec,
@@ -518,7 +520,10 @@ mod test {
             assert_eq!(col_sidecar.column().len(), num_of_blobs);
             assert_eq!(col_sidecar.kzg_proofs().len(), num_of_blobs);
 
-            assert_eq!(*col_sidecar.kzg_commitments().unwrap(), block_kzg_commitments);
+            assert_eq!(
+                *col_sidecar.kzg_commitments().unwrap(),
+                block_kzg_commitments
+            );
             assert_eq!(
                 *col_sidecar.kzg_commitments_inclusion_proof().unwrap(),
                 block_kzg_commitments_inclusion_proof

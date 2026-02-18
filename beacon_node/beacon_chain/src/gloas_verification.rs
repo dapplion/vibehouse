@@ -15,7 +15,7 @@
 //! - Equivocation detection via observed message tracking
 //! - Signature verification batching where applicable
 
-use crate::{BeaconChain, BeaconChainTypes, BeaconChainError};
+use crate::{BeaconChain, BeaconChainError, BeaconChainTypes};
 use bls::PublicKey;
 use safe_arith::ArithError;
 use slot_clock::SlotClock;
@@ -29,9 +29,9 @@ use std::sync::Arc;
 use strum::AsRefStr;
 use tree_hash::TreeHash;
 use types::{
-    consts::gloas::BUILDER_INDEX_SELF_BUILD, BeaconStateError, BuilderIndex, EthSpec,
-    ExecutionBlockHash, Hash256, PayloadAttestation, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, Slot,
+    BeaconStateError, BuilderIndex, EthSpec, ExecutionBlockHash, Hash256, PayloadAttestation,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, Slot,
+    consts::gloas::BUILDER_INDEX_SELF_BUILD,
 };
 
 /// Returned when an execution payload bid was not successfully verified.
@@ -43,10 +43,7 @@ pub enum ExecutionBidError {
     ///
     /// ## Peer scoring
     /// Not malicious, just not timely.
-    SlotNotCurrentOrNext {
-        bid_slot: Slot,
-        current_slot: Slot,
-    },
+    SlotNotCurrentOrNext { bid_slot: Slot, current_slot: Slot },
     /// The bid's execution_payment field is zero.
     ///
     /// Spec: `[REJECT] bid.execution_payment is zero.`
@@ -243,7 +240,10 @@ pub enum PayloadEnvelopeError {
     ///
     /// ## Peer scoring
     /// The peer has sent an invalid message.
-    SlotMismatch { block_slot: Slot, envelope_slot: Slot },
+    SlotMismatch {
+        block_slot: Slot,
+        envelope_slot: Slot,
+    },
     /// The envelope's builder_index doesn't match the committed bid.
     ///
     /// ## Peer scoring
@@ -375,11 +375,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(BeaconChainError::BeaconStateError)?
             .get(builder_index as usize)
             .ok_or(ExecutionBidError::UnknownBuilder { builder_index })?;
-        
+
         if !builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, &self.spec) {
             return Err(ExecutionBidError::InactiveBuilder { builder_index });
         }
-        
+
         // Check 2b: Builder has sufficient balance
         if builder.balance < bid.message.value {
             return Err(ExecutionBidError::InsufficientBuilderBalance {
@@ -391,12 +391,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Check 3: Equivocation detection
         let bid_root = bid.tree_hash_root();
-        
-        let observation_outcome = self
-            .observed_execution_bids
-            .lock()
-            .observe_bid(bid_slot, builder_index, bid_root);
-        
+
+        let observation_outcome =
+            self.observed_execution_bids
+                .lock()
+                .observe_bid(bid_slot, builder_index, bid_root);
+
         match observation_outcome {
             crate::observed_execution_bids::BidObservationOutcome::New => {
                 // Continue with validation
@@ -425,12 +425,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 received: bid.message.parent_block_root,
             });
         }
-        
+
         // Check 5: Signature verification
         let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
             if builder_idx == BUILDER_INDEX_SELF_BUILD {
-                let proposer_index =
-                    state.latest_block_header().proposer_index as usize;
+                let proposer_index = state.latest_block_header().proposer_index as usize;
                 state
                     .validators()
                     .get(proposer_index)
@@ -443,22 +442,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
             }
         };
-        
-        let signature_set = execution_payload_bid_signature_set(
-            state,
-            get_builder_pubkey,
-            &bid,
-            &self.spec,
-        )
-        .map_err(|_| ExecutionBidError::InvalidSignature)?;
-        
+
+        let signature_set =
+            execution_payload_bid_signature_set(state, get_builder_pubkey, &bid, &self.spec)
+                .map_err(|_| ExecutionBidError::InvalidSignature)?;
+
         if !signature_set.verify() {
             return Err(ExecutionBidError::InvalidSignature);
         }
 
-        Ok(VerifiedExecutionBid {
-            bid,
-        })
+        Ok(VerifiedExecutionBid { bid })
     }
 
     /// Verify a payload attestation received via gossip.
@@ -482,7 +475,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .slot_clock
             .now()
             .ok_or(BeaconChainError::UnableToReadSlot)?;
-        
+
         let gossip_clock_disparity = self.spec.maximum_gossip_clock_disparity();
         let earliest_permissible_slot = current_slot
             .as_u64()
@@ -513,7 +506,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Check 3: Beacon block root is known in fork choice
         {
             let fork_choice = self.canonical_head.fork_choice_read_lock();
-            if fork_choice.get_block(&attestation.data.beacon_block_root).is_none() {
+            if fork_choice
+                .get_block(&attestation.data.beacon_block_root)
+                .is_none()
+            {
                 return Err(PayloadAttestationError::UnknownBeaconBlockRoot {
                     root: attestation.data.beacon_block_root,
                 });
@@ -523,14 +519,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Check 4: Get PTC committee for this slot
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
-        
+
         // Get PTC committee using state processing function
         let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
             state,
             attestation_slot,
             &self.spec,
         )
-        .map_err(|_| PayloadAttestationError::PtcCommitteeError { slot: attestation_slot })?;
+        .map_err(|_| PayloadAttestationError::PtcCommitteeError {
+            slot: attestation_slot,
+        })?;
 
         // Convert aggregation bits to attesting indices
         let mut indexed_attestation_indices = Vec::new();
@@ -583,11 +581,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Check 6: Signature verification
         let get_pubkey = |validator_idx: usize| -> Option<Cow<PublicKey>> {
-            state.validators()
+            state
+                .validators()
                 .get(validator_idx)
                 .and_then(|validator| validator.pubkey.decompress().ok().map(Cow::Owned))
         };
-        
+
         let signature_set = payload_attestation_signature_set(
             state,
             get_pubkey,
@@ -596,7 +595,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             &self.spec,
         )
         .map_err(|_| PayloadAttestationError::InvalidSignature)?;
-        
+
         if !signature_set.verify() {
             return Err(PayloadAttestationError::InvalidSignature);
         }

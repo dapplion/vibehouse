@@ -187,5 +187,8 @@ type_name_generic!(ExecutionPayloadHeaderGloas, "ExecutionPayloadHeader");
 type_name_generic!(LightClientBootstrapGloas, "LightClientBootstrap");
 type_name_generic!(LightClientFinalityUpdateGloas, "LightClientFinalityUpdate");
 type_name_generic!(LightClientHeaderGloas, "LightClientHeader");
-type_name_generic!(LightClientOptimisticUpdateGloas, "LightClientOptimisticUpdate");
+type_name_generic!(
+    LightClientOptimisticUpdateGloas,
+    "LightClientOptimisticUpdate"
+);
 type_name_generic!(LightClientUpdateGloas, "LightClientUpdate");

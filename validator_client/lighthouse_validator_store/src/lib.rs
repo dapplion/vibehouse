@@ -740,8 +740,7 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for LighthouseValidatorS
                     .sign_abstract_block(validator_pubkey, block, current_slot)
                     .await?;
 
-                let mut request =
-                    PublishBlockRequest::new(Arc::new(signed_block), blobs);
+                let mut request = PublishBlockRequest::new(Arc::new(signed_block), blobs);
 
                 // Sign the envelope if present (gloas ePBS self-build).
                 if let Some(envelope) = unsigned_envelope {

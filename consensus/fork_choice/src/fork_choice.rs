@@ -1295,19 +1295,16 @@ where
         let node_slot = node.slot;
 
         // Update the proto_array node with builder information
-        let nodes = &mut self
-            .proto_array
-            .core_proto_array_mut()
-            .nodes;
-        
+        let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
+
         if let Some(node) = nodes.get_mut(block_index) {
             // Record which builder won this slot's bid
             node.builder_index = Some(bid.message.builder_index);
-            
+
             // Mark payload as not yet revealed
             // (will be set to true when builder publishes the execution payload envelope)
             node.payload_revealed = false;
-            
+
             // Initialize PTC weights to 0 (will accumulate via on_payload_attestation)
             node.ptc_weight = 0;
             node.ptc_blob_data_available_weight = 0;
@@ -1347,7 +1344,7 @@ where
         spec: &ChainSpec,
     ) -> Result<(), Error<T::Error>> {
         let beacon_block_root = attestation.data.beacon_block_root;
-        
+
         // Validate slot is not from the future
         if attestation.data.slot > current_slot {
             return Err(InvalidPayloadAttestation::FutureSlot {
@@ -1404,10 +1401,7 @@ where
         // Per spec, payload_timeliness_vote and payload_data_availability_vote
         // are separate per-PTC-member bitvectors. We track them as counters of
         // True votes since gossip validation prevents duplicate attestations.
-        let nodes = &mut self
-            .proto_array
-            .core_proto_array_mut()
-            .nodes;
+        let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
 
         if let Some(node) = nodes.get_mut(block_index) {
             // Accumulate payload_present votes (spec: payload_timeliness_vote)
@@ -1456,7 +1450,6 @@ where
                     "Blob data availability quorum reached"
                 );
             }
-
         }
 
         Ok(())
@@ -1484,10 +1477,7 @@ where
             .copied()
             .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
-        let nodes = &mut self
-            .proto_array
-            .core_proto_array_mut()
-            .nodes;
+        let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
 
         if let Some(node) = nodes.get_mut(block_index) {
             node.payload_revealed = true;

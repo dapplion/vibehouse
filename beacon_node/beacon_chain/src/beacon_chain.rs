@@ -107,8 +107,7 @@ use state_processing::{
     per_block_processing,
     per_block_processing::{
         VerifySignatures, errors::AttestationValidationError, get_expected_withdrawals,
-        gloas::get_ptc_committee,
-        verify_attestation_for_block_inclusion,
+        gloas::get_ptc_committee, verify_attestation_for_block_inclusion,
     },
     per_slot_processing,
     state_advance::{complete_state_advance, partial_state_advance},
@@ -431,11 +430,13 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub observed_bls_to_execution_changes:
         Mutex<ObservedOperations<SignedBlsToExecutionChange, T::EthSpec>>,
     /// Maintains a record of which execution bids we've seen (for equivocation detection).
-    pub observed_execution_bids: Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
+    pub observed_execution_bids:
+        Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
     /// Pool of verified execution bids available for block production (bid selection).
     pub execution_bid_pool: Mutex<crate::execution_bid_pool::ExecutionBidPool<T::EthSpec>>,
     /// Maintains a record of which payload attestations we've seen (for equivocation detection).
-    pub observed_payload_attestations: Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
+    pub observed_payload_attestations:
+        Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
     /// Interfaces with the execution client.
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the
@@ -494,12 +495,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub rng: Arc<Mutex<Box<dyn RngCore + Send>>>,
     /// Gloas ePBS: pending self-build envelope to broadcast alongside the next block.
     /// Set during block production, consumed during block publishing.
-    pub pending_self_build_envelope:
-        Mutex<Option<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
+    pub pending_self_build_envelope: Mutex<Option<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
     /// Gloas ePBS: pool of verified payload attestations for block inclusion.
     /// Keyed by the slot the attestation targets (i.e., data.slot).
-    pub payload_attestation_pool:
-        Mutex<HashMap<Slot, Vec<PayloadAttestation<T::EthSpec>>>>,
+    pub payload_attestation_pool: Mutex<HashMap<Slot, Vec<PayloadAttestation<T::EthSpec>>>>,
     /// Gloas ePBS: buffer of gossip-received envelopes whose block root was not yet known
     /// in fork choice at verification time. Keyed by beacon_block_root.
     ///
@@ -1792,9 +1791,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     // The block at the requested slot might be an ancestor of head.
                     // Use the state to find the block root (slot <= head_slot, so it's in the past).
                     let state = &head.snapshot.beacon_state;
-                    *state
-                        .get_block_root(slot)
-                        .map_err(Error::from)?
+                    *state.get_block_root(slot).map_err(Error::from)?
                 }
             } else {
                 return Err(Error::MissingBeaconBlock(head_block_root));
@@ -1803,14 +1800,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Check fork choice for payload_revealed
         let fc = self.canonical_head.fork_choice_read_lock();
-        let (payload_present, blob_data_available) =
-            if let Some(block) = fc.get_block(&block_root) {
-                // payload_present: payload was revealed (envelope processed or PTC quorum)
-                // blob_data_available: blob data availability confirmed (envelope or PTC quorum)
-                (block.payload_revealed, block.payload_data_available)
-            } else {
-                (false, false)
-            };
+        let (payload_present, blob_data_available) = if let Some(block) = fc.get_block(&block_root)
+        {
+            // payload_present: payload was revealed (envelope processed or PTC quorum)
+            // blob_data_available: blob data availability confirmed (envelope or PTC quorum)
+            (block.payload_revealed, block.payload_data_available)
+        } else {
+            (false, false)
+        };
         drop(fc);
 
         Ok(PayloadAttestationData {
@@ -2435,9 +2432,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let beacon_block_root = bid.message.parent_block_root;
 
         // Add to bid pool for later selection during block production.
-        self.execution_bid_pool
-            .lock()
-            .insert(bid.clone());
+        self.execution_bid_pool.lock().insert(bid.clone());
 
         self.canonical_head
             .fork_choice_write_lock()
@@ -2534,13 +2529,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             let parent_beacon_block_root = block.message().parent_root();
 
-            let new_payload_request =
-                NewPayloadRequest::Gloas(NewPayloadRequestGloas {
-                    execution_payload: &envelope.payload,
-                    versioned_hashes,
-                    parent_beacon_block_root,
-                    execution_requests: &envelope.execution_requests,
-                });
+            let new_payload_request = NewPayloadRequest::Gloas(NewPayloadRequestGloas {
+                execution_payload: &envelope.payload,
+                versioned_hashes,
+                parent_beacon_block_root,
+                execution_requests: &envelope.execution_requests,
+            });
 
             let payload_status = execution_layer
                 .notify_new_payload(new_payload_request)
@@ -2581,7 +2575,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         "Execution payload accepted optimistically by EL"
                     );
                 }
-                PayloadStatus::Invalid { ref latest_valid_hash, ref validation_error } => {
+                PayloadStatus::Invalid {
+                    ref latest_valid_hash,
+                    ref validation_error,
+                } => {
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2593,7 +2590,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         "Execution payload invalid".to_string(),
                     ));
                 }
-                PayloadStatus::InvalidBlockHash { ref validation_error } => {
+                PayloadStatus::InvalidBlockHash {
+                    ref validation_error,
+                } => {
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2644,9 +2643,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state_processing::VerifySignatures::True,
             &self.spec,
         )
-        .map_err(|e| {
-            Error::EnvelopeProcessingError(format!("{:?}", e))
-        })?;
+        .map_err(|e| Error::EnvelopeProcessingError(format!("{:?}", e)))?;
 
         // Cache the post-envelope state in memory so that block verification (gossip
         // import) and block production load a state with the correct `latest_block_hash`.
@@ -2691,10 +2688,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// in `pending_gossip_envelopes`. This method is called after a Gloas block is imported
     /// to check if we have a buffered envelope for it and process it.
     pub async fn process_pending_envelope(&self, block_root: Hash256) {
-        let envelope = self
-            .pending_gossip_envelopes
-            .lock()
-            .remove(&block_root);
+        let envelope = self.pending_gossip_envelopes.lock().remove(&block_root);
 
         let Some(envelope) = envelope else {
             return;
@@ -2799,13 +2793,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             let parent_beacon_block_root = block.message().parent_root();
 
-            let new_payload_request =
-                NewPayloadRequest::Gloas(NewPayloadRequestGloas {
-                    execution_payload: &envelope.payload,
-                    versioned_hashes,
-                    parent_beacon_block_root,
-                    execution_requests: &envelope.execution_requests,
-                });
+            let new_payload_request = NewPayloadRequest::Gloas(NewPayloadRequestGloas {
+                execution_payload: &envelope.payload,
+                versioned_hashes,
+                parent_beacon_block_root,
+                execution_requests: &envelope.execution_requests,
+            });
 
             let payload_status = execution_layer
                 .notify_new_payload(new_payload_request)
@@ -2845,7 +2838,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         "Self-build execution payload accepted optimistically by EL"
                     );
                 }
-                PayloadStatus::Invalid { ref latest_valid_hash, ref validation_error } => {
+                PayloadStatus::Invalid {
+                    ref latest_valid_hash,
+                    ref validation_error,
+                } => {
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2857,7 +2853,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         "Self-build execution payload invalid".to_string(),
                     ));
                 }
-                PayloadStatus::InvalidBlockHash { ref validation_error } => {
+                PayloadStatus::InvalidBlockHash {
+                    ref validation_error,
+                } => {
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2893,9 +2891,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state_processing::VerifySignatures::False,
             &self.spec,
         )
-        .map_err(|e| {
-            Error::EnvelopeProcessingError(format!("{:?}", e))
-        })?;
+        .map_err(|e| Error::EnvelopeProcessingError(format!("{:?}", e)))?;
 
         // Cache the post-envelope state in memory. See process_payload_envelope for
         // the full explanation — cached under block's state_root to keep the
@@ -2974,10 +2970,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 );
                 Some(temp_envelope)
             }
-            Err(state_processing::envelope_processing::EnvelopeProcessingError::InvalidStateRoot {
-                state: actual_root,
-                ..
-            }) => {
+            Err(
+                state_processing::envelope_processing::EnvelopeProcessingError::InvalidStateRoot {
+                    state: actual_root,
+                    ..
+                },
+            ) => {
                 // Expected path: all checks passed, state was mutated, but state_root
                 // didn't match our placeholder. Use the actual root.
                 let envelope = SignedExecutionPayloadEnvelope {
@@ -3015,14 +3013,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         verified_attestation: &crate::gloas_verification::VerifiedPayloadAttestation<T>,
     ) -> Result<(), Error> {
         use types::IndexedPayloadAttestation;
-        
+
         // Convert to IndexedPayloadAttestation
         let indexed = IndexedPayloadAttestation {
             attesting_indices: verified_attestation.attesting_indices().to_vec().into(),
             data: verified_attestation.attestation().data.clone(),
             signature: verified_attestation.attestation().signature.clone(),
         };
-        
+
         self.canonical_head
             .fork_choice_write_lock()
             .on_payload_attestation(
@@ -3046,12 +3044,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
 
-        let ptc_indices = get_ptc_committee::<T::EthSpec>(
-            state,
-            message.data.slot,
-            &self.spec,
-        )
-        .map_err(Error::BlockProcessingError)?;
+        let ptc_indices = get_ptc_committee::<T::EthSpec>(state, message.data.slot, &self.spec)
+            .map_err(Error::BlockProcessingError)?;
 
         // Find the validator's position in the PTC
         let ptc_position = ptc_indices
@@ -3064,11 +3058,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Create aggregated PayloadAttestation with single bit set
         let mut aggregation_bits = BitVector::default();
-        aggregation_bits
-            .set(ptc_position, true)
-            .map_err(|_| Error::PayloadAttestationBitOutOfBounds {
+        aggregation_bits.set(ptc_position, true).map_err(|_| {
+            Error::PayloadAttestationBitOutOfBounds {
                 position: ptc_position,
-            })?;
+            }
+        })?;
 
         // Convert individual signature to aggregate signature
         let agg_sig = AggregateSignature::from(&message.signature);
@@ -3101,19 +3095,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     }
 
     /// Inserts a verified payload attestation into the pool for later block inclusion (gloas ePBS).
-    pub fn insert_payload_attestation_to_pool(
-        &self,
-        attestation: PayloadAttestation<T::EthSpec>,
-    ) {
+    pub fn insert_payload_attestation_to_pool(&self, attestation: PayloadAttestation<T::EthSpec>) {
         let slot = attestation.data.slot;
         let mut pool = self.payload_attestation_pool.lock();
         pool.entry(slot).or_default().push(attestation);
 
         // Prune attestations older than 2 epochs to bound memory.
         let current_slot = self.slot().unwrap_or(slot);
-        let prune_before = current_slot.saturating_sub(
-            T::EthSpec::slots_per_epoch().saturating_mul(2),
-        );
+        let prune_before =
+            current_slot.saturating_sub(T::EthSpec::slots_per_epoch().saturating_mul(2));
         pool.retain(|&s, _| s >= prune_before);
     }
 
@@ -3801,26 +3791,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     )
                     .await
                 {
-                    Ok(status) => {
-                        match status {
-                            AvailabilityProcessingStatus::Imported(block_root) => {
-                                imported_blocks.push((block_root, block_slot));
-                            }
-                            AvailabilityProcessingStatus::MissingComponents(slot, block_root) => {
-                                warn!(
-                                    ?block_root,
-                                    %slot,
-                                    "Blobs missing in response to range request"
-                                );
-                                return ChainSegmentResult::Failed {
-                                    imported_blocks,
-                                    error: BlockError::AvailabilityCheck(
-                                        AvailabilityCheckError::MissingBlobs,
-                                    ),
-                                };
-                            }
+                    Ok(status) => match status {
+                        AvailabilityProcessingStatus::Imported(block_root) => {
+                            imported_blocks.push((block_root, block_slot));
                         }
-                    }
+                        AvailabilityProcessingStatus::MissingComponents(slot, block_root) => {
+                            warn!(
+                                ?block_root,
+                                %slot,
+                                "Blobs missing in response to range request"
+                            );
+                            return ChainSegmentResult::Failed {
+                                imported_blocks,
+                                error: BlockError::AvailabilityCheck(
+                                    AvailabilityCheckError::MissingBlobs,
+                                ),
+                            };
+                        }
+                    },
                     Err(BlockError::DuplicateFullyImported(block_root)) => {
                         debug!(
                             ?block_root,
@@ -4118,9 +4106,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Reject RPC columns referencing unknown parents. Otherwise we allow potentially invalid data
         // into the da_checker, where invalid = descendant of invalid blocks.
         // Note: custody_columns should have at least one item and all items have the same parent root.
-        if let Some(parent_root) = custody_columns
-            .iter()
-            .find_map(|c| c.block_parent_root())
+        if let Some(parent_root) = custody_columns.iter().find_map(|c| c.block_parent_root())
             && !self
                 .canonical_head
                 .fork_choice_read_lock()
@@ -6025,24 +6011,23 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     // Gloas self-build: extract the execution payload and requests
                     // from block_contents before it's consumed by complete_partial_beacon_block.
                     // These are needed to construct the execution payload envelope.
-                    let gloas_envelope_data = if partial_beacon_block.state.fork_name_unchecked()
-                        == ForkName::Gloas
-                    {
-                        let payload = block_contents
-                            .payload()
-                            .execution_payload_gloas()
-                            .ok()
-                            .cloned();
-                        let requests = match &block_contents {
-                            BlockProposalContents::PayloadAndBlobs { requests, .. } => {
-                                requests.clone()
-                            }
-                            _ => None,
+                    let gloas_envelope_data =
+                        if partial_beacon_block.state.fork_name_unchecked() == ForkName::Gloas {
+                            let payload = block_contents
+                                .payload()
+                                .execution_payload_gloas()
+                                .ok()
+                                .cloned();
+                            let requests = match &block_contents {
+                                BlockProposalContents::PayloadAndBlobs { requests, .. } => {
+                                    requests.clone()
+                                }
+                                _ => None,
+                            };
+                            payload.zip(requests)
+                        } else {
+                            None
                         };
-                        payload.zip(requests)
-                    } else {
-                        None
-                    };
 
                     let chain = self.clone();
                     let span = Span::current();
@@ -6070,8 +6055,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     // The envelope is returned to the VC for signing, then sent back
                     // in the publish request with a valid signature.
                     if let Some((gloas_payload, execution_requests)) = gloas_envelope_data {
-                        beacon_block_response.execution_payload_envelope =
-                            self.build_self_build_envelope(
+                        beacon_block_response.execution_payload_envelope = self
+                            .build_self_build_envelope(
                                 &beacon_block_response.block,
                                 &beacon_block_response.state,
                                 gloas_payload,
@@ -6198,22 +6183,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // If required, start the process of loading an execution payload from the EL early. This
         // allows it to run concurrently with things like attestation packing.
         // For Gloas with external bids, skip the EL fetch — the builder handles the payload.
-        let prepare_payload_handle = if state.fork_name_unchecked().bellatrix_enabled()
-            && selected_external_bid.is_none()
-        {
-            let prepare_payload_handle = get_execution_payload(
-                self.clone(),
-                &state,
-                parent_root,
-                proposer_index,
-                builder_params,
-                builder_boost_factor,
-                block_production_version,
-            )?;
-            Some(prepare_payload_handle)
-        } else {
-            None
-        };
+        let prepare_payload_handle =
+            if state.fork_name_unchecked().bellatrix_enabled() && selected_external_bid.is_none() {
+                let prepare_payload_handle = get_execution_payload(
+                    self.clone(),
+                    &state,
+                    parent_root,
+                    proposer_index,
+                    builder_params,
+                    builder_boost_factor,
+                    block_production_version,
+                )?;
+                Some(prepare_payload_handle)
+            } else {
+                None
+            };
 
         let slashings_and_exits_span = debug_span!("get_slashings_and_exits").entered();
         let (mut proposer_slashings, mut attester_slashings, mut voluntary_exits) =
@@ -6679,8 +6663,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 // Include payload attestations from the pool for the previous slot's payload.
                 // Filter by parent_root to exclude stale attestations from peers that had a
                 // different head (wrong beacon_block_root) at the time of attestation production.
-                let payload_attestations: VariableList<_, _> =
-                    self.get_payload_attestations_for_block(slot, parent_root).into();
+                let payload_attestations: VariableList<_, _> = self
+                    .get_payload_attestations_for_block(slot, parent_root)
+                    .into();
 
                 let (signed_bid, maybe_blobs_and_proofs, execution_payload_value) =
                     if let Some(external_bid) = selected_external_bid {
@@ -6721,8 +6706,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                         let signed_bid = SignedExecutionPayloadBid {
                             message: execution_payload_bid,
-                            signature: Signature::infinity()
-                                .expect("infinity signature is valid"),
+                            signature: Signature::infinity().expect("infinity signature is valid"),
                         };
 
                         (signed_bid, maybe_blobs_and_proofs, execution_payload_value)

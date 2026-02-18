@@ -366,7 +366,8 @@ async fn chain_segment_full_segment() {
 async fn chain_segment_varying_chunk_size() {
     for _chunk_size in &[1, 2, 3, 5, 31, 32, 33, 42] {
         let harness = get_harness(VALIDATOR_COUNT, NodeCustodyType::Fullnode);
-        let (chain_segment, chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+        let (chain_segment, chain_segment_blobs, chain_segment_envelopes) =
+            get_chain_segment().await;
         let blocks: Vec<RpcBlock<E>> = chain_segment_blocks(&chain_segment, &chain_segment_blobs)
             .into_iter()
             .collect();
@@ -552,10 +553,9 @@ async fn assert_invalid_signature(
     let ancestor_envelopes = &chain_segment_envelopes[..block_index];
     // We don't care if this fails, we just call this to ensure that all prior blocks have been
     // imported prior to this test.
-    let _ = import_chain_segment_with_envelopes_tolerant(
-        harness, &ancestor_blocks, ancestor_envelopes,
-    )
-    .await;
+    let _ =
+        import_chain_segment_with_envelopes_tolerant(harness, &ancestor_blocks, ancestor_envelopes)
+            .await;
     harness.chain.recompute_head_at_current_slot().await;
 
     let process_res = harness
@@ -689,7 +689,8 @@ async fn invalid_signature_block_proposal() {
 
 #[tokio::test]
 async fn invalid_signature_randao_reveal() {
-    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
+        get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         let harness = get_invalid_sigs_harness(&chain_segment).await;
         let mut snapshots = chain_segment.clone();
@@ -718,7 +719,8 @@ async fn invalid_signature_randao_reveal() {
 
 #[tokio::test]
 async fn invalid_signature_proposer_slashing() {
-    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
+        get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         let harness = get_invalid_sigs_harness(&chain_segment).await;
         let mut snapshots = chain_segment.clone();
@@ -761,7 +763,8 @@ async fn invalid_signature_proposer_slashing() {
 
 #[tokio::test]
 async fn invalid_signature_attester_slashing() {
-    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
+        get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         let harness = get_invalid_sigs_harness(&chain_segment).await;
         let mut snapshots = chain_segment.clone();
@@ -883,7 +886,8 @@ async fn invalid_signature_attester_slashing() {
 
 #[tokio::test]
 async fn invalid_signature_attestation() {
-    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
+        get_chain_segment().await;
     let mut checked_attestation = false;
 
     for &block_index in BLOCK_INDICES {
@@ -956,7 +960,8 @@ async fn invalid_signature_attestation() {
 
 #[tokio::test]
 async fn invalid_signature_deposit() {
-    let (chain_segment, mut chain_segment_blobs, _chain_segment_envelopes) = get_chain_segment().await;
+    let (chain_segment, mut chain_segment_blobs, _chain_segment_envelopes) =
+        get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         // Note: an invalid deposit signature is permitted!
         let harness = get_invalid_sigs_harness(&chain_segment).await;
@@ -1008,7 +1013,8 @@ async fn invalid_signature_deposit() {
 
 #[tokio::test]
 async fn invalid_signature_exit() {
-    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+    let (chain_segment, mut chain_segment_blobs, chain_segment_envelopes) =
+        get_chain_segment().await;
     for &block_index in BLOCK_INDICES {
         let harness = get_invalid_sigs_harness(&chain_segment).await;
         let mut snapshots = chain_segment.clone();

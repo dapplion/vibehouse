@@ -1,8 +1,7 @@
 use crate::{
     BlockProcessingError, BlockSignatureStrategy, ConsensusContext, SlotProcessingError,
     VerifyBlockRoot, VerifySignatures, envelope_processing::process_execution_payload_envelope,
-    per_block_processing, per_epoch_processing::EpochProcessingSummary,
-    per_slot_processing,
+    per_block_processing, per_epoch_processing::EpochProcessingSummary, per_slot_processing,
 };
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -297,13 +296,16 @@ where
                         VerifySignatures::False,
                         self.spec,
                     )
-                    .map_err(|e| BlockReplayError::BlockProcessing(
-                        BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
-                    ))?;
+                    .map_err(|e| {
+                        BlockReplayError::BlockProcessing(
+                            BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
+                        )
+                    })?;
                 } else {
-                    *self.state.latest_block_hash_mut()
-                        .map_err(BlockReplayError::BeaconState)? =
-                        bid.message.block_hash;
+                    *self
+                        .state
+                        .latest_block_hash_mut()
+                        .map_err(BlockReplayError::BeaconState)? = bid.message.block_hash;
                 }
             }
 

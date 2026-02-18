@@ -100,15 +100,15 @@ pub trait Handler {
                 return;
             }
         }
-            .filter_map(as_directory)
-            .flat_map(|suite| fs::read_dir(suite.path()).expect("suite dir exists"))
-            .filter_map(as_directory)
-            .map(|test_case_dir| {
-                let path = test_case_dir.path();
-                let case = Self::Case::load_from_dir(&path, fork_name).expect("test should load");
-                (path, case)
-            })
-            .collect();
+        .filter_map(as_directory)
+        .flat_map(|suite| fs::read_dir(suite.path()).expect("suite dir exists"))
+        .filter_map(as_directory)
+        .map(|test_case_dir| {
+            let path = test_case_dir.path();
+            let case = Self::Case::load_from_dir(&path, fork_name).expect("test should load");
+            (path, case)
+        })
+        .collect();
 
         let results = Cases { test_cases }.test_results(fork_name, Self::rayon_enabled());
 
@@ -148,15 +148,15 @@ pub trait Handler {
                 return;
             }
         }
-            .filter_map(as_directory)
-            .flat_map(|suite| fs::read_dir(suite.path()).expect("suite dir exists"))
-            .filter_map(as_directory)
-            .map(|test_case_dir| {
-                let path = test_case_dir.path();
-                let case = Self::Case::load_from_dir(&path, fork_name).expect("test should load");
-                (path, case)
-            })
-            .collect();
+        .filter_map(as_directory)
+        .flat_map(|suite| fs::read_dir(suite.path()).expect("suite dir exists"))
+        .filter_map(as_directory)
+        .map(|test_case_dir| {
+            let path = test_case_dir.path();
+            let case = Self::Case::load_from_dir(&path, fork_name).expect("test should load");
+            (path, case)
+        })
+        .collect();
 
         let results = Cases { test_cases }.test_results(fork_name, Self::rayon_enabled());
 

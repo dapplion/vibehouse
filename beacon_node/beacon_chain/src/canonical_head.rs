@@ -175,7 +175,9 @@ impl<E: EthSpec> CachedHead<E> {
         if let Ok(bid) = block.body().signed_execution_payload_bid() {
             return Ok(bid.message.prev_randao);
         }
-        block.execution_payload().map(|payload| payload.prev_randao())
+        block
+            .execution_payload()
+            .map(|payload| payload.prev_randao())
     }
 
     /// Returns the execution block number of the block at the head of the chain.
@@ -191,7 +193,9 @@ impl<E: EthSpec> CachedHead<E> {
         if block.body().signed_execution_payload_bid().is_ok() {
             return Ok(0);
         }
-        block.execution_payload().map(|payload| payload.block_number())
+        block
+            .execution_payload()
+            .map(|payload| payload.block_number())
     }
 
     /// Returns the active validator count for the current epoch of the head state.

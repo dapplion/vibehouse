@@ -66,8 +66,7 @@ async fn data_column_sidecar_event_on_process_gossip_data_column() {
     let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
     let sidecar = {
         // DA checker only accepts sampling columns, so we need to create one with a sampling index.
-        let mut random_sidecar =
-            DataColumnSidecarFulu::random_for_test(&mut rng);
+        let mut random_sidecar = DataColumnSidecarFulu::random_for_test(&mut rng);
         let slot = Slot::new(10);
         let epoch = slot.epoch(E::slots_per_epoch());
         random_sidecar.signed_block_header.message.slot = slot;

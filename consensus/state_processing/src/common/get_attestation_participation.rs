@@ -49,8 +49,7 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
     let is_matching_target = is_matching_source
         && data.target.root == *state.get_block_root_at_epoch(data.target.epoch)?;
 
-    let head_root_matches =
-        data.beacon_block_root == *state.get_block_root(data.slot)?;
+    let head_root_matches = data.beacon_block_root == *state.get_block_root(data.slot)?;
 
     // [Modified in Gloas:EIP7732] head flag also requires payload_matches
     let is_matching_head = if state.fork_name_unchecked().gloas_enabled() {
@@ -64,7 +63,9 @@ pub fn get_attestation_participation_flag_indices<E: EthSpec>(
             true
         } else {
             // Historical: check execution_payload_availability
-            let slot_index = data.slot.as_usize()
+            let slot_index = data
+                .slot
+                .as_usize()
                 .safe_rem(E::slots_per_historical_root())?;
             let availability = state
                 .as_gloas()

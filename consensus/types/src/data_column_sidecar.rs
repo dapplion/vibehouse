@@ -61,7 +61,7 @@ pub type DataColumnSidecarList<E> = Vec<Arc<DataColumnSidecar<E>>>;
     ),
     ref_attributes(derive(Debug)),
     cast_error(ty = "Error", expr = "BeaconStateError::IncorrectStateVariant"),
-    partial_getter_error(ty = "Error", expr = "BeaconStateError::IncorrectStateVariant"),
+    partial_getter_error(ty = "Error", expr = "BeaconStateError::IncorrectStateVariant")
 )]
 #[derive(Debug, Clone, Serialize, Deserialize, Encode, TreeHash, Derivative)]
 #[derivative(PartialEq, Eq, Hash(bound = "E: EthSpec"))]
@@ -84,14 +84,16 @@ pub struct DataColumnSidecar<E: EthSpec> {
     /// An inclusion proof, proving the inclusion of `blob_kzg_commitments` in `BeaconBlockBody`.
     /// Removed in Gloas — no longer needed with ePBS.
     #[superstruct(only(Fulu))]
-    pub kzg_commitments_inclusion_proof:
-        FixedVector<Hash256, E::KzgCommitmentsInclusionProofDepth>,
+    pub kzg_commitments_inclusion_proof: FixedVector<Hash256, E::KzgCommitmentsInclusionProofDepth>,
     /// The slot of the beacon block. Added in Gloas to replace signed_block_header.
     #[superstruct(only(Gloas), partial_getter(rename = "sidecar_slot", copy))]
     #[serde(with = "serde_utils::quoted_u64")]
     pub slot: Slot,
     /// The root of the beacon block. Added in Gloas to replace signed_block_header.
-    #[superstruct(only(Gloas), partial_getter(rename = "sidecar_beacon_block_root", copy))]
+    #[superstruct(
+        only(Gloas),
+        partial_getter(rename = "sidecar_beacon_block_root", copy)
+    )]
     pub beacon_block_root: Hash256,
 }
 
@@ -116,9 +118,7 @@ impl<E: EthSpec> DataColumnSidecar<E> {
 
     pub fn block_parent_root(&self) -> Option<Hash256> {
         match self {
-            DataColumnSidecar::Fulu(inner) => {
-                Some(inner.signed_block_header.message.parent_root)
-            }
+            DataColumnSidecar::Fulu(inner) => Some(inner.signed_block_header.message.parent_root),
             DataColumnSidecar::Gloas(_) => None,
         }
     }
@@ -223,10 +223,7 @@ impl<'de, E: EthSpec> context_deserialize::ContextDeserialize<'de, ForkName>
         D: Deserializer<'de>,
     {
         let convert_err = |e| {
-            serde::de::Error::custom(format!(
-                "DataColumnSidecar failed to deserialize: {:?}",
-                e
-            ))
+            serde::de::Error::custom(format!("DataColumnSidecar failed to deserialize: {:?}", e))
         };
         Ok(match context {
             ForkName::Fulu => {

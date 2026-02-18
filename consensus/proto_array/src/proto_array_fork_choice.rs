@@ -1060,11 +1060,8 @@ impl ProtoArrayForkChoice {
         spec: &ChainSpec,
     ) -> Result<Hash256, String> {
         let filtered_roots = self.compute_filtered_roots::<E>(current_slot);
-        let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
-            proposer_boost_root,
-            current_slot,
-            spec,
-        );
+        let apply_boost =
+            self.should_apply_proposer_boost_gloas::<E>(proposer_boost_root, current_slot, spec);
 
         let mut head = GloasForkChoiceNode {
             root: justified_checkpoint.root,
@@ -1081,18 +1078,24 @@ impl ProtoArrayForkChoice {
                 .into_iter()
                 .max_by(|a, b| {
                     let wa = self.get_gloas_weight::<E>(
-                        a, proposer_boost_root, apply_boost, current_slot, spec,
+                        a,
+                        proposer_boost_root,
+                        apply_boost,
+                        current_slot,
+                        spec,
                     );
                     let wb = self.get_gloas_weight::<E>(
-                        b, proposer_boost_root, apply_boost, current_slot, spec,
+                        b,
+                        proposer_boost_root,
+                        apply_boost,
+                        current_slot,
+                        spec,
                     );
-                    wa.cmp(&wb)
-                        .then_with(|| a.root.cmp(&b.root))
-                        .then_with(|| {
-                            let ta = self.get_payload_tiebreaker(a, current_slot);
-                            let tb = self.get_payload_tiebreaker(b, current_slot);
-                            ta.cmp(&tb)
-                        })
+                    wa.cmp(&wb).then_with(|| a.root.cmp(&b.root)).then_with(|| {
+                        let ta = self.get_payload_tiebreaker(a, current_slot);
+                        let tb = self.get_payload_tiebreaker(b, current_slot);
+                        ta.cmp(&tb)
+                    })
                 })
                 .unwrap(); // safe: children is non-empty
         }
@@ -1114,7 +1117,9 @@ impl ProtoArrayForkChoice {
         // Propagate upward: mark parents of any filtered node.
         // Nodes are ordered parent-before-child, so reverse iteration propagates correctly.
         for i in (0..pa.nodes.len()).rev() {
-            if filtered[i] && let Some(parent_idx) = pa.nodes[i].parent {
+            if filtered[i]
+                && let Some(parent_idx) = pa.nodes[i].parent
+            {
                 filtered[parent_idx] = true;
             }
         }
@@ -1199,9 +1204,7 @@ impl ProtoArrayForkChoice {
         parent: &ProtoNode,
     ) -> GloasPayloadStatus {
         match (child.bid_parent_block_hash, parent.bid_block_hash) {
-            (Some(child_parent_hash), Some(parent_hash))
-                if child_parent_hash == parent_hash =>
-            {
+            (Some(child_parent_hash), Some(parent_hash)) if child_parent_hash == parent_hash => {
                 GloasPayloadStatus::Full
             }
             _ => GloasPayloadStatus::Empty,
@@ -1359,8 +1362,7 @@ impl ProtoArrayForkChoice {
                 ..VoteTracker::default()
             };
             if self.is_supporting_vote_gloas(node, &boost_vote)
-                && let Some(score) =
-                    calculate_committee_fraction::<E>(&self.balances, boost_pct)
+                && let Some(score) = calculate_committee_fraction::<E>(&self.balances, boost_pct)
             {
                 weight = weight.saturating_add(score);
             }
@@ -1372,11 +1374,7 @@ impl ProtoArrayForkChoice {
     /// Check if a vote supports a Gloas fork choice node.
     ///
     /// Implements the spec's `is_supporting_vote` with payload_present awareness.
-    fn is_supporting_vote_gloas(
-        &self,
-        node: &GloasForkChoiceNode,
-        vote: &VoteTracker,
-    ) -> bool {
+    fn is_supporting_vote_gloas(&self, node: &GloasForkChoiceNode, vote: &VoteTracker) -> bool {
         let pa = &self.proto_array;
 
         let node_idx = match pa.indices.get(&node.root) {
@@ -1455,11 +1453,7 @@ impl ProtoArrayForkChoice {
     /// For PENDING or non-previous-slot nodes: use payload_status ordinal.
     /// For previous-slot EMPTY: 1 (favored).
     /// For previous-slot FULL: 2 if should extend payload, else 0.
-    fn get_payload_tiebreaker(
-        &self,
-        node: &GloasForkChoiceNode,
-        current_slot: Slot,
-    ) -> u8 {
+    fn get_payload_tiebreaker(&self, node: &GloasForkChoiceNode, current_slot: Slot) -> u8 {
         let pa = &self.proto_array;
 
         let is_previous_slot = pa

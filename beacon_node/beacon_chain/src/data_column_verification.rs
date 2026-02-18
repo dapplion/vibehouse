@@ -543,7 +543,9 @@ fn verify_data_column_sidecar<E: EthSpec>(
     spec: &ChainSpec,
 ) -> Result<(), GossipDataColumnError> {
     if data_column.index() >= E::number_of_columns() as u64 {
-        return Err(GossipDataColumnError::InvalidColumnIndex(data_column.index()));
+        return Err(GossipDataColumnError::InvalidColumnIndex(
+            data_column.index(),
+        ));
     }
 
     let cells_len = data_column.column().len();
@@ -701,11 +703,9 @@ fn verify_proposer_and_signature<T: BeaconChainTypes>(
         let pubkey = pubkey_cache
             .get(proposer_index)
             .ok_or_else(|| GossipDataColumnError::UnknownValidator(proposer_index as u64))?;
-        let signed_block_header = data_column
-            .signed_block_header()
-            .map_err(|e| GossipDataColumnError::BeaconChainError(
-                Box::new(BeaconChainError::BeaconStateError(e)),
-            ))?;
+        let signed_block_header = data_column.signed_block_header().map_err(|e| {
+            GossipDataColumnError::BeaconChainError(Box::new(BeaconChainError::BeaconStateError(e)))
+        })?;
         signed_block_header.verify_signature::<T::EthSpec>(
             pubkey,
             &fork,
@@ -801,7 +801,9 @@ pub fn observe_gossip_data_column<T: BeaconChainTypes>(
         .map_err(|e| GossipDataColumnError::BeaconChainError(Box::new(e.into())))?
     {
         return Err(GossipDataColumnError::PriorKnown {
-            proposer: data_column_sidecar.block_proposer_index().unwrap_or_default(),
+            proposer: data_column_sidecar
+                .block_proposer_index()
+                .unwrap_or_default(),
             slot: data_column_sidecar.slot(),
             index: data_column_sidecar.index(),
         });

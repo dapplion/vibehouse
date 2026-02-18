@@ -116,8 +116,7 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
             .retain(|key, _| key.slot >= earliest_slot);
 
         // Also prune the observed_slots set
-        self.observed_slots
-            .retain(|&slot| slot >= earliest_slot);
+        self.observed_slots.retain(|&slot| slot >= earliest_slot);
     }
 
     /// Returns the number of unique slots currently tracked.

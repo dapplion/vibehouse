@@ -62,10 +62,7 @@ impl<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>> ProvenancedBlock<T, B> 
 impl<T: BeaconChainTypes> ProvenancedBlock<T, Arc<SignedBeaconBlock<T::EthSpec>>> {
     pub fn local_from_publish_request(
         request: PublishBlockRequest<T::EthSpec>,
-    ) -> (
-        Self,
-        Option<SignedExecutionPayloadEnvelope<T::EthSpec>>,
-    ) {
+    ) -> (Self, Option<SignedExecutionPayloadEnvelope<T::EthSpec>>) {
         match request {
             PublishBlockRequest::Block(block) => (Self::local(block, None), None),
             PublishBlockRequest::BlockContents(block_contents) => {

@@ -817,7 +817,8 @@ where
     pub fn get_current_state_and_root(&self) -> (BeaconState<E>, Hash256) {
         let head = self.chain.head_snapshot();
         let state_root = head.beacon_state_root();
-        let state = self.chain
+        let state = self
+            .chain
             .get_state(&state_root, Some(head.beacon_block.slot()), false)
             .ok()
             .flatten()
@@ -2635,8 +2636,9 @@ where
     > {
         self.set_current_slot(slot);
 
-        let (block_contents, new_state, envelope) =
-            self.make_block_with_envelope_and_state_root(state, state_root_opt, slot).await;
+        let (block_contents, new_state, envelope) = self
+            .make_block_with_envelope_and_state_root(state, state_root_opt, slot)
+            .await;
 
         let block_hash = self
             .process_block(
@@ -2844,15 +2846,19 @@ where
         let mut block_state_root_opt: Option<Hash256> =
             if state.fork_name_unchecked().gloas_enabled() {
                 let sr = state.latest_block_header().state_root;
-                if sr != Hash256::zero() { Some(sr) } else { None }
+                if sr != Hash256::zero() {
+                    Some(sr)
+                } else {
+                    None
+                }
             } else {
                 None
             };
         for slot in slots {
-            let (block_hash, block, new_state) =
-                self.add_block_at_slot_internal(*slot, state, block_state_root_opt)
-                    .await
-                    .unwrap();
+            let (block_hash, block, new_state) = self
+                .add_block_at_slot_internal(*slot, state, block_state_root_opt)
+                .await
+                .unwrap();
 
             block_state_root_opt = if new_state.fork_name_unchecked().gloas_enabled() {
                 Some(block.0.message().state_root())
@@ -2917,17 +2923,20 @@ where
         let mut block_state_root_opt: Option<Hash256> =
             if state.fork_name_unchecked().gloas_enabled() {
                 let sr = state.latest_block_header().state_root;
-                if sr != Hash256::zero() { Some(sr) } else { None }
+                if sr != Hash256::zero() {
+                    Some(sr)
+                } else {
+                    None
+                }
             } else {
                 None
             };
         for slot in slots {
             // Using a `Box::pin` to reduce the stack size. Clippy was raising a lint.
-            let (block_hash, block, new_state) = Box::pin(
-                self.add_block_at_slot_internal(*slot, state, block_state_root_opt),
-            )
-            .await
-            .unwrap();
+            let (block_hash, block, new_state) =
+                Box::pin(self.add_block_at_slot_internal(*slot, state, block_state_root_opt))
+                    .await
+                    .unwrap();
 
             // Track the block's state_root for the next iteration.
             block_state_root_opt = if new_state.fork_name_unchecked().gloas_enabled() {
@@ -3538,12 +3547,11 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
 
     // load the precomputed column sidecar to avoid computing them for every block in the tests.
     // The precomputed SSZ data is from the Fulu era, so decode as DataColumnSidecarFulu.
-    let template_data_columns =
-        RuntimeVariableList::<DataColumnSidecarFulu<E>>::from_ssz_bytes(
-            TEST_DATA_COLUMN_SIDECARS_SSZ,
-            E::number_of_columns(),
-        )
-        .unwrap();
+    let template_data_columns = RuntimeVariableList::<DataColumnSidecarFulu<E>>::from_ssz_bytes(
+        TEST_DATA_COLUMN_SIDECARS_SSZ,
+        E::number_of_columns(),
+    )
+    .unwrap();
 
     let (cells, proofs): (Vec<_>, Vec<_>) = template_data_columns
         .into_iter()

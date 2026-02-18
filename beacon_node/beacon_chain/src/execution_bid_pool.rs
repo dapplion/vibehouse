@@ -54,11 +54,9 @@ impl<E: EthSpec> ExecutionBidPool<E> {
     ///
     /// Returns `None` if no external bids are available for this slot.
     pub fn get_best_bid(&self, slot: Slot) -> Option<&SignedExecutionPayloadBid<E>> {
-        self.bids.get(&slot).and_then(|slot_bids| {
-            slot_bids
-                .values()
-                .max_by_key(|bid| bid.message.value)
-        })
+        self.bids
+            .get(&slot)
+            .and_then(|slot_bids| slot_bids.values().max_by_key(|bid| bid.message.value))
     }
 
     /// Remove all bids older than `current_slot - MAX_BID_POOL_SLOTS`.

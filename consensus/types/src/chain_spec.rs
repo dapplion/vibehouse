@@ -319,7 +319,6 @@ pub struct ChainSpec {
      * Capella params
      */
     pub(crate) domain_bls_to_execution_change: u32,
-
 }
 
 impl ChainSpec {
@@ -1313,8 +1312,8 @@ impl ChainSpec {
             gloas_fork_version: [0x07, 0x00, 0x00, 0x01],
             gloas_fork_epoch: None,
             // Gloas minimal preset overrides
-            ptc_size: 2,                             // 2^1 (vs mainnet 512)
-            max_builders_per_withdrawals_sweep: 16,  // 2^4 (vs mainnet 16384)
+            ptc_size: 2,                            // 2^1 (vs mainnet 512)
+            max_builders_per_withdrawals_sweep: 16, // 2^4 (vs mainnet 16384)
             // Other
             network_id: 2, // lighthouse testnet network id
             deposit_chain_id: 5,

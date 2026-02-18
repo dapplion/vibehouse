@@ -137,9 +137,13 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
             }
         };
 
-        let signature_set =
-            execution_payload_envelope_signature_set(state, get_builder_pubkey, signed_envelope, spec)
-                .map_err(|_| EnvelopeProcessingError::BadSignature)?;
+        let signature_set = execution_payload_envelope_signature_set(
+            state,
+            get_builder_pubkey,
+            signed_envelope,
+            spec,
+        )
+        .map_err(|_| EnvelopeProcessingError::BadSignature)?;
 
         if !signature_set.verify() {
             return Err(EnvelopeProcessingError::BadSignature);
