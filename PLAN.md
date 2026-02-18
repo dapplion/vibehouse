@@ -34,14 +34,14 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 | 4. P2P Networking | DONE | gossip topics, validation, beacon processor integration |
 | 5. Beacon Chain Integration | DONE (self-build) | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
 | 6. Validator Client | IN PROGRESS | [docs/tasks/validator-client.md](docs/tasks/validator-client.md) |
-| 7. REST API | IN PROGRESS | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
+| 7. REST API | DONE | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
 | 8. Spec Tests | DONE | 78/78 + 136/136 passing, check_all_files_accessed passes |
 
 **Phase 5 remaining:** external builder path, ProposerPreferences topic (neither needed for self-build devnet)
 
 **Phase 6 remaining:** block proposal flow with bid selection, fallback when no bids received
 
-**Phase 7 remaining:** blinded blocks endpoint, envelope storage in DB (see rest-api.md)
+**Phase 7 remaining:** blinded blocks endpoint verified working (Gloas blocks have no payload to blind, conversion is phantom-type only)
 
 Reference:
 - CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/gloas

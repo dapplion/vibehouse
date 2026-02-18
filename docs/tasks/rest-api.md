@@ -3,7 +3,7 @@
 ## Objective
 Add ePBS-specific REST API endpoints for block submission, bid submission, payload attestation, and SSE events.
 
-## Status: IN PROGRESS
+## Status: DONE
 
 ### Done
 - [x] SSE events for ePBS: `execution_bid`, `execution_payload`, `payload_attestation`
@@ -12,9 +12,7 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - [x] `POST /eth/v1/beacon/execution_payload_envelope` — accepts `SignedExecutionPayloadEnvelope`, verifies (gossip checks), gossips on `execution_payload`, runs state transition (newPayload + process_execution_payload)
 - [x] Envelope DB persistence: `DBColumn::BeaconEnvelope` + `StoreOp::PutPayloadEnvelope` / `DeletePayloadEnvelope` + pruning on finalization
 - [x] `GET /eth/v1/beacon/execution_payload_envelope/{block_id}` — returns stored `SignedExecutionPayloadEnvelope` for any block
-
-### Tasks
-- [ ] Add `/eth/v1/beacon/blinded_blocks` updates for ePBS (assessed: current impl works for Gloas via `try_into_full_block(None)`)
+- [x] Blinded blocks endpoint: verified working for Gloas — `try_into_full_block(None)` is correct because Gloas blocks have no execution payload in the body (the Blinded/Full distinction is purely a phantom type marker)
 
 ## Progress log
 
