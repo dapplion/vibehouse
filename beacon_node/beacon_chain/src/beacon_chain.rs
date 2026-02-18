@@ -330,6 +330,9 @@ struct PartialBeaconBlock<E: EthSpec> {
     sync_aggregate: Option<SyncAggregate<E>>,
     prepare_payload_handle: Option<PreparePayloadHandle<E>>,
     bls_to_execution_changes: Vec<SignedBlsToExecutionChange>,
+    /// Gloas ePBS: external builder bid selected for this block (if any).
+    /// When set, the EL payload fetch is skipped and this bid is used directly.
+    selected_external_bid: Option<SignedExecutionPayloadBid<E>>,
 }
 
 pub enum BlockProcessStatus<E: EthSpec> {
@@ -429,6 +432,8 @@ pub struct BeaconChain<T: BeaconChainTypes> {
         Mutex<ObservedOperations<SignedBlsToExecutionChange, T::EthSpec>>,
     /// Maintains a record of which execution bids we've seen (for equivocation detection).
     pub observed_execution_bids: Mutex<crate::observed_execution_bids::ObservedExecutionBids<T::EthSpec>>,
+    /// Pool of verified execution bids available for block production (bid selection).
+    pub execution_bid_pool: Mutex<crate::execution_bid_pool::ExecutionBidPool<T::EthSpec>>,
     /// Maintains a record of which payload attestations we've seen (for equivocation detection).
     pub observed_payload_attestations: Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
     /// Interfaces with the execution client.
@@ -2421,18 +2426,35 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
-    /// Applies a verified execution bid to fork choice (gloas ePBS).
+    /// Applies a verified execution bid to fork choice and adds it to the bid pool (gloas ePBS).
     pub fn apply_execution_bid_to_fork_choice(
         &self,
         verified_bid: &crate::gloas_verification::VerifiedExecutionBid<T>,
     ) -> Result<(), Error> {
         let bid = verified_bid.bid();
         let beacon_block_root = bid.message.parent_block_root;
-        
+
+        // Add to bid pool for later selection during block production.
+        self.execution_bid_pool
+            .lock()
+            .insert(bid.clone());
+
         self.canonical_head
             .fork_choice_write_lock()
             .on_execution_bid(bid, beacon_block_root)
             .map_err(Into::into)
+    }
+
+    /// Returns the best (highest value) external bid for the given slot, if any.
+    ///
+    /// Used during block production to select a builder bid instead of self-building.
+    pub fn get_best_execution_bid(
+        &self,
+        slot: Slot,
+    ) -> Option<SignedExecutionPayloadBid<T::EthSpec>> {
+        let mut pool = self.execution_bid_pool.lock();
+        pool.prune(slot);
+        pool.get_best_bid(slot).cloned()
     }
 
     /// Applies a verified payload envelope to fork choice (gloas ePBS).
@@ -6165,9 +6187,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .map_err(|e| BlockProductionError::BeaconChain(Box::new(e)))?,
         };
 
+        // Gloas ePBS: check for external builder bids before starting EL payload fetch.
+        // If a valid external bid is available, we skip the EL fetch entirely since the
+        // builder will provide the execution payload via a separate envelope.
+        let selected_external_bid = if state.fork_name_unchecked() == ForkName::Gloas {
+            self.get_best_execution_bid(produce_at_slot)
+        } else {
+            None
+        };
+
         // If required, start the process of loading an execution payload from the EL early. This
         // allows it to run concurrently with things like attestation packing.
-        let prepare_payload_handle = if state.fork_name_unchecked().bellatrix_enabled() {
+        // For Gloas with external bids, skip the EL fetch — the builder handles the payload.
+        let prepare_payload_handle = if state.fork_name_unchecked().bellatrix_enabled()
+            && selected_external_bid.is_none()
+        {
             let prepare_payload_handle = get_execution_payload(
                 self.clone(),
                 &state,
@@ -6352,6 +6386,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             sync_aggregate,
             prepare_payload_handle,
             bls_to_execution_changes,
+            selected_external_bid,
         })
     }
 
@@ -6380,6 +6415,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // produce said `execution_payload`.
             prepare_payload_handle: _,
             bls_to_execution_changes,
+            selected_external_bid,
         } = partial_beacon_block;
 
         let (attester_slashings_base, attester_slashings_electra) =
@@ -6641,46 +6677,57 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 )
             }
             BeaconState::Gloas(_) => {
-                // Gloas ePBS self-build: proposer builds own execution payload.
-                // No builder marketplace in devnet-0, so we always self-build.
-                let (
-                    payload,
-                    kzg_commitments,
-                    maybe_blobs_and_proofs,
-                    _maybe_requests,
-                    execution_payload_value,
-                ) = block_contents
-                    .ok_or(BlockProductionError::MissingExecutionPayload)?
-                    .deconstruct();
-
-                // Build execution payload bid from the EL payload response.
-                // For self-build: builder_index = BUILDER_INDEX_SELF_BUILD, value = 0,
-                // signature = empty (infinity point).
-                let execution_payload_bid = ExecutionPayloadBid {
-                    parent_block_hash: payload.parent_hash(),
-                    parent_block_root: parent_root,
-                    block_hash: payload.block_hash(),
-                    prev_randao: payload.prev_randao(),
-                    fee_recipient: payload.fee_recipient(),
-                    gas_limit: payload.gas_limit(),
-                    builder_index: types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
-                    slot,
-                    value: 0,
-                    execution_payment: 0,
-                    blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
-                };
-
-                let signed_bid = SignedExecutionPayloadBid {
-                    message: execution_payload_bid,
-                    signature: Signature::infinity()
-                        .expect("infinity signature is valid"),
-                };
-
                 // Include payload attestations from the pool for the previous slot's payload.
                 // Filter by parent_root to exclude stale attestations from peers that had a
                 // different head (wrong beacon_block_root) at the time of attestation production.
                 let payload_attestations: VariableList<_, _> =
                     self.get_payload_attestations_for_block(slot, parent_root).into();
+
+                let (signed_bid, maybe_blobs_and_proofs, execution_payload_value) =
+                    if let Some(external_bid) = selected_external_bid {
+                        // External builder bid selected — the builder will reveal the
+                        // payload via a separate envelope after our block is published.
+                        let bid_value = Uint256::from(external_bid.message.value);
+                        debug!(
+                            builder_index = external_bid.message.builder_index,
+                            %bid_value,
+                            "Using external builder bid for block production"
+                        );
+                        (external_bid, None, bid_value)
+                    } else {
+                        // Self-build fallback: proposer builds own execution payload.
+                        let (
+                            payload,
+                            kzg_commitments,
+                            maybe_blobs_and_proofs,
+                            _maybe_requests,
+                            execution_payload_value,
+                        ) = block_contents
+                            .ok_or(BlockProductionError::MissingExecutionPayload)?
+                            .deconstruct();
+
+                        let execution_payload_bid = ExecutionPayloadBid {
+                            parent_block_hash: payload.parent_hash(),
+                            parent_block_root: parent_root,
+                            block_hash: payload.block_hash(),
+                            prev_randao: payload.prev_randao(),
+                            fee_recipient: payload.fee_recipient(),
+                            gas_limit: payload.gas_limit(),
+                            builder_index: types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
+                            slot,
+                            value: 0,
+                            execution_payment: 0,
+                            blob_kzg_commitments: kzg_commitments.unwrap_or_default(),
+                        };
+
+                        let signed_bid = SignedExecutionPayloadBid {
+                            message: execution_payload_bid,
+                            signature: Signature::infinity()
+                                .expect("infinity signature is valid"),
+                        };
+
+                        (signed_bid, maybe_blobs_and_proofs, execution_payload_value)
+                    };
 
                 (
                     BeaconBlock::Gloas(BeaconBlockGloas {

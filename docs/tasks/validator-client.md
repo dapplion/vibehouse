@@ -15,14 +15,31 @@ Update the validator client for ePBS: block proposal flow with bid selection, pa
 - ✅ PayloadAttestationService: polls PTC duties, signs at 3/4 slot, publishes
 - ✅ Service wired into VC startup
 - ✅ Fork guards: PTC service disabled pre-Gloas, BN PTC duties endpoint rejects pre-Gloas
+- ✅ ExecutionBidPool + bid selection in block production (BN side)
 
 ### Tasks
-- [ ] Update block proposal flow for ePBS (proposer creates block with bid selection)
-- [ ] Implement bid selection logic (choose best bid from builders)
 - [ ] Update duty discovery for new gloas duties
-- [ ] Handle the case where no bids are received
+- [ ] VC-side awareness of external builder blocks (currently VC always expects self-build envelope)
 
 ## Progress log
+
+### 2026-02-18 — bid selection in block production (BN side)
+- **What**: Added `ExecutionBidPool` and bid selection logic to block production. When external builder bids are available for the proposal slot, the BN selects the highest-value bid and includes it in the block instead of self-building. Falls back to self-build when no external bids exist.
+- **New data structure**: `ExecutionBidPool` — stores full verified `SignedExecutionPayloadBid` objects per (slot, builder_index). Auto-prunes old slots. One bid per builder per slot (first valid bid wins, equivocation handled at gossip layer).
+- **Bid insertion points**: Bids are added to the pool in `apply_execution_bid_to_fork_choice()`, which is called from both the gossip handler and the HTTP `POST /eth/v1/builder/bids` endpoint.
+- **Bid selection flow**:
+  1. `produce_partial_beacon_block()` calls `get_best_execution_bid(slot)` before starting EL payload fetch
+  2. If an external bid exists: skip `get_execution_payload()` entirely (no EL call needed — builder provides payload via envelope)
+  3. Store `selected_external_bid` in `PartialBeaconBlock`
+  4. `complete_partial_beacon_block()` Gloas branch: if external bid present, use it directly; else fall back to self-build (unchanged behavior)
+- **External bid path**: No self-build envelope is constructed. The builder reveals the execution payload after the block is published, via a separate `SignedExecutionPayloadEnvelope` gossip/API submission.
+- **Self-build fallback**: Identical to previous behavior — calls EL `engine_getPayload`, builds `ExecutionPayloadBid` with `builder_index = BUILDER_INDEX_SELF_BUILD`, constructs self-build envelope for VC signing.
+- **Files changed**: 4 files (3 modified + 1 new)
+  - `beacon_node/beacon_chain/src/execution_bid_pool.rs` (new): `ExecutionBidPool` struct with `insert()`, `get_best_bid()`, `prune()`, 4 unit tests
+  - `beacon_node/beacon_chain/src/lib.rs`: registered `execution_bid_pool` module
+  - `beacon_node/beacon_chain/src/beacon_chain.rs`: added `execution_bid_pool` field to `BeaconChain`, `get_best_execution_bid()` method, `selected_external_bid` field on `PartialBeaconBlock`, bid selection in `produce_partial_beacon_block()`, external bid path in `complete_partial_beacon_block()` Gloas branch
+  - `beacon_node/beacon_chain/src/builder.rs`: initialized `execution_bid_pool` in `BeaconChainBuilder`
+- 136/136 EF tests (fake_crypto), 1302/1302 workspace tests pass, clippy clean
 
 ### 2026-02-17 — fork guards for payload attestation service and PTC endpoint
 - **Problem**: PayloadAttestationService started unconditionally at VC startup, polling for PTC duties every slot even before Gloas fork. BN's PTC duties endpoint (`POST /eth/v1/validator/duties/ptc/{epoch}`) had no check for Gloas being scheduled.

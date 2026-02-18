@@ -42,6 +42,7 @@ pub mod observed_aggregates;
 mod observed_attesters;
 pub mod observed_block_producers;
 pub mod observed_data_sidecars;
+pub mod execution_bid_pool;
 mod observed_execution_bids;
 pub mod observed_operations;
 mod observed_payload_attestations;
