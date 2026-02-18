@@ -1156,6 +1156,7 @@ async fn weak_subjectivity_check_fails_incorrect_root() {
 }
 
 #[tokio::test]
+#[allow(clippy::large_stack_frames)]
 async fn weak_subjectivity_check_epoch_boundary_is_skip_slot() {
     let setup_harness = ForkChoiceTest::new()
         // first two epochs

@@ -30,6 +30,20 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-18 (run 10)
+- Fetched upstream: no new commits since run 9
+- No new consensus-specs changes requiring implementation
+- **Fixed 14 more Gloas store_tests failures** (39→53 passing, 34→20 failing):
+  1. `block_replayer.rs`: genesis anchor block was applying empty bid block_hash (0x0000) to state's latest_block_hash, corrupting state for all subsequent blocks. Fix: skip zero block_hash in anchor handling.
+  2. `test_utils.rs`: `add_attested_blocks_at_slots_given_lbh` and `_with_lc_data` returned post-envelope state hash as state key. DB stores states under pre-envelope state_root (block.state_root()). Fix: use block state_root for Gloas.
+  3. `test_utils.rs`: `add_block_at_slot` and `make_block_with_envelope` called with post-envelope state but no state_root, causing `complete_state_advance` to compute wrong state root. Fix: derive state_root from `latest_block_header.state_root` for Gloas.
+- Remaining 20 failures categorized:
+  - **Data columns** (7): fulu_prune_data_columns_* (5), test_custody_column_filtering_* (2) — zero data columns stored in Gloas blocks
+  - **Weak subjectivity sync** (6): all weak_subjectivity_sync_* — state root / block replay issues during checkpoint sync
+  - **State reconstruction** (3): epoch_boundary_state_attestation_processing, forwards_iter_block_and_state_roots_until, finalizes_after_resuming_from_db — post-envelope state hash doesn't match any stored key
+  - **Schema downgrade** (2): schema_downgrade_to_min_version_* — ParentBlockRootMismatch during block replay
+  - **Light client** (2): light_client_bootstrap_test, light_client_updates_test
+
 ### 2026-02-18 (run 9)
 - Fetched upstream: no new commits since run 8
 - No new consensus-specs changes requiring implementation (checked latest merged PRs — all packaging/infrastructure)

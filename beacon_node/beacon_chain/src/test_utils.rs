@@ -796,6 +796,18 @@ where
         .collect()
     }
 
+    /// For Gloas (ePBS), derive the block's pre-envelope state_root from a
+    /// post-envelope state. Returns `None` for non-Gloas or genesis states.
+    fn gloas_state_root(state: &BeaconState<E>) -> Option<Hash256> {
+        if state.fork_name_unchecked().gloas_enabled() {
+            let sr = state.latest_block_header().state_root;
+            if sr != Hash256::zero() {
+                return Some(sr);
+            }
+        }
+        None
+    }
+
     pub fn get_current_state(&self) -> BeaconState<E> {
         // For Gloas (ePBS), the cached head snapshot state is pre-envelope and has a
         // stale latest_block_hash. Re-load from the state cache to get the post-envelope
@@ -1000,19 +1012,8 @@ where
         BeaconState<E>,
         Option<SignedExecutionPayloadEnvelope<E>>,
     ) {
-        // Gloas ePBS: derive the block's state_root from the post-envelope state
-        // so state advancement fills state_roots correctly.
-        let state_root_opt = if state.fork_name_unchecked().gloas_enabled() {
-            let sr = state.latest_block_header().state_root;
-            if sr != Hash256::zero() {
-                Some(sr)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        self.make_block_with_envelope_and_state_root(state, state_root_opt, slot)
+        let sr = Self::gloas_state_root(&state);
+        self.make_block_with_envelope_and_state_root(state, sr, slot)
             .await
     }
 
@@ -2626,21 +2627,8 @@ where
         ),
         BlockError,
     > {
-        // Gloas ePBS: if the state is post-envelope, its tree hash differs from
-        // the block's state_root. Use latest_block_header.state_root (set during
-        // envelope processing) so state advancement fills state_roots correctly.
-        let state_root_opt = if state.fork_name_unchecked().gloas_enabled() {
-            let sr = state.latest_block_header().state_root;
-            if sr != Hash256::zero() {
-                Some(sr)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-        self.add_block_at_slot_internal(slot, state, state_root_opt)
-            .await
+        let sr = Self::gloas_state_root(&state);
+        self.add_block_at_slot_internal(slot, state, sr).await
     }
 
     /// Internal implementation that accepts an optional state_root for state advancement.
@@ -2869,17 +2857,7 @@ where
         assert!(slots.is_sorted(), "Slots have to be in ascending order");
         let mut block_hash_from_slot: HashMap<Slot, SignedBeaconBlockHash> = HashMap::new();
         let mut state_hash_from_slot: HashMap<Slot, BeaconStateHash> = HashMap::new();
-        let mut block_state_root_opt: Option<Hash256> =
-            if state.fork_name_unchecked().gloas_enabled() {
-                let sr = state.latest_block_header().state_root;
-                if sr != Hash256::zero() {
-                    Some(sr)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
+        let mut block_state_root_opt: Option<Hash256> = Self::gloas_state_root(&state);
         for slot in slots {
             let (block_hash, block, new_state) = self
                 .add_block_at_slot_internal(*slot, state, block_state_root_opt)
@@ -2948,22 +2926,8 @@ where
         let mut block_hash_from_slot: HashMap<Slot, SignedBeaconBlockHash> = HashMap::new();
         let mut state_hash_from_slot: HashMap<Slot, BeaconStateHash> = HashMap::new();
         // For Gloas (ePBS), track the parent block's state_root so we can pass it
-        // to complete_state_advance on subsequent iterations. The returned state is
-        // post-envelope (with updated latest_block_hash) but its tree hash doesn't
-        // match the block's state_root, so we must pass it explicitly.
-        // Use the state's latest_block_header.state_root which, after envelope
-        // processing, contains the block's pre-envelope state_root.
-        let mut block_state_root_opt: Option<Hash256> =
-            if state.fork_name_unchecked().gloas_enabled() {
-                let sr = state.latest_block_header().state_root;
-                if sr != Hash256::zero() {
-                    Some(sr)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
+        // to complete_state_advance on subsequent iterations.
+        let mut block_state_root_opt: Option<Hash256> = Self::gloas_state_root(&state);
         for slot in slots {
             // Using a `Box::pin` to reduce the stack size. Clippy was raising a lint.
             let (block_hash, block, new_state) =
