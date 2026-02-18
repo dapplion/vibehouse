@@ -171,6 +171,20 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
 - Commit: `7aac641f5`
 
+### 2026-02-18 — fix http_api test failures due to ForkName::latest() now being Gloas
+
+Three test files used `ForkName::latest()` to create Gloas chains, but the test harness doesn't support Gloas envelope processing. This caused:
+- 6 `proposer_boost_re_org_*` tests: `MissingExecutionBlockHash` (from fork choice head_hash being None)
+- `state_by_root_pruned_from_fork_choice`: same root cause
+- `el_offline`, `el_error_on_new_payload`: same root cause
+
+**Fixes**:
+1. `execution_payload.rs`: Simplified Gloas parent hash to use `state.latest_block_hash()` directly instead of `canonical_head.forkchoice_update_parameters().head_hash`. Now that `process_self_build_envelope` persists the post-envelope state, `state.latest_block_hash()` is always correct. This also removes the `MissingExecutionBlockHash` error path for Gloas states.
+2. `interactive_tests.rs` (lines 63, 403): Changed `ForkName::latest()` to `ForkName::Fulu` with explanatory comments.
+3. `status_tests.rs` (line 16): Same change.
+
+181/181 http_api tests pass. 136/136 fake_crypto EF tests pass.
+
 ### 2026-02-18 — KURTOSIS DEVNET PASSING: three bugs fixed, devnet reaches finalized_epoch=3
 
 **Devnet result**: Chain progressed through Gloas fork at epoch 1 and finalized at epoch 3 (252s). SUCCESS.

@@ -12,8 +12,9 @@ type E = MinimalEthSpec;
 
 /// Create a new test environment that is post-merge with `chain_depth` blocks.
 async fn post_merge_tester(chain_depth: u64, validator_count: u64) -> InteractiveTester<E> {
-    // Test using latest fork so that we simulate conditions as similar to mainnet as possible.
-    let mut spec = ForkName::latest().make_genesis_spec(E::default_spec());
+    // Test using Fulu (the last pre-Gloas fork). The test harness doesn't support Gloas
+    // envelope processing, so we can't use ForkName::latest() now that Gloas is the latest fork.
+    let mut spec = ForkName::Fulu.make_genesis_spec(E::default_spec());
     spec.terminal_total_difficulty = Uint256::from(1);
 
     let tester = InteractiveTester::<E>::new(Some(spec), validator_count as usize).await;
