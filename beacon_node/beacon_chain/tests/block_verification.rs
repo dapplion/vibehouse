@@ -242,19 +242,23 @@ fn update_data_column_signed_header<E: EthSpec>(
 ) {
     for old_custody_column_sidecar in data_columns.as_mut_slice() {
         let old_column_sidecar = old_custody_column_sidecar.as_data_column();
-        let new_column_sidecar = Arc::new(DataColumnSidecar::<E> {
-            index: old_column_sidecar.index,
-            column: old_column_sidecar.column.clone(),
-            kzg_commitments: old_column_sidecar.kzg_commitments.clone(),
-            kzg_proofs: old_column_sidecar.kzg_proofs.clone(),
-            signed_block_header: signed_block.signed_block_header(),
-            kzg_commitments_inclusion_proof: signed_block
-                .message()
-                .body()
-                .kzg_commitments_merkle_proof()
-                .unwrap(),
-        });
-        *old_custody_column_sidecar = CustodyDataColumn::from_asserted_custody(new_column_sidecar);
+        let mut new_sidecar = old_column_sidecar.as_ref().clone();
+        match &mut new_sidecar {
+            DataColumnSidecar::Fulu(inner) => {
+                inner.signed_block_header = signed_block.signed_block_header();
+                inner.kzg_commitments_inclusion_proof = signed_block
+                    .message()
+                    .body()
+                    .kzg_commitments_merkle_proof()
+                    .unwrap();
+            }
+            DataColumnSidecar::Gloas(inner) => {
+                inner.slot = signed_block.slot();
+                inner.beacon_block_root = signed_block.canonical_root();
+            }
+        }
+        *old_custody_column_sidecar =
+            CustodyDataColumn::from_asserted_custody(Arc::new(new_sidecar));
     }
 }
 

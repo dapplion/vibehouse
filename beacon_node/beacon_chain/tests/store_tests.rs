@@ -3303,8 +3303,12 @@ async fn test_import_historical_data_columns_batch_mismatched_block_root() {
 
         for data_column in data_columns.unwrap() {
             let mut data_column = (*data_column).clone();
-            if data_column.index % 2 == 0 {
-                data_column.signed_block_header.message.body_root = Hash256::ZERO;
+            if data_column.index() % 2 == 0 {
+                data_column
+                    .signed_block_header_mut()
+                    .expect("fulu sidecar")
+                    .message
+                    .body_root = Hash256::ZERO;
             }
 
             data_columns_list.push(Arc::new(data_column));

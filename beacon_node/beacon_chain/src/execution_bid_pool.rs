@@ -83,7 +83,10 @@ impl<E: EthSpec> ExecutionBidPool<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::{ExecutionBlockHash, ExecutionPayloadBid, Hash256, MainnetEthSpec, Signature};
+    use types::{
+        ExecutionBlockHash, ExecutionPayloadBid, FixedBytesExtended, Hash256, MainnetEthSpec,
+        Signature,
+    };
 
     type E = MainnetEthSpec;
 

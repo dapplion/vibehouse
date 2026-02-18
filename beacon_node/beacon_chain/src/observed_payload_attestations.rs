@@ -141,7 +141,7 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::MainnetEthSpec;
+    use types::{FixedBytesExtended, MainnetEthSpec};
 
     type E = MainnetEthSpec;
 

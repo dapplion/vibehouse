@@ -7,7 +7,9 @@ use rand::rngs::StdRng;
 use std::sync::Arc;
 use types::blob_sidecar::FixedBlobSidecarList;
 use types::test_utils::TestRandom;
-use types::{BlobSidecar, DataColumnSidecar, EthSpec, ForkName, MinimalEthSpec, Slot};
+use types::{
+    BlobSidecar, DataColumnSidecar, DataColumnSidecarFulu, EthSpec, ForkName, MinimalEthSpec, Slot,
+};
 
 type E = MinimalEthSpec;
 
@@ -64,12 +66,13 @@ async fn data_column_sidecar_event_on_process_gossip_data_column() {
     let mut rng = StdRng::seed_from_u64(0xDEADBEEF0BAD5EEDu64);
     let sidecar = {
         // DA checker only accepts sampling columns, so we need to create one with a sampling index.
-        let mut random_sidecar = DataColumnSidecar::random_for_test(&mut rng);
+        let mut random_sidecar =
+            DataColumnSidecarFulu::random_for_test(&mut rng);
         let slot = Slot::new(10);
         let epoch = slot.epoch(E::slots_per_epoch());
         random_sidecar.signed_block_header.message.slot = slot;
         random_sidecar.index = harness.chain.sampling_columns_for_epoch(epoch)[0];
-        random_sidecar
+        DataColumnSidecar::Fulu(random_sidecar)
     };
     let gossip_verified_data_column =
         GossipVerifiedDataColumn::__new_for_testing(Arc::new(sidecar));

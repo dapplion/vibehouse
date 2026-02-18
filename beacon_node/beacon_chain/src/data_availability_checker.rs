@@ -949,7 +949,7 @@ mod test {
                 cgc_change_slot,
                 data_columns
                     .into_iter()
-                    .filter(|d| requested_columns.contains(&d.index))
+                    .filter(|d| requested_columns.contains(&d.index()))
                     .collect(),
             )
             .expect("should put rpc custody columns");
@@ -1024,7 +1024,7 @@ mod test {
         let requested_columns = &custody_columns[..10];
         let gossip_columns = data_columns
             .into_iter()
-            .filter(|d| requested_columns.contains(&d.index))
+            .filter(|d| requested_columns.contains(&d.index()))
             .map(GossipVerifiedDataColumn::<T>::__new_for_testing)
             .collect::<Vec<_>>();
         da_checker
@@ -1082,10 +1082,8 @@ mod test {
                     data_columns
                         .into_iter()
                         .map(|d| {
-                            let invalid_sidecar = DataColumnSidecar {
-                                column: DataColumn::<E>::empty(),
-                                ..d.as_ref().clone()
-                            };
+                            let mut invalid_sidecar = d.as_ref().clone();
+                            *invalid_sidecar.column_mut() = DataColumn::<E>::empty();
                             CustodyDataColumn::from_asserted_custody(Arc::new(invalid_sidecar))
                         })
                         .collect::<Vec<_>>()
@@ -1143,7 +1141,7 @@ mod test {
         let custody_columns = custody_context.custody_columns_for_epoch(None, &spec);
         let custody_columns = custody_columns
             .iter()
-            .filter_map(|&col_idx| data_columns.iter().find(|d| d.index == col_idx).cloned())
+            .filter_map(|&col_idx| data_columns.iter().find(|d| d.index() == col_idx).cloned())
             .take(64)
             .map(|d| {
                 KzgVerifiedCustodyDataColumn::from_asserted_custody(
