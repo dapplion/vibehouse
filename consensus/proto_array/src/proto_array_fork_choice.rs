@@ -1235,23 +1235,19 @@ impl ProtoArrayForkChoice {
         let pa = &self.proto_array;
 
         // Get the boosted block
-        let boost_idx = match pa.indices.get(&proposer_boost_root) {
-            Some(&idx) => idx,
-            None => return false,
+        let Some(&boost_idx) = pa.indices.get(&proposer_boost_root) else {
+            return false;
         };
-        let boost_block = match pa.nodes.get(boost_idx) {
-            Some(n) => n,
-            None => return false,
+        let Some(boost_block) = pa.nodes.get(boost_idx) else {
+            return false;
         };
 
         // Get its parent
-        let parent_idx = match boost_block.parent {
-            Some(idx) => idx,
-            None => return true, // No parent = always boost
+        let Some(parent_idx) = boost_block.parent else {
+            return true; // No parent = always boost
         };
-        let parent_block = match pa.nodes.get(parent_idx) {
-            Some(n) => n,
-            None => return true,
+        let Some(parent_block) = pa.nodes.get(parent_idx) else {
+            return true;
         };
 
         // If parent slot + 1 < block slot (skipped slots), always boost

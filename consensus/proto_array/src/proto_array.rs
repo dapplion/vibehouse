@@ -928,13 +928,12 @@ impl ProtoArray {
 
         // Gloas ePBS: For external builder blocks, payload must be revealed to be viable for head.
         // Self-build blocks (builder_index = None or BUILDER_INDEX_SELF_BUILD) are always viable.
-        if let Some(builder_index) = node.builder_index {
-            if builder_index != types::consts::gloas::BUILDER_INDEX_SELF_BUILD
-                && !node.payload_revealed
-            {
-                // External builder block without revealed payload - not viable for head
-                return false;
-            }
+        if let Some(builder_index) = node.builder_index
+            && builder_index != types::consts::gloas::BUILDER_INDEX_SELF_BUILD
+            && !node.payload_revealed
+        {
+            // External builder block without revealed payload - not viable for head
+            return false;
         }
 
         let genesis_epoch = Epoch::new(0);
