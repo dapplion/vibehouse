@@ -271,10 +271,10 @@ scripts/kurtosis-run.sh --no-teardown
 
 - Minimal preset: 8 slots/epoch, 6s/slot
 - Gloas (ePBS) fork at epoch 1 (slot 8)
-- Single node: vibehouse CL + geth EL + spamoor (tx load)
+- 4 nodes: vibehouse CL + geth EL, spamoor (tx load), dora (explorer)
 - Script polls beacon API directly for health (no assertoor — it doesn't understand gloas yet)
-- Success = finalized epoch >= 3 (two full epochs past gloas fork)
-- 5-minute timeout with stall detection (chain stuck for 36s = fail)
+- Success = finalized epoch >= 8 (sustained chain health across 4 nodes)
+- 12-minute timeout with stall detection (chain stuck for 36s = fail)
 - All logs go to `/tmp/kurtosis-runs/<RUN_ID>/` with separate files
 
 ### Bot Workflow

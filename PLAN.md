@@ -10,13 +10,15 @@ vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/rele
 
 ## priorities
 
-### 1. Kurtosis solo devnet — vibehouse only ✅ DONE (2026-02-18)
+### 1. Kurtosis 4-node devnet — IN PROGRESS
 
-Chain reaches finalized_epoch=3 in ~252s (two epochs past Gloas fork at epoch 1).
+**Target**: 4 vibehouse CL + geth EL nodes, transactions via spamoor, finalized_epoch >= 8.
 
-- Config: minimal preset, gloas fork at epoch 1, single node (vibehouse CL + geth EL + spamoor + dora)
+Previous milestone: solo devnet (1 node) reached finalized_epoch=3 in ~252s (2026-02-18).
+
+- Config: minimal preset, gloas fork at epoch 1, 4 participants (all vibehouse), spamoor + dora
 - Script polls beacon API directly; package pinned to `ethereum-package@6.0.0`
-- See `docs/tasks/beacon-chain-integration.md` for the bugs fixed
+- See `docs/tasks/kurtosis-devnet.md` for progress
 
 **Commands:**
 ```bash

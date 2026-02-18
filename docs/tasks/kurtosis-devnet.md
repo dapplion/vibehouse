@@ -3,7 +3,7 @@
 ## Objective
 Participate in epbs-devnet-0 (launch target: Feb 18, 2026). Run vibehouse + geth in kurtosis, verify gloas fork works.
 
-## Status: IN PROGRESS — chain stalls at gloas fork boundary
+## Status: IN PROGRESS — scaling to 4-node devnet
 
 ### Specs
 - Consensus specs: `v1.7.0-alpha.2` (we're already on this ✅)
@@ -37,10 +37,11 @@ Participate in epbs-devnet-0 (launch target: Feb 18, 2026). Run vibehouse + geth
 - [ ] Block production 400s — VC gets repeated 400s from `/eth/v3/validator/blocks/{slot}` with "Duplicate payload cached"
 - [ ] payload_attestation_data 500s — `/eth/v1/validator/payload_attestation_data` returns 500
 
-#### Step 5: Multi-node
-- [ ] Run alongside other CL clients
-- [ ] Verify cross-client interop
-- [ ] Test with 2+ vibehouse nodes
+#### Step 5: 4-node devnet (TOP PRIORITY)
+- [ ] Run 4 vibehouse CL + geth EL nodes in kurtosis
+- [ ] Transactions via spamoor finalize through epoch 8
+- [ ] All 4 nodes stay synced and producing blocks
+- [ ] Chain doesn't stall across multi-node gossip
 
 ### Blockers
 1. Block production — needs self-build (DONE ✅)

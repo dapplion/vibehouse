@@ -22,14 +22,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENCLAVE_NAME="vibehouse-devnet"
 KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-epbs.yaml"
 POLL_INTERVAL=12  # one slot = 6s, poll every 2 slots
-TIMEOUT=300       # 5 minutes
+TIMEOUT=720       # 12 minutes (epoch 8 ≈ 480s + margin)
 
 # Devnet params (minimal preset)
 SLOTS_PER_EPOCH=8
 GLOAS_FORK_EPOCH=1
 GLOAS_FORK_SLOT=$((GLOAS_FORK_EPOCH * SLOTS_PER_EPOCH))
-# Need 2 finalized epochs post-fork to call it a success
-TARGET_FINALIZED_EPOCH=$((GLOAS_FORK_EPOCH + 2))
+# Need finalized epoch 8 — sustained chain health across 4 nodes
+TARGET_FINALIZED_EPOCH=8
 
 DO_BUILD=true
 DO_TEARDOWN=true
