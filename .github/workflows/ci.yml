@@ -37,8 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: moonrepo/setup-rust@v1
         with:
           channel: stable
@@ -46,6 +44,8 @@ jobs:
           bins: cargo-nextest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download EF spec test vectors
+        run: make -C testing/ef_tests
       - name: Run EF spec tests (fake_crypto)
         run: cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto,minimal_testing"
       - name: Run EF spec tests (real crypto)
@@ -56,8 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: moonrepo/setup-rust@v1
         with:
           channel: stable
@@ -80,8 +78,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
       - uses: moonrepo/setup-rust@v1
         with:
           channel: stable
