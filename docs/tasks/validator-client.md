@@ -3,7 +3,7 @@
 ## Objective
 Update the validator client for ePBS: block proposal flow with bid selection, payload attestation duty, duty discovery.
 
-## Status: IN PROGRESS
+## Status: DONE
 
 ### Done
 - ✅ Self-build envelope signing via VC (DOMAIN_BEACON_BUILDER, SignableMessage::ExecutionPayloadEnvelope)
@@ -17,11 +17,21 @@ Update the validator client for ePBS: block proposal flow with bid selection, pa
 - ✅ Fork guards: PTC service disabled pre-Gloas, BN PTC duties endpoint rejects pre-Gloas
 - ✅ ExecutionBidPool + bid selection in block production (BN side)
 - ✅ PTC duty discovery integrated into DutiesService (proactive polling, notifier visibility)
-
-### Tasks
-- [ ] VC-side awareness of external builder blocks (currently VC always expects self-build envelope)
+- ✅ VC-side awareness of external builder blocks (logging, BlockMetadata detection)
 
 ## Progress log
+
+### 2026-02-18 — VC-side awareness of external builder blocks
+- **What**: The VC block service now distinguishes between self-build blocks (with execution payload envelope for VC signing) and external builder blocks (no envelope — builder reveals payload via separate gossip/API).
+- **Analysis**: The VC already handled both paths correctly — envelope signing in `sign_block()` is gated by `if let Some(envelope)`, so external builder blocks (where envelope is `None`) were processed without error. The gap was operator visibility: no logging or metadata indicated which path was taken.
+- **Changes to `block_service.rs`**:
+  - `BlockMetadata`: new `external_builder: bool` field, detected by `fork == ForkName::Gloas && signed_envelope().is_none()`
+  - `get_validator_block()`: logs whether the received unsigned block is "self-build with envelope" or "external builder bid, no self-build envelope"
+  - `sign_and_publish_block()`: logs "(external builder bid)" suffix when publishing external builder blocks
+- **How the paths work end-to-end**:
+  - Self-build: BN calls EL `engine_getPayload`, constructs `ExecutionPayloadEnvelope` with empty signature → VC signs block + envelope → publishes both → BN processes envelope locally + gossips it
+  - External builder: BN selects highest bid from `ExecutionBidPool`, skips EL call, returns block with bid in body but no envelope → VC signs block only (no envelope to sign) → publishes block → builder separately reveals payload via `SignedExecutionPayloadEnvelope` on gossip
+- **Tests**: 136/136 EF tests (fake_crypto), 59/59 VC tests pass, clippy clean
 
 ### 2026-02-18 — PTC duty discovery integrated into DutiesService
 - **What**: Moved PTC duty polling from PayloadAttestationService's ad-hoc private cache into the centralized DutiesService, following the sync committee duty pattern.
