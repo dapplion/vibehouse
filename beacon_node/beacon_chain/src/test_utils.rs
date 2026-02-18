@@ -2866,7 +2866,7 @@ where
                 None
             };
 
-            self.attest_block(&new_state, state_root, block_hash, &block.0, &validators);
+            self.attest_block(&new_state, state_root, block_hash, &block.0, validators);
 
             if sync_committee_strategy == SyncCommitteeStrategy::AllValidators
                 && new_state.current_sync_committee().is_ok()
@@ -3530,9 +3530,8 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
 ) -> DataColumnSidecarList<E> {
     // Gloas blocks don't have blob_kzg_commitments in the block body (they're in the bid).
     // For test self-build blocks, there are no blobs, so return empty.
-    let kzg_commitments = match block.message().body().blob_kzg_commitments() {
-        Ok(c) => c,
-        Err(_) => return vec![],
+    let Ok(kzg_commitments) = block.message().body().blob_kzg_commitments() else {
+        return vec![];
     };
     if kzg_commitments.is_empty() {
         return vec![];

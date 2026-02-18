@@ -190,8 +190,8 @@ mod tests {
                 existing_payload_present,
                 new_payload_present,
             } => {
-                assert_eq!(existing_payload_present, true);
-                assert_eq!(new_payload_present, false);
+                assert!(existing_payload_present);
+                assert!(!new_payload_present);
             }
             _ => panic!("Expected equivocation, got {:?}", outcome),
         }

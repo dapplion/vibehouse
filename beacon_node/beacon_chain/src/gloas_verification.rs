@@ -630,17 +630,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Store the envelope in `pending_gossip_envelopes` so it can be processed after
         // the block is imported, rather than permanently dropping it.
         let fork_choice = self.canonical_head.fork_choice_read_lock();
-        let proto_block = match fork_choice.get_block(&beacon_block_root) {
-            Some(block) => block,
-            None => {
-                // Buffer the envelope for later processing after the block arrives.
-                self.pending_gossip_envelopes
-                    .lock()
-                    .insert(beacon_block_root, signed_envelope);
-                return Err(PayloadEnvelopeError::BlockRootUnknown {
-                    block_root: beacon_block_root,
-                });
-            }
+        let Some(proto_block) = fork_choice.get_block(&beacon_block_root) else {
+            // Buffer the envelope for later processing after the block arrives.
+            self.pending_gossip_envelopes
+                .lock()
+                .insert(beacon_block_root, signed_envelope);
+            return Err(PayloadEnvelopeError::BlockRootUnknown {
+                block_root: beacon_block_root,
+            });
         };
         drop(fork_choice);
 

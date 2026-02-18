@@ -974,12 +974,13 @@ impl<T: BeaconChainTypes> GossipVerifiedBlock<T> {
         //
         // Only applies when the parent is also a Gloas block (has a bid_block_hash).
         // Pre-Gloas parents include the payload in the block body, so it is always "seen".
-        if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
-            if parent_block.bid_block_hash.is_some() && !parent_block.payload_revealed {
-                return Err(BlockError::GloasParentPayloadUnknown {
-                    parent_block_hash: bid.message.parent_block_hash,
-                });
-            }
+        if let Ok(bid) = block.message().body().signed_execution_payload_bid()
+            && parent_block.bid_block_hash.is_some()
+            && !parent_block.payload_revealed
+        {
+            return Err(BlockError::GloasParentPayloadUnknown {
+                parent_block_hash: bid.message.parent_block_hash,
+            });
         }
 
         drop(fork_choice_read_lock);
