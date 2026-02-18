@@ -30,6 +30,17 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-18 (run 9)
+- Fetched upstream: no new commits since run 8
+- No new consensus-specs changes requiring implementation (checked latest merged PRs — all packaging/infrastructure)
+- Tracked open consensus-specs PRs: #4918, #4939, #4898, #4892, #4932 — all still open/unmerged
+- CI from run 8: check+clippy+fmt ✓, ef-tests ✓, unit-tests ✓, fork-specific-tests ✗ (pre-existing store_tests Gloas failures)
+- **Fixed 2 pre-existing Gloas test failures**:
+  - `store_tests::randomised_skips` (and 1 other) — root cause: `ForkCanonicalChainAt` in `extend_chain_with_sync` used `state_at_slot()` which returns the head snapshot state (pre-envelope, stale `latest_block_hash`). Fix: when at the Gloas head slot, use `get_current_state_and_root()` which loads the post-envelope state from the state cache. Net improvement: 37→39 passing, 36→34 failing store_tests at Gloas.
+  - `schema_stability::schema_stability` — missing "bev" (BeaconEnvelope) DB column in expected columns list. Added it.
+- Remaining 34 store_tests Gloas failures are deeper infrastructure issues: block replayer envelope handling, state reconstruction, weak subjectivity sync, schema downgrade, data column pruning. These require systematic fixes across multiple subsystems.
+- `finalizes_after_resuming_from_db` failure confirmed pre-existing (fails without changes too) — head state mismatch between snapshot and DB due to Gloas two-phase state transition.
+
 ### 2026-02-18 (run 8)
 - Fetched upstream: no new commits since run 7
 - No new consensus-specs changes requiring implementation (top commits are packaging/infrastructure: eth-remerkleable, package rename, publish scripts)
