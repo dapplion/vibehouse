@@ -30,6 +30,27 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-18 (run 7)
+- Fetched upstream: no new commits since run 6
+- No new consensus-specs changes requiring implementation (checked latest merged PRs — all packaging/infrastructure)
+- Tracked open consensus-specs PRs: #4918 (attestations for known payload statuses), #4939 (request missing payload envelopes for index-1 attestation) — both still open/unmerged
+- Implemented remaining PR #4807 change: equivocating validator weight in `is_head_weak`
+  - Threaded `equivocating_indices: &BTreeSet<u64>` from `find_head` → `find_head_gloas` → `should_apply_proposer_boost_gloas`
+  - Added equivocating validators' effective balance to parent attestation weight before comparing against reorg threshold
+  - This matches spec's `is_head_weak` which sums both attesting and equivocating weight
+  - Previously had a placeholder comment "simplified: we don't have equivocating indices here, so skip this"
+- Fixed pre-existing clippy warnings across codebase (Rust 1.93 has stricter lints):
+  - proto_array: collapsible_if, manual_let_else in 4 places
+  - state_processing: 10 redundant closures (`|e| Error(e)` → `Error`), let_underscore_must_use in block_replayer
+  - fork_choice: map_or → is_none_or
+  - beacon_chain: collapsible_if, manual_let_else, needless_borrow, bool_assert_comparison
+  - http_api: large_stack_frames in test functions
+  - types: items_after_test_module
+- Tests: 18/18 proto_array, 34/34 fork_choice, 56/56 state_processing, 8/8 fork_choice EF (real + fake crypto) — all pass
+- Remaining from PR #4807 (non-consensus-critical reorg enhancements):
+  - `record_block_timeliness` with 2-element timeliness vector — not strictly needed, our `ptc_timely: current_slot == block.slot()` and `is_before_attesting_interval` checks are functionally equivalent
+  - `is_proposer_equivocation` helper extraction — cosmetic refactor, logic already exists inline
+
 ### 2026-02-18 (run 6)
 - Fetched upstream: no new commits since run 5
 - No new consensus-specs changes requiring implementation (latest release still v1.7.0-alpha.2, newer spec commits are packaging/infrastructure)
