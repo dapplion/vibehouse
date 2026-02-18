@@ -814,7 +814,7 @@ where
             // proposer for this slot. This prevents sidechain blocks from receiving boost
             // when they exploit a different shuffling.
             let proposer_matches = canonical_head_proposer_index
-                .map_or(true, |expected| block.proposer_index() == expected);
+                .is_none_or(|expected| block.proposer_index() == expected);
             if proposer_matches {
                 self.fc_store.set_proposer_boost_root(block_root);
             }
