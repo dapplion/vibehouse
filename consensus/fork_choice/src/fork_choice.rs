@@ -1383,13 +1383,12 @@ where
             .get(block_index)
             .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
-        // Verify attestation slot matches block slot
+        // Spec: if data.slot != state.slot: return
+        // PTC votes can only change the vote for their assigned beacon block.
+        // When data.slot != block.slot (e.g. skip slots), the attestation is
+        // for a different slot than the referenced block — silently ignore it.
         if attestation.data.slot != node.slot {
-            return Err(InvalidPayloadAttestation::SlotMismatch {
-                attestation_slot: attestation.data.slot,
-                block_slot: node.slot,
-            }
-            .into());
+            return Ok(());
         }
 
         // Spec: PAYLOAD_TIMELY_THRESHOLD = PTC_SIZE // 2

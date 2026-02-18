@@ -1541,6 +1541,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     "Gossipsub block processed"
                 );
 
+                // Process any buffered gossip envelope for this block. When an envelope
+                // arrives before its block (a timing race), it is stored in
+                // `pending_gossip_envelopes`. Now that the block is imported, we can
+                // process it so the EL receives `newPayload` and the block transitions
+                // out of optimistic status.
+                self.chain.process_pending_envelope(*block_root).await;
+
                 self.chain.recompute_head_at_current_slot().await;
 
                 metrics::set_gauge(

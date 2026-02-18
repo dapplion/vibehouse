@@ -495,6 +495,15 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Keyed by the slot the attestation targets (i.e., data.slot).
     pub payload_attestation_pool:
         Mutex<HashMap<Slot, Vec<PayloadAttestation<T::EthSpec>>>>,
+    /// Gloas ePBS: buffer of gossip-received envelopes whose block root was not yet known
+    /// in fork choice at verification time. Keyed by beacon_block_root.
+    ///
+    /// When an envelope arrives before its block (a common timing race), it is stored here.
+    /// After the block is imported, `process_pending_envelope` checks this buffer and
+    /// processes the buffered envelope so the EL receives `newPayload` and the block can
+    /// transition out of optimistic status.
+    pub pending_gossip_envelopes:
+        Mutex<HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>>,
 }
 
 pub enum BeaconBlockResponseWrapper<E: EthSpec> {
@@ -2448,25 +2457,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let beacon_block_root = verified_envelope.beacon_block_root();
         let signed_envelope = verified_envelope.envelope();
 
-        // Get the head state — the envelope should be for the current head block
-        let head = self.canonical_head.cached_head();
-        let head_block_root = head.head_block_root();
-
-        if beacon_block_root != head_block_root {
-            debug!(
-                ?beacon_block_root,
-                ?head_block_root,
-                "Envelope not for current head, skipping state transition"
-            );
-            return Ok(());
-        }
-
-        let mut state = head.snapshot.beacon_state.clone();
-        let state_root = head.head_state_root();
-        drop(head);
-
-        // Notify the EL via newPayload before applying the state transition.
-        // Construct a NewPayloadRequest from the envelope's payload.
+        // Fetch the beacon block to extract the state_root, blob commitments, and
+        // parent_root. Load the state by block.state_root() rather than the cached head
+        // state — the envelope may arrive before fork choice updates the head (race
+        // condition), and using the head state would be wrong for a non-head block.
+        // Removing the old "not for current head" guard fixes the race condition where
+        // an envelope arriving milliseconds before the fork choice update was silently
+        // dropped, leaving the block permanently optimistic.
         if let Some(execution_layer) = self.execution_layer.as_ref() {
             use execution_layer::NewPayloadRequest;
             use execution_layer::NewPayloadRequestGloas;
@@ -2527,6 +2524,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         block_hash = ?envelope.payload.block_hash,
                         "Execution payload validated by EL"
                     );
+                    // Mark the block as fully verified in fork choice so block/attestation
+                    // production is not disabled. Without this, the block stays Optimistic
+                    // because recompute_head returns early ("No change in canonical head")
+                    // and never issues forkchoiceUpdated, so on_valid_execution_payload is
+                    // never called via the normal path.
+                    if let Err(e) = self
+                        .canonical_head
+                        .fork_choice_write_lock()
+                        .on_valid_execution_payload(beacon_block_root)
+                    {
+                        warn!(
+                            ?beacon_block_root,
+                            error = ?e,
+                            "Failed to mark envelope payload as valid in fork choice"
+                        );
+                    }
                 }
                 PayloadStatus::Syncing | PayloadStatus::Accepted => {
                     debug!(
@@ -2562,10 +2575,39 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         }
 
-        // Apply the envelope state transition
+        // Apply the envelope state transition.
+        // Load the post-block state from the store using the block's state_root. This
+        // is correct regardless of whether the block is the current head — the envelope
+        // may arrive before fork choice updates the head (race condition), so using the
+        // cached head state could be wrong.
+        let block_state_root = {
+            let block = self
+                .store
+                .get_blinded_block(&beacon_block_root)
+                .map_err(Error::DBError)?
+                .ok_or_else(|| {
+                    Error::EnvelopeProcessingError(format!(
+                        "Missing beacon block {:?} for state transition",
+                        beacon_block_root
+                    ))
+                })?;
+            block.message().state_root()
+        };
+
+        let mut state = self
+            .store
+            .get_state(&block_state_root, Some(signed_envelope.message.slot), false)
+            .map_err(Error::DBError)?
+            .ok_or_else(|| {
+                Error::EnvelopeProcessingError(format!(
+                    "Missing state {:?} for block {:?}",
+                    block_state_root, beacon_block_root
+                ))
+            })?;
+
         state_processing::envelope_processing::process_execution_payload_envelope(
             &mut state,
-            Some(state_root),
+            Some(block_state_root),
             signed_envelope,
             state_processing::VerifySignatures::True,
             &self.spec,
@@ -2573,6 +2615,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         .map_err(|e| {
             Error::EnvelopeProcessingError(format!("{:?}", e))
         })?;
+
+        // Cache the post-envelope state in memory so that block verification (gossip
+        // import) and block production load a state with the correct `latest_block_hash`.
+        // Without this, `process_execution_payload_bid` rejects bids because
+        // `bid.parent_block_hash != state.latest_block_hash()`.
+        //
+        // We cache under the BLOCK's state_root (not the envelope's state_root) so that:
+        // 1. `load_parent` sanity check passes (returned state_root == block.state_root())
+        // 2. State advance timer passes the correct state_root to `per_slot_processing`,
+        //    keeping the `state_roots` array entries valid for the hot DB pruning DAG.
+        //
+        // Delete the pre-envelope state first since `put_state` skips duplicates.
+        {
+            let mut cache = self.store.state_cache.lock();
+            cache.delete_state(&block_state_root);
+            cache
+                .put_state(block_state_root, beacon_block_root, &state)
+                .map_err(Error::DBError)?;
+        }
 
         debug!(
             ?beacon_block_root,
@@ -2582,6 +2643,59 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         );
 
         Ok(())
+    }
+
+    /// Process a buffered gossip envelope for a block that has just been imported.
+    ///
+    /// When a gossip envelope arrives before its block (`BlockRootUnknown`), it is stored
+    /// in `pending_gossip_envelopes`. This method is called after a Gloas block is imported
+    /// to check if we have a buffered envelope for it and process it.
+    pub async fn process_pending_envelope(&self, block_root: Hash256) {
+        let envelope = self
+            .pending_gossip_envelopes
+            .lock()
+            .remove(&block_root);
+
+        let Some(envelope) = envelope else {
+            return;
+        };
+
+        debug!(
+            ?block_root,
+            "Processing buffered gossip envelope after block import"
+        );
+
+        // Re-run gossip verification now that the block is known.
+        let verified = match self.verify_payload_envelope_for_gossip(envelope) {
+            Ok(v) => v,
+            Err(e) => {
+                warn!(
+                    ?block_root,
+                    error = ?e,
+                    "Buffered gossip envelope failed re-verification after block import"
+                );
+                return;
+            }
+        };
+
+        // Apply to fork choice (marks payload as revealed).
+        if let Err(e) = self.apply_payload_envelope_to_fork_choice(&verified) {
+            warn!(
+                ?block_root,
+                error = ?e,
+                "Failed to apply buffered envelope to fork choice"
+            );
+            return;
+        }
+
+        // Send newPayload to EL and apply state transition.
+        if let Err(e) = self.process_payload_envelope(&verified).await {
+            warn!(
+                ?block_root,
+                error = ?e,
+                "Failed to process buffered gossip envelope"
+            );
+        }
     }
 
     /// Process a locally-produced self-build envelope directly (no gossip verification).
@@ -2667,6 +2781,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         block_hash = ?envelope.payload.block_hash,
                         "Self-build execution payload validated by EL"
                     );
+                    // Mark the block as fully verified in fork choice. The block import
+                    // path issues forkchoiceUpdated before the envelope is processed, so
+                    // the EL returns SYNCING (unknown block). Without explicitly updating
+                    // here, the head stays Optimistic and block production is disabled.
+                    if let Err(e) = self
+                        .canonical_head
+                        .fork_choice_write_lock()
+                        .on_valid_execution_payload(beacon_block_root)
+                    {
+                        warn!(
+                            ?beacon_block_root,
+                            error = ?e,
+                            "Failed to mark self-build envelope payload as valid in fork choice"
+                        );
+                    }
                 }
                 PayloadStatus::Syncing | PayloadStatus::Accepted => {
                     debug!(
@@ -2728,21 +2857,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             Error::EnvelopeProcessingError(format!("{:?}", e))
         })?;
 
-        // Persist the post-envelope state so that subsequent block production (slot+1)
-        // loads a state with the correct `latest_block_hash`. Without this, the state
-        // advance for the next slot would use the pre-envelope state where
-        // `latest_block_hash` still holds the previous slot's payload hash, causing
-        // `PayloadBidInvalid { reason: "bid parent_block_hash does not match state
-        // latest_block_hash" }` on every block after the first Gloas block.
-        let envelope_state_root = signed_envelope.message.state_root;
-        self.store
-            .put_state(&envelope_state_root, &state)
-            .map_err(Error::DBError)?;
+        // Cache the post-envelope state in memory. See process_payload_envelope for
+        // the full explanation — cached under block's state_root to keep the
+        // state_roots array and hot DB pruning DAG consistent.
+        {
+            let mut cache = self.store.state_cache.lock();
+            cache.delete_state(&state_root);
+            cache
+                .put_state(state_root, beacon_block_root, &state)
+                .map_err(Error::DBError)?;
+        }
 
         debug!(
             ?beacon_block_root,
             block_hash = ?signed_envelope.message.payload.block_hash,
-            %envelope_state_root,
             "Successfully processed self-build envelope locally"
         );
 
@@ -2943,17 +3071,20 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Retrieves payload attestations from the pool for block inclusion at the given slot.
     ///
-    /// Returns attestations targeting `slot - 1` (the previous slot), limited to
+    /// Returns attestations targeting `slot - 1` (the previous slot) with the correct
+    /// `beacon_block_root` (the parent of the block being produced), limited to
     /// `max_payload_attestations`.
     pub fn get_payload_attestations_for_block(
         &self,
         block_slot: Slot,
+        parent_block_root: Hash256,
     ) -> Vec<PayloadAttestation<T::EthSpec>> {
         let target_slot = block_slot.saturating_sub(1u64);
         let pool = self.payload_attestation_pool.lock();
         pool.get(&target_slot)
             .map(|atts| {
                 atts.iter()
+                    .filter(|att| att.data.beacon_block_root == parent_block_root)
                     .take(T::EthSpec::max_payload_attestations())
                     .cloned()
                     .collect()
@@ -6520,8 +6651,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 };
 
                 // Include payload attestations from the pool for the previous slot's payload.
+                // Filter by parent_root to exclude stale attestations from peers that had a
+                // different head (wrong beacon_block_root) at the time of attestation production.
                 let payload_attestations: VariableList<_, _> =
-                    self.get_payload_attestations_for_block(slot).into();
+                    self.get_payload_attestations_for_block(slot, parent_root).into();
 
                 (
                     BeaconBlock::Gloas(BeaconBlockGloas {

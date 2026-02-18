@@ -288,6 +288,10 @@ pub(crate) fn create_whitelist_filter(
         for id in 0..spec.data_column_sidecar_subnet_count {
             add(DataColumnSidecar(DataColumnSubnetId::new(id)));
         }
+        // Gloas ePBS topics
+        add(ExecutionBid);
+        add(ExecutionPayload);
+        add(PayloadAttestation);
     }
     gossipsub::WhitelistSubscriptionFilter(possible_hashes)
 }

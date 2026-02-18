@@ -624,13 +624,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let envelope = &signed_envelope.message;
         let beacon_block_root = envelope.beacon_block_root;
 
-        // Check 1: Block root is known in fork choice
+        // Check 1: Block root is known in fork choice.
+        //
+        // When the block root is unknown, the envelope arrived before its block (a
+        // common timing race — they are propagated independently on the p2p network).
+        // Store the envelope in `pending_gossip_envelopes` so it can be processed after
+        // the block is imported, rather than permanently dropping it.
         let fork_choice = self.canonical_head.fork_choice_read_lock();
-        let proto_block = fork_choice
-            .get_block(&beacon_block_root)
-            .ok_or(PayloadEnvelopeError::BlockRootUnknown {
-                block_root: beacon_block_root,
-            })?;
+        let proto_block = match fork_choice.get_block(&beacon_block_root) {
+            Some(block) => block,
+            None => {
+                // Buffer the envelope for later processing after the block arrives.
+                self.pending_gossip_envelopes
+                    .lock()
+                    .insert(beacon_block_root, signed_envelope);
+                return Err(PayloadEnvelopeError::BlockRootUnknown {
+                    block_root: beacon_block_root,
+                });
+            }
+        };
         drop(fork_choice);
 
         // Check 2: Not prior to finalization
@@ -690,36 +702,35 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 6: Signature verification
-        let head = self.canonical_head.cached_head();
-        let state = &head.snapshot.beacon_state;
+        //
+        // Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) are signed
+        // with an empty/infinity signature — they have no external builder and the
+        // proposer is always authorized for their own slot. Skip BLS verification for
+        // these; the bid already committed to the block_hash and builder_index (checked
+        // above), so accepting the envelope is safe.
+        if envelope.builder_index != BUILDER_INDEX_SELF_BUILD {
+            let head = self.canonical_head.cached_head();
+            let state = &head.snapshot.beacon_state;
 
-        let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
-            if builder_idx == BUILDER_INDEX_SELF_BUILD {
-                let proposer_index =
-                    state.latest_block_header().proposer_index as usize;
-                state
-                    .validators()
-                    .get(proposer_index)
-                    .and_then(|v| v.pubkey.decompress().ok().map(Cow::Owned))
-            } else {
+            let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
                 state
                     .builders()
                     .ok()?
                     .get(builder_idx as usize)
                     .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            };
+
+            let signature_set = execution_payload_envelope_signature_set(
+                state,
+                get_builder_pubkey,
+                &signed_envelope,
+                &self.spec,
+            )
+            .map_err(|_| PayloadEnvelopeError::InvalidSignature)?;
+
+            if !signature_set.verify() {
+                return Err(PayloadEnvelopeError::InvalidSignature);
             }
-        };
-
-        let signature_set = execution_payload_envelope_signature_set(
-            state,
-            get_builder_pubkey,
-            &signed_envelope,
-            &self.spec,
-        )
-        .map_err(|_| PayloadEnvelopeError::InvalidSignature)?;
-
-        if !signature_set.verify() {
-            return Err(PayloadEnvelopeError::InvalidSignature);
         }
 
         Ok(VerifiedPayloadEnvelope {

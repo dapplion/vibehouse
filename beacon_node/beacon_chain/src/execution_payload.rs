@@ -382,9 +382,8 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
     let (latest_execution_payload_header_block_hash, latest_execution_payload_header_gas_limit) =
         if state.fork_name_unchecked().gloas_enabled() {
             // For Gloas, `state.latest_block_hash()` is the correct parent hash for the EL
-            // request. It is updated by `process_execution_payload_envelope` and the resulting
-            // post-envelope state is persisted to the store by `process_self_build_envelope`,
-            // so `load_state_for_block_production` returns a state with the correct value.
+            // request. The post-envelope state (which has `latest_block_hash` set) is
+            // cached in the state_cache, so `get_advanced_hot_state` returns it.
             (
                 *state.latest_block_hash()?,
                 state.latest_execution_payload_bid()?.gas_limit,
