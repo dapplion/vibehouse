@@ -16,9 +16,10 @@ use tokio::time::sleep;
 use tracing::{Instrument, debug, error, info_span, warn};
 use types::{
     BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockBellatrix, BeaconBlockHeader,
-    BlobSidecar, ChainSpec, DataColumnSidecar, DataColumnsByRootIdentifier, EmptyBlock, Epoch,
-    EthSpec, FixedBytesExtended, ForkName, Hash256, KzgCommitment, KzgProof, MinimalEthSpec,
-    RuntimeVariableList, Signature, SignedBeaconBlock, SignedBeaconBlockHeader, Slot,
+    BlobSidecar, ChainSpec, DataColumnSidecar, DataColumnSidecarFulu, DataColumnsByRootIdentifier,
+    EmptyBlock, Epoch, EthSpec, FixedBytesExtended, ForkName, Hash256, KzgCommitment, KzgProof,
+    MinimalEthSpec, RuntimeVariableList, Signature, SignedBeaconBlock, SignedBeaconBlockHeader,
+    Slot,
 };
 
 type E = MinimalEthSpec;
@@ -1006,7 +1007,7 @@ fn test_tcp_columns_by_root_chunked_rpc() {
         let rpc_request = RequestType::DataColumnsByRoot(req);
 
         // DataColumnsByRoot Response
-        let data_column = Arc::new(DataColumnSidecar {
+        let data_column = Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: 1,
             signed_block_header: SignedBeaconBlockHeader {
                 message: BeaconBlockHeader {
@@ -1026,7 +1027,7 @@ fn test_tcp_columns_by_root_chunked_rpc() {
                 E::kzg_commitments_inclusion_proof_depth()
             ]
             .into(),
-        });
+        }));
 
         let rpc_response = Response::DataColumnsByRoot(Some(data_column.clone()));
 
@@ -1148,7 +1149,7 @@ fn test_tcp_columns_by_range_chunked_rpc() {
         });
 
         // DataColumnsByRange Response
-        let data_column = Arc::new(DataColumnSidecar {
+        let data_column = Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
             index: 1,
             signed_block_header: SignedBeaconBlockHeader {
                 message: BeaconBlockHeader {
@@ -1168,7 +1169,7 @@ fn test_tcp_columns_by_range_chunked_rpc() {
                 E::kzg_commitments_inclusion_proof_depth()
             ]
             .into(),
-        });
+        }));
 
         let rpc_response = Response::DataColumnsByRange(Some(data_column.clone()));
 

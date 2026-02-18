@@ -171,6 +171,15 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
 - Commit: `7aac641f5`
 
+### 2026-02-18 — fix compile errors in rpc_tests and fork_choice tests
+
+Two more test compile errors from the DataColumnSidecar superstruct change and QueuedAttestation.index addition:
+- `lighthouse_network/tests/rpc_tests.rs`: Updated two `DataColumnSidecar { ... }` literal constructions to `DataColumnSidecar::Fulu(DataColumnSidecarFulu { ... })`. Added `DataColumnSidecarFulu` import.
+- `lighthouse_network/src/rpc/codec.rs`: Same fix in `empty_data_column_sidecar` test helper. Moved `DataColumnSidecarFulu` import from top-level to test module.
+- `fork_choice.rs:1973`: Added `index: 0` to `QueuedAttestation` literal in `get_queued_attestations` test helper.
+
+1301/1301 workspace tests pass (web3signer tests excluded — they require downloading+running external binary, infrastructure limitation).
+
 ### 2026-02-18 — fix http_api test failures due to ForkName::latest() now being Gloas
 
 Three test files used `ForkName::latest()` to create Gloas chains, but the test harness doesn't support Gloas envelope processing. This caused:
