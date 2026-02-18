@@ -10,30 +10,19 @@ vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/rele
 
 ## priorities
 
-### 1. Kurtosis solo devnet — vibehouse only
+### 1. Kurtosis solo devnet — vibehouse only ✅ DONE (2026-02-18)
 
-Get a kurtosis devnet running with only vibehouse (no other clients).
+Chain reaches finalized_epoch=3 in ~252s (two epochs past Gloas fork at epoch 1).
 
-- Config: minimal preset, gloas fork at epoch 1, single node (vibehouse CL + geth EL)
-- Assertoor checks finalization, block proposals, sync status (5-min timeout)
-- Consensus specs: v1.7.0-alpha.2
-- Reference: https://notes.ethereum.org/@ethpandaops/epbs-devnet-0
+- Config: minimal preset, gloas fork at epoch 1, single node (vibehouse CL + geth EL + spamoor + dora)
+- Script polls beacon API directly; package pinned to `ethereum-package@6.0.0`
+- See `docs/tasks/beacon-chain-integration.md` for the bugs fixed
 
-**Steps:**
-1. Build Docker image: `scripts/build-docker.sh` (host cargo build + Dockerfile.dev, ~30s incremental)
-2. Run devnet: `scripts/kurtosis-run.sh` (clean enclave, start, poll assertoor, teardown)
-3. Fix failures: check CL logs first, then EL in `/tmp/kurtosis-dump-*`
-
-**Unstaged files ready to commit:**
-- `Dockerfile.dev` — minimal Ubuntu image, copies pre-built binary
-- `scripts/build-docker.sh` — builds on host with cargo cache
-- `scripts/kurtosis-run.sh` — full lifecycle with assertoor polling
-- `CLAUDE.md` — devnet testing docs section
-- `kurtosis/vibehouse-epbs.yaml` — added assertoor + spamoor services
-
-**Environment:**
-- Docker installed, `openclaw` user in docker group (use `sg docker "cmd"`)
-- Kurtosis v1.15.2 installed, engine running
+**Commands:**
+```bash
+scripts/kurtosis-run.sh           # Full lifecycle (build + start + poll + teardown)
+scripts/kurtosis-run.sh --no-build    # Skip Docker build
+```
 
 ### 2. Gloas fork (Glamsterdam consensus layer) — ePBS (EIP-7732)
 
@@ -43,7 +32,7 @@ Get a kurtosis devnet running with only vibehouse (no other clients).
 | 2. State Transitions | DONE | bid processing, PTC attestations, builder payments, withdrawals |
 | 3. Fork Choice | DONE | 3-state payload model, all 8 reorg tests pass |
 | 4. P2P Networking | DONE | gossip topics, validation, beacon processor integration |
-| 5. Beacon Chain Integration | 95% | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
+| 5. Beacon Chain Integration | DONE (self-build) | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
 | 6. Validator Client | IN PROGRESS | [docs/tasks/validator-client.md](docs/tasks/validator-client.md) |
 | 7. REST API | IN PROGRESS | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
 | 8. Spec Tests | DONE | 78/78 + 136/136 passing, check_all_files_accessed passes |
