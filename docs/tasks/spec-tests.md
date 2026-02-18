@@ -6,14 +6,14 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: IN PROGRESS
 
 ### Current results
-- **78/78 ef_tests pass** (as of 2026-02-18)
-- **136/136 fake_crypto pass** (Fulu + Gloas DataColumnSidecar variants both pass)
+- **78/78 ef_tests pass (real crypto, 0 skipped)** (as of 2026-02-18 run 8)
+- **136/136 fake_crypto pass (0 skipped)** (Fulu + Gloas DataColumnSidecar variants both pass)
 - **check_all_files_accessed passes** — 209,677 files accessed, 122,748 intentionally excluded
 - All gloas fork_choice on_block tests pass (was 77/78 — fixed 2026-02-18)
 - All gloas fork_choice_reorg tests pass (4 previously failing now pass)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
 - rewards/inactivity_scores tests running across all forks (was missing)
-- 3 altair proposer_boost tests skipped as known upstream failures (sigp/lighthouse#8689)
+- 3 altair proposer_boost tests now pass (were skipped, sigp/lighthouse#8689 — fixed by implementing PR #4807)
 
 ### Tasks
 - [ ] Audit spec test runner — understand download, cache, run flow

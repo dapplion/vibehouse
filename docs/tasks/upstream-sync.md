@@ -30,6 +30,27 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-18 (run 8)
+- Fetched upstream: no new commits since run 7
+- No new consensus-specs changes requiring implementation (top commits are packaging/infrastructure: eth-remerkleable, package rename, publish scripts)
+- Tracked open consensus-specs PRs:
+  - #4918 (attestations for known payload statuses) — still open
+  - #4939 (request missing payload envelopes for index-1 attestation) — still open
+  - #4898 (remove pending status from tiebreaker) — still open, assessed: our tiebreaker code still checks Pending but it's functionally correct, trivial change when merged
+  - #4892 (remove impossible branch in forkchoice) — still open, assessed: our `is_supporting_vote_gloas` uses `<=` (old spec), PR changes to assert `>=` + check `==`, functionally equivalent
+  - #4932 (add Gloas sanity/blocks tests with payload attestation coverage) — still open
+- Unskipped 3 fork choice EF tests that were blocked on lighthouse#8689 (now that PR #4807 proposer boost check is implemented):
+  - `voting_source_beyond_two_epoch`, `justified_update_not_realized_finality`, `justified_update_always_if_better`
+  - All pass with both real and fake crypto
+  - EF test results: 78/78 real crypto (0 skipped, was 3), 136/136 fake crypto (0 skipped, was 3)
+- Fixed CI failures:
+  - clippy `question_mark` lint in `lookups.rs:1973` (Rust 1.93 new lint)
+  - BLS test fixtures missing in CI — `consensus-spec-tests` is not a git submodule, needs `make -C testing/ef_tests` to download. Replaced `submodules: recursive` with download step. Also removed unused `submodules: recursive` from non-ef-tests jobs.
+  - `rpc_columns_with_invalid_header_signature` fails at Gloas because DataColumnSidecar structure changed (no `signed_block_header`). Skipped for Gloas — test premise doesn't apply.
+- Pre-existing Gloas test failures identified (not introduced by this run):
+  - 29 `store_tests::*` failures at `FORK_NAME=gloas` — `PayloadBidInvalid: bid parent_block_hash does not match state latest_block_hash`. Root cause: mock EL + test harness state management with skipped slots doesn't properly handle ePBS envelope state. These are test infrastructure issues, not consensus bugs.
+  - `validator_monitor::missed_blocks_across_epochs` — also pre-existing
+
 ### 2026-02-18 (run 7)
 - Fetched upstream: no new commits since run 6
 - No new consensus-specs changes requiring implementation (checked latest merged PRs — all packaging/infrastructure)
