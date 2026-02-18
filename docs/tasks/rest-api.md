@@ -8,10 +8,10 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 ### Done
 - [x] SSE events for ePBS: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] `GET /eth/v1/beacon/states/{state_id}/proposer_lookahead` — Fulu/Gloas only, returns `proposer_lookahead` vector
+- [x] `POST /eth/v1/builder/bids` — accepts `SignedExecutionPayloadBid`, verifies, imports to fork choice, gossips
 
 ### Tasks
 - [ ] Add `/eth/v1/beacon/blinded_blocks` updates for ePBS
-- [ ] Add execution bid submission endpoint
 - [ ] Update block retrieval endpoints to handle two-phase blocks
 
 ## Progress log
@@ -37,4 +37,14 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - **Files changed**: 2 files
   - `beacon_node/http_api/src/lib.rs`: Added route following `pending_consolidations` pattern; `ResponseIncludesVersion::No` since data is raw u64 vector
   - `common/eth2/src/lib.rs`: Added `get_beacon_states_proposer_lookahead` client method returning `UnversionedResponse<Vec<u64>, ExecutionOptimisticFinalizedMetadata>`
+- 181/181 http_api tests pass
+
+### 2026-02-18 — execution bid submission endpoint
+- **Endpoint**: `POST /eth/v1/builder/bids`
+- **What it does**: External builders (or any node) can submit a `SignedExecutionPayloadBid` via HTTP. The BN verifies it (same checks as gossip: slot, payment, builder active, signature, no equivocation), imports to fork choice, and gossips on the `execution_bid` P2P topic.
+- **Error handling**: Duplicate bids → 200 (idempotent); equivocation, invalid sig, unknown builder, etc. → 400.
+- **Fork guard**: Returns 400 "Gloas is not scheduled" if called pre-Gloas.
+- **Files changed**: 2 files
+  - `beacon_node/http_api/src/lib.rs`: Added `POST /eth/v1/builder/bids` route + `starts_with("v1/builder/bids")` reverse proxy filter; `SignedExecutionPayloadBid` added to imports
+  - `common/eth2/src/lib.rs`: Added `post_builder_bids<E>` client method; `SignedExecutionPayloadBid` added to imports
 - 181/181 http_api tests pass

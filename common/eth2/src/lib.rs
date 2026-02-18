@@ -17,7 +17,7 @@ pub mod types;
 use self::mixin::{RequestAccept, ResponseOptional};
 use self::types::{Error as ResponseError, *};
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
-use ::types::{PayloadAttestationData, PayloadAttestationMessage};
+use ::types::{PayloadAttestationData, PayloadAttestationMessage, SignedExecutionPayloadBid};
 use derivative::Derivative;
 use futures::Stream;
 use futures_util::StreamExt;
@@ -986,6 +986,26 @@ impl BeaconNodeHttpClient {
             .push("proposer_lookahead");
 
         self.get_opt(path).await
+    }
+
+    /// `POST builder/bids`
+    ///
+    /// Submits a signed execution payload bid to the beacon node. The node verifies, imports to
+    /// fork choice, and gossips it. Only available post-Gloas.
+    pub async fn post_builder_bids<E: EthSpec>(
+        &self,
+        bid: &SignedExecutionPayloadBid<E>,
+    ) -> Result<(), Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("builder")
+            .push("bids");
+
+        self.post(path, bid).await?;
+
+        Ok(())
     }
 
     /// `GET beacon/light_client/updates`

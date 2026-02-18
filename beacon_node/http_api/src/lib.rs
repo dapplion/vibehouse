@@ -94,7 +94,8 @@ use types::{
     ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Epoch, EthSpec, ForkName, Hash256,
     PayloadAttestationMessage, ProposerPreparationData, ProposerSlashing, RelativeEpoch,
     SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
-    SignedContributionAndProof, SignedValidatorRegistrationData, SignedVoluntaryExit,
+    SignedContributionAndProof, SignedExecutionPayloadBid, SignedValidatorRegistrationData,
+    SignedVoluntaryExit,
     SingleAttestation, Slot, SyncCommitteeMessage, SyncContributionData,
 };
 use validator::pubkey_to_validator_index;
@@ -236,6 +237,7 @@ pub fn prometheus_metrics() -> warp::filters::log::Log<impl Fn(warp::filters::lo
                 .or_else(|| starts_with("v1/beacon/states"))
                 .or_else(|| starts_with("v1/beacon/"))
                 .or_else(|| starts_with("v2/beacon/"))
+                .or_else(|| starts_with("v1/builder/bids"))
                 .or_else(|| starts_with("v1/builder/states"))
                 .or_else(|| starts_with("v1/config/deposit_contract"))
                 .or_else(|| starts_with("v1/config/fork_schedule"))
@@ -2628,6 +2630,73 @@ pub fn serve<T: BeaconChainTypes>(
                         )
                         .into_response()),
                     }
+                })
+            },
+        );
+
+    /*
+     * builder/bids (Gloas ePBS)
+     */
+
+    let builder_bids_path = eth_v1
+        .and(warp::path("builder"))
+        .and(warp::path("bids"))
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone());
+
+    // POST builder/bids
+    //
+    // Accepts a signed execution payload bid from a builder, verifies it, imports to fork choice,
+    // and gossips it on the execution_bid topic. Only available post-Gloas.
+    let post_builder_bids = builder_bids_path
+        .clone()
+        .and(warp::path::end())
+        .and(warp_utils::json::json())
+        .and(network_tx_filter.clone())
+        .then(
+            |task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>,
+             bid: SignedExecutionPayloadBid<T::EthSpec>,
+             network_tx: UnboundedSender<NetworkMessage<T::EthSpec>>| {
+                task_spawner.blocking_json_task(Priority::P0, move || {
+                    use beacon_chain::gloas_verification::ExecutionBidError;
+
+                    if !chain.spec.is_gloas_scheduled() {
+                        return Err(warp_utils::reject::custom_bad_request(
+                            "Gloas is not scheduled".to_string(),
+                        ));
+                    }
+
+                    let builder_index = bid.message.builder_index;
+
+                    let verified_bid = match chain.verify_execution_bid_for_gossip(bid) {
+                        Ok(verified) => verified,
+                        Err(ExecutionBidError::DuplicateBid { .. }) => {
+                            // Already known — idempotent, return 200
+                            debug!(builder_index, "Duplicate execution bid submitted via HTTP");
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            return Err(warp_utils::reject::custom_bad_request(format!(
+                                "invalid execution bid: {e:?}"
+                            )));
+                        }
+                    };
+
+                    if let Err(e) = chain.apply_execution_bid_to_fork_choice(&verified_bid) {
+                        warn!(
+                            builder_index,
+                            error = ?e,
+                            "Failed to import execution bid to fork choice"
+                        );
+                    }
+
+                    publish_pubsub_message(
+                        &network_tx,
+                        PubsubMessage::ExecutionBid(Box::new(verified_bid.into_inner())),
+                    )?;
+
+                    Ok(())
                 })
             },
         );
@@ -5137,6 +5206,7 @@ pub fn serve<T: BeaconChainTypes>(
                     .uor(post_beacon_pool_sync_committees)
                     .uor(post_beacon_pool_bls_to_execution_changes)
                     .uor(post_beacon_pool_payload_attestations)
+                    .uor(post_builder_bids)
                     .uor(post_beacon_state_validators)
                     .uor(post_beacon_state_validator_balances)
                     .uor(post_beacon_state_validator_identities)
