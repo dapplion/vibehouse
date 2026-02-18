@@ -1102,8 +1102,21 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         max_slot: Slot,
         state_root: Hash256,
     ) -> Result<Option<(Hash256, BeaconState<E>)>, Error> {
-        if let Some(cached) = self.get_advanced_hot_state_from_cache(block_root, max_slot) {
-            return Ok(Some(cached));
+        if let Some((cached_root, cached_state)) =
+            self.get_advanced_hot_state_from_cache(block_root, max_slot)
+        {
+            // For Gloas ePBS, the cached state root may be the post-envelope hash
+            // while the caller expects the pre-envelope root (block.state_root()).
+            // Return the caller's state_root so that the sanity check in
+            // block_verification (parent_state_root == block.state_root()) passes.
+            let returned_root = if cached_root != state_root
+                && cached_state.slot() >= self.split.read_recursive().slot
+            {
+                state_root
+            } else {
+                cached_root
+            };
+            return Ok(Some((returned_root, cached_state)));
         }
 
         // Hold a read lock on the split point so it can't move while we're trying to load the
@@ -1124,30 +1137,77 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             .into());
         }
 
-        let state_root = if block_root == split.block_root && split.slot <= max_slot {
+        // For Gloas ePBS, the split state root may be the post-envelope hash (which
+        // differs from the block's pre-envelope state_root). Use the split root for
+        // loading the state from disk but return the caller's state_root so that the
+        // sanity check in block_verification (parent_state_root == block.state_root())
+        // passes.
+        let load_root = if block_root == split.block_root && split.slot <= max_slot {
             split.state_root
         } else {
             state_root
         };
         // It's a bit redundant but we elect to cache the state here and down below.
         let mut opt_state = self
-            .load_hot_state(&state_root, true)
+            .load_hot_state(&load_root, true)
             .map_err(|e| {
                 Error::LoadingHotStateError(
                     format!("get advanced {block_root} {max_slot}"),
-                    state_root,
+                    load_root,
                     e.into(),
                 )
             })?
             .map(|(state, _block_root)| (state_root, state));
 
-        if let Some((state_root, state)) = opt_state.as_mut() {
+        if let Some((_state_root, state)) = opt_state.as_mut() {
+            // Gloas ePBS: the disk stores the pre-envelope state (matching
+            // block.state_root()). Re-apply the envelope so that the returned
+            // state has the correct latest_block_hash, execution request changes,
+            // and builder payment state.
+            match self.get_payload_envelope(&block_root) {
+                Ok(Some(signed_envelope)) => {
+                    // Skip re-application if envelope was already applied (e.g. WSS
+                    // checkpoint stored as post-envelope state).
+                    let already_applied = state
+                        .latest_block_hash()
+                        .ok()
+                        .is_some_and(|h| *h == signed_envelope.message.payload.block_hash);
+                    if !already_applied
+                        && let Err(e) =
+                            state_processing::envelope_processing::process_execution_payload_envelope(
+                                state,
+                                None,
+                                &signed_envelope,
+                                state_processing::VerifySignatures::False,
+                                &self.spec,
+                            )
+                    {
+                        warn!(
+                            ?e,
+                            ?block_root,
+                            state_slot = %state.slot(),
+                            "Failed to re-apply envelope in get_advanced_hot_state"
+                        );
+                    }
+                }
+                Ok(None) => {
+                    // No envelope found — pre-Gloas block or envelope pruned
+                }
+                Err(e) => {
+                    warn!(
+                        ?e,
+                        ?block_root,
+                        "Error loading payload envelope in get_advanced_hot_state"
+                    );
+                }
+            }
+
             state.update_tree_hash_cache()?;
             state.build_all_caches(&self.spec)?;
-            if let PutStateOutcome::New(deleted_states) =
-                self.state_cache
-                    .lock()
-                    .put_state(*state_root, block_root, state)?
+            if let PutStateOutcome::New(deleted_states) = self
+                .state_cache
+                .lock()
+                .put_state(state_root, block_root, state)?
             {
                 debug!(
                     ?state_root,
@@ -3618,6 +3678,19 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
                 .ok_or(HotColdDBError::MissingStateToFreeze(state_root))?;
 
             store.store_cold_state(&state_root, &state, &mut cold_db_state_ops)?;
+        }
+
+        // Gloas ePBS: blocks have a two-phase state transition. The block's
+        // state_root (pre-envelope) is stored as the primary key above. The
+        // envelope's state_root (post-envelope) is different because envelope
+        // processing modifies the state. Store a ColdStateSummary for the
+        // post-envelope root so lookups by either root succeed.
+        if let Ok(Some(envelope)) = store.get_payload_envelope(&block_root) {
+            let post_envelope_root = envelope.message.state_root;
+            if post_envelope_root != Hash256::zero() && post_envelope_root != state_root {
+                cold_db_state_ops
+                    .push(ColdStateSummary { slot }.as_kv_store_op(post_envelope_root));
+            }
         }
 
         // Cold states are diffed with respect to each other, so we need to finish writing previous

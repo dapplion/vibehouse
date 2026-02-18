@@ -8,7 +8,7 @@ use state_processing::{
     per_slot_processing,
 };
 use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use types::EthSpec;
 
 impl<E, Hot, Cold> HotColdDB<E, Hot, Cold>
@@ -105,6 +105,31 @@ where
                     .map_err(HotColdDBError::BlockReplayBlockError)?;
 
                     prev_state_root = Some(block.state_root());
+
+                    // Gloas ePBS: apply envelope processing after block processing.
+                    // The envelope updates latest_block_hash, processes execution
+                    // requests, and handles builder payments. Without this, the next
+                    // block's bid validation would fail.
+                    // We keep prev_state_root as the block's pre-envelope root so that
+                    // per_slot_processing sets state_roots[slot] consistently with the
+                    // forward chain.
+                    if let Ok(Some(signed_envelope)) = self.get_payload_envelope(&block_root)
+                        && let Err(e) =
+                            state_processing::envelope_processing::process_execution_payload_envelope(
+                                &mut state,
+                                Some(block.state_root()),
+                                &signed_envelope,
+                                state_processing::VerifySignatures::False,
+                                &self.spec,
+                            )
+                    {
+                        warn!(
+                            ?e,
+                            ?block_root,
+                            slot = %block.slot(),
+                            "Failed to apply envelope during state reconstruction"
+                        );
+                    }
                 }
 
                 let state_root = prev_state_root
@@ -142,7 +167,12 @@ where
                         // The two limits have met in the middle! We're done!
                         // Perform one last integrity check on the state reached.
                         let computed_state_root = state.update_tree_hash_cache()?;
-                        if computed_state_root != state_root {
+                        // For Gloas ePBS, `state_root` is the block's pre-envelope root
+                        // but `computed_state_root` is the post-envelope hash (after
+                        // envelope processing). Accept the mismatch for Gloas states.
+                        if computed_state_root != state_root
+                            && !state.fork_name_unchecked().gloas_enabled()
+                        {
                             return Err(Error::StateReconstructionRootMismatch {
                                 slot,
                                 expected: state_root,

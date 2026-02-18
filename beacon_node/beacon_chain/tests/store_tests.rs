@@ -38,7 +38,7 @@ use std::time::Duration;
 use store::database::interface::BeaconNodeBackend;
 use store::metadata::{CURRENT_SCHEMA_VERSION, STATE_UPPER_LIMIT_NO_RETAIN, SchemaVersion};
 use store::{
-    BlobInfo, DBColumn, HotColdDB, StoreConfig,
+    BlobInfo, DBColumn, HotColdDB, StoreConfig, StoreOp,
     hdiff::HierarchyConfig,
     iter::{BlockRootsIterator, StateRootsIterator},
 };
@@ -551,10 +551,19 @@ async fn epoch_boundary_state_attestation_processing() {
                 panic!("epoch boundary state should exist {:?}", block.state_root())
             });
         let ebs_state_root = epoch_boundary_state.update_tree_hash_cache().unwrap();
+        // For Gloas ePBS, the loaded state is post-envelope and its hash differs
+        // from block.state_root() (which is pre-envelope). Re-load using
+        // block.state_root() for the idempotency check, since that's the
+        // canonical key under which the state is stored.
+        let lookup_root = if ebs_state_root != block.state_root() {
+            block.state_root()
+        } else {
+            ebs_state_root
+        };
         let mut ebs_of_ebs = store
-            .get_state(&ebs_state_root, None, CACHE_STATE_IN_TESTS)
+            .get_state(&lookup_root, None, CACHE_STATE_IN_TESTS)
             .expect("no error")
-            .unwrap_or_else(|| panic!("ebs of ebs should exist {ebs_state_root:?}"));
+            .unwrap_or_else(|| panic!("ebs of ebs should exist {lookup_root:?}"));
         ebs_of_ebs.apply_pending_mutations().unwrap();
         assert_eq!(epoch_boundary_state, ebs_of_ebs);
 
@@ -611,7 +620,14 @@ async fn forwards_iter_block_and_state_roots_until() {
         head_state_root = state.update_tree_hash_cache().unwrap();
         head_state = state;
         block_roots.push(block_root.into());
-        state_roots.push(head_state_root);
+        // For Gloas ePBS, the state_roots array stores the block's pre-envelope
+        // state root (matching the import path in block_verification.rs). For
+        // pre-Gloas forks, block.state_root() == hash of the post-block state.
+        let block = store
+            .get_blinded_block(&block_root.into())
+            .unwrap()
+            .expect("block should exist");
+        state_roots.push(block.state_root());
     }
 
     check_finalization(&harness, num_blocks_produced);
@@ -2922,6 +2938,22 @@ async fn weak_subjectivity_sync_test(
         assert_eq!(store_wss_blobs_opt, wss_blobs_opt);
     }
 
+    // Gloas ePBS: copy the checkpoint block's envelope to the WSS chain's store.
+    // The envelope is needed so that `get_advanced_hot_state` can re-apply it
+    // when loading the checkpoint block's parent state for the first imported block.
+    // We store it directly rather than calling process_self_build_envelope because
+    // the WSS chain's state may have been advanced to an epoch boundary and the
+    // pre-envelope state at the block's slot may not be available.
+    if let Ok(Some(wss_envelope)) = harness.chain.store.get_payload_envelope(&wss_block_root) {
+        beacon_chain
+            .store
+            .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
+                wss_block_root,
+                Arc::new(wss_envelope),
+            )])
+            .expect("should store checkpoint envelope in WSS chain");
+    }
+
     // Apply blocks forward to reach head.
     let chain_dump = harness.chain.chain_dump().unwrap();
     let new_blocks = chain_dump
@@ -2953,15 +2985,43 @@ async fn weak_subjectivity_sync_test(
             )
             .await
             .unwrap();
+
+        // Gloas ePBS: process the execution payload envelope after importing
+        // the block, so the state's latest_block_hash is updated and the next
+        // block's bid validation can pass.
+        if let Ok(Some(envelope)) = harness.chain.store.get_payload_envelope(&block_root) {
+            let signed_envelope = SignedExecutionPayloadEnvelope {
+                message: envelope.message.clone(),
+                signature: envelope.signature.clone(),
+            };
+            beacon_chain
+                .process_self_build_envelope(&signed_envelope)
+                .await
+                .expect("should process envelope in weak_subjectivity_sync test");
+        }
+
         beacon_chain.recompute_head_at_current_slot().await;
 
         // Check that the new block's state can be loaded correctly.
+        // For Gloas blocks, the loaded state is post-envelope (envelope processing
+        // is re-applied on load), so its hash matches the envelope's state_root
+        // rather than the block's pre-envelope state_root.
         let mut state = beacon_chain
             .store
             .get_state(&state_root, Some(slot), CACHE_STATE_IN_TESTS)
             .unwrap()
             .unwrap();
-        assert_eq!(state.update_tree_hash_cache().unwrap(), state_root);
+        let loaded_root = state.update_tree_hash_cache().unwrap();
+        if let Ok(Some(env)) = beacon_chain.store.get_payload_envelope(&block_root) {
+            let expected = env.message.state_root;
+            if expected != Hash256::zero() {
+                assert_eq!(loaded_root, expected);
+            } else {
+                assert_eq!(loaded_root, state_root);
+            }
+        } else {
+            assert_eq!(loaded_root, state_root);
+        }
     }
 
     if checkpoint_slot != 0 {
@@ -3101,6 +3161,22 @@ async fn weak_subjectivity_sync_test(
                 .import_historical_block_batch(available_blocks_batch2)
                 .unwrap();
         }
+
+        // Gloas ePBS: copy envelopes from the source chain to the WSS chain's store.
+        // These are needed by `reconstruct_historic_states` to process the two-phase
+        // state transition (block processing + envelope processing).
+        for snapshot in &chain_dump[1..wss_block.slot().as_usize()] {
+            let block_root = snapshot.beacon_block_root;
+            if let Ok(Some(env)) = harness.chain.store.get_payload_envelope(&block_root) {
+                beacon_chain
+                    .store
+                    .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
+                        block_root,
+                        Arc::new(env),
+                    )])
+                    .expect("should store historic envelope");
+            }
+        }
     }
     assert_eq!(beacon_chain.store.get_oldest_block_slot(), 0);
 
@@ -3166,7 +3242,33 @@ async fn weak_subjectivity_sync_test(
             .unwrap()
             .unwrap();
         assert_eq!(state.slot(), slot);
-        assert_eq!(state.canonical_root().unwrap(), state_root);
+        // For Gloas ePBS, the state root in the iterator is the pre-envelope root
+        // (block.state_root()), but the loaded state may be post-envelope (from cache).
+        // Accept either the pre-envelope or post-envelope root.
+        let loaded_root = state.canonical_root().unwrap();
+        if loaded_root != state_root {
+            let block_root = beacon_chain
+                .block_root_at_slot(slot, WhenSlotSkipped::Prev)
+                .unwrap()
+                .unwrap();
+            let env = beacon_chain
+                .store
+                .get_payload_envelope(&block_root)
+                .ok()
+                .flatten();
+            if let Some(env) = env {
+                assert_eq!(
+                    loaded_root, env.message.state_root,
+                    "State at slot {slot} has root {loaded_root:?} which matches neither \
+                     pre-envelope {state_root:?} nor envelope {:?}",
+                    env.message.state_root
+                );
+            } else {
+                panic!(
+                    "State at slot {slot} has unexpected root: {loaded_root:?} != {state_root:?}"
+                );
+            }
+        }
     }
 
     // Anchor slot is still set to the slot of the checkpoint block.

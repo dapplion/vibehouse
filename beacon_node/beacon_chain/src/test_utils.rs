@@ -2666,7 +2666,7 @@ where
         // send newPayload to the EL, update fork choice, and apply state transition.
         // Without this, the head stays Optimistic and next block production fails
         // because latest_block_hash is not updated.
-        let final_state = if let Some(ref signed_envelope) = envelope {
+        let mut final_state = if let Some(ref signed_envelope) = envelope {
             self.chain
                 .process_self_build_envelope(signed_envelope)
                 .await
@@ -2685,6 +2685,19 @@ where
         } else {
             new_state
         };
+
+        // For Gloas, pre-fill latest_block_header.state_root with the block's
+        // pre-envelope state root. In the real import path (block_verification.rs),
+        // per_slot_processing receives parent.beacon_block.state_root() which sets
+        // state_roots[slot] = pre-envelope root. The test harness must match this
+        // behavior, otherwise the state_roots array diverges from what the cold DB
+        // stores during migration, causing lookup failures.
+        if final_state.latest_block_header().state_root == Hash256::zero()
+            && final_state.fork_name_unchecked().gloas_enabled()
+        {
+            final_state.latest_block_header_mut().state_root =
+                block_contents.0.message().state_root();
+        }
 
         Ok((block_hash, block_contents, final_state))
     }

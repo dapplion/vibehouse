@@ -385,6 +385,22 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
         self.cached_head_read_lock().clone()
     }
 
+    /// Update the head snapshot's state if the current head block matches `block_root`.
+    ///
+    /// Used by Gloas envelope processing to update the head state from pre-envelope to
+    /// post-envelope without re-running fork choice.
+    pub fn try_update_head_state(&self, block_root: Hash256, state: BeaconState<T::EthSpec>) {
+        let mut cached_head = self.cached_head_write_lock();
+        if cached_head.snapshot.beacon_block_root == block_root {
+            let new_snapshot = Arc::new(BeaconSnapshot {
+                beacon_block_root: cached_head.snapshot.beacon_block_root,
+                beacon_block: cached_head.snapshot.beacon_block.clone(),
+                beacon_state: state,
+            });
+            cached_head.snapshot = new_snapshot;
+        }
+    }
+
     /// Access a read-lock for the cached head.
     ///
     /// This function is **not safe** to be public. See the module-level documentation for more

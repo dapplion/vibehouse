@@ -2672,6 +2672,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             )])
             .map_err(Error::DBError)?;
 
+        // Update the canonical head snapshot if this envelope's block is the current head.
+        // The head snapshot may still hold the pre-envelope state (set during block import,
+        // before envelope processing). Fork choice won't re-compute the head since the
+        // head block hasn't changed, so we must update the snapshot directly.
+        self.canonical_head
+            .try_update_head_state(beacon_block_root, state);
+
         debug!(
             ?beacon_block_root,
             builder_index = signed_envelope.message.builder_index,
@@ -2912,6 +2919,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 Arc::new(signed_envelope.clone()),
             )])
             .map_err(Error::DBError)?;
+
+        // Update the canonical head snapshot if this block is the current head.
+        self.canonical_head
+            .try_update_head_state(beacon_block_root, state);
 
         debug!(
             ?beacon_block_root,

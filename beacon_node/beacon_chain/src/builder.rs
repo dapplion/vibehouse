@@ -439,8 +439,17 @@ where
                 block_slot = %weak_subj_block.slot(),
                 "Advancing checkpoint state to boundary"
             );
+            // For Gloas ePBS, the state may be post-envelope: its tree hash differs
+            // from block.state_root() (which is the pre-envelope root). Use the
+            // block's state_root for the first per_slot_processing call so that
+            // state_roots[block_slot] matches what the block import path expects.
+            let mut state_root_opt = if weak_subj_state.slot() == weak_subj_block.slot() {
+                Some(weak_subj_block.state_root())
+            } else {
+                None
+            };
             while weak_subj_state.slot() % slots_per_epoch != 0 {
-                per_slot_processing(&mut weak_subj_state, None, &self.spec)
+                per_slot_processing(&mut weak_subj_state, state_root_opt.take(), &self.spec)
                     .map_err(|e| format!("Error advancing state: {e:?}"))?;
             }
         }
@@ -453,6 +462,19 @@ where
         let weak_subj_state_root = weak_subj_state
             .update_tree_hash_cache()
             .map_err(|e| format!("Error computing checkpoint state root: {:?}", e))?;
+
+        // Gloas ePBS: the state is post-envelope, so its tree hash differs from the block's
+        // pre-envelope state_root. The block import path uses the block's state_root as the
+        // storage key, so we must do the same here to keep the split state_root, state cache,
+        // and hot state summaries consistent with what block verification expects.
+        let weak_subj_state_root = if weak_subj_state.slot() == weak_subj_block.slot()
+            && weak_subj_block.fork_name_unchecked().gloas_enabled()
+            && weak_subj_state_root != weak_subj_block.state_root()
+        {
+            weak_subj_block.state_root()
+        } else {
+            weak_subj_state_root
+        };
 
         let weak_subj_slot = weak_subj_state.slot();
         let weak_subj_block_root = weak_subj_block.canonical_root();
