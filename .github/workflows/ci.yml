@@ -1,0 +1,104 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: "-D warnings -C debuginfo=0"
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  check:
+    name: check + clippy + fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          components: rustfmt,clippy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --tests -- -D warnings
+
+  ef-tests:
+    name: ef-tests (minimal, fake_crypto)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run EF spec tests (fake_crypto)
+        run: cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto,minimal_testing"
+      - name: Run EF spec tests (real crypto)
+        run: cargo nextest run --release -p ef_tests --features "ef_tests,minimal_testing"
+
+  unit-tests:
+    name: unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run workspace tests
+        run: >
+          cargo nextest run --workspace --release
+          --exclude ef_tests
+          --exclude beacon_chain
+          --exclude slasher
+          --exclude network
+          --exclude http_api
+          --exclude web3signer_tests
+
+  fork-specific-tests:
+    name: fork-specific tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: beacon_chain tests (gloas)
+        run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
+      - name: http_api tests (fulu)
+        run: env FORK_NAME=fulu cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
+      - name: network tests (gloas)
+        run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
+
+  ci-success:
+    name: ci-success
+    runs-on: ubuntu-latest
+    needs: [check, ef-tests, unit-tests, fork-specific-tests]
+    steps:
+      - run: echo "All CI checks passed"
