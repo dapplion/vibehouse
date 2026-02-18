@@ -31,97 +31,92 @@ make lint
 
 ## Testing — Run the Right Tests for What You Changed
 
-Do NOT run `make test-ef` or `make test-full` on every change. Run targeted tests based on which code you touched.
+Never run `make test-ef` or `make test-full` routinely. Pick the command that matches the code you touched.
 
-### consensus/types/ — Type definitions, SSZ, superstruct
+EF spec test feature flags:
+- `ef_tests` — required to run any EF tests
+- `fake_crypto` — skips BLS signature verification, 2-3x faster
+- `minimal_testing` — skips mainnet preset, only runs minimal (much faster)
+
+### consensus/types/
 
 ```bash
 cargo nextest run --release -p types
-# Then: SSZ static tests to catch serialization regressions
-cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto" ssz_static
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto,minimal_testing" -E 'test(/^ssz_static/)'
 ```
 
-### consensus/state_processing/ — State transitions, block/epoch processing
+### consensus/state_processing/
 
 ```bash
 cargo nextest run --release -p state_processing
-# Then: EF operations + epoch + sanity tests (fake_crypto = 2-3x faster)
-cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto" -E 'test(/operations_|epoch_processing_|sanity_/)'
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto,minimal_testing" -E 'test(/^operations_|^epoch_processing_|^sanity_/)'
 ```
 
-If you touched a specific operation (e.g. withdrawals), narrow further:
+For a single operation (e.g. withdrawals):
+
 ```bash
-cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto" operations_withdrawals
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto,minimal_testing" -E 'test(operations_withdrawals)'
 ```
 
-### consensus/fork_choice/ or consensus/proto_array/ — Fork choice
+### consensus/fork_choice/ or consensus/proto_array/
 
 ```bash
-cargo nextest run --release -p proto_array    # unit tests, fast (~1s)
+cargo nextest run --release -p proto_array
 cargo nextest run --release -p fork_choice
-# Then: EF fork choice tests
-cargo nextest run --release -p ef_tests --features "ef_tests" -E 'test(/fork_choice_/)'
+cargo nextest run --release -p ef_tests --features "ef_tests,minimal_testing" -E 'test(/^fork_choice_/)'
 ```
 
-### beacon_node/network/ — P2P, gossip, networking
+Fork choice tests need real crypto (no `fake_crypto`).
+
+### beacon_node/network/
 
 ```bash
-# Run for gloas fork only (not all 8 forks)
 env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
 ```
 
-If your change is fork-agnostic, pick one recent fork to save time:
-```bash
-env FORK_NAME=fulu cargo nextest run --release --features "fork_from_env" -p network
-```
-
-### beacon_node/beacon_chain/ — Block import, chain management
+### beacon_node/beacon_chain/
 
 ```bash
-# Run for the fork you're working on
 env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
 ```
 
-### beacon_node/http_api/ — REST API endpoints
+### beacon_node/http_api/
 
 ```bash
 env FORK_NAME=fulu cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
 ```
 
-### beacon_node/operation_pool/ — Attestation/op pool
+### beacon_node/operation_pool/
 
 ```bash
 env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p operation_pool
 ```
 
-### validator_client/ — Validator duties, signing
+### validator_client/
 
 ```bash
 cargo nextest run --release -p validator_client
 ```
 
-### Before pushing — verify nothing is broken across the workspace
+### Before pushing
 
 ```bash
-# Quick workspace check (excludes heavy packages — ~2 min)
-cargo nextest run --workspace --release \
-  --exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network --exclude http_api
+cargo nextest run --workspace --release --exclude ef_tests --exclude beacon_chain --exclude slasher --exclude network --exclude http_api
 ```
 
-### Full EF spec tests — only when touching consensus-critical code
+### Full EF spec tests (minimal only)
 
 ```bash
-# Real crypto + fake crypto + check_all_files_accessed (the full suite)
-make run-ef-tests
+cargo nextest run --release -p ef_tests --features "ef_tests,minimal_testing"
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto,minimal_testing"
 ```
 
-### Tips
+### Full EF spec tests (both presets — CI-level, rarely needed)
 
-- `fake_crypto` skips BLS verification — 2-3x faster, good for logic-only changes
-- `FORK_NAME=gloas` runs tests for one fork only — 8x faster than testing all forks
-- `cargo nextest run -p ef_tests --features "ef_tests,fake_crypto" <filter>` — filter is a substring match on test name
-- Filter with `-E 'test(/pattern/)'` for regex matching on test names
-- All tests require `--release` for reasonable performance
+```bash
+cargo nextest run --release -p ef_tests --features "ef_tests"
+cargo nextest run --release -p ef_tests --features "ef_tests,fake_crypto"
+```
 
 ## Before You Start
 
@@ -275,18 +270,24 @@ scripts/kurtosis-run.sh --no-teardown
 ### How the Devnet Works
 
 - Minimal preset: 8 slots/epoch, 6s/slot
-- Gloas (ePBS) fork at epoch 1
-- Single node: vibehouse CL + geth EL
-- Assertoor automatically checks finalization, block proposals, and sync status
-- 5-minute timeout — if assertoor hasn't passed by then, the run fails
+- Gloas (ePBS) fork at epoch 1 (slot 8)
+- Single node: vibehouse CL + geth EL + spamoor (tx load)
+- Script polls beacon API directly for health (no assertoor — it doesn't understand gloas yet)
+- Success = finalized epoch >= 3 (two full epochs past gloas fork)
+- 5-minute timeout with stall detection (chain stuck for 36s = fail)
+- All logs go to `/tmp/kurtosis-runs/<RUN_ID>/` with separate files
 
 ### Bot Workflow
 
 1. Make code change
 2. Run `scripts/kurtosis-run.sh`
-3. On failure: read dump logs in `/tmp/kurtosis-dump-*` (check CL logs first, then EL)
+3. On failure: read logs in `/tmp/kurtosis-runs/<RUN_ID>/` — check `health.log` first, then `dump/` CL logs, then EL logs
 4. Fix the issue
 5. Repeat
+
+### Health Checks (what the script verifies)
+
+See `docs/devnet-checks.md` for the full list of checks an agent should perform when debugging.
 
 ### Common Issues
 
@@ -294,10 +295,11 @@ scripts/kurtosis-run.sh --no-teardown
 - **Self-build envelope errors**: Check `process_self_build_envelope` and `get_execution_payload` paths
 - **Engine API failures**: Check EL logs for `newPayload` / `forkchoiceUpdated` errors
 - **Stale head hash**: Gloas uses fork choice head_hash, not `state.latest_block_hash()`
+- **Block production 400s**: VC getting 400 from `/eth/v3/validator/blocks/{slot}` — check CL block production logs
 
 ### Rules
 
 - **NEVER** use the main `Dockerfile` for dev builds — it does a full Rust rebuild in Docker (5-10 min)
 - **NEVER** run `kurtosis run` directly — old enclaves accumulate and waste resources
-- **ALWAYS** use `scripts/kurtosis-run.sh` — it handles cleanup, assertoor polling, and timeout
+- **ALWAYS** use `scripts/kurtosis-run.sh` — it handles cleanup, health polling, and timeout
 - **ALWAYS** use `scripts/build-docker.sh` — it builds on host with incremental cargo cache

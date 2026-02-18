@@ -34,6 +34,12 @@ pub trait Handler {
     }
 
     fn run(&self) {
+        // Skip mainnet preset when minimal_testing feature is enabled.
+        // Handlers with config_name "general" (BLS, SSZ generic) always run.
+        if cfg!(feature = "minimal_testing") && Self::config_name() == "mainnet" {
+            return;
+        }
+
         for fork_name in ForkName::list_all() {
             if !self.disabled_forks().contains(&fork_name) && self.is_enabled_for_fork(fork_name) {
                 self.run_for_fork(fork_name);

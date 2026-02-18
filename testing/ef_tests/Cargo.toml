@@ -10,6 +10,8 @@ ef_tests = []
 disable_rayon = []
 fake_crypto = ["bls/fake_crypto"]
 portable = ["beacon_chain/portable"]
+# Skip mainnet preset tests — only run minimal. Much faster for dev iteration.
+minimal_testing = []
 
 [dependencies]
 alloy-primitives = { workspace = true }

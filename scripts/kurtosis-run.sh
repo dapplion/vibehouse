@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Bounded devnet lifecycle for vibehouse.
-# Build -> clean old enclave -> start -> poll assertoor -> teardown.
+# Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
 # Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown]
 #
@@ -13,7 +13,7 @@ set -euo pipefail
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
 #   kurtosis.log    — kurtosis run output (enclave startup)
-#   assertoor.log   — assertoor polling output
+#   health.log      — beacon API polling results (JSON per poll)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,8 +21,15 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 ENCLAVE_NAME="vibehouse-devnet"
 KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-epbs.yaml"
-POLL_INTERVAL=15
-TIMEOUT=300  # 5 minutes
+POLL_INTERVAL=12  # one slot = 6s, poll every 2 slots
+TIMEOUT=300       # 5 minutes
+
+# Devnet params (minimal preset)
+SLOTS_PER_EPOCH=8
+GLOAS_FORK_EPOCH=1
+GLOAS_FORK_SLOT=$((GLOAS_FORK_EPOCH * SLOTS_PER_EPOCH))
+# Need 2 finalized epochs post-fork to call it a success
+TARGET_FINALIZED_EPOCH=$((GLOAS_FORK_EPOCH + 2))
 
 DO_BUILD=true
 DO_TEARDOWN=true
@@ -81,59 +88,93 @@ fi
 echo "==> Devnet started. Services:"
 tail -30 "$RUN_DIR/kurtosis.log" | grep -E '(RUNNING|STOPPED|Name)' || true
 
-# Step 4: Discover assertoor port
-echo "==> Discovering assertoor endpoint..."
-ASSERTOOR_URL="$(kurtosis port print "$ENCLAVE_NAME" assertoor http)"
-echo "    Assertoor: $ASSERTOOR_URL"
+# Step 4: Discover beacon API port
+echo "==> Discovering beacon API endpoint..."
+BEACON_URL="$(kurtosis port print "$ENCLAVE_NAME" cl-1-lighthouse-geth http)"
+echo "    Beacon API: $BEACON_URL"
 
-# Step 5: Poll assertoor for test results
-echo "==> Polling assertoor (timeout: ${TIMEOUT}s, interval: ${POLL_INTERVAL}s)..."
+# Step 5: Poll beacon API for health checks
+echo "==> Polling beacon API (timeout: ${TIMEOUT}s, interval: ${POLL_INTERVAL}s)..."
+echo "    Target: finalized_epoch >= $TARGET_FINALIZED_EPOCH (gloas fork at epoch $GLOAS_FORK_EPOCH)"
 elapsed=0
+prev_slot=0
+stall_count=0
 
-{
 while [ "$elapsed" -lt "$TIMEOUT" ]; do
   sleep "$POLL_INTERVAL"
   elapsed=$((elapsed + POLL_INTERVAL))
 
-  # Fetch test status from assertoor API
-  response=$(curl -sf "$ASSERTOOR_URL/api/v1/test_status" 2>/dev/null || echo "")
-
-  if [ -z "$response" ]; then
-    echo "    [${elapsed}s] Assertoor not ready yet..."
+  # Check 1: Is the node synced?
+  syncing=$(curl -sf "$BEACON_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+  if [ -z "$syncing" ]; then
+    echo "    [${elapsed}s] Beacon API not ready..."
     continue
   fi
 
-  # Log full response
-  echo "--- ${elapsed}s ---" >> "$RUN_DIR/assertoor.log"
-  echo "$response" | jq . >> "$RUN_DIR/assertoor.log" 2>/dev/null || echo "$response" >> "$RUN_DIR/assertoor.log"
+  is_syncing=$(echo "$syncing" | jq -r '.data.is_syncing' 2>/dev/null || echo "true")
+  head_slot=$(echo "$syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "0")
 
-  # Check overall status
-  total=$(echo "$response" | jq -r '.data.tests | length' 2>/dev/null || echo "0")
-  passing=$(echo "$response" | jq -r '[.data.tests[] | select(.status == "success")] | length' 2>/dev/null || echo "0")
-  failing=$(echo "$response" | jq -r '[.data.tests[] | select(.status == "failure")] | length' 2>/dev/null || echo "0")
-  running=$(echo "$response" | jq -r '[.data.tests[] | select(.status == "running" or .status == "pending")] | length' 2>/dev/null || echo "0")
-
-  echo "    [${elapsed}s] Tests: $passing passed, $failing failed, $running running (total: $total)"
-
-  if [ "$failing" -gt 0 ]; then
-    echo "==> FAIL: Assertoor reports test failures"
-    echo "$response" | jq '.data.tests[] | select(.status == "failure") | {name, status, message}' 2>/dev/null || true
-    dump_logs
-    cleanup
-    exit 1
+  # Check 2: Get finality checkpoints
+  finality=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null || echo "")
+  finalized_epoch="0"
+  justified_epoch="0"
+  if [ -n "$finality" ]; then
+    finalized_epoch=$(echo "$finality" | jq -r '.data.finalized.epoch' 2>/dev/null || echo "0")
+    justified_epoch=$(echo "$finality" | jq -r '.data.current_justified.epoch' 2>/dev/null || echo "0")
   fi
 
-  if [ "$total" -gt 0 ] && [ "$running" -eq 0 ] && [ "$passing" -eq "$total" ]; then
-    echo "==> SUCCESS: All $total assertoor tests passed!"
+  # Check 3: Get latest header to verify block production
+  header=$(curl -sf "$BEACON_URL/eth/v1/beacon/headers/head" 2>/dev/null || echo "")
+  header_slot="0"
+  if [ -n "$header" ]; then
+    header_slot=$(echo "$header" | jq -r '.data.header.message.slot' 2>/dev/null || echo "0")
+  fi
+
+  # Log full state
+  {
+    echo "--- ${elapsed}s ---"
+    echo "head_slot=$head_slot header_slot=$header_slot is_syncing=$is_syncing"
+    echo "finalized_epoch=$finalized_epoch justified_epoch=$justified_epoch"
+    echo "$syncing" | jq . 2>/dev/null || true
+    echo "$finality" | jq . 2>/dev/null || true
+  } >> "$RUN_DIR/health.log"
+
+  # Compute current epoch
+  current_epoch=$((head_slot / SLOTS_PER_EPOCH))
+  past_fork="no"
+  if [ "$head_slot" -ge "$GLOAS_FORK_SLOT" ]; then
+    past_fork="yes"
+  fi
+
+  echo "    [${elapsed}s] slot=$head_slot epoch=$current_epoch finalized=$finalized_epoch justified=$justified_epoch syncing=$is_syncing fork=$past_fork"
+
+  # Stall detection: if head_slot hasn't advanced in 3 polls, something is wrong
+  if [ "$head_slot" -eq "$prev_slot" ] && [ "$head_slot" -ne "0" ]; then
+    stall_count=$((stall_count + 1))
+    if [ "$stall_count" -ge 3 ]; then
+      echo "==> FAIL: Chain stalled at slot $head_slot for $((stall_count * POLL_INTERVAL))s"
+      dump_logs
+      cleanup
+      exit 1
+    fi
+  else
+    stall_count=0
+  fi
+  prev_slot="$head_slot"
+
+  # Success: finalized past the gloas fork
+  if [ "$finalized_epoch" -ge "$TARGET_FINALIZED_EPOCH" ]; then
+    echo "==> SUCCESS: Finalized epoch $finalized_epoch (target was $TARGET_FINALIZED_EPOCH)"
+    echo "    Chain progressed through gloas fork and finalized."
     echo "==> Full logs: $RUN_DIR"
     cleanup
     exit 0
   fi
 done
-}
 
-echo "==> TIMEOUT: Assertoor did not report all-pass within ${TIMEOUT}s"
-echo "==> Assertoor poll log: $RUN_DIR/assertoor.log"
+echo "==> TIMEOUT: Did not reach finalized epoch $TARGET_FINALIZED_EPOCH within ${TIMEOUT}s"
+echo "    Last state: slot=$prev_slot finalized_epoch=$finalized_epoch"
+echo "==> Health log: $RUN_DIR/health.log"
 dump_logs
 cleanup
 exit 1
