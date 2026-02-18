@@ -29,6 +29,23 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-18 (run 4)
+- Fixed CI: `cargo fmt` failure in gossip_methods.rs and fork_choice.rs (from run 3 commits)
+- Revisited previously-skipped cherry-picks:
+  - `be799cb2a` — VC head monitor timeout: **SKIP** — our code uses `EventSource::get(path)` (bare reqwest with no timeout), not `self.client` with configured timeout. Bug doesn't affect us.
+  - `691c8cf8e` — duplicate data columns fix: **SKIP** — our code already deduplicates correctly (`.map(|(root, _)| root).unique()`). Upstream's bug was `.unique()` on `(root, slot)` tuples.
+  - `c61665b3a` — penalize peers for invalid RPC: **DONE** — resolved conflict in rpc_tests.rs imports (kept our `mod common` pattern, added `libp2p::PeerId`). All 3 new tests pass.
+- New cherry-picks:
+  - `a3a74d898` — fix ProcessHealth::observe computing `children_system` twice instead of `children_system + children_user` (metrics bug)
+  - `5563b7a1d` — fix execution engine test using stale `valid_payload.block_hash()` instead of `second_payload.block_hash()`
+  - `1fe7a8ce7` (partial) — gate `inactivity_scores` rewards tests to Altair+ forks (prevents directory-not-found on Phase0)
+- Evaluated and skipped:
+  - `945f6637c` — reqwest re-export removal (20-file refactor, 6 conflicts)
+  - `48a2b2802` — delete OnDiskConsensusContext (still used in our state_lru_cache.rs)
+  - `fcfd061fc` — feature gate SseEventSource (file doesn't exist in our fork)
+  - `f4a6b8d9b` — tree-sync lookup sync tests (4600-line rewrite, heavy conflicts)
+- No new consensus-specs changes requiring implementation (top commits are packaging/infrastructure)
+
 ### 2026-02-18 (run 3)
 - Implemented spec change `3f9caf73`: gossip validation `[IGNORE]` for Gloas blocks whose parent execution payload hasn't been seen
   - New `GloasParentPayloadUnknown` error variant in `BlockError`
@@ -59,10 +76,10 @@ Stay current with upstream lighthouse fixes and improvements.
 - Cherry-picked cleanly:
   - `c5b4580e3` — return correct variant for snappy errors (rpc codec fix)
   - `9065e4a56` — add pruning of observed_column_sidecars (memory fix)
-- Conflicted (skipped, may revisit):
-  - `be799cb2a` — VC head monitor timeout fix (our SSE client init differs)
-  - `691c8cf8e` — fix duplicate data columns in DataColumnsByRange (rpc_methods conflict)
-  - `c61665b3a` — penalize peers for invalid rpc request (test conflict)
+- Conflicted (resolved in run 4):
+  - `be799cb2a` — VC head monitor timeout fix (skipped — doesn't affect our SSE client pattern)
+  - `691c8cf8e` — fix duplicate data columns in DataColumnsByRange (skipped — our dedup is already correct)
+  - `c61665b3a` — penalize peers for invalid rpc request (cherry-picked with conflict resolution)
 - Upstream Gloas PRs (evaluated, not cherry-picked — our impl is ahead):
   - `eec0700f9` — Gloas local block building MVP
   - `67b967319` — Gloas payload attestation consensus
