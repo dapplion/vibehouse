@@ -19,6 +19,7 @@ Stay current with upstream lighthouse fixes and improvements.
 - [#8786 - HTTP client user-agent](https://github.com/sigp/lighthouse/pull/8786)
 
 ### Recent spec changes (consensus-specs) needing attention
+- consensus-specs PR #4807 — `update_proposer_boost_root` proposer index check — **DONE**: only apply proposer boost if block's proposer matches canonical chain's expected proposer for the slot. Added `canonical_head_proposer_index: Option<u64>` param to `on_block`, computed from cached head state before fork choice lock. All 8/8 fork choice EF tests pass (real + fake crypto), 34/34 fork_choice unit tests, 18/18 proto_array tests. Fixed 2026-02-18.
 - `3f9caf73` — ignore beacon block if parent payload unknown (gossip validation) — **DONE**: added `[IGNORE]` rule in `GossipVerifiedBlock::new()` — checks `parent_block.payload_revealed` for Gloas parents. New `GloasParentPayloadUnknown` error variant, handled as IGNORE in gossip methods. Fixed 2026-02-18.
 - `e57c5b80` — rename `execution_payload_states` to `payload_states` — **ASSESSED**: naming-only change in spec pseudocode. Our impl uses different internal names (proto_array nodes, not a dict).
 - `06396308` — payload data availability vote (new `DATA_AVAILABILITY_TIMELY_THRESHOLD`) — **DONE**: separate `ptc_blob_data_available_weight` + `payload_data_available` tracking on ProtoNode, full `should_extend_payload` implementation. Fixed 2026-02-17.
@@ -28,6 +29,23 @@ Stay current with upstream lighthouse fixes and improvements.
 - `278cbe7b` — add voluntary exit tests for builders — **ASSESSED**: these are Python spec test generator additions, not spec logic changes. The generated EF test fixtures (`process_execution_payload_bid_inactive_builder_exiting`) are already in our test suite and pass. No standalone `process_builder_exit` operation exists in the spec — builder exits are modeled via `withdrawable_epoch` on the `Builder` type.
 
 ## Progress log
+
+### 2026-02-18 (run 5)
+- Fetched upstream: no new commits since run 4 (top is `54b357614` — agent review docs, skip)
+- No new consensus-specs changes requiring implementation (top commits are packaging/infrastructure: eth-remerkleable, package rename, dependency updates)
+- Implemented consensus-specs PR #4807: `update_proposer_boost_root` proposer index check
+  - Added `canonical_head_proposer_index: Option<u64>` parameter to `ForkChoice::on_block`
+  - In `import_block`, compute expected proposer from cached head state before fork choice lock
+  - Only apply proposer boost if `block.proposer_index == expected_proposer_index`
+  - Skip check when epoch mismatch (can't compute proposer without state advance) or during fork revert
+  - Updated 6 call sites: beacon_chain, fork_revert, fork_choice tests, ef_tests, payload_invalidation
+  - Tests: 8/8 fork choice EF (real + fake crypto), 34/34 fork_choice, 18/18 proto_array — all pass
+- Remaining from PR #4807 (not yet implemented):
+  - `is_proposer_equivocation` helper for `get_proposer_head` reorg logic
+  - `should_apply_proposer_boost` changes in Gloas `get_weight` (already partially implemented, needs `block_timeliness` vector)
+  - Modified `is_head_weak` (Gloas) to include equivocating validator weight
+  - `record_block_timeliness` with two-element timeliness vector
+  - These are non-consensus-critical (reorg logic only) and can be done in a follow-up
 
 ### 2026-02-18 (run 4)
 - Fixed CI: `cargo fmt` failure in gossip_methods.rs and fork_choice.rs (from run 3 commits)
