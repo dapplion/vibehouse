@@ -39,7 +39,7 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 
 **Phase 5 remaining:** external builder path, ProposerPreferences topic (neither needed for self-build devnet)
 
-**Phase 6 remaining:** bid selection done (BN side). VC-side: duty discovery for gloas duties, awareness of external builder blocks
+**Phase 6 remaining:** duty discovery done. Remaining: VC-side awareness of external builder blocks
 
 **Phase 7 remaining:** blinded blocks endpoint verified working (Gloas blocks have no payload to blind, conversion is phantom-type only)
 

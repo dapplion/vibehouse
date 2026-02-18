@@ -16,12 +16,20 @@ Update the validator client for ePBS: block proposal flow with bid selection, pa
 - ✅ Service wired into VC startup
 - ✅ Fork guards: PTC service disabled pre-Gloas, BN PTC duties endpoint rejects pre-Gloas
 - ✅ ExecutionBidPool + bid selection in block production (BN side)
+- ✅ PTC duty discovery integrated into DutiesService (proactive polling, notifier visibility)
 
 ### Tasks
-- [ ] Update duty discovery for new gloas duties
 - [ ] VC-side awareness of external builder blocks (currently VC always expects self-build envelope)
 
 ## Progress log
+
+### 2026-02-18 — PTC duty discovery integrated into DutiesService
+- **What**: Moved PTC duty polling from PayloadAttestationService's ad-hoc private cache into the centralized DutiesService, following the sync committee duty pattern.
+- **New module**: `validator_services/src/ptc.rs` — `PtcDutiesMap` (epoch→duties map with `duties_for_slot()`, `duty_count()`, `prune()`), `poll_ptc_duties()` (proactive fetch for current + next epoch, Gloas fork guard, old epoch pruning)
+- **DutiesService changes**: new `ptc_duties: PtcDutiesMap` field, `ptc_attester_count(epoch)` method, fifth polling task (`duties_service_ptc`) in `start_update_service` — runs every slot alongside attester/proposer/sync committee polling
+- **PayloadAttestationService refactored**: takes `duties_service` reference via builder, reads duties from `DutiesService.ptc_duties.duties_for_slot()` instead of managing its own `DutiesCache`. Removed private `DutiesCache`, `get_duties_for_epoch()`, and `tokio::sync::RwLock` dependency.
+- **Notifier**: now displays `ptc_attesters` count alongside `current_epoch_proposers` and `active_validators` in the "All validators active" / "Some validators active" log lines
+- **Tests**: 136/136 EF tests (fake_crypto), 1302/1302 workspace tests pass, clippy clean
 
 ### 2026-02-18 — bid selection in block production (BN side)
 - **What**: Added `ExecutionBidPool` and bid selection logic to block production. When external builder bids are available for the proposal slot, the BN selects the highest-value bid and includes it in the block instead of self-building. Falls back to self-build when no external bids exist.
