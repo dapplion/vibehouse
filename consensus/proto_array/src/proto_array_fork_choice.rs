@@ -603,6 +603,7 @@ impl ProtoArrayForkChoice {
             return self.find_head_gloas::<E>(
                 justified_checkpoint,
                 proposer_boost_root,
+                equivocating_indices,
                 current_slot,
                 spec,
             );
@@ -1056,12 +1057,17 @@ impl ProtoArrayForkChoice {
         &self,
         justified_checkpoint: Checkpoint,
         proposer_boost_root: Hash256,
+        equivocating_indices: &BTreeSet<u64>,
         current_slot: Slot,
         spec: &ChainSpec,
     ) -> Result<Hash256, String> {
         let filtered_roots = self.compute_filtered_roots::<E>(current_slot);
-        let apply_boost =
-            self.should_apply_proposer_boost_gloas::<E>(proposer_boost_root, current_slot, spec);
+        let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
+            proposer_boost_root,
+            equivocating_indices,
+            current_slot,
+            spec,
+        );
 
         let mut head = GloasForkChoiceNode {
             root: justified_checkpoint.root,
@@ -1218,6 +1224,7 @@ impl ProtoArrayForkChoice {
     fn should_apply_proposer_boost_gloas<E: EthSpec>(
         &self,
         proposer_boost_root: Hash256,
+        equivocating_indices: &BTreeSet<u64>,
         _current_slot: Slot,
         spec: &ChainSpec,
     ) -> bool {
@@ -1278,8 +1285,17 @@ impl ProtoArrayForkChoice {
             }
         }
 
-        // Also add equivocating validator weight to parent (per spec)
-        // (simplified: we don't have equivocating indices here, so skip this)
+        // Add equivocating validator weight to parent weight (per spec is_head_weak).
+        // Equivocating validators' effective balance counts toward the head's weight.
+        for &val_index in equivocating_indices {
+            let balance = self
+                .balances
+                .effective_balances
+                .get(val_index as usize)
+                .copied()
+                .unwrap_or(0);
+            parent_att_weight = parent_att_weight.saturating_add(balance);
+        }
 
         // Threshold for "head weak" is REORG_HEAD_WEIGHT_THRESHOLD% of committee
         let reorg_threshold = spec
