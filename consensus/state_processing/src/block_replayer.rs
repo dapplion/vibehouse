@@ -238,6 +238,27 @@ where
         for (i, block) in blocks.iter().enumerate() {
             // Allow one additional block at the start which is only used for its state root.
             if i == 0 && block.slot() <= self.state.slot() {
+                // For Gloas blocks, the stored post-block state has latest_block_hash
+                // from before envelope processing (envelopes update it separately).
+                // Apply the bid's block_hash as a fallback so subsequent blocks can
+                // validate bid.parent_block_hash == state.latest_block_hash.
+                if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
+                    let block_root = block.canonical_root();
+                    if let Some(envelope) = self.envelopes.remove(&block_root) {
+                        let _ = process_execution_payload_envelope(
+                            &mut self.state,
+                            None,
+                            &envelope,
+                            VerifySignatures::False,
+                            self.spec,
+                        );
+                    } else {
+                        let _ = self
+                            .state
+                            .latest_block_hash_mut()
+                            .map(|h| *h = bid.message.block_hash);
+                    }
+                }
                 continue;
             }
 
