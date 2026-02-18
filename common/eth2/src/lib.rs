@@ -960,6 +960,34 @@ impl BeaconNodeHttpClient {
             .map(|opt| opt.map(BeaconResponse::ForkVersioned))
     }
 
+    /// `GET beacon/states/{state_id}/proposer_lookahead`
+    ///
+    /// Returns the proposer lookahead vector from the beacon state. Only available from Fulu+.
+    /// Returns `Ok(None)` on a 404 error.
+    pub async fn get_beacon_states_proposer_lookahead(
+        &self,
+        state_id: StateId,
+    ) -> Result<
+        Option<
+            ::types::beacon_response::UnversionedResponse<
+                Vec<u64>,
+                ::types::beacon_response::ExecutionOptimisticFinalizedMetadata,
+            >,
+        >,
+        Error,
+    > {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("states")
+            .push(&state_id.to_string())
+            .push("proposer_lookahead");
+
+        self.get_opt(path).await
+    }
+
     /// `GET beacon/light_client/updates`
     ///
     /// Returns `Ok(None)` on a 404 error.

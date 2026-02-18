@@ -7,13 +7,12 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 
 ### Done
 - [x] SSE events for ePBS: `execution_bid`, `execution_payload`, `payload_attestation`
+- [x] `GET /eth/v1/beacon/states/{state_id}/proposer_lookahead` — Fulu/Gloas only, returns `proposer_lookahead` vector
 
 ### Tasks
 - [ ] Add `/eth/v1/beacon/blinded_blocks` updates for ePBS
 - [ ] Add execution bid submission endpoint
-- [ ] Add payload attestation endpoint
 - [ ] Update block retrieval endpoints to handle two-phase blocks
-- [ ] Implement proposer lookahead endpoint
 
 ## Progress log
 
@@ -29,3 +28,13 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
   - `beacon_node/network/src/network_beacon_processor/gossip_methods.rs`: Emit events in ePBS gossip handlers after successful verification/import
   - `beacon_node/http_api/src/lib.rs`: Wired up subscriptions in `/eth/v1/events` endpoint
 - 136/136 EF tests pass, check_all_files_accessed passes, clippy clean
+
+### 2026-02-18 — proposer lookahead endpoint
+- **Endpoint**: `GET /eth/v1/beacon/states/{state_id}/proposer_lookahead`
+- **What it does**: Returns the raw `proposer_lookahead` vector from the Fulu/Gloas beacon state — a list of validator indices (one per slot) covering the current and next epoch's proposer schedule. Pre-Fulu states return 400.
+- **Why**: Upstream PR sigp/lighthouse#8815 (per beacon-APIs#565). External tooling (MEV relays, block explorers) can use this to know proposer assignments without re-computing the shuffling.
+- **Response**: `{ "execution_optimistic": bool, "finalized": bool, "data": [u64, ...] }` (no version header since data is unversioned)
+- **Files changed**: 2 files
+  - `beacon_node/http_api/src/lib.rs`: Added route following `pending_consolidations` pattern; `ResponseIncludesVersion::No` since data is raw u64 vector
+  - `common/eth2/src/lib.rs`: Added `get_beacon_states_proposer_lookahead` client method returning `UnversionedResponse<Vec<u64>, ExecutionOptimisticFinalizedMetadata>`
+- 181/181 http_api tests pass
