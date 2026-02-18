@@ -1970,9 +1970,7 @@ mod deneb_only {
 
     impl DenebTester {
         fn new(request_trigger: RequestTrigger) -> Option<Self> {
-            let Some(mut rig) = TestRig::test_setup_after_deneb_before_fulu() else {
-                return None;
-            };
+            let mut rig = TestRig::test_setup_after_deneb_before_fulu()?;
             let (block, blobs) = rig.rand_block_and_blobs(NumBlobs::Random);
             let mut block = Arc::new(block);
             let mut blobs = blobs.into_iter().map(Arc::new).collect::<Vec<_>>();
