@@ -2904,7 +2904,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .map_err(Error::DBError)?;
         }
 
-        // Persist the envelope to disk so it can be retrieved later via the REST API.
+        // Persist the envelope to disk so it can be retrieved later via the REST API
+        // and for block replay (the replayer loads envelopes to apply full state transition).
         self.store
             .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
                 beacon_block_root,

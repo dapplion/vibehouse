@@ -1000,7 +1000,19 @@ where
         BeaconState<E>,
         Option<SignedExecutionPayloadEnvelope<E>>,
     ) {
-        self.make_block_with_envelope_and_state_root(state, None, slot)
+        // Gloas ePBS: derive the block's state_root from the post-envelope state
+        // so state advancement fills state_roots correctly.
+        let state_root_opt = if state.fork_name_unchecked().gloas_enabled() {
+            let sr = state.latest_block_header().state_root;
+            if sr != Hash256::zero() {
+                Some(sr)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        self.make_block_with_envelope_and_state_root(state, state_root_opt, slot)
             .await
     }
 
@@ -2614,7 +2626,21 @@ where
         ),
         BlockError,
     > {
-        self.add_block_at_slot_internal(slot, state, None).await
+        // Gloas ePBS: if the state is post-envelope, its tree hash differs from
+        // the block's state_root. Use latest_block_header.state_root (set during
+        // envelope processing) so state advancement fills state_roots correctly.
+        let state_root_opt = if state.fork_name_unchecked().gloas_enabled() {
+            let sr = state.latest_block_header().state_root;
+            if sr != Hash256::zero() {
+                Some(sr)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        self.add_block_at_slot_internal(slot, state, state_root_opt)
+            .await
     }
 
     /// Internal implementation that accepts an optional state_root for state advancement.
@@ -2891,7 +2917,14 @@ where
             self.update_light_client_server_cache(&state, *slot, block_hash.into());
 
             block_hash_from_slot.insert(*slot, block_hash);
-            state_hash_from_slot.insert(*slot, state.canonical_root().unwrap().into());
+            // Gloas ePBS: state is post-envelope but stored under the block's
+            // pre-envelope state_root. Use block state_root so lookups match.
+            let state_hash = if state.fork_name_unchecked().gloas_enabled() {
+                block.0.message().state_root().into()
+            } else {
+                state.canonical_root().unwrap().into()
+            };
+            state_hash_from_slot.insert(*slot, state_hash);
             latest_block_hash = Some(block_hash);
         }
         (
@@ -2968,7 +3001,14 @@ where
             state = new_state;
 
             block_hash_from_slot.insert(*slot, block_hash);
-            state_hash_from_slot.insert(*slot, state.canonical_root().unwrap().into());
+            // Gloas ePBS: state is post-envelope but stored under the block's
+            // pre-envelope state_root. Use block state_root so lookups match.
+            let state_hash = if state.fork_name_unchecked().gloas_enabled() {
+                block.0.message().state_root().into()
+            } else {
+                state.canonical_root().unwrap().into()
+            };
+            state_hash_from_slot.insert(*slot, state_hash);
             latest_block_hash = Some(block_hash);
         }
         (

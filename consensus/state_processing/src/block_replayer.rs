@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use types::{
-    BeaconState, BeaconStateError, BlindedPayload, ChainSpec, EthSpec, Hash256, SignedBeaconBlock,
-    SignedExecutionPayloadEnvelope, Slot,
+    BeaconState, BeaconStateError, BlindedPayload, ChainSpec, EthSpec, ExecutionBlockHash, Hash256,
+    SignedBeaconBlock, SignedExecutionPayloadEnvelope, Slot,
 };
 
 pub type PreBlockHook<'a, E, Error> = Box<
@@ -254,8 +254,13 @@ where
                             VerifySignatures::False,
                             self.spec,
                         ));
-                    } else if let Ok(h) = self.state.latest_block_hash_mut() {
-                        *h = bid.message.block_hash;
+                    } else if bid.message.block_hash != ExecutionBlockHash::zero() {
+                        // Only update latest_block_hash from the bid if it's non-zero.
+                        // Genesis blocks have an empty bid with zero block_hash — applying
+                        // it would corrupt the state's already-correct latest_block_hash.
+                        if let Ok(h) = self.state.latest_block_hash_mut() {
+                            *h = bid.message.block_hash;
+                        }
                     }
                 }
                 continue;
