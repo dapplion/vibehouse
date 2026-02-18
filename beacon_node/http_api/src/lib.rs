@@ -94,7 +94,8 @@ use types::{
     ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Epoch, EthSpec, ForkName, Hash256,
     PayloadAttestationMessage, ProposerPreparationData, ProposerSlashing, RelativeEpoch,
     SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
-    SignedContributionAndProof, SignedExecutionPayloadBid, SignedValidatorRegistrationData,
+    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedValidatorRegistrationData,
     SignedVoluntaryExit,
     SingleAttestation, Slot, SyncCommitteeMessage, SyncContributionData,
 };
@@ -2701,6 +2702,74 @@ pub fn serve<T: BeaconChainTypes>(
             },
         );
 
+    // POST beacon/execution_payload_envelope
+    //
+    // Accepts a signed execution payload envelope from a builder (external or self), verifies it
+    // for gossip, runs the state transition (newPayload + process_execution_payload), and gossips
+    // it on the execution_payload topic. Only available post-Gloas.
+    let post_beacon_execution_payload_envelope = eth_v1
+        .and(warp::path("beacon"))
+        .and(warp::path("execution_payload_envelope"))
+        .and(warp::path::end())
+        .and(warp_utils::json::json())
+        .and(network_tx_filter.clone())
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone())
+        .then(
+            |envelope: SignedExecutionPayloadEnvelope<T::EthSpec>,
+             network_tx: UnboundedSender<NetworkMessage<T::EthSpec>>,
+             task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>| {
+                task_spawner.spawn_async_with_rejection(Priority::P0, async move {
+                    use beacon_chain::gloas_verification::PayloadEnvelopeError;
+                    use std::sync::Arc as StdArc;
+
+                    if !chain.spec.is_gloas_scheduled() {
+                        return Err(warp_utils::reject::custom_bad_request(
+                            "Gloas is not scheduled".to_string(),
+                        ));
+                    }
+
+                    let builder_index = envelope.message.builder_index;
+
+                    let verified_envelope =
+                        match chain.verify_payload_envelope_for_gossip(StdArc::new(envelope)) {
+                            Ok(verified) => verified,
+                            Err(PayloadEnvelopeError::PriorToFinalization { .. }) => {
+                                // Stale but not invalid — return 200 OK
+                                debug!(
+                                    builder_index,
+                                    "Stale execution payload envelope submitted via HTTP"
+                                );
+                                return Ok(warp::reply::reply().into_response());
+                            }
+                            Err(e) => {
+                                return Err(warp_utils::reject::custom_bad_request(format!(
+                                    "invalid execution payload envelope: {e:?}"
+                                )));
+                            }
+                        };
+
+                    publish_pubsub_message(
+                        &network_tx,
+                        PubsubMessage::ExecutionPayload(Box::new(
+                            verified_envelope.envelope().clone(),
+                        )),
+                    )?;
+
+                    if let Err(e) = chain.process_payload_envelope(&verified_envelope).await {
+                        warn!(
+                            builder_index,
+                            error = ?e,
+                            "Failed to process execution payload envelope"
+                        );
+                    }
+
+                    Ok(warp::reply::reply().into_response())
+                })
+            },
+        );
+
     /*
      * beacon/light_client
      */
@@ -5207,6 +5276,7 @@ pub fn serve<T: BeaconChainTypes>(
                     .uor(post_beacon_pool_bls_to_execution_changes)
                     .uor(post_beacon_pool_payload_attestations)
                     .uor(post_builder_bids)
+                    .uor(post_beacon_execution_payload_envelope)
                     .uor(post_beacon_state_validators)
                     .uor(post_beacon_state_validator_balances)
                     .uor(post_beacon_state_validator_identities)

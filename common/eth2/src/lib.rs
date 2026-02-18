@@ -17,7 +17,10 @@ pub mod types;
 use self::mixin::{RequestAccept, ResponseOptional};
 use self::types::{Error as ResponseError, *};
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
-use ::types::{PayloadAttestationData, PayloadAttestationMessage, SignedExecutionPayloadBid};
+use ::types::{
+    PayloadAttestationData, PayloadAttestationMessage, SignedExecutionPayloadBid,
+    SignedExecutionPayloadEnvelope,
+};
 use derivative::Derivative;
 use futures::Stream;
 use futures_util::StreamExt;
@@ -1004,6 +1007,26 @@ impl BeaconNodeHttpClient {
             .push("bids");
 
         self.post(path, bid).await?;
+
+        Ok(())
+    }
+
+    /// `POST beacon/execution_payload_envelope`
+    ///
+    /// Submits a signed execution payload envelope to the beacon node. The node verifies, applies
+    /// the state transition, and gossips it. Only available post-Gloas.
+    pub async fn post_beacon_execution_payload_envelope<E: EthSpec>(
+        &self,
+        envelope: &SignedExecutionPayloadEnvelope<E>,
+    ) -> Result<(), Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("execution_payload_envelope");
+
+        self.post(path, envelope).await?;
 
         Ok(())
     }
