@@ -30,6 +30,25 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 11)
+- Fetched upstream: no new commits since run 10
+- No new consensus-specs changes requiring implementation
+- **Fixed 9 more Gloas store_tests failures** (53→62 passing, 20→11 failing):
+  1. **WSS state root consistency** (builder.rs): checkpoint sync stored the WSS state under the post-envelope hash, but the block import path expects states under the block's pre-envelope state_root. Fix: for aligned Gloas checkpoints, use `weak_subj_block.state_root()` as the storage key for `set_split`, `update_finalized_state`, and `put_state`.
+  2. **WSS state advancement** (builder.rs): during state advancement to epoch boundary, `per_slot_processing` was called with `None` state_root, causing `state_roots[block_slot]` to contain the post-envelope hash instead of the pre-envelope root. Fix: pass `weak_subj_block.state_root()` as `state_root_opt` for the first call.
+  3. **get_advanced_hot_state envelope re-application** (hot_cold_store.rs): when loading a state from disk for Gloas blocks, the pre-envelope state needs envelope re-application to update `latest_block_hash`, execution requests, and builder payments. Added envelope re-application with skip-if-already-applied check (for WSS checkpoint states stored as post-envelope).
+  4. **get_advanced_hot_state cache/disk root handling** (hot_cold_store.rs): cache and disk paths now return the caller's `state_root` (pre-envelope root) instead of the stored root (which may be post-envelope), so the sanity check in `block_verification.rs` (`parent_state_root == block.state_root()`) passes.
+  5. **reconstruct_historic_states envelope processing** (reconstruct.rs): reconstruction replays blocks without processing envelopes, so `latest_block_hash` was never updated and subsequent blocks failed bid validation. Fix: after `per_block_processing`, load and apply the envelope if available. Keep `prev_state_root` as the pre-envelope root for consistency with the forward chain's `state_roots` array.
+  6. **reconstruct_historic_states integrity check** (reconstruct.rs): the final root check compared the block's pre-envelope root with the state's post-envelope hash. Accept the mismatch for Gloas states.
+  7. **Test envelope storage**: copy envelopes from the source harness to the WSS chain's store during both checkpoint setup and backfill, so reconstruction can access them.
+  8. **canonical_head try_update_head_state**: update the head snapshot's state from pre-envelope to post-envelope after `process_self_build_envelope` and `process_payload_envelope`, since fork choice won't re-compute the head when the head block hasn't changed.
+  9. **Migration dual mapping** (hot_cold_store.rs): store ColdStateSummary under both pre-envelope and post-envelope roots during migration so lookups by either root succeed.
+- Newly passing tests: `weak_subjectivity_sync_easy`, `weak_subjectivity_sync_single_block_batches`, `weak_subjectivity_sync_unaligned_advanced_checkpoint`, `weak_subjectivity_sync_unaligned_unadvanced_checkpoint`, `weak_subjectivity_sync_skips_at_genesis` (5 new WSS + 4 from previous runs)
+- Remaining 11 failures are pre-existing and unrelated to Gloas ePBS state handling:
+  - **Data columns** (7): fulu_prune_data_columns_* (5), test_custody_column_filtering_* (2)
+  - **Light client** (2): light_client_bootstrap_test, light_client_updates_test
+  - **Schema downgrade** (2): schema_downgrade_to_min_version_*
+
 ### 2026-02-18 (run 10)
 - Fetched upstream: no new commits since run 9
 - No new consensus-specs changes requiring implementation
