@@ -624,7 +624,7 @@ mod tests {
                 *req,
                 blocks
                     .iter()
-                    .flat_map(|b| b.1.iter().filter(|d| d.index == column_index).cloned())
+                    .flat_map(|b| b.1.iter().filter(|d| d.index() == column_index).cloned())
                     .collect(),
             )
             .unwrap();
@@ -707,7 +707,7 @@ mod tests {
                     .iter()
                     .flat_map(|b| {
                         b.1.iter()
-                            .filter(|d| column_indices.contains(&d.index))
+                            .filter(|d| column_indices.contains(&d.index()))
                             .cloned()
                     })
                     .collect::<Vec<_>>(),
@@ -779,7 +779,7 @@ mod tests {
                 *req,
                 blocks
                     .iter()
-                    .flat_map(|b| b.1.iter().filter(|d| d.index == column_index).cloned())
+                    .flat_map(|b| b.1.iter().filter(|d| d.index() == column_index).cloned())
                     .collect(),
             )
             .unwrap();
@@ -864,7 +864,7 @@ mod tests {
             *req1,
             blocks
                 .iter()
-                .flat_map(|b| b.1.iter().filter(|d| d.index == 1).cloned())
+                .flat_map(|b| b.1.iter().filter(|d| d.index() == 1).cloned())
                 .collect(),
         )
         .unwrap();
@@ -891,7 +891,7 @@ mod tests {
             new_columns_req_id,
             blocks
                 .iter()
-                .flat_map(|b| b.1.iter().filter(|d| d.index == 2).cloned())
+                .flat_map(|b| b.1.iter().filter(|d| d.index() == 2).cloned())
                 .collect(),
         )
         .unwrap();
@@ -957,7 +957,7 @@ mod tests {
             *req1,
             blocks
                 .iter()
-                .flat_map(|b| b.1.iter().filter(|d| d.index == 1).cloned())
+                .flat_map(|b| b.1.iter().filter(|d| d.index() == 1).cloned())
                 .collect(),
         )
         .unwrap();

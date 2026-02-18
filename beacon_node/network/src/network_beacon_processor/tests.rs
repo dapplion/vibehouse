@@ -308,7 +308,7 @@ impl TestRig {
                 )
                 .unwrap()
                 .into_iter()
-                .filter(|c| sampling_indices.contains(&c.index))
+                .filter(|c| sampling_indices.contains(&c.index()))
                 .collect::<Vec<_>>();
 
                 (None, Some(custody_columns))
@@ -385,7 +385,7 @@ impl TestRig {
                 .send_gossip_data_column_sidecar(
                     junk_message_id(),
                     junk_peer_id(),
-                    DataColumnSubnetId::from_column_index(data_column.index, &self.chain.spec),
+                    DataColumnSubnetId::from_column_index(data_column.index(), &self.chain.spec),
                     data_column.clone(),
                     Duration::from_secs(0),
                 )
@@ -1121,7 +1121,7 @@ async fn accept_processed_gossip_data_columns_without_import() {
         .into_iter()
         .map(|data_column| {
             let subnet_id =
-                DataColumnSubnetId::from_column_index(data_column.index, &rig.chain.spec);
+                DataColumnSubnetId::from_column_index(data_column.index(), &rig.chain.spec);
             validate_data_column_sidecar_for_gossip::<_, DoNotObserve>(
                 data_column,
                 subnet_id,
@@ -1953,7 +1953,7 @@ async fn test_data_columns_by_range_request_only_returns_requested_columns() {
         } = next
         {
             if let Some(column) = data_column {
-                received_columns.push(column.index);
+                received_columns.push(column.index());
             } else {
                 break;
             }
