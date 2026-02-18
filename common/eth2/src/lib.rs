@@ -1011,6 +1011,28 @@ impl BeaconNodeHttpClient {
         Ok(())
     }
 
+    /// `GET beacon/execution_payload_envelope/{block_id}`
+    ///
+    /// Returns the signed execution payload envelope for a Gloas block.
+    /// Returns `Ok(None)` on a 404 error.
+    pub async fn get_beacon_execution_payload_envelope<E: EthSpec>(
+        &self,
+        block_id: BlockId,
+    ) -> Result<
+        Option<ExecutionOptimisticFinalizedResponse<SignedExecutionPayloadEnvelope<E>>>,
+        Error,
+    > {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("execution_payload_envelope")
+            .push(&block_id.to_string());
+
+        self.get_opt(path).await
+    }
+
     /// `POST beacon/execution_payload_envelope`
     ///
     /// Submits a signed execution payload envelope to the beacon node. The node verifies, applies

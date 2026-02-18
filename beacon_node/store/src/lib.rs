@@ -237,12 +237,14 @@ pub enum StoreOp<'a, E: EthSpec> {
     PutState(Hash256, &'a BeaconState<E>),
     PutBlobs(Hash256, BlobSidecarList<E>),
     PutDataColumns(Hash256, DataColumnSidecarList<E>),
+    PutPayloadEnvelope(Hash256, Arc<SignedExecutionPayloadEnvelope<E>>),
     PutStateSummary(Hash256, HotStateSummary),
     DeleteBlock(Hash256),
     DeleteBlobs(Hash256),
     DeleteDataColumns(Hash256, Vec<ColumnIndex>),
     DeleteState(Hash256, Option<Slot>),
     DeleteExecutionPayload(Hash256),
+    DeletePayloadEnvelope(Hash256),
     DeleteSyncCommitteeBranch(Hash256),
     KeyValueOp(KeyValueStoreOp),
 }
@@ -262,6 +264,12 @@ pub enum DBColumn {
     BeaconBlock,
     #[strum(serialize = "blb")]
     BeaconBlob,
+    /// Signed execution payload envelopes for Gloas ePBS blocks.
+    ///
+    /// - Key: `Hash256` block root (one envelope per block).
+    /// - Value: SSZ-encoded `SignedExecutionPayloadEnvelope`.
+    #[strum(serialize = "bev")]
+    BeaconEnvelope,
     #[strum(serialize = "bdc")]
     BeaconDataColumn,
     #[strum(serialize = "bdi")]
@@ -409,6 +417,7 @@ impl DBColumn {
             | Self::BeaconBlock
             | Self::BeaconState
             | Self::BeaconBlob
+            | Self::BeaconEnvelope
             | Self::BeaconStateSummary
             | Self::BeaconStateHotDiff
             | Self::BeaconStateHotSnapshot

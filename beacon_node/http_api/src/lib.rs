@@ -2702,6 +2702,45 @@ pub fn serve<T: BeaconChainTypes>(
             },
         );
 
+    // GET beacon/execution_payload_envelope/{block_id}
+    //
+    // Returns the signed execution payload envelope for a given block root. Only available
+    // for Gloas blocks that have had their envelope revealed and persisted.
+    let get_beacon_execution_payload_envelope = eth_v1
+        .and(warp::path("beacon"))
+        .and(warp::path("execution_payload_envelope"))
+        .and(block_id_or_err)
+        .and(warp::path::end())
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone())
+        .then(
+            |block_id: BlockId,
+             task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>| {
+                task_spawner.spawn_async_with_rejection(Priority::P1, async move {
+                    let (block_root, execution_optimistic, finalized) =
+                        block_id.root(&chain)?;
+
+                    let envelope = chain
+                        .get_payload_envelope(&block_root)
+                        .map_err(warp_utils::reject::unhandled_error)?
+                        .ok_or_else(|| {
+                            warp_utils::reject::custom_not_found(format!(
+                                "payload envelope for block {block_root:?}"
+                            ))
+                        })?;
+
+                    execution_optimistic_finalized_beacon_response(
+                        ResponseIncludesVersion::Yes(ForkName::Gloas),
+                        execution_optimistic,
+                        finalized,
+                        envelope,
+                    )
+                    .map(|res| warp::reply::json(&res).into_response())
+                })
+            },
+        );
+
     // POST beacon/execution_payload_envelope
     //
     // Accepts a signed execution payload envelope from a builder (external or self), verifies it
@@ -5200,6 +5239,7 @@ pub fn serve<T: BeaconChainTypes>(
                 .uor(get_beacon_block_root)
                 .uor(get_blob_sidecars)
                 .uor(get_blobs)
+                .uor(get_beacon_execution_payload_envelope)
                 .uor(get_beacon_pool_attestations)
                 .uor(get_beacon_pool_attester_slashings)
                 .uor(get_beacon_pool_proposer_slashings)

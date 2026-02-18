@@ -10,10 +10,11 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - [x] `GET /eth/v1/beacon/states/{state_id}/proposer_lookahead` — Fulu/Gloas only, returns `proposer_lookahead` vector
 - [x] `POST /eth/v1/builder/bids` — accepts `SignedExecutionPayloadBid`, verifies, imports to fork choice, gossips
 - [x] `POST /eth/v1/beacon/execution_payload_envelope` — accepts `SignedExecutionPayloadEnvelope`, verifies (gossip checks), gossips on `execution_payload`, runs state transition (newPayload + process_execution_payload)
+- [x] Envelope DB persistence: `DBColumn::BeaconEnvelope` + `StoreOp::PutPayloadEnvelope` / `DeletePayloadEnvelope` + pruning on finalization
+- [x] `GET /eth/v1/beacon/execution_payload_envelope/{block_id}` — returns stored `SignedExecutionPayloadEnvelope` for any block
 
 ### Tasks
 - [ ] Add `/eth/v1/beacon/blinded_blocks` updates for ePBS (assessed: current impl works for Gloas via `try_into_full_block(None)`)
-- [ ] Update block retrieval endpoints to handle two-phase blocks (blocked: envelope not stored in DB; requires new `DBColumn::BeaconEnvelope` + `StoreOp::PutPayloadEnvelope` + `get_payload_envelope()` — upstream has this in gloas-devnet-0)
 
 ## Progress log
 
@@ -60,3 +61,25 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
   - `beacon_node/http_api/src/lib.rs`: Added `POST /eth/v1/beacon/execution_payload_envelope` route using `spawn_async_with_rejection` (needed for async `process_payload_envelope`); `SignedExecutionPayloadEnvelope` added to imports
   - `common/eth2/src/lib.rs`: Added `post_beacon_execution_payload_envelope<E>` client method; `SignedExecutionPayloadEnvelope` added to imports
 - 181/181 http_api tests pass
+
+### 2026-02-18 — envelope DB persistence and retrieval endpoint
+- **What**: Envelopes are now persisted to disk and retrievable via a new GET endpoint. Previously, envelopes were only cached in memory (state_cache) and lost on restart.
+- **Store layer**:
+  - New `DBColumn::BeaconEnvelope` (`"bev"`) with 32-byte keys (block root)
+  - New `StoreOp::PutPayloadEnvelope` and `StoreOp::DeletePayloadEnvelope`
+  - `StoreItem` impl for `SignedExecutionPayloadEnvelope` (SSZ serialization)
+  - `get_payload_envelope()` and `payload_envelope_exists()` methods on `HotColdDB`
+  - Envelopes stored in `hot_db` (not blobs_db — small size, keyed by block root like ExecPayload)
+  - Finalization pruning: envelopes deleted alongside execution payloads during `try_prune_execution_payloads`
+- **Beacon chain persistence**: Envelopes stored after successful processing in both `process_payload_envelope` (gossip path) and `process_self_build_envelope` (local self-build path)
+- **New endpoint**: `GET /eth/v1/beacon/execution_payload_envelope/{block_id}` — resolves block_id via `BlockId::root()`, returns the stored envelope with execution_optimistic/finalized metadata and Gloas version header
+- **Client method**: `get_beacon_execution_payload_envelope(block_id)` added to eth2 crate
+- **Files changed**: 7 files (6 modified + 1 new)
+  - `beacon_node/store/src/lib.rs`: DBColumn + StoreOp variants
+  - `beacon_node/store/src/impls/execution_payload_envelope.rs` (new): StoreItem impl
+  - `beacon_node/store/src/impls.rs`: module registration
+  - `beacon_node/store/src/hot_cold_store.rs`: convert_to_kv_batch handlers, cache match arms, get/exists methods, pruning
+  - `beacon_node/beacon_chain/src/beacon_chain.rs`: persist in both envelope processing paths, expose get_payload_envelope
+  - `beacon_node/http_api/src/lib.rs`: GET endpoint + route wiring
+  - `common/eth2/src/lib.rs`: client method
+- 24/24 store tests pass, 136/136 EF tests pass, 181/181 http_api tests pass

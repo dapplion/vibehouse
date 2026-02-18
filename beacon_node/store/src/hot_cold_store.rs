@@ -778,6 +778,20 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             .map(|payload| payload.is_some())
     }
 
+    /// Load the signed execution payload envelope for a Gloas block from disk.
+    pub fn get_payload_envelope(
+        &self,
+        block_root: &Hash256,
+    ) -> Result<Option<SignedExecutionPayloadEnvelope<E>>, Error> {
+        self.get_item(block_root)
+    }
+
+    /// Check if a payload envelope exists on disk for the given block root.
+    pub fn payload_envelope_exists(&self, block_root: &Hash256) -> Result<bool, Error> {
+        self.hot_db
+            .key_exists(DBColumn::BeaconEnvelope, block_root.as_slice())
+    }
+
     /// Get the sync committee branch for the given block root
     /// Note: we only persist sync committee branches for checkpoint slots
     pub fn get_sync_committee_branch(
@@ -1281,6 +1295,14 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                     );
                 }
 
+                StoreOp::PutPayloadEnvelope(block_root, envelope) => {
+                    key_value_batch.push(KeyValueStoreOp::PutKeyValue(
+                        DBColumn::BeaconEnvelope,
+                        block_root.as_slice().to_vec(),
+                        envelope.as_ssz_bytes(),
+                    ));
+                }
+
                 StoreOp::PutStateSummary(state_root, summary) => {
                     key_value_batch.push(summary.as_kv_store_op(state_root));
                 }
@@ -1351,6 +1373,13 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 StoreOp::DeleteExecutionPayload(block_root) => {
                     key_value_batch.push(KeyValueStoreOp::DeleteKey(
                         DBColumn::ExecPayload,
+                        block_root.as_slice().to_vec(),
+                    ));
+                }
+
+                StoreOp::DeletePayloadEnvelope(block_root) => {
+                    key_value_batch.push(KeyValueStoreOp::DeleteKey(
+                        DBColumn::BeaconEnvelope,
                         block_root.as_slice().to_vec(),
                     ));
                 }
@@ -1526,6 +1555,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                     StoreOp::DeleteDataColumns(_, _) => (),
 
                     StoreOp::DeleteExecutionPayload(_) => (),
+
+                    StoreOp::PutPayloadEnvelope(_, _) => (),
+
+                    StoreOp::DeletePayloadEnvelope(_) => (),
 
                     StoreOp::DeleteSyncCommitteeBranch(_) => (),
 
@@ -3181,6 +3214,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 debug!(%slot, ?block_root, "Pruning execution payload");
                 last_pruned_block_root = Some(block_root);
                 ops.push(StoreOp::DeleteExecutionPayload(block_root));
+            }
+
+            // Also prune any envelope stored for this block (Gloas ePBS).
+            if self.payload_envelope_exists(&block_root)? {
+                debug!(%slot, ?block_root, "Pruning payload envelope");
+                ops.push(StoreOp::DeletePayloadEnvelope(block_root));
             }
 
             if slot <= anchor_info.oldest_block_slot {

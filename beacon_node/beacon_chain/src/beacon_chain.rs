@@ -1246,6 +1246,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.store.get_data_columns(block_root).map_err(Error::from)
     }
 
+    /// Returns the signed execution payload envelope for a Gloas block, if any.
+    pub fn get_payload_envelope(
+        &self,
+        block_root: &Hash256,
+    ) -> Result<Option<SignedExecutionPayloadEnvelope<T::EthSpec>>, Error> {
+        self.store
+            .get_payload_envelope(block_root)
+            .map_err(Error::from)
+    }
+
     /// Returns the blobs at the given root, if any.
     ///
     /// Uses the `block.epoch()` to determine whether to retrieve blobs or columns from the store.
@@ -2635,6 +2645,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .map_err(Error::DBError)?;
         }
 
+        // Persist the envelope to disk so it can be retrieved later via the REST API.
+        self.store
+            .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
+                beacon_block_root,
+                Arc::new(signed_envelope.clone()),
+            )])
+            .map_err(Error::DBError)?;
+
         debug!(
             ?beacon_block_root,
             builder_index = signed_envelope.message.builder_index,
@@ -2867,6 +2885,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .put_state(state_root, beacon_block_root, &state)
                 .map_err(Error::DBError)?;
         }
+
+        // Persist the envelope to disk so it can be retrieved later via the REST API.
+        self.store
+            .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
+                beacon_block_root,
+                Arc::new(signed_envelope.clone()),
+            )])
+            .map_err(Error::DBError)?;
 
         debug!(
             ?beacon_block_root,
