@@ -60,7 +60,7 @@ Reference:
 
 - **Peer scoring** — design complete, not yet implemented (functional at defaults)
 - **Test coverage tooling** — not started
-- **CI spec test job** — not set up
+- **CI workflow** — DONE (`.github/workflows/ci.yml`: check, ef-tests, unit-tests, fork-specific-tests)
 
 ---
 
