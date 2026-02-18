@@ -56,7 +56,10 @@ Reference:
 
 [docs/tasks/upstream-sync.md](docs/tasks/upstream-sync.md) — monitoring upstream PRs, cherry-picking non-gloas fixes
 
-### 5. Backlog
+### 5. ZK execution validity proofs for builder payloads
+[GitHub #28](https://github.com/dapplion/vibehouse/issues/28) — Optional ZK proofs alongside execution payload envelopes. Builders attach a proof of execution correctness; CL can skip EL validation for proved payloads. Can be run by a subset of nodes. **Start after Gloas is solid.**
+
+### 6. Backlog
 
 - **Peer scoring** — design complete, not yet implemented (functional at defaults)
 - **Test coverage tooling** — not started
