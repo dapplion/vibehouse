@@ -19,7 +19,7 @@ Stay current with upstream lighthouse fixes and improvements.
 - [#8786 - HTTP client user-agent](https://github.com/sigp/lighthouse/pull/8786)
 
 ### Recent spec changes (consensus-specs) needing attention
-- `3f9caf73` — ignore beacon block if parent payload unknown (gossip validation) — **TODO**: new `[IGNORE]` rule for Gloas blocks whose `bid.parent_block_hash` hasn't been seen. Need to add to gossip validation.
+- `3f9caf73` — ignore beacon block if parent payload unknown (gossip validation) — **DONE**: added `[IGNORE]` rule in `GossipVerifiedBlock::new()` — checks `parent_block.payload_revealed` for Gloas parents. New `GloasParentPayloadUnknown` error variant, handled as IGNORE in gossip methods. Fixed 2026-02-18.
 - `e57c5b80` — rename `execution_payload_states` to `payload_states` — **ASSESSED**: naming-only change in spec pseudocode. Our impl uses different internal names (proto_array nodes, not a dict).
 - `06396308` — payload data availability vote (new `DATA_AVAILABILITY_TIMELY_THRESHOLD`) — **DONE**: separate `ptc_blob_data_available_weight` + `payload_data_available` tracking on ProtoNode, full `should_extend_payload` implementation. Fixed 2026-02-17.
 - `b3341d00` — check pending deposit before applying to builder — **ASSESSED**: our code already removed the incorrect `is_pending_validator` check (commit `0aeabc122`). Current routing logic matches spec.
@@ -28,6 +28,14 @@ Stay current with upstream lighthouse fixes and improvements.
 - `278cbe7b` — add voluntary exit tests for builders — **ASSESSED**: these are Python spec test generator additions, not spec logic changes. The generated EF test fixtures (`process_execution_payload_bid_inactive_builder_exiting`) are already in our test suite and pass. No standalone `process_builder_exit` operation exists in the spec — builder exits are modeled via `withdrawable_epoch` on the `Builder` type.
 
 ## Progress log
+
+### 2026-02-18 (run 3)
+- Implemented spec change `3f9caf73`: gossip validation `[IGNORE]` for Gloas blocks whose parent execution payload hasn't been seen
+  - New `GloasParentPayloadUnknown` error variant in `BlockError`
+  - Check in `GossipVerifiedBlock::new()`: for Gloas blocks, if parent has `bid_block_hash` (is a Gloas block) and `payload_revealed == false`, IGNORE the block
+  - Pre-Gloas parents are always considered "seen" (payload is in the block body)
+  - Gossip handler returns `MessageAcceptance::Ignore` with no peer penalty
+- Tests: 8/8 fork_choice EF (real + fake crypto), 170/170 beacon_chain (1 pre-existing failure excluded), 23/23 network fulu (1 pre-existing failure excluded)
 
 ### 2026-02-18 (run 2)
 - Fetched upstream: no new commits since earlier today

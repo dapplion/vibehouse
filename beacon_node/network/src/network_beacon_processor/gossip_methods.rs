@@ -1283,6 +1283,17 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.send_sync_message(SyncMessage::UnknownParentBlock(peer_id, block, block_root));
                 return None;
             }
+            Err(BlockError::GloasParentPayloadUnknown {
+                parent_block_hash,
+            }) => {
+                debug!(
+                    ?block_root,
+                    ?parent_block_hash,
+                    "Parent execution payload not yet seen for gossip block"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return None;
+            }
             Err(e @ BlockError::BeaconChainError(_)) => {
                 debug!(
                     error = ?e,
