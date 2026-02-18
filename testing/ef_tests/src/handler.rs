@@ -609,6 +609,14 @@ impl<E: EthSpec + TypeName> Handler for RewardsHandler<E> {
     fn handler_name(&self) -> String {
         self.handler_name.to_string()
     }
+
+    fn is_enabled_for_fork(&self, fork_name: ForkName) -> bool {
+        if self.handler_name == "inactivity_scores" {
+            fork_name.altair_enabled()
+        } else {
+            true
+        }
+    }
 }
 
 #[derive(Derivative)]
