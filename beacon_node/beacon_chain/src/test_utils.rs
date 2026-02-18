@@ -3220,11 +3220,28 @@ where
                 let slots: Vec<Slot> = (first_slot_..(first_slot_ + (num_blocks as u64)))
                     .map(Slot::new)
                     .collect();
-                let mut state = self
-                    .chain
-                    .state_at_slot(previous_slot, StateSkipConfig::WithStateRoots)
-                    .unwrap();
-                let state_root = state.update_tree_hash_cache().unwrap();
+                // For Gloas (ePBS), if previous_slot is the current head, use
+                // get_current_state() which loads the post-envelope state from the
+                // state cache (with correct latest_block_hash). state_at_slot()
+                // returns the head snapshot state which is pre-envelope.
+                let head_slot = self.chain.head_snapshot().beacon_block.slot();
+                let (state, state_root) = if previous_slot == head_slot
+                    && self
+                        .chain
+                        .head_snapshot()
+                        .beacon_state
+                        .fork_name_unchecked()
+                        .gloas_enabled()
+                {
+                    self.get_current_state_and_root()
+                } else {
+                    let mut state = self
+                        .chain
+                        .state_at_slot(previous_slot, StateSkipConfig::WithStateRoots)
+                        .unwrap();
+                    let state_root = state.update_tree_hash_cache().unwrap();
+                    (state, state_root)
+                };
                 (state, state_root, slots)
             }
         };
