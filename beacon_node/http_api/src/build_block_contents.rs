@@ -23,10 +23,17 @@ pub fn build_block_contents<E: EthSpec>(
                     execution_payload_envelope,
                 } = block;
 
-                let Some((kzg_proofs, blobs)) = blob_items else {
-                    return Err(warp_utils::reject::unhandled_error(
-                        BlockProductionError::MissingBlobs,
-                    ));
+                // Gloas ePBS: KZG commitments are in the bid (not the block body), so
+                // blob_items may be None when there are no blobs. Use empty proofs/blobs.
+                let (kzg_proofs, blobs) = if fork_name.gloas_enabled() {
+                    blob_items.unwrap_or_default()
+                } else {
+                    let Some(items) = blob_items else {
+                        return Err(warp_utils::reject::unhandled_error(
+                            BlockProductionError::MissingBlobs,
+                        ));
+                    };
+                    items
                 };
 
                 // Extract the unsigned envelope message from the

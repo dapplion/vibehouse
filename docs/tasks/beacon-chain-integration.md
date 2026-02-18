@@ -3,7 +3,7 @@
 ## Objective
 Wire up gloas ePBS types through the beacon chain crate — block import pipeline, fork choice store, two-phase block handling, payload timeliness committee.
 
-## Status: IN PROGRESS
+## Status: DEVNET PASSING (self-build path working, kurtosis reaches finalized_epoch≥3)
 
 ### Done
 - ✅ Block verification pipeline for gloas (bid KZG check, parent root validation, availability handling)
@@ -170,6 +170,27 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - **Fix**: Updated both `get_builder_pubkey` closures in `gloas_verification.rs` to check for `BUILDER_INDEX_SELF_BUILD` and use the proposer's validator pubkey (matching the pattern already applied in `envelope_processing.rs`)
 - 78/78 EF tests pass, 136/136 fake_crypto pass (unchanged)
 - Commit: `7aac641f5`
+
+### 2026-02-18 — KURTOSIS DEVNET PASSING: three bugs fixed, devnet reaches finalized_epoch=3
+
+**Devnet result**: Chain progressed through Gloas fork at epoch 1 and finalized at epoch 3 (252s). SUCCESS.
+
+**Bug 1 (CRITICAL): PayloadBidInvalid — post-envelope state not persisted**
+- **Root cause**: `process_self_build_envelope` applied `process_execution_payload_envelope` which updates `state.latest_block_hash = slot_N_payload_hash`. But the mutated state was dropped without being stored. The next block producer loaded the pre-envelope state (via `get_advanced_hot_state` from `head_state_root`), which still had `latest_block_hash = slot_{N-1}_payload_hash`. The EL returned a payload with `parent_hash = slot_N_payload_hash` (correct, from FCU head hash), but `per_block_processing` validated `bid.parent_block_hash != state.latest_block_hash` → `PayloadBidInvalid`. Every slot after the first Gloas block would fail.
+- **Fix**: After `process_execution_payload_envelope`, call `self.store.put_state(&envelope_state_root, &state)`. This stores the post-envelope state on disk AND updates the state cache entry for the slot-N block root, so subsequent state advances start from the correct state.
+- `beacon_node/beacon_chain/src/beacon_chain.rs` — `process_self_build_envelope`
+
+**Bug 2 (MINOR): MissingBlobs error for Gloas block production**
+- Gloas blocks have `blob_items = None` (KZG commitments are in the bid, not the block body). The `build_block_contents.rs` code unconditionally required `Some((kzg_proofs, blobs))` and returned `MissingBlobs` error, causing 400 on all post-fork block production.
+- **Fix**: Added `fork_name.gloas_enabled()` check — for Gloas, use `unwrap_or_default()` (empty proofs/blobs).
+- `beacon_node/http_api/src/build_block_contents.rs`
+
+**Bug 3 (MINOR): 500 on payload_attestation_data for future slots**
+- `get_payload_attestation_data` called `state.get_block_root(slot)` when `slot > head_slot`, causing `BeaconStateError`.
+- **Fix**: Added guard returning `head_block_root` for future slots.
+- `beacon_node/beacon_chain/src/beacon_chain.rs` — `get_payload_attestation_data`
+
+**Infrastructure fix**: `kurtosis-run.sh` pinned to `ethereum-package@6.0.0` (latest unversioned package broke due to `static_files.star` removal).
 
 ### 2026-02-17 — Envelope signature verification + EF spec tests
 - **Problem 1**: `process_execution_payload_envelope` had a TODO for signature verification — envelope signatures were never verified

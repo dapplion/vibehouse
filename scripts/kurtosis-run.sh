@@ -78,7 +78,7 @@ kurtosis clean -a 2>/dev/null || true
 
 # Step 3: Start devnet
 echo "==> Starting devnet (log: $RUN_DIR/kurtosis.log)..."
-if ! kurtosis run github.com/ethpandaops/ethereum-package --enclave "$ENCLAVE_NAME" --args-file "$KURTOSIS_CONFIG" > "$RUN_DIR/kurtosis.log" 2>&1; then
+if ! kurtosis run github.com/ethpandaops/ethereum-package@6.0.0 --enclave "$ENCLAVE_NAME" --args-file "$KURTOSIS_CONFIG" > "$RUN_DIR/kurtosis.log" 2>&1; then
   echo "==> FAIL: kurtosis run failed. See $RUN_DIR/kurtosis.log"
   echo "--- last 30 lines ---"
   tail -30 "$RUN_DIR/kurtosis.log"

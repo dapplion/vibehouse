@@ -1750,6 +1750,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Find the block root at the requested slot
         let block_root = if head_slot == slot {
             head_block_root
+        } else if slot > head_slot {
+            // The block for this slot hasn't arrived yet. The PTC will vote payload_present=false.
+            // Return the head block root as a best-effort; fork choice won't find a payload for it.
+            head_block_root
         } else {
             // Look through fork choice for the block at this slot
             let fc = self.canonical_head.fork_choice_read_lock();
@@ -1762,7 +1766,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     head_block_root
                 } else {
                     // The block at the requested slot might be an ancestor of head.
-                    // Use the state to find the block root.
+                    // Use the state to find the block root (slot <= head_slot, so it's in the past).
                     let state = &head.snapshot.beacon_state;
                     *state
                         .get_block_root(slot)
@@ -2724,9 +2728,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             Error::EnvelopeProcessingError(format!("{:?}", e))
         })?;
 
+        // Persist the post-envelope state so that subsequent block production (slot+1)
+        // loads a state with the correct `latest_block_hash`. Without this, the state
+        // advance for the next slot would use the pre-envelope state where
+        // `latest_block_hash` still holds the previous slot's payload hash, causing
+        // `PayloadBidInvalid { reason: "bid parent_block_hash does not match state
+        // latest_block_hash" }` on every block after the first Gloas block.
+        let envelope_state_root = signed_envelope.message.state_root;
+        self.store
+            .put_state(&envelope_state_root, &state)
+            .map_err(Error::DBError)?;
+
         debug!(
             ?beacon_block_root,
             block_hash = ?signed_envelope.message.payload.block_hash,
+            %envelope_state_root,
             "Successfully processed self-build envelope locally"
         );
 
