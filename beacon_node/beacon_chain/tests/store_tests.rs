@@ -687,12 +687,23 @@ async fn block_replayer_hooks() {
         .load_blocks_to_replay(Slot::new(0), max_slot, end_block_root.into())
         .unwrap();
 
+    // Load Gloas envelopes for block replay.
+    let mut envelopes = std::collections::HashMap::new();
+    for block in &blocks {
+        if block.message().body().signed_execution_payload_bid().is_ok() {
+            let block_root = block.canonical_root();
+            if let Ok(Some(envelope)) = store.get_payload_envelope(&block_root) {
+                envelopes.insert(block_root, envelope);
+            }
+        }
+    }
+
     let mut pre_slots = vec![];
     let mut post_slots = vec![];
     let mut pre_block_slots = vec![];
     let mut post_block_slots = vec![];
 
-    let mut replay_state = BlockReplayer::<MinimalEthSpec>::new(state, &chain.spec)
+    let mut replayer = BlockReplayer::<MinimalEthSpec>::new(state, &chain.spec)
         .pre_slot_hook(Box::new(|_, state| {
             pre_slots.push(state.slot());
             Ok(())
@@ -718,7 +729,11 @@ async fn block_replayer_hooks() {
             assert_eq!(state.slot(), block.slot());
             post_block_slots.push(block.slot());
             Ok(())
-        }))
+        }));
+    if !envelopes.is_empty() {
+        replayer = replayer.envelopes(envelopes);
+    }
+    let mut replay_state = replayer
         .apply_blocks(blocks, None)
         .unwrap()
         .into_state();
@@ -5300,12 +5315,20 @@ fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_l
     assert_eq!(chain_dump.len() as u64, expected_len);
 
     for checkpoint in &mut chain_dump {
-        // Check that the tree hash of the stored state is as expected
-        assert_eq!(
-            checkpoint.beacon_state_root(),
-            checkpoint.beacon_state.update_tree_hash_cache().unwrap(),
-            "tree hash of stored state is incorrect"
-        );
+        let slot = checkpoint.beacon_block.slot();
+        let fork_name = harness.chain.spec.fork_name_at_slot::<E>(slot);
+
+        // Check that the tree hash of the stored state is as expected.
+        // For Gloas (ePBS), the cached state is post-envelope (with updated
+        // latest_block_hash) which differs from the block's state_root
+        // (pre-envelope). This is intentional — see process_self_build_envelope.
+        if !fork_name.gloas_enabled() {
+            assert_eq!(
+                checkpoint.beacon_state_root(),
+                checkpoint.beacon_state.update_tree_hash_cache().unwrap(),
+                "tree hash of stored state is incorrect"
+            );
+        }
 
         // Check that looking up the state root with no slot hint succeeds.
         // This tests the state root -> slot mapping.
@@ -5322,16 +5345,26 @@ fn check_chain_dump_from_slot(harness: &TestHarness, from_slot: Slot, expected_l
 
         // Check presence of execution payload on disk.
         if harness.chain.spec.bellatrix_fork_epoch.is_some() {
-            assert!(
-                harness
-                    .chain
-                    .store
-                    .execution_payload_exists(&checkpoint.beacon_block_root)
-                    .unwrap(),
-                "incorrect payload storage for block at slot {}: {:?}",
-                checkpoint.beacon_block.slot(),
-                checkpoint.beacon_block_root,
-            );
+            let slot = checkpoint.beacon_block.slot();
+            let block_root = checkpoint.beacon_block_root;
+            let fork_name = harness.chain.spec.fork_name_at_slot::<E>(slot);
+            if fork_name.gloas_enabled() {
+                // Gloas stores the payload in an envelope, not as a standalone payload.
+                // The genesis block (slot 0) has no envelope.
+                if slot > 0 {
+                    assert!(
+                        harness.chain.store.payload_envelope_exists(&block_root).unwrap(),
+                        "incorrect envelope storage for block at slot {}: {:?}",
+                        slot, block_root,
+                    );
+                }
+            } else {
+                assert!(
+                    harness.chain.store.execution_payload_exists(&block_root).unwrap(),
+                    "incorrect payload storage for block at slot {}: {:?}",
+                    slot, block_root,
+                );
+            }
         }
     }
 

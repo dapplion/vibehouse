@@ -2483,6 +2483,21 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             .no_signature_verification()
             .minimal_block_root_verification();
 
+        // Gloas ePBS: load envelopes for Gloas blocks so the replayer can apply
+        // full envelope processing (execution requests, builder payments, etc.)
+        let mut envelopes = std::collections::HashMap::new();
+        for block in &blocks {
+            if block.message().body().signed_execution_payload_bid().is_ok() {
+                let block_root = block.canonical_root();
+                if let Ok(Some(envelope)) = self.get_payload_envelope(&block_root) {
+                    envelopes.insert(block_root, envelope);
+                }
+            }
+        }
+        if !envelopes.is_empty() {
+            block_replayer = block_replayer.envelopes(envelopes);
+        }
+
         let have_state_root_iterator = state_root_iter.is_some();
         if let Some(state_root_iter) = state_root_iter {
             block_replayer = block_replayer.state_root_iter(state_root_iter);

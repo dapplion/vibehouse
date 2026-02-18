@@ -3804,7 +3804,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     Ok(status) => {
                         match status {
                             AvailabilityProcessingStatus::Imported(block_root) => {
-                                // The block was imported successfully.
                                 imported_blocks.push((block_root, block_slot));
                             }
                             AvailabilityProcessingStatus::MissingComponents(slot, block_root) => {

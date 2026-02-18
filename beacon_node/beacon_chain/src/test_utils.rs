@@ -797,7 +797,16 @@ where
     }
 
     pub fn get_current_state(&self) -> BeaconState<E> {
-        self.chain.head_beacon_state_cloned()
+        // For Gloas (ePBS), the cached head snapshot state is pre-envelope and has a
+        // stale latest_block_hash. Re-load from the state cache to get the post-envelope
+        // state which has the correct latest_block_hash for block production.
+        let head = self.chain.head_snapshot();
+        let state_root = head.beacon_state_root();
+        self.chain
+            .get_state(&state_root, Some(head.beacon_block.slot()), false)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| head.beacon_state.clone())
     }
 
     pub fn get_timestamp_at_slot(&self) -> u64 {
@@ -808,7 +817,12 @@ where
     pub fn get_current_state_and_root(&self) -> (BeaconState<E>, Hash256) {
         let head = self.chain.head_snapshot();
         let state_root = head.beacon_state_root();
-        (head.beacon_state.clone(), state_root)
+        let state = self.chain
+            .get_state(&state_root, Some(head.beacon_block.slot()), false)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| head.beacon_state.clone());
+        (state, state_root)
     }
 
     pub fn head_slot(&self) -> Slot {
@@ -968,13 +982,45 @@ where
     /// Returns a newly created block, signed by the proposer for the given slot.
     pub async fn make_block(
         &self,
-        mut state: BeaconState<E>,
+        state: BeaconState<E>,
         slot: Slot,
     ) -> (SignedBlockContentsTuple<E>, BeaconState<E>) {
+        let (block_contents, state, _envelope) = self.make_block_with_envelope(state, slot).await;
+        (block_contents, state)
+    }
+
+    /// Like `make_block` but also returns the Gloas self-build execution payload envelope.
+    pub async fn make_block_with_envelope(
+        &self,
+        state: BeaconState<E>,
+        slot: Slot,
+    ) -> (
+        SignedBlockContentsTuple<E>,
+        BeaconState<E>,
+        Option<SignedExecutionPayloadEnvelope<E>>,
+    ) {
+        self.make_block_with_envelope_and_state_root(state, None, slot)
+            .await
+    }
+
+    /// Like `make_block_with_envelope`, but accepts an explicit `state_root_opt` for state
+    /// advancement. For Gloas (ePBS), the state may be post-envelope (with updated
+    /// latest_block_hash) so the caller must pass the BLOCK's state_root to keep
+    /// `state_roots` array entries consistent with the import path.
+    pub async fn make_block_with_envelope_and_state_root(
+        &self,
+        mut state: BeaconState<E>,
+        state_root_opt: Option<Hash256>,
+        slot: Slot,
+    ) -> (
+        SignedBlockContentsTuple<E>,
+        BeaconState<E>,
+        Option<SignedExecutionPayloadEnvelope<E>>,
+    ) {
         assert_ne!(slot, 0, "can't produce a block at slot 0");
         assert!(slot >= state.slot());
 
-        complete_state_advance(&mut state, None, slot, &self.spec)
+        complete_state_advance(&mut state, state_root_opt, slot, &self.spec)
             .expect("should be able to advance state to slot");
 
         state.build_caches(&self.spec).expect("should build caches");
@@ -992,7 +1038,7 @@ where
             .chain
             .produce_block_on_state(
                 state,
-                None,
+                state_root_opt,
                 slot,
                 randao_reveal,
                 Some(graffiti),
@@ -1020,7 +1066,11 @@ where
                 (signed_block, None)
             };
 
-        (block_contents, block_response.state)
+        (
+            block_contents,
+            block_response.state,
+            block_response.execution_payload_envelope,
+        )
     }
 
     /// Useful for the `per_block_processing` tests. Creates a block, and returns the state after
@@ -2563,8 +2613,30 @@ where
         ),
         BlockError,
     > {
+        self.add_block_at_slot_internal(slot, state, None).await
+    }
+
+    /// Internal implementation that accepts an optional state_root for state advancement.
+    /// For Gloas (ePBS), when the state is post-envelope (from a prior iteration),
+    /// pass `Some(parent_block_state_root)` so `complete_state_advance` fills the
+    /// `state_roots` array consistently with the import path.
+    async fn add_block_at_slot_internal(
+        &self,
+        slot: Slot,
+        state: BeaconState<E>,
+        state_root_opt: Option<Hash256>,
+    ) -> Result<
+        (
+            SignedBeaconBlockHash,
+            SignedBlockContentsTuple<E>,
+            BeaconState<E>,
+        ),
+        BlockError,
+    > {
         self.set_current_slot(slot);
-        let (block_contents, new_state) = self.make_block(state, slot).await;
+
+        let (block_contents, new_state, envelope) =
+            self.make_block_with_envelope_and_state_root(state, state_root_opt, slot).await;
 
         let block_hash = self
             .process_block(
@@ -2573,7 +2645,32 @@ where
                 block_contents.clone(),
             )
             .await?;
-        Ok((block_hash, block_contents, new_state))
+
+        // Gloas ePBS: after importing a self-build block, process the envelope to
+        // send newPayload to the EL, update fork choice, and apply state transition.
+        // Without this, the head stays Optimistic and next block production fails
+        // because latest_block_hash is not updated.
+        let final_state = if let Some(ref signed_envelope) = envelope {
+            self.chain
+                .process_self_build_envelope(signed_envelope)
+                .await
+                .expect("should process self-build envelope in test harness");
+
+            self.chain.recompute_head_at_current_slot().await;
+
+            // Return the post-envelope state from the state cache. It's stored under
+            // the block's state_root key but has updated latest_block_hash.
+            let block_state_root = block_contents.0.message().state_root();
+            self.chain
+                .get_state(&block_state_root, Some(slot), false)
+                .ok()
+                .flatten()
+                .unwrap_or(new_state)
+        } else {
+            new_state
+        };
+
+        Ok((block_hash, block_contents, final_state))
     }
 
     pub fn attest_block(
@@ -2744,17 +2841,44 @@ where
         assert!(slots.is_sorted(), "Slots have to be in ascending order");
         let mut block_hash_from_slot: HashMap<Slot, SignedBeaconBlockHash> = HashMap::new();
         let mut state_hash_from_slot: HashMap<Slot, BeaconStateHash> = HashMap::new();
+        let mut block_state_root_opt: Option<Hash256> =
+            if state.fork_name_unchecked().gloas_enabled() {
+                let sr = state.latest_block_header().state_root;
+                if sr != Hash256::zero() { Some(sr) } else { None }
+            } else {
+                None
+            };
         for slot in slots {
-            let (block_hash, new_state) = self
-                .add_attested_block_at_slot_with_sync(
+            let (block_hash, block, new_state) =
+                self.add_block_at_slot_internal(*slot, state, block_state_root_opt)
+                    .await
+                    .unwrap();
+
+            block_state_root_opt = if new_state.fork_name_unchecked().gloas_enabled() {
+                Some(block.0.message().state_root())
+            } else {
+                None
+            };
+
+            self.attest_block(&new_state, state_root, block_hash, &block.0, &validators);
+
+            if sync_committee_strategy == SyncCommitteeStrategy::AllValidators
+                && new_state.current_sync_committee().is_ok()
+            {
+                self.sync_committee_sign_block(
+                    &new_state,
+                    block_hash.into(),
                     *slot,
-                    state,
-                    state_root,
-                    validators,
-                    sync_committee_strategy,
-                )
-                .await
-                .unwrap();
+                    if (*slot + 1).epoch(E::slots_per_epoch())
+                        % self.spec.epochs_per_sync_committee_period
+                        == 0
+                    {
+                        RelativeSyncCommittee::Next
+                    } else {
+                        RelativeSyncCommittee::Current
+                    },
+                );
+            }
 
             state = new_state;
 
@@ -2784,17 +2908,53 @@ where
         assert!(slots.is_sorted(), "Slots have to be in ascending order");
         let mut block_hash_from_slot: HashMap<Slot, SignedBeaconBlockHash> = HashMap::new();
         let mut state_hash_from_slot: HashMap<Slot, BeaconStateHash> = HashMap::new();
+        // For Gloas (ePBS), track the parent block's state_root so we can pass it
+        // to complete_state_advance on subsequent iterations. The returned state is
+        // post-envelope (with updated latest_block_hash) but its tree hash doesn't
+        // match the block's state_root, so we must pass it explicitly.
+        // Use the state's latest_block_header.state_root which, after envelope
+        // processing, contains the block's pre-envelope state_root.
+        let mut block_state_root_opt: Option<Hash256> =
+            if state.fork_name_unchecked().gloas_enabled() {
+                let sr = state.latest_block_header().state_root;
+                if sr != Hash256::zero() { Some(sr) } else { None }
+            } else {
+                None
+            };
         for slot in slots {
-            // Using a `Box::pin` to reduce the stack size. Clippy was raising a lints.
-            let (block_hash, new_state) = Box::pin(self.add_attested_block_at_slot_with_sync(
-                *slot,
-                state,
-                state_root,
-                validators,
-                sync_committee_strategy,
-            ))
+            // Using a `Box::pin` to reduce the stack size. Clippy was raising a lint.
+            let (block_hash, block, new_state) = Box::pin(
+                self.add_block_at_slot_internal(*slot, state, block_state_root_opt),
+            )
             .await
             .unwrap();
+
+            // Track the block's state_root for the next iteration.
+            block_state_root_opt = if new_state.fork_name_unchecked().gloas_enabled() {
+                Some(block.0.message().state_root())
+            } else {
+                None
+            };
+
+            self.attest_block(&new_state, state_root, block_hash, &block.0, validators);
+
+            if sync_committee_strategy == SyncCommitteeStrategy::AllValidators
+                && new_state.current_sync_committee().is_ok()
+            {
+                self.sync_committee_sign_block(
+                    &new_state,
+                    block_hash.into(),
+                    *slot,
+                    if (*slot + 1).epoch(E::slots_per_epoch())
+                        % self.spec.epochs_per_sync_committee_period
+                        == 0
+                    {
+                        RelativeSyncCommittee::Next
+                    } else {
+                        RelativeSyncCommittee::Current
+                    },
+                );
+            }
 
             state = new_state;
 
@@ -3034,14 +3194,14 @@ where
         sync_committee_strategy: SyncCommitteeStrategy,
         light_client_strategy: LightClientStrategy,
     ) -> Hash256 {
-        let (mut state, slots) = match block_strategy {
+        let (state, state_root, slots) = match block_strategy {
             BlockStrategy::OnCanonicalHead => {
                 let current_slot: u64 = self.get_current_slot().into();
                 let slots: Vec<Slot> = (current_slot..(current_slot + (num_blocks as u64)))
                     .map(Slot::new)
                     .collect();
-                let state = self.get_current_state();
-                (state, slots)
+                let (state, state_root) = self.get_current_state_and_root();
+                (state, state_root, slots)
             }
             BlockStrategy::ForkCanonicalChainAt {
                 previous_slot,
@@ -3051,19 +3211,18 @@ where
                 let slots: Vec<Slot> = (first_slot_..(first_slot_ + (num_blocks as u64)))
                     .map(Slot::new)
                     .collect();
-                let state = self
+                let mut state = self
                     .chain
                     .state_at_slot(previous_slot, StateSkipConfig::WithStateRoots)
                     .unwrap();
-                (state, slots)
+                let state_root = state.update_tree_hash_cache().unwrap();
+                (state, state_root, slots)
             }
         };
         let validators = match attestation_strategy {
             AttestationStrategy::AllValidators => self.get_all_validators(),
             AttestationStrategy::SomeValidators(vals) => vals,
         };
-
-        let state_root = state.update_tree_hash_cache().unwrap();
         let (_, _, last_produced_block_hash, _) = match light_client_strategy {
             LightClientStrategy::Enabled => {
                 self.add_attested_blocks_at_slots_with_lc_data(
@@ -3360,7 +3519,12 @@ pub fn generate_data_column_sidecars_from_block<E: EthSpec>(
     block: &SignedBeaconBlock<E>,
     spec: &ChainSpec,
 ) -> DataColumnSidecarList<E> {
-    let kzg_commitments = block.message().body().blob_kzg_commitments().unwrap();
+    // Gloas blocks don't have blob_kzg_commitments in the block body (they're in the bid).
+    // For test self-build blocks, there are no blobs, so return empty.
+    let kzg_commitments = match block.message().body().blob_kzg_commitments() {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
     if kzg_commitments.is_empty() {
         return vec![];
     }

@@ -161,14 +161,19 @@ pub fn initialize_beacon_state_from_eth1<E: EthSpec>(
         .gloas_fork_epoch
         .is_some_and(|fork_epoch| fork_epoch == E::genesis_epoch())
     {
+        // When genesis is at Gloas, the execution_payload_header is a Gloas variant.
+        // We need to set the intermediate Fulu header's block_hash before upgrading,
+        // because upgrade_to_gloas reads it to initialize latest_block_hash.
+        if let Some(ref header) = execution_payload_header {
+            let fulu_header = state.latest_execution_payload_header_fulu_mut()?;
+            fulu_header.block_hash = header.block_hash();
+            fulu_header.transactions_root = header.transactions_root();
+        }
+
         upgrade_to_gloas(&mut state, spec)?;
 
         // Remove intermediate Fulu fork from `state.fork`.
         state.fork_mut().previous_version = spec.gloas_fork_version;
-
-        // Gloas replaces execution payload headers with execution payload bids.
-        // The upgrade_to_gloas function initializes latest_execution_payload_bid
-        // from the previous fork's block_hash.
     }
 
     // Now that we have our validators, initialize the caches (including the committees)

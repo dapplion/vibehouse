@@ -1,14 +1,16 @@
 use crate::{
     BlockProcessingError, BlockSignatureStrategy, ConsensusContext, SlotProcessingError,
-    VerifyBlockRoot, per_block_processing, per_epoch_processing::EpochProcessingSummary,
+    VerifyBlockRoot, VerifySignatures, envelope_processing::process_execution_payload_envelope,
+    per_block_processing, per_epoch_processing::EpochProcessingSummary,
     per_slot_processing,
 };
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use types::{
     BeaconState, BeaconStateError, BlindedPayload, ChainSpec, EthSpec, Hash256, SignedBeaconBlock,
-    Slot,
+    SignedExecutionPayloadEnvelope, Slot,
 };
 
 pub type PreBlockHook<'a, E, Error> = Box<
@@ -43,6 +45,10 @@ pub struct BlockReplayer<
     post_slot_hook: Option<PostSlotHook<'a, Spec, Error>>,
     pub(crate) state_root_iter: Option<Peekable<StateRootIter>>,
     state_root_miss: bool,
+    /// Gloas ePBS: envelopes to apply after each block, keyed by block root.
+    /// When set, full envelope processing is applied after each Gloas block instead
+    /// of just updating latest_block_hash from the bid.
+    envelopes: HashMap<Hash256, SignedExecutionPayloadEnvelope<Spec>>,
     _phantom: PhantomData<Error>,
 }
 
@@ -96,6 +102,7 @@ where
             post_slot_hook: None,
             state_root_iter: None,
             state_root_miss: false,
+            envelopes: HashMap::new(),
             _phantom: PhantomData,
         }
     }
@@ -158,6 +165,18 @@ where
     /// slot (i.e. it will not have a block applied).
     pub fn post_slot_hook(mut self, hook: PostSlotHook<'a, E, Error>) -> Self {
         self.post_slot_hook = Some(hook);
+        self
+    }
+
+    /// Supply Gloas execution payload envelopes to apply during block replay.
+    ///
+    /// For Gloas (ePBS), the execution payload is delivered in a separate envelope that must
+    /// be applied to the state after the block. The envelopes are keyed by beacon block root.
+    pub fn envelopes(
+        mut self,
+        envelopes: HashMap<Hash256, SignedExecutionPayloadEnvelope<E>>,
+    ) -> Self {
+        self.envelopes = envelopes;
         self
     }
 
@@ -262,6 +281,31 @@ where
                 self.spec,
             )
             .map_err(BlockReplayError::from)?;
+
+            // Gloas ePBS: apply envelope processing after each Gloas block.
+            // The execution payload is delivered in a separate envelope. If we have
+            // the envelope, apply the full state transition (execution requests,
+            // builder payments, availability bits, latest_block_hash). Otherwise
+            // fall back to just updating latest_block_hash from the bid.
+            if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
+                let block_root = block.canonical_root();
+                if let Some(envelope) = self.envelopes.remove(&block_root) {
+                    process_execution_payload_envelope(
+                        &mut self.state,
+                        None,
+                        &envelope,
+                        VerifySignatures::False,
+                        self.spec,
+                    )
+                    .map_err(|e| BlockReplayError::BlockProcessing(
+                        BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
+                    ))?;
+                } else {
+                    *self.state.latest_block_hash_mut()
+                        .map_err(BlockReplayError::BeaconState)? =
+                        bid.message.block_hash;
+                }
+            }
 
             if let Some(ref mut post_block_hook) = self.post_block_hook {
                 post_block_hook(&mut self.state, block)?;
