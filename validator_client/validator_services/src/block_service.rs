@@ -12,7 +12,7 @@ use std::time::Duration;
 use task_executor::TaskExecutor;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, trace, warn};
-use types::{BlockType, ChainSpec, EthSpec, Graffiti, PublicKeyBytes, Slot};
+use types::{BlockType, ChainSpec, EthSpec, ForkName, Graffiti, PublicKeyBytes, Slot};
 use validator_store::{Error as ValidatorStoreError, SignedBlock, UnsignedBlock, ValidatorStore};
 
 #[derive(Debug)]
@@ -378,14 +378,25 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
             .await?;
 
         let metadata = BlockMetadata::from(&signed_block);
-        info!(
-            block_type = ?metadata.block_type,
-            deposits = metadata.num_deposits,
-            attestations = metadata.num_attestations,
-            graffiti = ?graffiti.map(|g| g.as_utf8_lossy()),
-            slot = metadata.slot.as_u64(),
-            "Successfully published block"
-        );
+        if metadata.external_builder {
+            info!(
+                block_type = ?metadata.block_type,
+                deposits = metadata.num_deposits,
+                attestations = metadata.num_attestations,
+                graffiti = ?graffiti.map(|g| g.as_utf8_lossy()),
+                slot = metadata.slot.as_u64(),
+                "Successfully published block (external builder bid)"
+            );
+        } else {
+            info!(
+                block_type = ?metadata.block_type,
+                deposits = metadata.num_deposits,
+                attestations = metadata.num_attestations,
+                graffiti = ?graffiti.map(|g| g.as_utf8_lossy()),
+                slot = metadata.slot.as_u64(),
+                "Successfully published block"
+            );
+        }
         Ok(())
     }
 
@@ -565,14 +576,30 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> BlockService<S, T> {
 
         let (block_proposer, unsigned_block) = match block_response {
             eth2::types::ProduceBlockV3Response::Full(block) => {
+                let has_envelope = block.execution_payload_envelope().is_some();
+                let fork = block.block().to_ref().fork_name_unchecked();
+
+                if fork == ForkName::Gloas && !has_envelope {
+                    info!(
+                        slot = slot.as_u64(),
+                        "Received unsigned block (external builder bid, no self-build envelope)"
+                    );
+                } else if fork == ForkName::Gloas {
+                    info!(
+                        slot = slot.as_u64(),
+                        "Received unsigned block (self-build with envelope)"
+                    );
+                } else {
+                    info!(slot = slot.as_u64(), "Received unsigned block");
+                }
+
                 (block.block().proposer_index(), UnsignedBlock::Full(block))
             }
             eth2::types::ProduceBlockV3Response::Blinded(block) => {
+                info!(slot = slot.as_u64(), "Received unsigned blinded block");
                 (block.proposer_index(), UnsignedBlock::Blinded(block))
             }
         };
-
-        info!(slot = slot.as_u64(), "Received unsigned block");
         if proposer_index != Some(block_proposer) {
             return Err(BlockError::Recoverable(
                 "Proposer index does not match block proposer. Beacon chain re-orged".to_string(),
@@ -590,22 +617,34 @@ struct BlockMetadata {
     slot: Slot,
     num_deposits: usize,
     num_attestations: usize,
+    /// For Gloas blocks: true if using an external builder bid (no self-build envelope).
+    external_builder: bool,
 }
 
 impl<E: EthSpec> From<&SignedBlock<E>> for BlockMetadata {
     fn from(value: &SignedBlock<E>) -> Self {
         match value {
-            SignedBlock::Full(block) => BlockMetadata {
-                block_type: BlockType::Full,
-                slot: block.signed_block().message().slot(),
-                num_deposits: block.signed_block().message().body().deposits().len(),
-                num_attestations: block.signed_block().message().body().attestations_len(),
-            },
+            SignedBlock::Full(block) => {
+                let fork_name = block.signed_block().fork_name_unchecked();
+                // In Gloas, a block without an envelope means an external builder bid was used.
+                // The builder will reveal the execution payload via a separate envelope.
+                let external_builder =
+                    fork_name == ForkName::Gloas && block.signed_envelope().is_none();
+
+                BlockMetadata {
+                    block_type: BlockType::Full,
+                    slot: block.signed_block().message().slot(),
+                    num_deposits: block.signed_block().message().body().deposits().len(),
+                    num_attestations: block.signed_block().message().body().attestations_len(),
+                    external_builder,
+                }
+            }
             SignedBlock::Blinded(block) => BlockMetadata {
                 block_type: BlockType::Blinded,
                 slot: block.message().slot(),
                 num_deposits: block.message().body().deposits().len(),
                 num_attestations: block.message().body().attestations_len(),
+                external_builder: false,
             },
         }
     }
