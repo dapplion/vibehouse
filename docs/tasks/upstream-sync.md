@@ -30,6 +30,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-18 (run 6)
+- Fetched upstream: no new commits since run 5
+- No new consensus-specs changes requiring implementation (latest release still v1.7.0-alpha.2, newer spec commits are packaging/infrastructure)
+- Reviewed community PRs:
+  - PR #25 (Th0rgal): 4 fixes — 3 already applied on main, applied remaining fix (use canonical `BUILDER_INDEX_SELF_BUILD` constant instead of local copy in proto_array). Closed PR with credit.
+  - PR #26 (Th0rgal): cargo fmt + unused imports — all already fixed on main. Closed as redundant.
+- Tests: 52/52 proto_array+fork_choice, 136/136 minimal EF (fake_crypto), 8/8 fork_choice EF (real crypto) — all pass
+
 ### 2026-02-18 (run 5)
 - Fetched upstream: no new commits since run 4 (top is `54b357614` — agent review docs, skip)
 - No new consensus-specs changes requiring implementation (top commits are packaging/infrastructure: eth-remerkleable, package rename, dependency updates)
