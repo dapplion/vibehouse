@@ -707,10 +707,7 @@ impl<E: EthSpec> Tester<E> {
                     if block.fork_name_unchecked().gloas_enabled() {
                         return Ok(());
                     }
-                    panic!(
-                        "get_state failed for block {:?}: {:?}",
-                        block_root, e
-                    );
+                    panic!("get_state failed for block {:?}: {:?}", block_root, e);
                 }
             };
 

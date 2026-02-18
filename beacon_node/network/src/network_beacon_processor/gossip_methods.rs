@@ -1283,9 +1283,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.send_sync_message(SyncMessage::UnknownParentBlock(peer_id, block, block_root));
                 return None;
             }
-            Err(BlockError::GloasParentPayloadUnknown {
-                parent_block_hash,
-            }) => {
+            Err(BlockError::GloasParentPayloadUnknown { parent_block_hash }) => {
                 debug!(
                     ?block_root,
                     ?parent_block_hash,
