@@ -305,7 +305,7 @@ pub fn process_proposer_slashings<E: EthSpec>(
                 if let Some(idx) = payment_index {
                     let state_gloas = state
                         .as_gloas_mut()
-                        .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+                        .map_err(BlockProcessingError::BeaconStateError)?;
                     if let Some(payment) = state_gloas.builder_pending_payments.get_mut(idx) {
                         *payment = BuilderPendingPayment::default();
                     }
@@ -738,7 +738,7 @@ fn apply_deposit_for_builder<E: EthSpec>(
 ) -> Result<(), BlockProcessingError> {
     let state_gloas = state
         .as_gloas_mut()
-        .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+        .map_err(BlockProcessingError::BeaconStateError)?;
 
     // Check if builder already exists
     let builder_index = state_gloas

@@ -464,7 +464,7 @@ pub fn is_parent_block_full<E: EthSpec>(
 ) -> Result<bool, BlockProcessingError> {
     let state_gloas = state
         .as_gloas()
-        .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+        .map_err(BlockProcessingError::BeaconStateError)?;
     Ok(state_gloas.latest_execution_payload_bid.block_hash == state_gloas.latest_block_hash)
 }
 
@@ -495,7 +495,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let builders_count = state_gloas.builders.len() as u64;
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawals.len() >= reserved_limit {
@@ -580,7 +580,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let builders_count = state_gloas.builders.len();
         if builders_count > 0 {
             let builders_limit = std::cmp::min(
@@ -676,7 +676,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
             let builder_index = (withdrawal.validator_index & !BUILDER_INDEX_FLAG) as usize;
             let state_gloas = state
                 .as_gloas_mut()
-                .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+                .map_err(BlockProcessingError::BeaconStateError)?;
             if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
                 builder.balance = builder
                     .balance
@@ -701,7 +701,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas_mut()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         state_gloas.payload_expected_withdrawals =
             List::new(withdrawals.clone()).map_err(BlockProcessingError::MilhouseError)?;
     }
@@ -710,7 +710,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas_mut()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let remaining: Vec<_> = state_gloas
             .builder_pending_withdrawals
             .iter()
@@ -732,7 +732,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas_mut()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let builders_count = state_gloas.builders.len();
         if builders_count > 0 {
             let next_index = state_gloas
@@ -791,7 +791,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let builders_count = state_gloas.builders.len() as u64;
         for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
             if withdrawals.len() >= reserved_limit {
@@ -869,7 +869,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     {
         let state_gloas = state
             .as_gloas()
-            .map_err(|e| BlockProcessingError::BeaconStateError(e))?;
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let builders_count = state_gloas.builders.len();
         if builders_count > 0 {
             let builders_limit = std::cmp::min(

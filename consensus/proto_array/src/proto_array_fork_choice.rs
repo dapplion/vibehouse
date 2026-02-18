@@ -1389,13 +1389,11 @@ impl ProtoArrayForkChoice {
     fn is_supporting_vote_gloas(&self, node: &GloasForkChoiceNode, vote: &VoteTracker) -> bool {
         let pa = &self.proto_array;
 
-        let node_idx = match pa.indices.get(&node.root) {
-            Some(&idx) => idx,
-            None => return false,
+        let Some(&node_idx) = pa.indices.get(&node.root) else {
+            return false;
         };
-        let block = match pa.nodes.get(node_idx) {
-            Some(n) => n,
-            None => return false,
+        let Some(block) = pa.nodes.get(node_idx) else {
+            return false;
         };
 
         if node.root == vote.current_root {

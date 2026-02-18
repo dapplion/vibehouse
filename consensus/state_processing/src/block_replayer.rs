@@ -245,18 +245,17 @@ where
                 if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
                     let block_root = block.canonical_root();
                     if let Some(envelope) = self.envelopes.remove(&block_root) {
-                        let _ = process_execution_payload_envelope(
+                        // Best-effort: envelope processing may fail for replayed
+                        // blocks but the state's latest_block_hash is still updated.
+                        drop(process_execution_payload_envelope(
                             &mut self.state,
                             None,
                             &envelope,
                             VerifySignatures::False,
                             self.spec,
-                        );
-                    } else {
-                        let _ = self
-                            .state
-                            .latest_block_hash_mut()
-                            .map(|h| *h = bid.message.block_hash);
+                        ));
+                    } else if let Ok(h) = self.state.latest_block_hash_mut() {
+                        *h = bid.message.block_hash;
                     }
                 }
                 continue;
