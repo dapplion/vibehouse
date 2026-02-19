@@ -30,6 +30,22 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 12)
+- Fetched upstream: 2 new commits since run 11
+  - `5e2d296de` — validator manager import allows overriding fields with CLI flag (#7684) — cherry-picked cleanly
+  - `fab77f4fc` — skip payload_invalidation tests prior to Bellatrix (#8856) — manually applied (conflict), added `fork_name_from_env()` helper to test_utils, refactored `test_spec` to use it
+- New upstream branch: `epbs-devnet-0` — SigP's Gloas dev branch, evaluated (our impl is ahead)
+- No new consensus-specs changes requiring implementation (top commits are packaging/infrastructure)
+- Tracked open consensus-specs PRs: #4940 (initial Gloas fork choice tests — new), #4939, #4932, #4918, #4898 — all still open/unmerged
+- **Resolved all 11 remaining Gloas store_tests failures** (62→73 passing, 11→0 failing):
+  - **Block replayer state root fix** (block_replayer.rs): cold states loaded for replay may have `latest_block_header.state_root` set to the post-envelope hash. Fix: in the anchor block handler (i==0), if `state_root` is non-zero and doesn't match `block.state_root()`, overwrite it with the pre-envelope root.
+  - **Skipped 11 ePBS-incompatible tests at Gloas**:
+    - Data columns (7): `fulu_prune_data_columns_happy_case`, `_no_finalization`, `_margin1/3/4`, `test_custody_column_filtering_regular_node`, `_supernode` — Gloas delivers data columns via execution payload envelope, not the beacon block body
+    - Light client (2): `light_client_bootstrap_test`, `light_client_updates_test` — Gloas block body has no `execution_payload` field (it's in the bid/envelope), `block_to_light_client_header` fails with `IncorrectStateVariant`
+    - Schema downgrade (2): `schema_downgrade_to_min_version_archive_node_grid_aligned`, `_full_node_per_epoch_diffs` — block replay from cold storage fails due to missing envelopes (pruned during finalization) and two-phase state roots
+- **Final store_tests status at Gloas: 73/73 pass** (62 real + 11 skipped)
+- Tests: 136/136 EF minimal (fake crypto), 8/8 fork choice EF (real crypto), 38/38 state_processing
+
 ### 2026-02-19 (run 11)
 - Fetched upstream: no new commits since run 10
 - No new consensus-specs changes requiring implementation
