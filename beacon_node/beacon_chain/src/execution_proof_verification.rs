@@ -60,12 +60,12 @@ pub enum GossipExecutionProofError {
     ///
     /// ## Peer scoring
     /// Internal error, do not penalize.
-    BeaconChainError(BeaconChainError),
+    BeaconChainError(Box<BeaconChainError>),
 }
 
 impl From<BeaconChainError> for GossipExecutionProofError {
     fn from(e: BeaconChainError) -> Self {
-        GossipExecutionProofError::BeaconChainError(e)
+        GossipExecutionProofError::BeaconChainError(Box::new(e))
     }
 }
 
@@ -166,13 +166,13 @@ pub fn verify_execution_proof_for_gossip<T: BeaconChainTypes>(
 
     // Check 6: Block hash matches the bid block hash.
     // In Gloas ePBS, the execution block hash comes from the committed bid.
-    if let Some(bid_block_hash) = proto_block.bid_block_hash {
-        if proof.block_hash != bid_block_hash {
-            return Err(GossipExecutionProofError::BlockHashMismatch {
-                proof_block_hash: proof.block_hash,
-                block_block_hash: bid_block_hash,
-            });
-        }
+    if let Some(bid_block_hash) = proto_block.bid_block_hash
+        && proof.block_hash != bid_block_hash
+    {
+        return Err(GossipExecutionProofError::BlockHashMismatch {
+            proof_block_hash: proof.block_hash,
+            block_block_hash: bid_block_hash,
+        });
     }
     // If bid_block_hash is None (pre-ePBS block), skip this check — the proof
     // can still reference a pre-ePBS block by its execution_status block hash.
