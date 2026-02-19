@@ -30,6 +30,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 14)
+- Fetched upstream: 2 new commits on `release-v8.1` since run 13 (none on `unstable`)
+- Cherry-picked cleanly:
+  - `561898fc1` — sort head_chains in descending order of peer count (#8859) — bugfix: chains with most peers processed first
+  - `458897108` — add sync batch state metrics (#8847) — metrics for range sync, backfill, custody backfill batch states
+- No new consensus-specs changes requiring implementation (all tracked PRs still open/unmerged)
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4898 — all still open/unmerged
+- SigP's `epbs-devnet-0` branch: 3 new commits (hacky fix, merge, mark block available) — still early stage, no useful cherry-picks
+- Tests: 96/96 network (Gloas) — all pass
+
 ### 2026-02-19 (run 13)
 - Fetched upstream: no new commits since run 12
 - No new consensus-specs changes requiring implementation (all merged changes already assessed/done)
