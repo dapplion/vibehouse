@@ -43,7 +43,7 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 
 **Phase 6:** DONE — all VC tasks complete (PTC duties, bid selection, duty discovery, external builder awareness)
 
-**Phase 7 remaining:** blinded blocks endpoint verified working (Gloas blocks have no payload to blind, conversion is phantom-type only)
+**Phase 7:** DONE — blinded blocks endpoint verified: Gloas blocks have no payload to blind, BlindedPayload/FullPayload conversions are phantom-type pass-throughs of bid + payload_attestations
 
 Reference:
 - CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/gloas
