@@ -907,6 +907,40 @@ pub fn cli_app() -> Command {
                 .help_heading(FLAG_HEADER)
                 .display_order(0)
         )
+        /*
+         * Stateless validation (ZK execution proofs)
+         */
+        .arg(
+            Arg::new("stateless-validation")
+                .long("stateless-validation")
+                .help("Enable stateless validation mode. The node will not call the EL for \
+                       execution payload verification, relying on ZK proofs received via gossip \
+                       subnets instead. Requires Gloas (ePBS) fork to be active.")
+                .action(ArgAction::SetTrue)
+                .help_heading(FLAG_HEADER)
+                .display_order(0)
+        )
+        .arg(
+            Arg::new("generate-execution-proofs")
+                .long("generate-execution-proofs")
+                .help("Enable execution proof generation. When the node receives an execution \
+                       payload envelope, it will generate a ZK proof and publish it to proof \
+                       subnets. Stub implementation initially.")
+                .action(ArgAction::SetTrue)
+                .help_heading(FLAG_HEADER)
+                .display_order(0)
+        )
+        .arg(
+            Arg::new("stateless-min-proofs-required")
+                .long("stateless-min-proofs-required")
+                .value_name("N")
+                .help("Minimum number of execution proofs required before considering a block \
+                       proven. Only relevant with --stateless-validation.")
+                .default_value("1")
+                .requires("stateless-validation")
+                .action(ArgAction::Set)
+                .display_order(0)
+        )
         .arg(
             Arg::new("builder-header-timeout")
                 .long("builder-header-timeout")

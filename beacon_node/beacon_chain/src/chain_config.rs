@@ -121,6 +121,15 @@ pub struct ChainConfig {
     pub disable_get_blobs: bool,
     /// The node's custody type, determining how many data columns to custody and sample.
     pub node_custody_type: NodeCustodyType,
+    /// Enable stateless validation mode. The node will not connect to an EL and will
+    /// rely on ZK execution proofs received via gossip to verify execution payloads.
+    pub stateless_validation: bool,
+    /// Enable execution proof generation. When the node receives an execution payload
+    /// envelope, it will generate a ZK proof and publish it to proof subnets.
+    pub generate_execution_proofs: bool,
+    /// Minimum number of execution proofs required before considering a block "proven".
+    /// Only relevant when `stateless_validation` is enabled.
+    pub stateless_min_proofs_required: usize,
 }
 
 impl Default for ChainConfig {
@@ -162,6 +171,9 @@ impl Default for ChainConfig {
             invalid_block_roots: HashSet::new(),
             disable_get_blobs: false,
             node_custody_type: NodeCustodyType::Fullnode,
+            stateless_validation: false,
+            generate_execution_proofs: false,
+            stateless_min_proofs_required: 1,
         }
     }
 }

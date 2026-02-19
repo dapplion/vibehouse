@@ -192,6 +192,19 @@ pub fn get_config<E: EthSpec>(
         client_config.chain.disable_get_blobs = true;
     }
 
+    if cli_args.get_flag("stateless-validation") {
+        client_config.chain.stateless_validation = true;
+    }
+
+    if cli_args.get_flag("generate-execution-proofs") {
+        client_config.chain.generate_execution_proofs = true;
+    }
+
+    if let Some(min_proofs) = clap_utils::parse_optional(cli_args, "stateless-min-proofs-required")?
+    {
+        client_config.chain.stateless_min_proofs_required = min_proofs;
+    }
+
     if let Some(sync_tolerance_epochs) =
         clap_utils::parse_optional(cli_args, "sync-tolerance-epochs")?
     {
