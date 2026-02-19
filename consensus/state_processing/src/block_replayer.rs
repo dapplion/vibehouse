@@ -262,6 +262,17 @@ where
                             *h = bid.message.block_hash;
                         }
                     }
+
+                    // Fix latest_block_header.state_root for Gloas states loaded from
+                    // cold storage. The stored state may have state_root set to the
+                    // post-envelope hash (from tree_hash_cache during per_slot_processing).
+                    // The correct value is the pre-envelope root (block.state_root()) so
+                    // that latest_block_header.canonical_root() matches the next block's
+                    // parent_root.
+                    let header = self.state.latest_block_header_mut();
+                    if !header.state_root.is_zero() && header.state_root != block.state_root() {
+                        header.state_root = block.state_root();
+                    }
                 }
                 continue;
             }
