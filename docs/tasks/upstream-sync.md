@@ -30,6 +30,18 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 23)
+- No new upstream commits (no upstream remote tracked)
+- No tracked consensus-specs PRs merged: #4940, #4939, #4932, #4918, #4843, #4926, #4931 — all still open
+- Assessed recently merged consensus-specs PRs:
+  - #4941 (Update execution proof construction to use BeaconBlock) — prover.md doc only, already assessed in run 18, no code changes needed
+  - #4920 (Make "Constructing the XYZ" sections consistent) — editorial consistency in validator.md, no code changes needed
+  - #4921, #4938, #4937, #4936, #4935, #4934, #4933, #4925 — all Python tooling/CI/packaging, no spec changes
+- **Analyzed issue #8629 (Gloas ePBS dependent root)**: confirmed dependent_root mechanism is NOT broken by Full/Empty payload states. RANDAO is processed in Phase 1 (same for both), active validator set changes from envelope processing are delayed by `MAX_SEED_LOOKAHEAD`, and the dependent_root decision slot is 2 epochs prior. Posted analysis on the issue.
+- **Analyzed issue #8630 (ePBS side-effects — state advance timer)**: identified a race condition where state advance at 3/4 slot can cache wrong epoch-boundary state if envelope arrives late. Practical risk is LOW (envelopes typically arrive before 3/4, block verification recomputes from real state, self-corrects on first block). Documented as known limitation on the issue.
+- **Assessed issue #8858 (events feature gating)**: does NOT affect vibehouse — our eth2 crate doesn't have the `events` feature gate (added in post-v8.0.1 upstream). Compiles fine.
+- **Assessed issue #8750 (inactivity_scores EF tests)**: already DONE — implemented across prior commits, all tests passing.
+
 ### 2026-02-19 (run 22)
 - **Fixed issue #8686 (Gloas slot timing logic)**: Added spec-mandated BPS (basis points) configuration values for Gloas slot component timing, replacing hardcoded slot fractions in the validator client.
   - **New ChainSpec fields**: `payload_attestation_due_bps` (7500), `attestation_due_bps_gloas` (2500), `aggregate_due_bps_gloas` (5000), `sync_message_due_bps_gloas` (2500), `contribution_due_bps_gloas` (5000). All values loaded from YAML config with defaults matching upstream consensus-specs.
