@@ -115,6 +115,7 @@ pub struct BeaconProcessorQueueLengths {
     gossip_execution_payload_queue: usize,
     gossip_payload_attestation_queue: usize,
     gossip_proposer_preferences_queue: usize,
+    gossip_execution_proof_queue: usize,
     unknown_light_client_update_queue: usize,
     rpc_block_queue: usize,
     rpc_blob_queue: usize,
@@ -183,6 +184,7 @@ impl BeaconProcessorQueueLengths {
             gossip_execution_payload_queue: 4096,
             gossip_payload_attestation_queue: 4096,
             gossip_proposer_preferences_queue: 4096,
+            gossip_execution_proof_queue: 4096,
             unknown_light_client_update_queue: 128,
             rpc_block_queue: 1024,
             rpc_blob_queue: 1024,
@@ -604,6 +606,7 @@ pub enum Work<E: EthSpec> {
     GossipExecutionPayload(AsyncFn),
     GossipPayloadAttestation(AsyncFn),
     GossipProposerPreferences(BlockingFn),
+    GossipExecutionProof(AsyncFn),
     RpcBlock {
         process_fn: AsyncFn,
     },
@@ -666,6 +669,7 @@ pub enum WorkType {
     GossipExecutionPayload,
     GossipPayloadAttestation,
     GossipProposerPreferences,
+    GossipExecutionProof,
     RpcBlock,
     RpcBlobs,
     RpcCustodyColumn,
@@ -719,6 +723,7 @@ impl<E: EthSpec> Work<E> {
             Work::GossipExecutionPayload(_) => WorkType::GossipExecutionPayload,
             Work::GossipPayloadAttestation(_) => WorkType::GossipPayloadAttestation,
             Work::GossipProposerPreferences(_) => WorkType::GossipProposerPreferences,
+            Work::GossipExecutionProof(_) => WorkType::GossipExecutionProof,
             Work::GossipBlsToExecutionChange(_) => WorkType::GossipBlsToExecutionChange,
             Work::RpcBlock { .. } => WorkType::RpcBlock,
             Work::RpcBlobs { .. } => WorkType::RpcBlobs,
@@ -890,6 +895,8 @@ impl<E: EthSpec> BeaconProcessor<E> {
             FifoQueue::new(queue_lengths.gossip_payload_attestation_queue);
         let mut gossip_proposer_preferences_queue =
             FifoQueue::new(queue_lengths.gossip_proposer_preferences_queue);
+        let mut gossip_execution_proof_queue =
+            FifoQueue::new(queue_lengths.gossip_execution_proof_queue);
 
         // Using a FIFO queue since blocks need to be imported sequentially.
         let mut rpc_block_queue = FifoQueue::new(queue_lengths.rpc_block_queue);
@@ -1222,6 +1229,8 @@ impl<E: EthSpec> BeaconProcessor<E> {
                                 Some(item)
                             } else if let Some(item) = gossip_proposer_preferences_queue.pop() {
                                 Some(item)
+                            } else if let Some(item) = gossip_execution_proof_queue.pop() {
+                                Some(item)
                             // Check RPC methods next. Status messages are needed for sync so
                             // prioritize them over syncing requests from other peers (BlocksByRange
                             // and BlocksByRoot)
@@ -1386,6 +1395,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Work::GossipProposerPreferences { .. } => {
                                 gossip_proposer_preferences_queue.push(work, work_id)
                             }
+                            Work::GossipExecutionProof { .. } => {
+                                gossip_execution_proof_queue.push(work, work_id)
+                            }
                             Work::GossipSyncSignature { .. } => sync_message_queue.push(work),
                             Work::GossipSyncContribution { .. } => {
                                 sync_contribution_queue.push(work)
@@ -1477,6 +1489,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::GossipProposerPreferences => {
                             gossip_proposer_preferences_queue.len()
                         }
+                        WorkType::GossipExecutionProof => gossip_execution_proof_queue.len(),
                         WorkType::GossipSyncSignature => sync_message_queue.len(),
                         WorkType::GossipSyncContribution => sync_contribution_queue.len(),
                         WorkType::GossipLightClientFinalityUpdate => {
@@ -1673,7 +1686,8 @@ impl<E: EthSpec> BeaconProcessor<E> {
                 BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
             },
             Work::GossipExecutionPayload(process_fn)
-            | Work::GossipPayloadAttestation(process_fn) => task_spawner.spawn_async(process_fn),
+            | Work::GossipPayloadAttestation(process_fn)
+            | Work::GossipExecutionProof(process_fn) => task_spawner.spawn_async(process_fn),
             Work::GossipVoluntaryExit(process_fn)
             | Work::GossipProposerSlashing(process_fn)
             | Work::GossipAttesterSlashing(process_fn)

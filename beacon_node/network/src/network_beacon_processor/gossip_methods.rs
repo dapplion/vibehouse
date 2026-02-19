@@ -10,6 +10,9 @@ use beacon_chain::data_column_verification::{GossipDataColumnError, GossipVerifi
 use beacon_chain::events::{
     EventKind, SseExecutionBid, SseExecutionPayload, SsePayloadAttestation,
 };
+use beacon_chain::execution_proof_verification::{
+    GossipExecutionProofError, VerifiedExecutionProof,
+};
 use beacon_chain::store::Error;
 use beacon_chain::{
     AvailabilityProcessingStatus, BeaconChainError, BeaconChainTypes, BlockError, ForkChoiceError,
@@ -40,10 +43,11 @@ use store::hot_cold_store::HotColdDBError;
 use tracing::{Instrument, Span, debug, error, info, instrument, trace, warn};
 use types::{
     Attestation, AttestationData, AttestationRef, AttesterSlashing, BlobSidecar, DataColumnSidecar,
-    DataColumnSubnetId, EthSpec, Hash256, IndexedAttestation, LightClientFinalityUpdate,
-    LightClientOptimisticUpdate, ProposerSlashing, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedBlsToExecutionChange, SignedContributionAndProof, SignedProposerPreferences, SignedRoot,
-    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId, SyncCommitteeMessage, SyncSubnetId,
+    DataColumnSubnetId, EthSpec, ExecutionProof, ExecutionProofSubnetId, Hash256,
+    IndexedAttestation, LightClientFinalityUpdate, LightClientOptimisticUpdate, ProposerSlashing,
+    SignedAggregateAndProof, SignedBeaconBlock, SignedBlsToExecutionChange,
+    SignedContributionAndProof, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
+    SingleAttestation, Slot, SubnetId, SyncCommitteeMessage, SyncSubnetId,
     beacon_block::BlockImportSource,
 };
 
@@ -3733,5 +3737,171 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         // TODO(dapplion/vibehouse#30): store in a proposer preferences pool for use
         // during bid validation and block production
+    }
+
+    /// Process an execution proof received via gossip.
+    ///
+    /// Validates the proof and, if valid, imports it into the DA checker.
+    /// If this proof completes the block's availability requirements, the block is imported.
+    pub async fn process_gossip_execution_proof(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        subnet_id: ExecutionProofSubnetId,
+        proof: Arc<ExecutionProof>,
+        _seen_duration: Duration,
+    ) {
+        let block_root = proof.block_root;
+
+        match self
+            .chain
+            .verify_execution_proof_for_gossip(proof, subnet_id)
+        {
+            Ok(verified_proof) => {
+                debug!(
+                    %block_root,
+                    subnet_id = *subnet_id,
+                    "Successfully verified gossip execution proof"
+                );
+
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+                self.process_gossip_verified_execution_proof(peer_id, verified_proof)
+                    .await
+            }
+            Err(err) => match err {
+                GossipExecutionProofError::UnknownBlockRoot { .. } => {
+                    debug!(
+                        %block_root,
+                        error = ?err,
+                        "Ignoring execution proof for unknown block root"
+                    );
+                    // Don't penalize — we may not have received the block yet.
+                    self.propagate_validation_result(
+                        message_id,
+                        peer_id,
+                        MessageAcceptance::Ignore,
+                    );
+                }
+                GossipExecutionProofError::PriorToFinalization { .. } => {
+                    debug!(
+                        %block_root,
+                        error = ?err,
+                        "Ignoring execution proof prior to finalization"
+                    );
+                    self.gossip_penalize_peer(
+                        peer_id,
+                        PeerAction::HighToleranceError,
+                        "gossip_execution_proof_finalized",
+                    );
+                    self.propagate_validation_result(
+                        message_id,
+                        peer_id,
+                        MessageAcceptance::Ignore,
+                    );
+                }
+                GossipExecutionProofError::InvalidSubnetId { .. }
+                | GossipExecutionProofError::InvalidVersion { .. }
+                | GossipExecutionProofError::ProofDataEmpty
+                | GossipExecutionProofError::ProofDataTooLarge { .. }
+                | GossipExecutionProofError::BlockHashMismatch { .. }
+                | GossipExecutionProofError::InvalidProof => {
+                    debug!(
+                        %block_root,
+                        error = ?err,
+                        "Rejecting invalid gossip execution proof"
+                    );
+                    self.gossip_penalize_peer(
+                        peer_id,
+                        PeerAction::LowToleranceError,
+                        "gossip_execution_proof_invalid",
+                    );
+                    self.propagate_validation_result(
+                        message_id,
+                        peer_id,
+                        MessageAcceptance::Reject,
+                    );
+                }
+                GossipExecutionProofError::BeaconChainError(_) => {
+                    crit!(
+                        error = ?err,
+                        "Internal error when verifying execution proof"
+                    );
+                }
+            },
+        }
+    }
+
+    /// Import a verified execution proof into the DA checker and handle the result.
+    async fn process_gossip_verified_execution_proof(
+        self: &Arc<Self>,
+        peer_id: PeerId,
+        verified_proof: VerifiedExecutionProof<T>,
+    ) {
+        let block_root = verified_proof.block_root();
+
+        // Look up the slot from fork choice — ExecutionProof has no slot field.
+        let slot = match self
+            .chain
+            .canonical_head
+            .fork_choice_read_lock()
+            .get_block(&block_root)
+        {
+            Some(block) => block.slot,
+            None => {
+                debug!(
+                    %block_root,
+                    "Cannot import execution proof: block root no longer in fork choice"
+                );
+                return;
+            }
+        };
+
+        let result = self
+            .chain
+            .check_gossip_execution_proof_availability_and_import(slot, block_root, verified_proof)
+            .await;
+
+        match &result {
+            Ok(AvailabilityProcessingStatus::Imported(block_root)) => {
+                debug!(
+                    %block_root,
+                    "Execution proof processed, imported fully available block"
+                );
+                self.chain.recompute_head_at_current_slot().await;
+            }
+            Ok(AvailabilityProcessingStatus::MissingComponents(slot, block_root)) => {
+                trace!(
+                    %slot,
+                    %block_root,
+                    "Processed execution proof, waiting for other components"
+                );
+            }
+            Err(BlockError::DuplicateFullyImported(_)) => {
+                debug!(
+                    ?block_root,
+                    "Ignoring execution proof for already imported block"
+                );
+            }
+            Err(err) => {
+                debug!(
+                    outcome = ?err,
+                    ?block_root,
+                    "Invalid gossip execution proof during import"
+                );
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::MidToleranceError,
+                    "bad_gossip_execution_proof",
+                );
+            }
+        }
+
+        if matches!(result, Ok(AvailabilityProcessingStatus::Imported(_))) {
+            self.send_sync_message(SyncMessage::GossipBlockProcessResult {
+                block_root,
+                imported: true,
+            });
+        }
     }
 }

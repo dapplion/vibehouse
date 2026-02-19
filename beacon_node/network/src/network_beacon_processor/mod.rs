@@ -353,6 +353,34 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         })
     }
 
+    /// Create a new `Work` event for an execution proof (ZK stateless validation).
+    pub fn send_gossip_execution_proof(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        subnet_id: ExecutionProofSubnetId,
+        proof: Arc<ExecutionProof>,
+        seen_timestamp: Duration,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = async move {
+            processor
+                .process_gossip_execution_proof(
+                    message_id,
+                    peer_id,
+                    subnet_id,
+                    proof,
+                    seen_timestamp,
+                )
+                .await;
+        };
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: false,
+            work: Work::GossipExecutionProof(Box::pin(process_fn)),
+        })
+    }
+
     /// Create a new `Work` event for a gloas execution payload reveal (ePBS).
     pub fn send_gossip_execution_payload(
         self: &Arc<Self>,
