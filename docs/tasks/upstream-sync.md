@@ -30,6 +30,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 19)
+- Fetched upstream: no new commits since run 16
+- No new consensus-specs changes requiring implementation
+  - Today's merges: #4920 (consistent "Constructing the XYZ" sections — editorial), #4941 (EIP-8025 prover doc — already assessed in run 18), #4921 (use ckzg for tests — test infra)
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4898, #4843, #4926 — all still open/unmerged
+  - New: #4843 (Variable PTC deadline), #4926 (SLOT_DURATION_MS in specs/tests) — monitoring
+- **Devnet verification**: 4-node devnet (vibehouse CL + geth EL) passed. Gloas fork at epoch 1, reached slot 80, epoch 10, finalized_epoch=8, justified_epoch=9. No stalls. One skip slot at slot 74, chain recovered immediately. Confirms run 18 SSE fix doesn't affect chain health.
+- CI: check+clippy+fmt ✓, ef-tests (minimal, fake_crypto) ✓, unit-tests and fork-specific-tests still running
+
 ### 2026-02-19 (run 18)
 - Fetched upstream: no new commits since run 16
 - No new consensus-specs changes requiring implementation
