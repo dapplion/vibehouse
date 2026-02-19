@@ -7290,7 +7290,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         // Push a server-sent event (probably to a block builder or relay).
-        if let Some(event_handler) = &self.event_handler
+        // Skip for Gloas: ePBS builders use the bid/envelope protocol, not this SSE event.
+        // The event would also contain parent_block_number=0 (fallback) since that value
+        // is in the execution payload envelope, not the beacon block.
+        let prepare_slot_fork = self.spec.fork_name_at_slot::<T::EthSpec>(prepare_slot);
+        if !prepare_slot_fork.gloas_enabled()
+            && let Some(event_handler) = &self.event_handler
             && event_handler.has_payload_attributes_subscribers()
         {
             event_handler.register(EventKind::PayloadAttributes(ForkVersionedResponse {
@@ -7303,7 +7308,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     payload_attributes: payload_attributes.into(),
                 },
                 metadata: Default::default(),
-                version: self.spec.fork_name_at_slot::<T::EthSpec>(prepare_slot),
+                version: prepare_slot_fork,
             }));
         }
 

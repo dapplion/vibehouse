@@ -30,6 +30,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 18)
+- Fetched upstream: no new commits since run 16
+- No new consensus-specs changes requiring implementation
+  - Assessed: #4941 (EIP-8025: update SignedExecutionProof construction to use BeaconBlock — prover.md only, doesn't affect our stub implementation), #4930 (rename execution_payload_states to payload_states — naming only, already assessed in run 16)
+  - New merges since run 16: #4938 (generate specs before publishing), #4937 (use eth-remerkleable), #4936 (rename eth2spec), #4935 (manual publish action), #4934 (rename package), #4933 (update deps), #4927 (capitalize Note), #4925 (value annotation check script) — all infrastructure/editorial, no spec changes
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4898 — all still open/unmerged
+- **Fixed Gloas SSE PayloadAttributes issue**: skipped `EventKind::PayloadAttributes` SSE emission for Gloas slots. In ePBS, external builders use the bid/envelope protocol, not this SSE event. The event contained `parent_block_number=0` (fallback since block number is in the envelope, not the beacon block) which could confuse consumers. `forkchoiceUpdated` with payload attributes still runs for self-build EL preparation. Addresses upstream issue sigp/lighthouse#8817.
+- Tests: 317/317 beacon_chain (Gloas), 181/181 http_api (Fulu), clippy clean
+
 ### 2026-02-19 (run 16)
 - Fetched upstream: 2 new commits since run 15
 - **Applied dependency updates** (manually, not cherry-picked due to Cargo.lock conflicts):
