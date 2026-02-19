@@ -504,6 +504,10 @@ impl<T: BeaconChainTypes> Router<T> {
                     self.network_beacon_processor
                         .send_gossip_proposer_preferences(message_id, peer_id, preferences),
                 ),
+            PubsubMessage::ExecutionProof(_proof) => {
+                // TODO(vibehouse#28): Route to beacon processor when gossip handler is implemented
+                debug!(%peer_id, "Received execution proof via gossip (handler not yet implemented)");
+            }
         }
     }
 

@@ -2,7 +2,10 @@ use gossipsub::{IdentTopic as Topic, TopicHash};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use strum::AsRefStr;
-use types::{ChainSpec, DataColumnSubnetId, EthSpec, ForkName, SubnetId, SyncSubnetId, Unsigned};
+use types::{
+    ChainSpec, DataColumnSubnetId, EthSpec, ExecutionProofSubnetId, ForkName, SubnetId,
+    SyncSubnetId, Unsigned,
+};
 
 use crate::Subnet;
 
@@ -28,6 +31,7 @@ pub const EXECUTION_BID_TOPIC: &str = "execution_payload_bid";
 pub const EXECUTION_PAYLOAD_TOPIC: &str = "execution_payload";
 pub const PAYLOAD_ATTESTATION_TOPIC: &str = "payload_attestation_message";
 pub const PROPOSER_PREFERENCES_TOPIC: &str = "proposer_preferences";
+pub const EXECUTION_PROOF_PREFIX: &str = "execution_proof_";
 
 #[derive(Debug)]
 pub struct TopicConfig {
@@ -131,7 +135,8 @@ pub fn is_fork_non_core_topic(topic: &GossipTopic, _fork_name: ForkName) -> bool
         | GossipKind::ExecutionBid
         | GossipKind::ExecutionPayload
         | GossipKind::PayloadAttestation
-        | GossipKind::ProposerPreferences => false,
+        | GossipKind::ProposerPreferences
+        | GossipKind::ExecutionProof(_) => false,
     }
 }
 
@@ -200,6 +205,9 @@ pub enum GossipKind {
     PayloadAttestation,
     /// Gloas ePBS: Topic for proposers to publish their fee_recipient/gas_limit preferences.
     ProposerPreferences,
+    /// ZK execution proof on a particular proof subnet.
+    #[strum(serialize = "execution_proof")]
+    ExecutionProof(ExecutionProofSubnetId),
 }
 
 impl std::fmt::Display for GossipKind {
@@ -214,6 +222,9 @@ impl std::fmt::Display for GossipKind {
             }
             GossipKind::DataColumnSidecar(column_subnet_id) => {
                 write!(f, "{}{}", DATA_COLUMN_SIDECAR_PREFIX, **column_subnet_id)
+            }
+            GossipKind::ExecutionProof(subnet_id) => {
+                write!(f, "{}{}", EXECUTION_PROOF_PREFIX, **subnet_id)
             }
             x => f.write_str(x.as_ref()),
         }
@@ -355,6 +366,9 @@ impl std::fmt::Display for GossipTopic {
             GossipKind::ExecutionPayload => EXECUTION_PAYLOAD_TOPIC.into(),
             GossipKind::PayloadAttestation => PAYLOAD_ATTESTATION_TOPIC.into(),
             GossipKind::ProposerPreferences => PROPOSER_PREFERENCES_TOPIC.into(),
+            GossipKind::ExecutionProof(subnet_id) => {
+                format!("{}{}", EXECUTION_PROOF_PREFIX, *subnet_id)
+            }
         };
         write!(
             f,
@@ -400,6 +414,10 @@ fn subnet_topic_index(topic: &str) -> Option<GossipKind> {
         return Some(GossipKind::DataColumnSidecar(DataColumnSubnetId::new(
             index.parse::<u64>().ok()?,
         )));
+    } else if let Some(index) = topic.strip_prefix(EXECUTION_PROOF_PREFIX) {
+        return Some(GossipKind::ExecutionProof(
+            ExecutionProofSubnetId::new(index.parse::<u64>().ok()?).ok()?,
+        ));
     }
     None
 }

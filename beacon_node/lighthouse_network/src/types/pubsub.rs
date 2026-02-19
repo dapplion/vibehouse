@@ -8,15 +8,15 @@ use std::io::{Error, ErrorKind};
 use std::sync::Arc;
 use types::{
     AttesterSlashing, AttesterSlashingBase, AttesterSlashingElectra, BlobSidecar,
-    DataColumnSidecar, DataColumnSubnetId, EthSpec, ForkContext, ForkName,
-    LightClientFinalityUpdate, LightClientOptimisticUpdate, PayloadAttestation, ProposerSlashing,
-    SignedAggregateAndProof, SignedAggregateAndProofBase, SignedAggregateAndProofElectra,
-    SignedBeaconBlock, SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
-    SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
-    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
-    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
-    SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, SubnetId,
-    SyncCommitteeMessage, SyncSubnetId,
+    DataColumnSidecar, DataColumnSubnetId, EthSpec, ExecutionProof, ExecutionProofSubnetId,
+    ForkContext, ForkName, LightClientFinalityUpdate, LightClientOptimisticUpdate,
+    PayloadAttestation, ProposerSlashing, SignedAggregateAndProof, SignedAggregateAndProofBase,
+    SignedAggregateAndProofElectra, SignedBeaconBlock, SignedBeaconBlockAltair,
+    SignedBeaconBlockBase, SignedBeaconBlockBellatrix, SignedBeaconBlockCapella,
+    SignedBeaconBlockDeneb, SignedBeaconBlockElectra, SignedBeaconBlockFulu,
+    SignedBeaconBlockGloas, SignedBlsToExecutionChange, SignedContributionAndProof,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -55,6 +55,8 @@ pub enum PubsubMessage<E: EthSpec> {
     PayloadAttestation(Box<PayloadAttestation<E>>),
     /// Gossipsub message providing notification of proposer preferences (gloas ePBS).
     ProposerPreferences(Box<types::SignedProposerPreferences>),
+    /// Gossipsub message providing a ZK execution proof on a particular proof subnet.
+    ExecutionProof(Box<(ExecutionProofSubnetId, Arc<ExecutionProof>)>),
 }
 
 // Implements the `DataTransform` trait of gossipsub to employ snappy compression
@@ -162,6 +164,7 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::ExecutionPayload(_) => GossipKind::ExecutionPayload,
             PubsubMessage::PayloadAttestation(_) => GossipKind::PayloadAttestation,
             PubsubMessage::ProposerPreferences(_) => GossipKind::ProposerPreferences,
+            PubsubMessage::ExecutionProof(data) => GossipKind::ExecutionProof(data.0),
         }
     }
 
@@ -455,6 +458,21 @@ impl<E: EthSpec> PubsubMessage<E> {
                             )),
                         }
                     }
+                    GossipKind::ExecutionProof(subnet_id) => {
+                        match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
+                            Some(fork) if fork.gloas_enabled() => {
+                                let proof = Arc::new(
+                                    ExecutionProof::from_ssz_bytes(data)
+                                        .map_err(|e| format!("{:?}", e))?,
+                                );
+                                Ok(PubsubMessage::ExecutionProof(Box::new((*subnet_id, proof))))
+                            }
+                            Some(_) | None => Err(format!(
+                                "execution_proof topic invalid for given fork digest {:?}",
+                                gossip_topic.fork_digest
+                            )),
+                        }
+                    }
                 }
             }
         }
@@ -485,6 +503,7 @@ impl<E: EthSpec> PubsubMessage<E> {
             PubsubMessage::ExecutionPayload(data) => data.as_ssz_bytes(),
             PubsubMessage::PayloadAttestation(data) => data.as_ssz_bytes(),
             PubsubMessage::ProposerPreferences(data) => data.as_ssz_bytes(),
+            PubsubMessage::ExecutionProof(data) => data.1.as_ssz_bytes(),
         }
     }
 }
@@ -565,6 +584,11 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
                 f,
                 "Proposer Preferences: slot: {}, validator_index: {}",
                 data.message.proposal_slot, data.message.validator_index
+            ),
+            PubsubMessage::ExecutionProof(data) => write!(
+                f,
+                "Execution Proof: subnet_id: {}, block_root: {:?}",
+                *data.0, data.1.block_root
             ),
         }
     }

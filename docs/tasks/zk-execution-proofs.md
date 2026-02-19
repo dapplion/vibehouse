@@ -146,6 +146,19 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 4: execution proof gossip topics
+- **Added `GossipKind::ExecutionProof(ExecutionProofSubnetId)` variant** following the indexed topic pattern (like `DataColumnSidecar(DataColumnSubnetId)`).
+- **Topic string**: `execution_proof_{subnet_id}` — parsed via `strip_prefix(EXECUTION_PROOF_PREFIX)` in `subnet_topic_index()`.
+- **PubsubMessage::ExecutionProof** variant: `Box<(ExecutionProofSubnetId, Arc<ExecutionProof>)>` — stores subnet ID and proof data. Fork-gated to `gloas_enabled()`. SSZ decode/encode implemented.
+- **Router**: Temporary no-op handler with debug log. Full gossip processing (Task 10) comes later.
+- **Gossip cache**: `None` (no caching, proofs are time-sensitive like other ePBS messages).
+- **Files changed**: 5 modified
+  - `beacon_node/lighthouse_network/src/types/topics.rs`: constant, GossipKind variant, Display, decode, subnet_topic_index, is_fork_non_core_topic
+  - `beacon_node/lighthouse_network/src/types/pubsub.rs`: imports, PubsubMessage variant, kind(), decode(), encode(), Display
+  - `beacon_node/lighthouse_network/src/service/gossip_cache.rs`: ExecutionProof arm
+  - `beacon_node/network/src/router.rs`: ExecutionProof routing (debug log placeholder)
+- 92/92 lighthouse_network tests pass.
+
 ### 2026-02-19 — Phase 1 complete: core types, chain config, CLI flags (Tasks 1-3)
 - **Task 1: ExecutionProof and ExecutionProofSubnetId types**
   - Created `consensus/types/src/execution_proof.rs`: `ExecutionProof` struct with `block_root`, `block_hash`, `subnet_id`, `version`, `proof_data` fields. SSZ+serde derives. `is_version_supported()` and `is_structurally_valid()` validation methods. `MAX_EXECUTION_PROOF_SIZE` constant (1MB). 5 unit tests (valid proof, invalid version, empty data, oversized data, SSZ roundtrip).

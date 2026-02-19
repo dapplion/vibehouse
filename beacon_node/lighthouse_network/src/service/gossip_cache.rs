@@ -215,6 +215,7 @@ impl GossipCache {
             GossipKind::ExecutionPayload => None, // gloas ePBS: payloads are time-sensitive, no caching
             GossipKind::PayloadAttestation => None, // gloas ePBS: attestations are time-sensitive, no caching
             GossipKind::ProposerPreferences => None, // gloas ePBS: preferences are time-sensitive, no caching
+            GossipKind::ExecutionProof(_) => None,   // proofs are time-sensitive, no caching
         };
         let Some(expire_timeout) = expire_timeout else {
             return;
