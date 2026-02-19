@@ -146,6 +146,27 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 7: proof verification module (Phase 3 started)
+- **Created `execution_proof_verification.rs`** — new gossip verification module following the `gloas_verification.rs` pattern (simpler than blob/column since no proposer equivocation or KZG concerns).
+- **`GossipExecutionProofError`** enum with 8 variants:
+  - Reject: `InvalidSubnetId`, `InvalidVersion`, `ProofDataEmpty`, `ProofDataTooLarge`, `BlockHashMismatch`, `InvalidProof`
+  - Ignore: `UnknownBlockRoot`, `PriorToFinalization`
+  - Internal: `BeaconChainError`
+- **`VerifiedExecutionProof<T>`** wrapper type with `proof()`, `block_root()`, `subnet_id()`, `into_inner()` accessors.
+- **`verify_execution_proof_for_gossip()`** — 7-step validation:
+  1. Subnet ID bounds check
+  2. Version supported check
+  3. Structural validity (non-empty, size limits)
+  4. Block root known in fork choice (read lock)
+  5. Block not prior to finalization
+  6. Block hash matches bid block hash (Gloas ePBS cross-check)
+  7. Cryptographic verification (stubbed — returns Ok always, real ZK verification in later task)
+- **`BeaconChain::verify_execution_proof_for_gossip()`** thin wrapper method for the network layer to call.
+- **Files changed**: 2 (1 new, 1 modified)
+  - `beacon_node/beacon_chain/src/execution_proof_verification.rs` (new, ~210 lines)
+  - `beacon_node/beacon_chain/src/lib.rs` (module declaration)
+- 307/307 beacon_chain tests pass (Gloas fork), 1/1 new unit test passes.
+
 ### 2026-02-19 — Task 6: gossip subscription and whitelist (Phase 2 complete)
 - **Added `ExecutionProof` subnets to gossipsub whitelist filter** in `create_whitelist_filter()` (`service/utils.rs`). Without this, gossipsub's `WhitelistSubscriptionFilter` silently rejects incoming `execution_proof_N` messages even when subscribed. Loops over `0..MAX_EXECUTION_PROOF_SUBNETS` adding each proof topic hash.
 - **Also added missing `ProposerPreferences`** to the whitelist — this ePBS topic was omitted when the whitelist was first set up.
