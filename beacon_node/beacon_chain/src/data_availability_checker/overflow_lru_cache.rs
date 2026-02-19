@@ -13,6 +13,7 @@ use lighthouse_tracing::SPAN_PENDING_COMPONENTS;
 use lru::LruCache;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tracing::{Span, debug, debug_span};
@@ -20,8 +21,9 @@ use types::beacon_block_body::KzgCommitments;
 use types::blob_sidecar::BlobIdentifier;
 use types::{
     BlobSidecar, BlockImportSource, ChainSpec, ColumnIndex, DataColumnSidecar,
-    DataColumnSidecarList, Epoch, EthSpec, Hash256, RuntimeFixedVector, RuntimeVariableList,
-    SignedBeaconBlock,
+    DataColumnSidecarList, Epoch, EthSpec, ExecutionProof, ExecutionProofSubnetId, ForkName,
+    Hash256, RuntimeFixedVector, RuntimeVariableList, SignedBeaconBlock,
+    execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS,
 };
 
 #[derive(Clone)]
@@ -74,6 +76,7 @@ pub struct PendingComponents<E: EthSpec> {
     pub block_root: Hash256,
     pub verified_blobs: RuntimeFixedVector<Option<KzgVerifiedBlob<E>>>,
     pub verified_data_columns: Vec<KzgVerifiedCustodyDataColumn<E>>,
+    pub verified_execution_proofs: HashMap<ExecutionProofSubnetId, Arc<ExecutionProof>>,
     pub block: Option<CachedBlock<E>>,
     pub reconstruction_started: bool,
     span: Span,
@@ -199,6 +202,19 @@ impl<E: EthSpec> PendingComponents<E> {
         Ok(())
     }
 
+    /// Merges a set of verified execution proofs into the cache.
+    /// Proofs are keyed by subnet_id; duplicates are silently ignored.
+    fn merge_execution_proofs(
+        &mut self,
+        proofs: Vec<(ExecutionProofSubnetId, Arc<ExecutionProof>)>,
+    ) {
+        for (subnet_id, proof) in proofs {
+            self.verified_execution_proofs
+                .entry(subnet_id)
+                .or_insert(proof);
+        }
+    }
+
     /// Inserts a new block and revalidates the existing blobs against it.
     ///
     /// Blobs that don't match the new block's commitments are evicted.
@@ -217,6 +233,7 @@ impl<E: EthSpec> PendingComponents<E> {
         &self,
         spec: &Arc<ChainSpec>,
         num_expected_columns_opt: Option<usize>,
+        min_execution_proofs_required: usize,
         recover: R,
     ) -> Result<Option<AvailableExecutedBlock<E>>, AvailabilityCheckError>
     where
@@ -294,6 +311,12 @@ impl<E: EthSpec> PendingComponents<E> {
             return Ok(None);
         };
 
+        // Execution proof gate: if proofs are required, block is not available
+        // until we have received enough verified execution proofs.
+        if self.verified_execution_proofs.len() < min_execution_proofs_required {
+            return Ok(None);
+        }
+
         // Block is available, construct `AvailableExecutedBlock`
 
         let blobs_available_timestamp = match blob_data {
@@ -340,6 +363,7 @@ impl<E: EthSpec> PendingComponents<E> {
             block_root,
             verified_blobs: RuntimeFixedVector::new(vec![None; max_len]),
             verified_data_columns: vec![],
+            verified_execution_proofs: HashMap::new(),
             block: None,
             reconstruction_started: false,
             span,
@@ -581,9 +605,11 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
         pending_components: MappedRwLockReadGuard<'_, PendingComponents<T::EthSpec>>,
         num_expected_columns_opt: Option<usize>,
     ) -> Result<Availability<T::EthSpec>, AvailabilityCheckError> {
+        let min_proofs = self.min_execution_proofs_for_epoch(pending_components.epoch());
         if let Some(available_block) = pending_components.make_available(
             &self.spec,
             num_expected_columns_opt,
+            min_proofs,
             |block, span| self.state_cache.recover_pending_executed_block(block, span),
         )? {
             // Explicitly drop read lock before acquiring write lock
@@ -757,6 +783,65 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
             debug!(
                 component = "block",
                 status = pending_components.status_str(num_expected_columns_opt),
+                "Component added to data availability checker"
+            );
+        });
+
+        self.check_availability_and_cache_components(
+            block_root,
+            pending_components,
+            num_expected_columns_opt,
+        )
+    }
+
+    /// Returns the minimum number of execution proofs required for a block at the given epoch
+    /// to be considered available. Returns 0 for pre-Gloas epochs or if epoch is unknown.
+    fn min_execution_proofs_for_epoch(&self, epoch: Option<Epoch>) -> usize {
+        match epoch {
+            Some(epoch) if self.spec.fork_name_at_epoch(epoch) >= ForkName::Gloas => {
+                MAX_EXECUTION_PROOF_SUBNETS as usize
+            }
+            _ => 0,
+        }
+    }
+
+    /// Store verified execution proofs in the pending components cache and check availability.
+    pub fn put_execution_proofs(
+        &self,
+        block_root: Hash256,
+        proofs: Vec<(ExecutionProofSubnetId, Arc<ExecutionProof>)>,
+    ) -> Result<Availability<T::EthSpec>, AvailabilityCheckError> {
+        if proofs.is_empty() {
+            return Ok(Availability::MissingComponents(block_root));
+        }
+
+        // We need an epoch to initialize PendingComponents if needed;
+        // peek at cached components to find the epoch.
+        let epoch = self
+            .critical
+            .read()
+            .peek(&block_root)
+            .and_then(|c| c.epoch());
+
+        // If we don't have an epoch yet (no block or other components), we can't insert proofs
+        // into the cache because PendingComponents requires max_blobs_per_block(epoch).
+        // Return MissingComponents — the proof will be re-checked when the block arrives.
+        let Some(epoch) = epoch else {
+            return Ok(Availability::MissingComponents(block_root));
+        };
+
+        let pending_components =
+            self.update_or_insert_pending_components(block_root, epoch, |pending_components| {
+                pending_components.merge_execution_proofs(proofs);
+                Ok(())
+            })?;
+
+        let num_expected_columns_opt = self.get_num_expected_columns(epoch);
+
+        pending_components.span.in_scope(|| {
+            debug!(
+                component = "execution_proofs",
+                count = pending_components.verified_execution_proofs.len(),
                 "Component added to data availability checker"
             );
         });

@@ -22,7 +22,7 @@ use tracing::{debug, error, instrument};
 use types::blob_sidecar::{BlobIdentifier, BlobSidecar, FixedBlobSidecarList};
 use types::{
     BlobSidecarList, BlockImportSource, ChainSpec, DataColumnSidecar, DataColumnSidecarList, Epoch,
-    EthSpec, Hash256, SignedBeaconBlock, Slot,
+    EthSpec, ExecutionProof, ExecutionProofSubnetId, Hash256, SignedBeaconBlock, Slot,
 };
 
 mod error;
@@ -336,6 +336,18 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
     ) -> Result<Availability<T::EthSpec>, AvailabilityCheckError> {
         self.availability_cache
             .put_kzg_verified_data_columns(block_root, custody_columns)
+    }
+
+    /// Store verified execution proofs in the availability cache. If the proof completes the
+    /// availability requirements for a block, returns `Availability::Available`.
+    #[instrument(skip_all, level = "trace")]
+    pub fn put_gossip_verified_execution_proofs(
+        &self,
+        block_root: Hash256,
+        proofs: Vec<(ExecutionProofSubnetId, Arc<ExecutionProof>)>,
+    ) -> Result<Availability<T::EthSpec>, AvailabilityCheckError> {
+        self.availability_cache
+            .put_execution_proofs(block_root, proofs)
     }
 
     /// Check if we have all the blobs for a block. Returns `Availability` which has information

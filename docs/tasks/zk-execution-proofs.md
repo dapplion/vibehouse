@@ -146,6 +146,19 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 8: integrate proofs into DataAvailabilityChecker
+- **Added `verified_execution_proofs` field to `PendingComponents`** — `HashMap<ExecutionProofSubnetId, Arc<ExecutionProof>>`, initialized empty. Keyed by subnet_id so duplicates are silently deduplicated.
+- **Added `merge_execution_proofs()` method** to `PendingComponents` — inserts proofs, skipping duplicates via `entry().or_insert()`.
+- **Added execution proof gate in `make_available()`** — after the blob/column data gate, checks that `verified_execution_proofs.len() >= min_execution_proofs_required`. For pre-Gloas blocks this threshold is 0 (no proofs needed). For Gloas+ blocks it equals `MAX_EXECUTION_PROOF_SUBNETS` (currently 1).
+- **Added `min_execution_proofs_for_epoch()` helper** to `DataAvailabilityCheckerInner` — returns `MAX_EXECUTION_PROOF_SUBNETS` for Gloas+ epochs, 0 otherwise. Uses `spec.fork_name_at_epoch()` for clean fork detection.
+- **Added `put_execution_proofs()` inner method** on `DataAvailabilityCheckerInner` — follows the `put_kzg_verified_data_columns()` pattern: peek epoch from cache, update_or_insert pending components, check availability.
+- **Added `put_gossip_verified_execution_proofs()` outer method** on `DataAvailabilityChecker` — thin wrapper delegating to inner method.
+- **Design decision**: Proofs are "gate" data only — required for block availability but NOT added to `AvailableBlock::deconstruct()`. This avoids breaking ~20 callers. The proof data is consumed from the cache when needed (e.g., for RPC serving in a future task).
+- **Files changed**: 2
+  - `beacon_node/beacon_chain/src/data_availability_checker/overflow_lru_cache.rs` (~+70 lines)
+  - `beacon_node/beacon_chain/src/data_availability_checker.rs` (~+15 lines)
+- Clippy clean, cargo fmt clean.
+
 ### 2026-02-19 — Task 7: proof verification module (Phase 3 started)
 - **Created `execution_proof_verification.rs`** — new gossip verification module following the `gloas_verification.rs` pattern (simpler than blob/column since no proposer equivocation or KZG concerns).
 - **`GossipExecutionProofError`** enum with 8 variants:
