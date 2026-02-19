@@ -16,7 +16,7 @@ pub struct PayloadAttestationServiceBuilder<S: ValidatorStore, T: SlotClock + 's
     slot_clock: Option<T>,
     beacon_nodes: Option<Arc<BeaconNodeFallback<T>>>,
     executor: Option<TaskExecutor>,
-    gloas_fork_epoch: Option<Epoch>,
+    chain_spec: Option<Arc<ChainSpec>>,
 }
 
 impl<S: ValidatorStore + 'static, T: SlotClock + 'static> Default
@@ -35,7 +35,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
             slot_clock: None,
             beacon_nodes: None,
             executor: None,
-            gloas_fork_epoch: None,
+            chain_spec: None,
         }
     }
 
@@ -64,12 +64,15 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
         self
     }
 
-    pub fn spec(mut self, spec: &ChainSpec) -> Self {
-        self.gloas_fork_epoch = spec.gloas_fork_epoch;
+    pub fn spec(mut self, spec: Arc<ChainSpec>) -> Self {
+        self.chain_spec = Some(spec);
         self
     }
 
     pub fn build(self) -> Result<PayloadAttestationService<S, T>, String> {
+        let chain_spec = self
+            .chain_spec
+            .ok_or("Cannot build PayloadAttestationService without chain_spec")?;
         Ok(PayloadAttestationService {
             inner: Arc::new(Inner {
                 duties_service: self
@@ -87,7 +90,8 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
                 executor: self
                     .executor
                     .ok_or("Cannot build PayloadAttestationService without executor")?,
-                gloas_fork_epoch: self.gloas_fork_epoch,
+                gloas_fork_epoch: chain_spec.gloas_fork_epoch,
+                chain_spec,
             }),
         })
     }
@@ -100,6 +104,7 @@ pub struct Inner<S, T> {
     beacon_nodes: Arc<BeaconNodeFallback<T>>,
     executor: TaskExecutor,
     gloas_fork_epoch: Option<Epoch>,
+    chain_spec: Arc<ChainSpec>,
 }
 
 /// Produces payload timeliness attestations for PTC (Payload Timeliness Committee) duties.
@@ -140,15 +145,17 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
             .unwrap_or(false)
     }
 
-    /// Starts the service which periodically produces payload attestations at 3/4 of each slot.
-    pub fn start_update_service(self, spec: &ChainSpec) -> Result<(), String> {
+    /// Starts the service which periodically produces payload attestations at the
+    /// configured PTC timing point in each slot (PAYLOAD_ATTESTATION_DUE_BPS).
+    pub fn start_update_service(self, _spec: &ChainSpec) -> Result<(), String> {
         // If Gloas is not scheduled at all, don't start the service.
-        if !spec.is_gloas_scheduled() {
+        if !self.chain_spec.is_gloas_scheduled() {
             info!("Payload attestation service disabled (Gloas not scheduled)");
             return Ok(());
         }
 
-        let slot_duration = Duration::from_secs(spec.seconds_per_slot);
+        let slot_duration = Duration::from_secs(self.chain_spec.seconds_per_slot);
+        let ptc_delay = Duration::from_millis(self.chain_spec.get_payload_attestation_due_ms());
         let duration_to_next_slot = self
             .slot_clock
             .duration_to_next_slot()
@@ -156,6 +163,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
 
         info!(
             next_update_millis = duration_to_next_slot.as_millis(),
+            ptc_delay_ms = ptc_delay.as_millis(),
             "Payload attestation service started"
         );
 
@@ -164,8 +172,8 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> PayloadAttestationServ
         let interval_fut = async move {
             loop {
                 if let Some(duration_to_next_slot) = self.slot_clock.duration_to_next_slot() {
-                    // PTC attestations happen at 3/4 of the slot.
-                    sleep(duration_to_next_slot + slot_duration * 3 / 4).await;
+                    // PTC attestations happen at PAYLOAD_ATTESTATION_DUE_BPS of the slot.
+                    sleep(duration_to_next_slot + ptc_delay).await;
 
                     // Do nothing if the Gloas fork has not yet occurred.
                     if !self.gloas_fork_activated() {

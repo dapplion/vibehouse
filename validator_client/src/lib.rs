@@ -513,7 +513,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             .validator_store(validator_store.clone())
             .beacon_nodes(beacon_nodes.clone())
             .executor(context.executor.clone())
-            .spec(&context.eth2_config.spec)
+            .spec(context.eth2_config.spec.clone())
             .build()?;
 
         let preparation_service = PreparationServiceBuilder::new()

@@ -10,7 +10,7 @@ use task_executor::TaskExecutor;
 use tokio::time::{Duration, Instant, sleep, sleep_until};
 use tracing::{debug, error, info, trace, warn};
 use tree_hash::TreeHash;
-use types::{Attestation, AttestationData, ChainSpec, CommitteeIndex, EthSpec, Slot};
+use types::{Attestation, AttestationData, ChainSpec, CommitteeIndex, Epoch, EthSpec, Slot};
 use validator_store::{Error as ValidatorStoreError, ValidatorStore};
 
 /// Builds an `AttestationService`.
@@ -160,9 +160,10 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
         let interval_fut = async move {
             loop {
                 if let Some(duration_to_next_slot) = self.slot_clock.duration_to_next_slot() {
-                    sleep(duration_to_next_slot + slot_duration / 3).await;
+                    let attestation_delay = self.get_attestation_delay();
+                    sleep(duration_to_next_slot + attestation_delay).await;
 
-                    if let Err(e) = self.spawn_attestation_tasks(slot_duration) {
+                    if let Err(e) = self.spawn_attestation_tasks() {
                         crit!(error = e, "Failed to spawn attestation tasks")
                     } else {
                         trace!("Spawned attestation tasks");
@@ -180,21 +181,50 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
         Ok(())
     }
 
+    /// Returns the attestation production delay for the current epoch using spec BPS values.
+    fn get_attestation_delay(&self) -> Duration {
+        let epoch = self
+            .slot_clock
+            .now()
+            .map(|slot| slot.epoch(S::E::slots_per_epoch()))
+            .unwrap_or(Epoch::new(0));
+        Duration::from_millis(self.chain_spec.get_attestation_due_ms(epoch))
+    }
+
+    /// Returns the aggregate production delay for the current epoch using spec BPS values.
+    fn get_aggregate_delay(&self) -> Duration {
+        let epoch = self
+            .slot_clock
+            .now()
+            .map(|slot| slot.epoch(S::E::slots_per_epoch()))
+            .unwrap_or(Epoch::new(0));
+        Duration::from_millis(self.chain_spec.get_aggregate_due_ms(epoch))
+    }
+
     /// For each each required attestation, spawn a new task that downloads, signs and uploads the
     /// attestation to the beacon node.
-    fn spawn_attestation_tasks(&self, slot_duration: Duration) -> Result<(), String> {
+    fn spawn_attestation_tasks(&self) -> Result<(), String> {
         let slot = self.slot_clock.now().ok_or("Failed to read slot clock")?;
         let duration_to_next_slot = self
             .slot_clock
             .duration_to_next_slot()
             .ok_or("Unable to determine duration to next slot")?;
 
-        // If a validator needs to publish an aggregate attestation, they must do so at 2/3
-        // through the slot. This delay triggers at this time
+        // If a validator needs to publish an aggregate attestation, they must do so at the
+        // aggregate due point in the slot (aggregate_due_bps into the slot).
+        // We are currently at the attestation point. The aggregate is at:
+        //   now + (aggregate_delay - attestation_delay)
+        // Which equals: now + duration_to_next_slot - (slot_duration - aggregate_delay)
+        let slot_duration = Duration::from_millis(self.chain_spec.slot_duration_ms);
+        let aggregate_delay = self.get_aggregate_delay();
         let aggregate_production_instant = Instant::now()
             + duration_to_next_slot
-                .checked_sub(slot_duration / 3)
-                .unwrap_or_else(|| Duration::from_secs(0));
+                .checked_sub(
+                    slot_duration
+                        .checked_sub(aggregate_delay)
+                        .unwrap_or_default(),
+                )
+                .unwrap_or_default();
 
         let duties_by_committee_index: HashMap<CommitteeIndex, Vec<DutyAndProof>> = self
             .duties_service

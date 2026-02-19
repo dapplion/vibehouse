@@ -13,7 +13,7 @@ use task_executor::TaskExecutor;
 use tokio::time::{Duration, Instant, sleep, sleep_until};
 use tracing::{debug, error, info, trace, warn};
 use types::{
-    ChainSpec, EthSpec, Hash256, PublicKeyBytes, Slot, SyncCommitteeSubscription,
+    ChainSpec, Epoch, EthSpec, Hash256, PublicKeyBytes, Slot, SyncCommitteeSubscription,
     SyncContributionData, SyncDuty, SyncSelectionProof, SyncSubnetId,
 };
 use validator_store::{Error as ValidatorStoreError, ValidatorStore};
@@ -86,6 +86,26 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
             .unwrap_or(false)
     }
 
+    /// Returns the sync committee message production delay for the current epoch.
+    fn get_sync_message_delay(&self) -> Duration {
+        let epoch = self
+            .slot_clock
+            .now()
+            .map(|slot| slot.epoch(S::E::slots_per_epoch()))
+            .unwrap_or(Epoch::new(0));
+        Duration::from_millis(self.duties_service.spec.get_sync_message_due_ms(epoch))
+    }
+
+    /// Returns the sync committee contribution production delay for the current epoch.
+    fn get_contribution_delay(&self) -> Duration {
+        let epoch = self
+            .slot_clock
+            .now()
+            .map(|slot| slot.epoch(S::E::slots_per_epoch()))
+            .unwrap_or(Epoch::new(0));
+        Duration::from_millis(self.duties_service.spec.get_contribution_due_ms(epoch))
+    }
+
     pub fn start_update_service(self, spec: &ChainSpec) -> Result<(), String> {
         if self.duties_service.disable_attesting {
             info!("Sync committee service disabled");
@@ -108,15 +128,15 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
         let interval_fut = async move {
             loop {
                 if let Some(duration_to_next_slot) = self.slot_clock.duration_to_next_slot() {
-                    // Wait for contribution broadcast interval 1/3 of the way through the slot.
-                    sleep(duration_to_next_slot + slot_duration / 3).await;
+                    let sync_message_delay = self.get_sync_message_delay();
+                    sleep(duration_to_next_slot + sync_message_delay).await;
 
                     // Do nothing if the Altair fork has not yet occurred.
                     if !self.altair_fork_activated() {
                         continue;
                     }
 
-                    if let Err(e) = self.spawn_contribution_tasks(slot_duration).await {
+                    if let Err(e) = self.spawn_contribution_tasks().await {
                         crit!(
                             error = ?e,
                             "Failed to spawn sync contribution tasks"
@@ -139,19 +159,25 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> SyncCommitteeService<S
         Ok(())
     }
 
-    async fn spawn_contribution_tasks(&self, slot_duration: Duration) -> Result<(), String> {
+    async fn spawn_contribution_tasks(&self) -> Result<(), String> {
         let slot = self.slot_clock.now().ok_or("Failed to read slot clock")?;
         let duration_to_next_slot = self
             .slot_clock
             .duration_to_next_slot()
             .ok_or("Unable to determine duration to next slot")?;
 
-        // If a validator needs to publish a sync aggregate, they must do so at 2/3
-        // through the slot. This delay triggers at this time
+        // If a validator needs to publish a sync aggregate, they must do so at the
+        // contribution due point in the slot. Compute from current position.
+        let slot_duration = Duration::from_millis(self.duties_service.spec.slot_duration_ms);
+        let contribution_delay = self.get_contribution_delay();
         let aggregate_production_instant = Instant::now()
             + duration_to_next_slot
-                .checked_sub(slot_duration / 3)
-                .unwrap_or_else(|| Duration::from_secs(0));
+                .checked_sub(
+                    slot_duration
+                        .checked_sub(contribution_delay)
+                        .unwrap_or_default(),
+                )
+                .unwrap_or_default();
 
         let Some(slot_duties) = self
             .duties_service

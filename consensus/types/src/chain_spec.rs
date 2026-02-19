@@ -103,6 +103,12 @@ pub struct ChainSpec {
     pub aggregate_due_bps: u64,
     pub sync_message_due_bps: u64,
     pub contribution_due_bps: u64,
+    pub payload_attestation_due_bps: u64,
+    /// Gloas fork overrides for slot component timing (basis points)
+    pub attestation_due_bps_gloas: u64,
+    pub aggregate_due_bps_gloas: u64,
+    pub sync_message_due_bps_gloas: u64,
+    pub contribution_due_bps_gloas: u64,
 
     /*
      * Reward and penalty quotients
@@ -511,6 +517,64 @@ impl ChainSpec {
     pub fn is_gloas_scheduled(&self) -> bool {
         self.gloas_fork_epoch
             .is_some_and(|gloas_fork_epoch| gloas_fork_epoch != self.far_future_epoch)
+    }
+
+    /// Returns true if the given epoch is at or after the Gloas fork.
+    fn is_gloas_epoch(&self, epoch: Epoch) -> bool {
+        self.gloas_fork_epoch
+            .is_some_and(|fork_epoch| epoch >= fork_epoch)
+    }
+
+    /// Converts a BPS (basis points) value to milliseconds using the slot duration.
+    /// BPS is in units of 1/10000, so 2500 BPS = 25% of slot duration.
+    fn bps_to_ms(&self, bps: u64) -> u64 {
+        self.slot_duration_ms.saturating_mul(bps) / 10_000
+    }
+
+    /// Returns the attestation due delay in ms for the given epoch.
+    /// Pre-Gloas: 3333 BPS (33.33% of slot). Gloas: 2500 BPS (25% of slot).
+    pub fn get_attestation_due_ms(&self, epoch: Epoch) -> u64 {
+        if self.is_gloas_epoch(epoch) {
+            self.bps_to_ms(self.attestation_due_bps_gloas)
+        } else {
+            self.bps_to_ms(self.attestation_due_bps)
+        }
+    }
+
+    /// Returns the aggregate due delay in ms for the given epoch.
+    /// Pre-Gloas: 6667 BPS (66.67% of slot). Gloas: 5000 BPS (50% of slot).
+    pub fn get_aggregate_due_ms(&self, epoch: Epoch) -> u64 {
+        if self.is_gloas_epoch(epoch) {
+            self.bps_to_ms(self.aggregate_due_bps_gloas)
+        } else {
+            self.bps_to_ms(self.aggregate_due_bps)
+        }
+    }
+
+    /// Returns the sync committee message due delay in ms for the given epoch.
+    /// Pre-Gloas: 3333 BPS (33.33% of slot). Gloas: 2500 BPS (25% of slot).
+    pub fn get_sync_message_due_ms(&self, epoch: Epoch) -> u64 {
+        if self.is_gloas_epoch(epoch) {
+            self.bps_to_ms(self.sync_message_due_bps_gloas)
+        } else {
+            self.bps_to_ms(self.sync_message_due_bps)
+        }
+    }
+
+    /// Returns the sync committee contribution due delay in ms for the given epoch.
+    /// Pre-Gloas: 6667 BPS (66.67% of slot). Gloas: 5000 BPS (50% of slot).
+    pub fn get_contribution_due_ms(&self, epoch: Epoch) -> u64 {
+        if self.is_gloas_epoch(epoch) {
+            self.bps_to_ms(self.contribution_due_bps_gloas)
+        } else {
+            self.bps_to_ms(self.contribution_due_bps)
+        }
+    }
+
+    /// Returns the payload attestation (PTC) due delay in ms.
+    /// Only applicable at Gloas: 7500 BPS (75% of slot).
+    pub fn get_payload_attestation_due_ms(&self) -> u64 {
+        self.bps_to_ms(self.payload_attestation_due_bps)
     }
 
     /// Returns a full `Fork` struct for a given epoch.
@@ -1019,6 +1083,11 @@ impl ChainSpec {
             aggregate_due_bps: 6667,
             sync_message_due_bps: 3333,
             contribution_due_bps: 6667,
+            payload_attestation_due_bps: 7500,
+            attestation_due_bps_gloas: 2500,
+            aggregate_due_bps_gloas: 5000,
+            sync_message_due_bps_gloas: 2500,
+            contribution_due_bps_gloas: 5000,
 
             /*
              * Reward and penalty quotients
@@ -1400,6 +1469,11 @@ impl ChainSpec {
             aggregate_due_bps: 6667,
             sync_message_due_bps: 3333,
             contribution_due_bps: 6667,
+            payload_attestation_due_bps: 7500,
+            attestation_due_bps_gloas: 2500,
+            aggregate_due_bps_gloas: 5000,
+            sync_message_due_bps_gloas: 2500,
+            contribution_due_bps_gloas: 5000,
 
             /*
              * Reward and penalty quotients
@@ -1835,6 +1909,35 @@ pub struct Config {
     min_validator_withdrawability_delay: Epoch,
     #[serde(with = "serde_utils::quoted_u64")]
     shard_committee_period: u64,
+
+    #[serde(default = "default_attestation_due_bps")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    attestation_due_bps: u64,
+    #[serde(default = "default_aggregate_due_bps")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    aggregate_due_bps: u64,
+    #[serde(default = "default_sync_message_due_bps")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    sync_message_due_bps: u64,
+    #[serde(default = "default_contribution_due_bps")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    contribution_due_bps: u64,
+    #[serde(default = "default_payload_attestation_due_bps")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    payload_attestation_due_bps: u64,
+    #[serde(default = "default_attestation_due_bps_gloas")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    attestation_due_bps_gloas: u64,
+    #[serde(default = "default_aggregate_due_bps_gloas")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    aggregate_due_bps_gloas: u64,
+    #[serde(default = "default_sync_message_due_bps_gloas")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    sync_message_due_bps_gloas: u64,
+    #[serde(default = "default_contribution_due_bps_gloas")]
+    #[serde(with = "serde_utils::quoted_u64")]
+    contribution_due_bps_gloas: u64,
+
     #[serde(with = "serde_utils::quoted_u64")]
     eth1_follow_distance: u64,
     #[serde(default = "default_subnets_per_node")]
@@ -2015,6 +2118,34 @@ fn default_subnets_per_node() -> u8 {
 
 fn default_attestation_subnet_prefix_bits() -> u8 {
     6
+}
+
+const fn default_attestation_due_bps() -> u64 {
+    3333
+}
+const fn default_aggregate_due_bps() -> u64 {
+    6667
+}
+const fn default_sync_message_due_bps() -> u64 {
+    3333
+}
+const fn default_contribution_due_bps() -> u64 {
+    6667
+}
+const fn default_payload_attestation_due_bps() -> u64 {
+    7500
+}
+const fn default_attestation_due_bps_gloas() -> u64 {
+    2500
+}
+const fn default_aggregate_due_bps_gloas() -> u64 {
+    5000
+}
+const fn default_sync_message_due_bps_gloas() -> u64 {
+    2500
+}
+const fn default_contribution_due_bps_gloas() -> u64 {
+    5000
 }
 
 const fn default_max_per_epoch_activation_churn_limit() -> u64 {
@@ -2297,6 +2428,15 @@ impl Config {
             seconds_per_eth1_block: spec.seconds_per_eth1_block,
             min_validator_withdrawability_delay: spec.min_validator_withdrawability_delay,
             shard_committee_period: spec.shard_committee_period,
+            attestation_due_bps: spec.attestation_due_bps,
+            aggregate_due_bps: spec.aggregate_due_bps,
+            sync_message_due_bps: spec.sync_message_due_bps,
+            contribution_due_bps: spec.contribution_due_bps,
+            payload_attestation_due_bps: spec.payload_attestation_due_bps,
+            attestation_due_bps_gloas: spec.attestation_due_bps_gloas,
+            aggregate_due_bps_gloas: spec.aggregate_due_bps_gloas,
+            sync_message_due_bps_gloas: spec.sync_message_due_bps_gloas,
+            contribution_due_bps_gloas: spec.contribution_due_bps_gloas,
             eth1_follow_distance: spec.eth1_follow_distance,
             subnets_per_node: spec.subnets_per_node,
             attestation_subnet_prefix_bits: spec.attestation_subnet_prefix_bits,
@@ -2388,6 +2528,15 @@ impl Config {
             seconds_per_eth1_block,
             min_validator_withdrawability_delay,
             shard_committee_period,
+            attestation_due_bps,
+            aggregate_due_bps,
+            sync_message_due_bps,
+            contribution_due_bps,
+            payload_attestation_due_bps,
+            attestation_due_bps_gloas,
+            aggregate_due_bps_gloas,
+            sync_message_due_bps_gloas,
+            contribution_due_bps_gloas,
             eth1_follow_distance,
             subnets_per_node,
             attestation_subnet_prefix_bits,
@@ -2461,6 +2610,15 @@ impl Config {
             seconds_per_eth1_block,
             min_validator_withdrawability_delay,
             shard_committee_period,
+            attestation_due_bps,
+            aggregate_due_bps,
+            sync_message_due_bps,
+            contribution_due_bps,
+            payload_attestation_due_bps,
+            attestation_due_bps_gloas,
+            aggregate_due_bps_gloas,
+            sync_message_due_bps_gloas,
+            contribution_due_bps_gloas,
             eth1_follow_distance,
             subnets_per_node,
             inactivity_score_bias,
