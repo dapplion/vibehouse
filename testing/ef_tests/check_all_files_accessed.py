@@ -69,9 +69,6 @@ excluded_paths = [
     "tests/.*/.*/light_client/update_ranking",
     # ForkChoiceNode is an internal fork choice type not in consensus/types
     "tests/.*/.*/ssz_static/ForkChoiceNode/.*",
-    # ProposerPreferences types not yet implemented (external builder path)
-    "tests/.*/.*/ssz_static/ProposerPreferences/.*",
-    "tests/.*/.*/ssz_static/SignedProposerPreferences/.*",
 ]
 
 

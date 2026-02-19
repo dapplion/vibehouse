@@ -32,6 +32,7 @@ pub enum Domain {
     // Gloas ePBS domains
     BeaconBuilder,
     PtcAttester,
+    ProposerPreferences,
 }
 
 /// Lighthouse's internal configuration struct.
@@ -567,6 +568,7 @@ impl ChainSpec {
             Domain::BlsToExecutionChange => self.domain_bls_to_execution_change,
             Domain::BeaconBuilder => self.domain_beacon_builder,
             Domain::PtcAttester => self.domain_ptc_attester,
+            Domain::ProposerPreferences => self.domain_proposer_preferences,
         }
     }
 

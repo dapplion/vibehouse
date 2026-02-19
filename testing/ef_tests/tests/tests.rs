@@ -863,6 +863,18 @@ mod ssz_static {
         SszStaticHandler::<IndexedPayloadAttestation<MainnetEthSpec>, MainnetEthSpec>::gloas_and_later()
             .run();
     }
+
+    #[test]
+    fn proposer_preferences() {
+        SszStaticHandler::<ProposerPreferences, MinimalEthSpec>::gloas_and_later().run();
+        SszStaticHandler::<ProposerPreferences, MainnetEthSpec>::gloas_and_later().run();
+    }
+
+    #[test]
+    fn signed_proposer_preferences() {
+        SszStaticHandler::<SignedProposerPreferences, MinimalEthSpec>::gloas_and_later().run();
+        SszStaticHandler::<SignedProposerPreferences, MainnetEthSpec>::gloas_and_later().run();
+    }
 }
 
 #[test]

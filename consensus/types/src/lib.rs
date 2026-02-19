@@ -65,6 +65,7 @@ pub mod pending_attestation;
 pub mod pending_consolidation;
 pub mod pending_deposit;
 pub mod pending_partial_withdrawal;
+pub mod proposer_preferences;
 pub mod proposer_preparation_data;
 pub mod proposer_slashing;
 pub mod relative_epoch;
@@ -77,6 +78,7 @@ pub mod signed_bls_to_execution_change;
 pub mod signed_contribution_and_proof;
 pub mod signed_execution_payload_bid;
 pub mod signed_execution_payload_envelope;
+pub mod signed_proposer_preferences;
 pub mod signed_voluntary_exit;
 pub mod signing_data;
 pub mod sync_committee_subscription;
@@ -245,6 +247,7 @@ pub use crate::preset::{
     AltairPreset, BasePreset, BellatrixPreset, CapellaPreset, DenebPreset, ElectraPreset,
     FuluPreset, GloasPreset,
 };
+pub use crate::proposer_preferences::ProposerPreferences;
 pub use crate::proposer_preparation_data::ProposerPreparationData;
 pub use crate::proposer_slashing::ProposerSlashing;
 pub use crate::relative_epoch::{Error as RelativeEpochError, RelativeEpoch};
@@ -266,6 +269,7 @@ pub use crate::signed_bls_to_execution_change::SignedBlsToExecutionChange;
 pub use crate::signed_contribution_and_proof::SignedContributionAndProof;
 pub use crate::signed_execution_payload_bid::SignedExecutionPayloadBid;
 pub use crate::signed_execution_payload_envelope::SignedExecutionPayloadEnvelope;
+pub use crate::signed_proposer_preferences::SignedProposerPreferences;
 pub use crate::signed_voluntary_exit::SignedVoluntaryExit;
 pub use crate::signing_data::{SignedRoot, SigningData};
 pub use crate::slot_epoch::{Epoch, Slot};

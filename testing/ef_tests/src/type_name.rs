@@ -181,6 +181,8 @@ type_name_generic!(PayloadAttestation);
 type_name!(PayloadAttestationData);
 type_name!(PayloadAttestationMessage);
 type_name_generic!(IndexedPayloadAttestation);
+type_name!(ProposerPreferences);
+type_name!(SignedProposerPreferences);
 type_name_generic!(BeaconBlockBodyGloas, "BeaconBlockBody");
 type_name_generic!(ExecutionPayloadGloas, "ExecutionPayload");
 type_name_generic!(ExecutionPayloadHeaderGloas, "ExecutionPayloadHeader");
