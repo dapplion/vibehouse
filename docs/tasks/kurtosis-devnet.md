@@ -145,6 +145,22 @@ See `kurtosis/vibehouse-epbs.yaml`. Key params: gloas_fork_epoch=1, preset=minim
   - `/eth/v1/events` returns 400 Bad Request
 - **Next**: Fix the block publishing path — gloas blocks should bypass data column publishing (ePBS blocks don't carry data columns in the block, they're in the envelope).
 
+### 2026-02-19: stateless devnet PASSES — finalized_epoch=9
+
+Fixed two critical bugs blocking stateless devnet:
+1. **Fork choice stall at skip slots**: `Attestation::empty_for_signing` hardcoded `data.index = 0`
+   for all Gloas attestations. Non-same-slot attestations (after skip slots) need `data.index = 1`
+   when payload was revealed (per EIP-7732 spec). All votes supported EMPTY, causing fork choice
+   traversal to terminate when blocks chain through FULL.
+2. **Execution proof import silently discarded**: Gloas blocks bypass the DA checker (imported
+   immediately), so `put_execution_proofs` found no entry and dropped proofs. Fixed by tracking
+   proofs directly in `execution_proof_tracker` on `BeaconChain`, bypassing DA checker for
+   stateless nodes. Also added `pending_execution_proofs` buffer for proof-before-block races.
+
+**Result**: 3 proof-generator CL+EL + 1 stateless CL+EL nodes, gloas fork at epoch 1, spamoor tx
+load. Chain reached slot 96, epoch 12, finalized_epoch=9, justified_epoch=11. Some skip slots but
+chain recovers. No stalls.
+
 ### 2026-02-19: fix non-deterministic StateRootMismatch consensus bug
 
 `get_advanced_hot_state()` in `hot_cold_store.rs` had overrides that replaced the actual state tree

@@ -1566,6 +1566,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 // out of optimistic status.
                 self.chain.process_pending_envelope(*block_root).await;
 
+                // For stateless nodes: process any buffered execution proofs that arrived
+                // before this block was in fork choice.
+                self.chain.process_pending_execution_proofs(*block_root);
+
                 self.chain.recompute_head_at_current_slot().await;
 
                 metrics::set_gauge(
@@ -3786,11 +3790,27 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             Err(err) => match err {
                 GossipExecutionProofError::UnknownBlockRoot { .. } => {
-                    debug!(
-                        %block_root,
-                        error = ?err,
-                        "Ignoring execution proof for unknown block root"
-                    );
+                    // For stateless nodes, buffer the proof so it can be processed
+                    // after the block is imported into fork choice.
+                    if self.chain.config.stateless_validation {
+                        debug!(
+                            %block_root,
+                            subnet_id = *subnet_id,
+                            "Buffering execution proof for unknown block root"
+                        );
+                        self.chain
+                            .pending_execution_proofs
+                            .lock()
+                            .entry(block_root)
+                            .or_default()
+                            .push(subnet_id);
+                    } else {
+                        debug!(
+                            %block_root,
+                            error = ?err,
+                            "Ignoring execution proof for unknown block root"
+                        );
+                    }
                     // Don't penalize — we may not have received the block yet.
                     self.propagate_validation_result(
                         message_id,

@@ -387,6 +387,7 @@ impl<S: ValidatorStore + 'static, T: SlotClock + 'static> AttestationService<S, 
                 attestation_data.source,
                 attestation_data.target,
                 &self.chain_spec,
+                attestation_data.index == 1,
             ) {
                 Ok(attestation) => attestation,
                 Err(err) => {

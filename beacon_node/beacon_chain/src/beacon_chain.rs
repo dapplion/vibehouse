@@ -509,6 +509,15 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// transition out of optimistic status.
     pub pending_gossip_envelopes:
         Mutex<HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>>,
+    /// Stateless validation: tracks which execution proof subnets have been received for each
+    /// block root. When enough subnets are received (>= stateless_min_proofs_required), the
+    /// block is marked execution-valid in fork choice. This bypasses the DA checker which
+    /// doesn't work for Gloas blocks (they're imported immediately without entering the cache).
+    pub execution_proof_tracker: Mutex<HashMap<Hash256, HashSet<types::ExecutionProofSubnetId>>>,
+    /// Stateless validation: buffer of proofs received before their block was imported.
+    /// When a proof arrives for an unknown block root, it is buffered here. After block
+    /// import, `process_pending_execution_proofs` checks this buffer.
+    pub pending_execution_proofs: Mutex<HashMap<Hash256, Vec<types::ExecutionProofSubnetId>>>,
     /// ZK execution proof generator. Only instantiated when `--generate-execution-proofs`
     /// is enabled. Generates proofs after `engine_newPayload` succeeds for Gloas payloads.
     pub execution_proof_generator:
@@ -2065,6 +2074,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let target;
         let current_epoch_attesting_info: Option<(Checkpoint, usize)>;
         let attester_cache_key;
+        let payload_present;
         let head_timer = metrics::start_timer(&metrics::ATTESTATION_PRODUCTION_HEAD_SCRAPE_SECONDS);
         // The following braces are to prevent the `cached_head` Arc from being held for longer than
         // required. It also helps reduce the diff for a very large PR (#3244).
@@ -2144,6 +2154,23 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // routine.
             attester_cache_key =
                 AttesterCacheKey::new(request_epoch, head_state, beacon_block_root)?;
+
+            // [Gloas/EIP-7732] Determine payload_present for attestation data.index.
+            // Per spec: same-slot attestations always have data.index = 0.
+            // Non-same-slot attestations set data.index = 1 if payload was revealed.
+            // "Same-slot" means the block was produced at request_slot (not a skip).
+            payload_present = if head_state.fork_name_unchecked().gloas_enabled() {
+                self.canonical_head
+                    .fork_choice_read_lock()
+                    .get_block(&beacon_block_root)
+                    .is_some_and(|block| {
+                        // If block.slot < request_slot, this is a non-same-slot attestation
+                        // (skip slot or late attestation). Check if payload was revealed.
+                        block.slot < request_slot && block.payload_revealed
+                    })
+            } else {
+                false
+            };
         }
         drop(head_timer);
 
@@ -2217,6 +2244,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             justified_checkpoint,
             target,
             &self.spec,
+            payload_present,
         )?)
     }
 
@@ -2761,6 +2789,54 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 error = ?e,
                 "Failed to process buffered gossip envelope"
             );
+        }
+    }
+
+    /// Process buffered execution proofs for a block that has just been imported.
+    ///
+    /// When a stateless node receives proofs before the block is in fork choice,
+    /// they are buffered in `pending_execution_proofs`. This method is called after
+    /// block import to check if buffered proofs reach the threshold.
+    pub fn process_pending_execution_proofs(&self, block_root: Hash256) {
+        if !self.config.stateless_validation {
+            return;
+        }
+
+        let pending = self.pending_execution_proofs.lock().remove(&block_root);
+        let Some(subnet_ids) = pending else {
+            return;
+        };
+
+        if subnet_ids.is_empty() {
+            return;
+        }
+
+        debug!(
+            ?block_root,
+            count = subnet_ids.len(),
+            "Processing buffered execution proofs after block import"
+        );
+
+        let required = self.config.stateless_min_proofs_required;
+        let mut tracker = self.execution_proof_tracker.lock();
+        let subnets = tracker.entry(block_root).or_default();
+        for subnet_id in subnet_ids {
+            subnets.insert(subnet_id);
+        }
+
+        if subnets.len() >= required {
+            drop(tracker);
+            if let Err(e) = self
+                .canonical_head
+                .fork_choice_write_lock()
+                .on_valid_execution_payload(block_root)
+            {
+                debug!(
+                    ?block_root,
+                    error = ?e,
+                    "Failed to mark block as execution-valid from buffered proofs"
+                );
+            }
         }
     }
 
@@ -4505,39 +4581,52 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// in fork choice so the head can advance past it.
     pub async fn check_gossip_execution_proof_availability_and_import(
         self: &Arc<Self>,
-        slot: Slot,
+        _slot: Slot,
         block_root: Hash256,
         proof: VerifiedExecutionProof<T>,
     ) -> Result<AvailabilityProcessingStatus, BlockError> {
         let subnet_id = proof.subnet_id();
-        let inner = proof.into_inner();
 
+        // For stateless nodes: Gloas blocks are imported immediately without entering the
+        // DA checker cache, so put_execution_proofs would silently discard them (epoch
+        // lookup returns None). Instead, track proofs directly and mark the block
+        // execution-valid when enough subnets are received.
+        if self.config.stateless_validation {
+            let required = self.config.stateless_min_proofs_required;
+            let mut tracker = self.execution_proof_tracker.lock();
+            let subnets = tracker.entry(block_root).or_default();
+            subnets.insert(subnet_id);
+
+            if subnets.len() >= required {
+                // Threshold reached — mark block execution-valid in fork choice
+                drop(tracker);
+                if let Err(e) = self
+                    .canonical_head
+                    .fork_choice_write_lock()
+                    .on_valid_execution_payload(block_root)
+                {
+                    debug!(
+                        ?block_root,
+                        error = ?e,
+                        "Failed to mark block as execution-valid after proof threshold reached"
+                    );
+                }
+                return Ok(AvailabilityProcessingStatus::Imported(block_root));
+            }
+
+            return Ok(AvailabilityProcessingStatus::MissingComponents(
+                _slot, block_root,
+            ));
+        }
+
+        // Non-stateless path: use the DA checker normally
+        let inner = proof.into_inner();
         let availability = self
             .data_availability_checker
             .put_gossip_verified_execution_proofs(block_root, vec![(subnet_id, inner)])?;
 
-        let result = self
-            .process_availability(slot, availability, || Ok(()))
-            .await?;
-
-        // When a stateless node receives sufficient execution proofs, the proofs serve as
-        // the equivalent of EL validation. Mark the block's execution as valid in fork choice
-        // so the head can advance past this block.
-        if self.config.stateless_validation
-            && let AvailabilityProcessingStatus::Imported(imported_root) = &result
-            && let Err(e) = self
-                .canonical_head
-                .fork_choice_write_lock()
-                .on_valid_execution_payload(*imported_root)
-        {
-            debug!(
-                block_root = ?imported_root,
-                error = ?e,
-                "Failed to mark block as execution-valid after proof import"
-            );
-        }
-
-        Ok(result)
+        self.process_availability(_slot, availability, || Ok(()))
+            .await
     }
 
     fn check_blob_header_signature_and_slashability<'a>(

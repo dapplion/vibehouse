@@ -1232,6 +1232,7 @@ where
                 root: target_root,
             },
             &self.spec,
+            false,
         )?;
 
         let attestation = match attestation {
@@ -1341,6 +1342,7 @@ where
                 root: target_root,
             },
             &self.spec,
+            false,
         )?)
     }
 

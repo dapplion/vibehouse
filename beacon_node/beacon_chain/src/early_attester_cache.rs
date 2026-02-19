@@ -137,6 +137,7 @@ impl<E: EthSpec> EarlyAttesterCache<E> {
             item.source,
             item.target,
             spec,
+            false, // Early attester cache is same-slot; data.index = 0
         )
         .map_err(Error::AttestationError)?;
 

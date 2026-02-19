@@ -146,6 +146,58 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 19: stateless devnet SUCCESS — fix fork choice stall + proof import circular dependency
+
+**Stateless devnet achieved finalized_epoch=9** with 3 proof-generator nodes + 1 stateless node (no EL).
+
+**Bug 1 (CRITICAL): Fork choice stall at skip slots**
+- **Symptom**: All 4 nodes stalled at slot 15 (epoch 1 boundary). Fork choice stopped advancing despite
+  blocks being imported for slots 17+. All Gloas blocks had `new_head_weight: Some(0)`.
+- **Root cause**: `Attestation::empty_for_signing` hardcoded `data.index = 0` for all Gloas attestations.
+  Per EIP-7732 spec, `data.index` is repurposed: 0 = payload not present, 1 = payload present. Same-slot
+  attestations correctly use `data.index = 0`, but non-same-slot attestations (which occur after skip slots)
+  must set `data.index = 1` when the payload was revealed. With all votes supporting EMPTY, fork choice
+  traversal through FULL virtual nodes terminates because EMPTY has weight > 0 and FULL has weight 0.
+- **Fix**: Added `payload_present: bool` parameter to `empty_for_signing`. In `beacon_chain.rs` attestation
+  production, look up the block in fork choice: if `block.slot < request_slot && block.payload_revealed`,
+  set `payload_present = true`. Updated all 5 call sites (early_attester_cache, test_utils x2,
+  attestation_service pass `false` or derive from `attestation_data.index`).
+
+**Bug 2 (CRITICAL): Execution proof import silently discarded for Gloas blocks**
+- **Symptom**: Proofs received and verified at gossip level but never upgraded blocks from Optimistic to Valid.
+- **Root cause**: Gloas blocks bypass the DA checker entirely — they're imported immediately as
+  `MaybeAvailableBlock::Available` (never entering the DA cache). When `put_execution_proofs` is called,
+  the epoch lookup at `overflow_lru_cache.rs:826` returns `None` (block not in cache), and proofs are
+  silently dropped as `MissingComponents`.
+- **Fix**: For stateless nodes, bypass the DA checker entirely for execution proof tracking. Added
+  `execution_proof_tracker: HashMap<Hash256, HashSet<ExecutionProofSubnetId>>` to `BeaconChain` that
+  tracks which proof subnets have been received per block. When the threshold
+  (`stateless_min_proofs_required`) is reached, calls `on_valid_execution_payload` directly.
+
+**Bug 3 (MINOR): Proof-before-block race condition**
+- **Symptom**: If a proof arrives via gossip before the block is in fork choice, `verify_execution_proof_for_gossip`
+  returns `UnknownBlockRoot` and the proof is silently dropped.
+- **Fix**: For stateless nodes, buffer proofs for unknown blocks in `pending_execution_proofs`. After block
+  import, `process_pending_execution_proofs` checks the buffer and applies accumulated proofs.
+
+**Devnet result**: 4 vibehouse CL + geth EL nodes (3 proof-generators, 1 stateless). Gloas fork at epoch 1,
+spamoor tx load, minimal preset. Chain reached slot 96, epoch 12, finalized_epoch=9, justified_epoch=11.
+Some skip slots but chain recovers. No stalls.
+
+**Files changed**: 7 modified
+- `consensus/types/src/attestation.rs`: added `payload_present` param to `empty_for_signing` (~+8/-2 lines)
+- `beacon_node/beacon_chain/src/beacon_chain.rs`: proof tracker/buffer fields, `payload_present` logic,
+  proof import bypass for stateless nodes, `process_pending_execution_proofs` method (~+75 lines)
+- `beacon_node/beacon_chain/src/builder.rs`: initialize new fields (~+2 lines)
+- `beacon_node/beacon_chain/src/early_attester_cache.rs`: pass `false` to `empty_for_signing` (~+1 line)
+- `beacon_node/beacon_chain/src/test_utils.rs`: pass `false` to `empty_for_signing` (~+2 lines)
+- `validator_client/validator_services/src/attestation_service.rs`: derive `payload_present` from
+  `attestation_data.index` (~+1 line)
+- `beacon_node/network/src/network_beacon_processor/gossip_methods.rs`: buffer proofs for unknown blocks,
+  call `process_pending_execution_proofs` after block import (~+15 lines)
+
+**Tests**: 138/138 EF tests pass (fake_crypto), 8/8 fork choice EF tests pass (real crypto), clippy clean.
+
 ### 2026-02-19 — Task 19: fix non-deterministic StateRootMismatch consensus bug + stateless devnet prep (Phase 7 continued)
 
 **Fixed critical non-deterministic StateRootMismatch consensus bug**:

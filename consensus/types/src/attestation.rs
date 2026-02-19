@@ -96,6 +96,12 @@ impl<E: EthSpec> Hash for Attestation<E> {
 
 impl<E: EthSpec> Attestation<E> {
     /// Produces an attestation with empty signature.
+    ///
+    /// `payload_present`: In Gloas (EIP-7732), `data.index` is repurposed to indicate whether
+    /// the execution payload was available at the attested slot. Set to `true` when the payload
+    /// was revealed (non-same-slot attestation with payload available). For same-slot attestations
+    /// or pre-Gloas forks, this should be `false`.
+    #[allow(clippy::too_many_arguments)]
     pub fn empty_for_signing(
         committee_index: u64,
         committee_length: usize,
@@ -104,18 +110,26 @@ impl<E: EthSpec> Attestation<E> {
         source: Checkpoint,
         target: Checkpoint,
         spec: &ChainSpec,
+        payload_present: bool,
     ) -> Result<Self, Error> {
         if spec.fork_name_at_slot::<E>(slot).electra_enabled() {
             let mut committee_bits: BitVector<E::MaxCommitteesPerSlot> = BitVector::default();
             committee_bits
                 .set(committee_index as usize, true)
                 .map_err(|_| Error::InvalidCommitteeIndex)?;
+            // In Gloas, data.index indicates payload availability:
+            // 0 = payload not present (or same-slot attestation), 1 = payload present
+            let index = if spec.fork_name_at_slot::<E>(slot).gloas_enabled() && payload_present {
+                1u64
+            } else {
+                0u64
+            };
             Ok(Attestation::Electra(AttestationElectra {
                 aggregation_bits: BitList::with_capacity(committee_length)
                     .map_err(|_| Error::InvalidCommitteeLength)?,
                 data: AttestationData {
                     slot,
-                    index: 0u64,
+                    index,
                     beacon_block_root,
                     source,
                     target,
