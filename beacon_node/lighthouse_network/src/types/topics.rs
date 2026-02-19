@@ -27,6 +27,7 @@ pub const LIGHT_CLIENT_OPTIMISTIC_UPDATE: &str = "light_client_optimistic_update
 pub const EXECUTION_BID_TOPIC: &str = "execution_payload_bid";
 pub const EXECUTION_PAYLOAD_TOPIC: &str = "execution_payload";
 pub const PAYLOAD_ATTESTATION_TOPIC: &str = "payload_attestation_message";
+pub const PROPOSER_PREFERENCES_TOPIC: &str = "proposer_preferences";
 
 #[derive(Debug)]
 pub struct TopicConfig {
@@ -99,6 +100,7 @@ pub fn core_topics_to_subscribe<E: EthSpec>(
         topics.push(GossipKind::ExecutionBid);
         topics.push(GossipKind::ExecutionPayload);
         topics.push(GossipKind::PayloadAttestation);
+        topics.push(GossipKind::ProposerPreferences);
     }
 
     topics
@@ -128,7 +130,8 @@ pub fn is_fork_non_core_topic(topic: &GossipTopic, _fork_name: ForkName) -> bool
         | GossipKind::LightClientOptimisticUpdate
         | GossipKind::ExecutionBid
         | GossipKind::ExecutionPayload
-        | GossipKind::PayloadAttestation => false,
+        | GossipKind::PayloadAttestation
+        | GossipKind::ProposerPreferences => false,
     }
 }
 
@@ -195,6 +198,8 @@ pub enum GossipKind {
     ExecutionPayload,
     /// Gloas ePBS: Topic for PTC members to publish payload attestations.
     PayloadAttestation,
+    /// Gloas ePBS: Topic for proposers to publish their fee_recipient/gas_limit preferences.
+    ProposerPreferences,
 }
 
 impl std::fmt::Display for GossipKind {
@@ -280,6 +285,7 @@ impl GossipTopic {
                 EXECUTION_BID_TOPIC => GossipKind::ExecutionBid,
                 EXECUTION_PAYLOAD_TOPIC => GossipKind::ExecutionPayload,
                 PAYLOAD_ATTESTATION_TOPIC => GossipKind::PayloadAttestation,
+                PROPOSER_PREFERENCES_TOPIC => GossipKind::ProposerPreferences,
                 topic => match subnet_topic_index(topic) {
                     Some(kind) => kind,
                     None => return Err(format!("Unknown topic: {}", topic)),
@@ -348,6 +354,7 @@ impl std::fmt::Display for GossipTopic {
             GossipKind::ExecutionBid => EXECUTION_BID_TOPIC.into(),
             GossipKind::ExecutionPayload => EXECUTION_PAYLOAD_TOPIC.into(),
             GossipKind::PayloadAttestation => PAYLOAD_ATTESTATION_TOPIC.into(),
+            GossipKind::ProposerPreferences => PROPOSER_PREFERENCES_TOPIC.into(),
         };
         write!(
             f,

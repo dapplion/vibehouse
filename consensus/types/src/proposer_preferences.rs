@@ -1,4 +1,4 @@
-use crate::{Address, ForkName, test_utils::TestRandom};
+use crate::{Address, ForkName, SignedRoot, test_utils::TestRandom};
 use context_deserialize::context_deserialize;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -25,6 +25,8 @@ pub struct ProposerPreferences {
     #[serde(with = "serde_utils::quoted_u64")]
     pub gas_limit: u64,
 }
+
+impl SignedRoot for ProposerPreferences {}
 
 #[cfg(test)]
 mod tests {

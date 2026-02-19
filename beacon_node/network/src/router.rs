@@ -499,6 +499,11 @@ impl<T: BeaconChainTypes> Router<T> {
                     self.network_beacon_processor
                         .send_gossip_payload_attestation(message_id, peer_id, attestation),
                 ),
+            PubsubMessage::ProposerPreferences(preferences) => self
+                .handle_beacon_processor_send_result(
+                    self.network_beacon_processor
+                        .send_gossip_proposer_preferences(message_id, peer_id, preferences),
+                ),
         }
     }
 

@@ -42,8 +42,9 @@ use types::{
     Attestation, AttestationData, AttestationRef, AttesterSlashing, BlobSidecar, DataColumnSidecar,
     DataColumnSubnetId, EthSpec, Hash256, IndexedAttestation, LightClientFinalityUpdate,
     LightClientOptimisticUpdate, ProposerSlashing, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedBlsToExecutionChange, SignedContributionAndProof, SignedVoluntaryExit, SingleAttestation,
-    Slot, SubnetId, SyncCommitteeMessage, SyncSubnetId, beacon_block::BlockImportSource,
+    SignedBlsToExecutionChange, SignedContributionAndProof, SignedProposerPreferences, SignedRoot,
+    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId, SyncCommitteeMessage, SyncSubnetId,
+    beacon_block::BlockImportSource,
 };
 
 use beacon_processor::work_reprocessing_queue::QueuedColumnReconstruction;
@@ -3585,5 +3586,157 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             // PTC vote may have triggered payload_revealed — recompute head
             self.chain.recompute_head_at_current_slot().await;
         }
+    }
+
+    /// Process a gossip proposer preferences message (gloas ePBS).
+    ///
+    /// Validates per the consensus-specs p2p-interface.md:
+    /// - [IGNORE] proposal_slot is in the next epoch
+    /// - [REJECT] validator_index matches proposer_lookahead for that slot
+    /// - [IGNORE] first valid message for this validator+slot
+    /// - [REJECT] valid signature
+    pub fn process_gossip_proposer_preferences(
+        self: &Arc<Self>,
+        message_id: MessageId,
+        peer_id: PeerId,
+        signed_preferences: SignedProposerPreferences,
+    ) {
+        let preferences = &signed_preferences.message;
+        let proposal_slot = Slot::new(preferences.proposal_slot);
+        let validator_index = preferences.validator_index;
+
+        // [IGNORE] proposal_slot must be in the next epoch
+        let current_slot = match self.chain.slot() {
+            Ok(slot) => slot,
+            Err(e) => {
+                warn!(error = ?e, "Failed to get current slot for proposer preferences");
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+        };
+
+        let current_epoch = current_slot.epoch(T::EthSpec::slots_per_epoch());
+        let next_epoch = current_epoch.saturating_add(1u64);
+        let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
+
+        if proposal_epoch != next_epoch {
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                %proposal_epoch,
+                %next_epoch,
+                "Ignoring proposer preferences: proposal_slot not in next epoch"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            return;
+        }
+
+        // [REJECT] validator_index must match proposer_lookahead for the slot
+        let head_state = match self
+            .chain
+            .canonical_head
+            .cached_head()
+            .snapshot
+            .beacon_state
+        {
+            ref state => state.clone(),
+        };
+
+        let lookahead_valid = match head_state.proposer_lookahead() {
+            Ok(proposer_lookahead) => {
+                // Index into the next epoch's portion of the lookahead
+                let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
+                let index =
+                    slots_per_epoch.saturating_add(proposal_slot.as_usize() % slots_per_epoch);
+                match proposer_lookahead.get(index) {
+                    Some(&expected_proposer) => expected_proposer == validator_index,
+                    None => false,
+                }
+            }
+            Err(_) => {
+                // Pre-Fulu state — proposer_lookahead not available
+                debug!(
+                    %proposal_slot,
+                    %validator_index,
+                    "Rejecting proposer preferences: proposer_lookahead not available"
+                );
+                false
+            }
+        };
+
+        if !lookahead_valid {
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                "Rejecting proposer preferences: validator is not the proposer for this slot"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+            self.gossip_penalize_peer(
+                peer_id,
+                PeerAction::LowToleranceError,
+                "proposer_preferences_wrong_proposer",
+            );
+            return;
+        }
+
+        // [REJECT] valid signature
+        let head_snapshot = &self.chain.canonical_head.cached_head().snapshot;
+        let pubkey = match head_snapshot
+            .beacon_state
+            .get_validator(validator_index as usize)
+            .ok()
+            .and_then(|v| v.pubkey.decompress().ok())
+        {
+            Some(pk) => pk,
+            None => {
+                debug!(
+                    %validator_index,
+                    "Rejecting proposer preferences: unknown or invalid validator pubkey"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "proposer_preferences_unknown_validator",
+                );
+                return;
+            }
+        };
+
+        let domain = self.chain.spec.get_domain(
+            proposal_epoch,
+            types::Domain::ProposerPreferences,
+            &head_snapshot.beacon_state.fork(),
+            head_snapshot.beacon_state.genesis_validators_root(),
+        );
+        let signing_root = preferences.signing_root(domain);
+
+        if !signed_preferences.signature.verify(&pubkey, signing_root) {
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                "Rejecting proposer preferences: invalid signature"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+            self.gossip_penalize_peer(
+                peer_id,
+                PeerAction::LowToleranceError,
+                "proposer_preferences_invalid_signature",
+            );
+            return;
+        }
+
+        // All checks passed — accept and propagate
+        self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+        debug!(
+            %proposal_slot,
+            %validator_index,
+            fee_recipient = %preferences.fee_recipient,
+            gas_limit = %preferences.gas_limit,
+            "Accepted proposer preferences"
+        );
+
+        // TODO(dapplion/vibehouse#30): store in a proposer preferences pool for use
+        // during bid validation and block production
     }
 }
