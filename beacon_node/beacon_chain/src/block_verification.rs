@@ -2009,8 +2009,13 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
         }
 
         let beacon_state_root = if state.slot() == parent_block.slot() {
-            // Sanity check.
-            if parent_state_root != parent_block.state_root() {
+            // Sanity check: the returned state root should match the block's state root.
+            // For Gloas ePBS, the cached state may be post-envelope (with envelope changes
+            // applied), so its tree hash root differs from the block's pre-envelope
+            // state_root. This is expected and not an inconsistency.
+            if parent_state_root != parent_block.state_root()
+                && !state.fork_name_unchecked().gloas_enabled()
+            {
                 return Err(BeaconChainError::DBInconsistent(format!(
                     "Parent state at slot {} has the wrong state root: {:?} != {:?}",
                     state.slot(),

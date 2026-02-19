@@ -146,14 +146,43 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
-### 2026-02-19 — Task 19: kurtosis stateless devnet and stateless validation fixes (Phase 7 continued)
+### 2026-02-19 — Task 19: fix non-deterministic StateRootMismatch consensus bug + stateless devnet prep (Phase 7 continued)
+
+**Fixed critical non-deterministic StateRootMismatch consensus bug**:
+- Devnet runs were non-deterministically failing: sometimes chain stuck at slot 0 with nodes rejecting
+  all blocks due to `StateRootMismatch` (locally computed state root != block's declared state root).
+- **Root cause**: `get_advanced_hot_state()` in `hot_cold_store.rs` had two overrides that replaced the
+  actual state tree hash root with the caller's `state_root` argument (the block's pre-envelope root).
+  This wrong root was passed through `complete_state_advance` → `per_slot_processing` → `cache_state`,
+  which wrote it into the `state_roots` array. The verification path computes roots correctly via
+  `update_tree_hash_cache()`, so production and verification states diverged on the `state_roots` field only.
+- **Non-determinism explained**: depends on whether the state advance timer has pre-advanced the state.
+  If pre-advanced (common case), `complete_state_advance` doesn't loop and the wrong root is unused.
+  If NOT pre-advanced (timing edge case), the wrong root corrupts the `state_roots` array.
+- **Fix**:
+  1. Cache path: return actual `cached_root` instead of overriding with caller's `state_root`
+  2. Disk path: use `load_root` as initial root, compute `actual_root` via `update_tree_hash_cache()`
+     after envelope re-application, use `actual_root` as both the returned root and cache key
+  3. Relax `load_parent` sanity check in `block_verification.rs` for Gloas states (where post-envelope
+     root legitimately differs from block's pre-envelope state_root)
+- **Devnet verification**: 3 runs after fix — 2 successful (finalized_epoch=8), 1 failed due to
+  execution engine timeouts (infrastructure issue, not consensus). No StateRootMismatch errors in any run.
+- **Files changed**: 2 modified
+  - `beacon_node/store/src/hot_cold_store.rs`: removed state root override in cache path, fixed disk
+    path to use actual tree hash root (~+12/-15 lines)
+  - `beacon_node/beacon_chain/src/block_verification.rs`: relaxed load_parent sanity check for Gloas
+    states (~+5/-2 lines)
+
+**Previous stateless validation fixes** (same task, earlier session):
 - **Added kurtosis stateless devnet config** (`kurtosis/vibehouse-stateless.yaml`) — 4-node devnet with 3 regular CL+EL nodes and 1 stateless CL node (no EL). Script supports `--stateless` flag to use the config.
 - **Fixed parent payload gossip handling** — gossip methods now correctly handle the parent payload envelope in Gloas.
 - **Fixed fork choice advancement for stateless nodes** — after sufficient execution proofs complete a block's availability, call `on_valid_execution_payload()` to transition the block from optimistic to execution-valid in fork choice. Without this, stateless nodes had a permanently optimistic head that couldn't advance.
 - **Fixed pre-Gloas stateless payload status** — changed from `PayloadVerificationStatus::Optimistic` to `PayloadVerificationStatus::Verified` for pre-Gloas blocks when stateless validation is enabled. No execution proof mechanism exists for pre-Gloas blocks, and Optimistic status prevents the head from attesting.
 - **Added block production rejection for stateless nodes** — `produce_block_v3`, `produce_blinded_block_v2`, and `produce_block_v2` endpoints now return 400 for stateless nodes since they have no EL connection and cannot produce execution payloads.
 - **Added sudo fallback for docker** — `build-docker.sh` and `kurtosis-run.sh` detect when docker socket isn't directly accessible and use `sudo` automatically.
-- **Files changed**: 5 modified
+- **Files changed**: 7 modified (across both sessions)
+  - `beacon_node/store/src/hot_cold_store.rs`: state root override fix (~+12/-15 lines)
+  - `beacon_node/beacon_chain/src/block_verification.rs`: load_parent sanity check fix (~+5/-2 lines)
   - `beacon_node/beacon_chain/src/beacon_chain.rs`: fork choice execution-valid marking after proof import (~+26 lines)
   - `beacon_node/beacon_chain/src/execution_payload.rs`: Verified status for pre-Gloas stateless (~+5/-3 lines)
   - `beacon_node/http_api/src/produce_block.rs`: block production rejection for stateless nodes (~+19 lines)

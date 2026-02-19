@@ -1105,18 +1105,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         if let Some((cached_root, cached_state)) =
             self.get_advanced_hot_state_from_cache(block_root, max_slot)
         {
-            // For Gloas ePBS, the cached state root may be the post-envelope hash
-            // while the caller expects the pre-envelope root (block.state_root()).
-            // Return the caller's state_root so that the sanity check in
-            // block_verification (parent_state_root == block.state_root()) passes.
-            let returned_root = if cached_root != state_root
-                && cached_state.slot() >= self.split.read_recursive().slot
-            {
-                state_root
-            } else {
-                cached_root
-            };
-            return Ok(Some((returned_root, cached_state)));
+            return Ok(Some((cached_root, cached_state)));
         }
 
         // Hold a read lock on the split point so it can't move while we're trying to load the
@@ -1139,9 +1128,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
         // For Gloas ePBS, the split state root may be the post-envelope hash (which
         // differs from the block's pre-envelope state_root). Use the split root for
-        // loading the state from disk but return the caller's state_root so that the
-        // sanity check in block_verification (parent_state_root == block.state_root())
-        // passes.
+        // loading the state from disk.
         let load_root = if block_root == split.block_root && split.slot <= max_slot {
             split.state_root
         } else {
@@ -1157,9 +1144,9 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                     e.into(),
                 )
             })?
-            .map(|(state, _block_root)| (state_root, state));
+            .map(|(state, _block_root)| (load_root, state));
 
-        if let Some((_state_root, state)) = opt_state.as_mut() {
+        if let Some((returned_root, state)) = opt_state.as_mut() {
             // Gloas ePBS: the disk stores the pre-envelope state (matching
             // block.state_root()). Re-apply the envelope so that the returned
             // state has the correct latest_block_hash, execution request changes,
@@ -1202,15 +1189,20 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 }
             }
 
-            state.update_tree_hash_cache()?;
+            // Compute the actual tree hash root after envelope re-application.
+            // This root must accurately reflect the state contents so that callers
+            // using it for `per_slot_processing` write the correct value into
+            // `state_roots`.
+            let actual_root = state.update_tree_hash_cache()?;
+            *returned_root = actual_root;
             state.build_all_caches(&self.spec)?;
-            if let PutStateOutcome::New(deleted_states) = self
-                .state_cache
-                .lock()
-                .put_state(state_root, block_root, state)?
+            if let PutStateOutcome::New(deleted_states) =
+                self.state_cache
+                    .lock()
+                    .put_state(actual_root, block_root, state)?
             {
                 debug!(
-                    ?state_root,
+                    ?actual_root,
                     state_slot = %state.slot(),
                     ?deleted_states,
                     location = "get_advanced_hot_state",

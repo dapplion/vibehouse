@@ -145,6 +145,14 @@ See `kurtosis/vibehouse-epbs.yaml`. Key params: gloas_fork_epoch=1, preset=minim
   - `/eth/v1/events` returns 400 Bad Request
 - **Next**: Fix the block publishing path — gloas blocks should bypass data column publishing (ePBS blocks don't carry data columns in the block, they're in the envelope).
 
+### 2026-02-19: fix non-deterministic StateRootMismatch consensus bug
+
+`get_advanced_hot_state()` in `hot_cold_store.rs` had overrides that replaced the actual state tree
+hash root with the caller's `state_root` argument. This wrong root was written into the `state_roots`
+array during `per_slot_processing`, causing blocks to fail verification with `StateRootMismatch`
+non-deterministically (depending on state advance timer timing). Fix: return actual tree hash root
+from `get_advanced_hot_state()`, relax sanity check in `load_parent` for Gloas states.
+
 ### 2026-02-18: 4-node devnet PASSES — finalized_epoch=8 achieved
 
 Fixed all remaining issues blocking devnet finalization (commit `6351db47d`):
