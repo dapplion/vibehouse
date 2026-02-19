@@ -224,7 +224,7 @@ reqwest = { version = "0.11", default-features = false, features = [
 ] }
 ring = "0.17"
 rpds = "0.11"
-rusqlite = { version = "0.28", features = ["bundled"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
 rust_eth_kzg = "0.9"
 safe_arith = "0.1"
 sensitive_url = { path = "common/sensitive_url" }
@@ -237,7 +237,7 @@ signing_method = { path = "validator_client/signing_method" }
 slasher = { path = "slasher", default-features = false }
 slashing_protection = { path = "validator_client/slashing_protection" }
 slot_clock = { path = "common/slot_clock" }
-smallvec = { version = "1.11.2", features = ["arbitrary"] }
+smallvec = "1"
 snap = "1"
 ssz_types = "0.11.0"
 state_processing = { path = "consensus/state_processing" }

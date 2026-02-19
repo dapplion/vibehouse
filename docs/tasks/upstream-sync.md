@@ -30,6 +30,24 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 16)
+- Fetched upstream: 2 new commits since run 15
+- **Applied dependency updates** (manually, not cherry-picked due to Cargo.lock conflicts):
+  - `2d91009ab` — bump sqlite deps: rusqlite 0.28→0.38, r2d2_sqlite 0.21→0.32, yaml-rust2 0.8→0.11 (removes hashlink 0.8)
+  - `9cb72100d` — feature-gate all uses of `arbitrary` so it's not compiled in release builds
+    - Made `arbitrary` optional in state_processing, bls, kzg, slashing_protection
+    - Added `#[cfg(feature = "arbitrary-fuzz")]` guards to `SigVerifiedOp`, `VerifiedAgainst` derives
+    - Added `#[cfg(feature = "arbitrary")]` guards to `KzgCommitment`, `KzgProof` impls
+    - Added kzg `[features]` section with `arbitrary` and `fake_crypto`
+    - Removed `features = ["arbitrary"]` from workspace `smallvec` dependency
+    - Added `kzg/arbitrary` to types' arbitrary feature chain
+  - Pinned `cc` crate to 1.2.27 — cc 1.2.56 (pulled by libsqlite3-sys 0.36) passes `-Wthread-safety` which g++ 13.3 doesn't support
+- No new consensus-specs changes requiring implementation (all recently merged PRs are doc/infra/EIP-8025-specific)
+  - Assessed: #4922 (comment-only), #4915 (EIP-8025 gossip dedup — future), #4911 (EIP-8025 tests), #4924 (duration annotations), #4917 (BNF fix)
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4898 — all still open/unmerged
+  - #4940 (Gloas fork choice tests) and #4918 (attestations for known payload statuses) both updated today — monitor closely
+- Tests: 311/311 types, 38/38 state_processing, 45/45 slashing_protection, clippy clean, cargo fmt clean, full lighthouse binary builds
+
 ### 2026-02-19 (run 15)
 - Fetched upstream: no new commits since run 14
 - No new consensus-specs changes requiring implementation (recent merges: #4920 doc formatting, #4941 prover doc clarification, #4921 test infrastructure)
