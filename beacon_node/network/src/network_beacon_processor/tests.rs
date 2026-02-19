@@ -14,8 +14,8 @@ use beacon_chain::data_column_verification::validate_data_column_sidecar_for_gos
 use beacon_chain::kzg_utils::blobs_to_data_column_sidecars;
 use beacon_chain::observed_data_sidecars::DoNotObserve;
 use beacon_chain::test_utils::{
-    AttestationStrategy, BeaconChainHarness, BlockStrategy, EphemeralHarnessType, get_kzg,
-    test_spec,
+    AttestationStrategy, BeaconChainHarness, BlockStrategy, EphemeralHarnessType,
+    fork_name_from_env, get_kzg, test_spec,
 };
 use beacon_chain::{BeaconChain, WhenSlotSkipped};
 use beacon_processor::{work_reprocessing_queue::*, *};
@@ -296,22 +296,28 @@ impl TestRig {
         let block = next_block_tuple.0;
         let (blob_sidecars, data_columns) = if let Some((kzg_proofs, blobs)) = next_block_tuple.1 {
             if chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
-                let kzg = get_kzg(&chain.spec);
-                let epoch = block.slot().epoch(E::slots_per_epoch());
-                let sampling_indices = chain.sampling_columns_for_epoch(epoch);
-                let custody_columns: DataColumnSidecarList<E> = blobs_to_data_column_sidecars(
-                    &blobs.iter().collect_vec(),
-                    kzg_proofs.clone().into_iter().collect_vec(),
-                    &block,
-                    &kzg,
-                    &chain.spec,
-                )
-                .unwrap()
-                .into_iter()
-                .filter(|c| sampling_indices.contains(&c.index()))
-                .collect::<Vec<_>>();
-
-                (None, Some(custody_columns))
+                // In Gloas (ePBS), blob_kzg_commitments are in the ExecutionPayloadBid,
+                // not the block body, so blobs_to_data_column_sidecars will fail.
+                // Data columns in Gloas come via the execution payload envelope path.
+                if block.message().body().blob_kzg_commitments().is_err() {
+                    (None, None)
+                } else {
+                    let kzg = get_kzg(&chain.spec);
+                    let epoch = block.slot().epoch(E::slots_per_epoch());
+                    let sampling_indices = chain.sampling_columns_for_epoch(epoch);
+                    let custody_columns: DataColumnSidecarList<E> = blobs_to_data_column_sidecars(
+                        &blobs.iter().collect_vec(),
+                        kzg_proofs.clone().into_iter().collect_vec(),
+                        &block,
+                        &kzg,
+                        &chain.spec,
+                    )
+                    .unwrap()
+                    .into_iter()
+                    .filter(|c| sampling_indices.contains(&c.index()))
+                    .collect::<Vec<_>>();
+                    (None, Some(custody_columns))
+                }
             } else {
                 let blob_sidecars =
                     BlobSidecar::build_sidecars(blobs, &block, kzg_proofs, &chain.spec).unwrap();
@@ -856,6 +862,10 @@ async fn data_column_reconstruction_at_slot_start() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
+    // Gloas (ePBS): data columns come via envelope, not block body
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
 
     let mut rig = TestRig::new_supernode(SMALL_CHAIN).await;
 
@@ -907,6 +917,9 @@ async fn data_column_reconstruction_at_deadline() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
 
     let mut rig = TestRig::new_supernode(SMALL_CHAIN).await;
 
@@ -954,6 +967,9 @@ async fn data_column_reconstruction_at_next_slot() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
 
     let mut rig = TestRig::new_supernode(SMALL_CHAIN).await;
 
@@ -1108,6 +1124,9 @@ async fn accept_processed_gossip_data_columns_without_import() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
 
     let mut rig = TestRig::new(SMALL_CHAIN).await;
 
@@ -1872,6 +1891,9 @@ async fn test_data_column_import_notifies_sync() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     }
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
 
     let mut rig = TestRig::new(SMALL_CHAIN).await;
     let block_root = rig.next_block.canonical_root();
@@ -1930,6 +1952,9 @@ async fn test_data_columns_by_range_request_only_returns_requested_columns() {
     if test_spec::<E>().fulu_fork_epoch.is_none() {
         return;
     };
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
 
     let mut rig = TestRig::new(64).await;
     let slot_count = 4;

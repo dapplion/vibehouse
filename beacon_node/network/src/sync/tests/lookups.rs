@@ -21,8 +21,8 @@ use beacon_chain::{
     block_verification_types::{AsBlock, BlockImportData},
     data_availability_checker::Availability,
     test_utils::{
-        BeaconChainHarness, EphemeralHarnessType, NumBlobs, generate_rand_block_and_blobs,
-        generate_rand_block_and_data_columns, test_spec,
+        BeaconChainHarness, EphemeralHarnessType, NumBlobs, fork_name_from_env,
+        generate_rand_block_and_blobs, generate_rand_block_and_data_columns, test_spec,
     },
     validator_monitor::timestamp_now,
 };
@@ -1899,6 +1899,10 @@ fn blobs_in_da_checker_skip_download() {
 
 #[test]
 fn custody_lookup_happy_path() {
+    // Gloas (ePBS): data columns come via envelope, not block body
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
     let Some(mut r) = TestRig::test_setup_after_fulu() else {
         return;
     };

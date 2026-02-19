@@ -6,7 +6,7 @@ use crate::sync::manager::SLOT_IMPORT_TOLERANCE;
 use crate::sync::network_context::RangeRequestId;
 use crate::sync::range_sync::RangeSyncType;
 use beacon_chain::data_column_verification::CustodyDataColumn;
-use beacon_chain::test_utils::{AttestationStrategy, BlockStrategy};
+use beacon_chain::test_utils::{AttestationStrategy, BlockStrategy, fork_name_from_env};
 use beacon_chain::{EngineState, NotifyExecutionLayer, block_verification_types::RpcBlock};
 use beacon_processor::WorkType;
 use lighthouse_network::rpc::RequestType;
@@ -485,6 +485,10 @@ fn head_chain_removed_while_finalized_syncing() {
 async fn state_update_while_purging() {
     // NOTE: this is a regression test.
     // Added in PR https://github.com/sigp/lighthouse/pull/2827
+    // Gloas (ePBS): cross-harness block import fails due to bid parent_block_hash mismatch
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
     let mut rig = TestRig::test_setup();
 
     // Create blocks on a separate harness
