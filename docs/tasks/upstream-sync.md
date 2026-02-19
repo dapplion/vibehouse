@@ -30,6 +30,13 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 20)
+- Fetched upstream: no new commits since run 16
+- No new consensus-specs changes requiring implementation (all open PRs still unmerged)
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4843, #4926, #4931 — all still open/unmerged
+- **Fixed issue #8869 (Error requesting finalized Gloas state)**: HTTP API block replay paths (block_rewards, attestation_performance, block_packing_efficiency, state_lru_cache) were calling `BlockReplayer` without loading envelopes for Gloas blocks. Without envelopes, `state.latest_block_hash` is not updated during replay, causing `ParentBlockHashMismatch` on subsequent bid validation. Added `load_envelopes_for_blocks()` helper to `BeaconChain` and wired it into all 4 callers. Note: the main state loading path (`hot_cold_store::replay_blocks`) was already correct — this fix covers the secondary paths used by specific HTTP API endpoints.
+- Tests: 317/317 beacon_chain (Gloas), 181/181 http_api (Fulu), clippy clean, cargo fmt clean
+
 ### 2026-02-19 (run 19)
 - Fetched upstream: no new commits since run 16
 - No new consensus-specs changes requiring implementation
