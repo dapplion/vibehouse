@@ -1,6 +1,6 @@
 # Gloas ePBS Peer Scoring Configuration
 
-**Status**: Ready to implement
+**Status**: DONE (implemented in run 17)
 **Date**: 2026-02-14
 **Phase**: 4 Step 4 (P2P Networking)
 
@@ -252,4 +252,4 @@ Peers that:
 
 ---
 
-**Status**: Design complete. Ready to implement when compilation is possible.
+**Status**: DONE. Implemented in `gossipsub_scoring_parameters.rs` (run 17). Also added `ExecutionProof` subnet scoring (not in original design).

@@ -63,7 +63,7 @@ ZK proofs for execution payloads enabling stateless CL nodes. ePBS gives builder
 
 ### 7. Backlog
 
-- **Peer scoring** — design complete, not yet implemented (functional at defaults)
+- **Peer scoring** — DONE (Gloas ePBS topics: ExecutionBid, ExecutionPayload, PayloadAttestation, ExecutionProof)
 - **Test coverage tooling** — not started
 - **CI workflow** — DONE (`.github/workflows/ci.yml`: check, ef-tests, unit-tests, fork-specific-tests)
 

@@ -5,7 +5,10 @@ use std::cmp::max;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::time::Duration;
-use types::{ChainSpec, EnrForkId, EthSpec, Slot, SubnetId};
+use types::{
+    ChainSpec, EnrForkId, EthSpec, ExecutionProofSubnetId, Slot, SubnetId,
+    execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS,
+};
 
 const MAX_IN_MESH_SCORE: f64 = 10.0;
 const MAX_FIRST_MESSAGE_DELIVERIES_SCORE: f64 = 40.0;
@@ -14,6 +17,12 @@ const BEACON_AGGREGATE_PROOF_WEIGHT: f64 = 0.5;
 const VOLUNTARY_EXIT_WEIGHT: f64 = 0.05;
 const PROPOSER_SLASHING_WEIGHT: f64 = 0.05;
 const ATTESTER_SLASHING_WEIGHT: f64 = 0.05;
+
+// Gloas ePBS topic weights
+const EXECUTION_BID_WEIGHT: f64 = 0.5;
+const EXECUTION_PAYLOAD_WEIGHT: f64 = 0.5;
+const PAYLOAD_ATTESTATION_WEIGHT: f64 = 0.4;
+const EXECUTION_PROOF_WEIGHT: f64 = 0.3;
 
 /// The time window (seconds) that we expect messages to be forwarded to us in the mesh.
 const MESH_MESSAGE_DELIVERIES_WINDOW: u64 = 2;
@@ -47,6 +56,7 @@ pub struct PeerScoreSettings<E: EthSpec> {
     target_committee_size: usize,
     target_aggregators_per_committee: usize,
     attestation_subnet_count: u64,
+    ptc_size: u64,
     phantom: PhantomData<E>,
 }
 
@@ -54,13 +64,19 @@ impl<E: EthSpec> PeerScoreSettings<E> {
     pub fn new(chain_spec: &ChainSpec, mesh_n: usize) -> PeerScoreSettings<E> {
         let slot = Duration::from_secs(chain_spec.seconds_per_slot);
         let beacon_attestation_subnet_weight = 1.0 / chain_spec.attestation_subnet_count as f64;
+        let execution_proof_subnet_weight =
+            EXECUTION_PROOF_WEIGHT / MAX_EXECUTION_PROOF_SUBNETS.max(1) as f64;
         let max_positive_score = (MAX_IN_MESH_SCORE + MAX_FIRST_MESSAGE_DELIVERIES_SCORE)
             * (BEACON_BLOCK_WEIGHT
                 + BEACON_AGGREGATE_PROOF_WEIGHT
                 + beacon_attestation_subnet_weight * chain_spec.attestation_subnet_count as f64
                 + VOLUNTARY_EXIT_WEIGHT
                 + PROPOSER_SLASHING_WEIGHT
-                + ATTESTER_SLASHING_WEIGHT);
+                + ATTESTER_SLASHING_WEIGHT
+                + EXECUTION_BID_WEIGHT
+                + EXECUTION_PAYLOAD_WEIGHT
+                + PAYLOAD_ATTESTATION_WEIGHT
+                + execution_proof_subnet_weight * MAX_EXECUTION_PROOF_SUBNETS as f64);
 
         PeerScoreSettings {
             slot,
@@ -74,6 +90,7 @@ impl<E: EthSpec> PeerScoreSettings<E> {
             target_committee_size: chain_spec.target_committee_size,
             target_aggregators_per_committee: chain_spec.target_aggregators_per_committee as usize,
             attestation_subnet_count: chain_spec.attestation_subnet_count,
+            ptc_size: chain_spec.ptc_size,
             phantom: PhantomData,
         }
     }
@@ -147,6 +164,57 @@ impl<E: EthSpec> PeerScoreSettings<E> {
                 None,
             ),
         );
+
+        // Gloas ePBS topics
+        //
+        // ExecutionBid: 1 winning bid per slot, critical for block production
+        params.topics.insert(
+            get_hash(GossipKind::ExecutionBid),
+            Self::get_topic_params(
+                self,
+                EXECUTION_BID_WEIGHT,
+                1.0,
+                self.epoch * 20,
+                Some((E::slots_per_epoch() * 5, 3.0, self.epoch, current_slot)),
+            ),
+        );
+        // ExecutionPayload: 1 payload reveal per slot from winning builder
+        params.topics.insert(
+            get_hash(GossipKind::ExecutionPayload),
+            Self::get_topic_params(
+                self,
+                EXECUTION_PAYLOAD_WEIGHT,
+                1.0,
+                self.epoch * 20,
+                Some((E::slots_per_epoch() * 5, 3.0, self.epoch, current_slot)),
+            ),
+        );
+        // PayloadAttestation: ~ptc_size * 0.6 attestations per slot
+        params.topics.insert(
+            get_hash(GossipKind::PayloadAttestation),
+            Self::get_topic_params(
+                self,
+                PAYLOAD_ATTESTATION_WEIGHT,
+                self.ptc_size as f64 * 0.6,
+                self.epoch * 4,
+                Some((E::slots_per_epoch() * 2, 2.0, self.epoch / 2, current_slot)),
+            ),
+        );
+        // ExecutionProof: 1 proof per subnet per slot, time-sensitive
+        for i in 0..MAX_EXECUTION_PROOF_SUBNETS {
+            if let Ok(subnet_id) = ExecutionProofSubnetId::new(i) {
+                params.topics.insert(
+                    get_hash(GossipKind::ExecutionProof(subnet_id)),
+                    Self::get_topic_params(
+                        self,
+                        EXECUTION_PROOF_WEIGHT / MAX_EXECUTION_PROOF_SUBNETS.max(1) as f64,
+                        1.0,
+                        self.epoch * 20,
+                        None,
+                    ),
+                );
+            }
+        }
 
         //dynamic topics
         let (beacon_block_params, beacon_aggregate_proof_params, beacon_attestation_subnet_params) =

@@ -146,6 +146,28 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Peer scoring for Gloas ePBS gossip topics (run 17)
+
+**Added gossipsub peer scoring parameters for 4 new Gloas ePBS gossip topics** in `gossipsub_scoring_parameters.rs`.
+
+**Topics scored:**
+- **ExecutionBid** (weight 0.5): 1 winning bid per slot, same scoring profile as BeaconBlock. Mesh message deliveries enabled with 5-epoch decay, 3x burst cap.
+- **ExecutionPayload** (weight 0.5): 1 payload reveal per slot from winning builder. Same profile as ExecutionBid — critical consensus message.
+- **PayloadAttestation** (weight 0.4): ~ptc_size * 0.6 attestations per slot. Lower weight than block/bid to avoid over-penalizing attestation bursts. Shorter 4-epoch retention, 2x burst cap, half-epoch activation window.
+- **ExecutionProof** (weight 0.3 / subnet count): 1 proof per subnet per slot. No mesh message delivery requirements (proofs are optional and time-sensitive). Per-subnet weight divided by MAX_EXECUTION_PROOF_SUBNETS.
+
+**Changes:**
+- Added 4 weight constants: `EXECUTION_BID_WEIGHT`, `EXECUTION_PAYLOAD_WEIGHT`, `PAYLOAD_ATTESTATION_WEIGHT`, `EXECUTION_PROOF_WEIGHT`
+- Added `ptc_size` field to `PeerScoreSettings` (from `ChainSpec`)
+- Updated `max_positive_score` to include all 4 new topic weights
+- Added topic scoring params in `get_peer_score_params` after existing fixed topics
+
+**Design note**: Topics are registered unconditionally (not gated behind `gloas_enabled()`), following the pattern of existing fixed topics (voluntary exit, slashings). Pre-Gloas, these topics have no messages in the mesh, so scoring params have no effect. This avoids the complexity of re-scoring on fork transitions.
+
+**Files changed**: 1 modified
+- `beacon_node/lighthouse_network/src/service/gossipsub_scoring_parameters.rs` (~+55 lines)
+- 92/92 lighthouse_network tests pass, 96/96 network tests pass (Gloas fork), clippy clean, cargo fmt clean.
+
 ### 2026-02-19 — Task 19: stateless devnet SUCCESS — fix fork choice stall + proof import circular dependency
 
 **Stateless devnet achieved finalized_epoch=9** with 3 proof-generator nodes + 1 stateless node (no EL).
@@ -735,7 +757,7 @@ pub stateless_min_proofs_required: usize, // default: 1
 
 ---
 
-#### Task 19: Kurtosis testnet with stateless nodes — IN PROGRESS
+#### Task 19: Kurtosis testnet with stateless nodes — DONE
 **Files modified:**
 - `kurtosis/vibehouse-stateless.yaml` (new)
 - `scripts/kurtosis-run.sh`
@@ -749,8 +771,8 @@ pub stateless_min_proofs_required: usize, // default: 1
 - ~~Fix fork choice advancement for stateless nodes~~ DONE (on_valid_execution_payload after proof import)
 - ~~Fix pre-Gloas payload status~~ DONE (Verified instead of Optimistic)
 - ~~Block production rejection for stateless nodes~~ DONE
-- Run devnet and verify stateless node follows chain via proofs — NEXT
-- Test with ePBS flow (builder reveals + proof publication)
+- ~~Run devnet and verify stateless node follows chain via proofs~~ DONE (finalized_epoch=9)
+- ~~Test with ePBS flow (builder reveals + proof publication)~~ DONE (self-build envelope path tested)
 
 ---
 
