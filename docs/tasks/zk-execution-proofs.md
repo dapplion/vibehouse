@@ -146,6 +146,16 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 6: gossip subscription and whitelist (Phase 2 complete)
+- **Added `ExecutionProof` subnets to gossipsub whitelist filter** in `create_whitelist_filter()` (`service/utils.rs`). Without this, gossipsub's `WhitelistSubscriptionFilter` silently rejects incoming `execution_proof_N` messages even when subscribed. Loops over `0..MAX_EXECUTION_PROOF_SUBNETS` adding each proof topic hash.
+- **Also added missing `ProposerPreferences`** to the whitelist — this ePBS topic was omitted when the whitelist was first set up.
+- **No additional peer management changes needed**: Subscription lifecycle is already fully wired from Task 5 (`core_topics_to_subscribe` → `subscribe_new_fork_topics`). Gossip cache policy (`None`) was set in Task 4. Peer tracking works through standard gossipsub subscription tracking.
+- **Design note**: `good_peers_on_subnet(Subnet::ExecutionProof(_))` always returns 0 (since `on_subnet_metadata` returns `false` — no metadata/ENR field). This means discovery is always triggered, but since `subnet_predicate` accepts any fork-matching peer, this is harmless and self-correcting. A dedicated `maintain_execution_proof_peers` heartbeat was not added — proof subnets are permanent (not duty-scheduled like sync committees), so the mesh naturally populates through gossipsub.
+- **Phase 2 (Network Layer) is now complete**: Tasks 4-6 done. Execution proof messages can be encoded/decoded (Task 4), peers can be discovered on proof subnets (Task 5), and the gossipsub whitelist accepts proof topics (Task 6).
+- **Files changed**: 1 modified
+  - `beacon_node/lighthouse_network/src/service/utils.rs`: whitelist filter additions
+- 92/92 lighthouse_network tests pass, 96/96 network tests pass.
+
 ### 2026-02-19 — Task 5: execution proof subnet discovery
 - **Added `Subnet::ExecutionProof(ExecutionProofSubnetId)` variant** to the `Subnet` enum, enabling execution proof subnets to participate in the discovery and peer management systems.
 - **Subnet predicate**: Execution proof subnets accept all peers (no ENR filtering). Any peer at the correct fork can serve proofs.

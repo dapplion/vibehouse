@@ -17,7 +17,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, warn};
 use types::{
-    ChainSpec, DataColumnSubnetId, EnrForkId, EthSpec, ForkContext, SubnetId, SyncSubnetId,
+    ChainSpec, DataColumnSubnetId, EnrForkId, EthSpec, ExecutionProofSubnetId, ForkContext,
+    SubnetId, SyncSubnetId, execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS,
 };
 
 pub const NETWORK_KEY_FILENAME: &str = "key";
@@ -292,6 +293,13 @@ pub(crate) fn create_whitelist_filter(
         add(ExecutionBid);
         add(ExecutionPayload);
         add(PayloadAttestation);
+        add(ProposerPreferences);
+        // Execution proof subnets
+        for i in 0..MAX_EXECUTION_PROOF_SUBNETS {
+            if let Ok(subnet_id) = ExecutionProofSubnetId::new(i) {
+                add(ExecutionProof(subnet_id));
+            }
+        }
     }
     gossipsub::WhitelistSubscriptionFilter(possible_hashes)
 }
