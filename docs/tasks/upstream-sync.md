@@ -31,6 +31,21 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 24)
+- No new upstream commits since run 23
+- No tracked consensus-specs PRs merged: #4940, #4939, #4932, #4918, #4843, #4926, #4931 — all still open
+- **Assessed PR #4939 (Request missing payload envelopes for index-1 attestation)**: adds REJECT rule for `index == 1` attestations when payload failed validation, and IGNORE rule when payload hasn't been seen (with queue + envelope request guidance). Our gossip validation already enforces `index < 2` and same-slot `index == 0`, but does NOT validate `index == 1` against actual payload presence/validation status. Implementation deferred until PR merges.
+- **Proactively added `on_execution_payload` step and `head_payload_status` check to fork choice EF test runner** — preparing for consensus-specs PR #4940 (initial Gloas fork choice tests). When #4940 merges and test vectors are released, we'll be ready.
+  - Added `Step::OnExecutionPayload` variant: loads `SignedExecutionPayloadEnvelope` from SSZ, calls `ForkChoice::on_execution_payload(beacon_block_root, payload_block_hash)` to mark payload as revealed in fork choice. Supports `valid: bool` for invalid-step tests.
+  - Added `head_payload_status` field to `Checks`: after recomputing head, reads `ForkChoice::gloas_head_payload_status()` which returns 1 (EMPTY) or 2 (FULL).
+  - Added `gloas_head_payload_status` tracking to `ProtoArrayForkChoice`: stored during `find_head_gloas()`, reset to `None` for pre-Gloas heads. Exposed via `ProtoArrayForkChoice::gloas_head_payload_status()` → `ForkChoice::gloas_head_payload_status()`.
+- **Files changed**: 4 modified
+  - `consensus/proto_array/src/proto_array_fork_choice.rs`: `gloas_head_payload_status` field, accessor, store in `find_head_gloas`, reset in non-Gloas path (~+10 lines)
+  - `consensus/proto_array/src/ssz_container.rs`: initialize field in TryFrom (~+1 line)
+  - `consensus/fork_choice/src/fork_choice.rs`: `gloas_head_payload_status()` accessor (~+5 lines)
+  - `testing/ef_tests/src/cases/fork_choice.rs`: `OnExecutionPayload` step, `head_payload_status` check, `process_execution_payload` and `check_head_payload_status` methods on Tester (~+65 lines)
+- Tests: 8/8 fork choice EF tests pass (minimal), 52/52 fork_choice+proto_array unit tests, 138/138 EF tests (fake_crypto, minimal), clippy clean, cargo fmt clean, full workspace compiles.
+
 ### 2026-02-19 (run 23)
 - No new upstream commits (no upstream remote tracked)
 - No tracked consensus-specs PRs merged: #4940, #4939, #4932, #4918, #4843, #4926, #4931 — all still open

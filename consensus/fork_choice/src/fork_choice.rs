@@ -1615,6 +1615,12 @@ where
             && self.is_finalized_checkpoint_or_descendant(*block_root)
     }
 
+    /// Returns the Gloas head payload status from the last `get_head` call.
+    /// 1 = EMPTY, 2 = FULL. `None` for pre-Gloas heads.
+    pub fn gloas_head_payload_status(&self) -> Option<u8> {
+        self.proto_array.gloas_head_payload_status()
+    }
+
     /// Returns a `ProtoBlock` if the block is known **and** a descendant of the finalized root.
     pub fn get_block(&self, block_root: &Hash256) -> Option<ProtoBlock> {
         if self.is_finalized_checkpoint_or_descendant(*block_root) {

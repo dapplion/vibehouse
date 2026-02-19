@@ -66,6 +66,7 @@ impl TryFrom<(SszContainer, JustifiedBalances)> for ProtoArrayForkChoice {
             proto_array,
             votes: ElasticList(from.votes),
             balances,
+            gloas_head_payload_status: None,
         })
     }
 }

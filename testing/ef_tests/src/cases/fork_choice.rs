@@ -30,7 +30,8 @@ use types::{
     Attestation, AttestationRef, AttesterSlashing, AttesterSlashingRef, BeaconBlock, BeaconState,
     BlobSidecar, BlobsList, BlockImportSource, Checkpoint, DataColumnSidecar,
     DataColumnSidecarList, DataColumnSubnetId, ExecutionBlockHash, Hash256, IndexedAttestation,
-    KzgProof, ProposerPreparationData, SignedBeaconBlock, Slot, Uint256,
+    KzgProof, ProposerPreparationData, SignedBeaconBlock, SignedExecutionPayloadEnvelope, Slot,
+    Uint256,
 };
 
 // When set to true, cache any states fetched from the db.
@@ -72,6 +73,7 @@ pub struct Checks {
     proposer_boost_root: Option<Hash256>,
     get_proposer_head: Option<Hash256>,
     should_override_forkchoice_update: Option<ShouldOverrideFcu>,
+    head_payload_status: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -94,7 +96,15 @@ impl From<PayloadStatus> for PayloadStatusV1 {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
-pub enum Step<TBlock, TBlobs, TColumns, TAttestation, TAttesterSlashing, TPowBlock> {
+pub enum Step<
+    TBlock,
+    TBlobs,
+    TColumns,
+    TAttestation,
+    TAttesterSlashing,
+    TPowBlock,
+    TExecutionPayload,
+> {
     Tick {
         tick: u64,
     },
@@ -120,6 +130,11 @@ pub enum Step<TBlock, TBlobs, TColumns, TAttestation, TAttesterSlashing, TPowBlo
         block_hash: ExecutionBlockHash,
         payload_status: PayloadStatus,
     },
+    OnExecutionPayload {
+        execution_payload: TExecutionPayload,
+        #[serde(default = "default_true")]
+        valid: bool,
+    },
     Checks {
         checks: Box<Checks>,
     },
@@ -128,6 +143,10 @@ pub enum Step<TBlock, TBlobs, TColumns, TAttestation, TAttesterSlashing, TPowBlo
         columns: Option<TColumns>,
         valid: bool,
     },
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -151,6 +170,7 @@ pub struct ForkChoiceTest<E: EthSpec> {
             Attestation<E>,
             AttesterSlashing<E>,
             PowBlock,
+            SignedExecutionPayloadEnvelope<E>,
         >,
     >,
 }
@@ -165,7 +185,8 @@ impl<E: EthSpec> LoadCase for ForkChoiceTest<E> {
             .expect("path must be valid OsStr")
             .to_string();
         let spec = &testing_spec::<E>(fork_name);
-        let steps: Vec<Step<String, String, Vec<String>, String, String, String>> =
+        #[allow(clippy::type_complexity)]
+        let steps: Vec<Step<String, String, Vec<String>, String, String, String, String>> =
             yaml_decode_file(&path.join("steps.yaml"))?;
         // Resolve the object names in `steps.yaml` into actual decoded block/attestation objects.
         let steps = steps
@@ -237,6 +258,15 @@ impl<E: EthSpec> LoadCase for ForkChoiceTest<E> {
                     block_hash,
                     payload_status,
                 }),
+                Step::OnExecutionPayload {
+                    execution_payload,
+                    valid,
+                } => ssz_decode_file(&path.join(format!("{execution_payload}.ssz_snappy"))).map(
+                    |execution_payload| Step::OnExecutionPayload {
+                        execution_payload,
+                        valid,
+                    },
+                ),
                 Step::Checks { checks } => Ok(Step::Checks { checks }),
                 Step::MaybeValidBlockAndColumns {
                     block,
@@ -335,6 +365,10 @@ impl<E: EthSpec> Case for ForkChoiceTest<E> {
                     el.server
                         .set_payload_statuses(*block_hash, payload_status.clone().into());
                 }
+                Step::OnExecutionPayload {
+                    execution_payload,
+                    valid,
+                } => tester.process_execution_payload(execution_payload, *valid)?,
                 Step::Checks { checks } => {
                     let Checks {
                         head,
@@ -348,6 +382,7 @@ impl<E: EthSpec> Case for ForkChoiceTest<E> {
                         proposer_boost_root,
                         get_proposer_head,
                         should_override_forkchoice_update: should_override_fcu,
+                        head_payload_status,
                     } = checks.as_ref();
 
                     if let Some(expected_head) = head {
@@ -393,6 +428,10 @@ impl<E: EthSpec> Case for ForkChoiceTest<E> {
 
                     if let Some(expected_proposer_head) = get_proposer_head {
                         tester.check_expected_proposer_head(*expected_proposer_head)?;
+                    }
+
+                    if let Some(expected_payload_status) = head_payload_status {
+                        tester.check_head_payload_status(*expected_payload_status)?;
                     }
                 }
 
@@ -783,6 +822,58 @@ impl<E: EthSpec> Tester<E> {
             pow_block.parent_hash,
             pow_block.total_difficulty,
         );
+    }
+
+    pub fn process_execution_payload(
+        &self,
+        signed_envelope: &SignedExecutionPayloadEnvelope<E>,
+        valid: bool,
+    ) -> Result<(), Error> {
+        let beacon_block_root = signed_envelope.message.beacon_block_root;
+        let payload_block_hash = signed_envelope.message.payload.block_hash;
+
+        let result = self
+            .harness
+            .chain
+            .canonical_head
+            .fork_choice_write_lock()
+            .on_execution_payload(beacon_block_root, payload_block_hash);
+
+        if valid {
+            result.map_err(|e| {
+                Error::InternalError(format!(
+                    "on_execution_payload failed for block root {:?}: {:?}",
+                    beacon_block_root, e
+                ))
+            })?;
+        } else if result.is_ok() {
+            return Err(Error::DidntFail(format!(
+                "on_execution_payload for block root {:?} should have failed",
+                beacon_block_root
+            )));
+        }
+
+        Ok(())
+    }
+
+    pub fn check_head_payload_status(&self, expected_status: u64) -> Result<(), Error> {
+        // Recompute head so that find_head_gloas runs and stores the payload status.
+        let _head = self.find_head()?;
+        let payload_status = self
+            .harness
+            .chain
+            .canonical_head
+            .fork_choice_read_lock()
+            .gloas_head_payload_status()
+            .ok_or_else(|| {
+                Error::InternalError("head_payload_status check on non-Gloas head".to_string())
+            })?;
+
+        check_equal(
+            "head_payload_status",
+            payload_status as u64,
+            expected_status,
+        )
     }
 
     pub fn check_head(&self, expected_head: Head) -> Result<(), Error> {

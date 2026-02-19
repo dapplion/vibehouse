@@ -448,6 +448,9 @@ pub struct ProtoArrayForkChoice {
     pub(crate) proto_array: ProtoArray,
     pub(crate) votes: ElasticList<VoteTracker>,
     pub(crate) balances: JustifiedBalances,
+    /// Gloas: payload status of the head from the last `find_head_gloas` call.
+    /// 1 = EMPTY, 2 = FULL. `None` for pre-Gloas heads.
+    pub(crate) gloas_head_payload_status: Option<u8>,
 }
 
 impl ProtoArrayForkChoice {
@@ -505,6 +508,7 @@ impl ProtoArrayForkChoice {
             proto_array,
             votes: ElasticList::default(),
             balances: JustifiedBalances::default(),
+            gloas_head_payload_status: None,
         })
     }
 
@@ -623,9 +627,17 @@ impl ProtoArrayForkChoice {
 
         self.balances = new_balances.clone();
 
+        self.gloas_head_payload_status = None;
+
         self.proto_array
             .find_head::<E>(&justified_checkpoint.root, current_slot)
             .map_err(|e| format!("find_head failed: {:?}", e))
+    }
+
+    /// Returns the Gloas head payload status from the last `find_head` call.
+    /// 1 = EMPTY, 2 = FULL. `None` for pre-Gloas heads.
+    pub fn gloas_head_payload_status(&self) -> Option<u8> {
+        self.gloas_head_payload_status
     }
 
     /// Get the block to propose on during `current_slot`.
@@ -1054,7 +1066,7 @@ impl ProtoArrayForkChoice {
     /// Spec: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#get_head
     #[allow(clippy::too_many_arguments)]
     fn find_head_gloas<E: EthSpec>(
-        &self,
+        &mut self,
         justified_checkpoint: Checkpoint,
         proposer_boost_root: Hash256,
         equivocating_indices: &BTreeSet<u64>,
@@ -1077,6 +1089,7 @@ impl ProtoArrayForkChoice {
         loop {
             let children = self.get_gloas_children(&head, &filtered_roots);
             if children.is_empty() {
+                self.gloas_head_payload_status = Some(head.payload_status as u8);
                 return Ok(head.root);
             }
 
