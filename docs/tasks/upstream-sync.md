@@ -27,6 +27,7 @@ Stay current with upstream lighthouse fixes and improvements.
 - `40504e4c` — refactor builder deposit conditions in process_deposit_request — **ASSESSED**: current implementation matches refactored spec logic.
 - `36a73141` — replace pubkey with validator_index in SignedExecutionProof — **ASSESSED**: our `SignedExecutionPayloadEnvelope` already uses `builder_index` (u64).
 - `278cbe7b` — add voluntary exit tests for builders — **ASSESSED**: these are Python spec test generator additions, not spec logic changes. The generated EF test fixtures (`process_execution_payload_bid_inactive_builder_exiting`) are already in our test suite and pass. No standalone `process_builder_exit` operation exists in the spec — builder exits are modeled via `withdrawable_epoch` on the `Builder` type.
+- consensus-specs PR #4918 — only allow attestations for known payload statuses — **ASSESSED, READY TO IMPLEMENT**: adds `if attestation.data.index == 1: assert attestation.data.beacon_block_root in store.payload_states` to `validate_on_attestation`. Prevents counting attestations for unrevealed payloads. Implementation prepared: add `UnknownPayloadStatus` variant to `InvalidAttestation`, gate check on `block.builder_index.is_some()` (Gloas-only). Deferred until PR merges and EF test vectors are updated — current Gloas fork choice test vectors don't include `on_execution_payload` before `index == 1` attestations.
 
 ## Progress log
 
@@ -41,6 +42,7 @@ Stay current with upstream lighthouse fixes and improvements.
 - **Analyzed issue #8630 (ePBS side-effects — state advance timer)**: identified a race condition where state advance at 3/4 slot can cache wrong epoch-boundary state if envelope arrives late. Practical risk is LOW (envelopes typically arrive before 3/4, block verification recomputes from real state, self-corrects on first block). Documented as known limitation on the issue.
 - **Assessed issue #8858 (events feature gating)**: does NOT affect vibehouse — our eth2 crate doesn't have the `events` feature gate (added in post-v8.0.1 upstream). Compiles fine.
 - **Assessed issue #8750 (inactivity_scores EF tests)**: already DONE — implemented across prior commits, all tests passing.
+- **Assessed consensus-specs PR #4918 (attestation validation for payload states)**: prepared implementation (`UnknownPayloadStatus` error variant, `builder_index.is_some()` gating), tested — breaks 2 Gloas EF fork choice tests (`filtered_block_tree`, `discard_equivocations_on_attester_slashing`) because test vectors don't include `on_execution_payload` before `index == 1` attestations. Deferred until PR merges and test vectors update.
 
 ### 2026-02-19 (run 22)
 - **Fixed issue #8686 (Gloas slot timing logic)**: Added spec-mandated BPS (basis points) configuration values for Gloas slot component timing, replacing hardcoded slot fractions in the validator client.
