@@ -1,6 +1,6 @@
 pub use eth2::types::{
-    EventKind, SseBlock, SseExecutionBid, SseExecutionPayload, SseFinalizedCheckpoint, SseHead,
-    SsePayloadAttestation,
+    EventKind, SseBlock, SseExecutionBid, SseExecutionPayload, SseExecutionProof,
+    SseFinalizedCheckpoint, SseHead, SsePayloadAttestation,
 };
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::{Receiver, Sender, error::SendError};
@@ -32,6 +32,7 @@ pub struct ServerSentEventHandler<E: EthSpec> {
     execution_bid_tx: Sender<EventKind<E>>,
     execution_payload_tx: Sender<EventKind<E>>,
     payload_attestation_tx: Sender<EventKind<E>>,
+    execution_proof_received_tx: Sender<EventKind<E>>,
 }
 
 impl<E: EthSpec> ServerSentEventHandler<E> {
@@ -62,6 +63,7 @@ impl<E: EthSpec> ServerSentEventHandler<E> {
         let (execution_bid_tx, _) = broadcast::channel(capacity);
         let (execution_payload_tx, _) = broadcast::channel(capacity);
         let (payload_attestation_tx, _) = broadcast::channel(capacity);
+        let (execution_proof_received_tx, _) = broadcast::channel(capacity);
 
         Self {
             attestation_tx,
@@ -86,6 +88,7 @@ impl<E: EthSpec> ServerSentEventHandler<E> {
             execution_bid_tx,
             execution_payload_tx,
             payload_attestation_tx,
+            execution_proof_received_tx,
         }
     }
 
@@ -186,6 +189,10 @@ impl<E: EthSpec> ServerSentEventHandler<E> {
                 .payload_attestation_tx
                 .send(kind)
                 .map(|count| log_count("payload attestation", count)),
+            EventKind::ExecutionProofReceived(_) => self
+                .execution_proof_received_tx
+                .send(kind)
+                .map(|count| log_count("execution proof received", count)),
         };
         if let Err(SendError(event)) = result {
             trace!(?event, "No receivers registered to listen for event");
@@ -358,5 +365,13 @@ impl<E: EthSpec> ServerSentEventHandler<E> {
 
     pub fn has_payload_attestation_subscribers(&self) -> bool {
         self.payload_attestation_tx.receiver_count() > 0
+    }
+
+    pub fn subscribe_execution_proof_received(&self) -> Receiver<EventKind<E>> {
+        self.execution_proof_received_tx.subscribe()
+    }
+
+    pub fn has_execution_proof_received_subscribers(&self) -> bool {
+        self.execution_proof_received_tx.receiver_count() > 0
     }
 }

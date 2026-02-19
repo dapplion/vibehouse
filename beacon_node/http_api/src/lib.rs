@@ -5124,6 +5124,9 @@ pub fn serve<T: BeaconChainTypes>(
                                 api_types::EventTopic::PayloadAttestation => {
                                     event_handler.subscribe_payload_attestation()
                                 }
+                                api_types::EventTopic::ExecutionProofReceived => {
+                                    event_handler.subscribe_execution_proof_received()
+                                }
                             };
 
                             receivers.push(

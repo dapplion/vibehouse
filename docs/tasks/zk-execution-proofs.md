@@ -146,6 +146,21 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 16: SSE events for execution proof status (Phase 6 started)
+- **Added `SseExecutionProof` struct** to `common/eth2/src/types.rs` — contains `block_root`, `block_hash`, `subnet_id` (quoted u64), and `version` (quoted u64). Follows the same lightweight SSE pattern as `SseExecutionBid` and `SseExecutionPayload`.
+- **Added `EventKind::ExecutionProofReceived` variant** to the SSE event enum — topic name `execution_proof_received`. Includes full `from_sse_bytes` deserialization support for client-side SSE consumers.
+- **Added `EventTopic::ExecutionProofReceived` variant** — wired into `FromStr`, `Display`, and serde `rename_all = "snake_case"` (auto-derives as `execution_proof_received`). Clients can subscribe via `?topics=execution_proof_received` on the events endpoint.
+- **Added `execution_proof_received_tx` channel** to `ServerSentEventHandler` in `beacon_chain/src/events.rs` — broadcast channel with `subscribe_execution_proof_received()` and `has_execution_proof_received_subscribers()` methods. Re-exported `SseExecutionProof` for use by the network layer.
+- **Wired HTTP API subscription** — added `EventTopic::ExecutionProofReceived` match arm in `http_api/src/lib.rs` event handler, delegating to `subscribe_execution_proof_received()`.
+- **Wired event emission** in `process_gossip_execution_proof()` (gossip_methods.rs) — after successful verification and before DA checker import, emits `EventKind::ExecutionProofReceived` with the proof's block_root, block_hash, subnet_id, and version. Guarded by `has_execution_proof_received_subscribers()` to avoid allocation when no subscribers.
+- **Design decisions**: Used `ExecutionProofReceived` (not `ExecutionProof`) to avoid naming collision with the existing `PubsubMessage::ExecutionProof` gossip variant. The event is emitted at verification time (not at DA checker import) to give subscribers the earliest possible notification. The `BlockProvenStatus` event from the task doc is deferred — block availability transitions are already covered by block import events, and a dedicated "proven" event would require additional state tracking with unclear benefit.
+- **Files changed**: 4 modified
+  - `common/eth2/src/types.rs`: SseExecutionProof struct, EventKind/EventTopic variants, from_sse_bytes, FromStr, Display (~+25 lines)
+  - `beacon_node/beacon_chain/src/events.rs`: channel, register, subscribe, has_subscribers, re-export (~+15 lines)
+  - `beacon_node/http_api/src/lib.rs`: subscription wiring (~+3 lines)
+  - `beacon_node/network/src/network_beacon_processor/gossip_methods.rs`: event emission (~+10 lines)
+- 309/309 beacon_chain tests pass (Gloas fork), 96/96 network tests pass, 311/311 types tests pass, clippy clean, cargo fmt clean, full release binary builds.
+
 ### 2026-02-19 — Task 14: stateless validation bypass (Phase 5 continued)
 - **Added stateless bypass to `process_payload_envelope()`** — when `self.config.stateless_validation` is true, the entire EL `notify_new_payload` call is skipped. The block stays optimistic until sufficient execution proofs arrive via gossip. The envelope state transition, proof generation trigger, state caching, and disk persistence all still execute normally.
 - **Added stateless bypass to `process_self_build_envelope()`** — same pattern. Although stateless nodes typically don't self-build (no EL), the guard is present for completeness and mixed-mode configurations.

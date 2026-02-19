@@ -1103,6 +1103,16 @@ pub struct SsePayloadAttestation {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct SseExecutionProof {
+    pub block_root: Hash256,
+    pub block_hash: Hash256,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub subnet_id: u64,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub version: u64,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseFinalizedCheckpoint {
     pub block: Hash256,
     pub state: Hash256,
@@ -1271,6 +1281,7 @@ pub enum EventKind<E: EthSpec> {
     ExecutionBid(SseExecutionBid),
     ExecutionPayload(SseExecutionPayload),
     PayloadAttestation(SsePayloadAttestation),
+    ExecutionProofReceived(SseExecutionProof),
 }
 
 impl<E: EthSpec> EventKind<E> {
@@ -1299,6 +1310,7 @@ impl<E: EthSpec> EventKind<E> {
             EventKind::ExecutionBid(_) => "execution_bid",
             EventKind::ExecutionPayload(_) => "execution_payload",
             EventKind::PayloadAttestation(_) => "payload_attestation",
+            EventKind::ExecutionProofReceived(_) => "execution_proof_received",
         }
     }
 
@@ -1407,6 +1419,14 @@ impl<E: EthSpec> EventKind<E> {
                     ServerError::InvalidServerSentEvent(format!("Payload Attestation: {:?}", e))
                 })?,
             )),
+            "execution_proof_received" => Ok(EventKind::ExecutionProofReceived(
+                serde_json::from_str(data).map_err(|e| {
+                    ServerError::InvalidServerSentEvent(format!(
+                        "Execution Proof Received: {:?}",
+                        e
+                    ))
+                })?,
+            )),
             _ => Err(ServerError::InvalidServerSentEvent(
                 "Could not parse event tag".to_string(),
             )),
@@ -1447,6 +1467,7 @@ pub enum EventTopic {
     ExecutionBid,
     ExecutionPayload,
     PayloadAttestation,
+    ExecutionProofReceived,
 }
 
 impl FromStr for EventTopic {
@@ -1477,6 +1498,7 @@ impl FromStr for EventTopic {
             "execution_bid" => Ok(EventTopic::ExecutionBid),
             "execution_payload" => Ok(EventTopic::ExecutionPayload),
             "payload_attestation" => Ok(EventTopic::PayloadAttestation),
+            "execution_proof_received" => Ok(EventTopic::ExecutionProofReceived),
             _ => Err("event topic cannot be parsed.".to_string()),
         }
     }
@@ -1508,6 +1530,7 @@ impl fmt::Display for EventTopic {
             EventTopic::ExecutionBid => write!(f, "execution_bid"),
             EventTopic::ExecutionPayload => write!(f, "execution_payload"),
             EventTopic::PayloadAttestation => write!(f, "payload_attestation"),
+            EventTopic::ExecutionProofReceived => write!(f, "execution_proof_received"),
         }
     }
 }

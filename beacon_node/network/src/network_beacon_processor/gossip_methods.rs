@@ -8,7 +8,7 @@ use beacon_chain::blob_verification::{GossipBlobError, GossipVerifiedBlob};
 use beacon_chain::block_verification_types::AsBlock;
 use beacon_chain::data_column_verification::{GossipDataColumnError, GossipVerifiedDataColumn};
 use beacon_chain::events::{
-    EventKind, SseExecutionBid, SseExecutionPayload, SsePayloadAttestation,
+    EventKind, SseExecutionBid, SseExecutionPayload, SseExecutionProof, SsePayloadAttestation,
 };
 use beacon_chain::execution_proof_verification::{
     GossipExecutionProofError, VerifiedExecutionProof,
@@ -3765,6 +3765,17 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
 
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
+
+                if let Some(event_handler) = self.chain.event_handler.as_ref()
+                    && event_handler.has_execution_proof_received_subscribers()
+                {
+                    event_handler.register(EventKind::ExecutionProofReceived(SseExecutionProof {
+                        block_root: verified_proof.block_root(),
+                        block_hash: verified_proof.proof().block_hash.into_root(),
+                        subnet_id: *verified_proof.subnet_id(),
+                        version: verified_proof.proof().version,
+                    }));
+                }
 
                 self.process_gossip_verified_execution_proof(peer_id, verified_proof)
                     .await
