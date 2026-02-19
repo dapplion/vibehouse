@@ -31,6 +31,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 25)
+- No new upstream commits since run 24
+- No tracked consensus-specs PRs merged: #4940, #4939, #4932, #4918, #4843, #4926, #4931, #4898, #4892 — all still open
+- **Assessed PR #4892 (Remove impossible branch in forkchoice)**: replaces an impossible `message.slot < block_slot` branch with an assert. Our fork choice code already validates `attestation.data.slot >= block.slot` in `validate_on_attestation`. No code change needed, just a spec cleanup.
+- **Assessed PR #4840 (Add support for EIP-7843 to Gloas)**: adds EIP-7843 (unknown at this time, need to research when it merges). Monitoring.
+- **Assessed PR #4898 (Remove pending status from tiebreaker)**: removes PAYLOAD_STATUS_PENDING from tiebreaker lambda since `get_node_children` returns either all-pending or none-pending. Our `find_head_gloas` implementation already handles this correctly — pending nodes are filtered at the child selection level, not in the tiebreaker.
+- **Reviewed beacon-APIs PR #580 (Gloas block production endpoints)**: still OPEN. Adds v4 block production endpoint with `include_payload` parameter and envelope retrieval/publishing endpoints. v3 spec now says "not forwards compatible after Gloas". Our v3 currently handles Gloas blocks — will need migration to v4 when spec finalizes. Issue #8828 tracks this.
+- CI run from run 24 commit still in progress (all 4 jobs running)
+
 ### 2026-02-20 (run 24)
 - No new upstream commits since run 23
 - No tracked consensus-specs PRs merged: #4940, #4939, #4932, #4918, #4843, #4926, #4931 — all still open

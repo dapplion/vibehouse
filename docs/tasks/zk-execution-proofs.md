@@ -146,6 +146,29 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-20 — Task 20 scoping: SP1 prover integration design (run 25)
+
+**Researched SP1 (Succinct) and RSP (Reth Succinct Processor) for real zkEVM proof integration.**
+
+**Key findings:**
+- **SP1 v6.0.0** is the current release; RSP uses SP1 v5.1.0. SP1 is a RISC-V zkVM — compiles arbitrary Rust to RISC-V, executes inside the zkVM, generates proofs.
+- **RSP** (github.com/succinctlabs/rsp) puts reth's block execution engine inside SP1's guest program. Proven approach: demonstrated mainnet Ethereum block proving.
+- **Architecture**: Two-program model — a "guest" (runs inside zkVM, proven) and a "host" (runs natively, prepares inputs, calls prover).
+- **Proof modes**: Core (large, linear with cycles), Compressed (constant-size STARK, few MB), Groth16 (~256 bytes, BN254, on-chain verifiable), Plonk (~800 bytes).
+- **Verification**: `sp1-verifier` crate is `no_std`, pure Rust, CPU-only. Groth16 verification is a BN254 pairing check — ~1-20ms, no GPU needed. This is exactly what we need for stateless CL nodes.
+- **Proof generation**: CPU = hours, GPU (CUDA) = minutes, Succinct Network = 5-30 min. ePBS gives builders minutes of headroom, making GPU proving practical.
+- **Dependencies**: `sp1-verifier` (lightweight, for verification), `sp1-sdk` (heavy, for proof generation). Can be feature-gated.
+
+**Decision: SP1 Groth16 as our proof format.**
+- `proof_data` layout: `vkey_hash (32 bytes) || groth16_proof_bytes || public_values_bytes`
+- Version 2 in the `ExecutionProof.version` field (version 1 = stub)
+- Public values contain `CommittedHeader` (the proven block header, which includes the block hash)
+
+**Designed 6 sub-tasks (20a-20f)** — from adding `sp1-verifier` dependency through end-to-end devnet testing with real proofs. Updated task doc with full design, dependency list, and open questions.
+
+**No code changes this run — design/research only.** Files changed: 1 modified
+- `docs/tasks/zk-execution-proofs.md`: Task 20 design section expanded (~+60 lines)
+
 ### 2026-02-19 — Peer scoring for Gloas ePBS gossip topics (run 17)
 
 **Added gossipsub peer scoring parameters for 4 new Gloas ePBS gossip topics** in `gossipsub_scoring_parameters.rs`.
@@ -776,12 +799,66 @@ pub stateless_min_proofs_required: usize, // default: 1
 
 ---
 
-#### Task 20: Real zkEVM prover integration (future)
-**Details:**
-- Replace stub proof generation with actual zkEVM prover
-- Candidates: SP1 (Succinct), RISC Zero, Jolt
-- SP1 is currently most mature for Ethereum block proving (~minutes per block on GPU)
-- This task is intentionally last — all infrastructure should work with stubs first
+#### Task 20: Real zkEVM prover integration
+**Status:** SCOPING — design complete, implementation not started
+
+**Decision: SP1 (Succinct) is the target prover.** RSP (Reth Succinct Processor) demonstrates mainnet block proving via reth inside SP1's zkVM. SP1 v6.0.0, RSP uses SP1 v5.1.0.
+
+**Proof format: Groth16 over BN254**
+- ~256 bytes on-wire (4-byte vkey prefix + raw Groth16 proof)
+- CPU-only verification in ~1-20ms (BN254 pairing check, no GPU)
+- `sp1-verifier` crate: `no_std` compatible, pure Rust
+- Our `proof_data` field carries: `vkey_hash (32 bytes) || groth16_proof_bytes || public_values_bytes`
+- Version field: `1` = stub (current), `2` = SP1 Groth16
+
+**Architecture: 3-component split**
+
+1. **Verifier (CL-side, `sp1-verifier` crate)** — runs on stateless nodes
+   - Add `sp1-verifier` dependency to `beacon_chain` crate
+   - Replace stub in `execution_proof_verification.rs` step 7 with:
+     ```rust
+     // Deserialize proof_data: vkey_hash || groth16_bytes || public_values
+     // Verify: Groth16Verifier::verify(&proof_bytes, &public_values, &vkey_hash, GROTH16_VK_BYTES)
+     // Check public_values contains correct block_hash
+     ```
+   - The SP1 verifying key (vkey) is program-specific — derived from the guest ELF. Must match the guest program version exactly.
+   - Need to embed the RSP guest program's vkey in the binary (or load from config)
+
+2. **Guest program (zkVM, compiled for RISC-V)** — runs inside SP1 prover
+   - RSP's existing guest: reads `ClientExecutorInput`, runs reth block execution, commits `CommittedHeader`
+   - We need to fork/adapt RSP for our proof format: commit `block_hash` (not full header) as public values
+   - Compiled to ELF, deployed separately from the CL binary
+
+3. **Host program (proof generator, runs on builder nodes)** — `--generate-execution-proofs`
+   - Replace `ExecutionProofGenerator::generate_proof()` stub with async SP1 prover call
+   - Flow: receive `(block_root, block_hash)` trigger → fetch block from EL via `engine_getPayload` or RPC → pre-execute to gather state witness → package `ClientExecutorInput` → call `prover.prove()` → wrap result as `ExecutionProof` → send to broadcaster
+   - Requires: EL RPC access (already have via execution_layer), SP1 SDK (`sp1-sdk`), GPU for fast proving
+   - Backend selection via `SP1_PROVER` env: `cuda` (local GPU), `network` (Succinct Network), `cpu` (slow, testing only)
+
+**Sub-tasks for Task 20:**
+
+| # | Task | Scope | Deps |
+|---|------|-------|------|
+| 20a | Add `sp1-verifier` dependency, implement Groth16 verification | `beacon_chain` crate | None |
+| 20b | Define proof format (proof_data layout, public values schema) | `types` crate | None |
+| 20c | Build RSP-based guest program for vibehouse | New crate/binary | 20b |
+| 20d | Build host program (state witness preparation) | `execution_proof_generation.rs` | 20b, 20c |
+| 20e | Async proof generation with `spawn_blocking` | `beacon_chain` | 20d |
+| 20f | End-to-end devnet test with real SP1 proofs | Kurtosis | 20a-20e |
+
+**Key dependencies to add:**
+```toml
+# Verification only (lightweight, no GPU)
+sp1-verifier = "5.1.0"  # or 6.0.0 when RSP upgrades
+
+# Proof generation (heavy, optional feature flag)
+sp1-sdk = "5.1.0"
+```
+
+**Open questions:**
+- Should the guest program be a separate binary in this repo, or a separate repo?
+- How to handle SP1 version upgrades (vkey changes with each SP1 version)?
+- Should we support multiple SP1 versions simultaneously (version field in proof)?
 
 ## Current State of zkEVM Proving Systems
 
@@ -791,12 +868,13 @@ pub stateless_min_proofs_required: usize, // default: 1
 | **RISC Zero** | RISC Zero | RISC-V zkVM | Supports Ethereum block proving | Production-ready |
 | **Jolt** | a16z | RISC-V zkVM (Lasso lookup) | Earlier stage | Research/development |
 | **Zeth** | RISC Zero | reth inside RISC Zero zkVM | Proven mainnet blocks | Demonstrated |
-| **SP1-reth** | Succinct | reth inside SP1 | Proven mainnet blocks | Demonstrated |
+| **RSP** | Succinct | reth inside SP1 | Proven mainnet blocks | Demonstrated |
 
 **Current proving times** (as of early 2025):
 - GPU-accelerated: ~30s to ~5min per mainnet block (depends on gas usage)
 - Target for "real-time proving": <12s per block (one slot)
 - ePBS advantage: builder can start proving before the slot, gaining minutes of headroom
+- SP1 Groth16 verification: ~1-20ms on CPU (BN254 pairing, no GPU needed)
 
 ## Open Questions and Decisions
 
