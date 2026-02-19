@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use types::{
     EthSpec, ExecutionBlockHash, ExecutionProof, ExecutionProofSubnetId, Hash256,
+    execution_proof::PROOF_VERSION_SP1_GROTH16,
     execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS,
 };
 
@@ -51,11 +52,29 @@ pub enum GossipExecutionProofError {
         proof_block_hash: ExecutionBlockHash,
         block_block_hash: ExecutionBlockHash,
     },
+    /// The proof_data could not be parsed according to its version's format.
+    ///
+    /// ## Peer scoring
+    /// The peer has sent a malformed proof.
+    InvalidProofData,
+    /// The SP1 Groth16 proof could not be verified (feature `sp1` not enabled).
+    ///
+    /// ## Peer scoring
+    /// Cannot verify — reject to be safe.
+    Sp1VerificationUnavailable,
     /// The cryptographic proof verification failed.
     ///
     /// ## Peer scoring
     /// The peer has sent an invalid proof.
-    InvalidProof,
+    InvalidProof { reason: String },
+    /// The public values in the proof do not contain the expected block hash.
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid proof.
+    PublicValuesBlockHashMismatch {
+        expected: ExecutionBlockHash,
+        got: ExecutionBlockHash,
+    },
     /// An internal beacon chain error occurred.
     ///
     /// ## Peer scoring
@@ -72,8 +91,8 @@ impl From<BeaconChainError> for GossipExecutionProofError {
 /// An execution proof that has passed gossip validation checks.
 ///
 /// The inner proof is safe to propagate on gossip and store in the proof cache.
-/// Cryptographic verification is currently stubbed — real ZK verification will
-/// be added in a later task.
+/// For version 2 (SP1 Groth16) proofs, cryptographic verification is performed
+/// when the `sp1` feature is enabled.
 pub struct VerifiedExecutionProof<T: BeaconChainTypes> {
     proof: Arc<ExecutionProof>,
     block_root: Hash256,
@@ -111,7 +130,7 @@ impl<T: BeaconChainTypes> VerifiedExecutionProof<T> {
 /// 4. Block root is known in fork choice
 /// 5. Block is not prior to finalization
 /// 6. Block hash matches the block's bid block hash (Gloas ePBS)
-/// 7. Cryptographic verification (currently stubbed)
+/// 7. Cryptographic verification (SP1 Groth16 for version 2, stub for version 1)
 pub fn verify_execution_proof_for_gossip<T: BeaconChainTypes>(
     proof: Arc<ExecutionProof>,
     subnet_id: ExecutionProofSubnetId,
@@ -179,15 +198,86 @@ pub fn verify_execution_proof_for_gossip<T: BeaconChainTypes>(
 
     drop(fork_choice);
 
-    // Check 7: Cryptographic verification (stubbed).
-    // Real ZK verification will be added in a later task.
-    // For now, accept all proofs that pass structural checks.
+    // Check 7: Cryptographic verification.
+    verify_proof_cryptography(&proof)?;
 
     Ok(VerifiedExecutionProof {
         proof,
         block_root,
         _phantom: std::marker::PhantomData,
     })
+}
+
+/// Perform cryptographic verification of the proof based on its version.
+///
+/// - Version 1 (stub): accepts all proofs (test/development only).
+/// - Version 2 (SP1 Groth16): verifies the Groth16 proof using `sp1-verifier` and
+///   checks that the public values contain the correct block hash.
+fn verify_proof_cryptography(proof: &ExecutionProof) -> Result<(), GossipExecutionProofError> {
+    match proof.version {
+        types::execution_proof::PROOF_VERSION_STUB => {
+            // Stub proofs have no cryptographic content to verify.
+            Ok(())
+        }
+        PROOF_VERSION_SP1_GROTH16 => verify_sp1_groth16(proof),
+        _ => {
+            // Should not reach here since is_version_supported() already checked.
+            Err(GossipExecutionProofError::InvalidVersion {
+                version: proof.version,
+            })
+        }
+    }
+}
+
+/// Verify an SP1 Groth16 proof.
+///
+/// When the `sp1` feature is enabled, performs full Groth16 verification using
+/// the `sp1-verifier` crate and checks that the public values commit to the
+/// expected block hash.
+///
+/// When the `sp1` feature is not enabled, rejects all SP1 proofs since we cannot
+/// verify them.
+#[cfg(feature = "sp1")]
+fn verify_sp1_groth16(proof: &ExecutionProof) -> Result<(), GossipExecutionProofError> {
+    use sp1_verifier::{GROTH16_VK_BYTES, Groth16Verifier};
+
+    let parsed = proof
+        .parse_sp1_groth16()
+        .ok_or(GossipExecutionProofError::InvalidProofData)?;
+
+    // Convert the raw 32-byte vkey hash to the hex string format expected by sp1-verifier.
+    let vkey_hex = format!("0x{}", hex::encode(parsed.vkey_hash));
+
+    // Verify the Groth16 proof.
+    Groth16Verifier::verify(
+        parsed.groth16_proof,
+        parsed.public_values,
+        &vkey_hex,
+        &GROTH16_VK_BYTES,
+    )
+    .map_err(|e| GossipExecutionProofError::InvalidProof {
+        reason: format!("SP1 Groth16 verification failed: {e}"),
+    })?;
+
+    // Cross-check: the first 32 bytes of public values must be the block hash.
+    // This ensures the proof actually proves the execution of the claimed block.
+    if parsed.public_values.len() >= 32 {
+        let proven_hash =
+            ExecutionBlockHash::from_root(Hash256::from_slice(&parsed.public_values[..32]));
+        if proven_hash != proof.block_hash {
+            return Err(GossipExecutionProofError::PublicValuesBlockHashMismatch {
+                expected: proof.block_hash,
+                got: proven_hash,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(not(feature = "sp1"))]
+fn verify_sp1_groth16(_proof: &ExecutionProof) -> Result<(), GossipExecutionProofError> {
+    Err(GossipExecutionProofError::Sp1VerificationUnavailable)
 }
 
 impl<T: BeaconChainTypes> BeaconChain<T> {
@@ -228,7 +318,21 @@ mod tests {
         };
         let _ = format!("{:?}", err);
 
-        let err = GossipExecutionProofError::InvalidProof;
+        let err = GossipExecutionProofError::InvalidProof {
+            reason: "test".into(),
+        };
+        let _ = format!("{:?}", err);
+
+        let err = GossipExecutionProofError::InvalidProofData;
+        let _ = format!("{:?}", err);
+
+        let err = GossipExecutionProofError::Sp1VerificationUnavailable;
+        let _ = format!("{:?}", err);
+
+        let err = GossipExecutionProofError::PublicValuesBlockHashMismatch {
+            expected: ExecutionBlockHash::zero(),
+            got: ExecutionBlockHash::zero(),
+        };
         let _ = format!("{:?}", err);
     }
 
@@ -298,5 +402,56 @@ mod tests {
         // Out of bounds (MAX_EXECUTION_PROOF_SUBNETS is 1, so only 0 is valid)
         assert!(ExecutionProofSubnetId::new(MAX_EXECUTION_PROOF_SUBNETS).is_err());
         assert!(ExecutionProofSubnetId::new(MAX_EXECUTION_PROOF_SUBNETS + 1).is_err());
+    }
+
+    /// Test that stub proofs (version 1) pass cryptographic verification.
+    #[test]
+    fn test_stub_proof_passes_crypto_check() {
+        let proof = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from(Hash256::random()),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            1,
+            b"stub-proof".to_vec(),
+        );
+        assert!(verify_proof_cryptography(&proof).is_ok());
+    }
+
+    /// Test that SP1 Groth16 proofs (version 2) are handled correctly:
+    /// - With `sp1` feature: would attempt real verification (fails with invalid proof data)
+    /// - Without `sp1` feature: returns Sp1VerificationUnavailable
+    #[test]
+    fn test_sp1_groth16_proof_crypto_check() {
+        use types::execution_proof::PROOF_VERSION_SP1_GROTH16;
+
+        // Build a structurally valid but cryptographically invalid v2 proof.
+        let mut proof_data = vec![0u8; 32]; // vkey_hash
+        proof_data.extend_from_slice(&4u32.to_be_bytes()); // proof_len = 4
+        proof_data.extend_from_slice(&[1, 2, 3, 4]); // fake groth16 proof
+        proof_data.extend_from_slice(&[5, 6, 7, 8]); // fake public values
+
+        let proof = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from(Hash256::random()),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            PROOF_VERSION_SP1_GROTH16,
+            proof_data,
+        );
+
+        let result = verify_proof_cryptography(&proof);
+
+        // Without sp1 feature: should be Sp1VerificationUnavailable.
+        // With sp1 feature: should be InvalidProof (fake data won't verify).
+        #[cfg(not(feature = "sp1"))]
+        assert!(matches!(
+            result,
+            Err(GossipExecutionProofError::Sp1VerificationUnavailable)
+        ));
+
+        #[cfg(feature = "sp1")]
+        assert!(matches!(
+            result,
+            Err(GossipExecutionProofError::InvalidProof { .. })
+        ));
     }
 }

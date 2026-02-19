@@ -13,6 +13,7 @@ participation_metrics = []  # Exposes validator participation metrics to Prometh
 fork_from_env = [] # Initialise the harness chain spec from the FORK_NAME env variable
 portable = ["bls/supranational-portable"]
 test_backfill = []
+sp1 = ["sp1-verifier"]
 
 [dependencies]
 alloy-primitives = { workspace = true }
@@ -52,6 +53,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 slasher = { workspace = true }
 slot_clock = { workspace = true }
+sp1-verifier = { workspace = true, optional = true }
 smallvec = { workspace = true }
 ssz_types = { workspace = true }
 state_processing = { workspace = true }

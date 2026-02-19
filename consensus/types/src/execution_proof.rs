@@ -15,6 +15,27 @@ use ssz_derive::{Decode, Encode};
 /// 1MB provides headroom for future proof systems without allowing gossip abuse.
 pub const MAX_EXECUTION_PROOF_SIZE: usize = 1_048_576;
 
+/// Proof version for stub proofs (test/development).
+pub const PROOF_VERSION_STUB: u64 = 1;
+
+/// Proof version for SP1 Groth16 proofs.
+pub const PROOF_VERSION_SP1_GROTH16: u64 = 2;
+
+/// Minimum size of proof_data for SP1 Groth16 proofs.
+///
+/// Layout: vkey_hash (32 bytes) + groth16_proof_length (4 bytes) + at least 1 byte of proof data.
+pub const SP1_GROTH16_MIN_PROOF_DATA_SIZE: usize = 32 + 4 + 1;
+
+/// Parsed SP1 Groth16 proof components extracted from proof_data.
+pub struct Sp1Groth16ProofData<'a> {
+    /// The SP1 program verification key hash (32 bytes).
+    pub vkey_hash: &'a [u8; 32],
+    /// The raw Groth16 proof bytes.
+    pub groth16_proof: &'a [u8],
+    /// The SP1 public values (contains the proven block hash).
+    pub public_values: &'a [u8],
+}
+
 /// A proof attesting to the validity of an execution payload.
 ///
 /// If verified, this proof is equivalent to the EL returning `VALID` for `engine_newPayload`.
@@ -54,16 +75,58 @@ impl ExecutionProof {
 
     /// Check if this proof version is supported.
     pub fn is_version_supported(&self) -> bool {
-        // Each subnet can upgrade its version independently.
-        // For now, only version 1 is supported across all subnets.
-        matches!(self.version, 1)
+        matches!(self.version, PROOF_VERSION_STUB | PROOF_VERSION_SP1_GROTH16)
     }
 
     /// Validate basic structure: non-empty, supported version, within size limit.
     pub fn is_structurally_valid(&self) -> bool {
-        !self.proof_data.is_empty()
-            && self.proof_data.len() <= MAX_EXECUTION_PROOF_SIZE
-            && self.is_version_supported()
+        if !self.is_version_supported() || self.proof_data.is_empty() {
+            return false;
+        }
+        if self.proof_data.len() > MAX_EXECUTION_PROOF_SIZE {
+            return false;
+        }
+        // Version 2 (SP1 Groth16) has additional structural requirements.
+        if self.version == PROOF_VERSION_SP1_GROTH16 {
+            return self.proof_data.len() >= SP1_GROTH16_MIN_PROOF_DATA_SIZE;
+        }
+        true
+    }
+
+    /// Parse SP1 Groth16 proof_data into its components.
+    ///
+    /// proof_data layout (version 2):
+    ///   [0..32]                         vkey_hash (32 bytes, raw)
+    ///   [32..36]                        groth16_proof_length (u32 big-endian)
+    ///   [36..36+proof_len]              groth16_proof_bytes
+    ///   [36+proof_len..]               sp1_public_values
+    ///
+    /// Returns `None` if the proof data is too short or the length field is invalid.
+    pub fn parse_sp1_groth16(&self) -> Option<Sp1Groth16ProofData<'_>> {
+        if self.version != PROOF_VERSION_SP1_GROTH16 {
+            return None;
+        }
+        if self.proof_data.len() < SP1_GROTH16_MIN_PROOF_DATA_SIZE {
+            return None;
+        }
+
+        let vkey_hash: &[u8; 32] = self.proof_data.get(..32)?.try_into().ok()?;
+        let proof_len_bytes: [u8; 4] = self.proof_data.get(32..36)?.try_into().ok()?;
+        let proof_len = u32::from_be_bytes(proof_len_bytes) as usize;
+
+        let proof_end = 36_usize.checked_add(proof_len)?;
+        if proof_end > self.proof_data.len() {
+            return None;
+        }
+
+        let groth16_proof = self.proof_data.get(36..proof_end)?;
+        let public_values = self.proof_data.get(proof_end..)?;
+
+        Some(Sp1Groth16ProofData {
+            vkey_hash,
+            groth16_proof,
+            public_values,
+        })
     }
 }
 
@@ -81,9 +144,31 @@ mod tests {
         )
     }
 
+    /// Build a valid SP1 Groth16 proof_data blob.
+    fn make_sp1_groth16_data(
+        vkey_hash: [u8; 32],
+        groth16_proof: &[u8],
+        public_values: &[u8],
+    ) -> Vec<u8> {
+        let mut data = Vec::new();
+        data.extend_from_slice(&vkey_hash);
+        data.extend_from_slice(&(groth16_proof.len() as u32).to_be_bytes());
+        data.extend_from_slice(groth16_proof);
+        data.extend_from_slice(public_values);
+        data
+    }
+
     #[test]
-    fn valid_proof() {
+    fn valid_stub_proof() {
         let proof = make_proof(1, vec![1, 2, 3]);
+        assert!(proof.is_version_supported());
+        assert!(proof.is_structurally_valid());
+    }
+
+    #[test]
+    fn valid_sp1_groth16_proof() {
+        let data = make_sp1_groth16_data([0xaa; 32], &[1, 2, 3], &[4, 5, 6]);
+        let proof = make_proof(PROOF_VERSION_SP1_GROTH16, data);
         assert!(proof.is_version_supported());
         assert!(proof.is_structurally_valid());
     }
@@ -109,6 +194,47 @@ mod tests {
     }
 
     #[test]
+    fn sp1_groth16_too_short() {
+        // Version 2 proof with data shorter than the minimum header size.
+        let proof = make_proof(PROOF_VERSION_SP1_GROTH16, vec![0u8; 36]);
+        assert!(proof.is_version_supported());
+        assert!(!proof.is_structurally_valid());
+    }
+
+    #[test]
+    fn sp1_groth16_parse_valid() {
+        let vkey = [0xbb; 32];
+        let groth16_bytes = vec![10, 20, 30, 40];
+        let public_vals = vec![50, 60, 70];
+        let data = make_sp1_groth16_data(vkey, &groth16_bytes, &public_vals);
+
+        let proof = make_proof(PROOF_VERSION_SP1_GROTH16, data);
+        let parsed = proof.parse_sp1_groth16().expect("should parse");
+
+        assert_eq!(parsed.vkey_hash, &vkey);
+        assert_eq!(parsed.groth16_proof, &groth16_bytes);
+        assert_eq!(parsed.public_values, &public_vals);
+    }
+
+    #[test]
+    fn sp1_groth16_parse_truncated_proof_len() {
+        // proof_len says 100 bytes but proof_data only has a few bytes after header.
+        let mut data = vec![0u8; 32]; // vkey_hash
+        data.extend_from_slice(&100u32.to_be_bytes()); // claims 100 bytes of proof
+        data.extend_from_slice(&[1, 2, 3]); // only 3 bytes available
+
+        let proof = make_proof(PROOF_VERSION_SP1_GROTH16, data);
+        assert!(proof.parse_sp1_groth16().is_none());
+    }
+
+    #[test]
+    fn sp1_groth16_parse_wrong_version() {
+        let data = make_sp1_groth16_data([0; 32], &[1, 2, 3], &[4, 5]);
+        let proof = make_proof(PROOF_VERSION_STUB, data);
+        assert!(proof.parse_sp1_groth16().is_none());
+    }
+
+    #[test]
     fn ssz_roundtrip() {
         use ssz::{Decode, Encode};
 
@@ -116,5 +242,24 @@ mod tests {
         let encoded = original.as_ssz_bytes();
         let decoded = ExecutionProof::from_ssz_bytes(&encoded).unwrap();
         assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn ssz_roundtrip_sp1_groth16() {
+        use ssz::{Decode, Encode};
+
+        let data = make_sp1_groth16_data([0xcc; 32], &[1; 256], &[2; 64]);
+        let original = make_proof(PROOF_VERSION_SP1_GROTH16, data);
+        let encoded = original.as_ssz_bytes();
+        let decoded = ExecutionProof::from_ssz_bytes(&encoded).unwrap();
+        assert_eq!(original, decoded);
+
+        // Verify parsed components survive roundtrip.
+        let parsed = decoded
+            .parse_sp1_groth16()
+            .expect("should parse after SSZ roundtrip");
+        assert_eq!(parsed.vkey_hash, &[0xcc; 32]);
+        assert_eq!(parsed.groth16_proof.len(), 256);
+        assert_eq!(parsed.public_values.len(), 64);
     }
 }

@@ -239,6 +239,7 @@ slashing_protection = { path = "validator_client/slashing_protection" }
 slot_clock = { path = "common/slot_clock" }
 smallvec = "1"
 snap = "1"
+sp1-verifier = { version = "6.0.1", default-features = false }
 ssz_types = "0.11.0"
 state_processing = { path = "consensus/state_processing" }
 store = { path = "beacon_node/store" }

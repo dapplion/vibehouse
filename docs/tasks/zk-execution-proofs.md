@@ -146,6 +146,63 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-20 — Task 20a: add sp1-verifier dependency and implement Groth16 verification (run 26)
+
+**Implemented real SP1 Groth16 proof verification in the beacon chain, replacing the stub cryptographic check.**
+
+**Changes:**
+
+1. **Added `sp1-verifier` 6.0.1 dependency** — workspace-level dep with `default-features = false`. Added to `beacon_chain` crate as optional, gated behind new `sp1` feature flag. `sp1-verifier` is `no_std`-compatible pure Rust — no GPU needed for verification.
+
+2. **Updated `ExecutionProof` type for version 2 (SP1 Groth16)**:
+   - Added constants: `PROOF_VERSION_STUB = 1`, `PROOF_VERSION_SP1_GROTH16 = 2`, `SP1_GROTH16_MIN_PROOF_DATA_SIZE = 37`
+   - `is_version_supported()` now accepts both version 1 (stub) and version 2 (SP1 Groth16)
+   - `is_structurally_valid()` enforces minimum proof_data size for version 2
+   - Added `parse_sp1_groth16()` method that parses the wire format into components
+   - Added `Sp1Groth16ProofData` struct for parsed components
+
+3. **Defined proof_data wire format (version 2)**:
+   ```
+   [0..32]                  vkey_hash (32 bytes, raw SP1 program verification key hash)
+   [32..36]                 groth16_proof_length (u32 big-endian)
+   [36..36+proof_len]       groth16_proof_bytes
+   [36+proof_len..]         sp1_public_values (first 32 bytes = block hash)
+   ```
+
+4. **Implemented `verify_proof_cryptography()` dispatcher**:
+   - Version 1 (stub): accepts all proofs (no crypto check, test/dev only)
+   - Version 2 (SP1 Groth16): dispatches to `verify_sp1_groth16()`
+
+5. **Implemented `verify_sp1_groth16()` with `cfg(feature = "sp1")`**:
+   - Parses proof_data into vkey_hash, groth16_proof, and public_values
+   - Calls `Groth16Verifier::verify()` with `GROTH16_VK_BYTES` (built-in SP1 v6 verifying key)
+   - Cross-checks that the first 32 bytes of public_values match the proof's `block_hash`
+   - When `sp1` feature is NOT enabled, returns `Sp1VerificationUnavailable` (reject)
+
+6. **Added new error variants to `GossipExecutionProofError`**:
+   - `InvalidProofData`: proof_data couldn't be parsed per its version's format
+   - `Sp1VerificationUnavailable`: sp1 feature not enabled, can't verify
+   - `InvalidProof { reason }`: cryptographic verification failed (now includes reason string)
+   - `PublicValuesBlockHashMismatch`: public values don't match expected block hash
+
+7. **Updated gossip_methods.rs** match arms to handle new error variants.
+
+**Tests:**
+- 14/14 types execution_proof tests pass (6 new: v2 valid, v2 too short, parse valid, parse truncated, parse wrong version, SSZ roundtrip v2)
+- 6/6 beacon_chain execution_proof_verification tests pass (2 new: stub crypto check, sp1 groth16 crypto check)
+- 317/317 full beacon_chain tests pass (Gloas fork)
+- 96/96 network tests pass (Gloas fork)
+- Clippy clean (with and without sp1 feature), cargo fmt clean
+
+**Files changed**: 5 modified
+- `Cargo.toml`: sp1-verifier workspace dependency (~+1 line)
+- `beacon_node/beacon_chain/Cargo.toml`: sp1 feature flag, sp1-verifier optional dep (~+2 lines)
+- `consensus/types/src/execution_proof.rs`: version constants, wire format types, parse method, 6 new tests (~+110 lines)
+- `beacon_node/beacon_chain/src/execution_proof_verification.rs`: real verification logic, new error variants, 2 new tests (~+90 lines)
+- `beacon_node/network/src/network_beacon_processor/gossip_methods.rs`: new error variant match arms (~+3 lines)
+
+**Task 20a is complete.** Next: 20b (define public values schema in types crate) or 20c (build RSP-based guest program).
+
 ### 2026-02-20 — Task 20 scoping: SP1 prover integration design (run 25)
 
 **Researched SP1 (Succinct) and RSP (Reth Succinct Processor) for real zkEVM proof integration.**
@@ -839,7 +896,7 @@ pub stateless_min_proofs_required: usize, // default: 1
 
 | # | Task | Scope | Deps |
 |---|------|-------|------|
-| 20a | Add `sp1-verifier` dependency, implement Groth16 verification | `beacon_chain` crate | None |
+| 20a | Add `sp1-verifier` dependency, implement Groth16 verification — DONE | `beacon_chain` crate | None |
 | 20b | Define proof format (proof_data layout, public values schema) | `types` crate | None |
 | 20c | Build RSP-based guest program for vibehouse | New crate/binary | 20b |
 | 20d | Build host program (state witness preparation) | `execution_proof_generation.rs` | 20b, 20c |

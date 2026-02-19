@@ -3840,7 +3840,10 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 | GossipExecutionProofError::ProofDataEmpty
                 | GossipExecutionProofError::ProofDataTooLarge { .. }
                 | GossipExecutionProofError::BlockHashMismatch { .. }
-                | GossipExecutionProofError::InvalidProof => {
+                | GossipExecutionProofError::InvalidProofData
+                | GossipExecutionProofError::Sp1VerificationUnavailable
+                | GossipExecutionProofError::InvalidProof { .. }
+                | GossipExecutionProofError::PublicValuesBlockHashMismatch { .. } => {
                     debug!(
                         %block_root,
                         error = ?err,
