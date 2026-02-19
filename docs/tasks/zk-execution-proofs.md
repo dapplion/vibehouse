@@ -146,6 +146,20 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 13: proof broadcaster service (Phase 5 continued)
+- **Created `proof_broadcaster.rs` in the client crate** — background async service that consumes proofs from the `ProofReceiver` channel and publishes each as a `PubsubMessage::ExecutionProof` via `NetworkMessage::Publish`. Simple loop: `recv()` → wrap in `PubsubMessage::ExecutionProof(Box::new((subnet_id, proof)))` → send to network. Stops gracefully when either the generator channel closes or the network sender is dropped.
+- **Added `proof_receiver` field to `BeaconChain`** — `Mutex<Option<ProofReceiver>>`, stored alongside the generator. The `Mutex<Option<_>>` pattern allows the client builder to `.take()` the receiver once at startup for the broadcaster service, while the `BeaconChain` remains in an `Arc`.
+- **Updated `builder.rs` (beacon_chain)** — now stores the `proof_rx` in the `BeaconChain` struct instead of discarding it with `_proof_rx`. Removed the `TODO(vibehouse#28)` comment.
+- **Wired broadcaster spawn in `client/src/builder.rs`** — in the `build()` method, after all other services are started, checks if `proof_receiver` is available (via `lock().take()`). If so, and if `network_senders` is available, spawns `run_proof_broadcaster` as a named task (`"proof_broadcaster"`).
+- **Design decisions**: The broadcaster lives in the `client` crate (not `beacon_chain`) because it needs `NetworkMessage` and `PubsubMessage` types from the `network` and `lighthouse_network` crates. This follows the same pattern as `SlasherService` which also lives in a separate crate and receives a network sender handle. The broadcaster is intentionally simple — no retry logic, no batching — because the unbounded channel provides backpressure-free delivery and gossipsub handles retransmission.
+- **Files changed**: 5 (1 new, 4 modified)
+  - `beacon_node/client/src/proof_broadcaster.rs` (new, ~44 lines)
+  - `beacon_node/client/src/lib.rs` (module declaration)
+  - `beacon_node/client/src/builder.rs` (spawn broadcaster, ~+11 lines)
+  - `beacon_node/beacon_chain/src/beacon_chain.rs` (proof_receiver field, ~+3 lines)
+  - `beacon_node/beacon_chain/src/builder.rs` (store proof_rx instead of dropping, ~+4/-7 lines)
+- 309/309 beacon_chain tests pass (Gloas fork), clippy clean, cargo fmt clean, full release binary builds.
+
 ### 2026-02-19 — Task 12: proof generation trigger (Phase 5 started)
 - **Created `execution_proof_generation.rs`** — new module with `ExecutionProofGenerator` struct. Uses an unbounded `mpsc` channel to emit generated proofs for downstream consumption (Task 13 broadcaster). `generate_proof(block_root, block_hash)` creates one stub proof per subnet (currently subnet 0 only, since `MAX_EXECUTION_PROOF_SUBNETS = 1`). Stub proof data is `b"vibehouse-stub-proof-v1"` — real ZK prover integration is Task 20. Two unit tests: `generates_stub_proof_for_each_subnet` and `proof_receiver_dropped_does_not_panic`.
 - **Added `execution_proof_generator` field to `BeaconChain`** — `Option<ExecutionProofGenerator>`, only `Some` when `--generate-execution-proofs` is enabled. Initialized in `builder.rs` with the channel receiver stored as `_proof_rx` (Task 13 will wire it into a broadcaster service).
