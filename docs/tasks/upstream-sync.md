@@ -30,6 +30,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 22)
+- **Fixed issue #8686 (Gloas slot timing logic)**: Added spec-mandated BPS (basis points) configuration values for Gloas slot component timing, replacing hardcoded slot fractions in the validator client.
+  - **New ChainSpec fields**: `payload_attestation_due_bps` (7500), `attestation_due_bps_gloas` (2500), `aggregate_due_bps_gloas` (5000), `sync_message_due_bps_gloas` (2500), `contribution_due_bps_gloas` (5000). All values loaded from YAML config with defaults matching upstream consensus-specs.
+  - **New ChainSpec helper methods**: `get_attestation_due_ms(epoch)`, `get_aggregate_due_ms(epoch)`, `get_sync_message_due_ms(epoch)`, `get_contribution_due_ms(epoch)`, `get_payload_attestation_due_ms()` — fork-aware functions that return the correct ms delay for pre-Gloas (1/3 + 2/3 slot) vs Gloas (1/4 + 1/2 slot) forks.
+  - **Updated attestation_service.rs**: replaced `slot_duration / 3` with `get_attestation_due_ms()` and `slot_duration / 3` aggregate calculation with `get_aggregate_due_ms()`.
+  - **Updated payload_attestation_service.rs**: replaced `slot_duration * 3 / 4` with `get_payload_attestation_due_ms()`. Refactored to store `Arc<ChainSpec>` for consistent config access.
+  - **Updated sync_committee_service.rs**: replaced `slot_duration / 3` with `get_sync_message_due_ms()` and contribution timing with `get_contribution_due_ms()`.
+  - **Why this matters**: In Gloas (ePBS), the slot structure changes — attestations move from 1/3 to 1/4 of slot, aggregates from 2/3 to 1/2, and PTC votes happen at 3/4. Without this fix, validators would produce attestations and aggregates at the wrong times after the Gloas fork, potentially missing deadlines or racing with PTC votes.
+- Tests: 311/311 types, 52/52 fork_choice+proto_array, 138/138 EF tests (fake_crypto, minimal), 8/8 fork_choice EF tests (real crypto), clippy clean, cargo fmt clean, full workspace compiles
+
 ### 2026-02-19 (run 21)
 - Fetched upstream: no new commits since run 16
 - No new consensus-specs changes requiring implementation (all open PRs still unmerged)
