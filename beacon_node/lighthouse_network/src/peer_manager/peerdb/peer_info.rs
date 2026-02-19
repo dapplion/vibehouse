@@ -105,6 +105,8 @@ impl<E: EthSpec> PeerInfo<E> {
                 Subnet::DataColumn(subnet_id) => {
                     return self.is_assigned_to_custody_subnet(subnet_id);
                 }
+                // Execution proof subnets are not tracked in metadata.
+                Subnet::ExecutionProof(_) => return false,
             }
         }
         false

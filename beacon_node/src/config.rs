@@ -200,6 +200,11 @@ pub fn get_config<E: EthSpec>(
         client_config.chain.generate_execution_proofs = true;
     }
 
+    // Subscribe to execution proof subnets when stateless validation or proof generation is enabled
+    if client_config.chain.stateless_validation || client_config.chain.generate_execution_proofs {
+        client_config.network.subscribe_execution_proof_subnets = true;
+    }
+
     if let Some(min_proofs) = clap_utils::parse_optional(cli_args, "stateless-min-proofs-required")?
     {
         client_config.chain.stateless_min_proofs_required = min_proofs;

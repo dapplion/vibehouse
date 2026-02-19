@@ -146,6 +146,27 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 5: execution proof subnet discovery
+- **Added `Subnet::ExecutionProof(ExecutionProofSubnetId)` variant** to the `Subnet` enum, enabling execution proof subnets to participate in the discovery and peer management systems.
+- **Subnet predicate**: Execution proof subnets accept all peers (no ENR filtering). Any peer at the correct fork can serve proofs.
+- **ENR**: No new ENR field added — execution proof subnet membership is implicit (like data column subnets being computed, proof subnets are opt-in via config). `update_enr_bitfield` returns `Ok(())` for proof subnets.
+- **Discovery metrics**: Added `"execution_proof"` label for subnet query metrics.
+- **Peer management**: `on_subnet_metadata` returns `false` for proof subnets (no metadata tracking). Long-lived subnet info ignores proof subnets.
+- **TopicConfig**: Added `subscribe_execution_proof_subnets: bool` field. When `true`, `core_topics_to_subscribe` adds `ExecutionProof` topics for all subnets (0..MAX_EXECUTION_PROOF_SUBNETS) at Gloas fork.
+- **Network config**: Added `subscribe_execution_proof_subnets: bool` (default `false`). Wired from CLI: set to `true` when `--stateless-validation` or `--generate-execution-proofs` is enabled.
+- **GossipTopic↔Subnet conversions**: `subnet_id()` returns `Subnet::ExecutionProof` for proof topics. `From<Subnet> for GossipKind` maps to `GossipKind::ExecutionProof`.
+- **Files changed**: 8 modified
+  - `beacon_node/lighthouse_network/src/types/subnet.rs`: ExecutionProof variant
+  - `beacon_node/lighthouse_network/src/types/topics.rs`: TopicConfig field, core_topics, all_topics, subnet_id, From impl
+  - `beacon_node/lighthouse_network/src/types/globals.rs`: as_topic_config wiring
+  - `beacon_node/lighthouse_network/src/discovery/subnet_predicate.rs`: ExecutionProof match arm
+  - `beacon_node/lighthouse_network/src/discovery/mod.rs`: update_enr_bitfield, metrics
+  - `beacon_node/lighthouse_network/src/peer_manager/peerdb/peer_info.rs`: on_subnet_metadata
+  - `beacon_node/lighthouse_network/src/peer_manager/mod.rs`: long-lived subnet info
+  - `beacon_node/lighthouse_network/src/config.rs`: subscribe_execution_proof_subnets field + default
+  - `beacon_node/src/config.rs`: CLI wiring
+- 92/92 lighthouse_network tests pass, 96/96 network tests pass, 311/311 types tests pass.
+
 ### 2026-02-19 — Task 4: execution proof gossip topics
 - **Added `GossipKind::ExecutionProof(ExecutionProofSubnetId)` variant** following the indexed topic pattern (like `DataColumnSidecar(DataColumnSubnetId)`).
 - **Topic string**: `execution_proof_{subnet_id}` — parsed via `strip_prefix(EXECUTION_PROOF_PREFIX)` in `subnet_topic_index()`.

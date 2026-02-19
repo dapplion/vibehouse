@@ -100,6 +100,9 @@ pub struct Config {
     /// Subscribe to all subnets for the duration of the runtime.
     pub subscribe_all_subnets: bool,
 
+    /// Subscribe to execution proof subnets (stateless validation or proof generation).
+    pub subscribe_execution_proof_subnets: bool,
+
     /// Import/aggregate all attestations received on subscribed subnets for the duration of the
     /// runtime.
     pub import_all_attestations: bool,
@@ -357,6 +360,7 @@ impl Default for Config {
             private: false,
             subscribe_all_data_column_subnets: false,
             subscribe_all_subnets: false,
+            subscribe_execution_proof_subnets: false,
             import_all_attestations: false,
             shutdown_after_sync: false,
             topics: Vec::new(),

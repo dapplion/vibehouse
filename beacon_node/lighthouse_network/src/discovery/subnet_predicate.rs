@@ -41,6 +41,9 @@ where
                     false
                 }
             }
+            // Execution proof subnets have no ENR advertisement — any peer at the right fork
+            // could be a proof provider. Accept all peers.
+            Subnet::ExecutionProof(_) => true,
         });
 
         if !predicate {

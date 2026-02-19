@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use strum::AsRefStr;
 use types::{
     ChainSpec, DataColumnSubnetId, EthSpec, ExecutionProofSubnetId, ForkName, SubnetId,
-    SyncSubnetId, Unsigned,
+    SyncSubnetId, Unsigned, execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS,
 };
 
 use crate::Subnet;
@@ -39,6 +39,8 @@ pub struct TopicConfig {
     pub subscribe_all_subnets: bool,
     pub subscribe_all_data_column_subnets: bool,
     pub sampling_subnets: HashSet<DataColumnSubnetId>,
+    /// Subscribe to execution proof subnets (for stateless validation or proof generation).
+    pub subscribe_execution_proof_subnets: bool,
 }
 
 /// Returns all the topics the node should subscribe at `fork_name`
@@ -105,6 +107,15 @@ pub fn core_topics_to_subscribe<E: EthSpec>(
         topics.push(GossipKind::ExecutionPayload);
         topics.push(GossipKind::PayloadAttestation);
         topics.push(GossipKind::ProposerPreferences);
+
+        // Execution proof subnets — only subscribed when stateless validation is enabled
+        if opts.subscribe_execution_proof_subnets {
+            for i in 0..MAX_EXECUTION_PROOF_SUBNETS {
+                if let Ok(subnet_id) = ExecutionProofSubnetId::new(i) {
+                    topics.push(GossipKind::ExecutionProof(subnet_id));
+                }
+            }
+        }
     }
 
     topics
@@ -148,6 +159,7 @@ pub fn all_topics_at_fork<E: EthSpec>(fork: ForkName, spec: &ChainSpec) -> Vec<G
         subscribe_all_subnets: true,
         subscribe_all_data_column_subnets: true,
         sampling_subnets,
+        subscribe_execution_proof_subnets: true,
     };
     core_topics_to_subscribe::<E>(fork, &opts, spec)
 }
@@ -318,6 +330,7 @@ impl GossipTopic {
             GossipKind::Attestation(subnet_id) => Some(Subnet::Attestation(*subnet_id)),
             GossipKind::SyncCommitteeMessage(subnet_id) => Some(Subnet::SyncCommittee(*subnet_id)),
             GossipKind::DataColumnSidecar(subnet_id) => Some(Subnet::DataColumn(*subnet_id)),
+            GossipKind::ExecutionProof(subnet_id) => Some(Subnet::ExecutionProof(*subnet_id)),
             _ => None,
         }
     }
@@ -387,6 +400,7 @@ impl From<Subnet> for GossipKind {
             Subnet::Attestation(s) => GossipKind::Attestation(s),
             Subnet::SyncCommittee(s) => GossipKind::SyncCommitteeMessage(s),
             Subnet::DataColumn(s) => GossipKind::DataColumnSidecar(s),
+            Subnet::ExecutionProof(s) => GossipKind::ExecutionProof(s),
         }
     }
 }
@@ -572,6 +586,7 @@ mod tests {
             subscribe_all_subnets: false,
             subscribe_all_data_column_subnets: false,
             sampling_subnets: sampling_subnets.clone(),
+            subscribe_execution_proof_subnets: false,
         }
     }
 
