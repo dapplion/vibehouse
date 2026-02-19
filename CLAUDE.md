@@ -12,11 +12,12 @@ Vibehouse is a fork of [Lighthouse](https://github.com/sigp/lighthouse) from v8.
 - All work must be tracked in committed markdown docs (see plan.md "documentation-driven development")
 - Commit messages: lowercase, human-readable, no conventional commits
 - Branch from `main` (not `unstable` - that's upstream's branch)
-- Upstream remote: `sigp/lighthouse`, origin: `dapplion/vibehouse`
+- Origin: `dapplion/vibehouse`
+- **⚠️ NO UPSTREAM SYNC. NEVER cherry-pick, merge, or pull ANY code from sigp/lighthouse after v8.0.1.** vibehouse is an independent project, not a tracking fork. We write ALL our own code. If upstream has a useful fix, understand the problem and implement our own solution from scratch. Do not reference upstream diffs. Do not run `git cherry-pick`. Do not add sigp/lighthouse as a remote.
 
 ---
 
-The rest of this file is inherited from upstream Lighthouse and still applies to code quality standards.
+The rest of this file is inherited from the Lighthouse v8.0.1 fork point and still applies to code quality standards.
 
 ## Quick Reference
 

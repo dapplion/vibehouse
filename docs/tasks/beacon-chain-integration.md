@@ -30,7 +30,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ### Remaining
 - [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
-- [ ] `ProposerPreferences` gossip topic (not needed for devnet-0 self-build)
+- [x] `ProposerPreferences` gossip topic (GossipKind, PubsubMessage, beacon processor, validation)
 - [x] Fork choice `payload_data_availability_vote` tracking (separate `blob_data_available` vote, `ptc_blob_data_available_weight` + `payload_data_available` on ProtoNode)
 - [x] Fork choice `is_payload_data_available` / `should_extend_payload` functions (full spec version with proposer boost conditions)
 - [x] Validator client payload attestation service (fetch PTC duties, produce attestations)

@@ -39,7 +39,7 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 | 7. REST API | DONE | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
 | 8. Spec Tests | DONE | 78/78 + 138/138 passing, check_all_files_accessed passes |
 
-**Phase 5 remaining:** external builder path, ProposerPreferences topic (neither needed for self-build devnet)
+**Phase 5 remaining:** external builder path (not needed for self-build devnet)
 
 **Phase 6:** DONE — all VC tasks complete (PTC duties, bid selection, duty discovery, external builder awareness)
 
