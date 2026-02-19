@@ -129,6 +129,13 @@ impl<E: EthSpec> EarlyAttesterCache<E> {
             item.committee_lengths
                 .get_committee_length::<E>(request_slot, request_index, spec)?;
 
+        // [Gloas/EIP-7732] For non-same-slot attestations (request_slot > block.slot),
+        // the payload is considered present since the cached block has been fully imported
+        // with its envelope. Same-slot attestations always have payload_present = false.
+        let payload_present = spec.fork_name_at_slot::<E>(request_slot).gloas_enabled()
+            && request_slot > item.block.slot()
+            && item.proto_block.payload_revealed;
+
         let attestation = Attestation::empty_for_signing(
             request_index,
             committee_len,
@@ -137,7 +144,7 @@ impl<E: EthSpec> EarlyAttesterCache<E> {
             item.source,
             item.target,
             spec,
-            false, // Early attester cache is same-slot; data.index = 0
+            payload_present,
         )
         .map_err(Error::AttestationError)?;
 

@@ -204,7 +204,26 @@ async fn produces_attestations() {
                 &AggregateSignature::infinity(),
                 "bad signature"
             );
-            assert_eq!(data.index, index, "bad index");
+            // At Gloas, data.index is repurposed for payload presence
+            // (0 = not present, 1 = present). For same-slot attestations, index = 0.
+            // For non-same-slot attestations (skip slots), index = 1 if payload was revealed.
+            if chain
+                .spec
+                .fork_name_at_slot::<MainnetEthSpec>(slot)
+                .gloas_enabled()
+            {
+                let expected_index = if slot > Slot::from(num_blocks_produced) {
+                    1
+                } else {
+                    0
+                };
+                assert_eq!(
+                    data.index, expected_index,
+                    "bad index (gloas payload_present)"
+                );
+            } else {
+                assert_eq!(data.index, index, "bad index");
+            }
             assert_eq!(data.slot, slot, "bad slot");
             assert_eq!(data.beacon_block_root, block_root, "bad block root");
             assert_eq!(
