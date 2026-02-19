@@ -180,6 +180,24 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
             })
     }
 
+    /// Return the set of cached execution proof subnet IDs for `block_root`. Returns None if
+    /// there is no block component for `block_root`.
+    pub fn cached_execution_proof_subnet_ids(
+        &self,
+        block_root: &Hash256,
+    ) -> Option<Vec<ExecutionProofSubnetId>> {
+        self.availability_cache
+            .peek_pending_components(block_root, |components| {
+                components.map(|components| {
+                    components
+                        .verified_execution_proofs
+                        .keys()
+                        .copied()
+                        .collect()
+                })
+            })
+    }
+
     /// Check if the exact data column is in the availability cache.
     pub fn is_data_column_cached(
         &self,

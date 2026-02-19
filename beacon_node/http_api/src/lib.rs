@@ -91,9 +91,9 @@ use tokio_stream::{
 use tracing::{debug, error, info, warn};
 use types::{
     Attestation, AttestationData, AttestationShufflingId, AttesterSlashing, BeaconStateError,
-    ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Epoch, EthSpec, ForkName, Hash256,
-    PayloadAttestationMessage, ProposerPreparationData, ProposerSlashing, RelativeEpoch,
-    SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
+    ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Epoch, EthSpec, ExecutionProof,
+    ForkName, Hash256, PayloadAttestationMessage, ProposerPreparationData, ProposerSlashing,
+    RelativeEpoch, SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
     SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
     SignedValidatorRegistrationData, SignedVoluntaryExit, SingleAttestation, Slot,
     SyncCommitteeMessage, SyncContributionData,
@@ -5044,6 +5044,112 @@ pub fn serve<T: BeaconChainTypes>(
             },
         );
 
+    // GET vibehouse/execution_proof_status/{block_id}
+    //
+    // Returns the execution proof status for a given block. Shows which proof subnets
+    // have been received and whether the block meets the proof threshold for availability.
+    let get_vibehouse_execution_proof_status = warp::path("vibehouse")
+        .and(warp::path("execution_proof_status"))
+        .and(block_id_or_err)
+        .and(warp::path::end())
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone())
+        .then(
+            |block_id: BlockId,
+             task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>| {
+                task_spawner.blocking_json_task(Priority::P1, move || {
+                    let (block_root, execution_optimistic, finalized) = block_id.root(&chain)?;
+
+                    let received_subnet_ids = chain
+                        .data_availability_checker
+                        .cached_execution_proof_subnet_ids(&block_root)
+                        .unwrap_or_default();
+
+                    let required_proofs = if chain.config.stateless_validation {
+                        chain.config.stateless_min_proofs_required as u64
+                    } else {
+                        0
+                    };
+
+                    let is_fully_proven = if required_proofs == 0 {
+                        true
+                    } else {
+                        received_subnet_ids.len() as u64 >= required_proofs
+                    };
+
+                    let status = api_types::ExecutionProofStatus {
+                        block_root,
+                        received_proof_subnet_ids: received_subnet_ids
+                            .into_iter()
+                            .map(|id| *id)
+                            .collect(),
+                        required_proofs,
+                        is_fully_proven,
+                    };
+
+                    Ok(api_types::GenericResponse::from(status)
+                        .add_execution_optimistic_finalized(execution_optimistic, finalized))
+                })
+            },
+        );
+
+    // POST vibehouse/execution_proofs
+    //
+    // Accepts an execution proof and imports it into the data availability checker.
+    // Useful for testing stateless validation without a gossip network.
+    let post_vibehouse_execution_proofs = warp::path("vibehouse")
+        .and(warp::path("execution_proofs"))
+        .and(warp::path::end())
+        .and(warp_utils::json::json())
+        .and(task_spawner_filter.clone())
+        .and(chain_filter.clone())
+        .then(
+            |proof: ExecutionProof,
+             task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>| {
+                task_spawner.spawn_async_with_rejection(Priority::P1, async move {
+                    let subnet_id = proof.subnet_id;
+                    let proof = Arc::new(proof);
+
+                    let verified = chain
+                        .verify_execution_proof_for_gossip(proof, subnet_id)
+                        .map_err(|e| {
+                            warp_utils::reject::custom_bad_request(format!(
+                                "proof verification failed: {e:?}"
+                            ))
+                        })?;
+
+                    let block_root = verified.block_root();
+                    let slot = chain
+                        .canonical_head
+                        .fork_choice_read_lock()
+                        .get_block(&block_root)
+                        .map(|b| b.slot)
+                        .ok_or_else(|| {
+                            warp_utils::reject::custom_bad_request(
+                                "block root not found in fork choice".to_string(),
+                            )
+                        })?;
+
+                    chain
+                        .check_gossip_execution_proof_availability_and_import(
+                            slot, block_root, verified,
+                        )
+                        .await
+                        .map_err(|e| {
+                            warp_utils::reject::custom_bad_request(format!(
+                                "proof import failed: {e:?}"
+                            ))
+                        })?;
+
+                    Ok::<_, warp::reject::Rejection>(
+                        warp::reply::json(&api_types::GenericResponse::from(())).into_response(),
+                    )
+                })
+            },
+        );
+
     let get_events = eth_v1
         .and(warp::path("events"))
         .and(warp::path::end())
@@ -5289,6 +5395,7 @@ pub fn serve<T: BeaconChainTypes>(
                 .uor(get_beacon_light_client_updates)
                 .uor(get_lighthouse_block_packing_efficiency)
                 .uor(get_lighthouse_merge_readiness)
+                .uor(get_vibehouse_execution_proof_status)
                 .uor(get_events)
                 .uor(get_expected_withdrawals)
                 .uor(lighthouse_log_events.boxed())
@@ -5343,6 +5450,7 @@ pub fn serve<T: BeaconChainTypes>(
                     .uor(post_lighthouse_add_peer)
                     .uor(post_lighthouse_remove_peer)
                     .uor(post_lighthouse_custody_backfill)
+                    .uor(post_vibehouse_execution_proofs)
                     .recover(warp_utils::reject::handle_rejection),
             ),
         )

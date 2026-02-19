@@ -1113,6 +1113,16 @@ pub struct SseExecutionProof {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct ExecutionProofStatus {
+    pub block_root: Hash256,
+    #[serde(with = "serde_utils::quoted_u64_vec")]
+    pub received_proof_subnet_ids: Vec<u64>,
+    #[serde(with = "serde_utils::quoted_u64")]
+    pub required_proofs: u64,
+    pub is_fully_proven: bool,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct SseFinalizedCheckpoint {
     pub block: Hash256,
     pub state: Hash256,
