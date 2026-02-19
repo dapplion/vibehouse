@@ -30,6 +30,13 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 21)
+- Fetched upstream: no new commits since run 16
+- No new consensus-specs changes requiring implementation (all open PRs still unmerged)
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4843, #4926, #4931 — all still open/unmerged
+- **Devnet verification**: 4-node devnet (vibehouse CL + geth EL) passed after run 20 envelope-loading fix. Gloas fork at epoch 1, reached slot 80, epoch 10, finalized_epoch=8, justified_epoch=9. No stalls, no skip slots. Confirms run 20 fix doesn't break anything.
+- CI: check+clippy+fmt ✓, ef-tests (minimal, fake_crypto) ✓, unit-tests and fork-specific-tests in progress
+
 ### 2026-02-19 (run 20)
 - Fetched upstream: no new commits since run 16
 - No new consensus-specs changes requiring implementation (all open PRs still unmerged)
