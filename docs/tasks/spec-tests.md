@@ -6,8 +6,8 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: IN PROGRESS
 
 ### Current results
-- **78/78 ef_tests pass (real crypto, 0 skipped)** (as of 2026-02-18 run 8)
-- **138/138 fake_crypto pass (0 skipped)** (Fulu + Gloas DataColumnSidecar variants both pass)
+- **78/78 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets (as of 2026-02-19 run 19)
+- **138/138 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass)
 - **check_all_files_accessed passes** — 209,677 files accessed, 122,748 intentionally excluded
 - All gloas fork_choice on_block tests pass (was 77/78 — fixed 2026-02-18)
 - All gloas fork_choice_reorg tests pass (4 previously failing now pass)
@@ -28,6 +28,12 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### 2026-02-19 — full-preset EF test verification (mainnet + minimal)
+- Ran both mainnet and minimal preset tests (previously only running minimal in CI)
+- **78/78 real crypto pass** (mainnet + minimal, 0 skipped)
+- **138/138 fake_crypto pass** (mainnet + minimal, 0 skipped)
+- Mainnet preset uses full-size states (512 validators, larger committees) — confirms no issues with field sizes or list limits
 
 ### 2026-02-18 — fix fork_choice_on_block for Gloas blocks (77/78 → 78/78)
 - **Root cause**: Gloas fork choice tests process blocks without envelopes. When the state cache evicts a state and block replay reconstructs it, `per_block_processing` fails `bid.parent_block_hash != state.latest_block_hash` because the stored post-block state has `latest_block_hash` from before envelope processing.
