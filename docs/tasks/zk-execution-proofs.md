@@ -146,6 +146,19 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 17: HTTP API endpoints for execution proof status (Phase 6 complete)
+- **Added `ExecutionProofStatus` response type** to `common/eth2/src/types.rs` — contains `block_root` (Hash256), `received_proof_subnet_ids` (quoted_u64_vec), `required_proofs` (quoted_u64), and `is_fully_proven` (bool). Provides a complete snapshot of execution proof availability for a given block.
+- **Added `cached_execution_proof_subnet_ids()` method** to `DataAvailabilityChecker` — follows the `cached_data_column_indexes()` pattern, using `peek_pending_components()` to read-only access the `verified_execution_proofs` HashMap and return subnet IDs.
+- **Added GET `/vibehouse/execution_proof_status/{block_id}`** — accepts any block identifier (head, genesis, finalized, slot, or root). Resolves block_root via `BlockId::root()`, queries the DA checker for cached proof subnet IDs, computes `required_proofs` from `ChainConfig::stateless_min_proofs_required` (0 if not stateless), and returns `is_fully_proven` status. Response includes `execution_optimistic` and `finalized` metadata following the standard beacon API pattern.
+- **Added POST `/vibehouse/execution_proofs`** — accepts an `ExecutionProof` JSON body. Verifies the proof via `verify_execution_proof_for_gossip()` (subnet ID bounds, version, structural validity, block root known in fork choice, finalization check, block hash match). On success, looks up slot from fork choice and imports via `check_gossip_execution_proof_availability_and_import()`. This endpoint enables testing stateless validation without a gossip network.
+- **Design decisions**: Endpoints are under the `/vibehouse/` path (not `/eth/` or `/lighthouse/`) since they are vibehouse-specific and non-standard. The GET endpoint reports `required_proofs: 0` and `is_fully_proven: true` for non-stateless nodes, since they don't gate on proofs. The POST endpoint reuses the full gossip verification pipeline to maintain consistency with the gossip path. No metrics added in this task — proof metrics (count per block, latency, proven vs optimistic head) are deferred to a follow-up if needed.
+- **Phase 6 (Events, API, and Observability) is now complete**: Tasks 16-17 done. SSE events emit on proof receipt, and HTTP API provides both query and submission endpoints.
+- **Files changed**: 3 modified
+  - `common/eth2/src/types.rs`: ExecutionProofStatus struct (~+10 lines)
+  - `beacon_node/beacon_chain/src/data_availability_checker.rs`: cached_execution_proof_subnet_ids method (~+17 lines)
+  - `beacon_node/http_api/src/lib.rs`: two endpoints + route wiring + import (~+112 lines)
+- 181/181 http_api tests pass (Fulu fork), 309/309 beacon_chain tests pass (Gloas fork), 311/311 types tests pass, clippy clean, cargo fmt clean, full release binary builds, make lint-full passes.
+
 ### 2026-02-19 — Task 16: SSE events for execution proof status (Phase 6 started)
 - **Added `SseExecutionProof` struct** to `common/eth2/src/types.rs` — contains `block_root`, `block_hash`, `subnet_id` (quoted u64), and `version` (quoted u64). Follows the same lightweight SSE pattern as `SseExecutionBid` and `SseExecutionPayload`.
 - **Added `EventKind::ExecutionProofReceived` variant** to the SSE event enum — topic name `execution_proof_received`. Includes full `from_sse_bytes` deserialization support for client-side SSE consumers.
