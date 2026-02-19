@@ -702,13 +702,22 @@ fn process_deposit_request_gloas<E: EthSpec>(
         .map(|s| s.builders.iter().any(|b| b.pubkey == request.pubkey))
         .unwrap_or(false);
 
-    // Check if pubkey belongs to an existing validator
+    // Check if pubkey belongs to an existing validator (finalized)
     let is_validator = state.pubkey_cache().get(&request.pubkey).is_some();
 
     let is_builder_prefix = is_builder_withdrawal_credential(request.withdrawal_credentials);
 
-    // Route to builder if: existing builder OR (builder prefix AND not existing validator)
-    if is_builder || (is_builder_prefix && !is_validator) {
+    // Route to builder if: existing builder OR (builder prefix AND not existing/pending validator)
+    // Spec: process_deposit_request — check pending_deposits for a validly signed deposit
+    // with this pubkey to avoid routing a pending validator's deposit to a builder.
+    //
+    // Note: is_pending_validator iterates all pending_deposits and re-verifies signatures.
+    // The spec suggests caching these results for performance.
+    if is_builder
+        || (is_builder_prefix
+            && !is_validator
+            && !is_pending_validator(state, &request.pubkey, spec))
+    {
         apply_deposit_for_builder(state, request, slot, spec)?;
     } else {
         // Add to pending validator deposits
@@ -727,6 +736,37 @@ fn process_deposit_request_gloas<E: EthSpec>(
 /// [New in Gloas:EIP7732] Check if withdrawal credentials have builder prefix (0x03).
 fn is_builder_withdrawal_credential(withdrawal_credentials: Hash256) -> bool {
     withdrawal_credentials.as_slice().first().copied() == Some(0x03)
+}
+
+/// [New in Gloas:EIP7732] Check if a pending deposit with a valid signature exists for this pubkey.
+///
+/// Iterates `state.pending_deposits` looking for a deposit matching the pubkey with a valid
+/// BLS signature. Returns true as soon as one is found.
+///
+/// Spec note: implementations SHOULD cache verification results to avoid repeated work.
+fn is_pending_validator<E: EthSpec>(
+    state: &BeaconState<E>,
+    pubkey: &PublicKeyBytes,
+    spec: &ChainSpec,
+) -> bool {
+    let Ok(pending_deposits) = state.pending_deposits() else {
+        return false;
+    };
+    for pending_deposit in pending_deposits.iter() {
+        if pending_deposit.pubkey != *pubkey {
+            continue;
+        }
+        let deposit_data = DepositData {
+            pubkey: pending_deposit.pubkey,
+            withdrawal_credentials: pending_deposit.withdrawal_credentials,
+            amount: pending_deposit.amount,
+            signature: pending_deposit.signature.clone(),
+        };
+        if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
+            return true;
+        }
+    }
+    false
 }
 
 /// [New in Gloas:EIP7732] Apply a deposit for a builder (new or top-up).

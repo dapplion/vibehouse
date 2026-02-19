@@ -51,6 +51,14 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 
 ## Progress log
 
+### 2026-02-19 — re-add is_pending_validator to process_deposit_request (spec PR #4916)
+- **Context**: consensus-specs PR #4916 (merged Feb 12) refactored `process_deposit_request` to explicitly check `is_pending_validator` — if a pubkey has a pending validator deposit with a valid signature, don't route the deposit to a builder even if the withdrawal credentials have the builder prefix.
+- **Previous state**: The `is_pending_validator` check was removed on 2026-02-17 as a "spec fix" — but the spec *did* include it at that time (PR #4916 was already merged). The removal was incorrect.
+- **Fix**: Re-implemented `is_pending_validator` function — iterates `state.pending_deposits`, constructs `DepositData` for each matching pubkey, validates BLS signature. Returns true if any valid pending deposit exists.
+- **Spec note**: The spec notes that implementations SHOULD cache signature verification results to avoid repeated work. Current implementation does naive re-verification on each call.
+- Updated `process_deposit_request_gloas` condition: `is_builder || (is_builder_prefix && !is_validator && !is_pending_validator(...))`
+- 138/138 fake_crypto pass, 17/17 operations pass (real crypto), 38/38 state_processing pass
+
 ### 2026-02-17 — fork choice: separate blob data availability tracking + full should_extend_payload
 - **Spec gap closed**: Previously, `blob_data_available` piggy-backed on `payload_revealed` — both PTC vote dimensions mapped to a single counter. The spec tracks `payload_timeliness_vote` and `payload_data_availability_vote` as separate per-block bitvectors.
 - **New fields on ProtoNode**: `ptc_blob_data_available_weight` (counter for blob_data_available=true votes) and `payload_data_available` (boolean, set when blob data availability quorum reached)
@@ -72,8 +80,8 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - 136/136 EF tests pass, check_all_files_accessed passes (209,677 files)
 
 ### 2026-02-17 — fix spec compliance: deposit routing, bid payment validation
-- **Bug 1 (SPEC)**: `process_deposit_request_gloas` had an extra `is_pending_validator` check not in the spec. The spec routes to builder if `is_builder || (is_builder_prefix && !is_validator)`. The `is_pending` check would incorrectly prevent builder registration for pubkeys with pending validator deposits.
-- **Fix 1**: Removed `is_pending` check and deleted the unused `is_pending_validator` function.
+- **Bug 1 (SPEC — INCORRECT FIX, reverted 2026-02-19)**: Removed `is_pending_validator` check from `process_deposit_request_gloas`, believing it wasn't in the spec. In fact, consensus-specs PR #4916 (merged Feb 12) had already added this check. The removal was incorrect and was re-added on 2026-02-19.
+- ~~**Fix 1**: Removed `is_pending` check and deleted the unused `is_pending_validator` function.~~
 - **Bug 2 (SPEC)**: Execution bid gossip validation had inverted `execution_payment` check. Spec says `[REJECT] bid.execution_payment is zero` (reject zero-payment bids from external builders), but code rejected non-zero payment. Would block all external builder bids in multi-client devnets.
 - **Fix 2**: Changed condition from `!= 0` to `== 0`, renamed error variant to `ZeroExecutionPayment`.
 - **Cleanup**: Removed two stale TODOs — builder deposit handling already implemented in `process_deposit_requests`, bid signature verification already in `verify_execution_bid_for_gossip`.
