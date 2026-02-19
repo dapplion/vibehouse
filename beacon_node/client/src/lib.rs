@@ -2,6 +2,7 @@ mod compute_light_client_updates;
 pub mod config;
 mod metrics;
 mod notifier;
+mod proof_broadcaster;
 
 pub mod builder;
 

@@ -946,15 +946,15 @@ where
             0
         };
 
-        let execution_proof_generator = if self.chain_config.generate_execution_proofs {
-            let (generator, _proof_rx) =
-                crate::execution_proof_generation::ExecutionProofGenerator::new();
-            info!("Execution proof generation enabled");
-            // TODO(vibehouse#28): Wire _proof_rx into a broadcaster service (Task 13)
-            Some(generator)
-        } else {
-            None
-        };
+        let (execution_proof_generator, proof_receiver) =
+            if self.chain_config.generate_execution_proofs {
+                let (generator, proof_rx) =
+                    crate::execution_proof_generation::ExecutionProofGenerator::new();
+                info!("Execution proof generation enabled");
+                (Some(generator), Some(proof_rx))
+            } else {
+                (None, None)
+            };
 
         // Calculate the weak subjectivity point in which to backfill blocks to.
         let genesis_backfill_slot = if self.chain_config.genesis_backfill {
@@ -1101,6 +1101,7 @@ where
             payload_attestation_pool: Mutex::new(HashMap::new()),
             pending_gossip_envelopes: Mutex::new(HashMap::new()),
             execution_proof_generator,
+            proof_receiver: Mutex::new(proof_receiver),
         };
 
         let head = beacon_chain.head_snapshot();

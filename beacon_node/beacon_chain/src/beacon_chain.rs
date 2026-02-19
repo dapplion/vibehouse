@@ -513,6 +513,9 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// is enabled. Generates proofs after `engine_newPayload` succeeds for Gloas payloads.
     pub execution_proof_generator:
         Option<crate::execution_proof_generation::ExecutionProofGenerator>,
+    /// Receiver for generated execution proofs. Taken once by the proof broadcaster service
+    /// at startup. `None` when proof generation is disabled or the receiver has been taken.
+    pub proof_receiver: Mutex<Option<crate::execution_proof_generation::ProofReceiver>>,
 }
 
 pub enum BeaconBlockResponseWrapper<E: EthSpec> {

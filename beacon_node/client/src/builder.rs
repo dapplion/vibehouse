@@ -798,6 +798,17 @@ where
                 beacon_chain.task_executor.clone(),
                 beacon_chain.clone(),
             );
+
+            // Start the execution proof broadcaster if proof generation is enabled.
+            if let Some(proof_rx) = beacon_chain.proof_receiver.lock().take() {
+                if let Some(network_senders) = &self.network_senders {
+                    let network_tx = network_senders.network_send();
+                    runtime_context.executor.spawn(
+                        crate::proof_broadcaster::run_proof_broadcaster::<E>(proof_rx, network_tx),
+                        "proof_broadcaster",
+                    );
+                }
+            }
         }
 
         Ok(Client {
