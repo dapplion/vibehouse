@@ -1638,7 +1638,7 @@ mod pending_components_tests {
 
         // With 0 proofs received, threshold of 1 is NOT met
         assert!(
-            cache.verified_execution_proofs.len() < 1,
+            cache.verified_execution_proofs.is_empty(),
             "0 proofs does not meet threshold of 1"
         );
 
@@ -1655,14 +1655,14 @@ mod pending_components_tests {
 
         // With 1 proof received, threshold of 1 is met
         assert!(
-            cache.verified_execution_proofs.len() >= 1,
+            !cache.verified_execution_proofs.is_empty(),
             "1 proof meets threshold of 1"
         );
 
         // Verify the exact check that make_available uses (line 315 of this file)
         let min_required = 1;
         assert!(
-            !(cache.verified_execution_proofs.len() < min_required),
+            cache.verified_execution_proofs.len() >= min_required,
             "proof gate should pass: len={} >= required={}",
             cache.verified_execution_proofs.len(),
             min_required
