@@ -7,7 +7,7 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 
 ### Current results
 - **78/78 ef_tests pass (real crypto, 0 skipped)** (as of 2026-02-18 run 8)
-- **136/136 fake_crypto pass (0 skipped)** (Fulu + Gloas DataColumnSidecar variants both pass)
+- **138/138 fake_crypto pass (0 skipped)** (Fulu + Gloas DataColumnSidecar variants both pass)
 - **check_all_files_accessed passes** — 209,677 files accessed, 122,748 intentionally excluded
 - All gloas fork_choice on_block tests pass (was 77/78 — fixed 2026-02-18)
 - All gloas fork_choice_reorg tests pass (4 previously failing now pass)
@@ -36,6 +36,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - Also applied `cargo fmt` to all gloas code (50 files, whitespace/line-wrapping only).
 - 78/78 EF tests pass, 136/136 fake_crypto pass
 - Commits: `f9e2d376b`, `d6e4876be`
+
+### 2026-02-19 — add ProposerPreferences SSZ types (136→138 fake_crypto tests)
+- Implemented `ProposerPreferences` and `SignedProposerPreferences` container types per consensus-specs p2p-interface.md
+- Added `Domain::ProposerPreferences` variant (domain value 13) — field already existed in ChainSpec, just needed the enum variant and wiring
+- Registered type_name macros, added SSZ static test handlers (gloas_and_later)
+- Removed ProposerPreferences/SignedProposerPreferences from check_all_files_accessed exclusions
+- 138/138 fake_crypto pass (minimal), 2 new SSZ static tests for these types
+- Commit: `f27572984`
 
 ### 2026-02-17 — fix check_all_files_accessed (was failing with 66,302 missed files)
 - **Root cause**: v1.7.0-alpha.2 test vectors added `manifest.yaml` to every test case (~62K files) + new SSZ generic/static types

@@ -6,6 +6,8 @@
 
 vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/releases/tag/v8.0.1), the last stable release covering the Fulu mainnet fork. Everything before v8.0.1 is inherited. Everything after is vibes.
 
+**⚠️ NO UPSTREAM SYNC.** vibehouse is an independent project. NEVER cherry-pick, merge, or pull any code from sigp/lighthouse after v8.0.1. If upstream has a useful fix, understand the problem and write our own solution. We write our own code.
+
 ---
 
 ## priorities
@@ -35,7 +37,7 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 | 5. Beacon Chain Integration | DONE (self-build) | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
 | 6. Validator Client | DONE | [docs/tasks/validator-client.md](docs/tasks/validator-client.md) |
 | 7. REST API | DONE | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
-| 8. Spec Tests | DONE | 78/78 + 136/136 passing, check_all_files_accessed passes |
+| 8. Spec Tests | DONE | 78/78 + 138/138 passing, check_all_files_accessed passes |
 
 **Phase 5 remaining:** external builder path, ProposerPreferences topic (neither needed for self-build devnet)
 
@@ -50,13 +52,9 @@ Reference:
 
 ### 3. Spec tests
 
-[docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 + 136/136 passing, check_all_files_accessed passes
+[docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 + 138/138 passing, check_all_files_accessed passes
 
-### 4. Upstream sync
-
-[docs/tasks/upstream-sync.md](docs/tasks/upstream-sync.md) — monitoring upstream PRs, cherry-picking non-gloas fixes
-
-### 5. ZK execution validity proofs for builder payloads
+### 4. ZK execution validity proofs for builder payloads
 [GitHub #28](https://github.com/dapplion/vibehouse/issues/28) — Optional ZK proofs alongside execution payload envelopes. Builders attach a proof of execution correctness; CL can skip EL validation for proved payloads. Can be run by a subset of nodes. **Start after Gloas is solid.**
 
 ### 6. ROCQ formal proofs for consensus-critical invariants
@@ -74,14 +72,13 @@ Reference:
 
 When deciding what to work on next:
 
-1. **Security fixes from upstream** — drop everything
+1. **Security fixes** — drop everything (write our own fix, never cherry-pick from upstream)
 2. **Broken CI / failing tests** — fix before anything else
 3. **Spec test failures** — consensus correctness is non-negotiable
 4. **New spec changes in gloas** — track the spec closely
 5. **Community-reported bugs** — real users, real issues
 6. **Community feature requests with >3 upvotes** — the people have spoken
 7. **Coverage improvements** — always be testing
-8. **Upstream cherry-picks (non-security)** — stay current
 9. **Code cleanup** — only when it unblocks other work
 
 ---
