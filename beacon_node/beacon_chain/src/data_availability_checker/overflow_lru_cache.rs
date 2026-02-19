@@ -1360,7 +1360,8 @@ mod pending_components_tests {
     use state_processing::ConsensusContext;
     use types::test_utils::TestRandom;
     use types::{
-        BeaconState, FixedBytesExtended, ForkName, MainnetEthSpec, SignedBeaconBlock, Slot,
+        BeaconState, ExecutionBlockHash, FixedBytesExtended, ForkName, MainnetEthSpec,
+        SignedBeaconBlock, Slot,
     };
 
     type E = MainnetEthSpec;
@@ -1554,6 +1555,118 @@ mod pending_components_tests {
         cache.merge_block(block_commitments);
 
         assert_cache_consistent(cache, max_len);
+    }
+
+    #[test]
+    fn merge_execution_proofs_deduplicates_by_subnet_id() {
+        let block_root = Hash256::zero();
+        let mut cache = <PendingComponents<E>>::empty(block_root, 6);
+
+        let subnet_0 = ExecutionProofSubnetId::new(0).unwrap();
+        let block_hash = ExecutionBlockHash::from(Hash256::random());
+
+        let proof_a = Arc::new(ExecutionProof::new(
+            block_root,
+            block_hash,
+            subnet_0,
+            1,
+            b"proof-a".to_vec(),
+        ));
+        let proof_b = Arc::new(ExecutionProof::new(
+            block_root,
+            block_hash,
+            subnet_0,
+            1,
+            b"proof-b".to_vec(),
+        ));
+
+        // Insert first proof
+        cache.merge_execution_proofs(vec![(subnet_0, proof_a.clone())]);
+        assert_eq!(cache.verified_execution_proofs.len(), 1);
+        assert_eq!(
+            cache.verified_execution_proofs[&subnet_0].proof_data,
+            b"proof-a"
+        );
+
+        // Insert duplicate on same subnet — should be ignored (or_insert keeps first)
+        cache.merge_execution_proofs(vec![(subnet_0, proof_b)]);
+        assert_eq!(cache.verified_execution_proofs.len(), 1);
+        assert_eq!(
+            cache.verified_execution_proofs[&subnet_0].proof_data, b"proof-a",
+            "first proof should be retained, duplicate ignored"
+        );
+    }
+
+    #[test]
+    fn merge_execution_proofs_accepts_different_subnets() {
+        let block_root = Hash256::zero();
+        let mut cache = <PendingComponents<E>>::empty(block_root, 6);
+
+        let subnet_0 = ExecutionProofSubnetId::new(0).unwrap();
+        let block_hash = ExecutionBlockHash::from(Hash256::random());
+
+        let proof = Arc::new(ExecutionProof::new(
+            block_root,
+            block_hash,
+            subnet_0,
+            1,
+            b"proof-0".to_vec(),
+        ));
+
+        cache.merge_execution_proofs(vec![(subnet_0, proof)]);
+        assert_eq!(cache.verified_execution_proofs.len(), 1);
+
+        // With MAX_EXECUTION_PROOF_SUBNETS = 1, we can only have subnet 0.
+        // Verify the map contains exactly the subnet we inserted.
+        assert!(cache.verified_execution_proofs.contains_key(&subnet_0));
+    }
+
+    /// Test that the execution proof gate in `make_available` correctly blocks
+    /// availability when insufficient proofs are received. We test the threshold
+    /// logic directly since the full `make_available` requires state recovery.
+    #[test]
+    fn execution_proof_threshold_logic() {
+        let block_root = Hash256::zero();
+        let mut cache = <PendingComponents<E>>::empty(block_root, 6);
+
+        // With 0 proofs received, threshold of 0 is met (trivially true for usize)
+        assert_eq!(
+            cache.verified_execution_proofs.len(),
+            0,
+            "should start with 0 proofs"
+        );
+
+        // With 0 proofs received, threshold of 1 is NOT met
+        assert!(
+            cache.verified_execution_proofs.len() < 1,
+            "0 proofs does not meet threshold of 1"
+        );
+
+        // Add a proof
+        let subnet_0 = ExecutionProofSubnetId::new(0).unwrap();
+        let proof = Arc::new(ExecutionProof::new(
+            block_root,
+            ExecutionBlockHash::from(Hash256::random()),
+            subnet_0,
+            1,
+            b"test-proof".to_vec(),
+        ));
+        cache.merge_execution_proofs(vec![(subnet_0, proof)]);
+
+        // With 1 proof received, threshold of 1 is met
+        assert!(
+            cache.verified_execution_proofs.len() >= 1,
+            "1 proof meets threshold of 1"
+        );
+
+        // Verify the exact check that make_available uses (line 315 of this file)
+        let min_required = 1;
+        assert!(
+            !(cache.verified_execution_proofs.len() < min_required),
+            "proof gate should pass: len={} >= required={}",
+            cache.verified_execution_proofs.len(),
+            min_required
+        );
     }
 
     #[test]

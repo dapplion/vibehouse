@@ -1222,6 +1222,13 @@ mod test {
     }
 
     fn new_da_checker(spec: Arc<ChainSpec>) -> DataAvailabilityChecker<T> {
+        new_da_checker_with_proofs(spec, 0)
+    }
+
+    fn new_da_checker_with_proofs(
+        spec: Arc<ChainSpec>,
+        min_execution_proofs_required: usize,
+    ) -> DataAvailabilityChecker<T> {
         let slot_clock = TestingSlotClock::new(
             Slot::new(0),
             Duration::from_secs(0),
@@ -1243,8 +1250,38 @@ mod test {
             store,
             custody_context,
             spec,
-            0, // no execution proofs required in tests
+            min_execution_proofs_required,
         )
         .expect("should initialise data availability checker")
+    }
+
+    #[test]
+    fn cached_execution_proof_subnet_ids_returns_none_for_unknown_block() {
+        let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
+        let da_checker = new_da_checker(spec);
+
+        let unknown_root = Hash256::random();
+        assert!(
+            da_checker
+                .cached_execution_proof_subnet_ids(&unknown_root)
+                .is_none(),
+            "should return None for unknown block root"
+        );
+    }
+
+    #[test]
+    fn put_execution_proofs_empty_returns_missing_components() {
+        let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));
+        let da_checker = new_da_checker_with_proofs(spec, 1);
+
+        let block_root = Hash256::random();
+        let result = da_checker
+            .put_gossip_verified_execution_proofs(block_root, vec![])
+            .expect("should not error");
+
+        assert!(
+            matches!(result, Availability::MissingComponents(_)),
+            "empty proofs should return MissingComponents"
+        );
     }
 }

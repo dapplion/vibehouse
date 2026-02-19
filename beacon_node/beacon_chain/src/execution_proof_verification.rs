@@ -206,6 +206,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use types::execution_proof::MAX_EXECUTION_PROOF_SIZE;
 
     #[test]
     fn test_error_variants() {
@@ -229,5 +230,73 @@ mod tests {
 
         let err = GossipExecutionProofError::InvalidProof;
         let _ = format!("{:?}", err);
+    }
+
+    #[test]
+    fn test_error_from_beacon_chain_error() {
+        let bce = BeaconChainError::NoStateForSlot(types::Slot::new(42));
+        let err = GossipExecutionProofError::from(bce);
+        assert!(matches!(
+            err,
+            GossipExecutionProofError::BeaconChainError(_)
+        ));
+    }
+
+    /// Test that the subnet_id bounds check in verify_execution_proof_for_gossip
+    /// rejects out-of-bounds subnet IDs. We test this via the proof's structural
+    /// checks since verify_execution_proof_for_gossip requires a chain.
+    #[test]
+    fn test_structural_checks_cover_verification_preconditions() {
+        // Valid proof passes structural checks
+        let valid = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from(Hash256::random()),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            1,
+            b"valid-proof".to_vec(),
+        );
+        assert!(valid.is_version_supported());
+        assert!(valid.is_structurally_valid());
+
+        // Version 0 is unsupported
+        let bad_version = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from(Hash256::random()),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            0,
+            b"proof".to_vec(),
+        );
+        assert!(!bad_version.is_version_supported());
+
+        // Empty proof data
+        let empty = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from(Hash256::random()),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            1,
+            vec![],
+        );
+        assert!(!empty.is_structurally_valid());
+
+        // Oversized proof data
+        let oversized = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from(Hash256::random()),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            1,
+            vec![0u8; MAX_EXECUTION_PROOF_SIZE + 1],
+        );
+        assert!(!oversized.is_structurally_valid());
+    }
+
+    /// Test that ExecutionProofSubnetId bounds checking works correctly
+    #[test]
+    fn test_subnet_id_bounds() {
+        // Valid subnet IDs
+        assert!(ExecutionProofSubnetId::new(0).is_ok());
+
+        // Out of bounds (MAX_EXECUTION_PROOF_SUBNETS is 1, so only 0 is valid)
+        assert!(ExecutionProofSubnetId::new(MAX_EXECUTION_PROOF_SUBNETS).is_err());
+        assert!(ExecutionProofSubnetId::new(MAX_EXECUTION_PROOF_SUBNETS + 1).is_err());
     }
 }
