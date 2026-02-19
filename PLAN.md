@@ -54,11 +54,12 @@ Reference:
 
 [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 + 138/138 passing, check_all_files_accessed passes
 
-### 4. ZK execution validity proofs for builder payloads
-[GitHub #28](https://github.com/dapplion/vibehouse/issues/28) — Optional ZK proofs alongside execution payload envelopes. Builders attach a proof of execution correctness; CL can skip EL validation for proved payloads. Can be run by a subset of nodes. **Start after Gloas is solid.**
+### 4. ZK execution proofs (stateless validation) — NEXT UP
+[docs/tasks/zk-execution-proofs.md](docs/tasks/zk-execution-proofs.md) | [GitHub #28](https://github.com/dapplion/vibehouse/issues/28)
+ZK proofs for execution payloads enabling stateless CL nodes. ePBS gives builders minutes of proving headroom. 20 tasks across 7 phases. Based on kevaundray's prototype (sigp/lighthouse#7755) adapted for ePBS architecture. **Highest post-Gloas priority.**
 
-### 6. ROCQ formal proofs for consensus-critical invariants
-[GitHub #29](https://github.com/dapplion/vibehouse/issues/29) — Hand-model consensus-critical Rust in ROCQ, prove soundness/completeness properties, CI integration. Tiers: proto-array fork choice, PTC quorum/payment arithmetic, envelope state transition. Builds on Runtime Verification's Gasper Coq proofs. **Start after Gloas is stable and deployed.**
+### 5. ROCQ formal proofs for consensus-critical invariants — LOWEST PRIORITY
+[GitHub #29](https://github.com/dapplion/vibehouse/issues/29) — Dead last. Only after everything else is done.
 
 ### 7. Backlog
 
