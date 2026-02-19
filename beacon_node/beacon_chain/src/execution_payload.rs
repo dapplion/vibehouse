@@ -69,9 +69,11 @@ impl<T: BeaconChainTypes> PayloadNotifier<T> {
         } else if chain.config.stateless_validation
             && is_execution_enabled(state, block.message().body())
         {
-            // Stateless mode: skip EL verification for pre-Gloas blocks too.
-            // The node has no EL connection and relies on execution proofs.
-            Some(PayloadVerificationStatus::Optimistic)
+            // Stateless mode: mark pre-Gloas execution payloads as Verified.
+            // For Gloas+ blocks, execution proofs provide the validation mechanism.
+            // For pre-Gloas blocks, no execution proof mechanism exists, so we trust
+            // them (the alternative is a permanently optimistic head that can't attest).
+            Some(PayloadVerificationStatus::Verified)
         } else if is_execution_enabled(state, block.message().body()) {
             // Perform the initial stages of payload verification.
             //

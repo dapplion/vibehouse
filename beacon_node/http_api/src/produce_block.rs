@@ -53,6 +53,13 @@ pub async fn produce_block_v3<T: BeaconChainTypes>(
     slot: Slot,
     query: api_types::ValidatorBlocksQuery,
 ) -> Result<Response<Body>, warp::Rejection> {
+    // Stateless nodes have no EL connection and cannot produce execution payloads.
+    if chain.config.stateless_validation {
+        return Err(warp_utils::reject::custom_bad_request(
+            "stateless validation nodes cannot produce blocks".into(),
+        ));
+    }
+
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
         warp_utils::reject::custom_bad_request(format!(
             "randao reveal is not a valid BLS signature: {:?}",
@@ -139,6 +146,12 @@ pub async fn produce_blinded_block_v2<T: BeaconChainTypes>(
     slot: Slot,
     query: api_types::ValidatorBlocksQuery,
 ) -> Result<Response<Body>, warp::Rejection> {
+    if chain.config.stateless_validation {
+        return Err(warp_utils::reject::custom_bad_request(
+            "stateless validation nodes cannot produce blocks".into(),
+        ));
+    }
+
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
         warp_utils::reject::custom_bad_request(format!(
             "randao reveal is not a valid BLS signature: {:?}",
@@ -173,6 +186,12 @@ pub async fn produce_block_v2<T: BeaconChainTypes>(
     slot: Slot,
     query: api_types::ValidatorBlocksQuery,
 ) -> Result<Response<Body>, warp::Rejection> {
+    if chain.config.stateless_validation {
+        return Err(warp_utils::reject::custom_bad_request(
+            "stateless validation nodes cannot produce blocks".into(),
+        ));
+    }
+
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
         warp_utils::reject::custom_bad_request(format!(
             "randao reveal is not a valid BLS signature: {:?}",

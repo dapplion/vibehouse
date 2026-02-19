@@ -4499,6 +4499,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Checks if the provided execution proof can make any cached blocks available, and imports
     /// immediately if so, otherwise caches the proof in the data availability checker.
+    ///
+    /// For stateless nodes, sufficient execution proofs replace EL verification. When proofs
+    /// complete a block's availability requirements, we mark the block's execution as valid
+    /// in fork choice so the head can advance past it.
     pub async fn check_gossip_execution_proof_availability_and_import(
         self: &Arc<Self>,
         slot: Slot,
@@ -4512,8 +4516,28 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .data_availability_checker
             .put_gossip_verified_execution_proofs(block_root, vec![(subnet_id, inner)])?;
 
-        self.process_availability(slot, availability, || Ok(()))
-            .await
+        let result = self
+            .process_availability(slot, availability, || Ok(()))
+            .await?;
+
+        // When a stateless node receives sufficient execution proofs, the proofs serve as
+        // the equivalent of EL validation. Mark the block's execution as valid in fork choice
+        // so the head can advance past this block.
+        if self.config.stateless_validation
+            && let AvailabilityProcessingStatus::Imported(imported_root) = &result
+            && let Err(e) = self
+                .canonical_head
+                .fork_choice_write_lock()
+                .on_valid_execution_payload(*imported_root)
+        {
+            debug!(
+                block_root = ?imported_root,
+                error = ?e,
+                "Failed to mark block as execution-valid after proof import"
+            );
+        }
+
+        Ok(result)
     }
 
     fn check_blob_header_signature_and_slashability<'a>(

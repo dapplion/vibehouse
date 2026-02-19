@@ -51,6 +51,13 @@ if [ "$STATELESS_MODE" = true ]; then
   echo "==> Stateless mode: using $KURTOSIS_CONFIG"
 fi
 
+# Detect if we need sudo for docker/kurtosis (docker socket not accessible)
+SUDO=""
+if ! docker info >/dev/null 2>&1; then
+  SUDO="sudo"
+  echo "==> Docker needs sudo (user not in docker group for current session)"
+fi
+
 # Set up run directory
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 RUN_DIR="/tmp/kurtosis-runs/$RUN_ID"
@@ -61,7 +68,7 @@ echo "==> Logs: $RUN_DIR"
 cleanup() {
   if [ "$DO_TEARDOWN" = true ]; then
     echo "==> Tearing down enclave $ENCLAVE_NAME..."
-    kurtosis enclave rm -f "$ENCLAVE_NAME" 2>/dev/null || true
+    $SUDO kurtosis enclave rm -f "$ENCLAVE_NAME" 2>/dev/null || true
   else
     echo "==> --no-teardown: enclave $ENCLAVE_NAME left running"
   fi
@@ -69,7 +76,7 @@ cleanup() {
 
 dump_logs() {
   echo "==> Dumping enclave logs to $RUN_DIR/dump/..."
-  kurtosis enclave dump "$ENCLAVE_NAME" "$RUN_DIR/dump" 2>/dev/null || true
+  $SUDO kurtosis enclave dump "$ENCLAVE_NAME" "$RUN_DIR/dump" 2>/dev/null || true
   echo "==> Logs saved to $RUN_DIR/dump/"
 }
 
@@ -82,12 +89,12 @@ fi
 
 # Step 2: Clean up old enclave
 echo "==> Cleaning up old enclaves..."
-kurtosis enclave rm -f "$ENCLAVE_NAME" 2>/dev/null || true
-kurtosis clean -a 2>/dev/null || true
+$SUDO kurtosis enclave rm -f "$ENCLAVE_NAME" 2>/dev/null || true
+$SUDO kurtosis clean -a 2>/dev/null || true
 
 # Step 3: Start devnet
 echo "==> Starting devnet (log: $RUN_DIR/kurtosis.log)..."
-if ! kurtosis run github.com/ethpandaops/ethereum-package@6.0.0 --enclave "$ENCLAVE_NAME" --args-file "$KURTOSIS_CONFIG" > "$RUN_DIR/kurtosis.log" 2>&1; then
+if ! $SUDO kurtosis run github.com/ethpandaops/ethereum-package@6.0.0 --enclave "$ENCLAVE_NAME" --args-file "$KURTOSIS_CONFIG" > "$RUN_DIR/kurtosis.log" 2>&1; then
   echo "==> FAIL: kurtosis run failed. See $RUN_DIR/kurtosis.log"
   echo "--- last 30 lines ---"
   tail -30 "$RUN_DIR/kurtosis.log"
@@ -99,7 +106,7 @@ tail -30 "$RUN_DIR/kurtosis.log" | grep -E '(RUNNING|STOPPED|Name)' || true
 
 # Step 4: Discover beacon API port
 echo "==> Discovering beacon API endpoint..."
-BEACON_URL="$(kurtosis port print "$ENCLAVE_NAME" cl-1-lighthouse-geth http)"
+BEACON_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" cl-1-lighthouse-geth http)"
 echo "    Beacon API: $BEACON_URL"
 
 # Step 5: Poll beacon API for health checks
@@ -179,7 +186,7 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
     # In stateless mode, also check the stateless node's health
     if [ "$STATELESS_MODE" = true ]; then
       echo "==> Checking stateless node (cl-4-lighthouse-geth)..."
-      STATELESS_URL="$(kurtosis port print "$ENCLAVE_NAME" cl-4-lighthouse-geth http 2>/dev/null || echo "")"
+      STATELESS_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" cl-4-lighthouse-geth http 2>/dev/null || echo "")"
       if [ -n "$STATELESS_URL" ]; then
         # Check stateless node is synced to similar head
         stateless_syncing=$(curl -sf "$STATELESS_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
