@@ -146,6 +146,20 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Tasks 10-11: gossip processing and router wiring (Phase 4 complete)
+- **Added `GossipExecutionProof` work type to beacon processor** — new `Work::GossipExecutionProof(AsyncFn)` variant with `WorkType::GossipExecutionProof`, dedicated FIFO queue (capacity 4096), queue dispatch, priority ordering (after gossip_proposer_preferences, before RPC methods), and async task spawning (same group as GossipExecutionPayload/GossipPayloadAttestation).
+- **Added `process_gossip_execution_proof()` to `gossip_methods.rs`** — public async method that receives an `Arc<ExecutionProof>` + subnet_id from the router. Calls `chain.verify_execution_proof_for_gossip()` for validation, then on success calls `process_gossip_verified_execution_proof()` for DA checker import. Error handling follows the data column pattern: UnknownBlockRoot → Ignore (no penalty), PriorToFinalization → Ignore + HighTolerance penalty, all structural/crypto errors → Reject + LowTolerance penalty, BeaconChainError → crit! (no penalty).
+- **Added `process_gossip_verified_execution_proof()`** — async helper that looks up the block slot from fork choice (ExecutionProof has no slot field), then calls `chain.check_gossip_execution_proof_availability_and_import()`. Handles Imported (recompute head + notify sync), MissingComponents (trace log), DuplicateFullyImported (debug log), and errors (MidTolerance penalty).
+- **Added `send_gossip_execution_proof()` to `network_beacon_processor/mod.rs`** — creates a `Work::GossipExecutionProof` event with `drop_during_sync: false` (proofs are data-integrity critical, not dropped during sync).
+- **Wired router dispatch** — replaced the `PubsubMessage::ExecutionProof` debug placeholder in `router.rs` with full dispatch to `send_gossip_execution_proof`, destructuring the `(subnet_id, proof)` tuple from the boxed message.
+- **Phase 4 (Network Processing) is now complete**: Tasks 10-11 done. The full gossip pipeline from network → router → beacon processor → gossip verification → DA checker → block import is wired.
+- **Files changed**: 4 modified
+  - `beacon_node/beacon_processor/src/lib.rs`: Work/WorkType variants, queue, priority, dispatch (~+16 lines)
+  - `beacon_node/network/src/network_beacon_processor/gossip_methods.rs`: two new methods + imports (~+178 lines)
+  - `beacon_node/network/src/network_beacon_processor/mod.rs`: send method (~+28 lines)
+  - `beacon_node/network/src/router.rs`: dispatch wiring (~+14 lines, -4 lines placeholder)
+- 96/96 network tests pass (Gloas fork), 307/307 beacon_chain tests pass (Gloas fork), clippy clean, cargo fmt clean, full release binary builds.
+
 ### 2026-02-19 — Task 9: beacon chain proof intake methods (Phase 3 complete)
 - **Added `check_gossip_execution_proof_availability_and_import()` to `BeaconChain`** — public async method following the `check_gossip_data_columns_availability_and_import()` pattern. Accepts `VerifiedExecutionProof<T>`, extracts subnet_id and inner proof, delegates to `data_availability_checker.put_gossip_verified_execution_proofs()`, then calls `process_availability()` to handle the result (import if fully available, return MissingComponents otherwise).
 - **Wired `stateless_min_proofs_required` from `ChainConfig` through builder into DA checker** — added `min_execution_proofs_required: usize` field to `DataAvailabilityCheckerInner`, passed through `DataAvailabilityChecker::new()` from builder. In builder, value is `chain_config.stateless_min_proofs_required` when `stateless_validation` is enabled, 0 otherwise. This means non-stateless nodes don't gate on proofs (they verify via EL directly).
