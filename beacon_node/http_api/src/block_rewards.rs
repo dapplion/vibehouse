@@ -56,7 +56,11 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
     let mut reward_cache = Default::default();
     let mut block_rewards = Vec::with_capacity(blocks.len());
 
-    let block_replayer = BlockReplayer::new(state, &chain.spec)
+    // Gloas ePBS: load envelopes for Gloas blocks so the replayer can apply
+    // full envelope processing (execution requests, builder payments, etc.)
+    let envelopes = chain.load_envelopes_for_blocks(&blocks);
+
+    let mut block_replayer = BlockReplayer::new(state, &chain.spec)
         .pre_block_hook(Box::new(|state, block| {
             state.build_all_committee_caches(&chain.spec)?;
 
@@ -77,7 +81,13 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
                 .map_err(unhandled_error)?,
         )
         .no_signature_verification()
-        .minimal_block_root_verification()
+        .minimal_block_root_verification();
+
+    if !envelopes.is_empty() {
+        block_replayer = block_replayer.envelopes(envelopes);
+    }
+
+    let block_replayer = block_replayer
         .apply_blocks(blocks, None)
         .map_err(unhandled_error)?;
 

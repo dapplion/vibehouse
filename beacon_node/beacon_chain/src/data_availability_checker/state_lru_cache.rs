@@ -153,15 +153,35 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
             )),
         ];
 
-        let block_replayer: BlockReplayer<'_, T::EthSpec, AvailabilityCheckError, _> =
+        let blinded_block = diet_executed_block.block.clone_as_blinded();
+
+        // Gloas ePBS: load envelope for the block so the replayer can apply
+        // full envelope processing (execution requests, builder payments, etc.)
+        let mut envelopes = std::collections::HashMap::new();
+        if blinded_block
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .is_ok()
+        {
+            let block_root = blinded_block.canonical_root();
+            if let Ok(Some(envelope)) = self.store.get_payload_envelope(&block_root) {
+                envelopes.insert(block_root, envelope);
+            }
+        }
+
+        let mut block_replayer: BlockReplayer<'_, T::EthSpec, AvailabilityCheckError, _> =
             BlockReplayer::new(parent_state, &self.spec)
                 .no_signature_verification()
                 .state_root_iter(state_roots.into_iter())
                 .minimal_block_root_verification();
 
-        let block_replayer = debug_span!("reconstruct_state_apply_blocks").in_scope(|| {
-            block_replayer.apply_blocks(vec![diet_executed_block.block.clone_as_blinded()], None)
-        });
+        if !envelopes.is_empty() {
+            block_replayer = block_replayer.envelopes(envelopes);
+        }
+
+        let block_replayer = debug_span!("reconstruct_state_apply_blocks")
+            .in_scope(|| block_replayer.apply_blocks(vec![blinded_block], None));
 
         block_replayer
             .map(|block_replayer| block_replayer.into_state())

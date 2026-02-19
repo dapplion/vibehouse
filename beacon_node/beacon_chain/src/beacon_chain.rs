@@ -1277,6 +1277,31 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Error::from)
     }
 
+    /// Load execution payload envelopes for Gloas blocks from the store.
+    ///
+    /// Returns a HashMap keyed by block root for use with `BlockReplayer::envelopes()`.
+    /// Only loads envelopes for blocks that have a `signed_execution_payload_bid` (Gloas+).
+    pub fn load_envelopes_for_blocks(
+        &self,
+        blocks: &[SignedBeaconBlock<T::EthSpec, BlindedPayload<T::EthSpec>>],
+    ) -> HashMap<Hash256, SignedExecutionPayloadEnvelope<T::EthSpec>> {
+        let mut envelopes = HashMap::new();
+        for block in blocks {
+            if block
+                .message()
+                .body()
+                .signed_execution_payload_bid()
+                .is_ok()
+            {
+                let block_root = block.canonical_root();
+                if let Ok(Some(envelope)) = self.get_payload_envelope(&block_root) {
+                    envelopes.insert(block_root, envelope);
+                }
+            }
+        }
+        envelopes
+    }
+
     /// Returns the blobs at the given root, if any.
     ///
     /// Uses the `block.epoch()` to determine whether to retrieve blobs or columns from the store.
