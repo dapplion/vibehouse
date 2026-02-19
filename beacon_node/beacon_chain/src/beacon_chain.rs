@@ -509,6 +509,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// transition out of optimistic status.
     pub pending_gossip_envelopes:
         Mutex<HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>>,
+    /// ZK execution proof generator. Only instantiated when `--generate-execution-proofs`
+    /// is enabled. Generates proofs after `engine_newPayload` succeeds for Gloas payloads.
+    pub execution_proof_generator:
+        Option<crate::execution_proof_generation::ExecutionProofGenerator>,
 }
 
 pub enum BeaconBlockResponseWrapper<E: EthSpec> {
@@ -2607,6 +2611,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         }
 
+        // Trigger execution proof generation if enabled.
+        if let Some(ref generator) = self.execution_proof_generator {
+            generator.generate_proof(
+                beacon_block_root,
+                signed_envelope.message.payload.block_hash,
+            );
+        }
+
         // Apply the envelope state transition.
         // Load the post-block state from the store using the block's state_root. This
         // is correct regardless of whether the block is the current head — the envelope
@@ -2875,6 +2887,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     ));
                 }
             }
+        }
+
+        // Trigger execution proof generation if enabled.
+        if let Some(ref generator) = self.execution_proof_generator {
+            generator.generate_proof(beacon_block_root, payload_block_hash);
         }
 
         // 3. Apply the envelope state transition (skip signature verification for self-build)
