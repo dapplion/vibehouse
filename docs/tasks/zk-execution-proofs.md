@@ -146,6 +146,21 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 19: kurtosis stateless devnet and stateless validation fixes (Phase 7 continued)
+- **Added kurtosis stateless devnet config** (`kurtosis/vibehouse-stateless.yaml`) — 4-node devnet with 3 regular CL+EL nodes and 1 stateless CL node (no EL). Script supports `--stateless` flag to use the config.
+- **Fixed parent payload gossip handling** — gossip methods now correctly handle the parent payload envelope in Gloas.
+- **Fixed fork choice advancement for stateless nodes** — after sufficient execution proofs complete a block's availability, call `on_valid_execution_payload()` to transition the block from optimistic to execution-valid in fork choice. Without this, stateless nodes had a permanently optimistic head that couldn't advance.
+- **Fixed pre-Gloas stateless payload status** — changed from `PayloadVerificationStatus::Optimistic` to `PayloadVerificationStatus::Verified` for pre-Gloas blocks when stateless validation is enabled. No execution proof mechanism exists for pre-Gloas blocks, and Optimistic status prevents the head from attesting.
+- **Added block production rejection for stateless nodes** — `produce_block_v3`, `produce_blinded_block_v2`, and `produce_block_v2` endpoints now return 400 for stateless nodes since they have no EL connection and cannot produce execution payloads.
+- **Added sudo fallback for docker** — `build-docker.sh` and `kurtosis-run.sh` detect when docker socket isn't directly accessible and use `sudo` automatically.
+- **Files changed**: 5 modified
+  - `beacon_node/beacon_chain/src/beacon_chain.rs`: fork choice execution-valid marking after proof import (~+26 lines)
+  - `beacon_node/beacon_chain/src/execution_payload.rs`: Verified status for pre-Gloas stateless (~+5/-3 lines)
+  - `beacon_node/http_api/src/produce_block.rs`: block production rejection for stateless nodes (~+19 lines)
+  - `scripts/build-docker.sh`: sudo fallback (~+6 lines)
+  - `scripts/kurtosis-run.sh`: sudo fallback for kurtosis commands (~+14/-7 lines)
+- 317/317 beacon_chain tests pass (Gloas fork), 181/181 http_api tests pass (Fulu fork), clippy clean.
+
 ### 2026-02-19 — Task 18: unit tests for proof verification and DA checker (Phase 7 started)
 - **Added 3 tests to `execution_proof_verification.rs`**: `test_error_from_beacon_chain_error` (verifies `From<BeaconChainError>` impl wraps errors correctly), `test_structural_checks_cover_verification_preconditions` (tests version validation, empty proof data, oversized proof data via `is_version_supported()` and `is_structurally_valid()`), and `test_subnet_id_bounds` (verifies `ExecutionProofSubnetId::new()` accepts valid IDs and rejects out-of-bounds values).
 - **Added 3 tests to `overflow_lru_cache.rs`** in the `pending_components_tests` module: `merge_execution_proofs_deduplicates_by_subnet_id` (verifies `or_insert` keeps the first proof when the same subnet_id is inserted twice), `merge_execution_proofs_accepts_different_subnets` (verifies multiple subnet IDs are stored independently), and `execution_proof_threshold_logic` (tests the `len() < min_required` gate that controls block availability).
@@ -639,16 +654,21 @@ pub stateless_min_proofs_required: usize, // default: 1
 
 ---
 
-#### Task 19: Kurtosis testnet with stateless nodes
-**Files to modify:**
-- `scripts/local_testnet/` or kurtosis configs
+#### Task 19: Kurtosis testnet with stateless nodes — IN PROGRESS
+**Files modified:**
+- `kurtosis/vibehouse-stateless.yaml` (new)
+- `scripts/kurtosis-run.sh`
+- `beacon_node/beacon_chain/src/beacon_chain.rs`
+- `beacon_node/beacon_chain/src/execution_payload.rs`
+- `beacon_node/http_api/src/produce_block.rs`
+- `scripts/build-docker.sh`
 
 **Details:**
-- Configure a local testnet with mixed nodes:
-  - 2 regular nodes (with EL)
-  - 1 proof generator node
-  - 1 stateless validator node
-- Verify stateless node can follow chain via proofs
+- ~~Configure a local testnet with mixed nodes~~ DONE (3 regular + 1 stateless)
+- ~~Fix fork choice advancement for stateless nodes~~ DONE (on_valid_execution_payload after proof import)
+- ~~Fix pre-Gloas payload status~~ DONE (Verified instead of Optimistic)
+- ~~Block production rejection for stateless nodes~~ DONE
+- Run devnet and verify stateless node follows chain via proofs — NEXT
 - Test with ePBS flow (builder reveals + proof publication)
 
 ---
