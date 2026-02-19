@@ -2499,7 +2499,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Removing the old "not for current head" guard fixes the race condition where
         // an envelope arriving milliseconds before the fork choice update was silently
         // dropped, leaving the block permanently optimistic.
-        if let Some(execution_layer) = self.execution_layer.as_ref() {
+        //
+        // In stateless validation mode, skip the EL call entirely. The block remains
+        // optimistic until sufficient execution proofs arrive via gossip subnets.
+        if self.config.stateless_validation {
+            debug!(
+                ?beacon_block_root,
+                block_hash = ?signed_envelope.message.payload.block_hash,
+                "Stateless mode: skipping EL verification, payload stays optimistic"
+            );
+        } else if let Some(execution_layer) = self.execution_layer.as_ref() {
             use execution_layer::NewPayloadRequest;
             use execution_layer::NewPayloadRequestGloas;
             use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
@@ -2789,8 +2798,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .on_execution_payload(beacon_block_root, payload_block_hash)
             .map_err(Into::<Error>::into)?;
 
-        // 2. Send newPayload to the EL
-        if let Some(execution_layer) = self.execution_layer.as_ref() {
+        // 2. Send newPayload to the EL (skip in stateless mode — payload stays optimistic)
+        if self.config.stateless_validation {
+            debug!(
+                ?beacon_block_root,
+                block_hash = ?payload_block_hash,
+                "Stateless mode: skipping EL verification for self-build envelope"
+            );
+        } else if let Some(execution_layer) = self.execution_layer.as_ref() {
             use execution_layer::NewPayloadRequest;
             use execution_layer::NewPayloadRequestGloas;
             use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
@@ -7030,6 +7045,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Ok(None);
         }
 
+        // Stateless mode has no EL — skip proposer preparation entirely.
+        if self.config.stateless_validation {
+            return Ok(None);
+        }
+
         let execution_layer = self
             .execution_layer
             .clone()
@@ -7228,6 +7248,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // terminal difficulty has already been reached and a payload preparation message needs to
         // be issued.
         if self.slot_is_prior_to_bellatrix(next_slot) {
+            return Ok(());
+        }
+
+        // Stateless mode has no EL connection — skip forkchoiceUpdated calls.
+        if self.config.stateless_validation {
             return Ok(());
         }
 

@@ -66,6 +66,12 @@ impl<T: BeaconChainTypes> PayloadNotifier<T> {
             // GLOAS blocks don't carry an execution payload in the block body.
             // Execution verification happens via the payload envelope pipeline.
             Some(PayloadVerificationStatus::Irrelevant)
+        } else if chain.config.stateless_validation
+            && is_execution_enabled(state, block.message().body())
+        {
+            // Stateless mode: skip EL verification for pre-Gloas blocks too.
+            // The node has no EL connection and relies on execution proofs.
+            Some(PayloadVerificationStatus::Optimistic)
         } else if is_execution_enabled(state, block.message().body()) {
             // Perform the initial stages of payload verification.
             //

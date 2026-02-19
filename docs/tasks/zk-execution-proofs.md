@@ -146,6 +146,18 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 14: stateless validation bypass (Phase 5 continued)
+- **Added stateless bypass to `process_payload_envelope()`** — when `self.config.stateless_validation` is true, the entire EL `notify_new_payload` call is skipped. The block stays optimistic until sufficient execution proofs arrive via gossip. The envelope state transition, proof generation trigger, state caching, and disk persistence all still execute normally.
+- **Added stateless bypass to `process_self_build_envelope()`** — same pattern. Although stateless nodes typically don't self-build (no EL), the guard is present for completeness and mixed-mode configurations.
+- **Added stateless bypass to `PayloadNotifier::new()`** — for pre-Gloas execution-enabled blocks, returns `PayloadVerificationStatus::Optimistic` when `stateless_validation` is true, avoiding the `NoExecutionConnection` error that would fire when no EL is configured.
+- **Added stateless bypass to `update_execution_engine_forkchoice()`** — returns `Ok(())` early, skipping `forkchoiceUpdated` calls to the EL since there is no EL to call.
+- **Added stateless bypass to `prepare_beacon_proposer()`** — returns `Ok(None)` early, skipping proposer preparation since stateless nodes don't produce blocks.
+- **Design decisions**: The bypasses are minimal `if self.config.stateless_validation` guards that return early or skip the EL block, preserving all other logic (state transitions, proof generation, fork choice updates, etc). No new error variants or types needed. The `canonical_head.rs` callers of both `update_execution_engine_forkchoice` and `prepare_beacon_proposer` handle the early-return `Ok` values correctly (they log `crit!` on errors but our returns are success values).
+- **Files changed**: 2 modified
+  - `beacon_node/beacon_chain/src/beacon_chain.rs`: 4 stateless guards (~+20 lines)
+  - `beacon_node/beacon_chain/src/execution_payload.rs`: 1 stateless guard (~+5 lines)
+- 309/309 beacon_chain tests pass (Gloas fork), clippy clean, cargo fmt clean, full lighthouse binary builds.
+
 ### 2026-02-19 — Task 13: proof broadcaster service (Phase 5 continued)
 - **Created `proof_broadcaster.rs` in the client crate** — background async service that consumes proofs from the `ProofReceiver` channel and publishes each as a `PubsubMessage::ExecutionProof` via `NetworkMessage::Publish`. Simple loop: `recv()` → wrap in `PubsubMessage::ExecutionProof(Box::new((subnet_id, proof)))` → send to network. Stops gracefully when either the generator channel closes or the network sender is dropped.
 - **Added `proof_receiver` field to `BeaconChain`** — `Mutex<Option<ProofReceiver>>`, stored alongside the generator. The `Mutex<Option<_>>` pattern allows the client builder to `.take()` the receiver once at startup for the broadcaster service, while the `BeaconChain` remains in an `Arc`.
