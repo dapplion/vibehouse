@@ -30,6 +30,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-19 (run 15)
+- Fetched upstream: no new commits since run 14
+- No new consensus-specs changes requiring implementation (recent merges: #4920 doc formatting, #4941 prover doc clarification, #4921 test infrastructure)
+- Tracked open consensus-specs PRs: #4940, #4939, #4932, #4918, #4898 — all still open/unmerged
+- **Fixed CI failure**: `attestation_production::produces_attestations` failing at Gloas
+  - Root cause: Task 19 added `payload_present` param to `empty_for_signing()` and set `data.index` based on payload presence at Gloas. The test asserted `data.index == committee_index`, but at Gloas `data.index` is repurposed for payload presence (0 = not present, 1 = present).
+  - Fix 1 (early_attester_cache.rs): `try_attest` was always passing `payload_present=false`, but for non-same-slot attestations (`request_slot > block.slot`) with `payload_revealed=true`, it should pass `true`. Now computes `payload_present` from `proto_block.payload_revealed`.
+  - Fix 2 (attestation_production.rs test): Updated assertion to check `data.index` against expected payload_present value at Gloas, not committee_index.
+  - 317/317 beacon_chain tests pass (Gloas), clippy clean, cargo fmt clean.
+
 ### 2026-02-19 (run 14)
 - Fetched upstream: 2 new commits on `release-v8.1` since run 13 (none on `unstable`)
 - Cherry-picked cleanly:
