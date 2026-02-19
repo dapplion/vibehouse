@@ -146,6 +146,20 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 12: proof generation trigger (Phase 5 started)
+- **Created `execution_proof_generation.rs`** — new module with `ExecutionProofGenerator` struct. Uses an unbounded `mpsc` channel to emit generated proofs for downstream consumption (Task 13 broadcaster). `generate_proof(block_root, block_hash)` creates one stub proof per subnet (currently subnet 0 only, since `MAX_EXECUTION_PROOF_SUBNETS = 1`). Stub proof data is `b"vibehouse-stub-proof-v1"` — real ZK prover integration is Task 20. Two unit tests: `generates_stub_proof_for_each_subnet` and `proof_receiver_dropped_does_not_panic`.
+- **Added `execution_proof_generator` field to `BeaconChain`** — `Option<ExecutionProofGenerator>`, only `Some` when `--generate-execution-proofs` is enabled. Initialized in `builder.rs` with the channel receiver stored as `_proof_rx` (Task 13 will wire it into a broadcaster service).
+- **Wired proof generation into both ePBS payload processing paths**:
+  1. `process_payload_envelope()` (gossip path) — triggered after `execution_layer.notify_new_payload()` succeeds, before the envelope state transition. Uses `signed_envelope.message.payload.block_hash` for the proof.
+  2. `process_self_build_envelope()` (self-build path) — triggered after `notify_new_payload()` succeeds, before state transition. Uses `payload_block_hash` extracted earlier in the method.
+- **Design decisions**: Proof generation is synchronous (stub is instant; real ZK will be async via `spawn_blocking` in Task 20). Trigger point is after EL validation succeeds but before state transition — this ensures we only generate proofs for payloads the EL considers valid. Both gossip and self-build paths trigger proofs so builders using the self-build flow also generate proofs.
+- **Files changed**: 4 (1 new, 3 modified)
+  - `beacon_node/beacon_chain/src/execution_proof_generation.rs` (new, ~123 lines)
+  - `beacon_node/beacon_chain/src/lib.rs` (module declaration)
+  - `beacon_node/beacon_chain/src/beacon_chain.rs` (field + two trigger sites, ~+18 lines)
+  - `beacon_node/beacon_chain/src/builder.rs` (initialization, ~+10 lines)
+- 309/309 beacon_chain tests pass (Gloas fork), 2/2 new unit tests pass, clippy clean, cargo fmt clean.
+
 ### 2026-02-19 — Tasks 10-11: gossip processing and router wiring (Phase 4 complete)
 - **Added `GossipExecutionProof` work type to beacon processor** — new `Work::GossipExecutionProof(AsyncFn)` variant with `WorkType::GossipExecutionProof`, dedicated FIFO queue (capacity 4096), queue dispatch, priority ordering (after gossip_proposer_preferences, before RPC methods), and async task spawning (same group as GossipExecutionPayload/GossipPayloadAttestation).
 - **Added `process_gossip_execution_proof()` to `gossip_methods.rs`** — public async method that receives an `Arc<ExecutionProof>` + subnet_id from the router. Calls `chain.verify_execution_proof_for_gossip()` for validation, then on success calls `process_gossip_verified_execution_proof()` for DA checker import. Error handling follows the data column pattern: UnknownBlockRoot → Ignore (no penalty), PriorToFinalization → Ignore + HighTolerance penalty, all structural/crypto errors → Reject + LowTolerance penalty, BeaconChainError → crit! (no penalty).
