@@ -146,6 +146,19 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 9: beacon chain proof intake methods (Phase 3 complete)
+- **Added `check_gossip_execution_proof_availability_and_import()` to `BeaconChain`** — public async method following the `check_gossip_data_columns_availability_and_import()` pattern. Accepts `VerifiedExecutionProof<T>`, extracts subnet_id and inner proof, delegates to `data_availability_checker.put_gossip_verified_execution_proofs()`, then calls `process_availability()` to handle the result (import if fully available, return MissingComponents otherwise).
+- **Wired `stateless_min_proofs_required` from `ChainConfig` through builder into DA checker** — added `min_execution_proofs_required: usize` field to `DataAvailabilityCheckerInner`, passed through `DataAvailabilityChecker::new()` from builder. In builder, value is `chain_config.stateless_min_proofs_required` when `stateless_validation` is enabled, 0 otherwise. This means non-stateless nodes don't gate on proofs (they verify via EL directly).
+- **Updated `min_execution_proofs_for_epoch()`** to use the configurable field instead of hardcoded `MAX_EXECUTION_PROOF_SUBNETS`. This fixes a latent issue: previously all Gloas blocks required proofs even for nodes with EL access.
+- **No new error variants needed** — existing `AvailabilityCheckError` (already in `BeaconChainError`) and `GossipExecutionProofError` cover all cases.
+- **Phase 3 (Proof Verification and Storage) is now complete**: Tasks 7-9 done.
+- **Files changed**: 4 modified
+  - `beacon_node/beacon_chain/src/beacon_chain.rs`: new method + import (~+20 lines)
+  - `beacon_node/beacon_chain/src/builder.rs`: compute and pass min_execution_proofs_required (~+5 lines)
+  - `beacon_node/beacon_chain/src/data_availability_checker.rs`: new constructor param (~+2 lines)
+  - `beacon_node/beacon_chain/src/data_availability_checker/overflow_lru_cache.rs`: new field, constructor param, configurable threshold (~+6 lines)
+- 307/307 beacon_chain tests pass (Gloas fork), clippy clean, cargo fmt clean, full binary builds.
+
 ### 2026-02-19 — Task 8: integrate proofs into DataAvailabilityChecker
 - **Added `verified_execution_proofs` field to `PendingComponents`** — `HashMap<ExecutionProofSubnetId, Arc<ExecutionProof>>`, initialized empty. Keyed by subnet_id so duplicates are silently deduplicated.
 - **Added `merge_execution_proofs()` method** to `PendingComponents` — inserts proofs, skipping duplicates via `entry().or_insert()`.

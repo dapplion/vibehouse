@@ -31,6 +31,7 @@ use crate::early_attester_cache::EarlyAttesterCache;
 use crate::errors::{BeaconChainError as Error, BlockProductionError};
 use crate::events::ServerSentEventHandler;
 use crate::execution_payload::{NotifyExecutionLayer, PreparePayloadHandle, get_execution_payload};
+use crate::execution_proof_verification::VerifiedExecutionProof;
 use crate::fetch_blobs::EngineGetBlobsOutput;
 use crate::fork_choice_signal::{ForkChoiceSignalRx, ForkChoiceSignalTx, ForkChoiceWaitResult};
 use crate::graffiti_calculator::GraffitiCalculator;
@@ -4458,6 +4459,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .put_gossip_verified_data_columns(block_root, slot, data_columns)?;
 
         self.process_availability(slot, availability, publish_fn)
+            .await
+    }
+
+    /// Checks if the provided execution proof can make any cached blocks available, and imports
+    /// immediately if so, otherwise caches the proof in the data availability checker.
+    pub async fn check_gossip_execution_proof_availability_and_import(
+        self: &Arc<Self>,
+        slot: Slot,
+        block_root: Hash256,
+        proof: VerifiedExecutionProof<T>,
+    ) -> Result<AvailabilityProcessingStatus, BlockError> {
+        let subnet_id = proof.subnet_id();
+        let inner = proof.into_inner();
+
+        let availability = self
+            .data_availability_checker
+            .put_gossip_verified_execution_proofs(block_root, vec![(subnet_id, inner)])?;
+
+        self.process_availability(slot, availability, || Ok(()))
             .await
     }
 

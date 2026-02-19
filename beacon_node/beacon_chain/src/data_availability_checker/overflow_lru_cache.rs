@@ -23,7 +23,6 @@ use types::{
     BlobSidecar, BlockImportSource, ChainSpec, ColumnIndex, DataColumnSidecar,
     DataColumnSidecarList, Epoch, EthSpec, ExecutionProof, ExecutionProofSubnetId, ForkName,
     Hash256, RuntimeFixedVector, RuntimeVariableList, SignedBeaconBlock,
-    execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS,
 };
 
 #[derive(Clone)]
@@ -429,6 +428,10 @@ pub struct DataAvailabilityCheckerInner<T: BeaconChainTypes> {
     state_cache: StateLRUCache<T>,
     custody_context: Arc<CustodyContext<T::EthSpec>>,
     spec: Arc<ChainSpec>,
+    /// Minimum number of execution proofs required for a Gloas+ block to be considered
+    /// available. Set from `chain_config.stateless_min_proofs_required` when the node
+    /// runs in stateless validation mode; 0 otherwise (proofs are optional).
+    min_execution_proofs_required: usize,
 }
 
 // This enum is only used internally within the crate in the reconstruction function to improve
@@ -446,12 +449,14 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
         beacon_store: BeaconStore<T>,
         custody_context: Arc<CustodyContext<T::EthSpec>>,
         spec: Arc<ChainSpec>,
+        min_execution_proofs_required: usize,
     ) -> Result<Self, AvailabilityCheckError> {
         Ok(Self {
             critical: RwLock::new(LruCache::new(capacity)),
             state_cache: StateLRUCache::new(beacon_store, spec.clone()),
             custody_context,
             spec,
+            min_execution_proofs_required,
         })
     }
 
@@ -795,11 +800,12 @@ impl<T: BeaconChainTypes> DataAvailabilityCheckerInner<T> {
     }
 
     /// Returns the minimum number of execution proofs required for a block at the given epoch
-    /// to be considered available. Returns 0 for pre-Gloas epochs or if epoch is unknown.
+    /// to be considered available. Returns 0 for pre-Gloas epochs, unknown epochs, or when
+    /// the node is not running in stateless validation mode.
     fn min_execution_proofs_for_epoch(&self, epoch: Option<Epoch>) -> usize {
         match epoch {
             Some(epoch) if self.spec.fork_name_at_epoch(epoch) >= ForkName::Gloas => {
-                MAX_EXECUTION_PROOF_SUBNETS as usize
+                self.min_execution_proofs_required
             }
             _ => 0,
         }
@@ -1120,6 +1126,7 @@ mod test {
                 test_store,
                 custody_context,
                 spec.clone(),
+                0, // no execution proofs required in tests
             )
             .expect("should create cache"),
         );
