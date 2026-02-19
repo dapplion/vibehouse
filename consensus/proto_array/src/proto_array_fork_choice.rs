@@ -1400,7 +1400,9 @@ impl ProtoArrayForkChoice {
             match node.payload_status {
                 GloasPayloadStatus::Pending => true,
                 GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
-                    if vote.current_slot <= block.slot {
+                    // Spec: assert message.slot >= block.slot
+                    debug_assert!(vote.current_slot >= block.slot);
+                    if vote.current_slot == block.slot {
                         return false;
                     }
                     if vote.current_payload_present {
