@@ -4,11 +4,12 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless]
 #
 # Flags:
 #   --no-build     Skip Docker image build (use existing vibehouse:local)
 #   --no-teardown  Leave enclave running after completion (for inspection)
+#   --stateless    Use mixed stateless+proof-generator config (vibehouse-stateless.yaml)
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -33,14 +34,22 @@ TARGET_FINALIZED_EPOCH=8
 
 DO_BUILD=true
 DO_TEARDOWN=true
+STATELESS_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
     --no-build)    DO_BUILD=false ;;
     --no-teardown) DO_TEARDOWN=false ;;
+    --stateless)   STATELESS_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
+
+# Use stateless config when --stateless is set
+if [ "$STATELESS_MODE" = true ]; then
+  KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-stateless.yaml"
+  echo "==> Stateless mode: using $KURTOSIS_CONFIG"
+fi
 
 # Set up run directory
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
@@ -166,6 +175,43 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
   if [ "$finalized_epoch" -ge "$TARGET_FINALIZED_EPOCH" ]; then
     echo "==> SUCCESS: Finalized epoch $finalized_epoch (target was $TARGET_FINALIZED_EPOCH)"
     echo "    Chain progressed through gloas fork and finalized."
+
+    # In stateless mode, also check the stateless node's health
+    if [ "$STATELESS_MODE" = true ]; then
+      echo "==> Checking stateless node (cl-4-lighthouse-geth)..."
+      STATELESS_URL="$(kurtosis port print "$ENCLAVE_NAME" cl-4-lighthouse-geth http 2>/dev/null || echo "")"
+      if [ -n "$STATELESS_URL" ]; then
+        # Check stateless node is synced to similar head
+        stateless_syncing=$(curl -sf "$STATELESS_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+        if [ -n "$stateless_syncing" ]; then
+          stateless_head=$(echo "$stateless_syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "0")
+          stateless_finalized=$(curl -sf "$STATELESS_URL/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null | jq -r '.data.finalized.epoch' 2>/dev/null || echo "0")
+          echo "    Stateless node: head_slot=$stateless_head finalized_epoch=$stateless_finalized"
+
+          # Check proof status for the head block on the stateless node
+          proof_status=$(curl -sf "$STATELESS_URL/vibehouse/execution_proof_status/head" 2>/dev/null || echo "")
+          if [ -n "$proof_status" ]; then
+            is_proven=$(echo "$proof_status" | jq -r '.data.is_fully_proven' 2>/dev/null || echo "unknown")
+            received_proofs=$(echo "$proof_status" | jq -r '.data.received_proof_subnet_ids' 2>/dev/null || echo "[]")
+            echo "    Proof status: is_fully_proven=$is_proven received=$received_proofs"
+          else
+            echo "    Proof status endpoint not available (may be expected for non-Gloas head)"
+          fi
+
+          # Log stateless health
+          {
+            echo "=== stateless node check ==="
+            echo "head_slot=$stateless_head finalized_epoch=$stateless_finalized"
+            echo "proof_status=$proof_status"
+          } >> "$RUN_DIR/health.log"
+        else
+          echo "    Warning: stateless node beacon API not responding"
+        fi
+      else
+        echo "    Warning: could not discover stateless node port"
+      fi
+    fi
+
     echo "==> Full logs: $RUN_DIR"
     cleanup
     exit 0

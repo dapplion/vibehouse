@@ -1292,9 +1292,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 debug!(
                     ?block_root,
                     ?parent_block_hash,
-                    "Parent execution payload not yet seen for gossip block"
+                    "Parent execution payload not yet seen for gossip block, sending to sync"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                // Queue for re-processing via sync lookup. The envelope for the
+                // parent block should arrive shortly; the lookup path uses
+                // process_block() which doesn't apply this gossip-only check.
+                self.send_sync_message(SyncMessage::UnknownParentBlock(peer_id, block, block_root));
                 return None;
             }
             Err(e @ BlockError::BeaconChainError(_)) => {

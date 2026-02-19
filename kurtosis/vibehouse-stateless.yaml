@@ -1,0 +1,36 @@
+# Mixed devnet: proof generator + stateless nodes
+# Tests ZK execution proof pipeline end-to-end:
+# - 3 nodes with EL: validate payloads, generate & broadcast stub proofs
+# - 1 stateless node: no EL verification, relies on execution proofs
+#
+# With minimal preset (64 validators, 8 slots/epoch):
+# - 3 proof generators = ~48 validators (can propose + attest)
+# - 1 stateless node = ~16 validators (attest only, skip proposals)
+# - Finalization requires 2/3 (43+) attesters — satisfied by all 64 attesting
+participants:
+  # Proof generator nodes: full EL + proof generation + gossip broadcast
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    cl_extra_params:
+      - --generate-execution-proofs
+    count: 3
+  # Stateless node: skips EL verification, subscribes to proof subnets
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    cl_extra_params:
+      - --stateless-validation
+    count: 1
+network_params:
+  gloas_fork_epoch: 1
+  preset: minimal
+additional_services:
+  - dora
+  - spamoor
+snooper_enabled: true
+global_log_level: debug
+dora_params:
+  image: ethpandaops/dora:gloas-support
