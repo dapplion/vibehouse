@@ -146,6 +146,19 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-19 — Task 18: unit tests for proof verification and DA checker (Phase 7 started)
+- **Added 3 tests to `execution_proof_verification.rs`**: `test_error_from_beacon_chain_error` (verifies `From<BeaconChainError>` impl wraps errors correctly), `test_structural_checks_cover_verification_preconditions` (tests version validation, empty proof data, oversized proof data via `is_version_supported()` and `is_structurally_valid()`), and `test_subnet_id_bounds` (verifies `ExecutionProofSubnetId::new()` accepts valid IDs and rejects out-of-bounds values).
+- **Added 3 tests to `overflow_lru_cache.rs`** in the `pending_components_tests` module: `merge_execution_proofs_deduplicates_by_subnet_id` (verifies `or_insert` keeps the first proof when the same subnet_id is inserted twice), `merge_execution_proofs_accepts_different_subnets` (verifies multiple subnet IDs are stored independently), and `execution_proof_threshold_logic` (tests the `len() < min_required` gate that controls block availability).
+- **Added 2 tests to `data_availability_checker.rs`**: `cached_execution_proof_subnet_ids_returns_none_for_unknown_block` (verifies `cached_execution_proof_subnet_ids()` returns `None` for a block root not in the cache) and `put_execution_proofs_empty_returns_missing_components` (verifies that importing an empty proof set returns `MissingComponents` availability status). Added `new_da_checker_with_proofs()` test helper that accepts `min_execution_proofs_required` for configuring the proof threshold in tests.
+- **Fixed clippy warnings**: `len() >= 0` always true for usize → `assert_eq!(len(), 0)`; `len() < 1` → `is_empty()`; `!(len() < min_required)` nonminimal_bool → `len() >= min_required`.
+- **Design decisions**: Tests focus on unit-level behavior that doesn't require a full `BeaconChain` instance. The `make_available` threshold behavior is tested via direct `PendingComponents` manipulation rather than through the full `make_available` pipeline, since that requires constructing a `DietAvailabilityPendingExecutedBlock` which is complex and better suited for integration tests. The `verify_execution_proof_for_gossip` function requires a chain and is tested indirectly through structural checks and the existing http_api integration tests.
+- **Phase 7 (Testing and Integration) is now started**: Task 18 done. 8 new tests across 3 files covering proof verification, DA checker integration, and proof threshold logic.
+- **Files changed**: 3 modified
+  - `beacon_node/beacon_chain/src/execution_proof_verification.rs`: 3 new tests (~+50 lines)
+  - `beacon_node/beacon_chain/src/data_availability_checker/overflow_lru_cache.rs`: 3 new tests + test import (~+65 lines)
+  - `beacon_node/beacon_chain/src/data_availability_checker.rs`: 2 new tests + test helper (~+50 lines)
+- 317/317 beacon_chain tests pass (Gloas fork), clippy clean, cargo fmt clean, make lint-full passes.
+
 ### 2026-02-19 — Task 17: HTTP API endpoints for execution proof status (Phase 6 complete)
 - **Added `ExecutionProofStatus` response type** to `common/eth2/src/types.rs` — contains `block_root` (Hash256), `received_proof_subnet_ids` (quoted_u64_vec), `required_proofs` (quoted_u64), and `is_fully_proven` (bool). Provides a complete snapshot of execution proof availability for a given block.
 - **Added `cached_execution_proof_subnet_ids()` method** to `DataAvailabilityChecker` — follows the `cached_data_column_indexes()` pattern, using `peek_pending_components()` to read-only access the `verified_execution_proofs` HashMap and return subnet IDs.
@@ -612,15 +625,17 @@ pub stateless_min_proofs_required: usize, // default: 1
 
 ### Phase 7: Testing and Integration (2-3 sessions)
 
-#### Task 18: Unit tests for proof verification and DA checker
-**Files to modify:**
-- `beacon_node/beacon_chain/tests/` (new test files)
+#### Task 18: Unit tests for proof verification and DA checker — DONE
+**Files modified:**
+- `beacon_node/beacon_chain/src/execution_proof_verification.rs` (3 new tests)
+- `beacon_node/beacon_chain/src/data_availability_checker/overflow_lru_cache.rs` (3 new tests)
+- `beacon_node/beacon_chain/src/data_availability_checker.rs` (2 new tests + helper)
 
 **Details:**
-- Test proof validation logic
-- Test DA checker with execution proof requirements
-- Test `make_available` threshold behavior
-- Test proof deduplication by subnet_id
+- ~~Test proof validation logic~~ DONE (version, structural validity, subnet bounds)
+- ~~Test DA checker with execution proof requirements~~ DONE (cache miss, empty import)
+- ~~Test `make_available` threshold behavior~~ DONE (direct threshold logic test)
+- ~~Test proof deduplication by subnet_id~~ DONE (or_insert dedup + multi-subnet)
 
 ---
 
