@@ -3632,15 +3632,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         }
 
         // [REJECT] validator_index must match proposer_lookahead for the slot
-        let head_state = match self
+        let head_state = self
             .chain
             .canonical_head
             .cached_head()
             .snapshot
             .beacon_state
-        {
-            ref state => state.clone(),
-        };
+            .clone();
 
         let lookahead_valid = match head_state.proposer_lookahead() {
             Ok(proposer_lookahead) => {
@@ -3681,26 +3679,23 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         // [REJECT] valid signature
         let head_snapshot = &self.chain.canonical_head.cached_head().snapshot;
-        let pubkey = match head_snapshot
+        let Some(pubkey) = head_snapshot
             .beacon_state
             .get_validator(validator_index as usize)
             .ok()
             .and_then(|v| v.pubkey.decompress().ok())
-        {
-            Some(pk) => pk,
-            None => {
-                debug!(
-                    %validator_index,
-                    "Rejecting proposer preferences: unknown or invalid validator pubkey"
-                );
-                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
-                self.gossip_penalize_peer(
-                    peer_id,
-                    PeerAction::LowToleranceError,
-                    "proposer_preferences_unknown_validator",
-                );
-                return;
-            }
+        else {
+            debug!(
+                %validator_index,
+                "Rejecting proposer preferences: unknown or invalid validator pubkey"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+            self.gossip_penalize_peer(
+                peer_id,
+                PeerAction::LowToleranceError,
+                "proposer_preferences_unknown_validator",
+            );
+            return;
         };
 
         let domain = self.chain.spec.get_domain(
