@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 42 DataColumnSidecar Gloas variant unit tests (run 49)
+- Added 42 unit tests to `data_column_sidecar.rs` (previously had NO test module):
+  - Field accessors: `slot()` (Gloas from field, Fulu from header), `epoch()` (boundary tests), `block_root()` (Gloas from field, Fulu from tree_hash), `block_parent_root()` (Gloas=None, Fulu=Some), `block_proposer_index()` (Gloas=None, Fulu=Some), `index()` shared getter
+  - `verify_inclusion_proof()`: Gloas always true, Fulu default fails
+  - SSZ roundtrip: inner types (Gloas, Fulu), enum via `from_ssz_bytes_by_fork` (both variants)
+  - `from_ssz_bytes_by_fork`: unsupported forks rejected (Base, Altair, Deneb), correct variant dispatch
+  - `any_from_ssz_bytes`: Fulu and Gloas automatic detection
+  - `min_size`/`max_size`: positive, max>min for multiple blobs, max=min for 1 blob
+  - Partial getters: Gloas `sidecar_slot`/`sidecar_beacon_block_root` succeed, fail on Fulu; Fulu `kzg_commitments`/`signed_block_header` succeed, fail on Gloas
+  - Clone/equality: both variants clone correctly, different variants not equal
+  - Tree hash: deterministic, changes with different data
+  - Epoch boundaries: slot 0 = epoch 0, slot 8 = epoch 1 (minimal)
+- All 424 types tests pass (was 382)
+
 ### 2026-02-20 — 50 execution payload type conversion unit tests (run 48)
 - Added 22 unit tests to `execution_payload_header.rs` (previously had NO test module):
   - `upgrade_to_gloas`: preserves all 17 fields, default roundtrip
