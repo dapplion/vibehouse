@@ -29,6 +29,31 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 24 attestation verification, proto_array viability, and attestation signing tests (run 39)
+- Added 10 unit tests for `verify_attestation` Gloas committee index validation (`verify_attestation.rs`):
+  - Tests the `[Modified in Gloas:EIP7732]` code that allows `data.index < 2` (was `== 0` in Electra/Fulu)
+  - Gloas rejection: index 2, 3, u64::MAX all fail with `BadCommitteeIndex`
+  - Gloas acceptance: index 0 and 1 pass the index check (1 is NEW in Gloas)
+  - Fulu comparison: index 0 passes, index 1 and 2 rejected (pre-Gloas behavior)
+  - Block inclusion timing: too-early rejection and inclusion delay checks
+  - Previously no tests existed in this file
+- Added 8 unit tests for `proto_array::node_is_viable_for_head` payload_revealed check (`proto_array.rs`):
+  - Tests the Gloas ePBS viability logic for head selection
+  - Pre-Gloas (builder_index=None): always viable
+  - Self-build (BUILDER_INDEX_SELF_BUILD): always viable even without payload revealed
+  - External builder: viable only when payload_revealed=true
+  - Builder index 0: treated as external builder (not self-build)
+  - Invalid execution status: never viable regardless of payload_revealed
+  - Previously no test module existed in proto_array.rs
+- Added 6 unit tests for `Attestation::empty_for_signing` Gloas payload_present logic (`attestation.rs`):
+  - Tests the `[New in Gloas:EIP7732]` code that sets `data.index = 1` when `payload_present=true`
+  - Gloas: payload_present=true → index=1, payload_present=false → index=0
+  - Fulu: payload_present flag ignored, always index=0
+  - Variant check: Gloas attestation is Electra variant
+  - Committee bits: correct bit set for given committee_index
+  - Previously only integration test coverage
+- All 240 state_processing tests pass (was 230), 47 proto_array tests pass (was 39), 327 types tests pass (was 321)
+
 ### 2026-02-20 — 16 per_slot_processing, proposer slashing, and attestation weight tests (run 38)
 - Added 6 unit tests for `per_slot_processing` Gloas-specific code (`per_slot_processing.rs`):
   - Tests `cache_state` clearing of `execution_payload_availability` bit for next slot
