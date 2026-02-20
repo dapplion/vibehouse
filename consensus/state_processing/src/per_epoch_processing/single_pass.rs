@@ -1287,3 +1287,351 @@ fn process_single_effective_balance_update(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz_types::BitVector;
+    use std::sync::Arc;
+    use types::{
+        BeaconBlockHeader, BeaconStateFulu, CACHED_EPOCHS, CommitteeCache,
+        ExecutionPayloadHeaderFulu, FixedBytesExtended, FixedVector, Fork, Hash256, MinimalEthSpec,
+        PubkeyCache, SlashingsCache, Slot, SyncCommittee,
+    };
+
+    type E = MinimalEthSpec;
+
+    const BALANCE: u64 = 32_000_000_000;
+    const NUM_VALIDATORS: usize = 8;
+
+    /// Build a minimal Fulu state with active validators for proposer lookahead tests.
+    ///
+    /// The state is at epoch 1 (slot 8) with `NUM_VALIDATORS` active validators and a
+    /// pre-populated `proposer_lookahead` via `initialize_proposer_lookahead`.
+    fn make_fulu_state_with_lookahead() -> (BeaconState<E>, ChainSpec) {
+        let mut spec = E::default_spec();
+        // All forks at epoch 0 so fork_name_at_epoch returns Fulu for any epoch.
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8 = epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let mut validators = Vec::with_capacity(NUM_VALIDATORS);
+        let mut balances = Vec::with_capacity(NUM_VALIDATORS);
+        for _ in 0..NUM_VALIDATORS {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(Validator {
+                effective_balance: BALANCE,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..Validator::default()
+            });
+            balances.push(BALANCE);
+        }
+
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let mut state = BeaconState::Fulu(BeaconStateFulu {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.electra_fork_version,
+                current_version: spec.fulu_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::zero(),
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint::default(),
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_header: ExecutionPayloadHeaderFulu::default(),
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        // Initialize the proposer lookahead using the same logic as upgrade_to_fulu.
+        // For minimal: 16 slots = 2 epochs (epoch 1 + epoch 2 proposers).
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+        let current_epoch = state.current_epoch();
+        let mut lookahead = Vec::with_capacity(<E as EthSpec>::ProposerLookaheadSlots::to_usize());
+        for i in 0..(spec.min_seed_lookahead.safe_add(1).unwrap().as_u64()) {
+            let target_epoch = current_epoch.safe_add(i).unwrap();
+            let proposers = state
+                .get_beacon_proposer_indices(target_epoch, &spec)
+                .unwrap();
+            assert_eq!(proposers.len(), slots_per_epoch);
+            lookahead.extend(proposers.into_iter().map(|x| x as u64));
+        }
+        *state.proposer_lookahead_mut().unwrap() = Vector::new(lookahead).unwrap();
+
+        (state, spec)
+    }
+
+    /// Helper: read the proposer lookahead as a plain Vec.
+    fn lookahead_vec(state: &BeaconState<E>) -> Vec<u64> {
+        state
+            .proposer_lookahead()
+            .unwrap()
+            .iter()
+            .copied()
+            .collect()
+    }
+
+    #[test]
+    fn shift_moves_second_epoch_to_first() {
+        let (mut state, spec) = make_fulu_state_with_lookahead();
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+
+        let before = lookahead_vec(&state);
+        // The second epoch entries (indices 8..16) should become the first epoch after processing.
+        let second_epoch_before: Vec<u64> = before[slots_per_epoch..].to_vec();
+
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+
+        let after = lookahead_vec(&state);
+        // First epoch of the new lookahead should equal what was the second epoch before.
+        assert_eq!(
+            &after[..slots_per_epoch],
+            &second_epoch_before,
+            "first epoch after shift should match second epoch before shift"
+        );
+    }
+
+    #[test]
+    fn new_entries_are_valid_validator_indices() {
+        let (mut state, spec) = make_fulu_state_with_lookahead();
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+
+        let after = lookahead_vec(&state);
+        let num_validators = state.validators().len();
+
+        // The last epoch entries (new proposers) should all be valid validator indices.
+        for (i, &proposer) in after[slots_per_epoch..].iter().enumerate() {
+            assert!(
+                (proposer as usize) < num_validators,
+                "new proposer at offset {} has index {} but only {} validators exist",
+                i,
+                proposer,
+                num_validators
+            );
+        }
+    }
+
+    #[test]
+    fn new_entries_match_independent_computation() {
+        let (mut state, spec) = make_fulu_state_with_lookahead();
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+
+        // Compute what the new epoch's proposers should be independently.
+        let next_epoch = state
+            .current_epoch()
+            .safe_add(spec.min_seed_lookahead.as_u64())
+            .unwrap()
+            .safe_add(1)
+            .unwrap();
+        let expected_proposers: Vec<u64> = state
+            .get_beacon_proposer_indices(next_epoch, &spec)
+            .unwrap()
+            .into_iter()
+            .map(|x| x as u64)
+            .collect();
+
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+
+        let after = lookahead_vec(&state);
+        assert_eq!(
+            &after[slots_per_epoch..],
+            &expected_proposers,
+            "new epoch entries should match independently computed proposer indices"
+        );
+    }
+
+    #[test]
+    fn lookahead_length_preserved() {
+        let (mut state, spec) = make_fulu_state_with_lookahead();
+        let expected_len = <E as EthSpec>::ProposerLookaheadSlots::to_usize();
+
+        let before_len = lookahead_vec(&state).len();
+        assert_eq!(before_len, expected_len);
+
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+
+        let after_len = lookahead_vec(&state).len();
+        assert_eq!(
+            after_len, expected_len,
+            "lookahead length should be preserved"
+        );
+    }
+
+    #[test]
+    fn double_call_shifts_twice() {
+        let (mut state, spec) = make_fulu_state_with_lookahead();
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+
+        let initial = lookahead_vec(&state);
+
+        // First call: shifts out epoch 0, fills epoch 2 (new).
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+        let after_first = lookahead_vec(&state);
+
+        // The first epoch of after_first should be the second epoch of initial.
+        assert_eq!(&after_first[..slots_per_epoch], &initial[slots_per_epoch..]);
+
+        // Second call: shifts out what was epoch 1 (now first), fills another epoch.
+        // Note: the seed is deterministic and depends on randao_mixes which haven't changed,
+        // but the epoch input to get_seed changes, so the result may differ.
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+        let after_second = lookahead_vec(&state);
+
+        // After second call, first epoch should equal the second epoch of after_first.
+        assert_eq!(
+            &after_second[..slots_per_epoch],
+            &after_first[slots_per_epoch..],
+            "double shift: first epoch after second call should match second epoch after first call"
+        );
+    }
+
+    #[test]
+    fn initial_lookahead_covers_two_epochs() {
+        let (state, _spec) = make_fulu_state_with_lookahead();
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+
+        let la = lookahead_vec(&state);
+        // MinimalEthSpec: ProposerLookaheadSlots = 16 = 2 * 8 slots_per_epoch
+        assert_eq!(la.len(), 2 * slots_per_epoch);
+
+        // All entries should be valid validator indices (not the default 0 placeholder — well,
+        // 0 is a valid index too since we have 8 validators).
+        let num_validators = state.validators().len();
+        for &proposer in &la {
+            assert!(
+                (proposer as usize) < num_validators,
+                "initial lookahead entry {} exceeds validator count {}",
+                proposer,
+                num_validators
+            );
+        }
+    }
+
+    #[test]
+    fn deterministic_same_state_same_result() {
+        // Two identical states should produce identical lookahead after processing.
+        let (mut state1, spec) = make_fulu_state_with_lookahead();
+        let (mut state2, _) = make_fulu_state_with_lookahead();
+
+        process_proposer_lookahead(&mut state1, &spec).unwrap();
+        process_proposer_lookahead(&mut state2, &spec).unwrap();
+
+        assert_eq!(
+            lookahead_vec(&state1),
+            lookahead_vec(&state2),
+            "identical states should produce identical lookahead"
+        );
+    }
+
+    #[test]
+    fn different_randao_produces_different_proposers() {
+        // Verify that the proposer selection is seed-dependent.
+        let (mut state1, spec) = make_fulu_state_with_lookahead();
+        let (mut state2, _) = make_fulu_state_with_lookahead();
+
+        // process_proposer_lookahead computes proposers for epoch=3 (current=1 + 1 + 1).
+        // get_seed for epoch 3 reads randao_mixes at index
+        //   (3 + EpochsPerHistoricalVector - min_seed_lookahead - 1) mod len = 1
+        // So modify mix at index 1 to affect the seed.
+        let mixes = state2.randao_mixes_mut();
+        *mixes.get_mut(1).unwrap() = Hash256::repeat_byte(0xFF);
+
+        // Re-initialize the lookahead for state2 with the new randao.
+        let current_epoch = state2.current_epoch();
+        let mut lookahead2 = Vec::with_capacity(<E as EthSpec>::ProposerLookaheadSlots::to_usize());
+        for i in 0..(spec.min_seed_lookahead.safe_add(1).unwrap().as_u64()) {
+            let target_epoch = current_epoch.safe_add(i).unwrap();
+            let proposers = state2
+                .get_beacon_proposer_indices(target_epoch, &spec)
+                .unwrap();
+            lookahead2.extend(proposers.into_iter().map(|x| x as u64));
+        }
+        *state2.proposer_lookahead_mut().unwrap() = Vector::new(lookahead2).unwrap();
+
+        // Process both.
+        process_proposer_lookahead(&mut state1, &spec).unwrap();
+        process_proposer_lookahead(&mut state2, &spec).unwrap();
+
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+        let la1 = lookahead_vec(&state1);
+        let la2 = lookahead_vec(&state2);
+
+        // The new (last epoch) entries should differ because the seeds differ.
+        assert_ne!(
+            &la1[slots_per_epoch..],
+            &la2[slots_per_epoch..],
+            "different randao_mixes should produce different proposer selections"
+        );
+    }
+}
