@@ -31,6 +31,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 31)
+- No new consensus-specs PRs merged since run 30: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+- **Added 21 unit tests for Gloas state upgrade** in `consensus/state_processing/src/upgrade/gloas.rs`. Previously had ZERO unit tests for `upgrade_to_gloas`, `upgrade_state_to_gloas`, `onboard_builders_from_pending_deposits`, and `apply_builder_deposit` — only covered by EF spec tests.
+  - Field migration (5): versioning preserved (fork version/epoch), registry preserved (validators/balances), Electra fields preserved (deposit/exit/consolidation), Capella fields preserved (withdrawal indices), finality preserved
+  - Execution bid creation (2): block_hash migrated from header to bid, latest_block_hash set from header
+  - New Gloas fields (6): builders empty, builder_withdrawal_index zero, availability bitvector all-true, pending payments all-default, builder_pending_withdrawals empty, payload_expected_withdrawals empty
+  - Builder onboarding (8): no deposits → no builders, builder deposit (0x03 creds) creates builder with correct fields, validator deposit kept in pending, mixed deposits separated correctly, builder topup adds to existing balance, new validator deposit with valid signature kept, new deposit with invalid signature dropped, builder deposit_epoch set from slot
+  - All 123/123 state_processing tests pass (21 new + 102 existing)
+- Updated PLAN.md: test coverage status
+
 ### 2026-02-20 (run 30)
 - No new consensus-specs PRs merged since run 29: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
 - **Added 15 unit tests for Gloas builder pending payments epoch processing** in `consensus/state_processing/src/per_epoch_processing/gloas.rs`. Previously had ZERO unit tests for `process_builder_pending_payments` — only covered by EF spec tests.
