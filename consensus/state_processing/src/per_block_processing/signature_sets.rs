@@ -943,10 +943,12 @@ mod tests {
     fn bid_signature_set_valid_signature_verifies() {
         let (state, spec, keypairs) = make_gloas_state();
 
-        let mut bid = ExecutionPayloadBid::<E>::default();
-        bid.builder_index = 0;
-        bid.slot = Slot::new(8);
-        bid.value = 100;
+        let bid = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(8),
+            value: 100,
+            ..Default::default()
+        };
 
         let epoch = bid.slot.epoch(E::slots_per_epoch());
         let domain = spec.get_domain(
@@ -985,9 +987,11 @@ mod tests {
     fn bid_signature_set_wrong_key_fails_verification() {
         let (state, spec, keypairs) = make_gloas_state();
 
-        let mut bid = ExecutionPayloadBid::<E>::default();
-        bid.builder_index = 0;
-        bid.slot = Slot::new(8);
+        let bid = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(8),
+            ..Default::default()
+        };
 
         let epoch = bid.slot.epoch(E::slots_per_epoch());
         let domain = spec.get_domain(
@@ -1027,9 +1031,11 @@ mod tests {
     fn bid_signature_set_uses_beacon_builder_domain() {
         let (state, spec, keypairs) = make_gloas_state();
 
-        let mut bid = ExecutionPayloadBid::<E>::default();
-        bid.builder_index = 0;
-        bid.slot = Slot::new(8);
+        let bid = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(8),
+            ..Default::default()
+        };
 
         // Sign with WRONG domain (BeaconProposer instead of BeaconBuilder)
         let epoch = bid.slot.epoch(E::slots_per_epoch());
