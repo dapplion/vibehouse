@@ -259,17 +259,18 @@ fn verify_sp1_groth16(proof: &ExecutionProof) -> Result<(), GossipExecutionProof
         reason: format!("SP1 Groth16 verification failed: {e}"),
     })?;
 
-    // Cross-check: the first 32 bytes of public values must be the block hash.
-    // This ensures the proof actually proves the execution of the claimed block.
-    if parsed.public_values.len() >= 32 {
-        let proven_hash =
-            ExecutionBlockHash::from_root(Hash256::from_slice(&parsed.public_values[..32]));
-        if proven_hash != proof.block_hash {
-            return Err(GossipExecutionProofError::PublicValuesBlockHashMismatch {
-                expected: proof.block_hash,
-                got: proven_hash,
-            });
-        }
+    // Parse and cross-check public values.
+    // The public values must contain the block_hash committed by the guest program.
+    let public_values =
+        types::execution_proof::ExecutionProofPublicValues::from_bytes(parsed.public_values)
+            .ok_or(GossipExecutionProofError::InvalidProofData)?;
+
+    let proven_hash = public_values.execution_block_hash();
+    if proven_hash != proof.block_hash {
+        return Err(GossipExecutionProofError::PublicValuesBlockHashMismatch {
+            expected: proof.block_hash,
+            got: proven_hash,
+        });
     }
 
     Ok(())
@@ -422,17 +423,24 @@ mod tests {
     /// - Without `sp1` feature: returns Sp1VerificationUnavailable
     #[test]
     fn test_sp1_groth16_proof_crypto_check() {
-        use types::execution_proof::PROOF_VERSION_SP1_GROTH16;
+        use types::execution_proof::{ExecutionProofPublicValues, PROOF_VERSION_SP1_GROTH16};
 
-        // Build a structurally valid but cryptographically invalid v2 proof.
+        let block_hash = ExecutionBlockHash::from(Hash256::random());
+
+        // Build structurally valid but cryptographically invalid v2 proof.
+        let pv = ExecutionProofPublicValues {
+            block_hash: block_hash.into_root().0,
+            parent_hash: [0x22; 32],
+            state_root: [0x33; 32],
+        };
         let mut proof_data = vec![0u8; 32]; // vkey_hash
         proof_data.extend_from_slice(&4u32.to_be_bytes()); // proof_len = 4
         proof_data.extend_from_slice(&[1, 2, 3, 4]); // fake groth16 proof
-        proof_data.extend_from_slice(&[5, 6, 7, 8]); // fake public values
+        proof_data.extend_from_slice(&pv.to_bytes()); // valid public values
 
         let proof = ExecutionProof::new(
             Hash256::random(),
-            ExecutionBlockHash::from(Hash256::random()),
+            block_hash,
             ExecutionProofSubnetId::new(0).unwrap(),
             PROOF_VERSION_SP1_GROTH16,
             proof_data,
@@ -441,7 +449,7 @@ mod tests {
         let result = verify_proof_cryptography(&proof);
 
         // Without sp1 feature: should be Sp1VerificationUnavailable.
-        // With sp1 feature: should be InvalidProof (fake data won't verify).
+        // With sp1 feature: should be InvalidProof (fake groth16 data won't verify).
         #[cfg(not(feature = "sp1"))]
         assert!(matches!(
             result,

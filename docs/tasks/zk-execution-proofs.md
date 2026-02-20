@@ -146,6 +146,38 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-20 — Task 20b: define proof format — public values schema (run 27)
+
+**Defined `ExecutionProofPublicValues` struct and integrated it into SP1 Groth16 verification.**
+
+**Changes:**
+
+1. **Added `ExecutionProofPublicValues` struct** to `consensus/types/src/execution_proof.rs` — 96-byte fixed-size format representing the public values committed by the vibehouse SP1 guest program. Fields: `block_hash` (32B), `parent_hash` (32B), `state_root` (32B). Includes `to_bytes()`, `from_bytes()`, and `execution_block_hash()` methods.
+
+2. **Added `EXECUTION_PROOF_PUBLIC_VALUES_SIZE` constant** (96 bytes) — used for serialization/deserialization and minimum proof data size calculations.
+
+3. **Updated `SP1_GROTH16_MIN_PROOF_DATA_SIZE`** — from 37 (32+4+1) to 133 (32+4+1+96) to account for the minimum public values size. This ensures `is_structurally_valid()` rejects SP1 Groth16 proofs that are too short to contain valid public values.
+
+4. **Updated `verify_sp1_groth16()`** in `execution_proof_verification.rs` — after Groth16 cryptographic verification, now parses `ExecutionProofPublicValues` from the proof's public values bytes and cross-checks the proven `block_hash` against the proof's claimed `block_hash`. This ensures the proof actually proves the execution of the claimed block.
+
+5. **Design decision: 96-byte fixed format vs RSP's bincode `CommittedHeader`**:
+   - RSP commits a full `alloy_consensus::Header` via bincode (~600+ bytes, version-dependent serialization)
+   - vibehouse uses a simpler 96-byte fixed layout: `block_hash || parent_hash || state_root`
+   - Rationale: CL verifier only needs the block hash for cross-checking. Parent hash and state root are committed for future use (chain continuity verification, state root cross-checking) but are not validated yet.
+   - The guest program (Task 20c) will re-execute the block and commit these three values.
+
+**Tests:**
+- 18/18 types execution_proof tests pass (4 new: public_values_roundtrip, public_values_from_bytes_too_short, public_values_execution_block_hash, public_values_extra_bytes_ignored)
+- 13/13 beacon_chain execution_proof tests pass (without sp1 feature)
+- 6/6 beacon_chain execution_proof tests pass (with sp1 feature)
+- Clippy clean (with and without sp1 feature), cargo fmt clean
+
+**Files changed**: 2 modified
+- `consensus/types/src/execution_proof.rs`: ExecutionProofPublicValues struct, constants, methods, updated min size, 4 new tests (~+80 lines)
+- `beacon_node/beacon_chain/src/execution_proof_verification.rs`: updated verify_sp1_groth16 to use ExecutionProofPublicValues, updated tests (~+10 lines)
+
+**Task 20b is complete.** Next: 20c (build RSP-based guest program).
+
 ### 2026-02-20 — Task 20a: add sp1-verifier dependency and implement Groth16 verification (run 26)
 
 **Implemented real SP1 Groth16 proof verification in the beacon chain, replacing the stub cryptographic check.**
@@ -897,7 +929,7 @@ pub stateless_min_proofs_required: usize, // default: 1
 | # | Task | Scope | Deps |
 |---|------|-------|------|
 | 20a | Add `sp1-verifier` dependency, implement Groth16 verification — DONE | `beacon_chain` crate | None |
-| 20b | Define proof format (proof_data layout, public values schema) | `types` crate | None |
+| 20b | Define proof format (proof_data layout, public values schema) — DONE | `types` crate | None |
 | 20c | Build RSP-based guest program for vibehouse | New crate/binary | 20b |
 | 20d | Build host program (state witness preparation) | `execution_proof_generation.rs` | 20b, 20c |
 | 20e | Async proof generation with `spawn_blocking` | `beacon_chain` | 20d |

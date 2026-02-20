@@ -23,8 +23,9 @@ pub const PROOF_VERSION_SP1_GROTH16: u64 = 2;
 
 /// Minimum size of proof_data for SP1 Groth16 proofs.
 ///
-/// Layout: vkey_hash (32 bytes) + groth16_proof_length (4 bytes) + at least 1 byte of proof data.
-pub const SP1_GROTH16_MIN_PROOF_DATA_SIZE: usize = 32 + 4 + 1;
+/// Layout: vkey_hash (32 bytes) + groth16_proof_length (4 bytes) + at least 1 byte of groth16
+/// proof + public_values (96 bytes).
+pub const SP1_GROTH16_MIN_PROOF_DATA_SIZE: usize = 32 + 4 + 1 + EXECUTION_PROOF_PUBLIC_VALUES_SIZE;
 
 /// Parsed SP1 Groth16 proof components extracted from proof_data.
 pub struct Sp1Groth16ProofData<'a> {
@@ -34,6 +35,63 @@ pub struct Sp1Groth16ProofData<'a> {
     pub groth16_proof: &'a [u8],
     /// The SP1 public values (contains the proven block hash).
     pub public_values: &'a [u8],
+}
+
+/// The public values committed by the vibehouse SP1 guest program.
+///
+/// The guest program re-executes an Ethereum block inside the SP1 zkVM,
+/// then commits these values as the proof's public output. The CL verifier
+/// checks that `block_hash` matches the proof's claimed execution block hash.
+///
+/// Layout: 96 bytes total, simple concatenation of three 32-byte hashes.
+///
+/// ```text
+/// [0..32]   block_hash   — keccak256 of the RLP-encoded block header
+/// [32..64]  parent_hash  — parent block's hash (chain continuity)
+/// [64..96]  state_root   — post-execution state root (proven correct)
+/// ```
+///
+/// This struct is used by both the guest program (to commit) and the CL
+/// verifier (to parse and cross-check).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExecutionProofPublicValues {
+    /// The execution block hash (keccak256 of RLP-encoded header).
+    pub block_hash: [u8; 32],
+    /// The parent block hash.
+    pub parent_hash: [u8; 32],
+    /// The post-execution state root, proven correct by re-execution.
+    pub state_root: [u8; 32],
+}
+
+/// Size of serialized `ExecutionProofPublicValues` in bytes.
+pub const EXECUTION_PROOF_PUBLIC_VALUES_SIZE: usize = 96;
+
+impl ExecutionProofPublicValues {
+    /// Serialize to a fixed-size byte array.
+    pub fn to_bytes(&self) -> [u8; EXECUTION_PROOF_PUBLIC_VALUES_SIZE] {
+        let mut buf = [0u8; EXECUTION_PROOF_PUBLIC_VALUES_SIZE];
+        buf[..32].copy_from_slice(&self.block_hash);
+        buf[32..64].copy_from_slice(&self.parent_hash);
+        buf[64..96].copy_from_slice(&self.state_root);
+        buf
+    }
+
+    /// Deserialize from bytes. Returns `None` if the slice is too short.
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() < EXECUTION_PROOF_PUBLIC_VALUES_SIZE {
+            return None;
+        }
+        Some(Self {
+            block_hash: bytes.get(..32)?.try_into().ok()?,
+            parent_hash: bytes.get(32..64)?.try_into().ok()?,
+            state_root: bytes.get(64..96)?.try_into().ok()?,
+        })
+    }
+
+    /// Extract the block hash as an `ExecutionBlockHash`.
+    pub fn execution_block_hash(&self) -> ExecutionBlockHash {
+        ExecutionBlockHash::from_root(Hash256::from(self.block_hash))
+    }
 }
 
 /// A proof attesting to the validity of an execution payload.
@@ -167,7 +225,12 @@ mod tests {
 
     #[test]
     fn valid_sp1_groth16_proof() {
-        let data = make_sp1_groth16_data([0xaa; 32], &[1, 2, 3], &[4, 5, 6]);
+        let pv = ExecutionProofPublicValues {
+            block_hash: [0x11; 32],
+            parent_hash: [0x22; 32],
+            state_root: [0x33; 32],
+        };
+        let data = make_sp1_groth16_data([0xaa; 32], &[1, 2, 3], &pv.to_bytes());
         let proof = make_proof(PROOF_VERSION_SP1_GROTH16, data);
         assert!(proof.is_version_supported());
         assert!(proof.is_structurally_valid());
@@ -195,8 +258,9 @@ mod tests {
 
     #[test]
     fn sp1_groth16_too_short() {
-        // Version 2 proof with data shorter than the minimum header size.
-        let proof = make_proof(PROOF_VERSION_SP1_GROTH16, vec![0u8; 36]);
+        // Version 2 proof with data shorter than the minimum size.
+        // SP1_GROTH16_MIN_PROOF_DATA_SIZE = 32 + 4 + 1 + 96 = 133
+        let proof = make_proof(PROOF_VERSION_SP1_GROTH16, vec![0u8; 132]);
         assert!(proof.is_version_supported());
         assert!(!proof.is_structurally_valid());
     }
@@ -205,15 +269,25 @@ mod tests {
     fn sp1_groth16_parse_valid() {
         let vkey = [0xbb; 32];
         let groth16_bytes = vec![10, 20, 30, 40];
-        let public_vals = vec![50, 60, 70];
-        let data = make_sp1_groth16_data(vkey, &groth16_bytes, &public_vals);
+        let pv = ExecutionProofPublicValues {
+            block_hash: [0x11; 32],
+            parent_hash: [0x22; 32],
+            state_root: [0x33; 32],
+        };
+        let pv_bytes = pv.to_bytes();
+        let data = make_sp1_groth16_data(vkey, &groth16_bytes, &pv_bytes);
 
         let proof = make_proof(PROOF_VERSION_SP1_GROTH16, data);
         let parsed = proof.parse_sp1_groth16().expect("should parse");
 
         assert_eq!(parsed.vkey_hash, &vkey);
         assert_eq!(parsed.groth16_proof, &groth16_bytes);
-        assert_eq!(parsed.public_values, &public_vals);
+        assert_eq!(parsed.public_values, &pv_bytes);
+
+        // Parse public values from the proof.
+        let parsed_pv =
+            ExecutionProofPublicValues::from_bytes(parsed.public_values).expect("should parse pv");
+        assert_eq!(parsed_pv, pv);
     }
 
     #[test]
@@ -229,7 +303,12 @@ mod tests {
 
     #[test]
     fn sp1_groth16_parse_wrong_version() {
-        let data = make_sp1_groth16_data([0; 32], &[1, 2, 3], &[4, 5]);
+        let pv = ExecutionProofPublicValues {
+            block_hash: [0; 32],
+            parent_hash: [0; 32],
+            state_root: [0; 32],
+        };
+        let data = make_sp1_groth16_data([0; 32], &[1, 2, 3], &pv.to_bytes());
         let proof = make_proof(PROOF_VERSION_STUB, data);
         assert!(proof.parse_sp1_groth16().is_none());
     }
@@ -248,7 +327,12 @@ mod tests {
     fn ssz_roundtrip_sp1_groth16() {
         use ssz::{Decode, Encode};
 
-        let data = make_sp1_groth16_data([0xcc; 32], &[1; 256], &[2; 64]);
+        let pv = ExecutionProofPublicValues {
+            block_hash: [0xaa; 32],
+            parent_hash: [0xbb; 32],
+            state_root: [0xcc; 32],
+        };
+        let data = make_sp1_groth16_data([0xdd; 32], &[1; 256], &pv.to_bytes());
         let original = make_proof(PROOF_VERSION_SP1_GROTH16, data);
         let encoded = original.as_ssz_bytes();
         let decoded = ExecutionProof::from_ssz_bytes(&encoded).unwrap();
@@ -258,8 +342,59 @@ mod tests {
         let parsed = decoded
             .parse_sp1_groth16()
             .expect("should parse after SSZ roundtrip");
-        assert_eq!(parsed.vkey_hash, &[0xcc; 32]);
+        assert_eq!(parsed.vkey_hash, &[0xdd; 32]);
         assert_eq!(parsed.groth16_proof.len(), 256);
-        assert_eq!(parsed.public_values.len(), 64);
+        assert_eq!(
+            parsed.public_values.len(),
+            EXECUTION_PROOF_PUBLIC_VALUES_SIZE
+        );
+    }
+
+    #[test]
+    fn public_values_roundtrip() {
+        let pv = ExecutionProofPublicValues {
+            block_hash: [0x11; 32],
+            parent_hash: [0x22; 32],
+            state_root: [0x33; 32],
+        };
+        let bytes = pv.to_bytes();
+        assert_eq!(bytes.len(), EXECUTION_PROOF_PUBLIC_VALUES_SIZE);
+
+        let parsed = ExecutionProofPublicValues::from_bytes(&bytes).unwrap();
+        assert_eq!(parsed, pv);
+    }
+
+    #[test]
+    fn public_values_from_bytes_too_short() {
+        assert!(ExecutionProofPublicValues::from_bytes(&[0u8; 95]).is_none());
+    }
+
+    #[test]
+    fn public_values_execution_block_hash() {
+        let block_hash_bytes = [0x42; 32];
+        let pv = ExecutionProofPublicValues {
+            block_hash: block_hash_bytes,
+            parent_hash: [0; 32],
+            state_root: [0; 32],
+        };
+        let ebh = pv.execution_block_hash();
+        assert_eq!(
+            ebh,
+            ExecutionBlockHash::from_root(Hash256::from(block_hash_bytes))
+        );
+    }
+
+    #[test]
+    fn public_values_extra_bytes_ignored() {
+        // from_bytes should work with more than 96 bytes (ignoring extras).
+        let mut bytes = [0u8; 128];
+        bytes[..32].copy_from_slice(&[0xaa; 32]);
+        bytes[32..64].copy_from_slice(&[0xbb; 32]);
+        bytes[64..96].copy_from_slice(&[0xcc; 32]);
+
+        let pv = ExecutionProofPublicValues::from_bytes(&bytes).unwrap();
+        assert_eq!(pv.block_hash, [0xaa; 32]);
+        assert_eq!(pv.parent_hash, [0xbb; 32]);
+        assert_eq!(pv.state_root, [0xcc; 32]);
     }
 }
