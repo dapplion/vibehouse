@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 16 per_slot_processing, proposer slashing, and attestation weight tests (run 38)
+- Added 6 unit tests for `per_slot_processing` Gloas-specific code (`per_slot_processing.rs`):
+  - Tests `cache_state` clearing of `execution_payload_availability` bit for next slot
+  - Covers: basic clearing, wraparound at `SlotsPerHistoricalRoot`, only-target-bit-cleared, idempotent false→false, state_root caching preserved, end-to-end `per_slot_processing` test
+  - Previously no tests existed in this file
+- Added 6 unit tests for proposer slashing builder payment removal (`process_operations.rs`):
+  - Tests the `[New in Gloas:EIP7732]` code that zeroes `BuilderPendingPayment` when a proposer is slashed
+  - Covers: current epoch index calculation, previous epoch index, old epoch (no clear), selective clearing, empty payment no-op, epoch boundary slot
+  - Previously untested — EF spec tests cover slashing but not the Gloas payment removal path
+- Added 4 unit tests for same-slot attestation weight accumulation (`process_operations.rs`):
+  - Tests the `[New in Gloas:EIP7732]` code that adds `effective_balance` to `builder_pending_payment.weight`
+  - Covers: weight added for same-slot attestation, no weight when payment amount is zero, no weight for non-same-slot (skipped slot), duplicate attestation no double-counting
+  - Previously untested — this is the PTC attestation weight accumulation path used for builder payment quorum
+- All 230 state_processing tests pass (was 214)
+
 ### 2026-02-20 — 16 Gloas genesis initialization and expected withdrawals tests (run 37)
 - Added 9 unit tests for Gloas genesis initialization (`genesis.rs`):
   - Tests the `initialize_beacon_state_from_eth1` code path with all forks at epoch 0 (including Gloas)
