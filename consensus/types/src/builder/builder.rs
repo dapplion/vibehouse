@@ -44,6 +44,57 @@ impl Builder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FixedBytesExtended;
+    use bls::PublicKeyBytes;
 
     ssz_and_tree_hash_tests!(Builder);
+
+    fn make_builder(deposit_epoch: u64, withdrawable_epoch: u64) -> Builder {
+        Builder {
+            pubkey: PublicKeyBytes::empty(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance: 1_000_000,
+            deposit_epoch: Epoch::new(deposit_epoch),
+            withdrawable_epoch: Epoch::new(withdrawable_epoch),
+        }
+    }
+
+    #[test]
+    fn active_builder() {
+        let spec = ChainSpec::minimal();
+        let builder = make_builder(0, spec.far_future_epoch.as_u64());
+        assert!(builder.is_active_at_finalized_epoch(Epoch::new(1), &spec));
+    }
+
+    #[test]
+    fn inactive_deposit_not_before_finalized() {
+        // deposit_epoch == finalized_epoch → not strictly less than
+        let spec = ChainSpec::minimal();
+        let builder = make_builder(5, spec.far_future_epoch.as_u64());
+        assert!(!builder.is_active_at_finalized_epoch(Epoch::new(5), &spec));
+    }
+
+    #[test]
+    fn inactive_deposit_after_finalized() {
+        let spec = ChainSpec::minimal();
+        let builder = make_builder(10, spec.far_future_epoch.as_u64());
+        assert!(!builder.is_active_at_finalized_epoch(Epoch::new(5), &spec));
+    }
+
+    #[test]
+    fn inactive_exiting_builder() {
+        // withdrawable_epoch != FAR_FUTURE_EPOCH → exiting/exited
+        let spec = ChainSpec::minimal();
+        let builder = make_builder(0, 100);
+        assert!(!builder.is_active_at_finalized_epoch(Epoch::new(5), &spec));
+    }
+
+    #[test]
+    fn inactive_epoch_zero() {
+        // deposit_epoch=0, finalized_epoch=0 → 0 < 0 is false
+        let spec = ChainSpec::minimal();
+        let builder = make_builder(0, spec.far_future_epoch.as_u64());
+        assert!(!builder.is_active_at_finalized_epoch(Epoch::new(0), &spec));
+    }
 }

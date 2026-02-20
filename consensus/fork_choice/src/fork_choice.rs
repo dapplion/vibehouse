@@ -2019,4 +2019,703 @@ mod tests {
         assert!(queued.is_empty());
         assert_eq!(dequeued, vec![1, 2, 3]);
     }
+
+    // ── Gloas ePBS fork choice method tests ──────────────────────────────
+
+    /// Minimal mock ForkChoiceStore for unit testing ForkChoice methods
+    /// that only touch proto_array (on_execution_bid, on_payload_attestation,
+    /// on_execution_payload).
+    mod gloas_fc_tests {
+        use super::*;
+        use proto_array::{Block as ProtoBlock, JustifiedBalances, ProtoArrayForkChoice};
+        use std::collections::BTreeSet;
+        use types::{
+            AggregateSignature, BitVector, MinimalEthSpec, PayloadAttestationData, VariableList,
+        };
+
+        type E = MinimalEthSpec;
+
+        #[derive(Debug)]
+        struct MockStoreError;
+
+        struct MockStore {
+            current_slot: Slot,
+            justified_checkpoint: Checkpoint,
+            finalized_checkpoint: Checkpoint,
+            justified_balances: JustifiedBalances,
+            proposer_boost_root: Hash256,
+            equivocating_indices: BTreeSet<u64>,
+        }
+
+        impl ForkChoiceStore<E> for MockStore {
+            type Error = MockStoreError;
+
+            fn get_current_slot(&self) -> Slot {
+                self.current_slot
+            }
+            fn set_current_slot(&mut self, slot: Slot) {
+                self.current_slot = slot;
+            }
+            fn on_verified_block<Payload: AbstractExecPayload<E>>(
+                &mut self,
+                _block: BeaconBlockRef<E, Payload>,
+                _block_root: Hash256,
+                _state: &BeaconState<E>,
+            ) -> Result<(), Self::Error> {
+                Ok(())
+            }
+            fn justified_checkpoint(&self) -> &Checkpoint {
+                &self.justified_checkpoint
+            }
+            fn justified_state_root(&self) -> Hash256 {
+                Hash256::zero()
+            }
+            fn justified_balances(&self) -> &JustifiedBalances {
+                &self.justified_balances
+            }
+            fn finalized_checkpoint(&self) -> &Checkpoint {
+                &self.finalized_checkpoint
+            }
+            fn unrealized_justified_checkpoint(&self) -> &Checkpoint {
+                &self.justified_checkpoint
+            }
+            fn unrealized_justified_state_root(&self) -> Hash256 {
+                Hash256::zero()
+            }
+            fn unrealized_finalized_checkpoint(&self) -> &Checkpoint {
+                &self.finalized_checkpoint
+            }
+            fn proposer_boost_root(&self) -> Hash256 {
+                self.proposer_boost_root
+            }
+            fn set_finalized_checkpoint(&mut self, checkpoint: Checkpoint) {
+                self.finalized_checkpoint = checkpoint;
+            }
+            fn set_justified_checkpoint(
+                &mut self,
+                checkpoint: Checkpoint,
+                _state_root: Hash256,
+            ) -> Result<(), Self::Error> {
+                self.justified_checkpoint = checkpoint;
+                Ok(())
+            }
+            fn set_unrealized_justified_checkpoint(
+                &mut self,
+                _checkpoint: Checkpoint,
+                _state_root: Hash256,
+            ) {
+            }
+            fn set_unrealized_finalized_checkpoint(&mut self, _checkpoint: Checkpoint) {}
+            fn set_proposer_boost_root(&mut self, root: Hash256) {
+                self.proposer_boost_root = root;
+            }
+            fn equivocating_indices(&self) -> &BTreeSet<u64> {
+                &self.equivocating_indices
+            }
+            fn extend_equivocating_indices(&mut self, indices: impl IntoIterator<Item = u64>) {
+                self.equivocating_indices.extend(indices);
+            }
+        }
+
+        fn root(i: u64) -> Hash256 {
+            Hash256::from_low_u64_be(i)
+        }
+
+        fn genesis_checkpoint() -> Checkpoint {
+            Checkpoint {
+                epoch: Epoch::new(0),
+                root: root(0),
+            }
+        }
+
+        fn junk_shuffling_id() -> AttestationShufflingId {
+            AttestationShufflingId {
+                shuffling_epoch: Epoch::new(0),
+                shuffling_decision_block: Hash256::zero(),
+            }
+        }
+
+        /// Create a ForkChoice with a single genesis block at slot 0.
+        fn new_fc() -> ForkChoice<MockStore, E> {
+            let checkpoint = genesis_checkpoint();
+            let store = MockStore {
+                current_slot: Slot::new(0),
+                justified_checkpoint: checkpoint,
+                finalized_checkpoint: checkpoint,
+                justified_balances: JustifiedBalances {
+                    effective_balances: vec![],
+                    total_effective_balance: 0,
+                    num_active_validators: 0,
+                },
+                proposer_boost_root: Hash256::zero(),
+                equivocating_indices: BTreeSet::new(),
+            };
+            let proto_array = ProtoArrayForkChoice::new::<E>(
+                Slot::new(0),
+                Slot::new(0),
+                Hash256::zero(),
+                checkpoint,
+                checkpoint,
+                junk_shuffling_id(),
+                junk_shuffling_id(),
+                ExecutionStatus::irrelevant(),
+            )
+            .unwrap();
+
+            ForkChoice {
+                fc_store: store,
+                proto_array,
+                queued_attestations: vec![],
+                forkchoice_update_parameters: ForkchoiceUpdateParameters {
+                    head_root: root(0),
+                    head_hash: None,
+                    justified_hash: None,
+                    finalized_hash: None,
+                },
+                _phantom: PhantomData,
+            }
+        }
+
+        /// Insert a child block into the fork choice tree.
+        fn insert_block(fc: &mut ForkChoice<MockStore, E>, slot: u64, block_root: Hash256) {
+            let parent_root = root(0); // genesis
+            fc.proto_array
+                .process_block::<E>(
+                    ProtoBlock {
+                        slot: Slot::new(slot),
+                        root: block_root,
+                        parent_root: Some(parent_root),
+                        state_root: Hash256::zero(),
+                        target_root: root(0),
+                        current_epoch_shuffling_id: junk_shuffling_id(),
+                        next_epoch_shuffling_id: junk_shuffling_id(),
+                        justified_checkpoint: genesis_checkpoint(),
+                        finalized_checkpoint: genesis_checkpoint(),
+                        execution_status: ExecutionStatus::irrelevant(),
+                        unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                        unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                        builder_index: None,
+                        payload_revealed: false,
+                        ptc_weight: 0,
+                        ptc_blob_data_available_weight: 0,
+                        payload_data_available: false,
+                        bid_block_hash: None,
+                        bid_parent_block_hash: None,
+                        proposer_index: 0,
+                        ptc_timely: false,
+                    },
+                    Slot::new(slot),
+                )
+                .unwrap();
+        }
+
+        fn make_bid(slot: u64, builder_index: u64) -> SignedExecutionPayloadBid<E> {
+            let mut bid = SignedExecutionPayloadBid::<E>::empty();
+            bid.message.slot = Slot::new(slot);
+            bid.message.builder_index = builder_index;
+            bid
+        }
+
+        fn make_payload_attestation(
+            slot: u64,
+            beacon_block_root: Hash256,
+            payload_present: bool,
+            blob_data_available: bool,
+        ) -> PayloadAttestation<E> {
+            PayloadAttestation {
+                aggregation_bits: BitVector::default(),
+                data: PayloadAttestationData {
+                    beacon_block_root,
+                    slot: Slot::new(slot),
+                    payload_present,
+                    blob_data_available,
+                },
+                signature: AggregateSignature::empty(),
+            }
+        }
+
+        fn make_indexed_payload_attestation(
+            slot: u64,
+            beacon_block_root: Hash256,
+            payload_present: bool,
+            blob_data_available: bool,
+            attesting_indices: Vec<u64>,
+        ) -> IndexedPayloadAttestation<E> {
+            IndexedPayloadAttestation {
+                attesting_indices: VariableList::from(attesting_indices),
+                data: PayloadAttestationData {
+                    beacon_block_root,
+                    slot: Slot::new(slot),
+                    payload_present,
+                    blob_data_available,
+                },
+                signature: AggregateSignature::empty(),
+            }
+        }
+
+        // ── on_execution_bid tests ───────────────────────────────────────
+
+        #[test]
+        fn bid_unknown_block_root() {
+            let mut fc = new_fc();
+            let unknown = root(999);
+            let bid = make_bid(1, 42);
+            let err = fc.on_execution_bid(&bid, unknown).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidExecutionBid(InvalidExecutionBid::UnknownBeaconBlockRoot { .. })
+                ),
+                "expected UnknownBeaconBlockRoot, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn bid_slot_mismatch() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Bid has slot 5 but block is at slot 1
+            let bid = make_bid(5, 42);
+            let err = fc.on_execution_bid(&bid, block_root).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidExecutionBid(InvalidExecutionBid::SlotMismatch { .. })
+                ),
+                "expected SlotMismatch, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn bid_happy_path_sets_builder_index() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            // Verify node was updated
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(42));
+            assert!(!node.payload_revealed);
+            assert_eq!(node.ptc_weight, 0);
+            assert_eq!(node.ptc_blob_data_available_weight, 0);
+            assert!(!node.payload_data_available);
+        }
+
+        #[test]
+        fn bid_resets_payload_revealed() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Manually set payload_revealed to true (simulating prior state)
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 100;
+
+            // Bid should reset these
+            let bid = make_bid(1, 77);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(77));
+            assert!(!node.payload_revealed);
+            assert_eq!(node.ptc_weight, 0);
+        }
+
+        #[test]
+        fn bid_on_genesis_block_slot_zero() {
+            // Genesis block is at slot 0, bid for slot 0
+            let mut fc = new_fc();
+            let genesis_root = root(0);
+
+            let bid = make_bid(0, 10);
+            // Genesis block root is the finalized_checkpoint.root
+            fc.on_execution_bid(&bid, genesis_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&genesis_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(10));
+        }
+
+        // ── on_payload_attestation tests ─────────────────────────────────
+
+        #[test]
+        fn payload_attestation_future_slot() {
+            let mut fc = new_fc();
+            fc.fc_store.current_slot = Slot::new(5);
+
+            let att = make_payload_attestation(10, root(0), true, true);
+            let indexed = make_indexed_payload_attestation(10, root(0), true, true, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            let err = fc
+                .on_payload_attestation(&att, &indexed, Slot::new(5), &spec)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidPayloadAttestation(InvalidPayloadAttestation::FutureSlot { .. })
+                ),
+                "expected FutureSlot, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn payload_attestation_too_old() {
+            let mut fc = new_fc();
+            let slots_per_epoch = E::slots_per_epoch();
+
+            // Attestation at slot 0, current_slot = slots_per_epoch + 1
+            let current_slot = Slot::new(slots_per_epoch + 1);
+            let att = make_payload_attestation(0, root(0), true, true);
+            let indexed = make_indexed_payload_attestation(0, root(0), true, true, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            let err = fc
+                .on_payload_attestation(&att, &indexed, current_slot, &spec)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidPayloadAttestation(InvalidPayloadAttestation::TooOld { .. })
+                ),
+                "expected TooOld, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn payload_attestation_unknown_block_root() {
+            let mut fc = new_fc();
+            let unknown = root(999);
+            let att = make_payload_attestation(0, unknown, true, true);
+            let indexed = make_indexed_payload_attestation(0, unknown, true, true, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            let err = fc
+                .on_payload_attestation(&att, &indexed, Slot::new(0), &spec)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidPayloadAttestation(
+                        InvalidPayloadAttestation::UnknownBeaconBlockRoot { .. }
+                    )
+                ),
+                "expected UnknownBeaconBlockRoot, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn payload_attestation_slot_mismatch_silent_ok() {
+            // When attestation.data.slot != node.slot, should silently return Ok(())
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Attestation for slot 2 but block is at slot 1 → silent Ok
+            let att = make_payload_attestation(2, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(2, block_root, true, true, vec![1, 2]);
+            let spec = ChainSpec::minimal();
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(2), &spec)
+                .unwrap();
+
+            // Node should be unchanged — no weight added
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 0);
+        }
+
+        #[test]
+        fn payload_attestation_accumulates_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // MinimalEthSpec PtcSize = 2, so VariableList can hold at most 2 indices
+            let att = make_payload_attestation(1, block_root, true, false);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, false, vec![1, 2]);
+            let spec = ChainSpec::minimal();
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 2);
+            assert_eq!(node.ptc_blob_data_available_weight, 0);
+        }
+
+        #[test]
+        fn payload_attestation_accumulates_blob_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let att = make_payload_attestation(1, block_root, false, true);
+            let indexed =
+                make_indexed_payload_attestation(1, block_root, false, true, vec![10, 20]);
+            let spec = ChainSpec::minimal();
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 0);
+            assert_eq!(node.ptc_blob_data_available_weight, 2);
+        }
+
+        #[test]
+        fn payload_attestation_quorum_reveals_payload() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Set bid_block_hash so the quorum path can set execution_status
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            // Need quorum_threshold + 1 attesters (strictly greater)
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(ExecutionBlockHash::repeat_byte(0xAA))
+            );
+        }
+
+        #[test]
+        fn payload_attestation_at_threshold_does_not_reveal() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            // Exactly quorum_threshold attesters (not strictly greater)
+            let indices: Vec<u64> = (0..quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(!node.payload_revealed);
+        }
+
+        #[test]
+        fn payload_attestation_not_in_window_boundary() {
+            // Test that an attestation exactly at the window boundary is accepted
+            // current_slot == attestation_slot + slots_per_epoch should pass
+            let mut fc = new_fc();
+            let genesis_root = root(0);
+            let slots_per_epoch = E::slots_per_epoch();
+
+            // Attestation at slot 0, current_slot = slots_per_epoch (not > att + epoch)
+            let att = make_payload_attestation(0, genesis_root, true, false);
+            let indexed = make_indexed_payload_attestation(0, genesis_root, true, false, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            // This should succeed (current_slot = slots_per_epoch is NOT too old)
+            fc.on_payload_attestation(&att, &indexed, Slot::new(slots_per_epoch), &spec)
+                .unwrap();
+        }
+
+        #[test]
+        fn payload_attestation_same_slot_as_current() {
+            // Attestation at current slot should succeed (not in the future)
+            let mut fc = new_fc();
+            let genesis_root = root(0);
+
+            let att = make_payload_attestation(0, genesis_root, true, false);
+            let indexed = make_indexed_payload_attestation(0, genesis_root, true, false, vec![1]);
+            let spec = ChainSpec::minimal();
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(0), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&genesis_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 1);
+        }
+
+        #[test]
+        fn payload_attestation_no_weight_when_not_present() {
+            // payload_present=false and blob_data_available=false → no weight changes
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let att = make_payload_attestation(1, block_root, false, false);
+            let indexed = make_indexed_payload_attestation(1, block_root, false, false, vec![1, 2]);
+            let spec = ChainSpec::minimal();
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 0);
+            assert_eq!(node.ptc_blob_data_available_weight, 0);
+        }
+
+        // ── on_execution_payload tests ───────────────────────────────────
+
+        #[test]
+        fn execution_payload_unknown_block_root() {
+            let mut fc = new_fc();
+            let unknown = root(999);
+            let hash = ExecutionBlockHash::repeat_byte(0xBB);
+
+            let err = fc.on_execution_payload(unknown, hash).unwrap_err();
+            assert!(
+                matches!(err, Error::MissingProtoArrayBlock(_)),
+                "expected MissingProtoArrayBlock, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn execution_payload_reveals_and_sets_status() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let hash = ExecutionBlockHash::repeat_byte(0xCC);
+            fc.on_execution_payload(block_root, hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.payload_data_available);
+            assert_eq!(node.execution_status, ExecutionStatus::Optimistic(hash));
+        }
+
+        #[test]
+        fn execution_payload_on_genesis() {
+            let mut fc = new_fc();
+            let genesis_root = root(0);
+            let hash = ExecutionBlockHash::repeat_byte(0xDD);
+
+            fc.on_execution_payload(genesis_root, hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&genesis_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.payload_data_available);
+            assert_eq!(node.execution_status, ExecutionStatus::Optimistic(hash));
+        }
+
+        #[test]
+        fn execution_payload_idempotent() {
+            // Calling on_execution_payload twice should not error
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let hash1 = ExecutionBlockHash::repeat_byte(0x11);
+            let hash2 = ExecutionBlockHash::repeat_byte(0x22);
+
+            fc.on_execution_payload(block_root, hash1).unwrap();
+            fc.on_execution_payload(block_root, hash2).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            // Second call overwrites the execution status
+            assert_eq!(node.execution_status, ExecutionStatus::Optimistic(hash2));
+            assert!(node.payload_revealed);
+        }
+    }
 }
