@@ -31,6 +31,17 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 27)
+- No new consensus-specs PRs merged since run 26: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+- **Added 17 unit tests for Gloas execution payload bid processing** in `consensus/state_processing/src/per_block_processing/gloas.rs`. Previously had ZERO unit tests despite being consensus-critical code (only covered by 118+ EF spec tests).
+  - Self-build bid tests (3): valid self-build, nonzero value rejected, non-infinity signature rejected
+  - Builder bid tests (7): valid with skip signature, zero value no pending payment, nonexistent builder rejected, inactive builder rejected, insufficient balance rejected, balance accounts for pending withdrawals, balance accounts for pending payments
+  - Slot/parent validation tests (4): wrong slot, wrong parent block hash, wrong parent block root, wrong prev randao
+  - Blob commitments test (1): too many blob commitments rejected
+  - State mutation tests (2): is_parent_block_full hash match/mismatch, bid caches latest_execution_payload_bid
+  - All 55/55 state_processing tests pass (17 new + 38 existing)
+- Updated PLAN.md: test coverage status
+
 ### 2026-02-20 (run 26)
 - No new upstream commits since run 25
 - Checked recently merged consensus-specs PRs: #4941 (execution proof construction, EIP-8025 only — not related to Gloas), #4930 (naming), #4923 (already implemented) — no code changes needed
