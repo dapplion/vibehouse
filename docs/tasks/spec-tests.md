@@ -29,6 +29,38 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 37 ChainSpec + ForkName Gloas unit tests (run 57)
+- Added 22 unit tests to `chain_spec.rs` (previously had ZERO Gloas-specific tests):
+  - Scheduling: `is_gloas_scheduled()` true when epoch set, false when None, false when far-future epoch
+  - Attestation timing: pre-Gloas vs at-Gloas `get_attestation_due_ms()` (3 tests)
+  - Aggregate timing: pre-Gloas vs at-Gloas `get_aggregate_due_ms()` (2 tests)
+  - Sync message timing: pre-Gloas vs at-Gloas `get_sync_message_due_ms()` (2 tests)
+  - Contribution timing: pre-Gloas vs at-Gloas `get_contribution_due_ms()` (2 tests)
+  - Payload attestation timing: `get_payload_attestation_due_ms()` (7500 BPS = 75% of slot)
+  - Comparison: Gloas timing strictly shorter than pre-Gloas for all 4 duty types
+  - Mainnet 12s slots: pre-Gloas ≈4s, Gloas 3s attestation; Gloas 6s aggregate; PTC 9s
+  - Fallback: no Gloas fork → all epochs use pre-Gloas timing
+  - Edge case: Gloas at epoch 0 → epoch 0 uses Gloas timing
+  - ePBS domain values: `BeaconBuilder`, `PtcAttester`, `ProposerPreferences` domains test correctly
+  - Domain distinctness: all 3 Gloas domains distinct from each other and existing domains
+  - Domain indices: BeaconBuilder=11, PtcAttester=12, ProposerPreferences=13 (EIP-7732)
+  - Fork epoch: `fork_name_at_epoch` returns Gloas at/after fork, Fulu before
+  - Fork epoch roundtrip: `fork_epoch(ForkName::Gloas)` returns the set value
+  - Fork version: Gloas fork version is non-zero on both mainnet and minimal
+- Added 15 unit tests to `fork_name.rs` (previously had ZERO Gloas-specific tests):
+  - `ForkName::latest()` is Gloas
+  - No next fork after Gloas
+  - Previous fork is Fulu; Fulu's next is Gloas
+  - `gloas_enabled()` true for Gloas, false for Fulu and Base
+  - All prior fork features enabled on Gloas (7 `_enabled()` methods)
+  - Case-insensitive parsing: "gloas", "GLOAS", "Gloas" all parse
+  - Display: outputs "gloas" lowercase
+  - String roundtrip: display → parse → equality
+  - In `list_all()` and is the last entry
+  - `make_genesis_spec(Gloas)`: sets all 7 fork epochs to 0
+  - `make_genesis_spec(Fulu)`: disables Gloas
+- All 641 types tests pass (was 604)
+
 ### 2026-02-20 — 25 BeaconStateGloas unit tests (run 56)
 - Added `mod gloas` test block to `beacon_state/tests.rs` (previously had ZERO Gloas coverage):
   - `make_gloas_state()` helper: constructs a full `BeaconStateGloas` with all required fields properly sized for MinimalEthSpec (Vector/List/BitVector/Arc<SyncCommittee> etc.)
