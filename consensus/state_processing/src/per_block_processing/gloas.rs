@@ -2058,6 +2058,228 @@ mod tests {
         assert!(expected.is_empty());
     }
 
+    // ── get_expected_withdrawals_gloas phase tests ──────────────────
+
+    #[test]
+    fn get_expected_withdrawals_builder_pending_withdrawal() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a builder pending withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 2_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Should include the builder pending withdrawal
+        let builder_w: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
+            .collect();
+        assert_eq!(builder_w.len(), 1, "should have one builder withdrawal");
+        assert_eq!(builder_w[0].amount, 2_000_000_000);
+        assert_eq!(builder_w[0].address, Address::repeat_byte(0xDD));
+    }
+
+    #[test]
+    fn get_expected_withdrawals_multiple_builder_pending() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add two builder pending withdrawals
+        for i in 0..2 {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builder_pending_withdrawals
+                .push(BuilderPendingWithdrawal {
+                    fee_recipient: Address::repeat_byte(0xDD + i),
+                    amount: (i as u64 + 1) * 1_000_000_000,
+                    builder_index: 0,
+                })
+                .unwrap();
+        }
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        let builder_w: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
+            .collect();
+        assert_eq!(builder_w.len(), 2, "should have two builder withdrawals");
+        assert_eq!(builder_w[0].amount, 1_000_000_000);
+        assert_eq!(builder_w[1].amount, 2_000_000_000);
+        // Withdrawal indices should be sequential
+        assert_eq!(builder_w[1].index, builder_w[0].index + 1);
+    }
+
+    #[test]
+    fn get_expected_withdrawals_builder_sweep_exited_with_balance() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make builder 0 exited (withdrawable_epoch in past) with remaining balance
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Builder sweep should pick up exited builder with balance > 0
+        let builder_sweep: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 5_000_000_000)
+            .collect();
+        assert_eq!(
+            builder_sweep.len(),
+            1,
+            "should have one builder sweep withdrawal"
+        );
+        assert_eq!(builder_sweep[0].amount, 5_000_000_000);
+    }
+
+    #[test]
+    fn get_expected_withdrawals_builder_sweep_active_not_withdrawn() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Builder 0 is active (withdrawable_epoch = far_future_epoch, the default)
+        // Active builders should NOT be swept
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        let builder_sweep: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
+            .collect();
+        assert!(
+            builder_sweep.is_empty(),
+            "active builder should not be swept"
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_validator_sweep_excess_balance() {
+        // 32 ETH effective balance matches min_activation_balance for 0x01 credentials
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Give validators 34 ETH balance (excess of 2 ETH over 32 ETH effective balance)
+        for i in 0..8 {
+            *state.get_balance_mut(i).unwrap() = 34_000_000_000;
+        }
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // The validator sweep should produce partial withdrawals for excess balance
+        let validator_w: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG == 0)
+            .collect();
+        assert!(
+            !validator_w.is_empty(),
+            "validators with excess balance should produce sweep withdrawals"
+        );
+        // Each validator withdrawal should be 2 ETH (34 - 32)
+        for w in &validator_w {
+            assert_eq!(w.amount, 2_000_000_000);
+        }
+    }
+
+    #[test]
+    fn get_expected_withdrawals_validator_fully_withdrawable() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make validator 0 fully withdrawable (exited + past withdrawable epoch)
+        let validator = state.get_validator_mut(0).unwrap();
+        validator.exit_epoch = Epoch::new(0);
+        validator.withdrawable_epoch = Epoch::new(0);
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Should have a full withdrawal for validator 0
+        let full_w: Vec<_> = expected.iter().filter(|w| w.validator_index == 0).collect();
+        assert_eq!(
+            full_w.len(),
+            1,
+            "should have full withdrawal for validator 0"
+        );
+        // Full withdrawal = entire balance
+        assert_eq!(full_w[0].amount, 34_000_000_000);
+    }
+
+    #[test]
+    fn get_expected_withdrawals_combined_phases() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Phase 1: Builder pending withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Phase 3: Make builder exited for sweep
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Phase 4: Validators have excess balance (34 > 32 ETH)
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Should have withdrawals from multiple phases
+        assert!(
+            expected.len() >= 2,
+            "should have withdrawals from multiple phases, got {}",
+            expected.len()
+        );
+
+        // Builder pending withdrawal (phase 1)
+        let builder_pending: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 1_000_000_000)
+            .collect();
+        assert_eq!(
+            builder_pending.len(),
+            1,
+            "should have builder pending withdrawal"
+        );
+
+        // Builder sweep (phase 3)
+        let builder_sweep: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0 && w.amount == 5_000_000_000)
+            .collect();
+        assert_eq!(
+            builder_sweep.len(),
+            1,
+            "should have builder sweep withdrawal"
+        );
+    }
+
     // ── get_ptc_committee tests ──────────────────────────────────
 
     /// Build a state with committee caches initialized (needed for get_ptc_committee).

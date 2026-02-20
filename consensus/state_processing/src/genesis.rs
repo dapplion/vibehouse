@@ -228,3 +228,299 @@ pub fn process_activations<E: EthSpec>(
 pub fn eth2_genesis_time(eth1_timestamp: u64, spec: &ChainSpec) -> Result<u64, ArithError> {
     eth1_timestamp.safe_add(spec.genesis_delay)
 }
+
+#[cfg(test)]
+mod gloas_genesis_tests {
+    use super::*;
+    use types::{
+        ExecutionBlockHash, ExecutionPayloadHeaderGloas, ForkName, MinimalEthSpec,
+        test_utils::generate_deterministic_keypairs,
+    };
+
+    type E = MinimalEthSpec;
+
+    /// Create a spec with all forks active at genesis (epoch 0), including Gloas.
+    fn gloas_genesis_spec() -> ChainSpec {
+        ForkName::Gloas.make_genesis_spec(E::default_spec())
+    }
+
+    /// Create deposits with proper merkle proofs for genesis initialization.
+    fn make_genesis_deposits(num_validators: usize, spec: &ChainSpec) -> Vec<Deposit> {
+        let keypairs = generate_deterministic_keypairs(num_validators);
+        let mut deposit_datas = Vec::with_capacity(num_validators);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = spec.eth1_address_withdrawal_prefix_byte;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            let withdrawal_credentials = Hash256::from_slice(&creds);
+
+            let mut data = DepositData {
+                pubkey: kp.pk.clone().into(),
+                withdrawal_credentials,
+                amount: spec.max_effective_balance,
+                signature: Signature::empty().into(),
+            };
+            data.signature = data.create_signature(&kp.sk, spec);
+            deposit_datas.push(data);
+        }
+
+        let mut tree = crate::common::DepositDataTree::create(&[], 0, DEPOSIT_TREE_DEPTH);
+        let mut deposits = Vec::with_capacity(num_validators);
+        for data in deposit_datas {
+            tree.push_leaf(data.tree_hash_root())
+                .expect("should push leaf");
+            let (_leaf, proof_vec) = tree
+                .generate_proof(deposits.len())
+                .expect("should generate proof");
+            let mut proof = FixedVector::from(vec![Hash256::zero(); DEPOSIT_TREE_DEPTH + 1]);
+            for (i, node) in proof_vec.iter().enumerate() {
+                proof[i] = *node;
+            }
+            deposits.push(Deposit { proof, data });
+        }
+        deposits
+    }
+
+    #[test]
+    fn gloas_genesis_produces_gloas_state() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        assert!(
+            state.as_gloas().is_ok(),
+            "genesis state should be Gloas variant"
+        );
+
+        let fork = state.fork();
+        assert_eq!(fork.current_version, spec.gloas_fork_version);
+        assert_eq!(
+            fork.previous_version, spec.gloas_fork_version,
+            "previous_version should be overridden to gloas_fork_version"
+        );
+        assert_eq!(fork.epoch, E::genesis_epoch());
+    }
+
+    #[test]
+    fn gloas_genesis_initializes_gloas_fields() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // Builders list starts empty (no builder deposits at genesis)
+        assert_eq!(state_gloas.builders.len(), 0);
+
+        // Builder pending payments initialized to default
+        for payment in state_gloas.builder_pending_payments.iter() {
+            assert_eq!(payment.withdrawal.amount, 0);
+            assert_eq!(payment.weight, 0);
+        }
+
+        // Builder pending withdrawals starts empty
+        assert!(state_gloas.builder_pending_withdrawals.is_empty());
+
+        // Execution payload availability all set to true
+        for i in 0..E::slots_per_historical_root() {
+            assert!(
+                state_gloas.execution_payload_availability.get(i).unwrap(),
+                "execution_payload_availability bit {} should be set",
+                i
+            );
+        }
+
+        // Expected withdrawals starts empty
+        assert!(state_gloas.payload_expected_withdrawals.is_empty());
+    }
+
+    #[test]
+    fn gloas_genesis_with_execution_payload_header() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+        let block_hash = ExecutionBlockHash::repeat_byte(0xBB);
+
+        let header = ExecutionPayloadHeader::Gloas(ExecutionPayloadHeaderGloas {
+            block_hash,
+            transactions_root: Hash256::repeat_byte(0xCC),
+            ..Default::default()
+        });
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            Some(header),
+            &spec,
+        )
+        .expect("should initialize genesis state with header");
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // latest_block_hash should be set from the header's block_hash via
+        // the intermediate Fulu header during upgrade_to_gloas
+        assert_eq!(
+            state_gloas.latest_block_hash, block_hash,
+            "latest_block_hash should match the provided header's block_hash"
+        );
+    }
+
+    #[test]
+    fn gloas_genesis_validators_activated() {
+        let spec = gloas_genesis_spec();
+        let num_validators = 8;
+        let deposits = make_genesis_deposits(num_validators, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        assert_eq!(state.validators().len(), num_validators);
+        assert_eq!(state.balances().len(), num_validators);
+
+        for v in state.validators() {
+            assert_eq!(
+                v.activation_epoch,
+                E::genesis_epoch(),
+                "validator should be active at genesis"
+            );
+            assert_eq!(
+                v.effective_balance, spec.max_effective_balance,
+                "validator should have max effective balance"
+            );
+        }
+    }
+
+    #[test]
+    fn gloas_genesis_caches_built() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        assert_ne!(
+            state.genesis_validators_root(),
+            Hash256::zero(),
+            "genesis_validators_root should be set"
+        );
+    }
+
+    #[test]
+    fn gloas_genesis_is_valid() {
+        let spec = gloas_genesis_spec();
+        // MinimalEthSpec requires min_genesis_active_validator_count=64
+        let deposits = make_genesis_deposits(64, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        assert!(
+            is_valid_genesis_state::<E>(&state, &spec),
+            "state should be a valid genesis state"
+        );
+    }
+
+    #[test]
+    fn gloas_genesis_no_execution_header_zero_block_hash() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state without header");
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // Without a header, latest_block_hash comes from the default Fulu header
+        assert_eq!(
+            state_gloas.latest_block_hash,
+            ExecutionBlockHash::zero(),
+            "latest_block_hash should be zero when no header provided"
+        );
+    }
+
+    #[test]
+    fn gloas_genesis_bid_defaults() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        assert_eq!(state_gloas.latest_execution_payload_bid.value, 0);
+        assert_eq!(state_gloas.latest_execution_payload_bid.builder_index, 0);
+        assert_eq!(state_gloas.latest_execution_payload_bid.slot, Slot::new(0));
+    }
+
+    #[test]
+    fn gloas_genesis_sync_committees_set() {
+        let spec = gloas_genesis_spec();
+        let deposits = make_genesis_deposits(8, &spec);
+
+        let state = initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            &spec,
+        )
+        .expect("should initialize genesis state");
+
+        let current_sync = state.current_sync_committee().unwrap();
+        let has_real_pubkeys = current_sync
+            .pubkeys
+            .iter()
+            .any(|pk| *pk != types::PublicKeyBytes::empty());
+        assert!(
+            has_real_pubkeys,
+            "current sync committee should have real pubkeys"
+        );
+    }
+}
