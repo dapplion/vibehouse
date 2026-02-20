@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 13 Gloas signature set construction tests (run 41)
+- Added 13 unit tests to `signature_sets.rs` for the three Gloas ePBS signature set functions:
+  - `execution_payload_bid_signature_set`: 5 tests — unknown builder (index 0, high index), valid sig verifies, wrong key fails, wrong domain (BeaconProposer) fails
+  - `payload_attestation_signature_set`: 4 tests — unknown validator, one-of-two unknown, valid single signer verifies, wrong domain fails
+  - `execution_payload_envelope_signature_set`: 4 tests — unknown builder, valid sig verifies, wrong key fails, wrong domain (PtcAttester) fails
+  - End-to-end BLS verification: tests sign with real deterministic keypairs and verify the constructed `SignatureSet`
+  - Domain correctness: confirms `BeaconBuilder` domain for bids/envelopes and `PtcAttester` domain for payload attestations
+  - Previously no test module existed in this file (776 lines of untested signature construction)
+- All 253 state_processing tests pass (was 240)
+
 ### 2026-02-20 — 11 fork choice node state transition tests (run 40)
 - Added 11 unit tests to `proto_array_fork_choice.rs` for Gloas ePBS fork choice node state transitions:
   - `on_execution_bid` tests: bid_sets_builder_index_and_resets_payload, bid_slot_mismatch_detectable
