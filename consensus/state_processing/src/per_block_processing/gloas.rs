@@ -1649,4 +1649,415 @@ mod tests {
         assert_eq!(cached.slot, slot);
         assert_eq!(cached.block_hash, ExecutionBlockHash::repeat_byte(0x20));
     }
+
+    // ── Withdrawal tests ──────────────────────────────────────────
+
+    /// Make the parent block "full" so withdrawals execute.
+    /// In Gloas, is_parent_block_full checks:
+    ///   state.latest_execution_payload_bid.block_hash == state.latest_block_hash
+    fn make_parent_block_full(state: &mut BeaconState<E>) {
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_block_hash = state_gloas.latest_execution_payload_bid.block_hash;
+    }
+
+    #[test]
+    fn withdrawals_empty_when_parent_block_not_full() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        // Default state has mismatched hashes (parent block empty)
+        assert!(!is_parent_block_full::<E>(&state).unwrap());
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // No withdrawals stored when parent block is empty
+        let state_gloas = state.as_gloas().unwrap();
+        assert!(state_gloas.payload_expected_withdrawals.is_empty());
+    }
+
+    #[test]
+    fn withdrawals_builder_pending_withdrawals() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a pending withdrawal for builder 0
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 5_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let withdrawals = &state_gloas.payload_expected_withdrawals;
+        // Should have builder pending withdrawal + validator sweep entries
+        assert!(!withdrawals.is_empty());
+
+        // First withdrawal should be the builder pending withdrawal
+        let w = withdrawals.get(0).unwrap();
+        assert_eq!(w.validator_index, 0 | BUILDER_INDEX_FLAG);
+        assert_eq!(w.amount, 5_000_000_000);
+        assert_eq!(w.address, Address::repeat_byte(0xDD));
+
+        // Builder pending withdrawals should be cleared
+        assert!(state_gloas.builder_pending_withdrawals.is_empty());
+    }
+
+    #[test]
+    fn withdrawals_builder_pending_respects_reserved_limit() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // MinimalEthSpec: max_withdrawals = 4, reserved_limit = 3
+        // Add 5 builder pending withdrawals — only 3 should fit
+        for i in 0..5 {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builder_pending_withdrawals
+                .push(BuilderPendingWithdrawal {
+                    fee_recipient: Address::repeat_byte(0xDD),
+                    amount: 1000 + i as u64,
+                    builder_index: 0,
+                })
+                .unwrap();
+        }
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        // Only 3 builder pending withdrawals should be processed (reserved_limit)
+        // plus possibly 1 validator sweep entry (up to max_withdrawals=4)
+        let builder_withdrawals: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(builder_withdrawals.len(), 3);
+        assert_eq!(builder_withdrawals[0].amount, 1000);
+        assert_eq!(builder_withdrawals[1].amount, 1001);
+        assert_eq!(builder_withdrawals[2].amount, 1002);
+
+        // 2 unprocessed builder pending withdrawals remain
+        assert_eq!(state_gloas.builder_pending_withdrawals.len(), 2);
+    }
+
+    #[test]
+    fn withdrawals_builder_balance_decreased() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 10_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        let initial_balance = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+        let final_balance = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+
+        assert_eq!(final_balance, initial_balance - 10_000_000_000);
+    }
+
+    #[test]
+    fn withdrawals_validator_full_withdrawal() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make validator 0 fully withdrawable: set withdrawable_epoch to past
+        state.get_validator_mut(0).unwrap().withdrawable_epoch = Epoch::new(0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let validator_withdrawals: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+
+        // Validator 0 should appear with full balance withdrawal
+        let v0_withdrawal = validator_withdrawals
+            .iter()
+            .find(|w| w.validator_index == 0)
+            .expect("validator 0 should have a withdrawal");
+        assert_eq!(v0_withdrawal.amount, 32_000_000_000);
+        assert_eq!(v0_withdrawal.address, Address::repeat_byte(0xAA));
+
+        // Balance should be zero after full withdrawal
+        assert_eq!(state.get_balance(0).unwrap(), 0);
+    }
+
+    #[test]
+    fn withdrawals_validator_partial_withdrawal() {
+        // Create state with balance=34 ETH but effective_balance still at 32 ETH
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set validator balances to 34 ETH (effective stays 32 ETH from make_gloas_state)
+        // is_partially_withdrawable: has_execution_withdrawal_credential, effective == max, balance > max
+        // max_effective_balance for 0x01 credential = min_activation_balance = 32 ETH
+        // Excess = 34 - 32 = 2 ETH
+        for i in 0..8 {
+            *state.get_balance_mut(i).unwrap() = 34_000_000_000;
+        }
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let validator_withdrawals: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+
+        // At least validator 0 should appear with excess withdrawal
+        let v0_withdrawal = validator_withdrawals
+            .iter()
+            .find(|w| w.validator_index == 0)
+            .expect("validator 0 should have a partial withdrawal");
+        assert_eq!(v0_withdrawal.amount, 2_000_000_000); // 34 - 32 = 2 ETH
+    }
+
+    #[test]
+    fn withdrawals_builder_sweep_exiting_builder() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make builder 0 exiting (withdrawable_epoch <= current epoch)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let builder_withdrawals: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+
+        // Exiting builder with balance should be swept
+        assert!(!builder_withdrawals.is_empty());
+        assert_eq!(builder_withdrawals[0].amount, 5_000_000_000);
+        assert_eq!(
+            builder_withdrawals[0].validator_index,
+            0 | BUILDER_INDEX_FLAG
+        );
+
+        // Builder balance should be zeroed
+        assert_eq!(state_gloas.builders.get(0).unwrap().balance, 0);
+    }
+
+    #[test]
+    fn withdrawals_builder_sweep_skips_active_builder() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Builder 0 is active (withdrawable_epoch = far_future_epoch) — should NOT be swept
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let builder_sweep_withdrawals: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+
+        // Active builder should not appear in sweep
+        assert!(builder_sweep_withdrawals.is_empty());
+
+        // Builder balance should be unchanged
+        assert_eq!(state_gloas.builders.get(0).unwrap().balance, 5_000_000_000);
+    }
+
+    #[test]
+    fn withdrawals_next_withdrawal_index_updated() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        assert_eq!(state.next_withdrawal_index().unwrap(), 0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let num_withdrawals = state_gloas.payload_expected_withdrawals.len();
+        if num_withdrawals > 0 {
+            // next_withdrawal_index should be last withdrawal's index + 1
+            let last_w = state_gloas
+                .payload_expected_withdrawals
+                .iter()
+                .last()
+                .unwrap();
+            assert_eq!(state.next_withdrawal_index().unwrap(), last_w.index + 1);
+        }
+    }
+
+    #[test]
+    fn withdrawals_next_withdrawal_validator_index_advances() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        let initial_index = state.next_withdrawal_validator_index().unwrap();
+        assert_eq!(initial_index, 0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Since no validator is withdrawable (no excess balance, not fully withdrawable),
+        // and withdrawals.len() < max_withdrawals, the index advances by
+        // max_validators_per_withdrawals_sweep (16 in minimal)
+        let expected = (0 + spec.max_validators_per_withdrawals_sweep) % 8;
+        assert_eq!(state.next_withdrawal_validator_index().unwrap(), expected);
+    }
+
+    #[test]
+    fn withdrawals_next_withdrawal_builder_index_advances() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        let initial = state.as_gloas().unwrap().next_withdrawal_builder_index;
+        assert_eq!(initial, 0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Builder sweep processes min(builders_count=1, max_builders_per_sweep=16) = 1 builder
+        // next_withdrawal_builder_index = (0 + 1) % 1 = 0 (wraps around with 1 builder)
+        let state_gloas = state.as_gloas().unwrap();
+        assert_eq!(state_gloas.next_withdrawal_builder_index, 0);
+    }
+
+    #[test]
+    fn withdrawals_pending_partial_withdrawals_cleared() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a pending partial withdrawal for validator 0
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 1_000_000_000,
+                withdrawable_epoch: Epoch::new(0), // immediately withdrawable
+            })
+            .unwrap();
+        assert_eq!(state.pending_partial_withdrawals().unwrap().len(), 1);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Pending partial withdrawal should be processed and removed
+        assert_eq!(state.pending_partial_withdrawals().unwrap().len(), 0);
+
+        // A withdrawal should have been generated for the partial withdrawal
+        let state_gloas = state.as_gloas().unwrap();
+        let partial_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| w.validator_index == 0 && (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+        assert!(!partial_w.is_empty());
+        // min(balance - min_activation_balance, requested_amount) = min(34-32, 1) = 1 ETH
+        assert_eq!(partial_w[0].amount, 1_000_000_000);
+    }
+
+    #[test]
+    fn withdrawals_partial_skips_exited_validator() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make validator 0 exited
+        state.get_validator_mut(0).unwrap().exit_epoch = Epoch::new(0);
+
+        // Add a pending partial withdrawal for exited validator 0
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 1_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Pending partial withdrawal was "processed" (counted) but no actual
+        // withdrawal generated because validator has exited (exit_epoch != far_future)
+        let state_gloas = state.as_gloas().unwrap();
+        let partial_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| w.validator_index == 0 && (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+        assert!(
+            partial_w.is_empty(),
+            "exited validator should not receive partial withdrawal"
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_matches_process_withdrawals() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make builder 0 exiting
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Add a builder pending withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Compute expected withdrawals (read-only)
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Now process (mutating)
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let actual = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        assert_eq!(expected.len(), actual.len());
+        for (e, a) in expected.iter().zip(actual.iter()) {
+            assert_eq!(e.index, a.index);
+            assert_eq!(e.validator_index, a.validator_index);
+            assert_eq!(e.address, a.address);
+            assert_eq!(e.amount, a.amount);
+        }
+    }
+
+    #[test]
+    fn get_expected_withdrawals_empty_when_parent_not_full() {
+        let (state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        // Don't make parent block full
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+        assert!(expected.is_empty());
+    }
 }
