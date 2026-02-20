@@ -1228,4 +1228,171 @@ mod tests {
             RequestsError::EmptyRequest(1)
         ));
     }
+
+    // ── Gloas JSON conversion roundtrip tests ──────────────
+
+    #[test]
+    fn gloas_execution_payload_json_roundtrip() {
+        use types::{ExecutionBlockHash, ExecutionPayload, ExecutionPayloadGloas};
+
+        let payload = ExecutionPayloadGloas::<MainnetEthSpec> {
+            parent_hash: ExecutionBlockHash(Hash256::repeat_byte(0x01)),
+            fee_recipient: Address::repeat_byte(0x02),
+            state_root: Hash256::repeat_byte(0x03),
+            receipts_root: Hash256::repeat_byte(0x04),
+            prev_randao: Hash256::repeat_byte(0x05),
+            block_number: 100,
+            gas_limit: 30_000_000,
+            gas_used: 21_000,
+            timestamp: 1_700_000_000,
+            block_hash: ExecutionBlockHash(Hash256::repeat_byte(0x06)),
+            blob_gas_used: 131_072,
+            excess_blob_gas: 0,
+            base_fee_per_gas: Uint256::from(7u128),
+            ..Default::default()
+        };
+
+        // ExecutionPayloadGloas -> JsonExecutionPayloadGloas -> ExecutionPayloadGloas
+        let json: super::JsonExecutionPayloadGloas<MainnetEthSpec> = payload.clone().into();
+        let back: ExecutionPayloadGloas<MainnetEthSpec> = json.into();
+
+        assert_eq!(payload, back, "Gloas payload should survive JSON roundtrip");
+
+        // Also test the enum-level conversion
+        let ep = ExecutionPayload::Gloas(payload.clone());
+        let json_ep: super::JsonExecutionPayload<MainnetEthSpec> = ep.clone().into();
+        let back_ep: ExecutionPayload<MainnetEthSpec> = json_ep.into();
+        assert_eq!(
+            ep, back_ep,
+            "Gloas ExecutionPayload enum should survive JSON roundtrip"
+        );
+    }
+
+    #[test]
+    fn gloas_execution_payload_json_serde_roundtrip() {
+        use types::{ExecutionBlockHash, ExecutionPayloadGloas};
+
+        let payload = ExecutionPayloadGloas::<MainnetEthSpec> {
+            parent_hash: ExecutionBlockHash(Hash256::repeat_byte(0xAA)),
+            block_hash: ExecutionBlockHash(Hash256::repeat_byte(0xBB)),
+            block_number: 42,
+            gas_limit: 30_000_000,
+            gas_used: 100_000,
+            timestamp: 1_700_000_000,
+            blob_gas_used: 0,
+            excess_blob_gas: 0,
+            base_fee_per_gas: Uint256::from(1u128),
+            ..Default::default()
+        };
+
+        let json: super::JsonExecutionPayloadGloas<MainnetEthSpec> = payload.clone().into();
+
+        // Serialize to JSON string and back
+        let serialized = serde_json::to_string(&json).expect("should serialize");
+        let deserialized: super::JsonExecutionPayloadGloas<MainnetEthSpec> =
+            serde_json::from_str(&serialized).expect("should deserialize");
+
+        let back: ExecutionPayloadGloas<MainnetEthSpec> = deserialized.into();
+        assert_eq!(
+            payload, back,
+            "Gloas payload should survive serde JSON roundtrip"
+        );
+    }
+
+    #[test]
+    fn gloas_execution_payload_with_withdrawals_roundtrip() {
+        use types::{ExecutionBlockHash, ExecutionPayloadGloas, Withdrawal};
+
+        let withdrawal = Withdrawal {
+            index: 0,
+            validator_index: 1,
+            address: Address::repeat_byte(0xCC),
+            amount: 32_000_000_000,
+        };
+
+        let mut payload = ExecutionPayloadGloas::<MainnetEthSpec> {
+            parent_hash: ExecutionBlockHash(Hash256::repeat_byte(0x01)),
+            block_hash: ExecutionBlockHash(Hash256::repeat_byte(0x02)),
+            gas_limit: 30_000_000,
+            base_fee_per_gas: Uint256::from(7u128),
+            ..Default::default()
+        };
+        payload.withdrawals.push(withdrawal.clone()).unwrap();
+
+        let json: super::JsonExecutionPayloadGloas<MainnetEthSpec> = payload.clone().into();
+        let back: ExecutionPayloadGloas<MainnetEthSpec> = json.into();
+
+        assert_eq!(payload, back);
+        assert_eq!(back.withdrawals.len(), 1);
+        assert_eq!(back.withdrawals[0].amount, 32_000_000_000);
+        assert_eq!(back.withdrawals[0].address, Address::repeat_byte(0xCC));
+    }
+
+    #[test]
+    fn gloas_get_payload_response_conversion() {
+        use super::*;
+        use types::{ExecutionBlockHash, ExecutionPayloadGloas};
+
+        let payload = ExecutionPayloadGloas::<MainnetEthSpec> {
+            parent_hash: ExecutionBlockHash(Hash256::repeat_byte(0x01)),
+            block_hash: ExecutionBlockHash(Hash256::repeat_byte(0x02)),
+            gas_limit: 30_000_000,
+            base_fee_per_gas: Uint256::from(7u128),
+            ..Default::default()
+        };
+
+        let block_value = Uint256::from(42u128);
+
+        let json_response = JsonGetPayloadResponse::Gloas(JsonGetPayloadResponseGloas {
+            execution_payload: payload.clone().into(),
+            block_value,
+            blobs_bundle: JsonBlobsBundleV1 {
+                commitments: Default::default(),
+                proofs: Default::default(),
+                blobs: Default::default(),
+            },
+            should_override_builder: true,
+            execution_requests: JsonExecutionRequests(vec![]),
+        });
+
+        let response: GetPayloadResponse<MainnetEthSpec> =
+            json_response.try_into().expect("should convert");
+
+        assert!(matches!(response, GetPayloadResponse::Gloas(_)));
+        if let GetPayloadResponse::Gloas(inner) = &response {
+            assert_eq!(inner.block_value, block_value);
+            assert!(inner.should_override_builder);
+            assert_eq!(inner.execution_payload.block_hash, payload.block_hash);
+        }
+    }
+
+    #[test]
+    fn gloas_get_payload_response_into_parts() {
+        use super::*;
+        use types::{ExecutionBlockHash, ExecutionPayload, ExecutionPayloadGloas};
+
+        let payload = ExecutionPayloadGloas::<MainnetEthSpec> {
+            parent_hash: ExecutionBlockHash(Hash256::repeat_byte(0x01)),
+            block_hash: ExecutionBlockHash(Hash256::repeat_byte(0x02)),
+            gas_limit: 30_000_000,
+            base_fee_per_gas: Uint256::from(7u128),
+            ..Default::default()
+        };
+
+        let block_value = Uint256::from(100u128);
+
+        let response = GetPayloadResponse::Gloas(GetPayloadResponseGloas {
+            execution_payload: payload.clone(),
+            block_value,
+            blobs_bundle: BlobsBundle::default(),
+            should_override_builder: false,
+            requests: Default::default(),
+        });
+
+        let (ep, value, blobs, requests) = response.into();
+        assert!(matches!(ep, ExecutionPayload::Gloas(_)));
+        assert_eq!(value, block_value);
+        assert!(blobs.is_some());
+        assert!(requests.is_some());
+    }
 }

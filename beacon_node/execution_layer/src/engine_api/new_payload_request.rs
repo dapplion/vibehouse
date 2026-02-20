@@ -251,7 +251,10 @@ mod test {
     use crate::versioned_hashes::Error as VersionedHashError;
     use crate::{Error, NewPayloadRequest};
     use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
-    use types::{BeaconBlock, ExecPayload, ExecutionBlockHash, Hash256, MainnetEthSpec};
+    use types::{
+        BeaconBlock, BeaconStateError, EthSpec, ExecPayload, ExecutionBlockHash, ExecutionPayload,
+        ExecutionPayloadRef, ForkName, Hash256, MainnetEthSpec,
+    };
 
     #[test]
     fn test_optimistic_sync_verifications_valid_block() {
@@ -342,6 +345,105 @@ mod test {
             _ => false,
         };
         assert!(got_expected_result, "should return expected error");
+    }
+
+    // ── Gloas-specific tests ─────────────────────────────────
+    //
+    // In Gloas (ePBS), execution payloads arrive via the payload envelope,
+    // NOT inside the beacon block body. Therefore converting a Gloas
+    // BeaconBlockRef into a NewPayloadRequest must fail.
+
+    #[test]
+    fn gloas_block_ref_rejected_for_new_payload_request() {
+        type E = MainnetEthSpec;
+        let spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+
+        let block = BeaconBlock::<E>::empty(&spec);
+        assert!(
+            block.as_gloas().is_ok(),
+            "sanity: block should be Gloas variant"
+        );
+
+        let result = NewPayloadRequest::try_from(block.to_ref());
+
+        assert!(
+            matches!(result, Err(BeaconStateError::IncorrectStateVariant)),
+            "Gloas block should reject NewPayloadRequest conversion: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn gloas_execution_payload_ref_rejected_for_new_payload_request() {
+        type E = MainnetEthSpec;
+        use types::ExecutionPayloadGloas;
+
+        let payload = ExecutionPayload::<E>::Gloas(ExecutionPayloadGloas::default());
+        let payload_ref = payload.to_ref();
+
+        let result = NewPayloadRequest::try_from(payload_ref);
+
+        assert!(
+            matches!(result, Err(BeaconStateError::IncorrectStateVariant)),
+            "Gloas ExecutionPayloadRef should reject NewPayloadRequest conversion: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn fulu_block_ref_accepted_for_new_payload_request() {
+        type E = MainnetEthSpec;
+        let spec = ForkName::Fulu.make_genesis_spec(E::default_spec());
+
+        let block = BeaconBlock::<E>::empty(&spec);
+        assert!(
+            block.as_fulu().is_ok(),
+            "sanity: block should be Fulu variant"
+        );
+
+        let result = NewPayloadRequest::try_from(block.to_ref());
+
+        assert!(
+            result.is_ok(),
+            "Fulu block should accept NewPayloadRequest conversion: {:?}",
+            result.unwrap_err(),
+        );
+    }
+
+    #[test]
+    fn new_payload_request_gloas_accessors() {
+        type E = MainnetEthSpec;
+        use types::ExecutionPayloadGloas;
+
+        let payload = ExecutionPayloadGloas::<E> {
+            parent_hash: ExecutionBlockHash(Hash256::repeat_byte(0x01)),
+            block_hash: ExecutionBlockHash(Hash256::repeat_byte(0x02)),
+            block_number: 42,
+            ..Default::default()
+        };
+
+        let request = NewPayloadRequest::Gloas(super::NewPayloadRequestGloas {
+            execution_payload: &payload,
+            versioned_hashes: vec![],
+            parent_beacon_block_root: Hash256::repeat_byte(0x03),
+            execution_requests: &Default::default(),
+        });
+
+        assert_eq!(
+            request.parent_hash(),
+            ExecutionBlockHash(Hash256::repeat_byte(0x01)),
+        );
+        assert_eq!(
+            request.block_hash(),
+            ExecutionBlockHash(Hash256::repeat_byte(0x02)),
+        );
+        assert_eq!(request.block_number(), 42);
+
+        let payload_ref = request.execution_payload_ref();
+        assert!(matches!(payload_ref, ExecutionPayloadRef::Gloas(_)));
+
+        let owned = request.into_execution_payload();
+        assert!(matches!(owned, ExecutionPayload::Gloas(_)));
     }
 
     fn get_valid_beacon_block() -> BeaconBlock<MainnetEthSpec> {
