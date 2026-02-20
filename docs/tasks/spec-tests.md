@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 13 SignedBeaconBlock Gloas blinding + conversion tests (run 52)
+- Added 13 unit tests to `signed_beacon_block.rs` (previously had only 2 tests, neither covering Gloas):
+  - Blinding roundtrip: Full→Blinded→Full preserves block equality and tree hash root
+  - `try_into_full_block`: Gloas succeeds without payload (None), ignores provided payload
+  - Contrast test: Fulu `try_into_full_block(None)` returns None (payload required)
+  - Fork name: `fork_name_unchecked()` returns `ForkName::Gloas`
+  - Canonical root: deterministic, non-zero
+  - Slot and proposer_index: empty block defaults verified
+  - SSZ roundtrip: encode/decode through `from_ssz_bytes` with Gloas spec
+  - Body accessors: no `execution_payload()`, has `signed_execution_payload_bid()` and `payload_attestations()`
+  - Signature preservation: non-empty signature preserved through blind/unblind roundtrip
+  - Cross-fork: Gloas SSZ bytes and tree hash root differ from Fulu
+  - Extended `add_remove_payload_roundtrip` to cover Capella, Deneb, Electra, Fulu, and Gloas
+- All 504 types tests pass (was 491)
+
 ### 2026-02-20 — 35 BeaconBlockBody Gloas variant unit tests (run 51)
 - Added 35 unit tests to `beacon_block_body.rs` (previously had ZERO Gloas tests — only Base/Altair SSZ roundtrip):
   - SSZ roundtrip: inner type roundtrip, via BeaconBlock enum dispatch, Gloas bytes differ from Fulu bytes
