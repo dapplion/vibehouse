@@ -586,3 +586,296 @@ impl<'de, E: EthSpec> ContextDeserialize<'de, ForkName> for ExecutionPayloadHead
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MainnetEthSpec;
+    use tree_hash::TreeHash;
+
+    type E = MainnetEthSpec;
+
+    /// Helper: build a non-default Fulu header with distinct field values.
+    fn make_fulu_header() -> ExecutionPayloadHeaderFulu<E> {
+        ExecutionPayloadHeaderFulu {
+            parent_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x01)),
+            fee_recipient: Address::repeat_byte(0x02),
+            state_root: Hash256::repeat_byte(0x03),
+            receipts_root: Hash256::repeat_byte(0x04),
+            logs_bloom: FixedVector::from(vec![0x05; 256]),
+            prev_randao: Hash256::repeat_byte(0x06),
+            block_number: 42,
+            gas_limit: 30_000_000,
+            gas_used: 15_000_000,
+            timestamp: 1_700_000_000,
+            extra_data: VariableList::from(vec![0xAA, 0xBB]),
+            base_fee_per_gas: Uint256::from(1_000_000_000u64),
+            block_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x07)),
+            transactions_root: Hash256::repeat_byte(0x08),
+            withdrawals_root: Hash256::repeat_byte(0x09),
+            blob_gas_used: 131_072,
+            excess_blob_gas: 65_536,
+        }
+    }
+
+    /// Helper: build a non-default Gloas execution payload for From conversion testing.
+    fn make_gloas_payload() -> ExecutionPayloadGloas<E> {
+        ExecutionPayloadGloas {
+            parent_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x11)),
+            fee_recipient: Address::repeat_byte(0x12),
+            state_root: Hash256::repeat_byte(0x13),
+            receipts_root: Hash256::repeat_byte(0x14),
+            logs_bloom: FixedVector::from(vec![0x15; 256]),
+            prev_randao: Hash256::repeat_byte(0x16),
+            block_number: 100,
+            gas_limit: 60_000_000,
+            gas_used: 30_000_000,
+            timestamp: 1_800_000_000,
+            extra_data: VariableList::from(vec![0xCC, 0xDD, 0xEE]),
+            base_fee_per_gas: Uint256::from(2_000_000_000u64),
+            block_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x17)),
+            transactions: <_>::default(),
+            withdrawals: <_>::default(),
+            blob_gas_used: 262_144,
+            excess_blob_gas: 131_072,
+        }
+    }
+
+    // ── upgrade_to_gloas ──
+
+    #[test]
+    fn upgrade_to_gloas_preserves_all_fields() {
+        let fulu = make_fulu_header();
+        let gloas = fulu.upgrade_to_gloas();
+
+        assert_eq!(gloas.parent_hash, fulu.parent_hash);
+        assert_eq!(gloas.fee_recipient, fulu.fee_recipient);
+        assert_eq!(gloas.state_root, fulu.state_root);
+        assert_eq!(gloas.receipts_root, fulu.receipts_root);
+        assert_eq!(gloas.logs_bloom, fulu.logs_bloom);
+        assert_eq!(gloas.prev_randao, fulu.prev_randao);
+        assert_eq!(gloas.block_number, fulu.block_number);
+        assert_eq!(gloas.gas_limit, fulu.gas_limit);
+        assert_eq!(gloas.gas_used, fulu.gas_used);
+        assert_eq!(gloas.timestamp, fulu.timestamp);
+        assert_eq!(gloas.extra_data, fulu.extra_data);
+        assert_eq!(gloas.base_fee_per_gas, fulu.base_fee_per_gas);
+        assert_eq!(gloas.block_hash, fulu.block_hash);
+        assert_eq!(gloas.transactions_root, fulu.transactions_root);
+        assert_eq!(gloas.withdrawals_root, fulu.withdrawals_root);
+        assert_eq!(gloas.blob_gas_used, fulu.blob_gas_used);
+        assert_eq!(gloas.excess_blob_gas, fulu.excess_blob_gas);
+    }
+
+    #[test]
+    fn upgrade_to_gloas_default_roundtrip() {
+        let fulu = ExecutionPayloadHeaderFulu::<E>::default();
+        let gloas = fulu.upgrade_to_gloas();
+        assert_eq!(gloas, ExecutionPayloadHeaderGloas::default());
+    }
+
+    // ── From<&ExecutionPayloadGloas> for ExecutionPayloadHeaderGloas ──
+
+    #[test]
+    fn from_payload_to_header_preserves_scalar_fields() {
+        let payload = make_gloas_payload();
+        let header = ExecutionPayloadHeaderGloas::from(&payload);
+
+        assert_eq!(header.parent_hash, payload.parent_hash);
+        assert_eq!(header.fee_recipient, payload.fee_recipient);
+        assert_eq!(header.state_root, payload.state_root);
+        assert_eq!(header.receipts_root, payload.receipts_root);
+        assert_eq!(header.logs_bloom, payload.logs_bloom);
+        assert_eq!(header.prev_randao, payload.prev_randao);
+        assert_eq!(header.block_number, payload.block_number);
+        assert_eq!(header.gas_limit, payload.gas_limit);
+        assert_eq!(header.gas_used, payload.gas_used);
+        assert_eq!(header.timestamp, payload.timestamp);
+        assert_eq!(header.extra_data, payload.extra_data);
+        assert_eq!(header.base_fee_per_gas, payload.base_fee_per_gas);
+        assert_eq!(header.block_hash, payload.block_hash);
+        assert_eq!(header.blob_gas_used, payload.blob_gas_used);
+        assert_eq!(header.excess_blob_gas, payload.excess_blob_gas);
+    }
+
+    #[test]
+    fn from_payload_to_header_computes_tree_hash_roots() {
+        let payload = make_gloas_payload();
+        let header = ExecutionPayloadHeaderGloas::from(&payload);
+
+        // transactions_root must be tree_hash_root of the transactions list
+        assert_eq!(
+            header.transactions_root,
+            payload.transactions.tree_hash_root()
+        );
+        // withdrawals_root must be tree_hash_root of the withdrawals list
+        assert_eq!(
+            header.withdrawals_root,
+            payload.withdrawals.tree_hash_root()
+        );
+    }
+
+    // ── fork_name_unchecked ──
+
+    #[test]
+    fn fork_name_unchecked_gloas() {
+        let header = ExecutionPayloadHeader::<E>::Gloas(ExecutionPayloadHeaderGloas::default());
+        assert_eq!(header.fork_name_unchecked(), ForkName::Gloas);
+    }
+
+    #[test]
+    fn fork_name_unchecked_fulu() {
+        let header = ExecutionPayloadHeader::<E>::Fulu(ExecutionPayloadHeaderFulu::default());
+        assert_eq!(header.fork_name_unchecked(), ForkName::Fulu);
+    }
+
+    // ── SSZ roundtrip ──
+
+    #[test]
+    fn ssz_roundtrip_gloas_header() {
+        let original = make_fulu_header().upgrade_to_gloas();
+        let bytes = original.as_ssz_bytes();
+        let decoded = ExecutionPayloadHeaderGloas::<E>::from_ssz_bytes(&bytes)
+            .expect("SSZ decode should succeed");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn ssz_roundtrip_via_enum() {
+        let inner = make_fulu_header().upgrade_to_gloas();
+        let wrapped = ExecutionPayloadHeader::<E>::Gloas(inner.clone());
+        let bytes = wrapped.as_ssz_bytes();
+        let decoded = ExecutionPayloadHeader::<E>::from_ssz_bytes(&bytes, ForkName::Gloas)
+            .expect("SSZ decode should succeed");
+        assert_eq!(decoded, wrapped);
+    }
+
+    #[test]
+    fn ssz_decode_wrong_fork_gives_different_result() {
+        // Gloas and Fulu headers have the same fields, but we can still verify
+        // that from_ssz_bytes dispatches correctly based on fork_name.
+        let gloas_inner = make_fulu_header().upgrade_to_gloas();
+        let bytes = gloas_inner.as_ssz_bytes();
+
+        let decoded_as_gloas = ExecutionPayloadHeader::<E>::from_ssz_bytes(&bytes, ForkName::Gloas)
+            .expect("decode as Gloas");
+        let decoded_as_fulu = ExecutionPayloadHeader::<E>::from_ssz_bytes(&bytes, ForkName::Fulu)
+            .expect("decode as Fulu");
+
+        // Both decode successfully (same wire format) but produce different enum variants
+        assert_eq!(decoded_as_gloas.fork_name_unchecked(), ForkName::Gloas);
+        assert_eq!(decoded_as_fulu.fork_name_unchecked(), ForkName::Fulu);
+    }
+
+    #[test]
+    fn ssz_decode_base_fork_fails() {
+        let bytes = [0u8; 32];
+        assert!(ExecutionPayloadHeader::<E>::from_ssz_bytes(&bytes, ForkName::Base).is_err());
+    }
+
+    #[test]
+    fn ssz_decode_altair_fork_fails() {
+        let bytes = [0u8; 32];
+        assert!(ExecutionPayloadHeader::<E>::from_ssz_bytes(&bytes, ForkName::Altair).is_err());
+    }
+
+    // ── TryFrom<ExecutionPayloadHeader> ──
+
+    #[test]
+    fn try_from_gloas_succeeds() {
+        let inner = ExecutionPayloadHeaderGloas::<E>::default();
+        let wrapped = ExecutionPayloadHeader::Gloas(inner.clone());
+        let result: Result<ExecutionPayloadHeaderGloas<E>, _> = wrapped.try_into();
+        assert_eq!(result.unwrap(), inner);
+    }
+
+    #[test]
+    fn try_from_gloas_wrong_variant_fails() {
+        let wrapped = ExecutionPayloadHeader::<E>::Fulu(ExecutionPayloadHeaderFulu::default());
+        let result: Result<ExecutionPayloadHeaderGloas<E>, _> = wrapped.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_fulu_wrong_variant_fails_with_gloas() {
+        let wrapped = ExecutionPayloadHeader::<E>::Gloas(ExecutionPayloadHeaderGloas::default());
+        let result: Result<ExecutionPayloadHeaderFulu<E>, _> = wrapped.try_into();
+        assert!(result.is_err());
+    }
+
+    // ── is_default_with_zero_roots ──
+
+    #[test]
+    fn is_default_with_zero_roots_true_for_default_gloas() {
+        let header = ExecutionPayloadHeader::<E>::Gloas(ExecutionPayloadHeaderGloas::default());
+        assert!(header.to_ref().is_default_with_zero_roots());
+    }
+
+    #[test]
+    fn is_default_with_zero_roots_false_for_nondefault_gloas() {
+        let header = ExecutionPayloadHeader::<E>::Gloas(make_fulu_header().upgrade_to_gloas());
+        assert!(!header.to_ref().is_default_with_zero_roots());
+    }
+
+    // ── ExecutionPayloadHeaderRefMut::replace ──
+
+    #[test]
+    fn ref_mut_replace_gloas() {
+        let mut inner = ExecutionPayloadHeaderGloas::<E>::default();
+        let replacement = make_fulu_header().upgrade_to_gloas();
+        let wrapped_replacement = ExecutionPayloadHeader::Gloas(replacement.clone());
+
+        let ref_mut = ExecutionPayloadHeaderRefMut::Gloas(&mut inner);
+        ref_mut
+            .replace(wrapped_replacement)
+            .expect("replace should succeed");
+        assert_eq!(inner, replacement);
+    }
+
+    #[test]
+    fn ref_mut_replace_wrong_variant_fails() {
+        let mut inner = ExecutionPayloadHeaderGloas::<E>::default();
+        let wrong = ExecutionPayloadHeader::Fulu(ExecutionPayloadHeaderFulu::default());
+
+        let ref_mut = ExecutionPayloadHeaderRefMut::Gloas(&mut inner);
+        assert!(ref_mut.replace(wrong).is_err());
+    }
+
+    // ── From<ExecutionPayloadRef> for ExecutionPayloadHeader ──
+
+    #[test]
+    fn from_payload_ref_to_header() {
+        let payload = ExecutionPayload::<E>::Gloas(make_gloas_payload());
+        let header: ExecutionPayloadHeader<E> = payload.to_ref().into();
+
+        assert_eq!(header.fork_name_unchecked(), ForkName::Gloas);
+        assert_eq!(header.block_hash(), make_gloas_payload().block_hash);
+        assert_eq!(header.parent_hash(), make_gloas_payload().parent_hash);
+        assert_eq!(header.block_number(), make_gloas_payload().block_number);
+    }
+
+    // ── Self-clone (From<&Self>) ──
+
+    #[test]
+    fn from_self_ref_clone_gloas() {
+        let original = make_fulu_header().upgrade_to_gloas();
+        let cloned = ExecutionPayloadHeaderGloas::from(&original);
+        assert_eq!(cloned, original);
+    }
+
+    // ── Tree hash stability ──
+
+    #[test]
+    fn tree_hash_differs_for_different_values() {
+        let a = ExecutionPayloadHeaderGloas::<E>::default();
+        let b = make_fulu_header().upgrade_to_gloas();
+        assert_ne!(a.tree_hash_root(), b.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_same_for_equal_values() {
+        let a = make_fulu_header().upgrade_to_gloas();
+        let b = make_fulu_header().upgrade_to_gloas();
+        assert_eq!(a.tree_hash_root(), b.tree_hash_root());
+    }
+}

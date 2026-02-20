@@ -189,3 +189,135 @@ impl<E: EthSpec> ExecutionPayload<E> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MainnetEthSpec;
+
+    type E = MainnetEthSpec;
+
+    fn make_gloas_payload() -> ExecutionPayloadGloas<E> {
+        ExecutionPayloadGloas {
+            parent_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x11)),
+            fee_recipient: Address::repeat_byte(0x12),
+            state_root: Hash256::repeat_byte(0x13),
+            receipts_root: Hash256::repeat_byte(0x14),
+            logs_bloom: FixedVector::from(vec![0x15; 256]),
+            prev_randao: Hash256::repeat_byte(0x16),
+            block_number: 100,
+            gas_limit: 60_000_000,
+            gas_used: 30_000_000,
+            timestamp: 1_800_000_000,
+            extra_data: VariableList::from(vec![0xCC, 0xDD]),
+            base_fee_per_gas: Uint256::from(2_000_000_000u64),
+            block_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x17)),
+            transactions: <_>::default(),
+            withdrawals: <_>::default(),
+            blob_gas_used: 262_144,
+            excess_blob_gas: 131_072,
+        }
+    }
+
+    // ── fork_name ──
+
+    #[test]
+    fn fork_name_gloas() {
+        let payload = ExecutionPayload::<E>::Gloas(make_gloas_payload());
+        assert_eq!(payload.fork_name(), ForkName::Gloas);
+    }
+
+    #[test]
+    fn fork_name_fulu() {
+        let payload = ExecutionPayload::<E>::Fulu(ExecutionPayloadFulu::default());
+        assert_eq!(payload.fork_name(), ForkName::Fulu);
+    }
+
+    // ── SSZ roundtrip (from_ssz_bytes_by_fork) ──
+
+    #[test]
+    fn ssz_roundtrip_gloas_payload() {
+        let original = make_gloas_payload();
+        let bytes = original.as_ssz_bytes();
+        let decoded =
+            ExecutionPayloadGloas::<E>::from_ssz_bytes(&bytes).expect("SSZ decode should succeed");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn ssz_roundtrip_via_fork_dispatch_gloas() {
+        let inner = make_gloas_payload();
+        let wrapped = ExecutionPayload::<E>::Gloas(inner.clone());
+        let bytes = wrapped.as_ssz_bytes();
+        let decoded = ExecutionPayload::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Gloas)
+            .expect("SSZ decode should succeed");
+        assert_eq!(decoded, wrapped);
+    }
+
+    #[test]
+    fn ssz_decode_base_fork_fails() {
+        let bytes = [0u8; 32];
+        assert!(ExecutionPayload::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Base).is_err());
+    }
+
+    #[test]
+    fn ssz_decode_altair_fork_fails() {
+        let bytes = [0u8; 32];
+        assert!(ExecutionPayload::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Altair).is_err());
+    }
+
+    #[test]
+    fn ssz_fork_dispatch_produces_correct_variant() {
+        let gloas = make_gloas_payload();
+        let bytes = gloas.as_ssz_bytes();
+
+        let as_gloas = ExecutionPayload::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Gloas)
+            .expect("decode as Gloas");
+        let as_fulu = ExecutionPayload::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Fulu)
+            .expect("decode as Fulu");
+
+        assert_eq!(as_gloas.fork_name(), ForkName::Gloas);
+        assert_eq!(as_fulu.fork_name(), ForkName::Fulu);
+    }
+
+    // ── clone_from_ref ──
+
+    #[test]
+    fn clone_from_ref_gloas() {
+        let payload = ExecutionPayload::<E>::Gloas(make_gloas_payload());
+        let cloned = payload.to_ref().clone_from_ref();
+        assert_eq!(cloned, payload);
+    }
+
+    // ── Field accessors through the enum ──
+
+    #[test]
+    fn enum_field_accessors_gloas() {
+        let inner = make_gloas_payload();
+        let payload = ExecutionPayload::<E>::Gloas(inner.clone());
+
+        assert_eq!(payload.parent_hash(), inner.parent_hash);
+        assert_eq!(payload.fee_recipient(), inner.fee_recipient);
+        assert_eq!(payload.block_hash(), inner.block_hash);
+        assert_eq!(payload.block_number(), inner.block_number);
+        assert_eq!(payload.gas_limit(), inner.gas_limit);
+        assert_eq!(payload.gas_used(), inner.gas_used);
+        assert_eq!(payload.timestamp(), inner.timestamp);
+        assert_eq!(payload.prev_randao(), inner.prev_randao);
+        assert_eq!(payload.base_fee_per_gas(), inner.base_fee_per_gas);
+        assert_eq!(payload.blob_gas_used().unwrap(), inner.blob_gas_used);
+        assert_eq!(payload.excess_blob_gas().unwrap(), inner.excess_blob_gas);
+    }
+
+    // ── Default ──
+
+    #[test]
+    fn default_gloas_payload_has_zero_fields() {
+        let payload = ExecutionPayloadGloas::<E>::default();
+        assert_eq!(payload.parent_hash, ExecutionBlockHash::zero());
+        assert_eq!(payload.block_number, 0);
+        assert_eq!(payload.gas_limit, 0);
+        assert_eq!(payload.blob_gas_used, 0);
+        assert_eq!(payload.excess_blob_gas, 0);
+    }
+}

@@ -1197,3 +1197,210 @@ pub enum BlockProductionVersion {
     BlindedV2,
     FullV2,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MainnetEthSpec;
+    use tree_hash::TreeHash;
+
+    type E = MainnetEthSpec;
+
+    fn make_gloas_payload() -> ExecutionPayloadGloas<E> {
+        ExecutionPayloadGloas {
+            parent_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x11)),
+            fee_recipient: Address::repeat_byte(0x12),
+            state_root: Hash256::repeat_byte(0x13),
+            receipts_root: Hash256::repeat_byte(0x14),
+            logs_bloom: FixedVector::from(vec![0x15; 256]),
+            prev_randao: Hash256::repeat_byte(0x16),
+            block_number: 100,
+            gas_limit: 60_000_000,
+            gas_used: 30_000_000,
+            timestamp: 1_800_000_000,
+            extra_data: VariableList::from(vec![0xCC]),
+            base_fee_per_gas: Uint256::from(2_000_000_000u64),
+            block_hash: ExecutionBlockHash::from(Hash256::repeat_byte(0x17)),
+            transactions: <_>::default(),
+            withdrawals: <_>::default(),
+            blob_gas_used: 262_144,
+            excess_blob_gas: 131_072,
+        }
+    }
+
+    fn make_gloas_header() -> ExecutionPayloadHeaderGloas<E> {
+        ExecutionPayloadHeaderGloas::from(&make_gloas_payload())
+    }
+
+    // ── FullPayload Gloas ──
+
+    #[test]
+    fn full_payload_default_at_fork_gloas() {
+        let payload = FullPayload::<E>::default_at_fork(ForkName::Gloas)
+            .expect("should produce Gloas default");
+        assert!(matches!(payload, FullPayload::Gloas(_)));
+    }
+
+    #[test]
+    fn full_payload_default_at_fork_base_fails() {
+        assert!(FullPayload::<E>::default_at_fork(ForkName::Base).is_err());
+    }
+
+    #[test]
+    fn full_payload_default_at_fork_altair_fails() {
+        assert!(FullPayload::<E>::default_at_fork(ForkName::Altair).is_err());
+    }
+
+    #[test]
+    fn full_payload_withdrawals_root_gloas() {
+        let inner = make_gloas_payload();
+        let expected_root = inner.withdrawals.tree_hash_root();
+        let payload = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: inner,
+        });
+        assert_eq!(payload.withdrawals_root().unwrap(), expected_root);
+    }
+
+    #[test]
+    fn full_payload_blob_gas_used_gloas() {
+        let inner = make_gloas_payload();
+        let payload = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: inner,
+        });
+        assert_eq!(payload.blob_gas_used().unwrap(), 262_144);
+    }
+
+    #[test]
+    fn full_payload_is_default_with_zero_roots_gloas() {
+        let default_payload = FullPayload::<E>::default_at_fork(ForkName::Gloas).unwrap();
+        assert!(default_payload.is_default_with_zero_roots());
+
+        let nondefault = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: make_gloas_payload(),
+        });
+        assert!(!nondefault.is_default_with_zero_roots());
+    }
+
+    #[test]
+    fn full_payload_block_type() {
+        assert_eq!(FullPayload::<E>::block_type(), BlockType::Full);
+    }
+
+    #[test]
+    fn full_payload_to_execution_payload_header_gloas() {
+        let inner = make_gloas_payload();
+        let payload = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: inner.clone(),
+        });
+        let header = payload.to_execution_payload_header();
+        assert_eq!(header.fork_name_unchecked(), ForkName::Gloas);
+        assert_eq!(header.block_hash(), inner.block_hash);
+        assert_eq!(
+            header.transactions_root(),
+            inner.transactions.tree_hash_root()
+        );
+    }
+
+    // ── BlindedPayload Gloas ──
+
+    #[test]
+    fn blinded_payload_block_type() {
+        assert_eq!(BlindedPayload::<E>::block_type(), BlockType::Blinded);
+    }
+
+    #[test]
+    fn blinded_payload_withdrawals_root_gloas() {
+        let header = make_gloas_header();
+        let expected = header.withdrawals_root;
+        let payload = BlindedPayload::<E>::Gloas(BlindedPayloadGloas {
+            execution_payload_header: header,
+        });
+        assert_eq!(payload.withdrawals_root().unwrap(), expected);
+    }
+
+    #[test]
+    fn blinded_payload_blob_gas_used_gloas() {
+        let header = make_gloas_header();
+        let payload = BlindedPayload::<E>::Gloas(BlindedPayloadGloas {
+            execution_payload_header: header,
+        });
+        assert_eq!(payload.blob_gas_used().unwrap(), 262_144);
+    }
+
+    // ── From<ExecutionPayloadHeader> for BlindedPayload (Gloas) ──
+
+    #[test]
+    fn blinded_from_header_gloas() {
+        let header = ExecutionPayloadHeader::<E>::Gloas(make_gloas_header());
+        let blinded = BlindedPayload::<E>::from(header.clone());
+        assert!(matches!(blinded, BlindedPayload::Gloas(_)));
+
+        // Round-trip: blinded back to header
+        let header_back: ExecutionPayloadHeader<E> = blinded.into();
+        assert_eq!(header_back, header);
+    }
+
+    // ── From<BlindedPayload> for ExecutionPayloadHeader (Gloas) ──
+
+    #[test]
+    fn header_from_blinded_gloas() {
+        let header = make_gloas_header();
+        let blinded = BlindedPayload::<E>::Gloas(BlindedPayloadGloas {
+            execution_payload_header: header.clone(),
+        });
+        let header_back: ExecutionPayloadHeader<E> = blinded.into();
+        assert_eq!(header_back, ExecutionPayloadHeader::Gloas(header));
+    }
+
+    // ── FullPayloadRef Gloas ──
+
+    #[test]
+    fn full_payload_ref_withdrawals_root_gloas() {
+        let inner = make_gloas_payload();
+        let expected_root = inner.withdrawals.tree_hash_root();
+        let payload = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: inner,
+        });
+        assert_eq!(payload.to_ref().withdrawals_root().unwrap(), expected_root);
+    }
+
+    #[test]
+    fn full_payload_ref_blob_gas_used_gloas() {
+        let inner = make_gloas_payload();
+        let payload = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: inner,
+        });
+        assert_eq!(payload.to_ref().blob_gas_used().unwrap(), 262_144);
+    }
+
+    #[test]
+    fn full_payload_ref_to_execution_payload_ref_gloas() {
+        let inner = make_gloas_payload();
+        let payload = FullPayload::<E>::Gloas(FullPayloadGloas {
+            execution_payload: inner.clone(),
+        });
+        let payload_ref = payload.to_ref().execution_payload_ref();
+        assert_eq!(payload_ref.block_hash(), inner.block_hash);
+    }
+
+    // ── BlindedPayloadRef Gloas ──
+
+    #[test]
+    fn blinded_payload_ref_withdrawals_root_gloas() {
+        let header = make_gloas_header();
+        let expected = header.withdrawals_root;
+        let payload = BlindedPayload::<E>::Gloas(BlindedPayloadGloas {
+            execution_payload_header: header,
+        });
+        assert_eq!(payload.to_ref().withdrawals_root().unwrap(), expected);
+    }
+
+    #[test]
+    fn blinded_payload_ref_blob_gas_used_gloas() {
+        let header = make_gloas_header();
+        let payload = BlindedPayload::<E>::Gloas(BlindedPayloadGloas {
+            execution_payload_header: header,
+        });
+        assert_eq!(payload.to_ref().blob_gas_used().unwrap(), 262_144);
+    }
+}
