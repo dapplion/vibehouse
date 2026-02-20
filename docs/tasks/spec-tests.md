@@ -29,6 +29,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 50 execution payload type conversion unit tests (run 48)
+- Added 22 unit tests to `execution_payload_header.rs` (previously had NO test module):
+  - `upgrade_to_gloas`: preserves all 17 fields, default roundtrip
+  - `From<&ExecutionPayloadGloas>`: preserves scalar fields, computes correct tree_hash_roots for transactions and withdrawals
+  - `fork_name_unchecked`: Gloas and Fulu variant dispatch
+  - SSZ roundtrip: inner type, enum dispatch, wrong fork produces different variant, Base/Altair reject
+  - `TryFrom<ExecutionPayloadHeader>`: success, wrong variant errors (both directions)
+  - `is_default_with_zero_roots`: true for default, false for non-default
+  - `ExecutionPayloadHeaderRefMut::replace`: Gloas success, wrong variant fails
+  - `From<ExecutionPayloadRef>`: Gloas payload ref converts correctly
+  - Self-clone via `From<&Self>`, tree hash stability (equal and different values)
+- Added 10 unit tests to `execution_payload.rs` (previously had NO test module):
+  - `fork_name`: Gloas and Fulu dispatch
+  - SSZ roundtrip: inner type, `from_ssz_bytes_by_fork` dispatch, Base/Altair reject, correct variant production
+  - `clone_from_ref`: Gloas clone roundtrip
+  - Enum field accessors: all 11 accessible fields (parent_hash through excess_blob_gas)
+  - Default Gloas payload zero fields
+- Added 18 unit tests to `payload.rs` (previously had NO test module):
+  - FullPayload: `default_at_fork` (Gloas/Base/Altair), `withdrawals_root`, `blob_gas_used`, `is_default_with_zero_roots`, `block_type`, `to_execution_payload_header`
+  - BlindedPayload: `block_type`, `withdrawals_root`, `blob_gas_used`, `from(header)` roundtrip, `into(header)` roundtrip
+  - FullPayloadRef: `withdrawals_root`, `blob_gas_used`, `execution_payload_ref`
+  - BlindedPayloadRef: `withdrawals_root`, `blob_gas_used`
+- All 382 types tests pass (was 332)
+
 ### 2026-02-20 — 8 process_proposer_lookahead unit tests (run 47)
 - Added 8 unit tests to `single_pass.rs` for `process_proposer_lookahead` (EIP-7917 proposer lookahead rotation):
   - `shift_moves_second_epoch_to_first`: verifies the first-epoch entries are shifted out and replaced by what was the second epoch
