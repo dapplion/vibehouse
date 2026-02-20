@@ -1780,3 +1780,652 @@ mod builder_deposit_tests {
         assert_eq!(builder.execution_address, Address::repeat_byte(0xDD));
     }
 }
+
+/// Tests for Gloas-specific proposer slashing payment removal and same-slot attestation weight.
+#[cfg(test)]
+mod gloas_operations_tests {
+    use super::*;
+    use crate::ConsensusContext;
+    use crate::VerifySignatures;
+    use crate::common::update_progressive_balances_cache::initialize_progressive_balances_cache;
+    use crate::epoch_cache::initialize_epoch_cache;
+    use bls::FixedBytesExtended;
+    use ssz_types::{BitList, BitVector};
+    use std::sync::Arc;
+    use types::test_utils::generate_deterministic_keypairs;
+    use types::{
+        Address, Attestation, AttestationData, BeaconBlockHeader, BeaconStateGloas,
+        BuilderPendingPayment, BuilderPendingWithdrawal, CACHED_EPOCHS, Checkpoint, CommitteeCache,
+        Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExitCache, FixedVector, Fork, Hash256,
+        List, MinimalEthSpec, ParticipationFlags, ProgressiveBalancesCache, PubkeyCache,
+        SignedBeaconBlockHeader, SlashingsCache, SyncCommittee, Unsigned, Vector,
+    };
+
+    type E = MinimalEthSpec;
+    const NUM_VALIDATORS: usize = 8;
+
+    /// Build a Gloas state at the given slot with validators and caches built.
+    /// The state is at the start of an epoch (not epoch boundary) so committee caches work.
+    fn make_gloas_state_with_caches(
+        slot_num: u64,
+    ) -> (BeaconState<E>, ChainSpec, ConsensusContext<E>) {
+        let mut spec = E::default_spec();
+        // Set all forks at epoch 0
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+        let slot = Slot::new(slot_num);
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let mut validators = Vec::with_capacity(NUM_VALIDATORS);
+        let mut balances = Vec::with_capacity(NUM_VALIDATORS);
+        let mut participation = Vec::with_capacity(NUM_VALIDATORS);
+        let mut inactivity = Vec::with_capacity(NUM_VALIDATORS);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: 32_000_000_000,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(32_000_000_000);
+            participation.push(ParticipationFlags::default());
+            inactivity.push(0u64);
+        }
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        // Unique block root per slot
+        let block_roots_vec: Vec<Hash256> = (0..slots_per_hist)
+            .map(|i| Hash256::repeat_byte((i % 255 + 1) as u8))
+            .collect();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let source_checkpoint = Checkpoint {
+            epoch: epoch.saturating_sub(1u64),
+            root: Hash256::repeat_byte(0xCC),
+        };
+
+        let mut state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch: Epoch::new(0),
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::zero(),
+                state_root: Hash256::zero(),
+                body_root: Hash256::repeat_byte(0x01),
+            },
+            block_roots: Vector::new(block_roots_vec).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::new(participation.clone()).unwrap(),
+            current_epoch_participation: List::new(participation).unwrap(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: source_checkpoint,
+            current_justified_checkpoint: source_checkpoint,
+            finalized_checkpoint: Checkpoint::default(),
+            inactivity_scores: List::new(inactivity).unwrap(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::default(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(
+                vec![0xFFu8; slots_per_hist / 8].into(),
+            )
+            .unwrap(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: ExecutionBlockHash::zero(),
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        // Build all required caches
+        state.build_caches(&spec).unwrap();
+        initialize_epoch_cache(&mut state, &spec).unwrap();
+        initialize_progressive_balances_cache(&mut state, &spec).unwrap();
+
+        let ctxt = ConsensusContext::new(slot);
+
+        (state, spec, ctxt)
+    }
+
+    /// Create a `ProposerSlashing` for the given proposer at the given slot.
+    /// Uses `VerifySignatures::False` so signatures don't matter.
+    fn make_proposer_slashing(proposer_index: u64, slot: Slot) -> ProposerSlashing {
+        ProposerSlashing {
+            signed_header_1: SignedBeaconBlockHeader {
+                message: BeaconBlockHeader {
+                    slot,
+                    proposer_index,
+                    parent_root: Hash256::repeat_byte(0x01),
+                    state_root: Hash256::repeat_byte(0x02),
+                    body_root: Hash256::repeat_byte(0x03),
+                },
+                signature: types::Signature::empty(),
+            },
+            signed_header_2: SignedBeaconBlockHeader {
+                message: BeaconBlockHeader {
+                    slot,
+                    proposer_index,
+                    parent_root: Hash256::repeat_byte(0x04),
+                    state_root: Hash256::repeat_byte(0x05),
+                    body_root: Hash256::repeat_byte(0x06),
+                },
+                signature: types::Signature::empty(),
+            },
+        }
+    }
+
+    /// Set a BuilderPendingPayment at the given index with the given amount.
+    fn set_payment(state: &mut BeaconState<E>, index: usize, amount: u64) {
+        let payment = state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(index)
+            .unwrap();
+        payment.weight = 0;
+        payment.withdrawal = BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0xBB),
+            amount,
+            builder_index: 0,
+        };
+    }
+
+    // ── Proposer slashing builder payment removal tests ──────
+
+    #[test]
+    fn slashing_current_epoch_clears_payment() {
+        // State at slot 9 (epoch 1 for MinimalEthSpec with 8 slots/epoch).
+        // Proposer slashing at slot 9 (current epoch).
+        // payment_index = slots_per_epoch + (9 % 8) = 8 + 1 = 9
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(9);
+
+        let payment_index = E::slots_per_epoch() as usize + (9 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, payment_index, 1_000_000_000);
+
+        // Verify payment exists
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .builder_pending_payments
+                .get(payment_index)
+                .unwrap()
+                .withdrawal
+                .amount,
+            1_000_000_000
+        );
+
+        let slashing = make_proposer_slashing(1, Slot::new(9));
+        process_proposer_slashings(
+            &mut state,
+            &[slashing],
+            VerifySignatures::False,
+            &mut ctxt,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should be cleared (zeroed)
+        let payment = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap();
+        assert_eq!(payment.withdrawal.amount, 0, "payment should be cleared");
+        assert_eq!(payment.weight, 0, "weight should be cleared");
+    }
+
+    #[test]
+    fn slashing_previous_epoch_clears_payment() {
+        // State at slot 9 (epoch 1). Proposer slashing at slot 3 (epoch 0 = previous epoch).
+        // payment_index = 3 % 8 = 3
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(9);
+
+        let payment_index = 3 % E::slots_per_epoch() as usize;
+        set_payment(&mut state, payment_index, 2_000_000_000);
+
+        let slashing = make_proposer_slashing(2, Slot::new(3));
+        process_proposer_slashings(
+            &mut state,
+            &[slashing],
+            VerifySignatures::False,
+            &mut ctxt,
+            &spec,
+        )
+        .unwrap();
+
+        let payment = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap();
+        assert_eq!(
+            payment.withdrawal.amount, 0,
+            "previous epoch payment should be cleared"
+        );
+    }
+
+    #[test]
+    fn slashing_old_epoch_does_not_clear_payment() {
+        // State at slot 17 (epoch 2). Proposer slashing at slot 3 (epoch 0 = 2 epochs ago).
+        // proposal_epoch != current_epoch && proposal_epoch != previous_epoch → no clearing.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(17);
+
+        // Set payment at index 3 (where slot 3 would map if it were previous epoch)
+        let payment_index = 3 % E::slots_per_epoch() as usize;
+        set_payment(&mut state, payment_index, 3_000_000_000);
+
+        let slashing = make_proposer_slashing(3, Slot::new(3));
+        process_proposer_slashings(
+            &mut state,
+            &[slashing],
+            VerifySignatures::False,
+            &mut ctxt,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should NOT be cleared because the slashing is from 2 epochs ago
+        let payment = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap();
+        assert_eq!(
+            payment.withdrawal.amount, 3_000_000_000,
+            "old epoch payment should not be cleared"
+        );
+    }
+
+    #[test]
+    fn slashing_clears_only_target_payment_index() {
+        // Verify that only the specific payment index is cleared, not others.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(9);
+
+        // Set payments at multiple indices
+        set_payment(&mut state, 0, 1_000_000_000);
+        set_payment(&mut state, 1, 2_000_000_000);
+        let target_index = E::slots_per_epoch() as usize + (9 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, target_index, 3_000_000_000);
+
+        let slashing = make_proposer_slashing(1, Slot::new(9));
+        process_proposer_slashings(
+            &mut state,
+            &[slashing],
+            VerifySignatures::False,
+            &mut ctxt,
+            &spec,
+        )
+        .unwrap();
+
+        // Target should be cleared
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .builder_pending_payments
+                .get(target_index)
+                .unwrap()
+                .withdrawal
+                .amount,
+            0
+        );
+        // Others should remain
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .builder_pending_payments
+                .get(0)
+                .unwrap()
+                .withdrawal
+                .amount,
+            1_000_000_000
+        );
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .builder_pending_payments
+                .get(1)
+                .unwrap()
+                .withdrawal
+                .amount,
+            2_000_000_000
+        );
+    }
+
+    #[test]
+    fn slashing_already_empty_payment_is_noop() {
+        // Slashing a slot with no payment should not error.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(9);
+
+        let slashing = make_proposer_slashing(1, Slot::new(9));
+        // No payment set at this index — should succeed without error
+        process_proposer_slashings(
+            &mut state,
+            &[slashing],
+            VerifySignatures::False,
+            &mut ctxt,
+            &spec,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn slashing_epoch_boundary_slot_calculates_correct_index() {
+        // State at slot 9 (epoch 1). Slashing at slot 8 (epoch boundary, epoch 1 current epoch).
+        // payment_index = 8 + (8 % 8) = 8 + 0 = 8
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(9);
+
+        let payment_index = E::slots_per_epoch() as usize; // 8 + 0 = 8
+        set_payment(&mut state, payment_index, 5_000_000_000);
+
+        let slashing = make_proposer_slashing(4, Slot::new(8));
+        process_proposer_slashings(
+            &mut state,
+            &[slashing],
+            VerifySignatures::False,
+            &mut ctxt,
+            &spec,
+        )
+        .unwrap();
+
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .builder_pending_payments
+                .get(payment_index)
+                .unwrap()
+                .withdrawal
+                .amount,
+            0,
+            "epoch boundary payment should be cleared"
+        );
+    }
+
+    // ── Same-slot attestation weight accumulation tests ──────
+
+    /// Create an Electra attestation for a given slot with correct aggregation bits.
+    fn make_attestation(state: &BeaconState<E>, att_slot: u64, att_index: u64) -> Attestation<E> {
+        let epoch = state.current_epoch();
+        let target_slot = epoch.start_slot(E::slots_per_epoch());
+        let target_root = *state.get_block_root(target_slot).unwrap();
+        let att_block_root = *state.get_block_root(Slot::new(att_slot)).unwrap();
+
+        let att_data = AttestationData {
+            slot: Slot::new(att_slot),
+            index: att_index,
+            beacon_block_root: att_block_root,
+            source: state.current_justified_checkpoint(),
+            target: Checkpoint {
+                epoch,
+                root: target_root,
+            },
+        };
+
+        // Get the committee for this slot
+        let committee = state.get_beacon_committee(Slot::new(att_slot), 0).unwrap();
+        let committee_len = committee.committee.len();
+
+        // Create aggregation bits with first member attesting
+        let mut aggregation_bits =
+            BitList::<<E as EthSpec>::MaxValidatorsPerSlot>::with_capacity(committee_len).unwrap();
+        aggregation_bits.set(0, true).unwrap();
+
+        let mut committee_bits = BitVector::<<E as EthSpec>::MaxCommitteesPerSlot>::new();
+        committee_bits.set(0, true).unwrap();
+
+        Attestation::Electra(types::AttestationElectra {
+            aggregation_bits,
+            data: att_data,
+            signature: types::AggregateSignature::empty(),
+            committee_bits,
+        })
+    }
+
+    #[test]
+    fn same_slot_attestation_adds_weight_to_payment() {
+        // State at slot 11 (epoch 1). Attestation at slot 10 (same-slot, current epoch).
+        // The attestation is "same-slot" because block_roots[10] != block_roots[9].
+        // payment_slot_index = slots_per_epoch + (10 % 8) = 8 + 2 = 10
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(11);
+
+        let payment_index = E::slots_per_epoch() as usize + (10 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, payment_index, 1_000_000_000);
+
+        let attestation = make_attestation(&state, 10, 0);
+
+        let initial_weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+        assert_eq!(initial_weight, 0);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Weight should have increased by the attesting validator's effective_balance
+        let updated_weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+        assert!(
+            updated_weight > 0,
+            "same-slot attestation should add weight (got {})",
+            updated_weight
+        );
+        assert_eq!(
+            updated_weight, 32_000_000_000,
+            "weight should equal the attesting validator's effective balance"
+        );
+    }
+
+    #[test]
+    fn same_slot_attestation_no_weight_when_payment_zero() {
+        // If the payment amount is 0, no weight should be added.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(11);
+
+        let attestation = make_attestation(&state, 10, 0);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let payment_index = E::slots_per_epoch() as usize + (10 % E::slots_per_epoch() as usize);
+        let weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+        assert_eq!(
+            weight, 0,
+            "no weight should be added when payment amount is 0"
+        );
+    }
+
+    #[test]
+    fn non_same_slot_attestation_no_weight_added() {
+        // Attestation from a skipped slot should not add weight.
+        // Make slot 9 a "skipped" slot (block_roots[9] == block_roots[8]).
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(11);
+
+        // Make slot 9 look like a skipped slot
+        let prev_root = *state.get_block_root(Slot::new(8)).unwrap();
+        state.set_block_root(Slot::new(9), prev_root).unwrap();
+
+        let payment_index = E::slots_per_epoch() as usize + (9 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, payment_index, 1_000_000_000);
+
+        // Attestation at slot 9 with index=1 (matches availability bit=1 for historical)
+        let attestation = make_attestation(&state, 9, 1);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+        assert_eq!(weight, 0, "non-same-slot attestation should not add weight");
+    }
+
+    #[test]
+    fn duplicate_attestation_does_not_add_weight_twice() {
+        // If the same validator attests twice, the second attestation should not
+        // set new flags (they're already set), so no additional weight.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(11);
+
+        let payment_index = E::slots_per_epoch() as usize + (10 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, payment_index, 1_000_000_000);
+
+        let attestation = make_attestation(&state, 10, 0);
+
+        // First attestation
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight_after_first = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+
+        // Second attestation (same validator, same slot)
+        let attestation2 = make_attestation(&state, 10, 0);
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation2.to_ref(),
+            1,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight_after_second = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+
+        assert_eq!(
+            weight_after_first, weight_after_second,
+            "duplicate attestation should not add weight again"
+        );
+    }
+}
