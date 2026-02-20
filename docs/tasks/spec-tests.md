@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 32 BuilderBid unit tests (run 50)
+- Added 32 unit tests to `builder_bid.rs` (previously had NO test module):
+  - Header accessors: `header()` returns correct `ExecutionPayloadHeaderRef` for Gloas, Fulu, Bellatrix; `header_mut()` mutation test
+  - Common field accessors: `value()`, `pubkey()` through enum
+  - Variant-specific partial getters: `blob_kzg_commitments` accessible on Gloas/Fulu but not Bellatrix; `execution_requests` accessible on Gloas but not Bellatrix; cross-variant getter failures (header_gloas on Fulu, header_fulu on Gloas, header_bellatrix on Gloas)
+  - SSZ roundtrip: inner types (Gloas, Fulu), fork dispatch via `from_ssz_bytes_by_fork` for Gloas/Fulu/Bellatrix, unsupported forks (Base, Altair) rejected, correct variant production from same-layout bytes
+  - `SignedBuilderBid` SSZ: roundtrip for Gloas and Fulu, Base fork decode fails
+  - Signature verification: empty pubkey fails, valid keypair passes end-to-end (sign with real BLS key, verify with `get_builder_domain`), wrong key fails
+  - Tree hash: different values produce different roots, equal values produce equal roots
+  - Clone + equality: clone preserves equality, different variants not equal
+- All 456 types tests pass (was 424)
+
 ### 2026-02-20 — 42 DataColumnSidecar Gloas variant unit tests (run 49)
 - Added 42 unit tests to `data_column_sidecar.rs` (previously had NO test module):
   - Field accessors: `slot()` (Gloas from field, Fulu from header), `epoch()` (boundary tests), `block_root()` (Gloas from field, Fulu from tree_hash), `block_parent_root()` (Gloas=None, Fulu=Some), `block_proposer_index()` (Gloas=None, Fulu=Some), `index()` shared getter

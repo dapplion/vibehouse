@@ -31,6 +31,13 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 50)
+- No new consensus-specs PRs merged since run 49: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+  - Recently merged: #4920 (consistent constructing sections), #4941 (execution proof construction uses BeaconBlock), #4921 (use ckzg by default) — all docs/tooling changes, no spec logic impact
+- **Added 32 unit tests for BuilderBid Gloas type** in `consensus/types/src/builder_bid.rs`. Previously had ZERO tests.
+  - SSZ roundtrip + fork dispatch, header accessors, variant-specific partial getters, SignedBuilderBid SSZ, BLS signature verification (valid key, wrong key, empty key), tree hash, clone/equality
+- All 456 types tests pass (was 424)
+
 ### 2026-02-20 (run 32)
 - No new consensus-specs PRs merged since run 31: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
   - #4931 (Rebase FOCIL onto Gloas) has 1 approval from jtraglia
