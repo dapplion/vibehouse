@@ -54,9 +54,9 @@ Reference:
 
 [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 + 138/138 passing, check_all_files_accessed passes
 
-### 4. ZK execution proofs (stateless validation) — NEXT UP
+### 4. ZK execution proofs (stateless validation) — DONE (stub proofs, SP1 infra ready)
 [docs/tasks/zk-execution-proofs.md](docs/tasks/zk-execution-proofs.md) | [GitHub #28](https://github.com/dapplion/vibehouse/issues/28)
-ZK proofs for execution payloads enabling stateless CL nodes. ePBS gives builders minutes of proving headroom. 20 tasks across 7 phases. Based on kevaundray's prototype (sigp/lighthouse#7755) adapted for ePBS architecture. **Highest post-Gloas priority.**
+ZK proofs for execution payloads enabling stateless CL nodes. 20 tasks across 7 phases complete. Stateless devnet achieved finalized_epoch=9 with 3 proof-generators + 1 stateless node. SP1 Groth16 verifier integrated (`sp1-verifier` 6.0.1), guest/host programs built (`zkvm/`), async proof generation wired. Only 20f (real SP1 devnet) remains — requires SP1 toolchain + GPU.
 
 ### 5. ROCQ formal proofs for consensus-critical invariants — LOWEST PRIORITY
 [GitHub #29](https://github.com/dapplion/vibehouse/issues/29) — Dead last. Only after everything else is done.
