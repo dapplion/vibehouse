@@ -716,4 +716,159 @@ mod tests {
         use super::*;
         ssz_and_tree_hash_tests!(AttestationElectra<MainnetEthSpec>);
     }
+
+    // ── empty_for_signing Gloas payload_present tests ─────────
+
+    fn gloas_spec() -> ChainSpec {
+        let mut spec = MinimalEthSpec::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+        spec
+    }
+
+    fn fulu_spec() -> ChainSpec {
+        let mut spec = MinimalEthSpec::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        // gloas NOT set
+        spec
+    }
+
+    #[test]
+    fn gloas_payload_present_sets_index_1() {
+        let spec = gloas_spec();
+        let att = Attestation::<MinimalEthSpec>::empty_for_signing(
+            0,
+            8,
+            Slot::new(10),
+            Hash256::zero(),
+            Checkpoint::default(),
+            Checkpoint::default(),
+            &spec,
+            true, // payload_present
+        )
+        .unwrap();
+        assert_eq!(
+            att.data().index,
+            1,
+            "Gloas with payload_present=true should set index=1"
+        );
+    }
+
+    #[test]
+    fn gloas_payload_not_present_sets_index_0() {
+        let spec = gloas_spec();
+        let att = Attestation::<MinimalEthSpec>::empty_for_signing(
+            0,
+            8,
+            Slot::new(10),
+            Hash256::zero(),
+            Checkpoint::default(),
+            Checkpoint::default(),
+            &spec,
+            false, // payload_present
+        )
+        .unwrap();
+        assert_eq!(
+            att.data().index,
+            0,
+            "Gloas with payload_present=false should set index=0"
+        );
+    }
+
+    #[test]
+    fn fulu_payload_present_ignored_sets_index_0() {
+        // In Fulu (pre-Gloas), payload_present flag is ignored, index is always 0
+        let spec = fulu_spec();
+        let att = Attestation::<MinimalEthSpec>::empty_for_signing(
+            0,
+            8,
+            Slot::new(10),
+            Hash256::zero(),
+            Checkpoint::default(),
+            Checkpoint::default(),
+            &spec,
+            true, // payload_present=true, but should be ignored
+        )
+        .unwrap();
+        assert_eq!(
+            att.data().index,
+            0,
+            "Fulu should always set index=0 regardless of payload_present"
+        );
+    }
+
+    #[test]
+    fn fulu_payload_not_present_sets_index_0() {
+        let spec = fulu_spec();
+        let att = Attestation::<MinimalEthSpec>::empty_for_signing(
+            0,
+            8,
+            Slot::new(10),
+            Hash256::zero(),
+            Checkpoint::default(),
+            Checkpoint::default(),
+            &spec,
+            false,
+        )
+        .unwrap();
+        assert_eq!(att.data().index, 0);
+    }
+
+    #[test]
+    fn gloas_empty_for_signing_is_electra_variant() {
+        let spec = gloas_spec();
+        let att = Attestation::<MinimalEthSpec>::empty_for_signing(
+            0,
+            8,
+            Slot::new(10),
+            Hash256::zero(),
+            Checkpoint::default(),
+            Checkpoint::default(),
+            &spec,
+            true,
+        )
+        .unwrap();
+        assert!(
+            matches!(att, Attestation::Electra(_)),
+            "Gloas attestation should be Electra variant"
+        );
+    }
+
+    #[test]
+    fn gloas_committee_bits_set_correctly() {
+        let spec = gloas_spec();
+        let committee_index = 2u64;
+        let att = Attestation::<MinimalEthSpec>::empty_for_signing(
+            committee_index,
+            8,
+            Slot::new(10),
+            Hash256::zero(),
+            Checkpoint::default(),
+            Checkpoint::default(),
+            &spec,
+            true,
+        )
+        .unwrap();
+        if let Attestation::Electra(ref electra) = att {
+            assert!(
+                electra
+                    .committee_bits
+                    .get(committee_index as usize)
+                    .unwrap()
+            );
+            assert!(!electra.committee_bits.get(0).unwrap());
+        } else {
+            panic!("expected Electra variant");
+        }
+    }
 }

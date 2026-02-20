@@ -1138,3 +1138,142 @@ impl<'a> Iterator for Iter<'a> {
         Some(node)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use types::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    /// Create a minimal ProtoArray at genesis for viability tests.
+    fn make_proto_array() -> ProtoArray {
+        ProtoArray {
+            prune_threshold: 0,
+            justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            nodes: vec![],
+            indices: HashMap::new(),
+            previous_proposer_boost: ProposerBoost {
+                root: Hash256::zero(),
+                score: 0,
+            },
+        }
+    }
+
+    /// Create a minimal ProtoNode with configurable Gloas ePBS fields.
+    fn make_node(builder_index: Option<BuilderIndex>, payload_revealed: bool) -> ProtoNode {
+        let shuffling_id = AttestationShufflingId {
+            shuffling_epoch: Epoch::new(0),
+            shuffling_decision_block: Hash256::zero(),
+        };
+        ProtoNode {
+            slot: Slot::new(0),
+            state_root: Hash256::zero(),
+            target_root: Hash256::zero(),
+            current_epoch_shuffling_id: shuffling_id.clone(),
+            next_epoch_shuffling_id: shuffling_id,
+            root: Hash256::zero(),
+            parent: None,
+            justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            weight: 0,
+            best_child: None,
+            best_descendant: None,
+            execution_status: ExecutionStatus::Optimistic(ExecutionBlockHash::zero()),
+            unrealized_justified_checkpoint: None,
+            unrealized_finalized_checkpoint: None,
+            builder_index,
+            payload_revealed,
+            ptc_weight: 0,
+            ptc_blob_data_available_weight: 0,
+            payload_data_available: false,
+            bid_block_hash: None,
+            bid_parent_block_hash: None,
+            proposer_index: 0,
+            ptc_timely: false,
+        }
+    }
+
+    // ── Gloas payload_revealed viability tests ─────────────────
+
+    #[test]
+    fn pre_gloas_block_always_viable() {
+        // Pre-Gloas blocks have builder_index = None, always viable
+        let pa = make_proto_array();
+        let node = make_node(None, false);
+        assert!(pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn self_build_block_always_viable() {
+        // Self-build blocks (BUILDER_INDEX_SELF_BUILD) are always viable, even if
+        // payload_revealed is false
+        let pa = make_proto_array();
+        let node = make_node(Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD), false);
+        assert!(pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn external_builder_payload_revealed_viable() {
+        // External builder block with payload revealed → viable
+        let pa = make_proto_array();
+        let node = make_node(Some(42), true);
+        assert!(pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn external_builder_payload_not_revealed_not_viable() {
+        // External builder block with payload NOT revealed → NOT viable
+        let pa = make_proto_array();
+        let node = make_node(Some(42), false);
+        assert!(!pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn external_builder_index_zero_payload_not_revealed_not_viable() {
+        // Builder index 0 is a valid external builder (not self-build), payload not revealed
+        let pa = make_proto_array();
+        let node = make_node(Some(0), false);
+        assert!(!pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn external_builder_index_zero_payload_revealed_viable() {
+        // Builder index 0 with revealed payload → viable
+        let pa = make_proto_array();
+        let node = make_node(Some(0), true);
+        assert!(pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn invalid_execution_status_not_viable() {
+        // Invalid execution status → never viable, regardless of payload_revealed
+        let pa = make_proto_array();
+        let mut node = make_node(None, true);
+        node.execution_status = ExecutionStatus::Invalid(ExecutionBlockHash::zero());
+        assert!(!pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+
+    #[test]
+    fn self_build_with_invalid_execution_not_viable() {
+        // Even self-build blocks are not viable if execution status is invalid
+        let pa = make_proto_array();
+        let mut node = make_node(Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD), true);
+        node.execution_status = ExecutionStatus::Invalid(ExecutionBlockHash::zero());
+        assert!(!pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
+    }
+}
