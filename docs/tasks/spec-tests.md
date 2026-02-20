@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 8 process_proposer_lookahead unit tests (run 47)
+- Added 8 unit tests to `single_pass.rs` for `process_proposer_lookahead` (EIP-7917 proposer lookahead rotation):
+  - `shift_moves_second_epoch_to_first`: verifies the first-epoch entries are shifted out and replaced by what was the second epoch
+  - `new_entries_are_valid_validator_indices`: all newly filled entries reference active validators
+  - `new_entries_match_independent_computation`: new epoch entries match `get_beacon_proposer_indices(epoch=current+2)` computed independently
+  - `lookahead_length_preserved`: vector length stays at `ProposerLookaheadSlots` (16 for minimal)
+  - `double_call_shifts_twice`: two consecutive calls correctly chain the shift (second call's first epoch = first call's second epoch)
+  - `initial_lookahead_covers_two_epochs`: verify the test helper correctly initializes 2 epochs of proposer data
+  - `deterministic_same_state_same_result`: identical states produce identical results (no hidden randomness)
+  - `different_randao_produces_different_proposers`: modifying the randao mix at the correct index (computed via get_seed formula) changes proposer selection
+- Previously no test module existed in this file — `process_proposer_lookahead` was only covered by EF spec tests
+- Requires fork epochs set to 0 in spec so `fork_name_at_epoch` returns Fulu for future epochs (avoids `ComputeProposerIndicesExcessiveLookahead` error)
+- All 280 state_processing tests pass (was 272)
+
 ### 2026-02-20 — 11 per_block_processing Gloas orchestration + fork dispatch tests (run 46)
 - Added 11 unit tests to `per_block_processing.rs` for Gloas ePBS fork dispatch and block processing logic:
   - `is_execution_enabled`: Gloas returns false (ePBS has no exec payload in proposer blocks), Fulu returns true (post-merge)
