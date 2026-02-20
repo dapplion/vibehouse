@@ -128,7 +128,7 @@ mod tests {
     /// The slot must be > epoch start slot to allow get_block_root_at_epoch to work.
     fn make_gloas_state_for_attestation(slot_num: u64) -> (BeaconState<E>, ChainSpec) {
         assert!(
-            slot_num % E::slots_per_epoch() as u64 > 0,
+            !slot_num.is_multiple_of(E::slots_per_epoch()),
             "slot must not be at epoch boundary for get_block_root_at_epoch to work"
         );
         let spec = E::default_spec();
@@ -140,10 +140,9 @@ mod tests {
         let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
 
         // Unique block root per slot (repeat_byte)
-        let mut block_roots_vec = vec![Hash256::zero(); slots_per_hist];
-        for i in 0..slots_per_hist {
-            block_roots_vec[i] = Hash256::repeat_byte((i % 255 + 1) as u8);
-        }
+        let block_roots_vec: Vec<Hash256> = (0..slots_per_hist)
+            .map(|i| Hash256::repeat_byte((i % 255 + 1) as u8))
+            .collect();
 
         let randao_mixes = vec![Hash256::zero(); epochs_per_vector];
 

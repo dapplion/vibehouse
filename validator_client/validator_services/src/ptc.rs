@@ -117,6 +117,59 @@ pub async fn poll_ptc_duties<S: ValidatorStore + 'static, T: SlotClock + 'static
     Ok(())
 }
 
+/// Fetch PTC duties for a specific epoch and store them in the map.
+async fn poll_ptc_duties_for_epoch<S: ValidatorStore, T: SlotClock + 'static>(
+    duties_service: &Arc<DutiesService<S, T>>,
+    epoch: Epoch,
+) -> Result<(), Error<S::Error>> {
+    // Collect all local validator indices.
+    let local_indices: Vec<u64> = duties_service
+        .validator_store
+        .voting_pubkeys::<Vec<_>, _>(DoppelgangerStatus::ignored)
+        .into_iter()
+        .filter_map(|pubkey| duties_service.validator_store.validator_index(&pubkey))
+        .collect();
+
+    if local_indices.is_empty() {
+        return Ok(());
+    }
+
+    debug!(
+        %epoch,
+        num_validators = local_indices.len(),
+        "Fetching PTC duties"
+    );
+
+    let duties_response = duties_service
+        .beacon_nodes
+        .first_success(|beacon_node| {
+            let indices = local_indices.clone();
+            async move { beacon_node.post_validator_duties_ptc(epoch, &indices).await }
+        })
+        .await;
+
+    match duties_response {
+        Ok(res) => {
+            let duties = res.data;
+            debug!(
+                %epoch,
+                count = duties.len(),
+                "Fetched PTC duties from BN"
+            );
+            duties_service.ptc_duties.set_duties(epoch, duties);
+        }
+        Err(e) => {
+            warn!(
+                %epoch,
+                error = %e,
+                "Failed to download PTC duties"
+            );
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -354,57 +407,4 @@ mod tests {
         assert_eq!(duties.len(), 1);
         assert_eq!(duties[0].validator_index, 200);
     }
-}
-
-/// Fetch PTC duties for a specific epoch and store them in the map.
-async fn poll_ptc_duties_for_epoch<S: ValidatorStore, T: SlotClock + 'static>(
-    duties_service: &Arc<DutiesService<S, T>>,
-    epoch: Epoch,
-) -> Result<(), Error<S::Error>> {
-    // Collect all local validator indices.
-    let local_indices: Vec<u64> = duties_service
-        .validator_store
-        .voting_pubkeys::<Vec<_>, _>(DoppelgangerStatus::ignored)
-        .into_iter()
-        .filter_map(|pubkey| duties_service.validator_store.validator_index(&pubkey))
-        .collect();
-
-    if local_indices.is_empty() {
-        return Ok(());
-    }
-
-    debug!(
-        %epoch,
-        num_validators = local_indices.len(),
-        "Fetching PTC duties"
-    );
-
-    let duties_response = duties_service
-        .beacon_nodes
-        .first_success(|beacon_node| {
-            let indices = local_indices.clone();
-            async move { beacon_node.post_validator_duties_ptc(epoch, &indices).await }
-        })
-        .await;
-
-    match duties_response {
-        Ok(res) => {
-            let duties = res.data;
-            debug!(
-                %epoch,
-                count = duties.len(),
-                "Fetched PTC duties from BN"
-            );
-            duties_service.ptc_duties.set_duties(epoch, duties);
-        }
-        Err(e) => {
-            warn!(
-                %epoch,
-                error = %e,
-                "Failed to download PTC duties"
-            );
-        }
-    }
-
-    Ok(())
 }
