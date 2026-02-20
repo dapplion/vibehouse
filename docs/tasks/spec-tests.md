@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 22 ForkChoice wrapper method + Builder::is_active tests (run 42)
+- Added 17 unit tests to `fork_choice.rs` for the three Gloas `ForkChoice` wrapper methods:
+  - `on_execution_bid`: 4 tests — unknown block root, slot mismatch, happy path (sets builder_index), resets payload_revealed, genesis block
+  - `on_payload_attestation`: 9 tests — future slot rejection, too-old rejection, unknown block root, slot mismatch (silent Ok), weight accumulation (payload_present), blob weight accumulation, quorum reveals payload, at-threshold no reveal, window boundary acceptance, same-slot current, no weight when not present
+  - `on_execution_payload`: 4 tests — unknown block root, reveals and sets execution status, genesis block, idempotent second call
+  - These test the `ForkChoice` validation layer (slot checks, age checks, unknown-root errors) above proto_array
+  - Mock `ForkChoiceStore` implementation for lightweight testing without full beacon chain harness
+- Added 5 unit tests to `builder.rs` for `Builder::is_active_at_finalized_epoch`:
+  - Active builder (deposited before finalized, far future withdrawable)
+  - Inactive: deposit_epoch == finalized_epoch (not strictly less than)
+  - Inactive: deposited after finalized
+  - Inactive: exiting builder (withdrawable_epoch != FAR_FUTURE_EPOCH)
+  - Inactive: epoch 0 edge case
+- All 54 fork_choice tests pass, 58 proto_array tests pass, 332 types tests pass
+
 ### 2026-02-20 — 13 Gloas signature set construction tests (run 41)
 - Added 13 unit tests to `signature_sets.rs` for the three Gloas ePBS signature set functions:
   - `execution_payload_bid_signature_set`: 5 tests — unknown builder (index 0, high index), valid sig verifies, wrong key fails, wrong domain (BeaconProposer) fails
