@@ -31,6 +31,23 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 32)
+- No new consensus-specs PRs merged since run 31: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+  - #4931 (Rebase FOCIL onto Gloas) has 1 approval from jtraglia
+  - #4940 (initial Gloas fork choice tests) has review feedback from jtraglia, no approvals
+  - #4932 (Gloas sanity/blocks tests) has review comments from jtraglia
+- **Added 13 unit tests for Gloas block replayer** in `consensus/state_processing/src/block_replayer.rs`. Previously had ZERO unit tests for Gloas-specific anchor block replay logic — only covered by integration tests in store_tests.
+  - Anchor envelope application (2): envelope updates latest_block_hash, without envelope falls back to bid block_hash
+  - Anchor zero block_hash (1): genesis-like bid with zero hash doesn't corrupt state
+  - Anchor state root fix (3): fixes stale state_root from cold storage, preserves correct state_root, zero state_root not overwritten
+  - Anchor envelope priority (2): envelope takes priority over bid fallback, wrong-root envelope falls through to fallback
+  - Envelope map consumption (1): used envelope removed from map, unused remains
+  - Builder pattern (2): envelopes method stores envelopes, default has no envelopes
+  - Envelope error handling (1): anchor block silently drops envelope processing errors
+  - Availability bit (1): envelope processing sets the availability bit
+  - All 136/136 state_processing tests pass (13 new + 123 existing)
+- Updated PLAN.md: test coverage status
+
 ### 2026-02-20 (run 31)
 - No new consensus-specs PRs merged since run 30: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
 - **Added 21 unit tests for Gloas state upgrade** in `consensus/state_processing/src/upgrade/gloas.rs`. Previously had ZERO unit tests for `upgrade_to_gloas`, `upgrade_state_to_gloas`, `onboard_builders_from_pending_deposits`, and `apply_builder_deposit` — only covered by EF spec tests.
