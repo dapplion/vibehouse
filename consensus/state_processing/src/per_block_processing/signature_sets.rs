@@ -774,3 +774,568 @@ where
         message,
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz_types::BitVector;
+    use std::sync::Arc;
+    use types::{
+        BeaconBlockHeader, BeaconStateGloas, BuilderPendingPayment, CACHED_EPOCHS, Checkpoint,
+        CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
+        ExitCache, FixedVector, Fork, List, MinimalEthSpec, PayloadAttestation,
+        PayloadAttestationData, ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes,
+        SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SlashingsCache, SyncCommittee,
+        Unsigned, Vector,
+    };
+
+    type E = MinimalEthSpec;
+
+    fn gloas_spec() -> ChainSpec {
+        let mut spec = E::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+        spec
+    }
+
+    /// Extract error from Result when Ok type doesn't implement Debug.
+    fn extract_err<T>(result: std::result::Result<T, Error>) -> Error {
+        match result {
+            Err(e) => e,
+            Ok(_) => panic!("expected Err, got Ok"),
+        }
+    }
+
+    /// Build a minimal Gloas state at slot 8 (epoch 1).
+    /// Returns keypairs for signing tests.
+    fn make_gloas_state() -> (BeaconState<E>, ChainSpec, Vec<bls::Keypair>) {
+        let spec = gloas_spec();
+        let slot = Slot::new(8);
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let keypairs = types::test_utils::generate_deterministic_keypairs(2);
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        });
+
+        let state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch: Epoch::new(0),
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::ZERO,
+                state_root: Hash256::ZERO,
+                body_root: Hash256::ZERO,
+            },
+            block_roots: Vector::new(vec![Hash256::ZERO; slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::ZERO; slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::default(),
+            balances: List::default(),
+            randao_mixes: Vector::new(vec![Hash256::ZERO; epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint::default(),
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid::default(),
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::default(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::new(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: ExecutionBlockHash::zero(),
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        (state, spec, keypairs)
+    }
+
+    // ──────── execution_payload_bid_signature_set tests ────────
+
+    #[test]
+    fn bid_signature_set_unknown_builder_returns_error() {
+        let (state, spec, _keypairs) = make_gloas_state();
+        let signed_bid = SignedExecutionPayloadBid::<E>::empty();
+
+        let err = extract_err(execution_payload_bid_signature_set(
+            &state,
+            |_| None,
+            &signed_bid,
+            &spec,
+        ));
+        assert_eq!(err, Error::ValidatorUnknown(0));
+    }
+
+    #[test]
+    fn bid_signature_set_unknown_high_index_returns_error() {
+        let (state, spec, _keypairs) = make_gloas_state();
+        let mut signed_bid = SignedExecutionPayloadBid::<E>::empty();
+        signed_bid.message.builder_index = 99999;
+
+        let err = extract_err(execution_payload_bid_signature_set(
+            &state,
+            |_| None,
+            &signed_bid,
+            &spec,
+        ));
+        assert_eq!(err, Error::ValidatorUnknown(99999));
+    }
+
+    #[test]
+    fn bid_signature_set_valid_signature_verifies() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut bid = ExecutionPayloadBid::<E>::default();
+        bid.builder_index = 0;
+        bid.slot = Slot::new(8);
+        bid.value = 100;
+
+        let epoch = bid.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = bid.signing_root(domain);
+        let signature = keypairs[0].sk.sign(signing_root);
+
+        let signed_bid = SignedExecutionPayloadBid {
+            message: bid,
+            signature,
+        };
+
+        let pubkey = keypairs[0].pk.clone();
+        let sig_set = execution_payload_bid_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_bid,
+            &spec,
+        )
+        .expect("should succeed");
+
+        assert!(sig_set.verify());
+    }
+
+    #[test]
+    fn bid_signature_set_wrong_key_fails_verification() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut bid = ExecutionPayloadBid::<E>::default();
+        bid.builder_index = 0;
+        bid.slot = Slot::new(8);
+
+        let epoch = bid.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = bid.signing_root(domain);
+
+        // Sign with key 0 but verify with key 1
+        let signature = keypairs[0].sk.sign(signing_root);
+        let signed_bid = SignedExecutionPayloadBid {
+            message: bid,
+            signature,
+        };
+
+        let wrong_pubkey = keypairs[1].pk.clone();
+        let sig_set = execution_payload_bid_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(wrong_pubkey.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_bid,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(!sig_set.verify());
+    }
+
+    #[test]
+    fn bid_signature_set_uses_beacon_builder_domain() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut bid = ExecutionPayloadBid::<E>::default();
+        bid.builder_index = 0;
+        bid.slot = Slot::new(8);
+
+        // Sign with WRONG domain (BeaconProposer instead of BeaconBuilder)
+        let epoch = bid.slot.epoch(E::slots_per_epoch());
+        let wrong_domain = spec.get_domain(
+            epoch,
+            Domain::BeaconProposer,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signature = keypairs[0].sk.sign(bid.signing_root(wrong_domain));
+        let signed_bid = SignedExecutionPayloadBid {
+            message: bid,
+            signature,
+        };
+
+        let pubkey = keypairs[0].pk.clone();
+        let sig_set = execution_payload_bid_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_bid,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(!sig_set.verify());
+    }
+
+    // ──────── payload_attestation_signature_set tests ────────
+
+    #[test]
+    fn payload_attestation_unknown_validator_returns_error() {
+        let (state, spec, _keypairs) = make_gloas_state();
+        let attestation = PayloadAttestation::<E>::empty();
+
+        let err = extract_err(payload_attestation_signature_set(
+            &state,
+            |_| None,
+            &attestation,
+            &[42],
+            &spec,
+        ));
+        assert_eq!(err, Error::ValidatorUnknown(42));
+    }
+
+    #[test]
+    fn payload_attestation_multiple_keys_one_unknown_returns_error() {
+        let (state, spec, keypairs) = make_gloas_state();
+        let attestation = PayloadAttestation::<E>::empty();
+
+        let pubkey0 = keypairs[0].pk.clone();
+        let err = extract_err(payload_attestation_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey0.clone()))
+                } else {
+                    None
+                }
+            },
+            &attestation,
+            &[0, 1], // validator 1 unknown
+            &spec,
+        ));
+        assert_eq!(err, Error::ValidatorUnknown(1));
+    }
+
+    #[test]
+    fn payload_attestation_valid_single_signer_verifies() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xBB),
+            slot: Slot::new(8),
+            payload_present: true,
+            blob_data_available: false,
+        };
+
+        let epoch = data.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::PtcAttester,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = data.signing_root(domain);
+
+        let sig = keypairs[0].sk.sign(signing_root);
+        let mut agg_sig = bls::AggregateSignature::infinity();
+        agg_sig.add_assign(&sig);
+
+        let attestation = PayloadAttestation {
+            aggregation_bits: BitVector::new(),
+            data,
+            signature: agg_sig,
+        };
+
+        let pubkey0 = keypairs[0].pk.clone();
+        let sig_set = payload_attestation_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey0.clone()))
+                } else {
+                    None
+                }
+            },
+            &attestation,
+            &[0],
+            &spec,
+        )
+        .expect("should succeed");
+
+        assert!(sig_set.verify());
+    }
+
+    #[test]
+    fn payload_attestation_uses_ptc_attester_domain() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xBB),
+            slot: Slot::new(8),
+            payload_present: true,
+            blob_data_available: false,
+        };
+
+        // Sign with wrong domain (BeaconProposer)
+        let epoch = data.slot.epoch(E::slots_per_epoch());
+        let wrong_domain = spec.get_domain(
+            epoch,
+            Domain::BeaconProposer,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let sig = keypairs[0].sk.sign(data.signing_root(wrong_domain));
+        let mut agg_sig = bls::AggregateSignature::infinity();
+        agg_sig.add_assign(&sig);
+
+        let attestation = PayloadAttestation {
+            aggregation_bits: BitVector::new(),
+            data,
+            signature: agg_sig,
+        };
+
+        let pubkey0 = keypairs[0].pk.clone();
+        let sig_set = payload_attestation_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey0.clone()))
+                } else {
+                    None
+                }
+            },
+            &attestation,
+            &[0],
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(!sig_set.verify());
+    }
+
+    // ──────── execution_payload_envelope_signature_set tests ────────
+
+    #[test]
+    fn envelope_signature_set_unknown_builder_returns_error() {
+        let (state, spec, _keypairs) = make_gloas_state();
+        let signed_envelope = SignedExecutionPayloadEnvelope::<E>::empty();
+
+        let err = extract_err(execution_payload_envelope_signature_set(
+            &state,
+            |_| None,
+            &signed_envelope,
+            &spec,
+        ));
+        assert_eq!(err, Error::ValidatorUnknown(0));
+    }
+
+    #[test]
+    fn envelope_signature_set_valid_signature_verifies() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 1;
+        envelope.slot = Slot::new(8);
+        envelope.beacon_block_root = Hash256::repeat_byte(0xDD);
+
+        let epoch = envelope.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = envelope.signing_root(domain);
+        let signature = keypairs[1].sk.sign(signing_root);
+
+        let signed_envelope = SignedExecutionPayloadEnvelope {
+            message: envelope,
+            signature,
+        };
+
+        let pubkey1 = keypairs[1].pk.clone();
+        let sig_set = execution_payload_envelope_signature_set(
+            &state,
+            |idx| {
+                if idx == 1 {
+                    Some(Cow::Owned(pubkey1.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_envelope,
+            &spec,
+        )
+        .expect("should succeed");
+
+        assert!(sig_set.verify());
+    }
+
+    #[test]
+    fn envelope_signature_set_wrong_key_fails_verification() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 1;
+        envelope.slot = Slot::new(8);
+
+        let epoch = envelope.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = envelope.signing_root(domain);
+
+        // Sign with key 0 but look up key for builder_index=1
+        let signature = keypairs[0].sk.sign(signing_root);
+        let signed_envelope = SignedExecutionPayloadEnvelope {
+            message: envelope,
+            signature,
+        };
+
+        let pubkey1 = keypairs[1].pk.clone();
+        let sig_set = execution_payload_envelope_signature_set(
+            &state,
+            |idx| {
+                if idx == 1 {
+                    Some(Cow::Owned(pubkey1.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_envelope,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(!sig_set.verify());
+    }
+
+    #[test]
+    fn envelope_signature_set_uses_beacon_builder_domain() {
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 0;
+        envelope.slot = Slot::new(8);
+
+        // Sign with wrong domain (PtcAttester instead of BeaconBuilder)
+        let epoch = envelope.slot.epoch(E::slots_per_epoch());
+        let wrong_domain = spec.get_domain(
+            epoch,
+            Domain::PtcAttester,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signature = keypairs[0].sk.sign(envelope.signing_root(wrong_domain));
+        let signed_envelope = SignedExecutionPayloadEnvelope {
+            message: envelope,
+            signature,
+        };
+
+        let pubkey0 = keypairs[0].pk.clone();
+        let sig_set = execution_payload_envelope_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey0.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_envelope,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(!sig_set.verify());
+    }
+}
