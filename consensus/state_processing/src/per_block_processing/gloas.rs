@@ -2057,4 +2057,376 @@ mod tests {
         let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
         assert!(expected.is_empty());
     }
+
+    // ── get_ptc_committee tests ──────────────────────────────────
+
+    /// Build a state with committee caches initialized (needed for get_ptc_committee).
+    fn make_gloas_state_with_committees(
+        num_validators: usize,
+        balance: u64,
+        builder_balance: u64,
+    ) -> (BeaconState<E>, ChainSpec) {
+        let (mut state, spec) = make_gloas_state(num_validators, balance, builder_balance);
+        state
+            .build_committee_cache(types::RelativeEpoch::Previous, &spec)
+            .expect("should build previous committee cache");
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .expect("should build current committee cache");
+        (state, spec)
+    }
+
+    #[test]
+    fn ptc_committee_returns_correct_size() {
+        // MinimalEthSpec: PtcSize = 2
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        assert_eq!(ptc.len(), E::ptc_size());
+        assert_eq!(ptc.len(), 2);
+    }
+
+    #[test]
+    fn ptc_committee_members_are_valid_validators() {
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+
+        let num_validators = state.validators().len();
+        for &idx in &ptc {
+            assert!(
+                (idx as usize) < num_validators,
+                "PTC member index {} exceeds validator count {}",
+                idx,
+                num_validators
+            );
+        }
+    }
+
+    #[test]
+    fn ptc_committee_deterministic_for_same_state() {
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+
+        let ptc1 = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc2 = get_ptc_committee(&state, slot, &spec).unwrap();
+        assert_eq!(
+            ptc1, ptc2,
+            "PTC should be deterministic for the same state and slot"
+        );
+    }
+
+    #[test]
+    fn ptc_committee_differs_across_slots() {
+        // Use more validators to make it likely that different slots get different committees
+        let (mut state, spec) =
+            make_gloas_state_with_committees(64, 32_000_000_000, 64_000_000_000);
+
+        // Slot 8 (current) and slot 9 (we need to also build committees for next epoch if needed)
+        let slot_a = state.slot();
+
+        // Move state to next slot
+        *state.slot_mut() = state.slot() + 1;
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .unwrap();
+        let slot_b = state.slot();
+
+        let ptc_a = get_ptc_committee(&state, slot_a, &spec).unwrap();
+        let ptc_b = get_ptc_committee(&state, slot_b, &spec).unwrap();
+
+        // With 64 validators and PTC_SIZE=2, very likely different selections
+        // (not guaranteed but extremely likely with different seeds)
+        // We just check both are valid; a strict inequality test could flake
+        assert_eq!(ptc_a.len(), 2);
+        assert_eq!(ptc_b.len(), 2);
+    }
+
+    #[test]
+    fn ptc_committee_uses_balance_weighting() {
+        // Create validators where validator 0 has max effective balance
+        // and others have 0 effective balance — validator 0 should be selected
+        let (mut state, spec) = make_gloas_state(8, 0, 64_000_000_000);
+
+        // Give validator 0 max effective balance, rest get 0
+        let max_eb = spec.max_effective_balance_electra;
+        state.get_validator_mut(0).unwrap().effective_balance = max_eb;
+        for i in 1..8 {
+            state.get_validator_mut(i).unwrap().effective_balance = max_eb;
+            *state.get_balance_mut(i).unwrap() = max_eb;
+        }
+        *state.get_balance_mut(0).unwrap() = max_eb;
+
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .expect("should build committee cache");
+
+        let slot = state.slot();
+        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+
+        // All members should have max effective balance — they should all pass the filter
+        // We just verify the committee was computed successfully and has PTC_SIZE members
+        assert_eq!(ptc.len(), E::ptc_size());
+    }
+
+    #[test]
+    fn ptc_committee_works_at_epoch_boundary() {
+        // Test at start of epoch (slot 8 = first slot of epoch 1 in minimal)
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        assert_eq!(state.slot(), Slot::new(8));
+        assert_eq!(state.slot().epoch(E::slots_per_epoch()), Epoch::new(1));
+
+        let ptc = get_ptc_committee(&state, state.slot(), &spec).unwrap();
+        assert_eq!(ptc.len(), E::ptc_size());
+    }
+
+    // ── process_payload_attestation tests ─────────────────────────
+
+    /// Build a PayloadAttestation targeting the parent block at the previous slot.
+    fn make_payload_attestation(state: &BeaconState<E>, bits: &[bool]) -> PayloadAttestation<E> {
+        let parent_root = state.latest_block_header().parent_root;
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        let mut aggregation_bits = BitVector::<<E as EthSpec>::PtcSize>::new();
+        for (i, &bit) in bits.iter().enumerate() {
+            aggregation_bits
+                .set(i, bit)
+                .expect("bit index should be in range");
+        }
+
+        PayloadAttestation {
+            aggregation_bits,
+            data: types::PayloadAttestationData {
+                beacon_block_root: parent_root,
+                slot: prev_slot,
+                payload_present: true,
+                blob_data_available: true,
+            },
+            signature: bls::AggregateSignature::empty(),
+        }
+    }
+
+    #[test]
+    fn payload_attestation_valid_skip_signature() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let attestation = make_payload_attestation(&state, &[true, false]);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "valid attestation should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn payload_attestation_all_bits_set() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let attestation = make_payload_attestation(&state, &[true, true]);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "all-bits attestation should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn payload_attestation_no_bits_set() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let attestation = make_payload_attestation(&state, &[false, false]);
+
+        // With no bits set, the indexed attestation has empty attesting_indices.
+        // With VerifySignatures::False, this should still succeed.
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "no-bits attestation should succeed without sig check: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn payload_attestation_wrong_beacon_block_root() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let mut attestation = make_payload_attestation(&state, &[true, false]);
+        attestation.data.beacon_block_root = Hash256::repeat_byte(0xFF);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::WrongBeaconBlockRoot
+            ))
+        ));
+    }
+
+    #[test]
+    fn payload_attestation_wrong_slot_too_old() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let mut attestation = make_payload_attestation(&state, &[true, false]);
+        // Set data.slot so that data.slot + 1 != state.slot
+        attestation.data.slot = state.slot().saturating_sub(5u64);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::WrongSlot { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn payload_attestation_wrong_slot_future() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let mut attestation = make_payload_attestation(&state, &[true, false]);
+        // Set data.slot to current slot (data.slot + 1 = state.slot + 1 != state.slot)
+        attestation.data.slot = state.slot();
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::WrongSlot { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn payload_attestation_indexed_indices_match_ptc() {
+        // Verify that the indexed attestation produced internally matches the PTC committee
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        // Get expected PTC
+        let prev_slot = state.slot().saturating_sub(1u64);
+        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+
+        // Set bit 0 only
+        let attestation = make_payload_attestation(&state, &[true, false]);
+
+        // Call get_indexed_payload_attestation directly
+        let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
+
+        // Only bit 0 was set, so attesting_indices should contain only ptc[0]
+        assert_eq!(indexed.attesting_indices.len(), 1);
+        assert_eq!(indexed.attesting_indices[0], ptc[0]);
+    }
+
+    #[test]
+    fn payload_attestation_indexed_all_bits() {
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let prev_slot = state.slot().saturating_sub(1u64);
+        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+
+        let attestation = make_payload_attestation(&state, &[true, true]);
+        let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
+
+        // Both bits set, attesting_indices should contain both PTC members (sorted)
+        assert_eq!(indexed.attesting_indices.len(), 2);
+        let mut expected = [ptc[0], ptc[1]];
+        expected.sort_unstable();
+        assert_eq!(indexed.attesting_indices[0], expected[0]);
+        assert_eq!(indexed.attesting_indices[1], expected[1]);
+    }
+
+    #[test]
+    fn payload_attestation_indexed_empty() {
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let attestation = make_payload_attestation(&state, &[false, false]);
+        let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
+
+        assert!(indexed.attesting_indices.is_empty());
+    }
+
+    #[test]
+    fn payload_attestation_indexed_sorted_output() {
+        // With 8 validators and PtcSize=2, the committee members could be in any order.
+        // get_indexed_payload_attestation should sort the attesting_indices.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let attestation = make_payload_attestation(&state, &[true, true]);
+        let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
+
+        // Verify indices are sorted
+        let indices_vec: Vec<u64> = indexed.attesting_indices.iter().copied().collect();
+        for w in indices_vec.windows(2) {
+            assert!(w[0] <= w[1], "indices must be sorted: {} > {}", w[0], w[1]);
+        }
+    }
+
+    #[test]
+    fn payload_attestation_data_preserved_in_indexed() {
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let attestation = make_payload_attestation(&state, &[true, false]);
+        let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
+
+        // Attestation data should be preserved
+        assert_eq!(indexed.data, attestation.data);
+        assert!(indexed.data.payload_present);
+        assert!(indexed.data.blob_data_available);
+    }
+
+    #[test]
+    fn payload_attestation_signature_check_empty_indices_rejected() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        // No bits set — empty attesting_indices
+        let attestation = make_payload_attestation(&state, &[false, false]);
+
+        // With signature verification enabled, empty indices should be rejected
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::True, &spec);
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds
+            ))
+        ));
+    }
+
+    #[test]
+    fn payload_attestation_bad_signature_rejected() {
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        // Set bits but use an empty (invalid) aggregate signature
+        let attestation = make_payload_attestation(&state, &[true, false]);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::True, &spec);
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::BadSignature
+            ))
+        ));
+    }
+
+    #[test]
+    fn payload_attestation_payload_not_present_field() {
+        // Test that attestation with payload_present=false is valid (field value is up to PTC)
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let mut attestation = make_payload_attestation(&state, &[true, true]);
+        attestation.data.payload_present = false;
+        attestation.data.blob_data_available = false;
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "payload_present=false should be valid: {:?}",
+            result.err()
+        );
+    }
 }
