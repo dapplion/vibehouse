@@ -3550,10 +3550,10 @@ mod test_gloas_fork_choice {
         // Simulate the quorum check from on_payload_attestation
         if node.ptc_weight > quorum_threshold && !node.payload_revealed {
             node.payload_revealed = true;
-            if !node.execution_status.is_execution_enabled() {
-                if let Some(block_hash) = node.bid_block_hash {
-                    node.execution_status = ExecutionStatus::Optimistic(block_hash);
-                }
+            if !node.execution_status.is_execution_enabled()
+                && let Some(block_hash) = node.bid_block_hash
+            {
+                node.execution_status = ExecutionStatus::Optimistic(block_hash);
             }
         }
 
