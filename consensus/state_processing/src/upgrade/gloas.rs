@@ -262,3 +262,554 @@ fn apply_builder_deposit<E: EthSpec>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bls::FixedBytesExtended;
+    use ssz_types::BitVector;
+    use std::sync::Arc;
+    use types::test_utils::generate_deterministic_keypairs;
+    use types::{
+        BeaconBlockHeader, BeaconStateFulu, CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch,
+        ExecutionBlockHash, ExecutionPayloadHeaderFulu, ExitCache, FixedVector, Fork, Hash256,
+        MinimalEthSpec, PendingDeposit, ProgressiveBalancesCache, PubkeyCache, SignatureBytes,
+        SlashingsCache, Slot, SyncCommittee, Unsigned, Validator,
+    };
+
+    type E = MinimalEthSpec;
+
+    const BALANCE: u64 = 32_000_000_000;
+    const NUM_VALIDATORS: usize = 4;
+
+    /// Create a Fulu BeaconState suitable for testing upgrade_to_gloas.
+    fn make_fulu_state() -> (BeaconState<E>, ChainSpec) {
+        let spec = E::default_spec();
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8 = epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let mut validators = Vec::with_capacity(NUM_VALIDATORS);
+        let mut balances = Vec::with_capacity(NUM_VALIDATORS);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: BALANCE,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..Validator::default()
+            });
+            balances.push(BALANCE);
+        }
+
+        let block_hash = ExecutionBlockHash::repeat_byte(0x42);
+
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        });
+
+        let state = BeaconState::Fulu(BeaconStateFulu {
+            genesis_time: 1234,
+            genesis_validators_root: Hash256::repeat_byte(0xBB),
+            slot,
+            fork: Fork {
+                previous_version: spec.electra_fork_version,
+                current_version: spec.fulu_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::repeat_byte(0x01),
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 55,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: Hash256::repeat_byte(0xCC),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_header: ExecutionPayloadHeaderFulu {
+                block_hash,
+                ..Default::default()
+            },
+            next_withdrawal_index: 7,
+            next_withdrawal_validator_index: 3,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 500,
+            exit_balance_to_consume: 600,
+            earliest_exit_epoch: Epoch::new(2),
+            consolidation_balance_to_consume: 700,
+            earliest_consolidation_epoch: Epoch::new(3),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        (state, spec)
+    }
+
+    /// Create a builder deposit with 0x03 prefix withdrawal credentials.
+    fn make_builder_deposit(
+        keypair: &bls::Keypair,
+        amount: u64,
+        slot: Slot,
+        spec: &ChainSpec,
+    ) -> PendingDeposit {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x03; // BUILDER_WITHDRAWAL_PREFIX
+        creds[12..].copy_from_slice(&[0xDD; 20]);
+        let withdrawal_credentials = Hash256::from_slice(&creds);
+
+        let deposit_data = types::DepositData {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature: SignatureBytes::empty(),
+        };
+        let signature = deposit_data.create_signature(&keypair.sk, spec);
+
+        PendingDeposit {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature,
+            slot,
+        }
+    }
+
+    /// Create a validator deposit with 0x01 prefix withdrawal credentials.
+    fn make_validator_deposit(
+        keypair: &bls::Keypair,
+        amount: u64,
+        slot: Slot,
+        spec: &ChainSpec,
+    ) -> PendingDeposit {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x01;
+        creds[12..].copy_from_slice(&[0xEE; 20]);
+        let withdrawal_credentials = Hash256::from_slice(&creds);
+
+        let deposit_data = types::DepositData {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature: SignatureBytes::empty(),
+        };
+        let signature = deposit_data.create_signature(&keypair.sk, spec);
+
+        PendingDeposit {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature,
+            slot,
+        }
+    }
+
+    // ========================================================================
+    // upgrade_state_to_gloas: structural field migration
+    // ========================================================================
+
+    #[test]
+    fn upgrade_preserves_versioning_fields() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        assert!(state.as_gloas().is_ok());
+        assert_eq!(state.genesis_time(), 1234);
+        assert_eq!(state.genesis_validators_root(), Hash256::repeat_byte(0xBB));
+        assert_eq!(state.slot(), Slot::new(E::slots_per_epoch()));
+        let fork = state.fork();
+        assert_eq!(fork.previous_version, spec.fulu_fork_version);
+        assert_eq!(fork.current_version, spec.gloas_fork_version);
+        assert_eq!(fork.epoch, Epoch::new(1));
+    }
+
+    #[test]
+    fn upgrade_preserves_registry() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        assert_eq!(state.validators().len(), NUM_VALIDATORS);
+        assert_eq!(state.balances().len(), NUM_VALIDATORS);
+        for i in 0..NUM_VALIDATORS {
+            assert_eq!(*state.balances().get(i).unwrap(), BALANCE);
+        }
+    }
+
+    #[test]
+    fn upgrade_preserves_electra_fields() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.deposit_requests_start_index, u64::MAX);
+        assert_eq!(gloas.deposit_balance_to_consume, 500);
+        assert_eq!(gloas.exit_balance_to_consume, 600);
+        assert_eq!(gloas.earliest_exit_epoch, Epoch::new(2));
+        assert_eq!(gloas.consolidation_balance_to_consume, 700);
+        assert_eq!(gloas.earliest_consolidation_epoch, Epoch::new(3));
+    }
+
+    #[test]
+    fn upgrade_preserves_capella_fields() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.next_withdrawal_index, 7);
+        assert_eq!(gloas.next_withdrawal_validator_index, 3);
+    }
+
+    #[test]
+    fn upgrade_preserves_finality() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        assert_eq!(state.finalized_checkpoint().epoch, Epoch::new(1));
+        assert_eq!(
+            state.finalized_checkpoint().root,
+            Hash256::repeat_byte(0xCC)
+        );
+    }
+
+    #[test]
+    fn upgrade_creates_execution_payload_bid_from_header() {
+        let (mut state, spec) = make_fulu_state();
+        let expected_block_hash = ExecutionBlockHash::repeat_byte(0x42);
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // block_hash from header should be preserved
+        assert_eq!(
+            gloas.latest_execution_payload_bid.block_hash,
+            expected_block_hash
+        );
+        // All other bid fields should be default
+        assert_eq!(
+            gloas.latest_execution_payload_bid.parent_block_hash,
+            ExecutionBlockHash::zero()
+        );
+        assert_eq!(gloas.latest_execution_payload_bid.slot, Slot::new(0));
+    }
+
+    #[test]
+    fn upgrade_sets_latest_block_hash() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.latest_block_hash,
+            ExecutionBlockHash::repeat_byte(0x42)
+        );
+    }
+
+    // ========================================================================
+    // upgrade_state_to_gloas: new Gloas fields initialization
+    // ========================================================================
+
+    #[test]
+    fn upgrade_initializes_empty_builders() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builders.len(), 0);
+    }
+
+    #[test]
+    fn upgrade_initializes_builder_withdrawal_index() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.next_withdrawal_builder_index, 0);
+    }
+
+    #[test]
+    fn upgrade_initializes_execution_payload_availability_all_true() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        let bits = &gloas.execution_payload_availability;
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        for i in 0..slots_per_hist {
+            assert!(bits.get(i).unwrap(), "bit {} should be true", i);
+        }
+    }
+
+    #[test]
+    fn upgrade_initializes_builder_pending_payments_all_default() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        let limit = E::builder_pending_payments_limit();
+        assert_eq!(gloas.builder_pending_payments.len(), limit);
+        for i in 0..limit {
+            let payment = gloas.builder_pending_payments.get(i).unwrap();
+            assert_eq!(payment.weight, 0);
+            assert_eq!(payment.withdrawal.amount, 0);
+        }
+    }
+
+    #[test]
+    fn upgrade_initializes_empty_builder_pending_withdrawals() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builder_pending_withdrawals.len(), 0);
+    }
+
+    #[test]
+    fn upgrade_initializes_empty_payload_expected_withdrawals() {
+        let (mut state, spec) = make_fulu_state();
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.payload_expected_withdrawals.len(), 0);
+    }
+
+    // ========================================================================
+    // onboard_builders_from_pending_deposits
+    // ========================================================================
+
+    #[test]
+    fn upgrade_no_pending_deposits_no_builders() {
+        let (mut state, spec) = make_fulu_state();
+        // No pending deposits set
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builders.len(), 0);
+        assert_eq!(gloas.pending_deposits.len(), 0);
+    }
+
+    #[test]
+    fn upgrade_builder_deposit_creates_builder() {
+        let (mut state, spec) = make_fulu_state();
+        // Use a keypair NOT in the validator set
+        let extra_keypairs = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_keypairs[NUM_VALIDATORS]; // index 4 = not a validator
+        let slot = state.slot();
+
+        let deposit = make_builder_deposit(builder_kp, 10_000_000_000, slot, &spec);
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // Builder should be created
+        assert_eq!(gloas.builders.len(), 1);
+        let b0 = gloas.builders.get(0).unwrap();
+        assert_eq!(b0.pubkey, builder_kp.pk.compress());
+        assert_eq!(b0.balance, 10_000_000_000);
+        assert_eq!(b0.version, 0x03);
+        assert_eq!(b0.execution_address, Address::repeat_byte(0xDD));
+        // Deposit should be removed from pending
+        assert_eq!(gloas.pending_deposits.len(), 0);
+    }
+
+    #[test]
+    fn upgrade_validator_deposit_kept_in_pending() {
+        let (mut state, spec) = make_fulu_state();
+        // Use a keypair that IS a validator
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let val_kp = &keypairs[0];
+        let slot = state.slot();
+
+        let deposit = PendingDeposit {
+            pubkey: val_kp.pk.compress(),
+            withdrawal_credentials: Hash256::repeat_byte(0x01),
+            amount: 1_000_000_000,
+            signature: SignatureBytes::empty(),
+            slot,
+        };
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // No builders created
+        assert_eq!(gloas.builders.len(), 0);
+        // Deposit kept in pending
+        assert_eq!(gloas.pending_deposits.len(), 1);
+    }
+
+    #[test]
+    fn upgrade_mixed_deposits_separated_correctly() {
+        let (mut state, spec) = make_fulu_state();
+        let all_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let val_kp = &all_kps[0]; // existing validator
+        let builder_kp1 = &all_kps[NUM_VALIDATORS]; // new builder
+        let builder_kp2 = &all_kps[NUM_VALIDATORS + 1]; // new builder
+        let slot = state.slot();
+
+        let val_deposit = PendingDeposit {
+            pubkey: val_kp.pk.compress(),
+            withdrawal_credentials: Hash256::repeat_byte(0x01),
+            amount: 1_000_000_000,
+            signature: SignatureBytes::empty(),
+            slot,
+        };
+        let builder_deposit1 = make_builder_deposit(builder_kp1, 5_000_000_000, slot, &spec);
+        let builder_deposit2 = make_builder_deposit(builder_kp2, 8_000_000_000, slot, &spec);
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits =
+            List::new(vec![val_deposit, builder_deposit1, builder_deposit2]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // Two builders created
+        assert_eq!(gloas.builders.len(), 2);
+        assert_eq!(gloas.builders.get(0).unwrap().balance, 5_000_000_000);
+        assert_eq!(gloas.builders.get(1).unwrap().balance, 8_000_000_000);
+        // Only validator deposit remains
+        assert_eq!(gloas.pending_deposits.len(), 1);
+        assert_eq!(
+            gloas.pending_deposits.get(0).unwrap().pubkey,
+            val_kp.pk.compress()
+        );
+    }
+
+    #[test]
+    fn upgrade_builder_topup_existing_builder() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // Two deposits for the same builder pubkey
+        let deposit1 = make_builder_deposit(builder_kp, 5_000_000_000, slot, &spec);
+        let deposit2 = make_builder_deposit(builder_kp, 3_000_000_000, slot, &spec);
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit1, deposit2]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // Only one builder, balance is sum
+        assert_eq!(gloas.builders.len(), 1);
+        assert_eq!(gloas.builders.get(0).unwrap().balance, 8_000_000_000);
+    }
+
+    #[test]
+    fn upgrade_new_validator_deposit_with_valid_signature_kept() {
+        let (mut state, spec) = make_fulu_state();
+        // New pubkey not in validator set, 0x01 credentials (validator, not builder)
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_val_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        let deposit = make_validator_deposit(new_val_kp, 32_000_000_000, slot, &spec);
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // Not a builder deposit, valid signature → kept
+        assert_eq!(gloas.builders.len(), 0);
+        assert_eq!(gloas.pending_deposits.len(), 1);
+    }
+
+    #[test]
+    fn upgrade_new_deposit_with_invalid_signature_dropped() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // 0x01 credentials (not builder), but bad signature
+        let mut creds = [0u8; 32];
+        creds[0] = 0x01;
+        let deposit = PendingDeposit {
+            pubkey: new_kp.pk.compress(),
+            withdrawal_credentials: Hash256::from_slice(&creds),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(), // invalid signature
+            slot,
+        };
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // Bad signature → dropped (not builder, not valid validator deposit)
+        assert_eq!(gloas.builders.len(), 0);
+        assert_eq!(gloas.pending_deposits.len(), 0);
+    }
+
+    #[test]
+    fn upgrade_builder_deposit_epoch_set_from_slot() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        let deposit = make_builder_deposit(builder_kp, 10_000_000_000, slot, &spec);
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        let b0 = gloas.builders.get(0).unwrap();
+        assert_eq!(b0.deposit_epoch, slot.epoch(E::slots_per_epoch()));
+        assert_eq!(b0.withdrawable_epoch, spec.far_future_epoch);
+    }
+}
