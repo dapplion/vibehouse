@@ -843,6 +843,137 @@ mod gloas_per_block_tests {
         (state, spec)
     }
 
+    /// Build a minimal Fulu state for comparison testing.
+    fn make_fulu_state() -> (BeaconState<E>, ChainSpec) {
+        let mut spec = E::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        // gloas NOT set — this is a Fulu state
+
+        let slot = Slot::new(E::slots_per_epoch());
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let state = BeaconState::Fulu(types::BeaconStateFulu {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.electra_fork_version,
+                current_version: spec.fulu_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::zero(),
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::default(),
+            balances: List::default(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint::default(),
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_header: types::ExecutionPayloadHeaderFulu::default(),
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        (state, spec)
+    }
+
+    /// Create a minimal Gloas block body (with a self-build bid).
+    fn make_gloas_block_body() -> types::BeaconBlockBodyGloas<E, types::FullPayload<E>> {
+        types::BeaconBlockBodyGloas {
+            randao_reveal: bls::Signature::empty(),
+            eth1_data: types::Eth1Data::default(),
+            graffiti: types::Graffiti::default(),
+            proposer_slashings: types::VariableList::empty(),
+            attester_slashings: types::VariableList::empty(),
+            attestations: types::VariableList::empty(),
+            deposits: types::VariableList::empty(),
+            voluntary_exits: types::VariableList::empty(),
+            sync_aggregate: types::SyncAggregate::empty(),
+            bls_to_execution_changes: types::VariableList::empty(),
+            signed_execution_payload_bid: types::SignedExecutionPayloadBid::empty(),
+            payload_attestations: types::VariableList::empty(),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Create a minimal Fulu block body (with default execution payload).
+    fn make_fulu_block_body() -> types::BeaconBlockBodyFulu<E, types::FullPayload<E>> {
+        types::BeaconBlockBodyFulu {
+            randao_reveal: bls::Signature::empty(),
+            eth1_data: types::Eth1Data::default(),
+            graffiti: types::Graffiti::default(),
+            proposer_slashings: types::VariableList::empty(),
+            attester_slashings: types::VariableList::empty(),
+            attestations: types::VariableList::empty(),
+            deposits: types::VariableList::empty(),
+            voluntary_exits: types::VariableList::empty(),
+            sync_aggregate: types::SyncAggregate::empty(),
+            execution_payload:
+                <types::FullPayload<E> as types::AbstractExecPayload<E>>::Fulu::default(),
+            bls_to_execution_changes: types::VariableList::empty(),
+            blob_kzg_commitments: types::VariableList::empty(),
+            execution_requests: types::ExecutionRequests::default(),
+        }
+    }
+
     #[test]
     fn gloas_state_has_gloas_fork_name() {
         let (state, _spec) = make_gloas_state();
@@ -858,6 +989,208 @@ mod gloas_per_block_tests {
         assert!(
             is_merge_transition_complete(&state),
             "is_merge_transition_complete should return true for Gloas"
+        );
+    }
+
+    // ── is_execution_enabled tests ──────────────────────────────
+
+    #[test]
+    fn is_execution_enabled_false_for_gloas() {
+        // In Gloas (ePBS), the proposer's block does not contain an execution payload.
+        // is_execution_enabled must always return false for Gloas states.
+        let (state, _spec) = make_gloas_state();
+        let body = make_gloas_block_body();
+        let block = types::BeaconBlock::Gloas(types::BeaconBlockGloas {
+            slot: state.slot(),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        assert!(
+            !is_execution_enabled(&state, block.body()),
+            "is_execution_enabled must be false for Gloas"
+        );
+    }
+
+    #[test]
+    fn is_execution_enabled_true_for_fulu_post_merge() {
+        // Fulu state with capella_enabled() == true → merge transition complete → execution enabled
+        let (state, _spec) = make_fulu_state();
+        let body = make_fulu_block_body();
+        let block = types::BeaconBlock::Fulu(types::BeaconBlockFulu {
+            slot: state.slot(),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        assert!(
+            is_execution_enabled(&state, block.body()),
+            "is_execution_enabled should be true for Fulu (post-merge)"
+        );
+    }
+
+    // ── is_merge_transition_block tests ─────────────────────────
+
+    #[test]
+    fn is_merge_transition_block_false_for_gloas() {
+        // Gloas is always post-merge and is_execution_enabled returns false,
+        // so is_merge_transition_block must also be false.
+        let (state, _spec) = make_gloas_state();
+        let body = make_gloas_block_body();
+        let block = types::BeaconBlock::Gloas(types::BeaconBlockGloas {
+            slot: state.slot(),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        assert!(
+            !is_merge_transition_block(&state, block.body()),
+            "is_merge_transition_block must be false for Gloas"
+        );
+    }
+
+    // ── Block body accessor tests ───────────────────────────────
+
+    #[test]
+    fn gloas_body_has_no_execution_payload() {
+        // Gloas block bodies don't contain execution payloads — that's handled via ePBS.
+        let body = make_gloas_block_body();
+        let block = types::BeaconBlock::Gloas(types::BeaconBlockGloas {
+            slot: Slot::new(1),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        assert!(
+            block.body().execution_payload().is_err(),
+            "Gloas body should not have execution_payload"
+        );
+    }
+
+    #[test]
+    fn gloas_body_has_signed_execution_payload_bid() {
+        // Gloas block bodies contain a signed_execution_payload_bid instead of execution_payload.
+        let body = make_gloas_block_body();
+        let block = types::BeaconBlock::Gloas(types::BeaconBlockGloas {
+            slot: Slot::new(1),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        let bid = block.body().signed_execution_payload_bid().unwrap();
+        // The empty bid has builder_index 0 and value 0
+        assert_eq!(bid.message.builder_index, 0);
+        assert_eq!(bid.message.value, 0);
+    }
+
+    #[test]
+    fn fulu_body_has_no_execution_payload_bid() {
+        // Fulu block bodies don't have execution payload bids — that's Gloas-only.
+        let body = make_fulu_block_body();
+        let block = types::BeaconBlock::Fulu(types::BeaconBlockFulu {
+            slot: Slot::new(1),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        assert!(
+            block.body().signed_execution_payload_bid().is_err(),
+            "Fulu body should not have signed_execution_payload_bid"
+        );
+    }
+
+    #[test]
+    fn fulu_body_has_execution_payload() {
+        // Fulu block bodies have execution_payload (the pre-ePBS model).
+        let body = make_fulu_block_body();
+        let block = types::BeaconBlock::Fulu(types::BeaconBlockFulu {
+            slot: Slot::new(1),
+            proposer_index: 0,
+            parent_root: Hash256::zero(),
+            state_root: Hash256::zero(),
+            body,
+        });
+        assert!(
+            block.body().execution_payload().is_ok(),
+            "Fulu body should have execution_payload"
+        );
+    }
+
+    // ── Gloas withdrawal processing path tests ──────────────────
+
+    #[test]
+    fn gloas_withdrawals_skipped_when_parent_block_empty() {
+        // When the parent block's payload was not delivered (hashes don't match),
+        // process_withdrawals_gloas should return Ok but not modify state.
+        let (mut state, spec) = make_gloas_state();
+
+        // Make parent block "empty" by setting bid block_hash different from latest_block_hash
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_execution_payload_bid.block_hash =
+            ExecutionBlockHash::from(Hash256::repeat_byte(0x01));
+        state_gloas.latest_block_hash = ExecutionBlockHash::from(Hash256::repeat_byte(0x02));
+
+        let withdrawals_before = state.as_gloas().unwrap().payload_expected_withdrawals.len();
+
+        gloas::process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // No change to expected withdrawals since parent is empty
+        let withdrawals_after = state.as_gloas().unwrap().payload_expected_withdrawals.len();
+        assert_eq!(
+            withdrawals_before, withdrawals_after,
+            "No withdrawals should be processed when parent block is empty"
+        );
+    }
+
+    #[test]
+    fn gloas_withdrawals_processed_when_parent_block_full() {
+        // When the parent block's payload was delivered (hashes match),
+        // process_withdrawals_gloas should update payload_expected_withdrawals.
+        let (mut state, spec) = make_gloas_state();
+
+        // Make parent block "full" by matching bid block_hash with latest_block_hash
+        let hash = ExecutionBlockHash::from(Hash256::repeat_byte(0x42));
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_execution_payload_bid.block_hash = hash;
+        state_gloas.latest_block_hash = hash;
+
+        gloas::process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // With no validators or builders needing withdrawals, the expected_withdrawals
+        // list should be empty but the function ran without error (state was processed)
+        let state_gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            state_gloas.payload_expected_withdrawals.len(),
+            0,
+            "No withdrawals expected with empty validators/builders"
+        );
+    }
+
+    // ── Gloas vs Fulu fork dispatch tests ───────────────────────
+
+    #[test]
+    fn gloas_fork_dispatch_takes_gloas_path() {
+        // Verify that the is_gloas flag correctly identifies the Gloas path.
+        let (state, _spec) = make_gloas_state();
+        let is_gloas = state.fork_name_unchecked().gloas_enabled();
+        assert!(is_gloas, "Gloas state must take the Gloas code path");
+    }
+
+    #[test]
+    fn fulu_fork_dispatch_takes_execution_path() {
+        // Verify that a Fulu state does NOT take the Gloas path.
+        let (state, _spec) = make_fulu_state();
+        let is_gloas = state.fork_name_unchecked().gloas_enabled();
+        assert!(!is_gloas, "Fulu state must NOT take the Gloas code path");
+        assert!(
+            is_merge_transition_complete(&state),
+            "Fulu should be post-merge"
         );
     }
 }
