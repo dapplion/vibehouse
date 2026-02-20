@@ -31,6 +31,21 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 30)
+- No new consensus-specs PRs merged since run 29: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+- **Added 15 unit tests for Gloas builder pending payments epoch processing** in `consensus/state_processing/src/per_epoch_processing/gloas.rs`. Previously had ZERO unit tests for `process_builder_pending_payments` — only covered by EF spec tests.
+  - Empty/default payments (1): no withdrawals generated from all-zero payments
+  - Quorum threshold (4): below quorum not promoted, exactly at quorum promoted, above quorum promoted, zero weight not promoted
+  - Mixed payments (2): alternating above/below quorum — only qualifying promoted, all above quorum — all 8 promoted
+  - Multiple builders (1): payments for different builder indices correctly tracked
+  - Rotation mechanics (2): second half moved to first half after processing, second half cleared to default
+  - Data preservation (2): fee_recipient preserved through promotion, pre-existing pending withdrawals not overwritten
+  - Boundary checks (1): second-half payments not checked for quorum (only first half)
+  - Quorum scaling (1): quorum correctly scales with different total active balances
+  - Double processing (1): rotated payments from second half correctly promoted on next call
+  - All 102/102 state_processing tests pass (15 new + 87 existing), 1/1 EF spec test passes
+- Updated PLAN.md: test coverage status
+
 ### 2026-02-20 (run 29)
 - No new consensus-specs PRs merged since run 28: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
   - #4931 (sanity/blocks for Gloas) has 2 approvals from jtraglia, closest to merge

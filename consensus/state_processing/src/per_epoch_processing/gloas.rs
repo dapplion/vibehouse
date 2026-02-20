@@ -81,16 +81,15 @@ mod tests {
 
     type E = MinimalEthSpec;
 
-    /// For MinimalEthSpec:
-    /// - slots_per_epoch = 8
-    /// - BuilderPendingPaymentsLimit = 16 (2 * 8)
-    /// - quorum = (total_active_balance / 8) * 6 / 10
-    ///
-    /// With 8 validators at 32 ETH (32_000_000_000 Gwei each):
-    /// - total_active_balance = 256_000_000_000
-    /// - per_slot_balance = 32_000_000_000
-    /// - quorum = 32_000_000_000 * 6 / 10 = 19_200_000_000
-
+    // For MinimalEthSpec:
+    // - slots_per_epoch = 8
+    // - BuilderPendingPaymentsLimit = 16 (2 * 8)
+    // - quorum = (total_active_balance / 8) * 6 / 10
+    //
+    // With 8 validators at 32 ETH (32_000_000_000 Gwei each):
+    // - total_active_balance = 256_000_000_000
+    // - per_slot_balance = 32_000_000_000
+    // - quorum = 32_000_000_000 * 6 / 10 = 19_200_000_000
     const BALANCE: u64 = 32_000_000_000;
     const NUM_VALIDATORS: usize = 8;
 

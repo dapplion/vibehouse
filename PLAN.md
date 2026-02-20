@@ -64,7 +64,7 @@ ZK proofs for execution payloads enabling stateless CL nodes. 20 tasks across 7 
 ### 7. Backlog
 
 - **Peer scoring** — DONE (Gloas ePBS topics: ExecutionBid, ExecutionPayload, PayloadAttestation, ExecutionProof)
-- **Test coverage** — in progress (21 Gloas fork choice unit tests + 17 bid processing unit tests + 17 envelope processing unit tests + 15 withdrawal processing unit tests added; remaining gaps: block replay)
+- **Test coverage** — in progress (21 Gloas fork choice unit tests + 17 bid processing unit tests + 17 envelope processing unit tests + 15 withdrawal processing unit tests + 15 builder pending payments epoch processing unit tests added; remaining gaps: state upgrade, block replay)
 - **CI workflow** — DONE (`.github/workflows/ci.yml`: check, ef-tests, unit-tests, fork-specific-tests)
 
 ---
