@@ -1032,3 +1032,751 @@ pub fn process_consolidation_request<E: EthSpec>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod builder_deposit_tests {
+    use super::*;
+    use bls::FixedBytesExtended;
+    use ssz_types::BitVector;
+    use std::sync::Arc;
+    use types::test_utils::generate_deterministic_keypairs;
+    use types::{
+        Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingPayment,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExitCache, FixedVector, Fork, Hash256, MinimalEthSpec, PendingDeposit,
+        ProgressiveBalancesCache, PubkeyCache, SignatureBytes, SlashingsCache, Slot, SyncCommittee,
+        Vector,
+    };
+
+    type E = MinimalEthSpec;
+    const NUM_VALIDATORS: usize = 8;
+
+    /// Build a minimal Gloas state with validators and an optional pre-existing builder.
+    fn make_gloas_state_for_deposits(include_builder: bool) -> (BeaconState<E>, ChainSpec) {
+        let spec = E::default_spec();
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8, epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let mut validators = Vec::with_capacity(NUM_VALIDATORS);
+        let mut balances = Vec::with_capacity(NUM_VALIDATORS);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: 32_000_000_000,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(32_000_000_000);
+        }
+
+        let builders = if include_builder {
+            let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+            let builder_kp = &extra_kps[NUM_VALIDATORS];
+            vec![Builder {
+                pubkey: builder_kp.pk.compress(),
+                version: 0x03,
+                execution_address: Address::repeat_byte(0xBB),
+                balance: 64_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: spec.far_future_epoch,
+            }]
+        } else {
+            vec![]
+        };
+
+        let parent_root = Hash256::repeat_byte(0x01);
+        let parent_block_hash = ExecutionBlockHash::repeat_byte(0x02);
+        let randao_mix = Hash256::repeat_byte(0x03);
+
+        let epochs_per_vector = <E as types::EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let mut randao_mixes = vec![Hash256::zero(); epochs_per_vector];
+        let mix_index = epoch.as_usize() % epochs_per_vector;
+        randao_mixes[mix_index] = randao_mix;
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as types::EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let slots_per_hist = <E as types::EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as types::EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let mut state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root,
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(randao_mixes).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: Hash256::zero(),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid {
+                parent_block_hash,
+                parent_block_root: parent_root,
+                block_hash: ExecutionBlockHash::repeat_byte(0x04),
+                prev_randao: randao_mix,
+                slot,
+                ..Default::default()
+            },
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as types::EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::new(builders).unwrap(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(
+                vec![0xFFu8; slots_per_hist / 8].into(),
+            )
+            .unwrap(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: parent_block_hash,
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        // Build the pubkey cache so lookups work
+        state.update_pubkey_cache().unwrap();
+
+        (state, spec)
+    }
+
+    /// Create a DepositRequest with builder credentials (0x03 prefix).
+    fn make_builder_deposit_request(
+        keypair: &bls::Keypair,
+        amount: u64,
+        spec: &ChainSpec,
+    ) -> DepositRequest {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x03;
+        creds[12..].copy_from_slice(&[0xDD; 20]);
+        let withdrawal_credentials = Hash256::from_slice(&creds);
+
+        let deposit_data = types::DepositData {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature: SignatureBytes::empty(),
+        };
+        let signature = deposit_data.create_signature(&keypair.sk, spec);
+
+        DepositRequest {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature,
+            index: 0,
+        }
+    }
+
+    /// Create a DepositRequest with validator credentials (0x01 prefix).
+    fn make_validator_deposit_request(
+        keypair: &bls::Keypair,
+        amount: u64,
+        spec: &ChainSpec,
+    ) -> DepositRequest {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x01;
+        creds[12..].copy_from_slice(&[0xEE; 20]);
+        let withdrawal_credentials = Hash256::from_slice(&creds);
+
+        let deposit_data = types::DepositData {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature: SignatureBytes::empty(),
+        };
+        let signature = deposit_data.create_signature(&keypair.sk, spec);
+
+        DepositRequest {
+            pubkey: keypair.pk.compress(),
+            withdrawal_credentials,
+            amount,
+            signature,
+            index: 0,
+        }
+    }
+
+    // ── is_builder_withdrawal_credential tests ─────────────────
+
+    #[test]
+    fn builder_credential_prefix_0x03_is_builder() {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x03;
+        assert!(is_builder_withdrawal_credential(Hash256::from_slice(
+            &creds
+        )));
+    }
+
+    #[test]
+    fn validator_credential_prefix_0x01_not_builder() {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x01;
+        assert!(!is_builder_withdrawal_credential(Hash256::from_slice(
+            &creds
+        )));
+    }
+
+    #[test]
+    fn validator_credential_prefix_0x02_not_builder() {
+        let mut creds = [0u8; 32];
+        creds[0] = 0x02;
+        assert!(!is_builder_withdrawal_credential(Hash256::from_slice(
+            &creds
+        )));
+    }
+
+    #[test]
+    fn zero_credential_not_builder() {
+        assert!(!is_builder_withdrawal_credential(Hash256::zero()));
+    }
+
+    // ── get_index_for_new_builder tests ────────────────────────
+
+    #[test]
+    fn new_builder_index_empty_list_returns_zero() {
+        let spec = E::default_spec();
+        let builders: List<Builder, <E as types::EthSpec>::BuilderRegistryLimit> = List::default();
+        assert_eq!(
+            get_index_for_new_builder::<E>(&builders, Epoch::new(1), &spec),
+            0
+        );
+    }
+
+    #[test]
+    fn new_builder_index_no_exited_returns_len() {
+        let spec = E::default_spec();
+        let builder = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: 100,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        let builders: List<Builder, <E as types::EthSpec>::BuilderRegistryLimit> =
+            List::new(vec![builder]).unwrap();
+        assert_eq!(
+            get_index_for_new_builder::<E>(&builders, Epoch::new(1), &spec),
+            1
+        );
+    }
+
+    #[test]
+    fn new_builder_index_reuses_exited_slot() {
+        let spec = E::default_spec();
+        let active = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: 100,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        let exited = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xCC),
+            balance: 0,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: Epoch::new(0), // already withdrawable
+        };
+        let builders: List<Builder, <E as types::EthSpec>::BuilderRegistryLimit> =
+            List::new(vec![active, exited]).unwrap();
+        // Should reuse index 1 (the exited builder)
+        assert_eq!(
+            get_index_for_new_builder::<E>(&builders, Epoch::new(1), &spec),
+            1
+        );
+    }
+
+    #[test]
+    fn new_builder_index_exited_but_nonzero_balance_not_reused() {
+        let spec = E::default_spec();
+        let exited_with_balance = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xCC),
+            balance: 50, // still has balance, not fully withdrawn yet
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: Epoch::new(0),
+        };
+        let builders: List<Builder, <E as types::EthSpec>::BuilderRegistryLimit> =
+            List::new(vec![exited_with_balance]).unwrap();
+        // Should NOT reuse (balance > 0), returns len
+        assert_eq!(
+            get_index_for_new_builder::<E>(&builders, Epoch::new(1), &spec),
+            1
+        );
+    }
+
+    #[test]
+    fn new_builder_index_future_withdrawable_not_reused() {
+        let spec = E::default_spec();
+        let not_yet_withdrawable = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xCC),
+            balance: 0,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: Epoch::new(10), // still in future
+        };
+        let builders: List<Builder, <E as types::EthSpec>::BuilderRegistryLimit> =
+            List::new(vec![not_yet_withdrawable]).unwrap();
+        // withdrawable_epoch (10) > current_epoch (1), not reusable
+        assert_eq!(
+            get_index_for_new_builder::<E>(&builders, Epoch::new(1), &spec),
+            1
+        );
+    }
+
+    // ── apply_deposit_for_builder tests ────────────────────────
+
+    #[test]
+    fn apply_deposit_tops_up_existing_builder() {
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        let initial_balance = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+
+        let request = make_builder_deposit_request(builder_kp, 5_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(builder.balance, initial_balance + 5_000_000_000);
+        // Builder count unchanged
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 1);
+    }
+
+    #[test]
+    fn apply_deposit_creates_new_builder_with_valid_signature() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        // Use a keypair not in the validator set
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        let request = make_builder_deposit_request(new_builder_kp, 10_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(builders.len(), 1);
+        let b = builders.get(0).unwrap();
+        assert_eq!(b.pubkey, new_builder_kp.pk.compress());
+        assert_eq!(b.balance, 10_000_000_000);
+        assert_eq!(b.version, 0x03);
+        assert_eq!(b.execution_address, Address::repeat_byte(0xDD));
+        assert_eq!(b.deposit_epoch, slot.epoch(E::slots_per_epoch()));
+        assert_eq!(b.withdrawable_epoch, spec.far_future_epoch);
+    }
+
+    #[test]
+    fn apply_deposit_invalid_signature_silently_skipped() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        let mut request = make_builder_deposit_request(new_builder_kp, 10_000_000_000, &spec);
+        // Corrupt the signature
+        request.signature = SignatureBytes::empty();
+
+        let slot = state.slot();
+        // Should succeed but NOT create a builder (bad signature)
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 0);
+    }
+
+    #[test]
+    fn apply_deposit_new_builder_reuses_exited_slot() {
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+
+        // Make the existing builder exited with zero balance
+        {
+            let builder = state.as_gloas_mut().unwrap().builders.get_mut(0).unwrap();
+            builder.withdrawable_epoch = Epoch::new(0);
+            builder.balance = 0;
+        }
+
+        // Create a new builder that should reuse index 0
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+
+        let request = make_builder_deposit_request(new_builder_kp, 7_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        // Should still be 1 builder (reused slot 0)
+        assert_eq!(builders.len(), 1);
+        let b = builders.get(0).unwrap();
+        assert_eq!(b.pubkey, new_builder_kp.pk.compress());
+        assert_eq!(b.balance, 7_000_000_000);
+    }
+
+    #[test]
+    fn apply_deposit_new_builder_appends_when_no_free_slot() {
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+
+        // Existing builder at index 0 is active (no free slot)
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+
+        let request = make_builder_deposit_request(new_builder_kp, 3_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(builders.len(), 2);
+        let b = builders.get(1).unwrap();
+        assert_eq!(b.pubkey, new_builder_kp.pk.compress());
+        assert_eq!(b.balance, 3_000_000_000);
+    }
+
+    // ── is_pending_validator tests ─────────────────────────────
+
+    #[test]
+    fn pending_validator_found_with_valid_signature() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_val_kp = &extra_kps[NUM_VALIDATORS];
+
+        // Add a pending deposit with valid signature for a non-validator pubkey
+        let request = make_validator_deposit_request(new_val_kp, 32_000_000_000, &spec);
+        let deposit_data = types::DepositData {
+            pubkey: request.pubkey,
+            withdrawal_credentials: request.withdrawal_credentials,
+            amount: request.amount,
+            signature: request.signature.clone(),
+        };
+        let valid_sig = deposit_data.create_signature(&new_val_kp.sk, &spec);
+        let slot = state.slot();
+
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_val_kp.pk.compress(),
+                withdrawal_credentials: request.withdrawal_credentials,
+                amount: request.amount,
+                signature: valid_sig,
+                slot,
+            })
+            .unwrap();
+
+        assert!(is_pending_validator(
+            &state,
+            &new_val_kp.pk.compress(),
+            &spec
+        ));
+    }
+
+    #[test]
+    fn pending_validator_not_found_with_invalid_signature() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_val_kp = &extra_kps[NUM_VALIDATORS];
+
+        // Add a pending deposit with INVALID signature
+        let slot = state.slot();
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_val_kp.pk.compress(),
+                withdrawal_credentials: Hash256::repeat_byte(0x01),
+                amount: 32_000_000_000,
+                signature: SignatureBytes::empty(), // invalid
+                slot,
+            })
+            .unwrap();
+
+        assert!(!is_pending_validator(
+            &state,
+            &new_val_kp.pk.compress(),
+            &spec
+        ));
+    }
+
+    #[test]
+    fn pending_validator_not_found_when_no_pending_deposits() {
+        let (state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_val_kp = &extra_kps[NUM_VALIDATORS];
+
+        assert!(!is_pending_validator(
+            &state,
+            &new_val_kp.pk.compress(),
+            &spec
+        ));
+    }
+
+    #[test]
+    fn pending_validator_not_found_wrong_pubkey() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let val_kp = &extra_kps[NUM_VALIDATORS];
+        let other_kp = &extra_kps[NUM_VALIDATORS + 1];
+
+        // Add a pending deposit for val_kp
+        let request = make_validator_deposit_request(val_kp, 32_000_000_000, &spec);
+        let slot = state.slot();
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: val_kp.pk.compress(),
+                withdrawal_credentials: request.withdrawal_credentials,
+                amount: request.amount,
+                signature: request.signature,
+                slot,
+            })
+            .unwrap();
+
+        // Search for a different pubkey
+        assert!(!is_pending_validator(
+            &state,
+            &other_kp.pk.compress(),
+            &spec
+        ));
+    }
+
+    // ── process_deposit_request_gloas routing tests ────────────
+
+    #[test]
+    fn deposit_request_routes_existing_builder_to_topup() {
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        let request = make_builder_deposit_request(builder_kp, 2_000_000_000, &spec);
+        let initial_balance = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+
+        process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+
+        // Builder should be topped up
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(builder.balance, initial_balance + 2_000_000_000);
+        // No pending deposits added
+        assert_eq!(state.pending_deposits().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn deposit_request_routes_existing_validator_to_pending() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let val_kp = &keypairs[0]; // existing validator
+
+        // Even with 0x03 prefix, existing validator deposits go to pending
+        let request = make_validator_deposit_request(val_kp, 1_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+
+        assert_eq!(state.pending_deposits().unwrap().len(), 1);
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 0);
+    }
+
+    #[test]
+    fn deposit_request_new_pubkey_with_builder_prefix_creates_builder() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS]; // not a validator
+
+        let request = make_builder_deposit_request(new_kp, 10_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+
+        // Should create a builder (0x03 prefix, not existing validator, no pending validator deposit)
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 1);
+        assert_eq!(state.pending_deposits().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn deposit_request_new_pubkey_with_validator_prefix_to_pending() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+
+        let request = make_validator_deposit_request(new_kp, 32_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+
+        // 0x01 prefix → always goes to pending deposits
+        assert_eq!(state.pending_deposits().unwrap().len(), 1);
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 0);
+    }
+
+    #[test]
+    fn deposit_request_builder_prefix_but_pending_validator_exists_goes_to_pending() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+
+        // First, add a pending validator deposit with valid signature for this pubkey
+        let val_request = make_validator_deposit_request(new_kp, 32_000_000_000, &spec);
+        let slot = state.slot();
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_kp.pk.compress(),
+                withdrawal_credentials: val_request.withdrawal_credentials,
+                amount: val_request.amount,
+                signature: val_request.signature,
+                slot,
+            })
+            .unwrap();
+
+        // Now submit a builder-prefix deposit for the same pubkey
+        let builder_request = make_builder_deposit_request(new_kp, 5_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request, &spec).unwrap();
+
+        // Should go to pending deposits (not builder) because a pending validator
+        // deposit with valid signature exists
+        assert_eq!(state.pending_deposits().unwrap().len(), 2);
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 0);
+    }
+
+    #[test]
+    fn deposit_request_builder_prefix_pending_with_bad_sig_still_creates_builder() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+
+        // Add a pending deposit with INVALID signature for this pubkey
+        let slot = state.slot();
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_kp.pk.compress(),
+                withdrawal_credentials: Hash256::repeat_byte(0x01),
+                amount: 32_000_000_000,
+                signature: SignatureBytes::empty(), // invalid
+                slot,
+            })
+            .unwrap();
+
+        // Builder-prefix deposit: pending validator has bad sig, so this is NOT
+        // considered a pending validator → creates builder
+        let builder_request = make_builder_deposit_request(new_kp, 5_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request, &spec).unwrap();
+
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 1);
+        // The original invalid pending deposit is still there
+        assert_eq!(state.pending_deposits().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn deposit_request_existing_builder_topup_no_signature_check() {
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        // Create request with invalid signature — topup should still work
+        let mut request = make_builder_deposit_request(builder_kp, 3_000_000_000, &spec);
+        request.signature = SignatureBytes::empty(); // bad sig
+
+        let initial_balance = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+        process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(builder.balance, initial_balance + 3_000_000_000);
+    }
+
+    #[test]
+    fn deposit_request_multiple_builders_created() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 3);
+
+        for i in 0..3 {
+            let kp = &extra_kps[NUM_VALIDATORS + i];
+            let request = make_builder_deposit_request(kp, (i as u64 + 1) * 1_000_000_000, &spec);
+            process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+        }
+
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(builders.len(), 3);
+        assert_eq!(builders.get(0).unwrap().balance, 1_000_000_000);
+        assert_eq!(builders.get(1).unwrap().balance, 2_000_000_000);
+        assert_eq!(builders.get(2).unwrap().balance, 3_000_000_000);
+    }
+
+    #[test]
+    fn deposit_request_builder_credentials_parsed_correctly() {
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let kp = &extra_kps[NUM_VALIDATORS];
+
+        let request = make_builder_deposit_request(kp, 10_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &request, &spec).unwrap();
+
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(builder.version, 0x03);
+        // Address is extracted from bytes [12..32] of withdrawal_credentials
+        assert_eq!(builder.execution_address, Address::repeat_byte(0xDD));
+    }
+}
