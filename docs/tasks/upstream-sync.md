@@ -31,6 +31,25 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 29)
+- No new consensus-specs PRs merged since run 28: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+  - #4931 (sanity/blocks for Gloas) has 2 approvals from jtraglia, closest to merge
+  - #4843 (variable PTC deadline) has 1 approval from jtraglia, active discussion with potuz/fradamt
+  - #4939 (request missing envelopes) has comments from ensi321/potuz/kevaundray/jtraglia, no approvals
+  - #4918, #4940, #4932, #4926 — no reviews/approvals yet
+- **Added 15 unit tests for Gloas withdrawal processing** in `consensus/state_processing/src/per_block_processing/gloas.rs`. Previously had ZERO unit tests for `process_withdrawals_gloas` and `get_expected_withdrawals_gloas` — only covered by EF spec tests.
+  - Parent block gating (1): empty parent block produces no withdrawals
+  - Builder pending withdrawals (3): withdrawal generated with correct BUILDER_INDEX_FLAG, respects reserved_limit (MAX_WITHDRAWALS-1), builder balance decreased
+  - Validator full withdrawal (1): fully withdrawable validator (past withdrawable_epoch) swept with full balance
+  - Validator partial withdrawal (1): excess balance above min_activation_balance withdrawn
+  - Builder sweep (2): exiting builder with balance swept, active builder skipped
+  - State index updates (3): next_withdrawal_index, next_withdrawal_validator_index, next_withdrawal_builder_index all advance correctly
+  - Pending partial withdrawal cleanup (1): processed partial withdrawals removed from state
+  - Exited validator handling (1): exited validator's pending partial withdrawal skipped
+  - get_expected_withdrawals consistency (2): read-only function matches process_withdrawals output, empty when parent not full
+  - All 87/87 state_processing tests pass (15 new + 17 envelope + 17 bid + 38 existing)
+- Updated PLAN.md: test coverage status
+
 ### 2026-02-20 (run 28)
 - **Added 17 unit tests for Gloas execution payload envelope processing** in `consensus/state_processing/src/envelope_processing.rs`. Previously had ZERO unit tests — only covered by EF spec tests.
   - Happy path (1): valid envelope succeeds end-to-end
