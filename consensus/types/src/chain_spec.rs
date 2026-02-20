@@ -2782,6 +2782,259 @@ mod tests {
         }
     }
 
+    // ── Gloas timing functions ──────────────────────────────────────────
+
+    #[test]
+    fn gloas_scheduled_when_epoch_set() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        assert!(spec.is_gloas_scheduled());
+    }
+
+    #[test]
+    fn gloas_not_scheduled_when_none() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = None;
+        assert!(!spec.is_gloas_scheduled());
+    }
+
+    #[test]
+    fn gloas_not_scheduled_when_far_future() {
+        let mut spec = ChainSpec::minimal();
+        let far_future = spec.far_future_epoch;
+        spec.gloas_fork_epoch = Some(far_future);
+        assert!(!spec.is_gloas_scheduled());
+    }
+
+    #[test]
+    fn attestation_due_ms_pre_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // Pre-Gloas epoch: uses attestation_due_bps (3333)
+        let ms = spec.get_attestation_due_ms(Epoch::new(5));
+        assert_eq!(ms, slot_ms * 3333 / 10000);
+    }
+
+    #[test]
+    fn attestation_due_ms_at_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // At Gloas epoch: uses attestation_due_bps_gloas (2500)
+        let ms = spec.get_attestation_due_ms(Epoch::new(10));
+        assert_eq!(ms, slot_ms * 2500 / 10000);
+    }
+
+    #[test]
+    fn attestation_due_ms_after_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        let ms = spec.get_attestation_due_ms(Epoch::new(100));
+        assert_eq!(ms, slot_ms * 2500 / 10000);
+    }
+
+    #[test]
+    fn aggregate_due_ms_pre_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // Pre-Gloas: aggregate_due_bps = 6667
+        let ms = spec.get_aggregate_due_ms(Epoch::new(5));
+        assert_eq!(ms, slot_ms * 6667 / 10000);
+    }
+
+    #[test]
+    fn aggregate_due_ms_at_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // At Gloas: aggregate_due_bps_gloas = 5000
+        let ms = spec.get_aggregate_due_ms(Epoch::new(10));
+        assert_eq!(ms, slot_ms * 5000 / 10000);
+    }
+
+    #[test]
+    fn sync_message_due_ms_pre_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // Pre-Gloas: sync_message_due_bps = 3333
+        let ms = spec.get_sync_message_due_ms(Epoch::new(5));
+        assert_eq!(ms, slot_ms * 3333 / 10000);
+    }
+
+    #[test]
+    fn sync_message_due_ms_at_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // At Gloas: sync_message_due_bps_gloas = 2500
+        let ms = spec.get_sync_message_due_ms(Epoch::new(10));
+        assert_eq!(ms, slot_ms * 2500 / 10000);
+    }
+
+    #[test]
+    fn contribution_due_ms_pre_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // Pre-Gloas: contribution_due_bps = 6667
+        let ms = spec.get_contribution_due_ms(Epoch::new(5));
+        assert_eq!(ms, slot_ms * 6667 / 10000);
+    }
+
+    #[test]
+    fn contribution_due_ms_at_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let slot_ms = spec.slot_duration_ms;
+        // At Gloas: contribution_due_bps_gloas = 5000
+        let ms = spec.get_contribution_due_ms(Epoch::new(10));
+        assert_eq!(ms, slot_ms * 5000 / 10000);
+    }
+
+    #[test]
+    fn payload_attestation_due_ms() {
+        let spec = ChainSpec::minimal();
+        let slot_ms = spec.slot_duration_ms;
+        // payload_attestation_due_bps = 7500
+        let ms = spec.get_payload_attestation_due_ms();
+        assert_eq!(ms, slot_ms * 7500 / 10000);
+    }
+
+    #[test]
+    fn timing_gloas_reduces_attestation_window() {
+        // Verify that Gloas timing is strictly shorter than pre-Gloas for attestation/sync
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        let pre = Epoch::new(5);
+        let post = Epoch::new(10);
+        assert!(spec.get_attestation_due_ms(post) < spec.get_attestation_due_ms(pre));
+        assert!(spec.get_aggregate_due_ms(post) < spec.get_aggregate_due_ms(pre));
+        assert!(spec.get_sync_message_due_ms(post) < spec.get_sync_message_due_ms(pre));
+        assert!(spec.get_contribution_due_ms(post) < spec.get_contribution_due_ms(pre));
+    }
+
+    #[test]
+    fn timing_mainnet_slot_duration() {
+        // Mainnet has 12s slots — verify timing with mainnet params
+        let mut spec = ChainSpec::mainnet();
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        // Pre-Gloas attestation: 12000 * 3333 / 10000 = 3999 (≈4s)
+        assert_eq!(
+            spec.get_attestation_due_ms(Epoch::new(5)),
+            12000 * 3333 / 10000
+        );
+        // Gloas attestation: 12000 * 2500 / 10000 = 3000 (3s)
+        assert_eq!(
+            spec.get_attestation_due_ms(Epoch::new(10)),
+            12000 * 2500 / 10000
+        );
+        // Gloas aggregate: 12000 * 5000 / 10000 = 6000 (6s)
+        assert_eq!(
+            spec.get_aggregate_due_ms(Epoch::new(10)),
+            12000 * 5000 / 10000
+        );
+        // PTC attestation: 12000 * 7500 / 10000 = 9000 (9s)
+        assert_eq!(spec.get_payload_attestation_due_ms(), 12000 * 7500 / 10000);
+    }
+
+    #[test]
+    fn timing_no_gloas_fork_uses_pre_gloas_timing() {
+        // When Gloas is not scheduled, all epochs should use pre-Gloas timing
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = None;
+        let slot_ms = spec.slot_duration_ms;
+        assert_eq!(
+            spec.get_attestation_due_ms(Epoch::new(100)),
+            slot_ms * 3333 / 10000
+        );
+        assert_eq!(
+            spec.get_aggregate_due_ms(Epoch::new(100)),
+            slot_ms * 6667 / 10000
+        );
+    }
+
+    #[test]
+    fn timing_epoch_zero_gloas() {
+        // When Gloas fork is at epoch 0, even epoch 0 uses Gloas timing
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+        let slot_ms = spec.slot_duration_ms;
+        assert_eq!(
+            spec.get_attestation_due_ms(Epoch::new(0)),
+            slot_ms * 2500 / 10000
+        );
+    }
+
+    // ── Gloas ePBS domain values ──────────────────────────────────────
+
+    #[test]
+    fn test_gloas_domains() {
+        let spec = ChainSpec::mainnet();
+        test_domain(Domain::BeaconBuilder, spec.domain_beacon_builder, &spec);
+        test_domain(Domain::PtcAttester, spec.domain_ptc_attester, &spec);
+        test_domain(
+            Domain::ProposerPreferences,
+            spec.domain_proposer_preferences,
+            &spec,
+        );
+    }
+
+    #[test]
+    fn gloas_domain_values_are_distinct() {
+        let spec = ChainSpec::mainnet();
+        let beacon_builder = spec.domain_beacon_builder;
+        let ptc_attester = spec.domain_ptc_attester;
+        let proposer_preferences = spec.domain_proposer_preferences;
+        // All three must be distinct from each other
+        assert_ne!(beacon_builder, ptc_attester);
+        assert_ne!(beacon_builder, proposer_preferences);
+        assert_ne!(ptc_attester, proposer_preferences);
+        // They should also be distinct from existing domains
+        assert_ne!(beacon_builder, spec.domain_beacon_proposer);
+        assert_ne!(beacon_builder, spec.domain_beacon_attester);
+        assert_ne!(ptc_attester, spec.domain_beacon_attester);
+    }
+
+    #[test]
+    fn gloas_domain_indices() {
+        // Per EIP-7732: BeaconBuilder=11, PtcAttester=12, ProposerPreferences=13
+        let spec = ChainSpec::mainnet();
+        assert_eq!(spec.domain_beacon_builder, 11);
+        assert_eq!(spec.domain_ptc_attester, 12);
+        assert_eq!(spec.domain_proposer_preferences, 13);
+    }
+
+    // ── Gloas fork epoch integration ──────────────────────────────────
+
+    #[test]
+    fn fork_name_at_epoch_returns_gloas() {
+        let mut spec = ForkName::Fulu.make_genesis_spec(ChainSpec::minimal());
+        spec.gloas_fork_epoch = Some(Epoch::new(10));
+        assert_eq!(spec.fork_name_at_epoch(Epoch::new(9)), ForkName::Fulu);
+        assert_eq!(spec.fork_name_at_epoch(Epoch::new(10)), ForkName::Gloas);
+        assert_eq!(spec.fork_name_at_epoch(Epoch::new(100)), ForkName::Gloas);
+    }
+
+    #[test]
+    fn fork_epoch_roundtrip_gloas() {
+        let mut spec = ChainSpec::minimal();
+        spec.gloas_fork_epoch = Some(Epoch::new(42));
+        assert_eq!(spec.fork_epoch(ForkName::Gloas), Some(Epoch::new(42)));
+    }
+
+    #[test]
+    fn gloas_fork_version_mainnet_vs_minimal() {
+        let mainnet = ChainSpec::mainnet();
+        let minimal = ChainSpec::minimal();
+        // Fork versions should exist but differ between presets
+        assert_ne!(mainnet.gloas_fork_version, [0, 0, 0, 0]);
+        assert_ne!(minimal.gloas_fork_version, [0, 0, 0, 0]);
+    }
+
     // Test that `next_fork_epoch` is consistent with the other functions.
     #[test]
     fn next_fork_epoch_consistency() {

@@ -417,4 +417,96 @@ mod test {
             assert!(prev_fork < fork);
         }
     }
+
+    // ── Gloas fork name ──────────────────────────────────────────────
+
+    #[test]
+    fn gloas_is_latest_fork() {
+        assert_eq!(ForkName::latest(), ForkName::Gloas);
+    }
+
+    #[test]
+    fn gloas_has_no_next_fork() {
+        assert_eq!(ForkName::Gloas.next_fork(), None);
+    }
+
+    #[test]
+    fn gloas_previous_is_fulu() {
+        assert_eq!(ForkName::Gloas.previous_fork(), Some(ForkName::Fulu));
+    }
+
+    #[test]
+    fn fulu_next_is_gloas() {
+        assert_eq!(ForkName::Fulu.next_fork(), Some(ForkName::Gloas));
+    }
+
+    #[test]
+    fn gloas_enabled_true_for_gloas() {
+        assert!(ForkName::Gloas.gloas_enabled());
+    }
+
+    #[test]
+    fn gloas_enabled_false_for_fulu() {
+        assert!(!ForkName::Fulu.gloas_enabled());
+    }
+
+    #[test]
+    fn gloas_enabled_false_for_base() {
+        assert!(!ForkName::Base.gloas_enabled());
+    }
+
+    #[test]
+    fn all_forks_enabled_on_gloas() {
+        // Gloas should enable all prior fork features
+        assert!(ForkName::Gloas.altair_enabled());
+        assert!(ForkName::Gloas.bellatrix_enabled());
+        assert!(ForkName::Gloas.capella_enabled());
+        assert!(ForkName::Gloas.deneb_enabled());
+        assert!(ForkName::Gloas.electra_enabled());
+        assert!(ForkName::Gloas.fulu_enabled());
+        assert!(ForkName::Gloas.gloas_enabled());
+    }
+
+    #[test]
+    fn gloas_parse_case_insensitive() {
+        assert_eq!(ForkName::from_str("gloas"), Ok(ForkName::Gloas));
+        assert_eq!(ForkName::from_str("GLOAS"), Ok(ForkName::Gloas));
+        assert_eq!(ForkName::from_str("Gloas"), Ok(ForkName::Gloas));
+    }
+
+    #[test]
+    fn gloas_display_lowercase() {
+        assert_eq!(ForkName::Gloas.to_string(), "gloas");
+    }
+
+    #[test]
+    fn gloas_string_roundtrip() {
+        let s = ForkName::Gloas.to_string();
+        assert_eq!(ForkName::from_str(&s), Ok(ForkName::Gloas));
+    }
+
+    #[test]
+    fn gloas_in_list_all() {
+        assert!(ForkName::list_all().contains(&ForkName::Gloas));
+        assert_eq!(*ForkName::list_all().last().unwrap(), ForkName::Gloas);
+    }
+
+    #[test]
+    fn make_genesis_spec_gloas_sets_all_forks_to_zero() {
+        let spec = ForkName::Gloas.make_genesis_spec(ChainSpec::minimal());
+        assert_eq!(spec.altair_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.bellatrix_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.capella_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.deneb_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.electra_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.fulu_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.gloas_fork_epoch, Some(Epoch::new(0)));
+    }
+
+    #[test]
+    fn make_genesis_spec_fulu_disables_gloas() {
+        let spec = ForkName::Fulu.make_genesis_spec(ChainSpec::minimal());
+        assert_eq!(spec.fulu_fork_epoch, Some(Epoch::new(0)));
+        assert_eq!(spec.gloas_fork_epoch, None);
+    }
 }
