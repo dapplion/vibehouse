@@ -975,7 +975,7 @@ mod test {
 
     // ── Gloas blinding/unblinding and conversion tests ─────────────
 
-    use ssz::{Decode, Encode};
+    use ssz::Encode;
 
     fn make_gloas_signed_block<E: EthSpec>() -> SignedBeaconBlock<E> {
         let spec = &E::default_spec();
