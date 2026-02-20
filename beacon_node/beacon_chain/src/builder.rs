@@ -948,8 +948,13 @@ where
 
         let (execution_proof_generator, proof_receiver) =
             if self.chain_config.generate_execution_proofs {
+                let task_executor = self
+                    .task_executor
+                    .as_ref()
+                    .ok_or("Cannot build proof generator without task executor")?
+                    .clone();
                 let (generator, proof_rx) =
-                    crate::execution_proof_generation::ExecutionProofGenerator::new();
+                    crate::execution_proof_generation::ExecutionProofGenerator::new(task_executor);
                 info!("Execution proof generation enabled");
                 (Some(generator), Some(proof_rx))
             } else {

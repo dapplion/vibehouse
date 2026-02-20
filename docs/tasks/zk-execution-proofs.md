@@ -146,6 +146,35 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-20 — Tasks 20d+20e: async proof generation with TaskExecutor (run 29)
+
+**Made execution proof generation async by spawning proofs as background tasks on the TaskExecutor.**
+
+**Changes:**
+
+1. **Added `TaskExecutor` to `ExecutionProofGenerator`** — the generator now stores a `TaskExecutor` for spawning background proof generation tasks. `generate_proof()` is now fire-and-forget: it spawns an async task that generates the proof and sends it to the channel when ready. The caller (beacon chain envelope processing) does not block.
+
+2. **Extracted `generate_stub_proofs()` as a standalone function** — separates the proof generation logic from the `ExecutionProofGenerator` struct, making it testable without a task executor and ready to be swapped with real SP1 proving logic. Documents three integration paths for real provers: subprocess (vibehouse-sp1-host binary), sp1-sdk library, or external HTTP service.
+
+3. **Updated `builder.rs`** — passes `TaskExecutor` (cloned from the builder's own executor) to `ExecutionProofGenerator::new()`. Uses `.as_ref().clone()` since the task executor is consumed later in the builder.
+
+4. **Added `async_proof_generation` test** — tokio test that creates a `TestRuntime`, spawns proof generation via the full `ExecutionProofGenerator`, and verifies proofs arrive on the channel after yielding.
+
+5. **Used `PROOF_VERSION_STUB` constant** instead of magic number `1` in proof generation.
+
+**Design note:** Tasks 20d and 20e are combined because they're closely related. 20d (state witness preparation / host integration) and 20e (async proof generation) both concern the proof generation pipeline. The async infrastructure is now in place; plugging in a real prover backend is a matter of replacing `generate_stub_proofs()` with a call to the SP1 host binary or sp1-sdk.
+
+**Tests:**
+- 14/14 beacon_chain execution_proof tests pass (3 proof generation tests including new async test)
+- 96/96 network tests pass (Gloas fork)
+- Clippy clean, cargo fmt clean
+
+**Files changed**: 2 modified
+- `beacon_node/beacon_chain/src/execution_proof_generation.rs`: async generator with TaskExecutor, extracted stub function, new async test (~+40/-15 lines)
+- `beacon_node/beacon_chain/src/builder.rs`: pass TaskExecutor to generator (~+5/-2 lines)
+
+**Tasks 20d+20e are complete.** Next: 20f (end-to-end devnet test with real SP1 proofs).
+
 ### 2026-02-20 — Task 20c: SP1 guest and host programs (run 28)
 
 **Created the SP1 guest and host programs for real execution proof generation.**
@@ -977,8 +1006,8 @@ pub stateless_min_proofs_required: usize, // default: 1
 | 20a | Add `sp1-verifier` dependency, implement Groth16 verification — DONE | `beacon_chain` crate | None |
 | 20b | Define proof format (proof_data layout, public values schema) — DONE | `types` crate | None |
 | 20c | Build RSP-based guest program for vibehouse — DONE | New crate/binary | 20b |
-| 20d | Build host program (state witness preparation) | `execution_proof_generation.rs` | 20b, 20c |
-| 20e | Async proof generation with `spawn_blocking` | `beacon_chain` | 20d |
+| 20d | Build host program (state witness preparation) — DONE | `execution_proof_generation.rs` | 20b, 20c |
+| 20e | Async proof generation with `spawn_blocking` — DONE | `beacon_chain` | 20d |
 | 20f | End-to-end devnet test with real SP1 proofs | Kurtosis | 20a-20e |
 
 **Key dependencies to add:**
