@@ -1,0 +1,30 @@
+[package]
+name = "vibehouse-sp1-host"
+version = "0.1.0"
+edition = "2021"
+description = "SP1 host program for vibehouse execution proof generation"
+
+# This crate is NOT part of the main vibehouse workspace.
+# It depends on sp1-sdk (heavy, requires GPU for fast proving).
+# Build with: cd zkvm/host && cargo build --release
+
+[dependencies]
+sp1-sdk = "6.0.1"
+bincode = "1.3.3"
+clap = { version = "4", features = ["derive"] }
+eyre = "0.6"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+
+# RSP host executor — fetches block data and state witnesses from the EL.
+rsp-host-executor = { git = "https://github.com/succinctlabs/rsp" }
+rsp-client-executor = { git = "https://github.com/succinctlabs/rsp" }
+
+# alloy for EL RPC interaction
+alloy-provider = "1"
+alloy-rpc-types = "1"
+
+[build-dependencies]
+sp1-build = "6.0.1"

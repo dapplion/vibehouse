@@ -17,3 +17,6 @@ genesis.ssz
 
 # VSCode
 /.vscode
+
+# SP1 guest ELF build output
+zkvm/guest/elf/

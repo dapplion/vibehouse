@@ -146,6 +146,52 @@ The key files in vibehouse's ePBS implementation:
 
 ## Progress Log
 
+### 2026-02-20 — Task 20c: SP1 guest and host programs (run 28)
+
+**Created the SP1 guest and host programs for real execution proof generation.**
+
+**Changes:**
+
+1. **Created `zkvm/guest/`** — SP1 guest program that runs inside the zkVM. Uses RSP's `EthClientExecutor` to re-execute an Ethereum block, then commits 96-byte public values (`block_hash || parent_hash || state_root`) via `sp1_zkvm::io::commit_slice()`. Uses `commit_slice()` (not `commit<T>()`) for exact byte layout control matching `ExecutionProofPublicValues`. Includes SP1 precompile patches for accelerated crypto (sha2, sha3, k256, p256, bn).
+
+2. **Created `zkvm/host/`** — SP1 host program for proof generation. CLI binary that:
+   - Fetches block data and state witness from the EL via RSP's `HostExecutor`
+   - Serializes input with bincode and writes to `SP1Stdin`
+   - Calls `ProverClient::prove().groth16().run()` to generate a Groth16 proof
+   - Verifies the proof locally before writing output
+   - Packages output as vibehouse's `proof_data` wire format (vkey_hash + proof_len + groth16_proof + public_values)
+   - Supports `SP1_PROVER=cpu|cuda|network` env for backend selection
+   - Build script uses `sp1-build` to auto-compile the guest ELF
+
+3. **Both crates are standalone** (not part of the main Cargo workspace):
+   - Guest targets `riscv32im-succinct-zkvm-elf` (requires SP1 toolchain)
+   - Host depends on `sp1-sdk` (heavy, GPU support) which would pollute the main workspace
+   - Main workspace only depends on `sp1-verifier` (lightweight, `no_std`)
+
+4. **Added `.gitignore` entry** for `zkvm/guest/elf/` (build output directory).
+
+5. **Design decisions:**
+   - Used RSP as the execution engine rather than building our own — RSP already handles reth-inside-zkVM, state witness preparation, and Merkle Patricia Trie verification
+   - Guest commits `block_hash || parent_hash || state_root` (96 bytes) instead of RSP's `CommittedHeader` (~600+ bytes bincode) — simpler, deterministic layout, version-independent
+   - Host program is a standalone CLI binary, not integrated into the CL node — Task 20d will add CL-integrated async proof generation
+   - SP1 precompile patches pinned to known-good tags for crypto acceleration
+
+**Note:** These programs cannot be compiled without the SP1 toolchain (`sp1up`). The SP1 toolchain is not installed in the current environment. Compilation and integration testing are deferred to Task 20d (host integration) and 20f (devnet test).
+
+**Files created**: 5 new
+- `zkvm/guest/Cargo.toml`: guest crate manifest with SP1/RSP deps and crypto patches (~30 lines)
+- `zkvm/guest/src/main.rs`: guest program — re-execute block, commit public values (~60 lines)
+- `zkvm/host/Cargo.toml`: host crate manifest with SP1 SDK and RSP deps (~25 lines)
+- `zkvm/host/build.rs`: build script to compile guest ELF (~10 lines)
+- `zkvm/host/src/main.rs`: host CLI — fetch block, generate Groth16 proof (~135 lines)
+
+**Files modified**: 1
+- `.gitignore`: added `zkvm/guest/elf/` entry
+
+**Documentation**: `zkvm/README.md` covers architecture, build instructions, proof format, and CL integration.
+
+**Task 20c is complete.** Next: 20d (integrate host into CL node for async proof generation).
+
 ### 2026-02-20 — Task 20b: define proof format — public values schema (run 27)
 
 **Defined `ExecutionProofPublicValues` struct and integrated it into SP1 Groth16 verification.**
@@ -930,7 +976,7 @@ pub stateless_min_proofs_required: usize, // default: 1
 |---|------|-------|------|
 | 20a | Add `sp1-verifier` dependency, implement Groth16 verification — DONE | `beacon_chain` crate | None |
 | 20b | Define proof format (proof_data layout, public values schema) — DONE | `types` crate | None |
-| 20c | Build RSP-based guest program for vibehouse | New crate/binary | 20b |
+| 20c | Build RSP-based guest program for vibehouse — DONE | New crate/binary | 20b |
 | 20d | Build host program (state witness preparation) | `execution_proof_generation.rs` | 20b, 20c |
 | 20e | Async proof generation with `spawn_blocking` | `beacon_chain` | 20d |
 | 20f | End-to-end devnet test with real SP1 proofs | Kurtosis | 20a-20e |

@@ -1,0 +1,30 @@
+[package]
+name = "vibehouse-sp1-guest"
+version = "0.1.0"
+edition = "2021"
+description = "SP1 guest program for vibehouse execution proofs"
+
+# This crate is NOT part of the main vibehouse workspace.
+# It targets riscv32im-succinct-zkvm-elf and requires the SP1 toolchain.
+# Build with: cd zkvm/guest && cargo prove build
+
+[dependencies]
+sp1-zkvm = "6.0.1"
+bincode = "1.3.3"
+
+# RSP client executor — runs reth block execution inside the zkVM.
+rsp-client-executor = { git = "https://github.com/succinctlabs/rsp", features = ["sha3-keccak"] }
+
+# Disable all logging in the zkVM (significant performance impact).
+log = { version = "0.4", features = ["max_level_off", "release_max_level_off"] }
+tracing = { version = "0.1", features = ["max_level_off", "release_max_level_off"] }
+
+# SP1 precompile-accelerated crypto patches.
+# These replace standard crypto crates with versions that use zkVM syscalls
+# instead of software emulation. Without them, proving is 10-100x slower.
+[patch.crates-io]
+sha2 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", tag = "patch-sha2-0.10.9-sp1-4.0.0", package = "sha2" }
+sha3 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", tag = "patch-sha3-0.10.8-sp1-4.0.0" }
+k256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-k256-13.4-sp1-5.0.0" }
+p256 = { git = "https://github.com/sp1-patches/elliptic-curves", tag = "patch-p256-13.2-sp1-5.0.0" }
+bn = { git = "https://github.com/sp1-patches/bn", tag = "patch-0.6.0-sp1-5.0.0", package = "substrate-bn" }
