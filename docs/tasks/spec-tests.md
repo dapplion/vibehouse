@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 11 fork choice node state transition tests (run 40)
+- Added 11 unit tests to `proto_array_fork_choice.rs` for Gloas ePBS fork choice node state transitions:
+  - `on_execution_bid` tests: bid_sets_builder_index_and_resets_payload, bid_slot_mismatch_detectable
+  - `on_payload_attestation` PTC quorum tests: ptc_weight_accumulates, ptc_quorum_reveals_payload, ptc_at_threshold_does_not_reveal, blob_data_availability_quorum, skip_slot_attestation_ignored
+  - `on_execution_payload` tests: payload_envelope_reveals_and_sets_status
+  - Viability integration: payload_reveal_makes_external_block_viable, ptc_quorum_makes_external_block_viable, self_build_always_viable_without_reveal
+  - Helper functions: `insert_external_builder_block()`, `get_node()`, `get_node_mut()`
+  - Tests simulate the fork choice node mutations done by the three Gloas fork choice methods
+- All 58 proto_array tests pass (was 47)
+
 ### 2026-02-20 — 24 attestation verification, proto_array viability, and attestation signing tests (run 39)
 - Added 10 unit tests for `verify_attestation` Gloas committee index validation (`verify_attestation.rs`):
   - Tests the `[Modified in Gloas:EIP7732]` code that allows `data.index < 2` (was `== 0` in Electra/Fulu)
