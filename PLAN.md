@@ -2,11 +2,11 @@
 
 > the vibemap. not a roadmap. roadmaps have deadlines. vibemaps have directions.
 
-## fork point
+## identity
 
-vibehouse forks from [Lighthouse v8.0.1](https://github.com/sigp/lighthouse/releases/tag/v8.0.1), the last stable release covering the Fulu mainnet fork. Everything before v8.0.1 is inherited. Everything after is vibes.
+vibehouse is an independent Ethereum consensus client. It shares historical code ancestry with Lighthouse v8.0.1 but that relationship is over. vibehouse is its own project now.
 
-**⚠️ NO UPSTREAM SYNC.** vibehouse is an independent project. NEVER cherry-pick, merge, or pull any code from sigp/lighthouse after v8.0.1. If upstream has a useful fix, understand the problem and write our own solution. We write our own code.
+**⚠️ FULLY INDEPENDENT.** NEVER look at, reference, cherry-pick, merge, or pull any code from sigp/lighthouse. Do not read upstream PRs or diffs for guidance. Do not add upstream remotes. The only references are the Ethereum consensus-specs, EIPs, and vibehouse's own codebase. We write our own code from spec. Exception: if dapplion explicitly says to adopt something specific from upstream, do it.
 
 ---
 
@@ -48,8 +48,6 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 Reference:
 - CL Specs: https://github.com/ethereum/consensus-specs/tree/master/specs/gloas
 - ePBS spec: https://eips.ethereum.org/EIPS/eip-7732
-- Upstream WIP: [sigp/lighthouse#8806](https://github.com/sigp/lighthouse/pull/8806)
-
 ### 3. Spec tests
 
 [docs/tasks/spec-tests.md](docs/tasks/spec-tests.md) — 78/78 + 138/138 passing, check_all_files_accessed passes
@@ -64,7 +62,7 @@ ZK proofs for execution payloads enabling stateless CL nodes. 20 tasks across 7 
 ### 7. Backlog
 
 - **Peer scoring** — DONE (Gloas ePBS topics: ExecutionBid, ExecutionPayload, PayloadAttestation, ExecutionProof)
-- **Test coverage** — in progress (21 Gloas fork choice unit tests + 17 bid processing unit tests + 17 envelope processing unit tests + 15 withdrawal processing unit tests + 15 builder pending payments epoch processing unit tests + 21 state upgrade unit tests + 13 block replayer unit tests + 27 builder deposit processing unit tests + 20 payload attestation & PTC committee unit tests + 18 PtcDutiesMap unit tests + 15 attestation participation flag unit tests added)
+- **Test coverage** — in progress (21 Gloas fork choice unit tests + 17 bid processing unit tests + 17 envelope processing unit tests + 15 withdrawal processing unit tests + 15 builder pending payments epoch processing unit tests + 21 state upgrade unit tests + 13 block replayer unit tests + 27 builder deposit processing unit tests + 20 payload attestation & PTC committee unit tests + 18 PtcDutiesMap unit tests + 15 attestation participation flag unit tests + 26 gossip verification integration tests added)
 - **CI workflow** — DONE (`.github/workflows/ci.yml`: check, ef-tests, unit-tests, fork-specific-tests)
 
 ---
@@ -73,7 +71,7 @@ ZK proofs for execution payloads enabling stateless CL nodes. 20 tasks across 7 
 
 When deciding what to work on next:
 
-1. **Security fixes** — drop everything (write our own fix, never cherry-pick from upstream)
+1. **Security fixes** — drop everything, write our own fix from spec
 2. **Broken CI / failing tests** — fix before anything else
 3. **Spec test failures** — consensus correctness is non-negotiable
 4. **New spec changes in gloas** — track the spec closely

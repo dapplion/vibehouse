@@ -6,6 +6,7 @@ mod block_verification;
 mod capella;
 mod column_verification;
 mod events;
+mod gloas_verification;
 mod op_verification;
 mod payload_invalidation;
 mod rewards;

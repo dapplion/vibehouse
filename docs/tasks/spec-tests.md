@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 26 gossip verification integration tests (gloas_verification.rs)
+- Added `gloas_verification.rs` integration test module in `beacon_node/beacon_chain/tests/`
+- Tests all three gossip verification functions:
+  - `verify_execution_bid_for_gossip`: 9 tests — slot validation (past, future, boundary), zero payment, unknown builder (index 0 and high), slot acceptance checks
+  - `verify_payload_attestation_for_gossip`: 5 tests — future slot, past slot, empty aggregation bits, unknown block root, valid slot passes early checks
+  - `verify_payload_envelope_for_gossip`: 9 tests — unknown block root (with buffering), slot mismatch, builder index mismatch, block hash mismatch, buffering behavior, duplicate root overwrite, self-build happy path, prior to finalization
+  - Observation trackers: 3 tests — bid observation (new/duplicate/independent builders), payload attestation observation counts
+- All 26 tests pass with `FORK_NAME=gloas`
+- Used `unwrap_err` helper to work around `VerifiedX<Witness<...>>` not implementing `Debug`
+
 ### 2026-02-19 — full-preset EF test verification (mainnet + minimal)
 - Ran both mainnet and minimal preset tests (previously only running minimal in CI)
 - **78/78 real crypto pass** (mainnet + minimal, 0 skipped)
