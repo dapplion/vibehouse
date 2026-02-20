@@ -1570,3 +1570,216 @@ where
             }))
     })?
 }
+
+#[cfg(test)]
+mod test_verify_committee_index_gloas {
+    use super::*;
+    use ssz_types::{BitList, BitVector};
+    use types::{
+        AggregateSignature, AttestationData, AttestationElectra, Checkpoint, FixedBytesExtended,
+        MinimalEthSpec,
+    };
+
+    type E = MinimalEthSpec;
+
+    /// Helper: create an Electra attestation with the given committee index and data.index.
+    fn make_electra_attestation(committee_idx: usize, data_index: u64) -> Attestation<E> {
+        let mut committee_bits: BitVector<<E as EthSpec>::MaxCommitteesPerSlot> =
+            BitVector::default();
+        committee_bits.set(committee_idx, true).unwrap();
+
+        Attestation::Electra(AttestationElectra {
+            aggregation_bits: BitList::with_capacity(1).unwrap(),
+            data: AttestationData {
+                slot: Slot::new(0),
+                index: data_index,
+                beacon_block_root: Hash256::zero(),
+                source: Checkpoint::default(),
+                target: Checkpoint::default(),
+            },
+            committee_bits,
+            signature: AggregateSignature::infinity(),
+        })
+    }
+
+    // ── Gloas: index 0 (payload not present) is valid ──
+
+    #[test]
+    fn gloas_index_zero_accepted() {
+        let att = make_electra_attestation(0, 0);
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(result.is_ok());
+    }
+
+    // ── Gloas: index 1 (payload present) is valid ──
+
+    #[test]
+    fn gloas_index_one_accepted() {
+        let att = make_electra_attestation(0, 1);
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(result.is_ok());
+    }
+
+    // ── Gloas: index 2 is rejected ──
+
+    #[test]
+    fn gloas_index_two_rejected() {
+        let att = make_electra_attestation(0, 2);
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(matches!(result, Err(Error::CommitteeIndexNonZero(2))));
+    }
+
+    // ── Gloas: index 255 is rejected ──
+
+    #[test]
+    fn gloas_large_index_rejected() {
+        let att = make_electra_attestation(0, 255);
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(matches!(result, Err(Error::CommitteeIndexNonZero(255))));
+    }
+
+    // ── Electra: index 0 is valid ──
+
+    #[test]
+    fn electra_index_zero_accepted() {
+        let att = make_electra_attestation(0, 0);
+        let result = verify_committee_index(att.to_ref(), ForkName::Electra);
+        assert!(result.is_ok());
+    }
+
+    // ── Electra: index 1 is rejected (unlike Gloas) ──
+
+    #[test]
+    fn electra_index_one_rejected() {
+        let att = make_electra_attestation(0, 1);
+        let result = verify_committee_index(att.to_ref(), ForkName::Electra);
+        assert!(matches!(result, Err(Error::CommitteeIndexNonZero(1))));
+    }
+
+    // ── Electra: index 2 is rejected ──
+
+    #[test]
+    fn electra_index_two_rejected() {
+        let att = make_electra_attestation(0, 2);
+        let result = verify_committee_index(att.to_ref(), ForkName::Electra);
+        assert!(matches!(result, Err(Error::CommitteeIndexNonZero(2))));
+    }
+
+    // ── Pre-Electra (Fulu): any index accepted (no committee_bits check applies) ──
+
+    #[test]
+    fn fulu_index_zero_accepted() {
+        let att = make_electra_attestation(0, 0);
+        let result = verify_committee_index(att.to_ref(), ForkName::Fulu);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn fulu_index_one_rejected() {
+        // Fulu is pre-Gloas, so index must be 0 (Electra rules apply)
+        let att = make_electra_attestation(0, 1);
+        let result = verify_committee_index(att.to_ref(), ForkName::Fulu);
+        assert!(matches!(result, Err(Error::CommitteeIndexNonZero(1))));
+    }
+
+    // ── Committee bits: no bits set → rejected ──
+
+    #[test]
+    fn gloas_no_committee_bits_set_rejected() {
+        let committee_bits: BitVector<<E as EthSpec>::MaxCommitteesPerSlot> = BitVector::default();
+        let att = Attestation::<E>::Electra(AttestationElectra {
+            aggregation_bits: BitList::with_capacity(1).unwrap(),
+            data: AttestationData {
+                slot: Slot::new(0),
+                index: 0,
+                beacon_block_root: Hash256::zero(),
+                source: Checkpoint::default(),
+                target: Checkpoint::default(),
+            },
+            committee_bits,
+            signature: AggregateSignature::infinity(),
+        });
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(matches!(
+            result,
+            Err(Error::NotExactlyOneCommitteeBitSet(0))
+        ));
+    }
+
+    // ── Committee bits: two bits set → rejected ──
+
+    #[test]
+    fn gloas_two_committee_bits_set_rejected() {
+        let mut committee_bits: BitVector<<E as EthSpec>::MaxCommitteesPerSlot> =
+            BitVector::default();
+        committee_bits.set(0, true).unwrap();
+        committee_bits.set(1, true).unwrap();
+        let att = Attestation::<E>::Electra(AttestationElectra {
+            aggregation_bits: BitList::with_capacity(1).unwrap(),
+            data: AttestationData {
+                slot: Slot::new(0),
+                index: 0,
+                beacon_block_root: Hash256::zero(),
+                source: Checkpoint::default(),
+                target: Checkpoint::default(),
+            },
+            committee_bits,
+            signature: AggregateSignature::infinity(),
+        });
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(matches!(
+            result,
+            Err(Error::NotExactlyOneCommitteeBitSet(2))
+        ));
+    }
+
+    // ── Electra: two committee bits also rejected ──
+
+    #[test]
+    fn electra_two_committee_bits_set_rejected() {
+        let mut committee_bits: BitVector<<E as EthSpec>::MaxCommitteesPerSlot> =
+            BitVector::default();
+        committee_bits.set(0, true).unwrap();
+        committee_bits.set(1, true).unwrap();
+        let att = Attestation::<E>::Electra(AttestationElectra {
+            aggregation_bits: BitList::with_capacity(1).unwrap(),
+            data: AttestationData {
+                slot: Slot::new(0),
+                index: 0,
+                beacon_block_root: Hash256::zero(),
+                source: Checkpoint::default(),
+                target: Checkpoint::default(),
+            },
+            committee_bits,
+            signature: AggregateSignature::infinity(),
+        });
+        let result = verify_committee_index(att.to_ref(), ForkName::Electra);
+        assert!(matches!(
+            result,
+            Err(Error::NotExactlyOneCommitteeBitSet(2))
+        ));
+    }
+
+    // ── Gloas: index 1 with valid committee bits (single bit set) ──
+
+    #[test]
+    fn gloas_payload_present_with_different_committee_indices() {
+        // Committee index 2, data.index = 1 (payload present) — valid in Gloas
+        let att = make_electra_attestation(2, 1);
+        let result = verify_committee_index(att.to_ref(), ForkName::Gloas);
+        assert!(result.is_ok());
+    }
+
+    // ── Gloas boundary: index exactly 1 (max valid) ──
+
+    #[test]
+    fn gloas_index_boundary_at_one() {
+        // 1 is the highest valid index in Gloas (0 and 1 only)
+        let att = make_electra_attestation(0, 1);
+        assert!(verify_committee_index(att.to_ref(), ForkName::Gloas).is_ok());
+
+        // 2 is the first invalid index
+        let att = make_electra_attestation(0, 2);
+        assert!(verify_committee_index(att.to_ref(), ForkName::Gloas).is_err());
+    }
+}
