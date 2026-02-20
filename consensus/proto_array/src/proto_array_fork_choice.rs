@@ -2499,3 +2499,918 @@ mod test_compute_deltas {
         assert_eq!(deltas, vec![0, 0]);
     }
 }
+
+/// Tests for the Gloas (ePBS) fork choice virtual node model.
+///
+/// The Gloas fork choice replaces proto_array's bottom-up weight propagation with a
+/// top-down traversal where each block has 3 virtual nodes: PENDING, EMPTY, FULL.
+///
+/// - PENDING: children are EMPTY + optionally FULL (if payload revealed)
+/// - EMPTY/FULL: children are PENDING nodes of actual child blocks matching parent_payload_status
+///
+/// These tests verify is_supporting_vote, children enumeration, ancestor resolution,
+/// parent payload status derivation, and head selection.
+#[cfg(test)]
+mod test_gloas_fork_choice {
+    use super::*;
+    use types::MinimalEthSpec;
+
+    const BALANCE: u64 = 32_000_000_000;
+
+    fn balances(count: usize) -> JustifiedBalances {
+        JustifiedBalances {
+            effective_balances: vec![BALANCE; count],
+            total_effective_balance: BALANCE * count as u64,
+            num_active_validators: count as u64,
+        }
+    }
+
+    fn root(i: u64) -> Hash256 {
+        Hash256::from_low_u64_be(i + 1)
+    }
+
+    fn exec_hash(i: u64) -> ExecutionBlockHash {
+        ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100))
+    }
+
+    fn junk_shuffling_id() -> AttestationShufflingId {
+        AttestationShufflingId::from_components(Epoch::new(0), Hash256::zero())
+    }
+
+    fn genesis_checkpoint() -> Checkpoint {
+        Checkpoint {
+            epoch: Epoch::new(0),
+            root: root(0),
+        }
+    }
+
+    /// Create a ProtoArrayForkChoice with a genesis block and Gloas-enabled spec.
+    fn new_gloas_fc() -> (ProtoArrayForkChoice, ChainSpec) {
+        let mut spec = MinimalEthSpec::default_spec();
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+        let fc = ProtoArrayForkChoice::new::<MinimalEthSpec>(
+            Slot::new(0),
+            Slot::new(0),
+            Hash256::zero(),
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            junk_shuffling_id(),
+            junk_shuffling_id(),
+            ExecutionStatus::irrelevant(),
+        )
+        .unwrap();
+
+        (fc, spec)
+    }
+
+    /// Insert a Gloas block into the fork choice.
+    ///
+    /// Uses self-build mode (builder_index = BUILDER_INDEX_SELF_BUILD) so blocks
+    /// are always viable for head regardless of payload_revealed status.
+    /// The `payload_revealed` field controls whether the FULL virtual node exists
+    /// in the fork choice children — a key part of the Gloas model.
+    fn insert_gloas_block(
+        fc: &mut ProtoArrayForkChoice,
+        slot: u64,
+        block_root: Hash256,
+        parent_root: Hash256,
+        bid_block_hash: Option<ExecutionBlockHash>,
+        bid_parent_block_hash: Option<ExecutionBlockHash>,
+        payload_revealed: bool,
+    ) {
+        fc.proto_array
+            .on_block::<MinimalEthSpec>(
+                Block {
+                    slot: Slot::new(slot),
+                    root: block_root,
+                    parent_root: Some(parent_root),
+                    state_root: Hash256::zero(),
+                    target_root: root(0),
+                    current_epoch_shuffling_id: junk_shuffling_id(),
+                    next_epoch_shuffling_id: junk_shuffling_id(),
+                    justified_checkpoint: genesis_checkpoint(),
+                    finalized_checkpoint: genesis_checkpoint(),
+                    execution_status: ExecutionStatus::irrelevant(),
+                    unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                    unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                    builder_index: Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD),
+                    payload_revealed,
+                    ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
+                    bid_block_hash,
+                    bid_parent_block_hash,
+                    proposer_index: 0,
+                    ptc_timely: false,
+                },
+                Slot::new(slot),
+            )
+            .unwrap();
+    }
+
+    // ───────────────────── is_supporting_vote_gloas ─────────────────────
+
+    #[test]
+    fn supporting_vote_pending_always_supports_same_root() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        // A vote at the same root should always support PENDING, regardless of slot
+        let vote = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(1),
+            current_payload_present: false,
+            ..VoteTracker::default()
+        };
+        assert!(fc.is_supporting_vote_gloas(&node, &vote));
+
+        // Even with payload_present=true
+        let vote_pp = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(2),
+            current_payload_present: true,
+            ..VoteTracker::default()
+        };
+        assert!(fc.is_supporting_vote_gloas(&node, &vote_pp));
+    }
+
+    #[test]
+    fn supporting_vote_same_slot_never_supports_empty_or_full() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        // Vote at the same slot as the block should NOT support EMPTY or FULL
+        let vote = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(1), // same as block slot
+            current_payload_present: false,
+            ..VoteTracker::default()
+        };
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        assert!(!fc.is_supporting_vote_gloas(&empty_node, &vote));
+        assert!(!fc.is_supporting_vote_gloas(&full_node, &vote));
+    }
+
+    #[test]
+    fn supporting_vote_later_slot_matches_payload_present() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // Vote at later slot with payload_present=false → supports EMPTY
+        let vote_no_pp = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(2),
+            current_payload_present: false,
+            ..VoteTracker::default()
+        };
+        assert!(fc.is_supporting_vote_gloas(&empty_node, &vote_no_pp));
+        assert!(!fc.is_supporting_vote_gloas(&full_node, &vote_no_pp));
+
+        // Vote at later slot with payload_present=true → supports FULL
+        let vote_pp = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(2),
+            current_payload_present: true,
+            ..VoteTracker::default()
+        };
+        assert!(!fc.is_supporting_vote_gloas(&empty_node, &vote_pp));
+        assert!(fc.is_supporting_vote_gloas(&full_node, &vote_pp));
+    }
+
+    #[test]
+    fn supporting_vote_ancestor_check() {
+        // Build a chain: root(0) → root(1) → root(2)
+        // Vote for root(2) should support ancestor root(1) at the right payload status.
+        let (mut fc, _spec) = new_gloas_fc();
+
+        // Block 1 at slot 1, bid_block_hash = exec_hash(1)
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        // Block 2 at slot 2, with bid_parent_block_hash matching parent's bid_block_hash → FULL
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // matches parent's bid_block_hash → parent was FULL
+            false,
+        );
+
+        // Vote for root(2) at slot 3
+        let vote = VoteTracker {
+            current_root: root(2),
+            current_slot: Slot::new(3),
+            current_payload_present: false,
+            ..VoteTracker::default()
+        };
+
+        // Node root(1) PENDING — ancestor always matches PENDING
+        let pending_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+        assert!(fc.is_supporting_vote_gloas(&pending_node, &vote));
+
+        // Node root(1) FULL — matches because child's bid_parent == parent's bid_block_hash
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert!(fc.is_supporting_vote_gloas(&full_node, &vote));
+
+        // Node root(1) EMPTY — does NOT match
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        assert!(!fc.is_supporting_vote_gloas(&empty_node, &vote));
+    }
+
+    #[test]
+    fn supporting_vote_unknown_root_returns_false() {
+        let (fc, _spec) = new_gloas_fc();
+
+        let node = GloasForkChoiceNode {
+            root: root(99),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+        let vote = VoteTracker {
+            current_root: root(99),
+            current_slot: Slot::new(1),
+            ..VoteTracker::default()
+        };
+        assert!(!fc.is_supporting_vote_gloas(&node, &vote));
+    }
+
+    // ───────────────────── get_parent_payload_status_of ─────────────────
+
+    #[test]
+    fn parent_payload_status_full_when_hashes_match() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        // Child block whose bid_parent_block_hash matches parent's bid_block_hash
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // matches parent bid_block_hash
+            false,
+        );
+
+        let parent_idx = *fc.proto_array.indices.get(&root(1)).unwrap();
+        let child_idx = *fc.proto_array.indices.get(&root(2)).unwrap();
+        let parent = &fc.proto_array.nodes[parent_idx];
+        let child = &fc.proto_array.nodes[child_idx];
+
+        assert_eq!(
+            fc.get_parent_payload_status_of(child, parent),
+            GloasPayloadStatus::Full
+        );
+    }
+
+    #[test]
+    fn parent_payload_status_empty_when_hashes_differ() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        // Child whose bid_parent_block_hash does NOT match parent's bid_block_hash
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // does NOT match parent bid_block_hash
+            false,
+        );
+
+        let parent_idx = *fc.proto_array.indices.get(&root(1)).unwrap();
+        let child_idx = *fc.proto_array.indices.get(&root(2)).unwrap();
+        let parent = &fc.proto_array.nodes[parent_idx];
+        let child = &fc.proto_array.nodes[child_idx];
+
+        assert_eq!(
+            fc.get_parent_payload_status_of(child, parent),
+            GloasPayloadStatus::Empty
+        );
+    }
+
+    #[test]
+    fn parent_payload_status_empty_when_none() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            None, // no bid_block_hash
+            None,
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            None,
+            None, // no bid_parent_block_hash
+            false,
+        );
+
+        let parent_idx = *fc.proto_array.indices.get(&root(1)).unwrap();
+        let child_idx = *fc.proto_array.indices.get(&root(2)).unwrap();
+        let parent = &fc.proto_array.nodes[parent_idx];
+        let child = &fc.proto_array.nodes[child_idx];
+
+        assert_eq!(
+            fc.get_parent_payload_status_of(child, parent),
+            GloasPayloadStatus::Empty
+        );
+    }
+
+    // ───────────────────── get_gloas_children ───────────────────────────
+
+    #[test]
+    fn pending_node_has_empty_child_only_when_payload_not_revealed() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false, // not revealed
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let pending = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let children = fc.get_gloas_children(&pending, &filtered);
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0].payload_status, GloasPayloadStatus::Empty);
+        assert_eq!(children[0].root, root(1));
+    }
+
+    #[test]
+    fn pending_node_has_empty_and_full_children_when_payload_revealed() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true, // revealed
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let pending = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let children = fc.get_gloas_children(&pending, &filtered);
+        assert_eq!(children.len(), 2);
+
+        let statuses: Vec<_> = children.iter().map(|c| c.payload_status).collect();
+        assert!(statuses.contains(&GloasPayloadStatus::Empty));
+        assert!(statuses.contains(&GloasPayloadStatus::Full));
+    }
+
+    #[test]
+    fn empty_node_returns_pending_children_where_parent_was_empty() {
+        // Chain: root(0) → root(1) → root(2)
+        // root(2) has bid_parent_block_hash != root(1).bid_block_hash → parent was EMPTY
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // mismatch → parent was EMPTY
+            false,
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+
+        let children = fc.get_gloas_children(&empty_node, &filtered);
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0].root, root(2));
+        assert_eq!(children[0].payload_status, GloasPayloadStatus::Pending);
+    }
+
+    #[test]
+    fn full_node_returns_pending_children_where_parent_was_full() {
+        // Chain: root(0) → root(1) → root(2)
+        // root(2) has bid_parent_block_hash == root(1).bid_block_hash → parent was FULL
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // match → parent was FULL
+            false,
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        let children = fc.get_gloas_children(&full_node, &filtered);
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0].root, root(2));
+        assert_eq!(children[0].payload_status, GloasPayloadStatus::Pending);
+
+        // EMPTY should return 0 children here (child was FULL path)
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let empty_children = fc.get_gloas_children(&empty_node, &filtered);
+        assert!(empty_children.is_empty());
+    }
+
+    // ───────────────────── get_ancestor_gloas ───────────────────────────
+
+    #[test]
+    fn ancestor_at_same_slot_returns_pending() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        // Asking for ancestor of root(1) at slot 1 (block's own slot)
+        let result = fc.get_ancestor_gloas(root(1), Slot::new(1));
+        assert_eq!(
+            result,
+            Some(GloasForkChoiceNode {
+                root: root(1),
+                payload_status: GloasPayloadStatus::Pending,
+            })
+        );
+    }
+
+    #[test]
+    fn ancestor_at_parent_slot_returns_correct_payload_status() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        // Child whose bid_parent matches parent bid → parent is FULL
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+        );
+
+        let result = fc.get_ancestor_gloas(root(2), Slot::new(1));
+        assert_eq!(
+            result,
+            Some(GloasForkChoiceNode {
+                root: root(1),
+                payload_status: GloasPayloadStatus::Full,
+            })
+        );
+    }
+
+    #[test]
+    fn ancestor_with_mismatched_hashes_returns_empty() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        // Child whose bid_parent does NOT match parent bid → parent is EMPTY
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)),
+            false,
+        );
+
+        let result = fc.get_ancestor_gloas(root(2), Slot::new(1));
+        assert_eq!(
+            result,
+            Some(GloasForkChoiceNode {
+                root: root(1),
+                payload_status: GloasPayloadStatus::Empty,
+            })
+        );
+    }
+
+    // ───────────────────── find_head_gloas (integration) ────────────────
+
+    #[test]
+    fn find_head_single_block_no_payload_returns_empty() {
+        // Single block at slot 1 with no payload revealed → head should be that block
+        // with EMPTY payload status.
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        let balances = balances(1);
+
+        // Add a vote for root(1) from validator 0 at slot 2 (later than block)
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        // Should be EMPTY since payload not revealed
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Empty as u8)
+        );
+    }
+
+    #[test]
+    fn find_head_payload_revealed_with_full_vote_returns_full() {
+        // Single block with payload revealed. A vote with payload_present=true at a
+        // later slot should cause FULL to win.
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true, // payload revealed
+        );
+
+        let balances = balances(1);
+
+        // Vote with payload_present=true at slot 2
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Full as u8)
+        );
+    }
+
+    #[test]
+    fn find_head_two_blocks_votes_determine_winner() {
+        // Two competing blocks at slot 1: root(1) and root(2).
+        // More votes for root(2) → root(2) wins.
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(2),
+            root(0),
+            Some(exec_hash(2)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        let balances = balances(3);
+
+        // 1 vote for root(1), 2 votes for root(2)
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+        fc.process_attestation(1, root(2), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+        fc.process_attestation(2, root(2), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(2));
+    }
+
+    #[test]
+    fn find_head_chain_with_full_path() {
+        // Chain: root(0) → root(1) [revealed] → root(2) [full parent]
+        // Votes for root(2) should traverse through root(1):FULL to reach root(2).
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true, // payload revealed
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // match → parent was FULL
+            false,
+        );
+
+        let balances = balances(1);
+
+        // Vote for root(2) at slot 3
+        fc.process_attestation(0, root(2), Epoch::new(0), Slot::new(3), false)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(2));
+    }
+
+    #[test]
+    fn find_head_empty_path_excludes_full_children() {
+        // Block at slot 1 with payload NOT revealed.
+        // Block at slot 2 with bid_parent != parent's bid_block_hash (EMPTY path).
+        // Block at slot 2 with bid_parent == parent's bid_block_hash (FULL path).
+        // Since payload not revealed at slot 1, FULL path is unreachable.
+        // Only the EMPTY-path child should be selected.
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false, // NOT revealed
+        );
+        // EMPTY-path child (bid_parent mismatch)
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // mismatch → EMPTY path
+            false,
+        );
+        // FULL-path child (bid_parent matches)
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(3),
+            root(1),
+            Some(exec_hash(3)),
+            Some(exec_hash(1)), // match → FULL path
+            false,
+        );
+
+        let balances = balances(2);
+
+        // Votes for root(3) (FULL path) and root(2) (EMPTY path)
+        fc.process_attestation(0, root(3), Epoch::new(0), Slot::new(3), false)
+            .unwrap();
+        fc.process_attestation(1, root(2), Epoch::new(0), Slot::new(3), false)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            )
+            .unwrap();
+
+        // root(3) is on the FULL path but root(1)'s payload isn't revealed,
+        // so FULL is not a child of PENDING. The fork choice can only
+        // reach EMPTY → root(2).
+        assert_eq!(head, root(2));
+    }
+
+    // ───────────────────── payload_present in votes ─────────────────────
+
+    #[test]
+    fn process_attestation_stores_payload_present() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        // Attestation with payload_present=true
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+            .unwrap();
+
+        let vote = &fc.votes.0[0];
+        assert_eq!(vote.next_root, root(1));
+        assert_eq!(vote.next_slot, Slot::new(2));
+        assert!(vote.next_payload_present);
+
+        // After find_head, current_* should be updated from next_*
+        let balances = balances(1);
+        let mut spec = MinimalEthSpec::default_spec();
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances,
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        let vote = &fc.votes.0[0];
+        assert_eq!(vote.current_root, root(1));
+        assert_eq!(vote.current_slot, Slot::new(2));
+        assert!(vote.current_payload_present);
+    }
+}

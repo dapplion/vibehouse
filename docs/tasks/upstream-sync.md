@@ -31,6 +31,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 26)
+- No new upstream commits since run 25
+- Checked recently merged consensus-specs PRs: #4941 (execution proof construction, EIP-8025 only — not related to Gloas), #4930 (naming), #4923 (already implemented) — no code changes needed
+- Assessed open consensus-specs PRs: #4939 (request missing envelopes for index-1 attestations), #4892 (remove impossible fork choice branch), #4918 (attestation payload status validation) — all still open, our code already handles #4892 correctly
+- **Assessed upstream issue #8869 (Error requesting finalized Gloas state)**: block replay missing envelope processing causes `ParentBlockHashMismatch`. Our codebase already handles this correctly — `block_replayer.rs` (lines 320-346) applies envelope processing after each Gloas block during replay, and `reconstruct.rs` (lines 109-132) does the same during state reconstruction. Also has fallback to update `latest_block_hash` from bid when envelope is unavailable.
+- **Added 21 unit tests for Gloas fork choice in proto_array**: covers is_supporting_vote_gloas (5 tests), get_parent_payload_status_of (3 tests), get_gloas_children (4 tests), get_ancestor_gloas (3 tests), find_head_gloas integration (5 tests), payload_present in votes (1 test). Previously the Gloas virtual node model had zero unit tests — only 8 EF spec tests covered it.
+  - Test categories: supporting vote behavior (PENDING always supports, same-slot never supports EMPTY/FULL, later-slot matches payload_present, ancestor traversal, unknown root); parent payload status derivation (hash match → FULL, mismatch → EMPTY, None → EMPTY); children enumeration (PENDING without reveal → EMPTY only, with reveal → EMPTY+FULL, EMPTY/FULL → matching PENDING children); ancestor resolution (same slot → PENDING, parent slot with matching/mismatching hashes); head selection (single block EMPTY, revealed FULL vote, competing blocks, chain through FULL path, EMPTY path excludes FULL children)
+  - All 39/39 proto_array tests pass, 34/34 fork_choice tests pass, 8/8 EF fork choice tests pass (minimal)
+- Updated PLAN.md: test coverage tooling status
+
 ### 2026-02-20 (run 25)
 - No new upstream commits since run 24
 - No tracked consensus-specs PRs merged: #4940, #4939, #4932, #4918, #4843, #4926, #4931, #4898, #4892 — all still open
