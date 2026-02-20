@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 25 BeaconStateGloas unit tests (run 56)
+- Added `mod gloas` test block to `beacon_state/tests.rs` (previously had ZERO Gloas coverage):
+  - `make_gloas_state()` helper: constructs a full `BeaconStateGloas` with all required fields properly sized for MinimalEthSpec (Vector/List/BitVector/Arc<SyncCommittee> etc.)
+  - Fork name: `fork_name_unchecked()` returns `ForkName::Gloas`
+  - All 8 Gloas-only field accessors: `latest_execution_payload_bid`, `builders`, `next_withdrawal_builder_index`, `execution_payload_availability`, `builder_pending_payments`, `builder_pending_withdrawals`, `latest_block_hash`, `payload_expected_withdrawals`
+  - Structural difference: `latest_execution_payload_header()` returns Err on Gloas (replaced by bid)
+  - Non-Gloas state: all 8 Gloas-only fields return Err on Base state
+  - Mutability: `latest_block_hash_mut`, `builders_mut` (via `get_mut(0)`), `execution_payload_availability_mut` (set bit to false)
+  - SSZ roundtrip: encode/decode through `from_ssz_bytes` with Gloas spec
+  - Tree hash: `canonical_root()` deterministic + non-zero, changes with bid value, `get_beacon_state_leaves()` changes with `latest_block_hash`, leaves are nonempty
+  - Clone preserves equality
+  - Shared field accessors: `slot()`, `fork()` (previous=fulu, current=gloas), `proposer_lookahead()`
+- All 604 types tests pass (was 579)
+
 ### 2026-02-20 — 75 ePBS Gloas type unit tests across 8 files (run 55)
 - Added comprehensive behavioral tests to 8 ePBS type files that previously had only SSZ macro tests:
   - `payload_attestation.rs` (11 new): `num_attesters()` with bits set, all bits set, `payload_present`/`blob_data_available` flags (individual and combined), SSZ roundtrip with set bits, tree hash sensitivity to bit changes and flag changes, determinism, clone equality, slot inequality
