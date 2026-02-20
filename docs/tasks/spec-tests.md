@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 35 BeaconBlockBody Gloas variant unit tests (run 51)
+- Added 35 unit tests to `beacon_block_body.rs` (previously had ZERO Gloas tests — only Base/Altair SSZ roundtrip):
+  - SSZ roundtrip: inner type roundtrip, via BeaconBlock enum dispatch, Gloas bytes differ from Fulu bytes
+  - Fork name: `fork_name()` returns `ForkName::Gloas`
+  - ePBS structural differences: `execution_payload()` returns Err, `blob_kzg_commitments()` returns Err, `execution_requests()` returns Err, `has_blobs()` returns false, `kzg_commitment_merkle_proof()` fails (no commitments field)
+  - Gloas-only partial getters: `signed_execution_payload_bid()` and `payload_attestations()` succeed on Gloas, fail on Fulu; Fulu exec payload getters fail on Gloas
+  - Iterators: `attestations()` yields Electra variant refs, `attester_slashings()` yields Electra variant refs, `_len()` methods match inner field counts
+  - Blinded↔Full conversion: roundtrip is phantom pass-through (no payload to strip), bid and payload_attestations preserved through conversion
+  - `clone_as_blinded()`: all fields (bid, attestations, randao, sync_aggregate, bls_to_execution_changes) preserved
+  - Body merkle leaves: nonempty, deterministic, different bodies produce different leaves
+  - Tree hash: deterministic, different bodies produce different roots
+  - Empty body defaults: zero operations, empty bid
+  - Post-fork fields: `sync_aggregate()` and `bls_to_execution_changes()` accessible on Gloas
+- All 491 types tests pass (was 456)
+
 ### 2026-02-20 — 32 BuilderBid unit tests (run 50)
 - Added 32 unit tests to `builder_bid.rs` (previously had NO test module):
   - Header accessors: `header()` returns correct `ExecutionPayloadHeaderRef` for Gloas, Fulu, Bellatrix; `header_mut()` mutation test

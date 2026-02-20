@@ -31,6 +31,22 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 51)
+- No new consensus-specs PRs merged since run 50: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
+- **Added 35 unit tests for BeaconBlockBody Gloas variant** in `consensus/types/src/beacon_block_body.rs`. Previously had ZERO Gloas-specific tests (only Base/Altair SSZ tests existed).
+  - SSZ roundtrip: inner type + via BeaconBlock enum, Gloas bytes differ from Fulu bytes
+  - Fork name: returns `ForkName::Gloas`
+  - ePBS structural: `execution_payload()` returns Err (no exec payload in proposer blocks), `blob_kzg_commitments()` returns Err, `execution_requests()` returns Err, `has_blobs()` returns false, `kzg_commitment_merkle_proof()` fails
+  - Gloas-only partial getters: `signed_execution_payload_bid()` and `payload_attestations()` succeed, fail on Fulu; Fulu-specific getters fail on Gloas
+  - Iterators: `attestations()` uses Electra type, `attester_slashings()` uses Electra type, len methods match field counts
+  - Blinded↔Full: roundtrip is phantom pass-through (no payload stripped), bid and attestations preserved
+  - `clone_as_blinded`: preserves all fields
+  - Body merkle leaves: nonempty, deterministic, differ for different bodies
+  - Tree hash: deterministic, differs for different bodies
+  - Empty body: zero operations, empty bid
+  - Post-fork fields: sync_aggregate and bls_to_execution_changes accessible
+- All 491 types tests pass (was 456)
+
 ### 2026-02-20 (run 50)
 - No new consensus-specs PRs merged since run 49: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
   - Recently merged: #4920 (consistent constructing sections), #4941 (execution proof construction uses BeaconBlock), #4921 (use ckzg by default) — all docs/tooling changes, no spec logic impact

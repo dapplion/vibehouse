@@ -1129,4 +1129,386 @@ mod tests {
         use super::super::*;
         ssz_and_tree_hash_tests!(BeaconBlockBodyAltair<MainnetEthSpec>);
     }
+    mod gloas {
+        use super::super::*;
+        use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+        use crate::{
+            BeaconBlock, BeaconBlockGloas, ForkName, Hash256, MainnetEthSpec, MinimalEthSpec, Slot,
+        };
+        use ssz::{Decode, Encode};
+        use tree_hash::TreeHash;
+
+        type E = MinimalEthSpec;
+
+        ssz_and_tree_hash_tests!(BeaconBlockBodyGloas<MainnetEthSpec>);
+
+        fn make_gloas_body() -> BeaconBlockBodyGloas<E, FullPayload<E>> {
+            let spec = &ForkName::Gloas.make_genesis_spec(E::default_spec());
+            BeaconBlockGloas::<E>::empty(spec).body
+        }
+
+        fn make_random_gloas_body() -> BeaconBlockBodyGloas<E, FullPayload<E>> {
+            let rng = &mut XorShiftRng::from_seed([42; 16]);
+            BeaconBlockBodyGloas::random_for_test(rng)
+        }
+
+        // --- SSZ roundtrip ---
+
+        #[test]
+        fn ssz_roundtrip_gloas_inner() {
+            let body = make_random_gloas_body();
+            let bytes = body.as_ssz_bytes();
+            let decoded =
+                BeaconBlockBodyGloas::<E, FullPayload<E>>::from_ssz_bytes(&bytes).unwrap();
+            assert_eq!(body, decoded);
+        }
+
+        #[test]
+        fn ssz_roundtrip_via_beacon_block() {
+            // BeaconBlockBody enum doesn't implement Encode/Decode directly (uses
+            // fork-context SSZ). Test via BeaconBlock which does fork-dispatch.
+            let rng = &mut XorShiftRng::from_seed([42; 16]);
+            let spec = &ForkName::Gloas.make_genesis_spec(E::default_spec());
+            let block = BeaconBlock::<E>::Gloas(BeaconBlockGloas {
+                slot: Slot::new(0),
+                proposer_index: 0,
+                parent_root: Hash256::random_for_test(rng),
+                state_root: Hash256::random_for_test(rng),
+                body: make_random_gloas_body(),
+            });
+            let bytes = block.as_ssz_bytes();
+            let decoded = BeaconBlock::<E>::from_ssz_bytes(&bytes, spec).unwrap();
+            assert_eq!(block, decoded);
+        }
+
+        // --- fork_name ---
+
+        #[test]
+        fn fork_name_returns_gloas() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert_eq!(enum_body.to_ref().fork_name(), ForkName::Gloas);
+        }
+
+        // --- execution_payload returns Err for Gloas (ePBS: no exec payload in proposer blocks) ---
+
+        #[test]
+        fn execution_payload_returns_err() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.execution_payload().is_err());
+        }
+
+        // --- blob_kzg_commitments returns Err for Gloas (commitments are in the bid, not body) ---
+
+        #[test]
+        fn blob_kzg_commitments_returns_err() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().blob_kzg_commitments().is_err());
+        }
+
+        // --- execution_requests returns Err for Gloas (in envelope, not body) ---
+
+        #[test]
+        fn execution_requests_returns_err() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().execution_requests().is_err());
+        }
+
+        // --- has_blobs returns false (no blob_kzg_commitments field) ---
+
+        #[test]
+        fn has_blobs_returns_false() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(!enum_body.to_ref().has_blobs());
+        }
+
+        // --- Gloas-specific partial getters succeed ---
+
+        #[test]
+        fn signed_execution_payload_bid_accessible() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body.clone());
+            let bid = enum_body.to_ref().signed_execution_payload_bid().unwrap();
+            assert_eq!(*bid, body.signed_execution_payload_bid);
+        }
+
+        #[test]
+        fn payload_attestations_accessible() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body.clone());
+            let attestations = enum_body.to_ref().payload_attestations().unwrap();
+            assert_eq!(*attestations, body.payload_attestations);
+        }
+
+        // --- Gloas-specific partial getters fail on other forks ---
+
+        #[test]
+        fn signed_execution_payload_bid_fails_on_fulu() {
+            let rng = &mut XorShiftRng::from_seed([42; 16]);
+            let fulu_body = BeaconBlockBodyFulu::<E>::random_for_test(rng);
+            let enum_body = BeaconBlockBody::<E>::Fulu(fulu_body);
+            assert!(enum_body.to_ref().signed_execution_payload_bid().is_err());
+        }
+
+        #[test]
+        fn payload_attestations_fails_on_fulu() {
+            let rng = &mut XorShiftRng::from_seed([42; 16]);
+            let fulu_body = BeaconBlockBodyFulu::<E>::random_for_test(rng);
+            let enum_body = BeaconBlockBody::<E>::Fulu(fulu_body);
+            assert!(enum_body.to_ref().payload_attestations().is_err());
+        }
+
+        // --- Fulu-specific fields fail on Gloas ---
+
+        #[test]
+        fn execution_payload_fulu_fails_on_gloas() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().execution_payload_fulu().is_err());
+        }
+
+        // --- attestations() iterator uses Electra type ---
+
+        #[test]
+        fn attestations_iterator_uses_electra_type() {
+            let body = make_random_gloas_body();
+            let n_attestations = body.attestations.len();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            let attestations: Vec<_> = enum_body.to_ref().attestations().collect();
+            assert_eq!(attestations.len(), n_attestations);
+            for att in &attestations {
+                // All Gloas attestations should be Electra variants
+                assert!(matches!(att, AttestationRef::Electra(_)));
+            }
+        }
+
+        // --- attester_slashings() iterator uses Electra type ---
+
+        #[test]
+        fn attester_slashings_iterator_uses_electra_type() {
+            let body = make_random_gloas_body();
+            let n_slashings = body.attester_slashings.len();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            let slashings: Vec<_> = enum_body.to_ref().attester_slashings().collect();
+            assert_eq!(slashings.len(), n_slashings);
+            for slashing in &slashings {
+                assert!(matches!(slashing, AttesterSlashingRef::Electra(_)));
+            }
+        }
+
+        // --- attestations_len and attester_slashings_len ---
+
+        #[test]
+        fn attestations_len_matches_field() {
+            let body = make_random_gloas_body();
+            let expected = body.attestations.len();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert_eq!(enum_body.to_ref().attestations_len(), expected);
+        }
+
+        #[test]
+        fn attester_slashings_len_matches_field() {
+            let body = make_random_gloas_body();
+            let expected = body.attester_slashings.len();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert_eq!(enum_body.to_ref().attester_slashings_len(), expected);
+        }
+
+        // --- Blinded ↔ Full conversion (phantom pass-through, no real payload) ---
+
+        #[test]
+        fn blinded_to_full_roundtrip() {
+            let body = make_gloas_body();
+            let enum_body: BeaconBlockBody<E, FullPayload<E>> =
+                BeaconBlockBody::Gloas(body.clone());
+            // Full → (Blinded, Option<Payload>)
+            let (blinded, payload): (
+                BeaconBlockBody<E, BlindedPayload<E>>,
+                Option<ExecutionPayload<E>>,
+            ) = enum_body.into();
+            // Gloas has no execution payload to strip
+            assert!(payload.is_none());
+            // Blinded → Full (pass-through since no payload)
+            if let BeaconBlockBody::Gloas(blinded_inner) = blinded {
+                let full_inner: BeaconBlockBodyGloas<E, FullPayload<E>> = blinded_inner.into();
+                assert_eq!(full_inner, body);
+            } else {
+                panic!("expected Gloas variant");
+            }
+        }
+
+        #[test]
+        fn full_to_blinded_preserves_bid() {
+            let body = make_random_gloas_body();
+            let bid_before = body.signed_execution_payload_bid.clone();
+            let attestations_before = body.payload_attestations.clone();
+            let (blinded, _payload): (
+                BeaconBlockBodyGloas<E, BlindedPayload<E>>,
+                Option<ExecutionPayloadGloas<E>>,
+            ) = body.into();
+            assert_eq!(blinded.signed_execution_payload_bid, bid_before);
+            assert_eq!(blinded.payload_attestations, attestations_before);
+        }
+
+        // --- clone_as_blinded ---
+
+        #[test]
+        fn clone_as_blinded_preserves_fields() {
+            let body = make_random_gloas_body();
+            let blinded = body.clone_as_blinded();
+            assert_eq!(
+                blinded.signed_execution_payload_bid,
+                body.signed_execution_payload_bid
+            );
+            assert_eq!(blinded.payload_attestations, body.payload_attestations);
+            assert_eq!(blinded.randao_reveal, body.randao_reveal);
+            assert_eq!(blinded.sync_aggregate, body.sync_aggregate);
+            assert_eq!(
+                blinded.bls_to_execution_changes,
+                body.bls_to_execution_changes
+            );
+        }
+
+        // --- body_merkle_leaves ---
+
+        #[test]
+        fn body_merkle_leaves_nonempty() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            let leaves = enum_body.to_ref().body_merkle_leaves();
+            assert!(!leaves.is_empty());
+        }
+
+        #[test]
+        fn body_merkle_leaves_deterministic() {
+            let body = make_random_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body.clone());
+            let leaves1 = enum_body.to_ref().body_merkle_leaves();
+            let enum_body2 = BeaconBlockBody::<E>::Gloas(body);
+            let leaves2 = enum_body2.to_ref().body_merkle_leaves();
+            assert_eq!(leaves1, leaves2);
+        }
+
+        #[test]
+        fn body_merkle_leaves_differ_for_different_bodies() {
+            let body1 = make_gloas_body();
+            let body2 = make_random_gloas_body();
+            let leaves1 = BeaconBlockBody::<E>::Gloas(body1)
+                .to_ref()
+                .body_merkle_leaves();
+            let leaves2 = BeaconBlockBody::<E>::Gloas(body2)
+                .to_ref()
+                .body_merkle_leaves();
+            assert_ne!(leaves1, leaves2);
+        }
+
+        // --- kzg_commitment_merkle_proof fails for Gloas (no blob_kzg_commitments) ---
+
+        #[test]
+        fn kzg_commitment_merkle_proof_fails() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().kzg_commitment_merkle_proof(0).is_err());
+        }
+
+        // --- tree_hash stability ---
+
+        #[test]
+        fn tree_hash_deterministic() {
+            let body = make_random_gloas_body();
+            let root1 = body.tree_hash_root();
+            let root2 = body.tree_hash_root();
+            assert_eq!(root1, root2);
+        }
+
+        #[test]
+        fn tree_hash_differs_for_different_bodies() {
+            let body1 = make_gloas_body();
+            let body2 = make_random_gloas_body();
+            assert_ne!(body1.tree_hash_root(), body2.tree_hash_root());
+        }
+
+        // --- empty body defaults ---
+
+        #[test]
+        fn empty_body_has_zero_operations() {
+            let body = make_gloas_body();
+            assert!(body.proposer_slashings.is_empty());
+            assert!(body.attester_slashings.is_empty());
+            assert!(body.attestations.is_empty());
+            assert!(body.deposits.is_empty());
+            assert!(body.voluntary_exits.is_empty());
+            assert!(body.bls_to_execution_changes.is_empty());
+            assert!(body.payload_attestations.is_empty());
+        }
+
+        #[test]
+        fn empty_body_has_empty_bid() {
+            let body = make_gloas_body();
+            assert_eq!(
+                body.signed_execution_payload_bid,
+                SignedExecutionPayloadBid::empty()
+            );
+        }
+
+        // --- Gloas body has sync_aggregate (post-Altair) ---
+
+        #[test]
+        fn sync_aggregate_accessible() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().sync_aggregate().is_ok());
+        }
+
+        // --- Gloas body has bls_to_execution_changes (post-Capella) ---
+
+        #[test]
+        fn bls_to_execution_changes_accessible() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().bls_to_execution_changes().is_ok());
+        }
+
+        // --- Fulu partial getters return Err on Gloas (no execution_payload or blob_kzg_commitments) ---
+
+        #[test]
+        fn execution_payload_electra_fails_on_gloas() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().execution_payload_electra().is_err());
+        }
+
+        #[test]
+        fn execution_payload_deneb_fails_on_gloas() {
+            let body = make_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body);
+            assert!(enum_body.to_ref().execution_payload_deneb().is_err());
+        }
+
+        // --- random body with non-empty payload_attestations ---
+
+        #[test]
+        fn random_body_payload_attestations_accessible() {
+            let body = make_random_gloas_body();
+            let enum_body = BeaconBlockBody::<E>::Gloas(body.clone());
+            let attestations = enum_body.to_ref().payload_attestations().unwrap();
+            assert_eq!(attestations.len(), body.payload_attestations.len());
+        }
+
+        // --- SSZ: Gloas inner body bytes differ from Fulu inner body bytes ---
+
+        #[test]
+        fn ssz_gloas_body_differs_from_fulu_body() {
+            let rng = &mut XorShiftRng::from_seed([42; 16]);
+            let gloas_body = BeaconBlockBodyGloas::<E, FullPayload<E>>::random_for_test(rng);
+            let rng = &mut XorShiftRng::from_seed([42; 16]);
+            let fulu_body = BeaconBlockBodyFulu::<E>::random_for_test(rng);
+            // Same seed but different structure → different SSZ bytes
+            assert_ne!(gloas_body.as_ssz_bytes(), fulu_body.as_ssz_bytes());
+        }
+    }
 }
