@@ -1699,7 +1699,7 @@ mod tests {
 
         // First withdrawal should be the builder pending withdrawal
         let w = withdrawals.get(0).unwrap();
-        assert_eq!(w.validator_index, 0 | BUILDER_INDEX_FLAG);
+        assert_eq!(w.validator_index, BUILDER_INDEX_FLAG);
         assert_eq!(w.amount, 5_000_000_000);
         assert_eq!(w.address, Address::repeat_byte(0xDD));
 
@@ -1855,10 +1855,7 @@ mod tests {
         // Exiting builder with balance should be swept
         assert!(!builder_withdrawals.is_empty());
         assert_eq!(builder_withdrawals[0].amount, 5_000_000_000);
-        assert_eq!(
-            builder_withdrawals[0].validator_index,
-            0 | BUILDER_INDEX_FLAG
-        );
+        assert_eq!(builder_withdrawals[0].validator_index, BUILDER_INDEX_FLAG);
 
         // Builder balance should be zeroed
         assert_eq!(state_gloas.builders.get(0).unwrap().balance, 0);
@@ -1922,7 +1919,7 @@ mod tests {
         // Since no validator is withdrawable (no excess balance, not fully withdrawable),
         // and withdrawals.len() < max_withdrawals, the index advances by
         // max_validators_per_withdrawals_sweep (16 in minimal)
-        let expected = (0 + spec.max_validators_per_withdrawals_sweep) % 8;
+        let expected = spec.max_validators_per_withdrawals_sweep % 8;
         assert_eq!(state.next_withdrawal_validator_index().unwrap(), expected);
     }
 
