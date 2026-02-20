@@ -972,4 +972,276 @@ mod test {
             assert_eq!(decoded, block);
         }
     }
+
+    // ── Gloas blinding/unblinding and conversion tests ─────────────
+
+    use ssz::{Decode, Encode};
+
+    fn make_gloas_signed_block<E: EthSpec>() -> SignedBeaconBlock<E> {
+        let spec = &E::default_spec();
+        let sig = Signature::empty();
+        SignedBeaconBlock::from_block(BeaconBlock::Gloas(BeaconBlockGloas::empty(spec)), sig)
+    }
+
+    #[test]
+    fn gloas_blinding_roundtrip() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+
+        // Full → (Blinded, payload)
+        let (blinded_block, payload): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+        // Gloas has no payload to extract
+        assert!(payload.is_none(), "Gloas block should yield no payload");
+
+        // Tree hash root should be preserved through blinding
+        assert_eq!(
+            blinded_block.tree_hash_root(),
+            block.tree_hash_root(),
+            "blinded block should have same tree hash root as full block"
+        );
+
+        // Blinded → Full (without payload, since Gloas doesn't need one)
+        let reconstructed = blinded_block.try_into_full_block(None).unwrap();
+        assert_eq!(reconstructed, block, "roundtrip should preserve the block");
+    }
+
+    #[test]
+    fn gloas_try_into_full_block_without_payload() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+
+        let (blinded_block, _): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+
+        // Gloas doesn't need a payload to convert back to full
+        let full = blinded_block.try_into_full_block(None);
+        assert!(
+            full.is_some(),
+            "Gloas blinded block should convert to full without payload"
+        );
+        assert_eq!(full.unwrap(), block);
+    }
+
+    #[test]
+    fn gloas_try_into_full_block_ignores_provided_payload() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+
+        let (blinded_block, _): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+
+        // Even if some payload is provided, Gloas ignores it
+        let dummy_payload = ExecutionPayload::Gloas(ExecutionPayloadGloas::default());
+        let full = blinded_block.try_into_full_block(Some(dummy_payload));
+        assert!(
+            full.is_some(),
+            "Gloas blinded block should convert even with a provided payload"
+        );
+        assert_eq!(full.unwrap(), block);
+    }
+
+    #[test]
+    fn fulu_try_into_full_block_needs_payload() {
+        // Contrast: Fulu DOES need a payload — None should fail
+        type E = MainnetEthSpec;
+        let spec = &E::default_spec();
+        let sig = Signature::empty();
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Fulu(BeaconBlockFulu::empty(spec)),
+            sig,
+        );
+
+        let (blinded_block, _): (SignedBlindedBeaconBlock<E>, _) = block.into();
+        let full = blinded_block.try_into_full_block(None);
+        assert!(
+            full.is_none(),
+            "Fulu blinded block should NOT convert without payload"
+        );
+    }
+
+    #[test]
+    fn gloas_block_fork_name() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+        assert_eq!(block.fork_name_unchecked(), ForkName::Gloas);
+    }
+
+    #[test]
+    fn gloas_block_canonical_root() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+        let root = block.canonical_root();
+        // Root should be deterministic
+        let root2 = block.canonical_root();
+        assert_eq!(root, root2);
+        // Root should be non-zero for a non-trivial block
+        assert_ne!(root, Hash256::ZERO);
+    }
+
+    #[test]
+    fn gloas_block_slot_and_proposer_index() {
+        type E = MainnetEthSpec;
+        let spec = &E::default_spec();
+        let block = make_gloas_signed_block::<E>();
+        // Empty block has genesis_slot and proposer_index=0
+        assert_eq!(block.slot(), spec.genesis_slot);
+        assert_eq!(block.message().proposer_index(), 0);
+    }
+
+    #[test]
+    fn gloas_signed_block_ssz_roundtrip() {
+        type E = MainnetEthSpec;
+        let spec = &ForkName::Gloas.make_genesis_spec(MainnetEthSpec::default_spec());
+        let block = make_gloas_signed_block::<E>();
+
+        let bytes = block.as_ssz_bytes();
+        let decoded = SignedBeaconBlock::<E>::from_ssz_bytes(&bytes, spec)
+            .expect("should decode Gloas signed block");
+        assert_eq!(decoded, block);
+    }
+
+    #[test]
+    fn gloas_blinded_block_has_no_execution_payload() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+
+        // Gloas block body should NOT have an execution_payload getter
+        let body = block.message().body();
+        assert!(
+            body.execution_payload().is_err(),
+            "Gloas body should not have execution_payload"
+        );
+    }
+
+    #[test]
+    fn gloas_blinded_block_has_bid_and_payload_attestations() {
+        type E = MainnetEthSpec;
+        let block = make_gloas_signed_block::<E>();
+
+        let body = block.message().body();
+        // Gloas body SHOULD have signed_execution_payload_bid
+        assert!(body.signed_execution_payload_bid().is_ok());
+        // Gloas body SHOULD have payload_attestations
+        assert!(body.payload_attestations().is_ok());
+    }
+
+    #[test]
+    fn gloas_from_blinded_preserves_signature() {
+        type E = MainnetEthSpec;
+        let spec = &E::default_spec();
+
+        // Use a non-empty signature for this test
+        use crate::test_utils::{SeedableRng, XorShiftRng};
+        let rng = &mut XorShiftRng::from_seed([99; 16]);
+        let sig = Signature::random_for_test(rng);
+
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Gloas(BeaconBlockGloas::empty(spec)),
+            sig.clone(),
+        );
+
+        let (blinded_block, _): (SignedBlindedBeaconBlock<E>, _) = block.into();
+        assert_eq!(
+            *blinded_block.signature(),
+            sig,
+            "blinding should preserve signature"
+        );
+
+        let full = blinded_block.try_into_full_block(None).unwrap();
+        assert_eq!(
+            *full.signature(),
+            sig,
+            "unblinding should preserve signature"
+        );
+    }
+
+    #[test]
+    fn gloas_block_differs_from_fulu_block() {
+        type E = MainnetEthSpec;
+        let spec = &E::default_spec();
+        let sig = Signature::empty();
+
+        let gloas = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Gloas(BeaconBlockGloas::empty(spec)),
+            sig.clone(),
+        );
+        let fulu = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Fulu(BeaconBlockFulu::empty(spec)),
+            sig,
+        );
+
+        // Different fork variants should produce different SSZ
+        assert_ne!(gloas.as_ssz_bytes(), fulu.as_ssz_bytes());
+        // Different tree hash roots
+        assert_ne!(gloas.tree_hash_root(), fulu.tree_hash_root());
+    }
+
+    #[test]
+    fn add_remove_payload_roundtrip_gloas() {
+        // Extend the original add_remove_payload_roundtrip to cover
+        // Capella, Deneb, Electra, Fulu (with payload), and Gloas (without)
+        type E = MainnetEthSpec;
+
+        let spec = &E::default_spec();
+        let sig = Signature::empty();
+
+        // Gloas: no payload to remove
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Gloas(BeaconBlockGloas::empty(spec)),
+            sig.clone(),
+        );
+        let (blinded_block, payload): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+        assert_eq!(blinded_block.tree_hash_root(), block.tree_hash_root());
+        assert!(payload.is_none());
+        let reconstructed = blinded_block.try_into_full_block(payload).unwrap();
+        assert_eq!(reconstructed, block);
+
+        // Capella: payload extraction roundtrip
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Capella(BeaconBlockCapella::empty(spec)),
+            sig.clone(),
+        );
+        let (blinded_block, payload): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+        assert_eq!(blinded_block.tree_hash_root(), block.tree_hash_root());
+        if let Some(payload) = &payload {
+            assert_eq!(
+                payload.tree_hash_root(),
+                block
+                    .message()
+                    .execution_payload()
+                    .unwrap()
+                    .tree_hash_root()
+            );
+        }
+        let reconstructed = blinded_block.try_into_full_block(payload).unwrap();
+        assert_eq!(reconstructed, block);
+
+        // Deneb: payload extraction roundtrip
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Deneb(BeaconBlockDeneb::empty(spec)),
+            sig.clone(),
+        );
+        let (blinded_block, payload): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+        assert_eq!(blinded_block.tree_hash_root(), block.tree_hash_root());
+        let reconstructed = blinded_block.try_into_full_block(payload).unwrap();
+        assert_eq!(reconstructed, block);
+
+        // Electra: payload extraction roundtrip
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Electra(BeaconBlockElectra::empty(spec)),
+            sig.clone(),
+        );
+        let (blinded_block, payload): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+        assert_eq!(blinded_block.tree_hash_root(), block.tree_hash_root());
+        let reconstructed = blinded_block.try_into_full_block(payload).unwrap();
+        assert_eq!(reconstructed, block);
+
+        // Fulu: payload extraction roundtrip
+        let block = SignedBeaconBlock::<E>::from_block(
+            BeaconBlock::Fulu(BeaconBlockFulu::empty(spec)),
+            sig,
+        );
+        let (blinded_block, payload): (SignedBlindedBeaconBlock<E>, _) = block.clone().into();
+        assert_eq!(blinded_block.tree_hash_root(), block.tree_hash_root());
+        let reconstructed = blinded_block.try_into_full_block(payload).unwrap();
+        assert_eq!(reconstructed, block);
+    }
 }
