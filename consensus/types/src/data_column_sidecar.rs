@@ -280,3 +280,403 @@ impl From<SszError> for DataColumnSidecarError {
         Self::SszError(e)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    fn make_gloas_sidecar() -> DataColumnSidecarGloas<E> {
+        DataColumnSidecarGloas {
+            index: 5,
+            column: VariableList::empty(),
+            kzg_proofs: VariableList::empty(),
+            slot: Slot::new(42),
+            beacon_block_root: Hash256::repeat_byte(0xAA),
+        }
+    }
+
+    fn make_fulu_sidecar() -> DataColumnSidecarFulu<E> {
+        DataColumnSidecarFulu {
+            index: 3,
+            column: VariableList::empty(),
+            kzg_commitments: VariableList::empty(),
+            kzg_proofs: VariableList::empty(),
+            signed_block_header: SignedBeaconBlockHeader {
+                message: BeaconBlockHeader {
+                    slot: Slot::new(10),
+                    proposer_index: 7,
+                    parent_root: Hash256::repeat_byte(0xBB),
+                    state_root: Hash256::repeat_byte(0xCC),
+                    body_root: Hash256::repeat_byte(0xDD),
+                },
+                signature: Signature::empty(),
+            },
+            kzg_commitments_inclusion_proof: FixedVector::default(),
+        }
+    }
+
+    // ── slot() ──
+
+    #[test]
+    fn gloas_slot_from_field() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        assert_eq!(sidecar.slot(), Slot::new(42));
+    }
+
+    #[test]
+    fn fulu_slot_from_header() {
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        assert_eq!(sidecar.slot(), Slot::new(10));
+    }
+
+    // ── epoch() ──
+
+    #[test]
+    fn gloas_epoch() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        // MinimalEthSpec: 8 slots per epoch. slot 42 / 8 = epoch 5
+        assert_eq!(sidecar.epoch(), Epoch::new(5));
+    }
+
+    #[test]
+    fn fulu_epoch() {
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        // slot 10 / 8 = epoch 1
+        assert_eq!(sidecar.epoch(), Epoch::new(1));
+    }
+
+    // ── block_root() ──
+
+    #[test]
+    fn gloas_block_root_from_field() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        assert_eq!(sidecar.block_root(), Hash256::repeat_byte(0xAA));
+    }
+
+    #[test]
+    fn fulu_block_root_from_header_tree_hash() {
+        let inner = make_fulu_sidecar();
+        let expected = inner.signed_block_header.message.tree_hash_root();
+        let sidecar = DataColumnSidecar::<E>::Fulu(inner);
+        assert_eq!(sidecar.block_root(), expected);
+    }
+
+    // ── block_parent_root() ──
+
+    #[test]
+    fn gloas_parent_root_is_none() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        assert_eq!(sidecar.block_parent_root(), None);
+    }
+
+    #[test]
+    fn fulu_parent_root_from_header() {
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        assert_eq!(
+            sidecar.block_parent_root(),
+            Some(Hash256::repeat_byte(0xBB))
+        );
+    }
+
+    // ── block_proposer_index() ──
+
+    #[test]
+    fn gloas_proposer_index_is_none() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        assert_eq!(sidecar.block_proposer_index(), None);
+    }
+
+    #[test]
+    fn fulu_proposer_index_from_header() {
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        assert_eq!(sidecar.block_proposer_index(), Some(7));
+    }
+
+    // ── verify_inclusion_proof() ──
+
+    #[test]
+    fn gloas_inclusion_proof_always_true() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        assert!(sidecar.verify_inclusion_proof());
+    }
+
+    #[test]
+    fn fulu_inclusion_proof_default_fails() {
+        // A default/empty Fulu sidecar won't have a valid merkle proof
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        assert!(!sidecar.verify_inclusion_proof());
+    }
+
+    // ── index() (shared getter) ──
+
+    #[test]
+    fn gloas_index() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        assert_eq!(sidecar.index(), 5);
+    }
+
+    #[test]
+    fn fulu_index() {
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        assert_eq!(sidecar.index(), 3);
+    }
+
+    // ── SSZ roundtrip (inner types) ──
+
+    #[test]
+    fn ssz_roundtrip_gloas_inner() {
+        let original = make_gloas_sidecar();
+        let bytes = original.as_ssz_bytes();
+        let decoded =
+            DataColumnSidecarGloas::<E>::from_ssz_bytes(&bytes).expect("SSZ decode succeeds");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn ssz_roundtrip_fulu_inner() {
+        let original = make_fulu_sidecar();
+        let bytes = original.as_ssz_bytes();
+        let decoded =
+            DataColumnSidecarFulu::<E>::from_ssz_bytes(&bytes).expect("SSZ decode succeeds");
+        assert_eq!(decoded, original);
+    }
+
+    // ── SSZ roundtrip (enum via from_ssz_bytes_by_fork) ──
+
+    #[test]
+    fn ssz_roundtrip_gloas_via_fork_dispatch() {
+        let inner = make_gloas_sidecar();
+        let wrapped = DataColumnSidecar::<E>::Gloas(inner);
+        let bytes = wrapped.as_ssz_bytes();
+        let decoded = DataColumnSidecar::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Gloas)
+            .expect("SSZ decode succeeds");
+        assert_eq!(decoded, wrapped);
+    }
+
+    #[test]
+    fn ssz_roundtrip_fulu_via_fork_dispatch() {
+        let inner = make_fulu_sidecar();
+        let wrapped = DataColumnSidecar::<E>::Fulu(inner);
+        let bytes = wrapped.as_ssz_bytes();
+        let decoded = DataColumnSidecar::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Fulu)
+            .expect("SSZ decode succeeds");
+        assert_eq!(decoded, wrapped);
+    }
+
+    // ── from_ssz_bytes_by_fork unsupported forks ──
+
+    #[test]
+    fn ssz_decode_base_fork_fails() {
+        let bytes = [0u8; 64];
+        assert!(DataColumnSidecar::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Base).is_err());
+    }
+
+    #[test]
+    fn ssz_decode_altair_fork_fails() {
+        let bytes = [0u8; 64];
+        assert!(DataColumnSidecar::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Altair).is_err());
+    }
+
+    #[test]
+    fn ssz_decode_deneb_fork_fails() {
+        let bytes = [0u8; 64];
+        assert!(DataColumnSidecar::<E>::from_ssz_bytes_by_fork(&bytes, ForkName::Deneb).is_err());
+    }
+
+    // ── from_ssz_bytes_by_fork cross-variant ──
+
+    #[test]
+    fn ssz_fork_dispatch_produces_correct_variant() {
+        let gloas = make_gloas_sidecar();
+        let gloas_bytes = gloas.as_ssz_bytes();
+
+        let as_gloas =
+            DataColumnSidecar::<E>::from_ssz_bytes_by_fork(&gloas_bytes, ForkName::Gloas)
+                .expect("decode as Gloas");
+
+        // Should be the Gloas variant
+        assert!(matches!(as_gloas, DataColumnSidecar::Gloas(_)));
+    }
+
+    // ── any_from_ssz_bytes ──
+
+    #[test]
+    fn any_from_ssz_bytes_fulu() {
+        let inner = make_fulu_sidecar();
+        let bytes = inner.as_ssz_bytes();
+        let decoded =
+            DataColumnSidecar::<E>::any_from_ssz_bytes(&bytes).expect("any decode succeeds");
+        // Fulu is tried first, so Fulu bytes should decode as Fulu
+        assert!(matches!(decoded, DataColumnSidecar::Fulu(_)));
+        assert_eq!(decoded.index(), 3);
+    }
+
+    #[test]
+    fn any_from_ssz_bytes_gloas() {
+        let inner = make_gloas_sidecar();
+        let bytes = inner.as_ssz_bytes();
+        // Gloas bytes are structurally different from Fulu (no header, no commitments),
+        // so Fulu decode should fail and fallback to Gloas
+        let decoded =
+            DataColumnSidecar::<E>::any_from_ssz_bytes(&bytes).expect("any decode succeeds");
+        assert_eq!(decoded.slot(), Slot::new(42));
+        assert_eq!(decoded.index(), 5);
+    }
+
+    // ── min_size / max_size ──
+
+    #[test]
+    fn min_size_is_positive() {
+        let min = DataColumnSidecar::<E>::min_size();
+        assert!(min > 0, "min_size should be positive, got {min}");
+    }
+
+    #[test]
+    fn max_size_greater_than_min() {
+        let min = DataColumnSidecar::<E>::min_size();
+        let max = DataColumnSidecar::<E>::max_size(6);
+        assert!(
+            max > min,
+            "max_size({max}) should exceed min_size({min}) with >1 blob"
+        );
+    }
+
+    #[test]
+    fn max_size_one_blob_greater_than_min() {
+        let min = DataColumnSidecar::<E>::min_size();
+        let max = DataColumnSidecar::<E>::max_size(1);
+        // With 1 blob, max should equal min (both use 1 element vectors)
+        assert_eq!(min, max);
+    }
+
+    // ── Gloas-specific partial getters ──
+
+    #[test]
+    fn gloas_sidecar_slot_getter() {
+        let inner = make_gloas_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Gloas(inner);
+        assert_eq!(sidecar.sidecar_slot().unwrap(), Slot::new(42));
+    }
+
+    #[test]
+    fn gloas_sidecar_beacon_block_root_getter() {
+        let inner = make_gloas_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Gloas(inner);
+        assert_eq!(
+            sidecar.sidecar_beacon_block_root().unwrap(),
+            Hash256::repeat_byte(0xAA)
+        );
+    }
+
+    #[test]
+    fn fulu_sidecar_slot_getter_fails() {
+        let inner = make_fulu_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Fulu(inner);
+        assert!(sidecar.sidecar_slot().is_err());
+    }
+
+    #[test]
+    fn fulu_sidecar_beacon_block_root_getter_fails() {
+        let inner = make_fulu_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Fulu(inner);
+        assert!(sidecar.sidecar_beacon_block_root().is_err());
+    }
+
+    // ── Fulu-specific partial getters ──
+
+    #[test]
+    fn fulu_kzg_commitments_getter() {
+        let inner = make_fulu_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Fulu(inner);
+        assert!(sidecar.kzg_commitments().is_ok());
+    }
+
+    #[test]
+    fn gloas_kzg_commitments_getter_fails() {
+        let inner = make_gloas_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Gloas(inner);
+        assert!(sidecar.kzg_commitments().is_err());
+    }
+
+    #[test]
+    fn fulu_signed_block_header_getter() {
+        let inner = make_fulu_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Fulu(inner);
+        let header = sidecar.signed_block_header().unwrap();
+        assert_eq!(header.message.proposer_index, 7);
+    }
+
+    #[test]
+    fn gloas_signed_block_header_getter_fails() {
+        let inner = make_gloas_sidecar();
+        let sidecar = DataColumnSidecar::<E>::Gloas(inner);
+        assert!(sidecar.signed_block_header().is_err());
+    }
+
+    // ── Clone and equality ──
+
+    #[test]
+    fn gloas_clone_equality() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        let cloned = sidecar.clone();
+        assert_eq!(sidecar, cloned);
+    }
+
+    #[test]
+    fn fulu_clone_equality() {
+        let sidecar = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        let cloned = sidecar.clone();
+        assert_eq!(sidecar, cloned);
+    }
+
+    #[test]
+    fn different_variants_not_equal() {
+        let gloas = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        let fulu = DataColumnSidecar::<E>::Fulu(make_fulu_sidecar());
+        assert_ne!(gloas, fulu);
+    }
+
+    // ── Tree hash stability ──
+
+    #[test]
+    fn gloas_tree_hash_deterministic() {
+        let sidecar = DataColumnSidecar::<E>::Gloas(make_gloas_sidecar());
+        let hash1 = sidecar.tree_hash_root();
+        let hash2 = sidecar.tree_hash_root();
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn gloas_tree_hash_changes_with_different_data() {
+        let mut inner = make_gloas_sidecar();
+        let sidecar1 = DataColumnSidecar::<E>::Gloas(inner.clone());
+
+        inner.beacon_block_root = Hash256::repeat_byte(0xFF);
+        let sidecar2 = DataColumnSidecar::<E>::Gloas(inner);
+
+        assert_ne!(sidecar1.tree_hash_root(), sidecar2.tree_hash_root());
+    }
+
+    // ── Gloas epoch boundary ──
+
+    #[test]
+    fn gloas_epoch_at_boundary() {
+        let mut inner = make_gloas_sidecar();
+        // Slot 0 = epoch 0
+        inner.slot = Slot::new(0);
+        let sidecar = DataColumnSidecar::<E>::Gloas(inner);
+        assert_eq!(sidecar.epoch(), Epoch::new(0));
+    }
+
+    #[test]
+    fn gloas_epoch_at_boundary_next() {
+        let mut inner = make_gloas_sidecar();
+        // Slot 8 (first slot of epoch 1 in minimal)
+        inner.slot = Slot::new(8);
+        let sidecar = DataColumnSidecar::<E>::Gloas(inner);
+        assert_eq!(sidecar.epoch(), Epoch::new(1));
+    }
+}
