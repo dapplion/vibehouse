@@ -31,6 +31,18 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-20 (run 28)
+- **Added 17 unit tests for Gloas execution payload envelope processing** in `consensus/state_processing/src/envelope_processing.rs`. Previously had ZERO unit tests — only covered by EF spec tests.
+  - Happy path (1): valid envelope succeeds end-to-end
+  - Beacon block consistency (2): wrong beacon_block_root rejected, wrong slot rejected
+  - Committed bid consistency (4): wrong builder_index, prev_randao, gas_limit, block_hash rejected
+  - Execution payload consistency (2): wrong parent_hash rejected, wrong timestamp rejected
+  - Withdrawals (1): extra withdrawal in payload rejected
+  - State root (1): wrong state_root rejected
+  - State mutations (6): latest_block_hash updated, availability bit set, builder payment moved to withdrawals, zero-amount payment not queued, block header state_root filled, parent_state_root override works
+  - All 72/72 state_processing tests pass (17 new + 17 bid + 38 existing)
+- Updated PLAN.md: test coverage status
+
 ### 2026-02-20 (run 27)
 - No new consensus-specs PRs merged since run 26: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open
 - **Added 17 unit tests for Gloas execution payload bid processing** in `consensus/state_processing/src/per_block_processing/gloas.rs`. Previously had ZERO unit tests despite being consensus-critical code (only covered by 118+ EF spec tests).

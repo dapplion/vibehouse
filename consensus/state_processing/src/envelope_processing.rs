@@ -300,3 +300,808 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bls::FixedBytesExtended;
+    use ssz_types::BitVector;
+    use ssz_types::VariableList;
+    use std::sync::Arc;
+    use types::List;
+    use types::{
+        Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache, FixedVector, Fork,
+        MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, Signature, SlashingsCache,
+        SyncCommittee, Unsigned, Vector,
+    };
+
+    type E = MinimalEthSpec;
+
+    /// Build a minimal Gloas state identical to the bid processing test helper,
+    /// with `n` validators and a single builder at index 0.
+    fn make_gloas_state(
+        num_validators: usize,
+        balance: u64,
+        builder_balance: u64,
+    ) -> (BeaconState<E>, ChainSpec) {
+        let spec = E::default_spec();
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8, epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let keypairs = types::test_utils::generate_deterministic_keypairs(num_validators);
+        let mut validators = Vec::with_capacity(num_validators);
+        let mut balances = Vec::with_capacity(num_validators);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: balance,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(balance);
+        }
+
+        let builder = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: builder_balance,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+
+        let parent_root = Hash256::repeat_byte(0x01);
+        let parent_block_hash = ExecutionBlockHash::repeat_byte(0x02);
+        let randao_mix = Hash256::repeat_byte(0x03);
+
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let mut randao_mixes = vec![Hash256::zero(); epochs_per_vector];
+        let mix_index = epoch.as_usize() % epochs_per_vector;
+        randao_mixes[mix_index] = randao_mix;
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root,
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(randao_mixes).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: Hash256::zero(),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid {
+                parent_block_hash,
+                parent_block_root: parent_root,
+                block_hash: ExecutionBlockHash::repeat_byte(0x04),
+                prev_randao: randao_mix,
+                slot,
+                ..Default::default()
+            },
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::new(vec![builder]).unwrap(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(
+                vec![0xFFu8; slots_per_hist / 8].into(),
+            )
+            .unwrap(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: parent_block_hash,
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        (state, spec)
+    }
+
+    /// Build a valid envelope matching the state's committed bid.
+    /// The state_root is set to a dummy value; call `fix_envelope_state_root`
+    /// to compute and set the real post-processing state root.
+    fn make_valid_envelope(state: &BeaconState<E>) -> SignedExecutionPayloadEnvelope<E> {
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let latest_block_hash = *state.latest_block_hash().unwrap();
+
+        // Compute the expected block header root (after fixing state_root)
+        // The state's latest_block_header has state_root=0x00..00, so we need to
+        // first compute canonical_root which will fill it in. But since the
+        // function will do that itself, we just need the final root after filling.
+        let mut header = state.latest_block_header().clone();
+        header.state_root = state.clone().canonical_root().unwrap();
+        let beacon_block_root = header.tree_hash_root();
+
+        // Compute expected timestamp
+        let spec = E::default_spec();
+        let timestamp = compute_timestamp_at_slot(state, state.slot(), &spec).unwrap();
+
+        let payload = ExecutionPayloadGloas {
+            parent_hash: latest_block_hash,
+            block_hash: bid.block_hash,
+            prev_randao: bid.prev_randao,
+            gas_limit: bid.gas_limit,
+            timestamp,
+            withdrawals: VariableList::default(), // matches empty payload_expected_withdrawals
+            ..Default::default()
+        };
+
+        SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests: Default::default(),
+                builder_index: bid.builder_index,
+                beacon_block_root,
+                slot: state.slot(),
+                state_root: Hash256::zero(), // will be fixed by fix_envelope_state_root
+            },
+            signature: Signature::empty(),
+        }
+    }
+
+    /// Run envelope processing on a clone of the state to discover the real
+    /// post-processing state root, then set it on the envelope.
+    fn fix_envelope_state_root(
+        state: &BeaconState<E>,
+        envelope: &mut SignedExecutionPayloadEnvelope<E>,
+        spec: &ChainSpec,
+    ) {
+        let mut state_clone = state.clone();
+        let result = process_execution_payload_envelope(
+            &mut state_clone,
+            None,
+            envelope,
+            VerifySignatures::False,
+            spec,
+        );
+        match result {
+            Err(EnvelopeProcessingError::InvalidStateRoot {
+                state: real_root, ..
+            }) => {
+                envelope.message.state_root = real_root;
+            }
+            Ok(()) => {
+                // state_root was already correct (unlikely with dummy)
+            }
+            Err(e) => {
+                panic!("fix_envelope_state_root: unexpected error: {:?}", e);
+            }
+        }
+    }
+
+    // ── Happy path ─────────────────────────────────────────────
+
+    #[test]
+    fn valid_envelope_succeeds() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "valid envelope should succeed: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    // ── Beacon block consistency checks ────────────────────────
+
+    #[test]
+    fn wrong_beacon_block_root_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.beacon_block_root = Hash256::repeat_byte(0xFF);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::LatestBlockHeaderMismatch { .. })
+            ),
+            "wrong beacon_block_root should fail: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn wrong_slot_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.slot = Slot::new(999);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::SlotMismatch { .. })),
+            "wrong slot should fail: {:?}",
+            result,
+        );
+    }
+
+    // ── Committed bid consistency checks ───────────────────────
+
+    #[test]
+    fn wrong_builder_index_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.builder_index = 42;
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::BuilderIndexMismatch { .. })
+            ),
+            "wrong builder_index should fail: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn wrong_prev_randao_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.payload.prev_randao = Hash256::repeat_byte(0xDD);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::PrevRandaoMismatch { .. })
+            ),
+            "wrong prev_randao should fail: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn wrong_gas_limit_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.payload.gas_limit = 999_999;
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::GasLimitMismatch { .. })
+            ),
+            "wrong gas_limit should fail: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn wrong_block_hash_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.payload.block_hash = ExecutionBlockHash::repeat_byte(0xEE);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::BlockHashMismatch { .. })
+            ),
+            "wrong block_hash should fail: {:?}",
+            result,
+        );
+    }
+
+    // ── Execution payload consistency ──────────────────────────
+
+    #[test]
+    fn wrong_parent_hash_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.payload.parent_hash = ExecutionBlockHash::repeat_byte(0xCC);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::ParentHashMismatch { .. })
+            ),
+            "wrong parent_hash should fail: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn wrong_timestamp_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.payload.timestamp = 12345;
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::TimestampMismatch { .. })
+            ),
+            "wrong timestamp should fail: {:?}",
+            result,
+        );
+    }
+
+    // ── Withdrawals ────────────────────────────────────────────
+
+    #[test]
+    fn wrong_withdrawals_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        // State has empty payload_expected_withdrawals, so adding a withdrawal should mismatch
+        let fake_withdrawal = types::Withdrawal {
+            index: 0,
+            validator_index: 0,
+            address: Address::repeat_byte(0x11),
+            amount: 1_000_000,
+        };
+        envelope
+            .message
+            .payload
+            .withdrawals
+            .push(fake_withdrawal)
+            .unwrap();
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::WithdrawalsRootMismatch { .. })
+            ),
+            "wrong withdrawals should fail: {:?}",
+            result,
+        );
+    }
+
+    // ── State root ─────────────────────────────────────────────
+
+    #[test]
+    fn wrong_state_root_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        // Leave state_root as zero — should mismatch the computed state root
+        envelope.message.state_root = Hash256::repeat_byte(0x99);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::InvalidStateRoot { .. })
+            ),
+            "wrong state_root should fail: {:?}",
+            result,
+        );
+    }
+
+    // ── State mutations ────────────────────────────────────────
+
+    #[test]
+    fn envelope_updates_latest_block_hash() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        let new_block_hash = envelope.message.payload.block_hash;
+        assert_ne!(
+            *state.latest_block_hash().unwrap(),
+            new_block_hash,
+            "sanity: block hash should differ before processing"
+        );
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert_eq!(
+            *state.latest_block_hash().unwrap(),
+            new_block_hash,
+            "latest_block_hash should be updated to payload's block_hash"
+        );
+    }
+
+    #[test]
+    fn envelope_sets_availability_bit() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Clear the availability bit for this slot
+        let slot = state.slot();
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let avail_index = slot.as_usize() % slots_per_hist;
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(avail_index, false)
+            .unwrap();
+        assert!(
+            !state
+                .execution_payload_availability()
+                .unwrap()
+                .get(avail_index)
+                .unwrap(),
+            "sanity: availability bit should be cleared"
+        );
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert!(
+            state
+                .execution_payload_availability()
+                .unwrap()
+                .get(avail_index)
+                .unwrap(),
+            "availability bit should be set after envelope processing"
+        );
+    }
+
+    #[test]
+    fn envelope_moves_builder_payment_to_withdrawals() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set up a pending payment for this slot
+        let slot = state.slot();
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        let payment = BuilderPendingPayment {
+            weight: 100,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 5_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        assert!(
+            state.builder_pending_withdrawals().unwrap().is_empty(),
+            "sanity: no pending withdrawals before processing"
+        );
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment slot should be cleared
+        let cleared_payment = state
+            .builder_pending_payments()
+            .unwrap()
+            .get(payment_index)
+            .unwrap()
+            .clone();
+        assert_eq!(
+            cleared_payment,
+            BuilderPendingPayment::default(),
+            "pending payment should be blanked after processing"
+        );
+
+        // Withdrawal should be queued
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(withdrawals.len(), 1, "should have one pending withdrawal");
+        assert_eq!(withdrawals.get(0).unwrap().amount, 5_000_000_000);
+        assert_eq!(
+            withdrawals.get(0).unwrap().fee_recipient,
+            Address::repeat_byte(0xCC)
+        );
+    }
+
+    #[test]
+    fn envelope_zero_payment_not_queued() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Default pending payment has amount=0, so no withdrawal should be queued
+        assert!(
+            state.builder_pending_withdrawals().unwrap().is_empty(),
+            "sanity: no pending withdrawals"
+        );
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert!(
+            state.builder_pending_withdrawals().unwrap().is_empty(),
+            "zero-amount payment should not queue a withdrawal"
+        );
+    }
+
+    #[test]
+    fn envelope_fills_block_header_state_root() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Verify header state_root starts as zero (unfilled)
+        assert_eq!(
+            state.latest_block_header().state_root,
+            Hash256::default(),
+            "sanity: header state_root should be zero before processing"
+        );
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert_ne!(
+            state.latest_block_header().state_root,
+            Hash256::default(),
+            "header state_root should be filled after envelope processing"
+        );
+    }
+
+    #[test]
+    fn parent_state_root_override() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Provide an explicit parent_state_root
+        let explicit_root = Hash256::repeat_byte(0x77);
+        let mut envelope = make_valid_envelope_with_parent_state_root(&state, Some(explicit_root));
+        fix_envelope_state_root_with_parent(&state, &mut envelope, Some(explicit_root), &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            Some(explicit_root),
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert_eq!(
+            state.latest_block_header().state_root,
+            explicit_root,
+            "header state_root should use provided parent_state_root"
+        );
+    }
+
+    /// Build a valid envelope; used when we need to pass parent_state_root
+    fn make_valid_envelope_with_parent_state_root(
+        state: &BeaconState<E>,
+        parent_state_root: Option<Hash256>,
+    ) -> SignedExecutionPayloadEnvelope<E> {
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let latest_block_hash = *state.latest_block_hash().unwrap();
+
+        // Compute the beacon_block_root accounting for parent_state_root
+        let mut header = state.latest_block_header().clone();
+        if header.state_root == Hash256::default() {
+            header.state_root =
+                parent_state_root.unwrap_or_else(|| state.clone().canonical_root().unwrap());
+        }
+        let beacon_block_root = header.tree_hash_root();
+
+        let spec = E::default_spec();
+        let timestamp = compute_timestamp_at_slot(state, state.slot(), &spec).unwrap();
+
+        let payload = ExecutionPayloadGloas {
+            parent_hash: latest_block_hash,
+            block_hash: bid.block_hash,
+            prev_randao: bid.prev_randao,
+            gas_limit: bid.gas_limit,
+            timestamp,
+            withdrawals: VariableList::default(),
+            ..Default::default()
+        };
+
+        SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests: Default::default(),
+                builder_index: bid.builder_index,
+                beacon_block_root,
+                slot: state.slot(),
+                state_root: Hash256::zero(),
+            },
+            signature: Signature::empty(),
+        }
+    }
+
+    fn fix_envelope_state_root_with_parent(
+        state: &BeaconState<E>,
+        envelope: &mut SignedExecutionPayloadEnvelope<E>,
+        parent_state_root: Option<Hash256>,
+        spec: &ChainSpec,
+    ) {
+        let mut state_clone = state.clone();
+        let result = process_execution_payload_envelope(
+            &mut state_clone,
+            parent_state_root,
+            envelope,
+            VerifySignatures::False,
+            spec,
+        );
+        match result {
+            Err(EnvelopeProcessingError::InvalidStateRoot {
+                state: real_root, ..
+            }) => {
+                envelope.message.state_root = real_root;
+            }
+            Ok(()) => {}
+            Err(e) => {
+                panic!(
+                    "fix_envelope_state_root_with_parent: unexpected error: {:?}",
+                    e
+                );
+            }
+        }
+    }
+}
