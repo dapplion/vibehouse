@@ -309,12 +309,13 @@ mod tests {
     use ssz_types::VariableList;
     use std::sync::Arc;
     use types::List;
+    use types::test_utils::generate_deterministic_keypairs;
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
-        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache, FixedVector, Fork,
-        MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, Signature, SlashingsCache,
-        SyncCommittee, Unsigned, Vector,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Domain, Epoch, ExecutionBlockHash,
+        ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache,
+        FixedVector, Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, Signature,
+        SignedRoot, SlashingsCache, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -1103,5 +1104,355 @@ mod tests {
                 );
             }
         }
+    }
+
+    // ── Helpers for signature verification tests ──────────────
+
+    /// Build a Gloas state with real keypairs for signature verification.
+    /// Builder at index 0 uses keypairs[num_validators] (the extra keypair).
+    /// Returns (state, spec, keypairs) where keypairs has num_validators + 1 entries.
+    fn make_gloas_state_with_keys(
+        num_validators: usize,
+        builder_balance: u64,
+    ) -> (BeaconState<E>, ChainSpec, Vec<types::Keypair>) {
+        let spec = E::default_spec();
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8, epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        // Generate one extra keypair for the builder
+        let keypairs = generate_deterministic_keypairs(num_validators + 1);
+        let mut validators = Vec::with_capacity(num_validators);
+        let mut balances = Vec::with_capacity(num_validators);
+        for kp in &keypairs[..num_validators] {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: 32_000_000_000,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(32_000_000_000);
+        }
+
+        // Builder uses the extra keypair
+        let builder_kp = &keypairs[num_validators];
+        let builder = Builder {
+            pubkey: builder_kp.pk.compress(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: builder_balance,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+
+        let parent_root = Hash256::repeat_byte(0x01);
+        let parent_block_hash = ExecutionBlockHash::repeat_byte(0x02);
+        let randao_mix = Hash256::repeat_byte(0x03);
+
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let mut randao_mixes = vec![Hash256::zero(); epochs_per_vector];
+        let mix_index = epoch.as_usize() % epochs_per_vector;
+        randao_mixes[mix_index] = randao_mix;
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root,
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(randao_mixes).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: Hash256::zero(),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid {
+                parent_block_hash,
+                parent_block_root: parent_root,
+                block_hash: ExecutionBlockHash::repeat_byte(0x04),
+                prev_randao: randao_mix,
+                slot,
+                builder_index: 0,
+                ..Default::default()
+            },
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::new(vec![builder]).unwrap(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(
+                vec![0xFFu8; slots_per_hist / 8].into(),
+            )
+            .unwrap(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: parent_block_hash,
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        (state, spec, keypairs)
+    }
+
+    /// Sign an envelope with the given secret key using BeaconBuilder domain.
+    fn sign_envelope(
+        state: &BeaconState<E>,
+        envelope: &mut SignedExecutionPayloadEnvelope<E>,
+        sk: &bls::SecretKey,
+        spec: &ChainSpec,
+    ) {
+        let epoch = envelope.message.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = envelope.message.signing_root(domain);
+        envelope.signature = sk.sign(signing_root);
+    }
+
+    // ── Signature verification tests ─────────────────────────
+
+    #[test]
+    fn valid_builder_signature_accepted() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+        let builder_kp = &keypairs[8]; // the extra keypair used for builder
+
+        let mut envelope = make_valid_envelope(&state);
+        sign_envelope(&state, &mut envelope, &builder_kp.sk, &spec);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        // Re-sign after state_root fix (state_root change alters the state, but not
+        // the envelope message's signing root since state_root is part of the message
+        // which is already set before signing)
+        sign_envelope(&state, &mut envelope, &builder_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "valid builder signature should be accepted: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn invalid_builder_signature_rejected() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+        // Sign with validator key 0 instead of builder key
+        let wrong_kp = &keypairs[0];
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        sign_envelope(&state, &mut envelope, &wrong_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
+            "wrong builder signature should be rejected: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn self_build_envelope_with_proposer_signature_accepted() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        // Set the bid to self-build (builder_index = BUILDER_INDEX_SELF_BUILD)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let mut envelope = make_valid_envelope(&state);
+        assert_eq!(
+            envelope.message.builder_index, BUILDER_INDEX_SELF_BUILD,
+            "sanity: envelope should have self-build builder_index"
+        );
+
+        // Sign with the proposer's key (proposer_index = 0)
+        let proposer_kp = &keypairs[0];
+        sign_envelope(&state, &mut envelope, &proposer_kp.sk, &spec);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        // Re-sign after state_root fix
+        sign_envelope(&state, &mut envelope, &proposer_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "self-build envelope with proposer signature should be accepted: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn self_build_envelope_with_wrong_signature_rejected() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        // Set the bid to self-build
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        // Sign with a non-proposer key (validator 1 instead of proposer at index 0)
+        let wrong_kp = &keypairs[1];
+        sign_envelope(&state, &mut envelope, &wrong_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
+            "self-build envelope with wrong signature should be rejected: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn self_build_envelope_with_builder_key_rejected() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        // Set the bid to self-build
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        // Sign with the builder's key (not the proposer's key)
+        let builder_kp = &keypairs[8];
+        sign_envelope(&state, &mut envelope, &builder_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
+            "self-build envelope signed by builder (not proposer) should be rejected: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn empty_signature_rejected_with_verify() {
+        let (mut state, spec, _keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        // envelope.signature is already Signature::empty() from make_valid_envelope
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
+            "empty signature should be rejected when verifying: {:?}",
+            result,
+        );
     }
 }
