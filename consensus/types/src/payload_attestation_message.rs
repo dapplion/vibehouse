@@ -53,6 +53,9 @@ impl Default for PayloadAttestationMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Hash256, Slot};
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
 
     ssz_and_tree_hash_tests!(PayloadAttestationMessage);
 
@@ -62,5 +65,121 @@ mod tests {
         assert_eq!(message.validator_index, 0);
         assert!(!message.data.payload_present);
         assert!(!message.data.blob_data_available);
+    }
+
+    #[test]
+    fn default_equals_empty() {
+        let a = PayloadAttestationMessage::default();
+        let b = PayloadAttestationMessage::empty();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn non_zero_validator_index() {
+        let mut msg = PayloadAttestationMessage::empty();
+        msg.validator_index = 42;
+        assert_eq!(msg.validator_index, 42);
+
+        let bytes = msg.as_ssz_bytes();
+        let decoded = PayloadAttestationMessage::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(decoded.validator_index, 42);
+    }
+
+    #[test]
+    fn max_validator_index() {
+        let mut msg = PayloadAttestationMessage::empty();
+        msg.validator_index = u64::MAX;
+
+        let bytes = msg.as_ssz_bytes();
+        let decoded = PayloadAttestationMessage::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(decoded.validator_index, u64::MAX);
+    }
+
+    #[test]
+    fn ssz_roundtrip_payload_present() {
+        let msg = PayloadAttestationMessage {
+            validator_index: 99,
+            data: PayloadAttestationData {
+                beacon_block_root: Hash256::repeat_byte(0xff),
+                slot: Slot::new(100),
+                payload_present: true,
+                blob_data_available: false,
+            },
+            signature: Signature::empty(),
+        };
+        let bytes = msg.as_ssz_bytes();
+        let decoded = PayloadAttestationMessage::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(msg, decoded);
+        assert!(decoded.data.payload_present);
+    }
+
+    #[test]
+    fn ssz_roundtrip_blob_data_available() {
+        let msg = PayloadAttestationMessage {
+            validator_index: 7,
+            data: PayloadAttestationData {
+                beacon_block_root: Hash256::repeat_byte(0xee),
+                slot: Slot::new(200),
+                payload_present: false,
+                blob_data_available: true,
+            },
+            signature: Signature::empty(),
+        };
+        let bytes = msg.as_ssz_bytes();
+        let decoded = PayloadAttestationMessage::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(msg, decoded);
+        assert!(decoded.data.blob_data_available);
+    }
+
+    #[test]
+    fn tree_hash_changes_with_validator_index() {
+        let msg1 = PayloadAttestationMessage {
+            validator_index: 1,
+            ..PayloadAttestationMessage::empty()
+        };
+        let msg2 = PayloadAttestationMessage {
+            validator_index: 2,
+            ..PayloadAttestationMessage::empty()
+        };
+        assert_ne!(msg1.tree_hash_root(), msg2.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let msg = PayloadAttestationMessage {
+            validator_index: 50,
+            data: PayloadAttestationData {
+                beacon_block_root: Hash256::repeat_byte(0x01),
+                slot: Slot::new(10),
+                payload_present: true,
+                blob_data_available: true,
+            },
+            signature: Signature::empty(),
+        };
+        assert_eq!(msg.tree_hash_root(), msg.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_preserves_equality() {
+        let msg = PayloadAttestationMessage {
+            validator_index: 77,
+            data: PayloadAttestationData {
+                beacon_block_root: Hash256::repeat_byte(0xab),
+                slot: Slot::new(55),
+                payload_present: true,
+                blob_data_available: true,
+            },
+            signature: Signature::empty(),
+        };
+        assert_eq!(msg, msg.clone());
+    }
+
+    #[test]
+    fn different_data_not_equal() {
+        let mut msg1 = PayloadAttestationMessage::empty();
+        let mut msg2 = PayloadAttestationMessage::empty();
+        msg1.data.payload_present = true;
+        msg2.data.payload_present = false;
+        assert_ne!(msg1, msg2);
     }
 }

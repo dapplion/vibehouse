@@ -75,7 +75,11 @@ impl<E: EthSpec> Default for IndexedPayloadAttestation<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MainnetEthSpec;
+    use crate::{Hash256, MainnetEthSpec, MinimalEthSpec, Slot};
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
 
     ssz_and_tree_hash_tests!(IndexedPayloadAttestation<MainnetEthSpec>);
 
@@ -89,21 +93,137 @@ mod tests {
     }
 
     #[test]
-    fn test_is_sorted() {
-        let mut attestation = IndexedPayloadAttestation::<MainnetEthSpec>::empty();
+    fn default_equals_empty() {
+        let a = IndexedPayloadAttestation::<E>::default();
+        let b = IndexedPayloadAttestation::<E>::empty();
+        assert_eq!(a, b);
+    }
 
-        // Empty list is sorted
-        assert!(attestation.is_sorted());
+    #[test]
+    fn is_sorted_empty() {
+        let att = IndexedPayloadAttestation::<E>::empty();
+        assert!(att.is_sorted());
+    }
 
-        // Single element is sorted
-        attestation.attesting_indices.push(5).unwrap();
-        assert!(attestation.is_sorted());
+    #[test]
+    fn is_sorted_single_element() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(5).unwrap();
+        assert!(att.is_sorted());
+    }
 
-        // Two sorted elements
-        attestation.attesting_indices.push(10).unwrap();
-        assert!(attestation.is_sorted());
+    #[test]
+    fn is_sorted_ascending() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(1).unwrap();
+        att.attesting_indices.push(5).unwrap();
+        assert!(att.is_sorted());
+    }
 
-        // Unsorted should fail - but we can't test this easily without modifying
-        // the internal structure, so we document the expected behavior
+    #[test]
+    fn is_sorted_unsorted_via_ssz() {
+        // Build a sorted attestation, encode to SSZ, manually swap bytes to create
+        // unsorted indices, then decode and verify is_sorted() returns false.
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(10).unwrap();
+        att.attesting_indices.push(5).unwrap(); // 10, 5 — descending
+
+        // Construct via SSZ decode to bypass push ordering
+        let bytes = att.as_ssz_bytes();
+        let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert!(
+            !decoded.is_sorted(),
+            "descending [10, 5] should not be sorted"
+        );
+    }
+
+    #[test]
+    fn is_sorted_duplicate_indices() {
+        // Duplicate indices should fail is_sorted (requires strictly ascending: a < b)
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(5).unwrap();
+        att.attesting_indices.push(5).unwrap(); // duplicate
+
+        let bytes = att.as_ssz_bytes();
+        let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert!(
+            !decoded.is_sorted(),
+            "duplicate indices [5, 5] should not be sorted (requires strict <)"
+        );
+    }
+
+    #[test]
+    fn num_attesters_counts_indices() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        assert_eq!(att.num_attesters(), 0);
+
+        att.attesting_indices.push(1).unwrap();
+        assert_eq!(att.num_attesters(), 1);
+
+        att.attesting_indices.push(2).unwrap();
+        assert_eq!(att.num_attesters(), 2);
+    }
+
+    #[test]
+    fn ssz_roundtrip_with_indices() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(0).unwrap();
+        att.attesting_indices.push(42).unwrap();
+        att.data.slot = Slot::new(99);
+        att.data.beacon_block_root = Hash256::repeat_byte(0xab);
+        att.data.payload_present = true;
+
+        let bytes = att.as_ssz_bytes();
+        let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(att, decoded);
+        assert_eq!(decoded.num_attesters(), 2);
+        assert!(decoded.data.payload_present);
+    }
+
+    #[test]
+    fn ssz_roundtrip_both_flags() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.data.payload_present = true;
+        att.data.blob_data_available = true;
+        att.attesting_indices.push(7).unwrap();
+
+        let bytes = att.as_ssz_bytes();
+        let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert!(decoded.data.payload_present);
+        assert!(decoded.data.blob_data_available);
+    }
+
+    #[test]
+    fn tree_hash_changes_with_indices() {
+        let att1 = IndexedPayloadAttestation::<E>::empty();
+        let mut att2 = IndexedPayloadAttestation::<E>::empty();
+        att2.attesting_indices.push(1).unwrap();
+
+        assert_ne!(att1.tree_hash_root(), att2.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(5).unwrap();
+        att.data.payload_present = true;
+        assert_eq!(att.tree_hash_root(), att.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_preserves_equality() {
+        let mut att = IndexedPayloadAttestation::<E>::empty();
+        att.attesting_indices.push(10).unwrap();
+        att.data.blob_data_available = true;
+        assert_eq!(att, att.clone());
+    }
+
+    #[test]
+    fn different_indices_not_equal() {
+        let mut att1 = IndexedPayloadAttestation::<E>::empty();
+        let mut att2 = IndexedPayloadAttestation::<E>::empty();
+        att1.attesting_indices.push(1).unwrap();
+        att2.attesting_indices.push(2).unwrap();
+        assert_ne!(att1, att2);
     }
 }

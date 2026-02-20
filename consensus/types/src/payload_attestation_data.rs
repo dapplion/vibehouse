@@ -40,6 +40,111 @@ impl TestRandom for PayloadAttestationData {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
 
     ssz_and_tree_hash_tests!(PayloadAttestationData);
+
+    #[test]
+    fn ssz_roundtrip_payload_present_true() {
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xaa),
+            slot: Slot::new(123),
+            payload_present: true,
+            blob_data_available: false,
+        };
+        let bytes = data.as_ssz_bytes();
+        let decoded = PayloadAttestationData::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(data, decoded);
+        assert!(decoded.payload_present);
+        assert!(!decoded.blob_data_available);
+    }
+
+    #[test]
+    fn ssz_roundtrip_blob_data_available_true() {
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xbb),
+            slot: Slot::new(456),
+            payload_present: false,
+            blob_data_available: true,
+        };
+        let bytes = data.as_ssz_bytes();
+        let decoded = PayloadAttestationData::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(data, decoded);
+        assert!(!decoded.payload_present);
+        assert!(decoded.blob_data_available);
+    }
+
+    #[test]
+    fn ssz_roundtrip_both_flags_true() {
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xcc),
+            slot: Slot::new(789),
+            payload_present: true,
+            blob_data_available: true,
+        };
+        let bytes = data.as_ssz_bytes();
+        let decoded = PayloadAttestationData::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn tree_hash_changes_with_payload_present() {
+        let data_false = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0x01),
+            slot: Slot::new(1),
+            payload_present: false,
+            blob_data_available: false,
+        };
+        let data_true = PayloadAttestationData {
+            payload_present: true,
+            ..data_false.clone()
+        };
+        assert_ne!(data_false.tree_hash_root(), data_true.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_changes_with_blob_data_available() {
+        let data_false = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0x02),
+            slot: Slot::new(2),
+            payload_present: false,
+            blob_data_available: false,
+        };
+        let data_true = PayloadAttestationData {
+            blob_data_available: true,
+            ..data_false.clone()
+        };
+        assert_ne!(data_false.tree_hash_root(), data_true.tree_hash_root());
+    }
+
+    #[test]
+    fn equality_and_clone() {
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xdd),
+            slot: Slot::new(42),
+            payload_present: true,
+            blob_data_available: true,
+        };
+        let cloned = data.clone();
+        assert_eq!(data, cloned);
+
+        let different = PayloadAttestationData {
+            slot: Slot::new(43),
+            ..data.clone()
+        };
+        assert_ne!(data, different);
+    }
+
+    #[test]
+    fn default_fields_are_zero() {
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::ZERO,
+            slot: Slot::new(0),
+            payload_present: false,
+            blob_data_available: false,
+        };
+        assert_eq!(data.beacon_block_root, Hash256::ZERO);
+        assert_eq!(data.slot, Slot::new(0));
+    }
 }

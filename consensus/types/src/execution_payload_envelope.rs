@@ -80,7 +80,11 @@ impl<E: EthSpec> TestRandom for ExecutionPayloadEnvelope<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MainnetEthSpec;
+    use crate::{ExecutionBlockHash, MainnetEthSpec, MinimalEthSpec};
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
 
     ssz_and_tree_hash_tests!(ExecutionPayloadEnvelope<MainnetEthSpec>);
 
@@ -91,5 +95,103 @@ mod tests {
         assert_eq!(envelope.slot, Slot::new(0));
         assert_eq!(envelope.beacon_block_root, Hash256::ZERO);
         assert_eq!(envelope.state_root, Hash256::ZERO);
+    }
+
+    #[test]
+    fn default_equals_empty() {
+        let a = ExecutionPayloadEnvelope::<E>::default();
+        let b = ExecutionPayloadEnvelope::<E>::empty();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn empty_payload_is_default() {
+        let envelope = ExecutionPayloadEnvelope::<E>::empty();
+        assert_eq!(envelope.payload, ExecutionPayloadGloas::default());
+        assert_eq!(envelope.execution_requests, ExecutionRequests::default());
+    }
+
+    #[test]
+    fn ssz_roundtrip_non_default() {
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 42;
+        envelope.slot = Slot::new(100);
+        envelope.beacon_block_root = Hash256::repeat_byte(0xaa);
+        envelope.state_root = Hash256::repeat_byte(0xbb);
+        envelope.payload.block_hash = ExecutionBlockHash::repeat_byte(0xcc);
+
+        let bytes = envelope.as_ssz_bytes();
+        let decoded = ExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(envelope, decoded);
+        assert_eq!(decoded.builder_index, 42);
+        assert_eq!(decoded.slot, Slot::new(100));
+        assert_eq!(
+            decoded.payload.block_hash,
+            ExecutionBlockHash::repeat_byte(0xcc)
+        );
+    }
+
+    #[test]
+    fn ssz_roundtrip_self_build() {
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = u64::MAX; // BUILDER_INDEX_SELF_BUILD
+
+        let bytes = envelope.as_ssz_bytes();
+        let decoded = ExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(decoded.builder_index, u64::MAX);
+    }
+
+    #[test]
+    fn ssz_roundtrip_random() {
+        use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+        let mut rng = XorShiftRng::from_seed([42; 16]);
+        let envelope = ExecutionPayloadEnvelope::<E>::random_for_test(&mut rng);
+
+        let bytes = envelope.as_ssz_bytes();
+        let decoded = ExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(envelope, decoded);
+    }
+
+    #[test]
+    fn tree_hash_changes_with_builder_index() {
+        let mut env1 = ExecutionPayloadEnvelope::<E>::empty();
+        let mut env2 = ExecutionPayloadEnvelope::<E>::empty();
+        env1.builder_index = 1;
+        env2.builder_index = 2;
+        assert_ne!(env1.tree_hash_root(), env2.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_changes_with_state_root() {
+        let mut env1 = ExecutionPayloadEnvelope::<E>::empty();
+        let mut env2 = ExecutionPayloadEnvelope::<E>::empty();
+        env1.state_root = Hash256::repeat_byte(0x01);
+        env2.state_root = Hash256::repeat_byte(0x02);
+        assert_ne!(env1.tree_hash_root(), env2.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 7;
+        envelope.slot = Slot::new(42);
+        assert_eq!(envelope.tree_hash_root(), envelope.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_preserves_equality() {
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 99;
+        envelope.beacon_block_root = Hash256::repeat_byte(0xdd);
+        assert_eq!(envelope, envelope.clone());
+    }
+
+    #[test]
+    fn different_slots_not_equal() {
+        let mut env1 = ExecutionPayloadEnvelope::<E>::empty();
+        let mut env2 = ExecutionPayloadEnvelope::<E>::empty();
+        env1.slot = Slot::new(1);
+        env2.slot = Slot::new(2);
+        assert_ne!(env1, env2);
     }
 }

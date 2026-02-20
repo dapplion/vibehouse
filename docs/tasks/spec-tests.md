@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 75 ePBS Gloas type unit tests across 8 files (run 55)
+- Added comprehensive behavioral tests to 8 ePBS type files that previously had only SSZ macro tests:
+  - `payload_attestation.rs` (11 new): `num_attesters()` with bits set, all bits set, `payload_present`/`blob_data_available` flags (individual and combined), SSZ roundtrip with set bits, tree hash sensitivity to bit changes and flag changes, determinism, clone equality, slot inequality
+  - `payload_attestation_data.rs` (7 new): SSZ roundtrip for each flag combination (`payload_present`, `blob_data_available`, both), tree hash sensitivity to each flag, equality/clone, default field verification
+  - `payload_attestation_message.rs` (9 new): default equals empty, non-zero `validator_index`, max `validator_index` (u64::MAX), SSZ roundtrip with `payload_present`, SSZ roundtrip with `blob_data_available`, tree hash changes with validator index, determinism, clone equality, flag inequality
+  - `indexed_payload_attestation.rs` (12 new): **fixed documented gap** — unsorted indices detection via SSZ decode (`[10, 5]` → `is_sorted()` returns false), duplicate indices detection (`[5, 5]` → fails strict `<` check), ascending sorted verification, `num_attesters()` counting, SSZ roundtrip with indices and both flags, tree hash sensitivity, determinism, clone equality, index inequality
+  - `execution_payload_bid.rs` (9 new): default fields are zero (all 11 fields checked), SSZ roundtrip with non-default values, self-build sentinel value (`builder_index = u64::MAX`), tree hash changes with value/block_hash, determinism, clone equality, slot/builder_index inequality
+  - `signed_execution_payload_bid.rs` (7 new): `empty()` field verification (including `signature.is_empty()`), SSZ roundtrip empty and non-default bid, self-build bid roundtrip, tree hash changes with bid value, determinism, clone equality
+  - `execution_payload_envelope.rs` (11 new): default equals empty, empty payload is default, SSZ roundtrip non-default (builder_index, slot, block_hash), self-build roundtrip, random TestRandom roundtrip, tree hash changes with builder_index/state_root, determinism, clone equality, slot inequality
+  - `signed_execution_payload_envelope.rs` (10 new): default equals empty, empty has default message fields, SSZ roundtrip empty and non-default, random TestRandom roundtrip, self-build builder_index, tree hash changes with builder_index, determinism, clone equality, message inequality
+- All 579 types tests pass (was 504)
+
 ### 2026-02-20 — 13 SignedBeaconBlock Gloas blinding + conversion tests (run 52)
 - Added 13 unit tests to `signed_beacon_block.rs` (previously had only 2 tests, neither covering Gloas):
   - Blinding roundtrip: Full→Blinded→Full preserves block equality and tree hash root

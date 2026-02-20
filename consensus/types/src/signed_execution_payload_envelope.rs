@@ -57,7 +57,11 @@ impl<E: EthSpec> TestRandom for SignedExecutionPayloadEnvelope<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MainnetEthSpec;
+    use crate::{Hash256, MainnetEthSpec, MinimalEthSpec, Slot};
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
 
     ssz_and_tree_hash_tests!(SignedExecutionPayloadEnvelope<MainnetEthSpec>);
 
@@ -66,5 +70,96 @@ mod tests {
         let signed_envelope = SignedExecutionPayloadEnvelope::<MainnetEthSpec>::empty();
         assert_eq!(signed_envelope.message.builder_index, 0);
         assert!(signed_envelope.signature.is_empty());
+    }
+
+    #[test]
+    fn default_equals_empty() {
+        let a = SignedExecutionPayloadEnvelope::<E>::default();
+        let b = SignedExecutionPayloadEnvelope::<E>::empty();
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn empty_has_default_message() {
+        let signed = SignedExecutionPayloadEnvelope::<E>::empty();
+        assert_eq!(signed.message, ExecutionPayloadEnvelope::empty());
+        assert_eq!(signed.message.slot, Slot::new(0));
+        assert_eq!(signed.message.beacon_block_root, Hash256::ZERO);
+        assert_eq!(signed.message.state_root, Hash256::ZERO);
+    }
+
+    #[test]
+    fn ssz_roundtrip_empty() {
+        let signed = SignedExecutionPayloadEnvelope::<E>::empty();
+        let bytes = signed.as_ssz_bytes();
+        let decoded = SignedExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(signed, decoded);
+    }
+
+    #[test]
+    fn ssz_roundtrip_non_default() {
+        let mut signed = SignedExecutionPayloadEnvelope::<E>::empty();
+        signed.message.builder_index = 42;
+        signed.message.slot = Slot::new(100);
+        signed.message.beacon_block_root = Hash256::repeat_byte(0xaa);
+        signed.message.state_root = Hash256::repeat_byte(0xbb);
+
+        let bytes = signed.as_ssz_bytes();
+        let decoded = SignedExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(signed, decoded);
+        assert_eq!(decoded.message.builder_index, 42);
+    }
+
+    #[test]
+    fn ssz_roundtrip_random() {
+        use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+        let mut rng = XorShiftRng::from_seed([42; 16]);
+        let signed = SignedExecutionPayloadEnvelope::<E>::random_for_test(&mut rng);
+
+        let bytes = signed.as_ssz_bytes();
+        let decoded = SignedExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(signed, decoded);
+    }
+
+    #[test]
+    fn self_build_builder_index() {
+        let mut signed = SignedExecutionPayloadEnvelope::<E>::empty();
+        signed.message.builder_index = u64::MAX; // BUILDER_INDEX_SELF_BUILD
+
+        let bytes = signed.as_ssz_bytes();
+        let decoded = SignedExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(decoded.message.builder_index, u64::MAX);
+    }
+
+    #[test]
+    fn tree_hash_changes_with_builder_index() {
+        let mut s1 = SignedExecutionPayloadEnvelope::<E>::empty();
+        let mut s2 = SignedExecutionPayloadEnvelope::<E>::empty();
+        s1.message.builder_index = 1;
+        s2.message.builder_index = 2;
+        assert_ne!(s1.tree_hash_root(), s2.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let mut signed = SignedExecutionPayloadEnvelope::<E>::empty();
+        signed.message.builder_index = 7;
+        assert_eq!(signed.tree_hash_root(), signed.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_preserves_equality() {
+        let mut signed = SignedExecutionPayloadEnvelope::<E>::empty();
+        signed.message.builder_index = 99;
+        assert_eq!(signed, signed.clone());
+    }
+
+    #[test]
+    fn different_messages_not_equal() {
+        let mut s1 = SignedExecutionPayloadEnvelope::<E>::empty();
+        let mut s2 = SignedExecutionPayloadEnvelope::<E>::empty();
+        s1.message.slot = Slot::new(1);
+        s2.message.slot = Slot::new(2);
+        assert_ne!(s1, s2);
     }
 }
