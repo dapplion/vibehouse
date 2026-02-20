@@ -12,9 +12,12 @@ use beacon_chain::gloas_verification::{
     ExecutionBidError, PayloadAttestationError, PayloadEnvelopeError,
 };
 use beacon_chain::test_utils::{
-    AttestationStrategy, BeaconChainHarness, BlockStrategy, EphemeralHarnessType, test_spec,
+    AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_ETH1_BLOCK_HASH,
+    EphemeralHarnessType, HARNESS_GENESIS_TIME, InteropGenesisBuilder, test_spec,
 };
+use execution_layer::test_utils::generate_genesis_header;
 use std::sync::{Arc, LazyLock};
+use tree_hash::TreeHash;
 use types::*;
 
 type E = MainnetEthSpec;
@@ -44,6 +47,87 @@ async fn gloas_harness(num_blocks: usize) -> BeaconChainHarness<EphemeralHarness
         .spec(Arc::new(spec))
         .keypairs(KEYPAIRS[0..VALIDATOR_COUNT].to_vec())
         .fresh_ephemeral_store()
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: true,
+            ..ChainConfig::default()
+        })
+        .build();
+
+    harness.advance_slot();
+
+    if num_blocks > 0 {
+        harness
+            .extend_chain(
+                num_blocks,
+                BlockStrategy::OnCanonicalHead,
+                AttestationStrategy::AllValidators,
+            )
+            .await;
+    }
+
+    harness
+}
+
+/// Extra keypairs for builder identities (separate from validator keypairs).
+static BUILDER_KEYPAIRS: LazyLock<Vec<Keypair>> = LazyLock::new(|| {
+    types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT + 4)[VALIDATOR_COUNT..]
+        .to_vec()
+});
+
+/// Build a Gloas harness with builders injected into the genesis state.
+///
+/// `builders`: slice of `(deposit_epoch, balance)` tuples.
+/// Each builder gets a pubkey from `BUILDER_KEYPAIRS` and `withdrawable_epoch = FAR_FUTURE_EPOCH`.
+/// The chain runs `num_blocks` blocks. For builders to be active, `deposit_epoch < finalized_epoch`,
+/// so `num_blocks` must be large enough for finalization (typically >= 96 for MainnetEthSpec).
+async fn gloas_harness_with_builders(
+    num_blocks: usize,
+    builders: &[(u64, u64)],
+) -> BeaconChainHarness<EphemeralHarnessType<E>> {
+    let spec = test_spec::<E>();
+    assert!(
+        spec.gloas_fork_epoch == Some(Epoch::new(0)),
+        "tests require FORK_NAME=gloas"
+    );
+    let spec_arc = Arc::new(spec.clone());
+
+    // Build genesis state from the interop builder
+    let header = generate_genesis_header::<E>(&spec, false);
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &KEYPAIRS[0..VALIDATOR_COUNT],
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject builders into the Gloas state
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    for (i, &(deposit_epoch, balance)) in builders.iter().enumerate() {
+        let builder = Builder {
+            pubkey: BUILDER_KEYPAIRS[i].pk.clone().into(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance,
+            deposit_epoch: Epoch::new(deposit_epoch),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        gloas_state
+            .builders
+            .push(builder)
+            .expect("should push builder");
+    }
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let harness = BeaconChainHarness::builder(MainnetEthSpec)
+        .spec(spec_arc)
+        .keypairs(KEYPAIRS[0..VALIDATOR_COUNT].to_vec())
+        .genesis_state_ephemeral_store(state)
         .mock_execution_layer()
         .chain_config(ChainConfig {
             reconstruct_historic_states: true,
@@ -258,6 +342,244 @@ async fn bid_slot_one_behind_rejected() {
     );
 }
 
+// -----------------------------------------------------------------------------
+// Bid error variants requiring builders in state
+// -----------------------------------------------------------------------------
+
+#[tokio::test]
+async fn bid_inactive_builder() {
+    // Builder with deposit_epoch=5, finalized_epoch=0 at genesis → 5 < 0 is false → inactive
+    // No need for finalization since the builder's deposit_epoch is in the future
+    let harness = gloas_harness_with_builders(1, &[(5, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0; // first builder
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject inactive builder",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::InactiveBuilder { builder_index: 0 }),
+        "expected InactiveBuilder, got {:?}",
+        err
+    );
+}
+
+/// Number of blocks to extend the chain by to achieve finalization.
+/// With MainnetEthSpec (32 slots/epoch) and 24 validators all attesting,
+/// finalization occurs at epoch 2 after ~128 blocks (4 epochs).
+const BLOCKS_TO_FINALIZE: usize = 128;
+
+#[tokio::test]
+async fn bid_insufficient_builder_balance() {
+    // Active builder (deposit_epoch=0) needs finalized_epoch > 0 to be active.
+    // Builder[0] has balance=50, Builder[1] has balance=1_000_000 (for other tests to reuse)
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 50), (0, 1_000_000)]).await;
+
+    let finalized_epoch = harness
+        .chain
+        .canonical_head
+        .cached_head()
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized, got finalized_epoch={finalized_epoch}"
+    );
+
+    let current_slot = harness.chain.slot().unwrap();
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100; // exceeds balance of 50
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject insufficient balance",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::InsufficientBuilderBalance {
+                builder_index: 0,
+                balance: 50,
+                bid_value: 100,
+            }
+        ),
+        "expected InsufficientBuilderBalance, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn bid_duplicate_via_gossip_path() {
+    // Active builder with sufficient balance (needs finalization for active)
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+
+    // Pre-seed the observation tracker with this bid's tree hash root
+    let bid_root = bid.tree_hash_root();
+    harness
+        .chain
+        .observed_execution_bids
+        .lock()
+        .observe_bid(current_slot, 0, bid_root);
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject duplicate bid",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::DuplicateBid { .. }),
+        "expected DuplicateBid, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn bid_equivocation_via_gossip_path() {
+    // Active builder with sufficient balance
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    // Pre-seed the observation tracker with a different bid root for same builder/slot
+    let existing_root = Hash256::from_low_u64_be(0x1111);
+    harness
+        .chain
+        .observed_execution_bids
+        .lock()
+        .observe_bid(current_slot, 0, existing_root);
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject equivocating bid",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::BuilderEquivocation {
+                builder_index: 0,
+                ..
+            }
+        ),
+        "expected BuilderEquivocation, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn bid_invalid_parent_root() {
+    // Active builder with sufficient balance, bid passes all checks except parent root
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+    bid.message.parent_block_root = Hash256::from_low_u64_be(0xbadbeef);
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject invalid parent root",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::InvalidParentRoot { .. }),
+        "expected InvalidParentRoot, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn bid_invalid_signature() {
+    // Active builder, correct parent root, but invalid signature
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+    bid.message.parent_block_root = head_root;
+    // signature is Signature::empty() which is not valid for this message
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject invalid signature",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::InvalidSignature),
+        "expected InvalidSignature, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn bid_valid_signature_passes() {
+    // Active builder, correct parent root, valid signature → should pass all checks
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let bid_msg = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+
+    // Sign with the builder's secret key
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = bid_msg.signing_root(domain);
+    let signature = BUILDER_KEYPAIRS[0].sk.sign(signing_root);
+
+    let bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature,
+    };
+
+    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    assert!(
+        result.is_ok(),
+        "valid bid should pass all checks, got {:?}",
+        result.err()
+    );
+}
+
 // =============================================================================
 // verify_payload_attestation_for_gossip tests
 // =============================================================================
@@ -374,6 +696,66 @@ async fn attestation_valid_slot_passes_slot_check() {
                 | PayloadAttestationError::EmptyAggregationBits
         ),
         "valid slot should pass early checks, got {:?}",
+        err
+    );
+}
+
+// -----------------------------------------------------------------------------
+// Payload attestation: equivocation via gossip path
+// -----------------------------------------------------------------------------
+
+#[tokio::test]
+async fn attestation_validator_equivocation() {
+    // Build a chain with a few blocks so the head block root is known in fork choice
+    let harness = gloas_harness(2).await;
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Get the PTC committee for the head slot
+    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+        state,
+        head_slot,
+        &harness.chain.spec,
+    )
+    .expect("should compute PTC committee");
+
+    assert!(!ptc_indices.is_empty(), "PTC committee should not be empty");
+
+    let ptc_validator = ptc_indices[0];
+
+    // Pre-seed the observation tracker with an attestation from this validator (payload_present=true)
+    harness
+        .chain
+        .observed_payload_attestations
+        .lock()
+        .observe_attestation(head_slot, head_root, ptc_validator, true);
+
+    // Now submit an attestation from the same validator with payload_present=false (equivocation)
+    let mut attestation = PayloadAttestation::<E>::empty();
+    attestation.data.slot = head_slot;
+    attestation.data.beacon_block_root = head_root;
+    attestation.data.payload_present = false; // different from pre-seeded true
+    attestation.aggregation_bits.set(0, true).unwrap();
+
+    let err = unwrap_err(
+        harness
+            .chain
+            .verify_payload_attestation_for_gossip(attestation),
+        "should reject equivocating attestation",
+    );
+    assert!(
+        matches!(
+            err,
+            PayloadAttestationError::ValidatorEquivocation {
+                validator_index,
+                slot,
+                ..
+            } if validator_index == ptc_validator && slot == head_slot
+        ),
+        "expected ValidatorEquivocation for validator {}, got {:?}",
+        ptc_validator,
         err
     );
 }
