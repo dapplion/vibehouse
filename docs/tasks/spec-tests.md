@@ -282,6 +282,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - SSZ static test handler split into separate Fulu and Gloas handlers
 - Commit: `b7ce41079`
 
+### 2026-02-20 — 21 PubsubMessage Gloas gossip encode/decode tests (run 54)
+- Added 21 unit tests for all 5 Gloas PubsubMessage variants + Gloas BeaconBlock
+- Tests cover: SSZ round-trip encode/decode, kind() mapping, pre-Gloas fork rejection, invalid SSZ data
+- Variants tested: ExecutionBid, ExecutionPayload (envelope), PayloadAttestation, ProposerPreferences, ExecutionProof
+- Uses ForkContext with Gloas enabled vs pre-Gloas to verify fork-gating in decode()
+
 ### 2026-02-15 — 76/77 passing
 - All gloas fork_choice_reorg tests fixed (root, payload_status model correct)
 - Added known-failure skips for 3 altair tests (upstream also hasn't fixed)
