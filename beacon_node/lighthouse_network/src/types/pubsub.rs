@@ -593,3 +593,330 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::test_utils::TestRandom;
+    use types::{
+        Epoch, ExecutionBlockHash, ExecutionProofSubnetId, ForkContext, Hash256, MainnetEthSpec,
+        Slot,
+    };
+
+    type E = MainnetEthSpec;
+
+    /// Create a ForkContext with all forks enabled including Gloas.
+    fn gloas_fork_context() -> ForkContext {
+        let mut spec = E::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(1));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(2));
+        spec.capella_fork_epoch = Some(Epoch::new(3));
+        spec.deneb_fork_epoch = Some(Epoch::new(4));
+        spec.electra_fork_epoch = Some(Epoch::new(5));
+        spec.fulu_fork_epoch = Some(Epoch::new(6));
+        spec.gloas_fork_epoch = Some(Epoch::new(7));
+        let genesis_root = Hash256::ZERO;
+        let slot = Slot::new(7 * E::slots_per_epoch());
+        ForkContext::new::<E>(slot, genesis_root, &spec)
+    }
+
+    /// Create a ForkContext where the latest fork is Fulu (pre-Gloas).
+    fn pre_gloas_fork_context() -> ForkContext {
+        let mut spec = E::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(1));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(2));
+        spec.capella_fork_epoch = Some(Epoch::new(3));
+        spec.deneb_fork_epoch = Some(Epoch::new(4));
+        spec.electra_fork_epoch = Some(Epoch::new(5));
+        spec.fulu_fork_epoch = Some(Epoch::new(6));
+        let genesis_root = Hash256::ZERO;
+        let slot = Slot::new(6 * E::slots_per_epoch());
+        ForkContext::new::<E>(slot, genesis_root, &spec)
+    }
+
+    /// Build a topic hash for the given gossip kind at the current fork digest.
+    fn gloas_topic(fork_context: &ForkContext, kind: GossipKind) -> TopicHash {
+        let topic = GossipTopic::new(
+            kind,
+            GossipEncoding::SSZSnappy,
+            fork_context.current_fork_digest(),
+        );
+        TopicHash::from_raw(topic.to_string())
+    }
+
+    // ── ExecutionBid round-trip ──
+
+    #[test]
+    fn encode_decode_execution_bid() {
+        let fork_context = gloas_fork_context();
+        let mut rng = rand::rng();
+        let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid.clone()));
+
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionBid);
+        let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
+            .expect("should decode ExecutionBid");
+
+        assert_eq!(decoded, msg);
+    }
+
+    #[test]
+    fn execution_bid_kind() {
+        let mut rng = rand::rng();
+        let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid));
+        assert_eq!(msg.kind(), GossipKind::ExecutionBid);
+    }
+
+    #[test]
+    fn execution_bid_rejected_pre_gloas() {
+        let fork_context = pre_gloas_fork_context();
+        let mut rng = rand::rng();
+        let bid = SignedExecutionPayloadBid::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ExecutionBid(Box::new(bid));
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionBid);
+        let result = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context);
+        assert!(result.is_err());
+    }
+
+    // ── ExecutionPayload (envelope) round-trip ──
+
+    #[test]
+    fn encode_decode_execution_payload_envelope() {
+        let fork_context = gloas_fork_context();
+        let mut rng = rand::rng();
+        let envelope = SignedExecutionPayloadEnvelope::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ExecutionPayload(Box::new(envelope.clone()));
+
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionPayload);
+        let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
+            .expect("should decode ExecutionPayload");
+
+        assert_eq!(decoded, msg);
+    }
+
+    #[test]
+    fn execution_payload_kind() {
+        let mut rng = rand::rng();
+        let envelope = SignedExecutionPayloadEnvelope::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ExecutionPayload(Box::new(envelope));
+        assert_eq!(msg.kind(), GossipKind::ExecutionPayload);
+    }
+
+    #[test]
+    fn execution_payload_rejected_pre_gloas() {
+        let fork_context = pre_gloas_fork_context();
+        let mut rng = rand::rng();
+        let envelope = SignedExecutionPayloadEnvelope::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ExecutionPayload(Box::new(envelope));
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionPayload);
+        let result = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context);
+        assert!(result.is_err());
+    }
+
+    // ── PayloadAttestation round-trip ──
+
+    #[test]
+    fn encode_decode_payload_attestation() {
+        let fork_context = gloas_fork_context();
+        let mut rng = rand::rng();
+        let attestation = PayloadAttestation::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(attestation.clone()));
+
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::PayloadAttestation);
+        let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
+            .expect("should decode PayloadAttestation");
+
+        assert_eq!(decoded, msg);
+    }
+
+    #[test]
+    fn payload_attestation_kind() {
+        let mut rng = rand::rng();
+        let attestation = PayloadAttestation::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(attestation));
+        assert_eq!(msg.kind(), GossipKind::PayloadAttestation);
+    }
+
+    #[test]
+    fn payload_attestation_rejected_pre_gloas() {
+        let fork_context = pre_gloas_fork_context();
+        let mut rng = rand::rng();
+        let attestation = PayloadAttestation::<E>::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(attestation));
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::PayloadAttestation);
+        let result = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context);
+        assert!(result.is_err());
+    }
+
+    // ── ProposerPreferences round-trip ──
+
+    #[test]
+    fn encode_decode_proposer_preferences() {
+        let fork_context = gloas_fork_context();
+        let mut rng = rand::rng();
+        let prefs = SignedProposerPreferences::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ProposerPreferences(Box::new(prefs.clone()));
+
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ProposerPreferences);
+        let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
+            .expect("should decode ProposerPreferences");
+
+        assert_eq!(decoded, msg);
+    }
+
+    #[test]
+    fn proposer_preferences_kind() {
+        let mut rng = rand::rng();
+        let prefs = SignedProposerPreferences::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ProposerPreferences(Box::new(prefs));
+        assert_eq!(msg.kind(), GossipKind::ProposerPreferences);
+    }
+
+    #[test]
+    fn proposer_preferences_rejected_pre_gloas() {
+        let fork_context = pre_gloas_fork_context();
+        let mut rng = rand::rng();
+        let prefs = SignedProposerPreferences::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::ProposerPreferences(Box::new(prefs));
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ProposerPreferences);
+        let result = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context);
+        assert!(result.is_err());
+    }
+
+    // ── ExecutionProof round-trip ──
+
+    #[test]
+    fn encode_decode_execution_proof() {
+        let fork_context = gloas_fork_context();
+        let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+        let proof = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from_root(Hash256::random()),
+            subnet_id,
+            1,
+            vec![0xde, 0xad, 0xbe, 0xef],
+        );
+        let msg =
+            PubsubMessage::<E>::ExecutionProof(Box::new((subnet_id, Arc::new(proof.clone()))));
+
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionProof(subnet_id));
+        let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
+            .expect("should decode ExecutionProof");
+
+        match decoded {
+            PubsubMessage::ExecutionProof(data) => {
+                assert_eq!(*data.0, *subnet_id);
+                assert_eq!(*data.1, proof);
+            }
+            _ => panic!("expected ExecutionProof variant"),
+        }
+    }
+
+    #[test]
+    fn execution_proof_kind() {
+        let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+        let proof = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from_root(Hash256::random()),
+            subnet_id,
+            1,
+            vec![],
+        );
+        let msg = PubsubMessage::<E>::ExecutionProof(Box::new((subnet_id, Arc::new(proof))));
+        assert_eq!(msg.kind(), GossipKind::ExecutionProof(subnet_id));
+    }
+
+    #[test]
+    fn execution_proof_rejected_pre_gloas() {
+        let fork_context = pre_gloas_fork_context();
+        let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+        let proof = ExecutionProof::new(
+            Hash256::random(),
+            ExecutionBlockHash::from_root(Hash256::random()),
+            subnet_id,
+            1,
+            vec![0x01],
+        );
+        let msg = PubsubMessage::<E>::ExecutionProof(Box::new((subnet_id, Arc::new(proof))));
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionProof(subnet_id));
+        let result = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context);
+        assert!(result.is_err());
+    }
+
+    // ── Gloas BeaconBlock round-trip ──
+
+    #[test]
+    fn encode_decode_gloas_beacon_block() {
+        let fork_context = gloas_fork_context();
+        let mut rng = rand::rng();
+        let block = SignedBeaconBlockGloas::<E>::random_for_test(&mut rng);
+        let signed = SignedBeaconBlock::<E>::Gloas(block);
+        let msg = PubsubMessage::<E>::BeaconBlock(Arc::new(signed.clone()));
+
+        let encoded = msg.encode(GossipEncoding::SSZSnappy);
+        let topic = gloas_topic(&fork_context, GossipKind::BeaconBlock);
+        let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
+            .expect("should decode Gloas BeaconBlock");
+
+        match decoded {
+            PubsubMessage::BeaconBlock(decoded_block) => {
+                assert_eq!(*decoded_block, signed);
+            }
+            _ => panic!("expected BeaconBlock variant"),
+        }
+    }
+
+    // ── Invalid SSZ data ──
+
+    #[test]
+    fn execution_bid_invalid_ssz() {
+        let fork_context = gloas_fork_context();
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionBid);
+        let result = PubsubMessage::<E>::decode(&topic, &[0xff, 0x00], &fork_context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn execution_payload_invalid_ssz() {
+        let fork_context = gloas_fork_context();
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionPayload);
+        let result = PubsubMessage::<E>::decode(&topic, &[0xff, 0x00], &fork_context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn payload_attestation_invalid_ssz() {
+        let fork_context = gloas_fork_context();
+        let topic = gloas_topic(&fork_context, GossipKind::PayloadAttestation);
+        let result = PubsubMessage::<E>::decode(&topic, &[0xff, 0x00], &fork_context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn proposer_preferences_invalid_ssz() {
+        let fork_context = gloas_fork_context();
+        let topic = gloas_topic(&fork_context, GossipKind::ProposerPreferences);
+        let result = PubsubMessage::<E>::decode(&topic, &[0xff, 0x00], &fork_context);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn execution_proof_invalid_ssz() {
+        let fork_context = gloas_fork_context();
+        let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+        let topic = gloas_topic(&fork_context, GossipKind::ExecutionProof(subnet_id));
+        let result = PubsubMessage::<E>::decode(&topic, &[0xff, 0x00], &fork_context);
+        assert!(result.is_err());
+    }
+}
