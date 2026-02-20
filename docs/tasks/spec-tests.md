@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 11 per_block_processing Gloas orchestration + fork dispatch tests (run 46)
+- Added 11 unit tests to `per_block_processing.rs` for Gloas ePBS fork dispatch and block processing logic:
+  - `is_execution_enabled`: Gloas returns false (ePBS has no exec payload in proposer blocks), Fulu returns true (post-merge)
+  - `is_merge_transition_block`: always false for Gloas
+  - Block body accessors: Gloas body has `signed_execution_payload_bid` (not `execution_payload`), Fulu body has `execution_payload` (not bid)
+  - `process_withdrawals_gloas`: skips processing when parent block is empty (bid hash != latest hash), runs when parent block is full (hashes match)
+  - Fork dispatch routing: Gloas state takes `gloas_enabled()` path, Fulu state takes execution path
+- Also added `make_fulu_state()`, `make_gloas_block_body()`, `make_fulu_block_body()` test helpers
+- All 272 state_processing tests pass (was 261)
+
 ### 2026-02-20 — 22 ForkChoice wrapper method + Builder::is_active tests (run 42)
 - Added 17 unit tests to `fork_choice.rs` for the three Gloas `ForkChoice` wrapper methods:
   - `on_execution_bid`: 4 tests — unknown block root, slot mismatch, happy path (sets builder_index), resets payload_revealed, genesis block
