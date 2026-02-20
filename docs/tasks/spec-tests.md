@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-20 — 16 Gloas genesis initialization and expected withdrawals tests (run 37)
+- Added 9 unit tests for Gloas genesis initialization (`genesis.rs`):
+  - Tests the `initialize_beacon_state_from_eth1` code path with all forks at epoch 0 (including Gloas)
+  - Verifies: Gloas state variant, fork versions, Gloas-specific field initialization (builders, payments, availability bits), execution payload header block_hash propagation, validator activation, cache building, is_valid_genesis_state, sync committees
+  - Previously untested — EF genesis tests only run on `ForkName::Base`
+- Added 7 unit tests for `get_expected_withdrawals_gloas` withdrawal phases (`gloas.rs`):
+  - Phase 1: builder pending withdrawal, multiple builder pending withdrawals
+  - Phase 3: builder sweep (exited with balance, active not swept)
+  - Phase 4: validator sweep (excess balance partial withdrawal, fully withdrawable)
+  - Combined: withdrawals from multiple phases together
+  - Previously only 2 tests existed (matches-process-withdrawals, empty-when-parent-not-full)
+- All 214 state_processing tests pass
+
 ### 2026-02-20 — 26 gossip verification integration tests (gloas_verification.rs)
 - Added `gloas_verification.rs` integration test module in `beacon_node/beacon_chain/tests/`
 - Tests all three gossip verification functions:
