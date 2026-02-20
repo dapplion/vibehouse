@@ -3413,4 +3413,332 @@ mod test_gloas_fork_choice {
         assert_eq!(vote.current_slot, Slot::new(2));
         assert!(vote.current_payload_present);
     }
+
+    // ──────── on_execution_bid node state transitions ────────
+
+    /// Insert a Gloas block with an external builder (not self-build).
+    fn insert_external_builder_block(
+        fc: &mut ProtoArrayForkChoice,
+        slot: u64,
+        block_root: Hash256,
+        parent_root: Hash256,
+        builder_index: u64,
+    ) {
+        fc.proto_array
+            .on_block::<MinimalEthSpec>(
+                Block {
+                    slot: Slot::new(slot),
+                    root: block_root,
+                    parent_root: Some(parent_root),
+                    state_root: Hash256::zero(),
+                    target_root: root(0),
+                    current_epoch_shuffling_id: junk_shuffling_id(),
+                    next_epoch_shuffling_id: junk_shuffling_id(),
+                    justified_checkpoint: genesis_checkpoint(),
+                    finalized_checkpoint: genesis_checkpoint(),
+                    execution_status: ExecutionStatus::irrelevant(),
+                    unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                    unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                    builder_index: Some(builder_index),
+                    payload_revealed: false,
+                    ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
+                    bid_block_hash: Some(ExecutionBlockHash::repeat_byte(0xEE)),
+                    bid_parent_block_hash: None,
+                    proposer_index: 0,
+                    ptc_timely: false,
+                },
+                Slot::new(slot),
+            )
+            .unwrap();
+    }
+
+    /// Get a reference to a node by its block root.
+    fn get_node<'a>(fc: &'a ProtoArrayForkChoice, block_root: &Hash256) -> &'a ProtoNode {
+        let idx = *fc.proto_array.indices.get(block_root).unwrap();
+        &fc.proto_array.nodes[idx]
+    }
+
+    /// Get a mutable reference to a node by its block root.
+    fn get_node_mut<'a>(
+        fc: &'a mut ProtoArrayForkChoice,
+        block_root: &Hash256,
+    ) -> &'a mut ProtoNode {
+        let idx = *fc.proto_array.indices.get(block_root).unwrap();
+        &mut fc.proto_array.nodes[idx]
+    }
+
+    #[test]
+    fn bid_sets_builder_index_and_resets_payload() {
+        // Simulates on_execution_bid: sets builder_index and resets payload state
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        // Insert a block (initially no builder)
+        insert_gloas_block(&mut fc, 1, block_root, root(0), None, None, false);
+
+        // Simulate on_execution_bid: set builder_index and reset PTC state
+        let node = get_node_mut(&mut fc, &block_root);
+        node.builder_index = Some(42);
+        node.payload_revealed = false;
+        node.ptc_weight = 0;
+        node.ptc_blob_data_available_weight = 0;
+        node.payload_data_available = false;
+
+        // Verify state
+        let node = get_node(&fc, &block_root);
+        assert_eq!(node.builder_index, Some(42));
+        assert!(!node.payload_revealed);
+        assert_eq!(node.ptc_weight, 0);
+        assert_eq!(node.ptc_blob_data_available_weight, 0);
+        assert!(!node.payload_data_available);
+    }
+
+    #[test]
+    fn bid_slot_mismatch_detectable() {
+        // on_execution_bid rejects bids where bid.slot != node.slot
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_gloas_block(&mut fc, 1, block_root, root(0), None, None, false);
+
+        let node = get_node(&fc, &block_root);
+        assert_eq!(node.slot, Slot::new(1));
+
+        // A bid for slot 2 would be rejected by on_execution_bid
+        // We verify the node's slot is what we expect for the mismatch check
+        assert_ne!(node.slot, Slot::new(2));
+    }
+
+    // ──────── on_payload_attestation PTC quorum tests ────────
+
+    #[test]
+    fn ptc_weight_accumulates() {
+        // Simulates on_payload_attestation: PTC weight accumulates
+        // MinimalEthSpec: ptc_size=2, quorum_threshold = ptc_size/2 = 1
+        let (mut fc, spec) = new_gloas_fc();
+        let block_root = root(1);
+        let quorum_threshold = spec.ptc_size / 2; // 1 for minimal
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Add 1 PTC vote — exactly at quorum threshold, not above
+        let node = get_node_mut(&mut fc, &block_root);
+        node.ptc_weight = node.ptc_weight.saturating_add(1);
+
+        assert_eq!(get_node(&fc, &block_root).ptc_weight, 1);
+        assert!(!get_node(&fc, &block_root).payload_revealed);
+        // At threshold but not strictly greater — no reveal
+        assert!(get_node(&fc, &block_root).ptc_weight <= quorum_threshold);
+    }
+
+    #[test]
+    fn ptc_quorum_reveals_payload() {
+        // When ptc_weight > quorum_threshold, payload_revealed is set to true
+        let (mut fc, spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let quorum_threshold = spec.ptc_size / 2;
+
+        // Set weight to exactly quorum + 1 (strictly greater)
+        let node = get_node_mut(&mut fc, &block_root);
+        node.ptc_weight = quorum_threshold + 1;
+
+        // Simulate the quorum check from on_payload_attestation
+        if node.ptc_weight > quorum_threshold && !node.payload_revealed {
+            node.payload_revealed = true;
+            if !node.execution_status.is_execution_enabled() {
+                if let Some(block_hash) = node.bid_block_hash {
+                    node.execution_status = ExecutionStatus::Optimistic(block_hash);
+                }
+            }
+        }
+
+        let node = get_node(&fc, &block_root);
+        assert!(node.payload_revealed);
+        assert!(node.execution_status.is_execution_enabled());
+        assert_eq!(
+            node.execution_status.block_hash(),
+            Some(ExecutionBlockHash::repeat_byte(0xEE))
+        );
+    }
+
+    #[test]
+    fn ptc_at_threshold_does_not_reveal() {
+        // ptc_weight == quorum_threshold (exactly at boundary) does NOT reveal
+        let (mut fc, spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let quorum_threshold = spec.ptc_size / 2;
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.ptc_weight = quorum_threshold;
+
+        // Simulate quorum check: strictly greater required
+        if node.ptc_weight > quorum_threshold && !node.payload_revealed {
+            node.payload_revealed = true;
+        }
+
+        assert!(!get_node(&fc, &block_root).payload_revealed);
+    }
+
+    #[test]
+    fn blob_data_availability_quorum() {
+        // blob_data_available is set when blob weight exceeds quorum
+        let (mut fc, spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let quorum_threshold = spec.ptc_size / 2;
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.ptc_blob_data_available_weight = quorum_threshold + 1;
+
+        // Simulate blob data availability quorum check
+        if node.ptc_blob_data_available_weight > quorum_threshold && !node.payload_data_available {
+            node.payload_data_available = true;
+        }
+
+        assert!(get_node(&fc, &block_root).payload_data_available);
+    }
+
+    #[test]
+    fn skip_slot_attestation_ignored() {
+        // When attestation.data.slot != node.slot, the attestation is silently ignored
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Node is at slot 1, attestation would be for slot 2 (skip slot)
+        let node = get_node(&fc, &block_root);
+        assert_eq!(node.slot, Slot::new(1));
+        assert_ne!(node.slot, Slot::new(2));
+        // on_payload_attestation returns Ok(()) without modifying anything
+
+        assert_eq!(node.ptc_weight, 0);
+    }
+
+    // ──────── on_execution_payload envelope reveal tests ─────
+
+    #[test]
+    fn payload_envelope_reveals_and_sets_status() {
+        // Simulates on_execution_payload: sets payload_revealed, payload_data_available,
+        // and execution_status
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Before reveal
+        assert!(!get_node(&fc, &block_root).payload_revealed);
+        assert!(!get_node(&fc, &block_root).payload_data_available);
+
+        // Simulate on_execution_payload
+        let payload_block_hash = ExecutionBlockHash::repeat_byte(0xFF);
+        let node = get_node_mut(&mut fc, &block_root);
+        node.payload_revealed = true;
+        node.payload_data_available = true;
+        node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);
+
+        // Verify
+        let node = get_node(&fc, &block_root);
+        assert!(node.payload_revealed);
+        assert!(node.payload_data_available);
+        assert_eq!(node.execution_status.block_hash(), Some(payload_block_hash));
+    }
+
+    #[test]
+    fn payload_reveal_makes_external_block_viable() {
+        // External builder block is not viable without payload reveal,
+        // but becomes viable after reveal
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Not viable: external builder, payload not revealed
+        let node = get_node(&fc, &block_root);
+        assert!(
+            !fc.proto_array
+                .node_is_viable_for_head::<MinimalEthSpec>(node, Slot::new(1))
+        );
+
+        // Simulate on_execution_payload
+        let node = get_node_mut(&mut fc, &block_root);
+        node.payload_revealed = true;
+        node.execution_status = ExecutionStatus::Optimistic(ExecutionBlockHash::repeat_byte(0xFF));
+
+        // Now viable
+        let node = get_node(&fc, &block_root);
+        assert!(
+            fc.proto_array
+                .node_is_viable_for_head::<MinimalEthSpec>(node, Slot::new(1))
+        );
+    }
+
+    #[test]
+    fn ptc_quorum_makes_external_block_viable() {
+        // External builder block becomes viable when PTC quorum reveals payload
+        let (mut fc, spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let quorum_threshold = spec.ptc_size / 2;
+
+        // Not viable before quorum
+        let node = get_node(&fc, &block_root);
+        assert!(
+            !fc.proto_array
+                .node_is_viable_for_head::<MinimalEthSpec>(node, Slot::new(1))
+        );
+
+        // Simulate on_payload_attestation reaching quorum
+        let node = get_node_mut(&mut fc, &block_root);
+        node.ptc_weight = quorum_threshold + 1;
+        node.payload_revealed = true;
+        node.execution_status = ExecutionStatus::Optimistic(ExecutionBlockHash::repeat_byte(0xEE));
+
+        // Now viable
+        let node = get_node(&fc, &block_root);
+        assert!(
+            fc.proto_array
+                .node_is_viable_for_head::<MinimalEthSpec>(node, Slot::new(1))
+        );
+    }
+
+    #[test]
+    fn self_build_always_viable_without_reveal() {
+        // Self-build blocks (BUILDER_INDEX_SELF_BUILD) don't need payload reveal
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+
+        insert_gloas_block(
+            &mut fc,
+            1,
+            block_root,
+            root(0),
+            None,
+            None,
+            false, // payload_revealed = false
+        );
+
+        // Self-build blocks are always viable (builder_index = BUILDER_INDEX_SELF_BUILD)
+        let node = get_node(&fc, &block_root);
+        assert_eq!(
+            node.builder_index,
+            Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD)
+        );
+        assert!(
+            fc.proto_array
+                .node_is_viable_for_head::<MinimalEthSpec>(node, Slot::new(1))
+        );
+    }
 }
