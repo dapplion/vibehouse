@@ -956,3 +956,697 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
 
     Ok(withdrawals)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bls::FixedBytesExtended;
+    use ssz_types::BitVector;
+    use std::sync::Arc;
+    use types::{
+        Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
+        CACHED_EPOCHS, Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExitCache, FixedVector, Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache,
+        Signature, SignedExecutionPayloadBid, SlashingsCache, SyncCommittee, Vector,
+    };
+
+    type E = MinimalEthSpec;
+
+    /// Build a minimal Gloas state with `n` validators, each with `balance` Gwei,
+    /// and a single active builder at index 0 with `builder_balance` Gwei.
+    fn make_gloas_state(
+        num_validators: usize,
+        balance: u64,
+        builder_balance: u64,
+    ) -> (BeaconState<E>, ChainSpec) {
+        let spec = E::default_spec();
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8, epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        // Build validators and balances
+        let keypairs = types::test_utils::generate_deterministic_keypairs(num_validators);
+        let mut validators = Vec::with_capacity(num_validators);
+        let mut balances = Vec::with_capacity(num_validators);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: balance,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(balance);
+        }
+
+        // Create a builder
+        let builder = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: builder_balance,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+
+        let parent_root = Hash256::repeat_byte(0x01);
+        let parent_block_hash = ExecutionBlockHash::repeat_byte(0x02);
+        let randao_mix = Hash256::repeat_byte(0x03);
+
+        // Build randao_mixes fixed vector
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let mut randao_mixes = vec![Hash256::zero(); epochs_per_vector];
+        let mix_index = epoch.as_usize() % epochs_per_vector;
+        randao_mixes[mix_index] = randao_mix;
+
+        // SyncCommittee needs manual construction (no Default)
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root,
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(randao_mixes).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: Hash256::zero(),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid {
+                parent_block_hash,
+                parent_block_root: parent_root,
+                block_hash: ExecutionBlockHash::repeat_byte(0x04),
+                prev_randao: randao_mix,
+                slot,
+                ..Default::default()
+            },
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::new(vec![builder]).unwrap(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(
+                vec![0xFFu8; slots_per_hist / 8].into(),
+            )
+            .unwrap(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: parent_block_hash,
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        (state, spec)
+    }
+
+    /// Create a valid self-build bid for the given state.
+    fn make_self_build_bid(
+        state: &BeaconState<E>,
+        spec: &ChainSpec,
+    ) -> SignedExecutionPayloadBid<E> {
+        let state_gloas = state.as_gloas().unwrap();
+        let parent_root = state.latest_block_header().parent_root;
+        let randao_mix = *state.get_randao_mix(state.current_epoch()).unwrap();
+
+        SignedExecutionPayloadBid {
+            message: ExecutionPayloadBid {
+                builder_index: spec.builder_index_self_build,
+                value: 0,
+                parent_block_hash: state_gloas.latest_block_hash,
+                parent_block_root: parent_root,
+                block_hash: ExecutionBlockHash::repeat_byte(0x10),
+                prev_randao: randao_mix,
+                slot: state.slot(),
+                ..Default::default()
+            },
+            signature: Signature::infinity().unwrap(),
+        }
+    }
+
+    /// Create a valid builder bid (builder_index=0) for the given state.
+    fn make_builder_bid(
+        state: &BeaconState<E>,
+        _spec: &ChainSpec,
+        value: u64,
+    ) -> SignedExecutionPayloadBid<E> {
+        let state_gloas = state.as_gloas().unwrap();
+        let parent_root = state.latest_block_header().parent_root;
+        let randao_mix = *state.get_randao_mix(state.current_epoch()).unwrap();
+
+        SignedExecutionPayloadBid {
+            message: ExecutionPayloadBid {
+                builder_index: 0,
+                value,
+                parent_block_hash: state_gloas.latest_block_hash,
+                parent_block_root: parent_root,
+                block_hash: ExecutionBlockHash::repeat_byte(0x20),
+                prev_randao: randao_mix,
+                slot: state.slot(),
+                fee_recipient: Address::repeat_byte(0xCC),
+                ..Default::default()
+            },
+            signature: Signature::empty(),
+        }
+    }
+
+    // ── Self-build bid tests ────────────────────────────────────
+
+    #[test]
+    fn self_build_bid_valid() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_self_build_bid(&state, &spec);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(result.is_ok(), "valid self-build bid should succeed");
+
+        // Verify bid was cached in state
+        let cached_bid = &state.as_gloas().unwrap().latest_execution_payload_bid;
+        assert_eq!(cached_bid.builder_index, spec.builder_index_self_build);
+        assert_eq!(cached_bid.value, 0);
+    }
+
+    #[test]
+    fn self_build_bid_nonzero_value_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_self_build_bid(&state, &spec);
+        bid.message.value = 100;
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("self-build bid must have value = 0")
+        ));
+    }
+
+    #[test]
+    fn self_build_bid_non_infinity_signature_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_self_build_bid(&state, &spec);
+        bid.signature = Signature::empty(); // not infinity
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("G2_POINT_AT_INFINITY")
+        ));
+    }
+
+    // ── Builder bid validation tests ────────────────────────────
+
+    #[test]
+    fn builder_bid_valid_with_skip_signature() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "valid builder bid should succeed: {:?}",
+            result.err()
+        );
+
+        // Check pending payment was recorded
+        let state_gloas = state.as_gloas().unwrap();
+        let slot_index = E::slots_per_epoch() + (slot.as_u64() % E::slots_per_epoch());
+        let payment = state_gloas
+            .builder_pending_payments
+            .get(slot_index as usize)
+            .unwrap();
+        assert_eq!(payment.withdrawal.amount, 1_000_000_000);
+        assert_eq!(payment.withdrawal.builder_index, 0);
+    }
+
+    #[test]
+    fn builder_bid_zero_value_no_pending_payment() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 0);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(result.is_ok());
+
+        // No pending payment should be recorded for zero-value bid
+        let state_gloas = state.as_gloas().unwrap();
+        let slot_index = E::slots_per_epoch() + (slot.as_u64() % E::slots_per_epoch());
+        let payment = state_gloas
+            .builder_pending_payments
+            .get(slot_index as usize)
+            .unwrap();
+        assert_eq!(payment.withdrawal.amount, 0);
+    }
+
+    #[test]
+    fn builder_bid_nonexistent_builder_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        bid.message.builder_index = 99; // no such builder
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("does not exist")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_inactive_builder_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        // Make the builder inactive by setting withdrawable_epoch to past
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("not active")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_insufficient_balance_rejected() {
+        // Builder has min_deposit_amount + 100 gwei, bids 200 gwei
+        let min_deposit = E::default_spec().min_deposit_amount;
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, min_deposit + 100);
+        let bid = make_builder_bid(&state, &spec, 200);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("insufficient")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_balance_accounts_for_pending_withdrawals() {
+        let min_deposit = E::default_spec().min_deposit_amount;
+        let builder_balance = min_deposit + 1000;
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, builder_balance);
+
+        // Add a pending withdrawal for builder 0
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 500,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Bid for 600 should fail: available = builder_balance - min_deposit - 500 = 500 < 600
+        let bid = make_builder_bid(&state, &spec, 600);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("insufficient")
+        ));
+
+        // Bid for 400 should succeed: available = 500 >= 400
+        let bid = make_builder_bid(&state, &spec, 400);
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "bid within available balance should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn builder_bid_balance_accounts_for_pending_payments() {
+        let min_deposit = E::default_spec().min_deposit_amount;
+        let builder_balance = min_deposit + 1000;
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, builder_balance);
+
+        // Add a pending payment for builder 0
+        *state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(0)
+            .unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 500,
+                builder_index: 0,
+            },
+        };
+
+        // Bid for 600 should fail: available = 1000 - 500 = 500 < 600
+        let bid = make_builder_bid(&state, &spec, 600);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("insufficient")
+        ));
+    }
+
+    // ── Slot and parent validation tests ────────────────────────
+
+    #[test]
+    fn builder_bid_wrong_slot_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 0);
+        let wrong_slot = state.slot() + 1;
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            wrong_slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("slot")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_wrong_parent_block_hash_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 0);
+        bid.message.parent_block_hash = ExecutionBlockHash::repeat_byte(0xFF);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("parent_block_hash")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_wrong_parent_block_root_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 0);
+        bid.message.parent_block_root = Hash256::repeat_byte(0xFF);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("parent_block_root")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_wrong_prev_randao_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 0);
+        bid.message.prev_randao = Hash256::repeat_byte(0xFF);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("prev_randao")
+        ));
+    }
+
+    // ── Blob KZG commitments limit test ─────────────────────────
+
+    #[test]
+    fn builder_bid_too_many_blob_commitments_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 0);
+
+        // Add more blob commitments than allowed
+        let max_blobs = spec.max_blobs_per_block(state.current_epoch()) as usize;
+        let mut commitments = Vec::with_capacity(max_blobs + 1);
+        for _ in 0..=max_blobs {
+            commitments.push(types::KzgCommitment::empty_for_testing());
+        }
+        bid.message.blob_kzg_commitments = ssz_types::VariableList::new(commitments).unwrap();
+
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("blob_kzg_commitments")
+        ));
+    }
+
+    // ── is_parent_block_full tests ──────────────────────────────
+
+    #[test]
+    fn is_parent_block_full_when_hashes_match() {
+        let (state, _spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        // In our test state, latest_execution_payload_bid.block_hash != latest_block_hash
+        // because they're set to different values (0x04 vs 0x02)
+        let result = is_parent_block_full::<E>(&state).unwrap();
+        assert!(!result, "different hashes mean parent block is empty");
+
+        // Now make them match
+        let mut state2 = state.clone();
+        let state_gloas = state2.as_gloas_mut().unwrap();
+        state_gloas.latest_execution_payload_bid.block_hash = state_gloas.latest_block_hash;
+        let result = is_parent_block_full::<E>(&state2).unwrap();
+        assert!(result, "matching hashes mean parent block is full");
+    }
+
+    // ── State mutation tests ────────────────────────────────────
+
+    #[test]
+    fn bid_caches_latest_execution_payload_bid() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 500);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let cached = &state.as_gloas().unwrap().latest_execution_payload_bid;
+        assert_eq!(cached.builder_index, 0);
+        assert_eq!(cached.value, 500);
+        assert_eq!(cached.slot, slot);
+        assert_eq!(cached.block_hash, ExecutionBlockHash::repeat_byte(0x20));
+    }
+}
