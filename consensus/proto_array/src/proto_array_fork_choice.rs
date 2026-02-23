@@ -3741,4 +3741,366 @@ mod test_gloas_fork_choice {
                 .node_is_viable_for_head::<MinimalEthSpec>(node, Slot::new(1))
         );
     }
+
+    // ──────── should_extend_payload tests ─────────────────────
+
+    #[test]
+    fn should_extend_payload_timely_and_data_available() {
+        // When payload_revealed=true AND payload_data_available=true → true
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Set both flags
+        let node = get_node_mut(&mut fc, &block_root);
+        node.payload_revealed = true;
+        node.payload_data_available = true;
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_timely_but_not_data_available() {
+        // payload_revealed=true but payload_data_available=false → falls through
+        // to proposer boost checks. With no proposer boost → true.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.payload_revealed = true;
+        node.payload_data_available = false;
+
+        // No proposer boost (default is zero root) → should return true
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_no_proposer_boost_root() {
+        // When previous_proposer_boost.root is zero → true
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Ensure proposer_boost_root is zero (default)
+        assert!(fc.proto_array.previous_proposer_boost.root.is_zero());
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_boosted_parent_not_this_root() {
+        // Boosted block's parent is NOT the node we're checking → true
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_a = root(1);
+        let block_b = root(2); // boosted block
+        let block_c = root(3); // block_b's parent
+
+        // Chain: root(0) → block_c(slot=1) → block_b(slot=2)
+        insert_external_builder_block(&mut fc, 1, block_c, root(0), 42);
+        insert_external_builder_block(&mut fc, 2, block_b, block_c, 42);
+        // block_a is a separate branch
+        insert_external_builder_block(&mut fc, 1, block_a, root(0), 42);
+
+        // Set proposer boost to block_b — its parent is block_c, not block_a
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: block_b,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_a,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        // block_b's parent is block_c, not block_a → should extend
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_boosted_parent_is_this_root_and_full() {
+        // Boosted block's parent IS this root, and parent is already FULL (payload_revealed=true)
+        // → should extend (true)
+        let (mut fc, _spec) = new_gloas_fc();
+        let parent_block = root(1);
+        let child_block = root(2); // boosted block
+
+        // Chain: root(0) → parent_block(slot=1) → child_block(slot=2)
+        insert_external_builder_block(&mut fc, 1, parent_block, root(0), 42);
+        insert_external_builder_block(&mut fc, 2, child_block, parent_block, 42);
+
+        // Mark parent as FULL (payload revealed)
+        let parent_node = get_node_mut(&mut fc, &parent_block);
+        parent_node.payload_revealed = true;
+
+        // Set proposer boost to child_block
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: child_block,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: parent_block,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        // Parent is already FULL → should extend
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_boosted_parent_is_this_root_and_not_full() {
+        // Boosted block's parent IS this root, but parent is NOT FULL (payload_revealed=false)
+        // → should NOT extend (false)
+        let (mut fc, _spec) = new_gloas_fc();
+        let parent_block = root(1);
+        let child_block = root(2); // boosted block
+
+        // Chain: root(0) → parent_block(slot=1) → child_block(slot=2)
+        insert_external_builder_block(&mut fc, 1, parent_block, root(0), 42);
+        insert_external_builder_block(&mut fc, 2, child_block, parent_block, 42);
+
+        // Parent payload NOT revealed (default)
+        assert!(!get_node(&fc, &parent_block).payload_revealed);
+
+        // Set proposer boost to child_block
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: child_block,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: parent_block,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        // Parent NOT full → should NOT extend
+        assert!(!fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_boosted_block_not_in_fork_choice() {
+        // Proposer boost root points to a block NOT in fork choice → true
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Set proposer boost to unknown block
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: root(999),
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    #[test]
+    fn should_extend_payload_boosted_block_has_no_parent() {
+        // Boosted block has no parent → true
+        // The genesis block (root(0)) has parent=None in proto_array
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Set proposer boost to genesis (which was inserted at initialization with no parent)
+        // The genesis root for new_gloas_fc is the finalized checkpoint root
+        let genesis_root = genesis_checkpoint().root;
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: genesis_root,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        // Genesis has no parent → should extend
+        assert!(fc.should_extend_payload(&gloas_node));
+    }
+
+    // ──────── get_payload_tiebreaker tests ────────────────────
+
+    #[test]
+    fn tiebreaker_pending_returns_ordinal() {
+        // PENDING status always returns its ordinal value (0)
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        // Regardless of current_slot, PENDING returns ordinal
+        assert_eq!(
+            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)),
+            GloasPayloadStatus::Pending as u8
+        );
+        assert_eq!(
+            fc.get_payload_tiebreaker(&gloas_node, Slot::new(100)),
+            GloasPayloadStatus::Pending as u8
+        );
+    }
+
+    #[test]
+    fn tiebreaker_not_previous_slot_returns_ordinal() {
+        // When node is NOT at previous slot (current_slot - 1), return ordinal
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Block at slot 1, current_slot = 5 (not previous slot)
+        let empty_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        assert_eq!(
+            fc.get_payload_tiebreaker(&empty_node, Slot::new(5)),
+            GloasPayloadStatus::Empty as u8
+        );
+
+        let full_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert_eq!(
+            fc.get_payload_tiebreaker(&full_node, Slot::new(5)),
+            GloasPayloadStatus::Full as u8
+        );
+    }
+
+    #[test]
+    fn tiebreaker_previous_slot_empty_returns_1() {
+        // EMPTY at previous slot always returns 1 (favored)
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Empty,
+        };
+
+        // Block at slot 1, current_slot = 2 (previous slot)
+        assert_eq!(fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)), 1);
+    }
+
+    #[test]
+    fn tiebreaker_previous_slot_full_should_extend() {
+        // FULL at previous slot with should_extend_payload=true returns 2
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Make should_extend_payload return true by setting both flags
+        let node = get_node_mut(&mut fc, &block_root);
+        node.payload_revealed = true;
+        node.payload_data_available = true;
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // Block at slot 1, current_slot = 2 (previous slot)
+        assert_eq!(fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)), 2);
+    }
+
+    #[test]
+    fn tiebreaker_previous_slot_full_should_not_extend() {
+        // FULL at previous slot with should_extend_payload=false returns 0
+        let (mut fc, _spec) = new_gloas_fc();
+        let parent_block = root(1);
+        let child_block = root(2);
+
+        // Chain: root(0) → parent_block(slot=1) → child_block(slot=2)
+        insert_external_builder_block(&mut fc, 1, parent_block, root(0), 42);
+        insert_external_builder_block(&mut fc, 2, child_block, parent_block, 42);
+
+        // Parent NOT revealed (default)
+        assert!(!get_node(&fc, &parent_block).payload_revealed);
+
+        // Set proposer boost to child_block — its parent IS parent_block and NOT full
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: child_block,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: parent_block,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // Block at slot 1, current_slot = 2 (previous slot)
+        // should_extend_payload=false → tiebreaker returns 0
+        assert_eq!(fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)), 0);
+    }
+
+    #[test]
+    fn tiebreaker_ordering_previous_slot() {
+        // Verify the tiebreaker ordering at previous slot:
+        // When should_extend_payload=true: FULL(2) > EMPTY(1) > PENDING(0)
+        // When should_extend_payload=false: EMPTY(1) > PENDING(0) > FULL(0)
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Make should_extend_payload return true
+        let node = get_node_mut(&mut fc, &block_root);
+        node.payload_revealed = true;
+        node.payload_data_available = true;
+
+        let pending = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Pending,
+        };
+        let empty = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let full = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        let current_slot = Slot::new(2); // previous slot for block at slot 1
+        let tp = fc.get_payload_tiebreaker(&pending, current_slot);
+        let te = fc.get_payload_tiebreaker(&empty, current_slot);
+        let tf = fc.get_payload_tiebreaker(&full, current_slot);
+
+        // FULL > EMPTY > PENDING when extending
+        assert!(tf > te, "FULL({}) should beat EMPTY({})", tf, te);
+        assert!(te > tp, "EMPTY({}) should beat PENDING({})", te, tp);
+    }
+
+    #[test]
+    fn tiebreaker_unknown_root_returns_ordinal() {
+        // Node root not in fork choice — is_previous_slot check fails → ordinal
+        let (fc, _spec) = new_gloas_fc();
+
+        let gloas_node = GloasForkChoiceNode {
+            root: root(999),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // Unknown root → not at previous slot → returns ordinal
+        assert_eq!(
+            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)),
+            GloasPayloadStatus::Full as u8
+        );
+    }
 }
