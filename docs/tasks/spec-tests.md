@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-23 — 11 Gloas beacon_chain integration tests (run 60)
+- Added `gloas.rs` integration test module in `beacon_node/beacon_chain/tests/`
+- Tests the full beacon chain harness through Gloas fork transition and block production:
+  - `fulu_to_gloas_fork_transition`: blocks transition to Gloas variant at correct epoch
+  - `gloas_from_genesis`: all forks at epoch 0 produce Gloas blocks from genesis
+  - `gloas_self_build_block_production`: self-build blocks have BUILDER_INDEX_SELF_BUILD and value=0
+  - `gloas_state_fields_after_upgrade`: Gloas state has bid/builders/latest_block_hash, no execution_payload_header
+  - `gloas_multiple_consecutive_blocks`: full epoch of consecutive Gloas blocks
+  - `gloas_chain_finalizes`: chain finalizes after 5 epochs of Gloas blocks
+  - `gloas_fork_transition_preserves_finalization`: finalization continues past Fulu→Gloas boundary
+  - `gloas_block_has_no_execution_payload`: Gloas body has bid, not execution_payload
+  - `gloas_block_has_payload_attestations`: payload_attestations field accessible
+  - `gloas_fork_version_in_state`: fork versions correctly set (current=gloas, previous=fulu)
+  - `gloas_bid_slot_matches_block_slot`: bid slot matches block slot across multiple blocks
+- All 404 beacon_chain tests pass (including 34 gloas_verification + 11 new)
+
 ### 2026-02-23 — 25 ePBS pool + observation edge case tests (run 59)
 - Added 10 edge case tests to `execution_bid_pool.rs` (was 4, now 14):
   - Per-slot independence: best bid selection independent across slots
