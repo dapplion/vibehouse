@@ -225,4 +225,106 @@ mod tests {
         assert_eq!(cache.observed_slot_count(), 64);
         assert_eq!(cache.observed_bid_count(), 64);
     }
+
+    #[test]
+    fn test_multiple_builders_different_slots() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        let builder = 42;
+        let root_1 = Hash256::from_low_u64_be(1);
+        let root_2 = Hash256::from_low_u64_be(2);
+
+        // Same builder, different slots → both are New
+        let o1 = cache.observe_bid(Slot::new(10), builder, root_1);
+        let o2 = cache.observe_bid(Slot::new(11), builder, root_2);
+
+        assert_eq!(o1, BidObservationOutcome::New);
+        assert_eq!(o2, BidObservationOutcome::New);
+        assert_eq!(cache.observed_slot_count(), 2);
+        assert_eq!(cache.observed_bid_count(), 2);
+    }
+
+    #[test]
+    fn test_prune_at_zero() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        cache.observe_bid(Slot::new(0), 1, Hash256::from_low_u64_be(1));
+
+        cache.prune_old_slots(Slot::new(0));
+
+        // Slot 0 >= 0 - 64 (saturates to 0), so it's retained
+        assert_eq!(cache.observed_slot_count(), 1);
+    }
+
+    #[test]
+    fn test_prune_boundary_slot() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        // MAX_OBSERVED_SLOTS = 64, prune(70) keeps slots >= 6
+        cache.observe_bid(Slot::new(6), 1, Hash256::from_low_u64_be(1));
+        cache.observe_bid(Slot::new(5), 2, Hash256::from_low_u64_be(2));
+
+        cache.prune_old_slots(Slot::new(70));
+
+        assert_eq!(cache.observed_slot_count(), 1);
+        assert_eq!(cache.observed_bid_count(), 1);
+    }
+
+    #[test]
+    fn test_equivocation_preserves_original() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        let slot = Slot::new(100);
+        let builder = 42;
+        let root_1 = Hash256::from_low_u64_be(1);
+        let root_2 = Hash256::from_low_u64_be(2);
+        let root_3 = Hash256::from_low_u64_be(3);
+
+        cache.observe_bid(slot, builder, root_1);
+
+        // First equivocation
+        let o2 = cache.observe_bid(slot, builder, root_2);
+        assert!(matches!(
+            o2,
+            BidObservationOutcome::Equivocation {
+                existing_bid_root, ..
+            } if existing_bid_root == root_1
+        ));
+
+        // Third bid still equivocates against the original (root_1)
+        let o3 = cache.observe_bid(slot, builder, root_3);
+        assert!(matches!(
+            o3,
+            BidObservationOutcome::Equivocation {
+                existing_bid_root, ..
+            } if existing_bid_root == root_1
+        ));
+
+        // Only one bid stored per builder (the original)
+        assert_eq!(cache.observed_bid_count(), 1);
+    }
+
+    #[test]
+    fn test_clear_resets_state() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        cache.observe_bid(Slot::new(1), 1, Hash256::from_low_u64_be(1));
+        cache.observe_bid(Slot::new(2), 2, Hash256::from_low_u64_be(2));
+
+        cache.clear();
+
+        assert_eq!(cache.observed_slot_count(), 0);
+        assert_eq!(cache.observed_bid_count(), 0);
+
+        // After clear, a previously seen bid is New again
+        let outcome = cache.observe_bid(Slot::new(1), 1, Hash256::from_low_u64_be(1));
+        assert_eq!(outcome, BidObservationOutcome::New);
+    }
+
+    #[test]
+    fn test_prune_idempotent() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        cache.observe_bid(Slot::new(100), 1, Hash256::from_low_u64_be(1));
+
+        cache.prune_old_slots(Slot::new(100));
+        assert_eq!(cache.observed_bid_count(), 1);
+
+        cache.prune_old_slots(Slot::new(100));
+        assert_eq!(cache.observed_bid_count(), 1);
+    }
 }

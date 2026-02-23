@@ -253,4 +253,146 @@ mod tests {
         assert_eq!(cache.observed_slot_count(), 64);
         assert_eq!(cache.observed_attestation_count(), 64);
     }
+
+    #[test]
+    fn test_same_validator_different_slots() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let block_root = Hash256::from_low_u64_be(1);
+        let validator = 42;
+
+        let o1 = cache.observe_attestation(Slot::new(10), block_root, validator, true);
+        let o2 = cache.observe_attestation(Slot::new(11), block_root, validator, false);
+
+        // Different slots → both are New (no equivocation across slots)
+        assert_eq!(o1, AttestationObservationOutcome::New);
+        assert_eq!(o2, AttestationObservationOutcome::New);
+        assert_eq!(cache.observed_attestation_count(), 2);
+    }
+
+    #[test]
+    fn test_equivocation_false_then_true() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let slot = Slot::new(100);
+        let block_root = Hash256::from_low_u64_be(1);
+        let validator = 42;
+
+        // First: payload_present = false
+        cache.observe_attestation(slot, block_root, validator, false);
+
+        // Second: payload_present = true → equivocation
+        let outcome = cache.observe_attestation(slot, block_root, validator, true);
+        match outcome {
+            AttestationObservationOutcome::Equivocation {
+                existing_payload_present,
+                new_payload_present,
+            } => {
+                assert!(!existing_payload_present);
+                assert!(new_payload_present);
+            }
+            _ => panic!("Expected equivocation, got {:?}", outcome),
+        }
+    }
+
+    #[test]
+    fn test_duplicate_false() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let slot = Slot::new(100);
+        let block_root = Hash256::from_low_u64_be(1);
+        let validator = 42;
+
+        cache.observe_attestation(slot, block_root, validator, false);
+        let outcome = cache.observe_attestation(slot, block_root, validator, false);
+        assert_eq!(outcome, AttestationObservationOutcome::Duplicate);
+    }
+
+    #[test]
+    fn test_prune_at_zero() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let block_root = Hash256::from_low_u64_be(1);
+        cache.observe_attestation(Slot::new(0), block_root, 1, true);
+
+        cache.prune_old_slots(Slot::new(0));
+
+        // Slot 0 >= 0 - 64 (saturates to 0), so it's retained
+        assert_eq!(cache.observed_slot_count(), 1);
+    }
+
+    #[test]
+    fn test_prune_boundary_slot() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let block_root = Hash256::from_low_u64_be(1);
+        // MAX_OBSERVED_SLOTS = 64, prune(70) keeps slots >= 6
+        cache.observe_attestation(Slot::new(6), block_root, 1, true);
+        cache.observe_attestation(Slot::new(5), block_root, 2, true);
+
+        cache.prune_old_slots(Slot::new(70));
+
+        assert_eq!(cache.observed_slot_count(), 1);
+        assert_eq!(cache.observed_attestation_count(), 1);
+    }
+
+    #[test]
+    fn test_equivocation_preserves_original() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let slot = Slot::new(100);
+        let block_root = Hash256::from_low_u64_be(1);
+        let validator = 42;
+
+        cache.observe_attestation(slot, block_root, validator, true);
+
+        // Equivocate
+        cache.observe_attestation(slot, block_root, validator, false);
+
+        // Third observation with original value → still Duplicate (original preserved)
+        let outcome = cache.observe_attestation(slot, block_root, validator, true);
+        assert_eq!(outcome, AttestationObservationOutcome::Duplicate);
+
+        // Only one attestation stored
+        assert_eq!(cache.observed_attestation_count(), 1);
+    }
+
+    #[test]
+    fn test_clear_resets_state() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let block_root = Hash256::from_low_u64_be(1);
+        cache.observe_attestation(Slot::new(1), block_root, 1, true);
+        cache.observe_attestation(Slot::new(2), block_root, 2, false);
+
+        cache.clear();
+
+        assert_eq!(cache.observed_slot_count(), 0);
+        assert_eq!(cache.observed_attestation_count(), 0);
+
+        // After clear, previously seen attestation is New again
+        let outcome = cache.observe_attestation(Slot::new(1), block_root, 1, true);
+        assert_eq!(outcome, AttestationObservationOutcome::New);
+    }
+
+    #[test]
+    fn test_many_validators_same_block() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let slot = Slot::new(100);
+        let block_root = Hash256::from_low_u64_be(1);
+
+        for v in 0..512 {
+            let outcome = cache.observe_attestation(slot, block_root, v, true);
+            assert_eq!(outcome, AttestationObservationOutcome::New);
+        }
+
+        assert_eq!(cache.observed_attestation_count(), 512);
+        assert_eq!(cache.observed_slot_count(), 1);
+    }
+
+    #[test]
+    fn test_prune_idempotent() {
+        let mut cache = ObservedPayloadAttestations::<E>::new();
+        let block_root = Hash256::from_low_u64_be(1);
+        cache.observe_attestation(Slot::new(100), block_root, 1, true);
+
+        cache.prune_old_slots(Slot::new(100));
+        assert_eq!(cache.observed_attestation_count(), 1);
+
+        cache.prune_old_slots(Slot::new(100));
+        assert_eq!(cache.observed_attestation_count(), 1);
+    }
 }

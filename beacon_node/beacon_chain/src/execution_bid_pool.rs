@@ -152,4 +152,116 @@ mod tests {
         assert!(pool.get_best_bid(Slot::new(5)).is_none());
         assert!(pool.get_best_bid(Slot::new(10)).is_some());
     }
+
+    #[test]
+    fn best_bid_per_slot_independent() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(10, 1, 100));
+        pool.insert(make_bid(10, 2, 500));
+        pool.insert(make_bid(11, 3, 50));
+        pool.insert(make_bid(11, 4, 200));
+
+        assert_eq!(pool.get_best_bid(Slot::new(10)).unwrap().message.value, 500);
+        assert_eq!(pool.get_best_bid(Slot::new(11)).unwrap().message.value, 200);
+    }
+
+    #[test]
+    fn wrong_slot_returns_none() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(10, 1, 100));
+
+        assert!(pool.get_best_bid(Slot::new(11)).is_none());
+        assert!(pool.get_best_bid(Slot::new(9)).is_none());
+        assert!(pool.get_best_bid(Slot::new(0)).is_none());
+    }
+
+    #[test]
+    fn prune_boundary_slot_retained() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        // MAX_BID_POOL_SLOTS = 4, so prune(10) keeps slots >= 6
+        pool.insert(make_bid(6, 1, 100));
+        pool.insert(make_bid(5, 2, 200));
+
+        pool.prune(Slot::new(10));
+
+        // Slot 6 is at the boundary (10 - 4 = 6) — retained
+        assert!(pool.get_best_bid(Slot::new(6)).is_some());
+        // Slot 5 is below the boundary — pruned
+        assert!(pool.get_best_bid(Slot::new(5)).is_none());
+    }
+
+    #[test]
+    fn prune_at_zero_keeps_everything() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(0, 1, 100));
+        pool.insert(make_bid(1, 2, 200));
+
+        pool.prune(Slot::new(0));
+
+        assert_eq!(pool.total_bid_count(), 2);
+    }
+
+    #[test]
+    fn single_builder_is_best() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(10, 1, 42));
+
+        let best = pool.get_best_bid(Slot::new(10)).unwrap();
+        assert_eq!(best.message.value, 42);
+        assert_eq!(best.message.builder_index, 1);
+    }
+
+    #[test]
+    fn insert_then_prune_then_insert() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(1, 1, 100));
+        pool.prune(Slot::new(10));
+        assert_eq!(pool.total_bid_count(), 0);
+
+        pool.insert(make_bid(10, 2, 500));
+        assert_eq!(pool.total_bid_count(), 1);
+        assert_eq!(pool.get_best_bid(Slot::new(10)).unwrap().message.value, 500);
+    }
+
+    #[test]
+    fn many_builders_same_slot() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        for i in 0..100 {
+            pool.insert(make_bid(10, i, i * 10));
+        }
+
+        assert_eq!(pool.bid_count_for_slot(Slot::new(10)), 100);
+        let best = pool.get_best_bid(Slot::new(10)).unwrap();
+        assert_eq!(best.message.value, 990); // 99 * 10
+    }
+
+    #[test]
+    fn equal_value_bids_returns_one() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(10, 1, 100));
+        pool.insert(make_bid(10, 2, 100));
+        pool.insert(make_bid(10, 3, 100));
+
+        // Should return one of the three (all tied)
+        let best = pool.get_best_bid(Slot::new(10)).unwrap();
+        assert_eq!(best.message.value, 100);
+    }
+
+    #[test]
+    fn bid_count_for_empty_slot() {
+        let pool = ExecutionBidPool::<E>::new();
+        assert_eq!(pool.bid_count_for_slot(Slot::new(42)), 0);
+    }
+
+    #[test]
+    fn prune_idempotent() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(10, 1, 100));
+
+        pool.prune(Slot::new(10));
+        assert_eq!(pool.total_bid_count(), 1);
+
+        pool.prune(Slot::new(10));
+        assert_eq!(pool.total_bid_count(), 1);
+    }
 }
