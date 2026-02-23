@@ -2764,6 +2764,172 @@ mod tests {
             assert!(node.payload_revealed);
         }
 
+        // ── gloas_head_payload_status via get_head ─────────────────────
+
+        /// Create a ForkChoice with Gloas enabled and sufficient balances.
+        fn new_gloas_fc_with_balances(
+            num_validators: usize,
+        ) -> (ForkChoice<MockStore, E>, ChainSpec) {
+            let balance = 32_000_000_000u64;
+            let checkpoint = genesis_checkpoint();
+            let store = MockStore {
+                current_slot: Slot::new(0),
+                justified_checkpoint: checkpoint,
+                finalized_checkpoint: checkpoint,
+                justified_balances: JustifiedBalances {
+                    effective_balances: vec![balance; num_validators],
+                    total_effective_balance: balance * num_validators as u64,
+                    num_active_validators: num_validators as u64,
+                },
+                proposer_boost_root: Hash256::zero(),
+                equivocating_indices: BTreeSet::new(),
+            };
+            let proto_array = ProtoArrayForkChoice::new::<E>(
+                Slot::new(0),
+                Slot::new(0),
+                Hash256::zero(),
+                checkpoint,
+                checkpoint,
+                junk_shuffling_id(),
+                junk_shuffling_id(),
+                ExecutionStatus::irrelevant(),
+            )
+            .unwrap();
+
+            let mut spec = E::default_spec();
+            spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+            let fc = ForkChoice {
+                fc_store: store,
+                proto_array,
+                queued_attestations: vec![],
+                forkchoice_update_parameters: ForkchoiceUpdateParameters {
+                    head_root: root(0),
+                    head_hash: None,
+                    justified_hash: None,
+                    finalized_hash: None,
+                },
+                _phantom: PhantomData,
+            };
+
+            (fc, spec)
+        }
+
+        /// Insert a Gloas self-build block with bid hashes into fork choice.
+        fn insert_gloas_block_for_head(
+            fc: &mut ForkChoice<MockStore, E>,
+            slot: u64,
+            block_root: Hash256,
+            parent_root: Hash256,
+            bid_block_hash: Option<ExecutionBlockHash>,
+            bid_parent_block_hash: Option<ExecutionBlockHash>,
+            payload_revealed: bool,
+        ) {
+            fc.proto_array
+                .process_block::<E>(
+                    ProtoBlock {
+                        slot: Slot::new(slot),
+                        root: block_root,
+                        parent_root: Some(parent_root),
+                        state_root: Hash256::zero(),
+                        target_root: root(0),
+                        current_epoch_shuffling_id: junk_shuffling_id(),
+                        next_epoch_shuffling_id: junk_shuffling_id(),
+                        justified_checkpoint: genesis_checkpoint(),
+                        finalized_checkpoint: genesis_checkpoint(),
+                        execution_status: ExecutionStatus::irrelevant(),
+                        unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                        unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                        builder_index: Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD),
+                        payload_revealed,
+                        ptc_weight: 0,
+                        ptc_blob_data_available_weight: 0,
+                        payload_data_available: false,
+                        bid_block_hash,
+                        bid_parent_block_hash,
+                        proposer_index: 0,
+                        ptc_timely: false,
+                    },
+                    Slot::new(slot),
+                )
+                .unwrap();
+        }
+
+        #[test]
+        fn gloas_head_payload_status_empty_when_not_revealed() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(1);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                false, // not revealed
+            );
+
+            // Add a vote so head selection can proceed
+            fc.proto_array
+                .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), false)
+                .unwrap();
+            fc.fc_store.current_slot = Slot::new(2);
+
+            let head = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(1), // 1 = EMPTY
+                "payload not revealed → head payload status should be EMPTY"
+            );
+        }
+
+        #[test]
+        fn gloas_head_payload_status_full_with_reveal_and_vote() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(1);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                true, // revealed
+            );
+
+            // Vote with payload_present=true to favor FULL
+            fc.proto_array
+                .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+                .unwrap();
+            fc.fc_store.current_slot = Slot::new(2);
+
+            let head = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(2), // 2 = FULL
+                "payload revealed + FULL vote → head payload status should be FULL"
+            );
+        }
+
+        #[test]
+        fn gloas_head_payload_status_none_pre_gloas() {
+            // Without Gloas fork epoch, payload status should be None.
+            let (mut fc, mut spec) = new_gloas_fc_with_balances(0);
+            spec.gloas_fork_epoch = None;
+            fc.fc_store.current_slot = Slot::new(1);
+
+            let _head = fc.get_head(Slot::new(1), &spec).unwrap();
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                None,
+                "pre-Gloas → head payload status should be None"
+            );
+        }
+
         // ── validate_on_attestation Gloas index checks ──────────────────
 
         /// Insert a Gloas block (with builder_index set) into the fork choice tree.

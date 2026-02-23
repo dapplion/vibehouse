@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — 12 find_head_gloas proposer boost + gloas_head_payload_status tests (run 65)
+- Added 9 unit tests to `proto_array_fork_choice.rs` (107→116):
+  - `find_head_proposer_boost_changes_winner`: 21 validators, 11 vs 10 votes, boost flips winner (353.6e9 > 352e9)
+  - `find_head_proposer_boost_suppressed_by_equivocation`: weak parent + ptc_timely equivocating block by same proposer → boost suppressed
+  - `find_head_proposer_boost_with_strong_parent`: strong parent (5 voters) → boost applied despite equivocating proposer
+  - `find_head_gloas_head_payload_status_pending_leaf`: genesis-only → head is EMPTY (PENDING→EMPTY leaf)
+  - `find_head_gloas_head_payload_status_full_after_reveal`: revealed payload + FULL vote → status FULL
+  - `find_head_pre_gloas_payload_status_none`: no Gloas fork → status None
+  - `find_head_gloas_payload_status_updates_each_call`: status changes EMPTY→FULL when payload revealed between calls
+  - `find_head_proposer_boost_skipped_slots_always_applied`: non-adjacent parent → boost always applied
+  - `find_head_equivocating_indices_strengthen_parent`: equivocating indices counted toward parent weight, making weak→strong
+- Added `insert_gloas_block_ext` helper supporting custom `proposer_index` and `ptc_timely`
+- Added 3 unit tests to `fork_choice.rs` `gloas_fc_tests` module (60→63):
+  - `gloas_head_payload_status_empty_when_not_revealed`: via `get_head` → status 1 (EMPTY)
+  - `gloas_head_payload_status_full_with_reveal_and_vote`: via `get_head` → status 2 (FULL)
+  - `gloas_head_payload_status_none_pre_gloas`: no Gloas epoch → status None
+- Added `new_gloas_fc_with_balances` and `insert_gloas_block_for_head` helpers for ForkChoice-level tests
+- These tests cover the previously untested integration paths: proposer boost affecting head selection, equivocation detection in boost, and the `gloas_head_payload_status` API at both proto_array and fork_choice layers
+- All 116 proto_array tests pass (was 107), all 63 fork_choice tests pass (was 60)
+
 ### 2026-02-24 — 18 compute_filtered_roots + get_ancestor_gloas + is_supporting_vote_gloas + get_gloas_children tests (run 64)
 - Added 7 unit tests for `compute_filtered_roots` (previously ZERO direct tests):
   - Genesis only: single genesis block in filtered set
