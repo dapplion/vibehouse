@@ -1811,6 +1811,70 @@ mod tests {
         .expect("should decode BlockAndBlobSidecars");
         assert!(matches!(decoded, PublishBlockRequest::BlockContents(_)));
     }
+
+    #[test]
+    fn ptc_duty_data_json_roundtrip() {
+        let duty = PtcDutyData {
+            pubkey: PublicKeyBytes::empty(),
+            validator_index: 42,
+            slot: Slot::new(123),
+            ptc_committee_index: 7,
+        };
+        let json = serde_json::to_string(&duty).unwrap();
+        let decoded: PtcDutyData = serde_json::from_str(&json).unwrap();
+        assert_eq!(duty, decoded);
+    }
+
+    #[test]
+    fn ptc_duty_data_quoted_u64_fields() {
+        let duty = PtcDutyData {
+            pubkey: PublicKeyBytes::empty(),
+            validator_index: 42,
+            slot: Slot::new(123),
+            ptc_committee_index: 7,
+        };
+        let json = serde_json::to_value(&duty).unwrap();
+        // validator_index and ptc_committee_index should be quoted strings
+        assert_eq!(json["validator_index"], serde_json::json!("42"));
+        assert_eq!(json["ptc_committee_index"], serde_json::json!("7"));
+        // slot is also serialized as quoted
+        assert_eq!(json["slot"], serde_json::json!("123"));
+    }
+
+    #[test]
+    fn ptc_duty_data_max_values() {
+        let duty = PtcDutyData {
+            pubkey: PublicKeyBytes::empty(),
+            validator_index: u64::MAX,
+            slot: Slot::new(u64::MAX),
+            ptc_committee_index: u64::MAX,
+        };
+        let json = serde_json::to_string(&duty).unwrap();
+        let decoded: PtcDutyData = serde_json::from_str(&json).unwrap();
+        assert_eq!(duty, decoded);
+    }
+
+    #[test]
+    fn ptc_duty_data_equality() {
+        let a = PtcDutyData {
+            pubkey: PublicKeyBytes::empty(),
+            validator_index: 42,
+            slot: Slot::new(123),
+            ptc_committee_index: 7,
+        };
+        let b = PtcDutyData {
+            pubkey: PublicKeyBytes::empty(),
+            validator_index: 42,
+            slot: Slot::new(123),
+            ptc_committee_index: 7,
+        };
+        assert_eq!(a, b);
+        let c = PtcDutyData {
+            ptc_committee_index: 8,
+            ..a.clone()
+        };
+        assert_ne!(a, c);
+    }
 }
 
 #[derive(Debug, Encode, Serialize)]
