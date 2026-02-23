@@ -29,7 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### 2026-02-23 — 15 should_extend_payload + get_payload_tiebreaker unit tests (run 62)
+### 2026-02-23 — 16 get_gloas_weight + should_apply_proposer_boost_gloas tests (run 63)
+- Added 8 unit tests for `get_gloas_weight` (previously ZERO direct tests):
+  - No votes returns zero weight
+  - Single supporting vote accumulates correctly
+  - Multiple votes accumulate validator balances
+  - Non-PENDING node at previous slot returns zero weight (reorg resistance)
+  - Non-PENDING node at non-previous slot has normal weight
+  - Proposer boost added when flag set and root matches
+  - Proposer boost not applied when flag is false
+  - Zero proposer boost root means no boost
+- Added 8 unit tests for `should_apply_proposer_boost_gloas` (previously ZERO direct tests):
+  - Zero root returns false (no boost to apply)
+  - Unknown root returns false (node not in fork choice)
+  - No parent returns true (genesis-like, always boost)
+  - Skipped slots returns true (non-adjacent parent, always boost)
+  - Adjacent strong parent returns true (weight above threshold)
+  - Adjacent weak parent with no equivocation returns true
+  - Weak parent with equivocating proposer: boost suppressed
+  - Equivocating indices count toward parent weight calculation
+- These two functions are the core of Gloas ePBS fork choice weight computation
+- All 89 proto_array tests pass (was 73), all 60 fork_choice tests pass
+
+### 2026-02-23 — 15 should_extend_payload + get_payload_tiebreaker tests (run 62)
 - Added 8 unit tests for `should_extend_payload` (previously ZERO tests):
   - Timely and data-available: returns true when both flags set
   - Timely but not data-available: falls through to boost checks
