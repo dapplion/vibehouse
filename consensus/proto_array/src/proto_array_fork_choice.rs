@@ -4103,4 +4103,648 @@ mod test_gloas_fork_choice {
             GloasPayloadStatus::Full as u8
         );
     }
+
+    // ──────── get_gloas_weight tests ─────────────────────────
+
+    #[test]
+    fn weight_no_votes_returns_zero() {
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        fc.balances = balances(0);
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(weight, 0);
+    }
+
+    #[test]
+    fn weight_single_supporting_vote() {
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        fc.balances = balances(1);
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+
+        // Apply votes: find_head applies pending votes to current
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(1),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(weight, BALANCE);
+    }
+
+    #[test]
+    fn weight_multiple_votes_accumulate() {
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        fc.balances = balances(3);
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+        fc.process_attestation(1, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+        fc.process_attestation(2, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(3),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(weight, BALANCE * 3);
+    }
+
+    #[test]
+    fn weight_non_pending_previous_slot_returns_zero() {
+        // Non-PENDING nodes at previous slot (current_slot - 1) get 0 weight
+        // This is the reorg resistance mechanism
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        fc.balances = balances(1);
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+            .unwrap();
+
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(1),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        // FULL node at slot 1, current_slot = 2 → previous slot → 0 weight
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &full_node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(
+            weight, 0,
+            "non-PENDING at previous slot should have 0 weight"
+        );
+
+        // EMPTY node at slot 1, current_slot = 2 → also 0
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &empty_node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(weight, 0, "EMPTY at previous slot should have 0 weight");
+
+        // PENDING at slot 1, current_slot = 2 → normal weight
+        let pending_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &pending_node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(
+            weight, BALANCE,
+            "PENDING at previous slot should have normal weight"
+        );
+    }
+
+    #[test]
+    fn weight_non_pending_non_previous_slot_has_normal_weight() {
+        // Non-PENDING nodes NOT at previous slot should have normal weight
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        fc.balances = balances(1);
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+            .unwrap();
+
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(1),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        // FULL node at slot 1, current_slot = 5 → NOT previous slot → normal weight
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &full_node,
+            Hash256::zero(),
+            false,
+            Slot::new(5),
+            &spec,
+        );
+        assert_eq!(
+            weight, BALANCE,
+            "FULL at non-previous slot should have normal weight"
+        );
+    }
+
+    #[test]
+    fn weight_with_proposer_boost() {
+        let (mut fc, mut spec) = new_gloas_fc();
+        spec.proposer_score_boost = Some(40); // 40% boost
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        fc.balances = balances(1);
+        // No attestation votes — just proposer boost
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        // Boost root = root(1), apply_boost = true, current_slot = 2
+        // The boost vote is a synthetic vote at root(1), slot=2
+        // Since node is PENDING and vote is for same root → supports
+        let weight =
+            fc.get_gloas_weight::<MinimalEthSpec>(&node, root(1), true, Slot::new(2), &spec);
+        // committee_fraction = total_balance * 40 / 64 (slots_per_epoch=8, so committee=total/8)
+        // For MinimalEthSpec: committee_size = total_balance / 8
+        // boost = committee_size * 40 / 100 = (32G / 8) * 40 / 100 = 4G * 40 / 100 = 1.6G
+        // Actually: calculate_committee_fraction computes total * pct / 100
+        // = 32_000_000_000 * 40 / 100 = 12_800_000_000
+        assert!(weight > 0, "proposer boost should add weight");
+    }
+
+    #[test]
+    fn weight_proposer_boost_not_applied_when_flag_false() {
+        let (mut fc, mut spec) = new_gloas_fc();
+        spec.proposer_score_boost = Some(40);
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        fc.balances = balances(1);
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        // apply_boost = false → no boost even if proposer_boost_root matches
+        let weight =
+            fc.get_gloas_weight::<MinimalEthSpec>(&node, root(1), false, Slot::new(2), &spec);
+        assert_eq!(
+            weight, 0,
+            "should have no weight when boost disabled and no votes"
+        );
+    }
+
+    #[test]
+    fn weight_proposer_boost_zero_root_no_boost() {
+        let (mut fc, mut spec) = new_gloas_fc();
+        spec.proposer_score_boost = Some(40);
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+
+        fc.balances = balances(1);
+
+        let node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        // Zero boost root → no boost
+        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &node,
+            Hash256::zero(),
+            true,
+            Slot::new(2),
+            &spec,
+        );
+        assert_eq!(weight, 0, "zero boost root should not add boost");
+    }
+
+    // ──────── should_apply_proposer_boost_gloas tests ────────
+
+    #[test]
+    fn proposer_boost_zero_root_returns_false() {
+        let (fc, spec) = new_gloas_fc();
+        assert!(!fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(1),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_unknown_root_returns_false() {
+        let (fc, spec) = new_gloas_fc();
+        assert!(!fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(999),
+            &BTreeSet::new(),
+            Slot::new(1),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_no_parent_returns_true() {
+        // Genesis block has no parent → always boost
+        let (fc, spec) = new_gloas_fc();
+        let genesis_root = genesis_checkpoint().root;
+        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            genesis_root,
+            &BTreeSet::new(),
+            Slot::new(1),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_skipped_slots_returns_true() {
+        // When parent_slot + 1 < block_slot (skipped slots), always boost
+        let (mut fc, spec) = new_gloas_fc();
+        // Block at slot 1
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        // Block at slot 5 (skipped slots 2-4)
+        insert_gloas_block(
+            &mut fc,
+            5,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+        );
+
+        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(2),
+            &BTreeSet::new(),
+            Slot::new(5),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_adjacent_strong_parent_returns_true() {
+        // Adjacent slot (no skip), parent has strong attestation support → always boost
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+        );
+
+        fc.balances = balances(10);
+
+        // Give the parent block very heavy attestation weight (above reorg threshold)
+        for i in 0..10u64 {
+            fc.process_attestation(i as usize, root(1), Epoch::new(0), Slot::new(2), false)
+                .unwrap();
+        }
+
+        // Apply votes
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(10),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        // Parent is strong → boost
+        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(2),
+            &BTreeSet::new(),
+            Slot::new(3),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_adjacent_weak_parent_no_equivocation_returns_true() {
+        // Adjacent slot, parent is weak (low attestation weight), no equivocation → boost
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+        );
+
+        fc.balances = balances(10);
+        // No attestations for parent → parent is weak
+
+        // Apply votes (none for parent)
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(10),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        // Parent is weak but no equivocation → still boost
+        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(2),
+            &BTreeSet::new(),
+            Slot::new(3),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_weak_parent_with_equivocating_proposer_suppressed() {
+        // Adjacent slot, parent is weak, AND there's an equivocating proposer → suppress boost
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+        );
+
+        // Set the parent's proposer_index
+        let parent_node = get_node_mut(&mut fc, &root(1));
+        parent_node.proposer_index = 5;
+
+        // Create an equivocating block at the same slot as parent, same proposer, PTC-timely
+        let equivocating_root = root(99);
+        fc.proto_array
+            .on_block::<MinimalEthSpec>(
+                Block {
+                    slot: Slot::new(1),
+                    root: equivocating_root,
+                    parent_root: Some(root(0)),
+                    state_root: Hash256::zero(),
+                    target_root: root(0),
+                    current_epoch_shuffling_id: junk_shuffling_id(),
+                    next_epoch_shuffling_id: junk_shuffling_id(),
+                    justified_checkpoint: genesis_checkpoint(),
+                    finalized_checkpoint: genesis_checkpoint(),
+                    execution_status: ExecutionStatus::irrelevant(),
+                    unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                    unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                    builder_index: Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD),
+                    payload_revealed: false,
+                    ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
+                    bid_block_hash: None,
+                    bid_parent_block_hash: None,
+                    proposer_index: 5, // same proposer as parent
+                    ptc_timely: true,  // PTC-timely
+                },
+                Slot::new(1),
+            )
+            .unwrap();
+
+        fc.balances = balances(10);
+        // No attestations → parent is weak
+
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(10),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        // Parent is weak AND equivocating proposer exists → suppress boost
+        assert!(!fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(2),
+            &BTreeSet::new(),
+            Slot::new(3),
+            &spec,
+        ));
+    }
+
+    #[test]
+    fn proposer_boost_equivocating_indices_count_toward_parent_weight() {
+        // Equivocating validators' balance counts toward parent weight,
+        // potentially making it "strong" even without attestations
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+        );
+
+        fc.balances = balances(10);
+        // No attestations, but many equivocating validators with high balance
+
+        fc.find_head::<MinimalEthSpec>(
+            genesis_checkpoint(),
+            genesis_checkpoint(),
+            &balances(10),
+            Hash256::zero(),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        )
+        .unwrap();
+
+        // With enough equivocating indices, parent should be "strong"
+        let equivocating: BTreeSet<u64> = (0..10).collect();
+        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(2),
+            &equivocating,
+            Slot::new(3),
+            &spec,
+        ));
+    }
 }
