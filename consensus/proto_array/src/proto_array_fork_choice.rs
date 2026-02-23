@@ -5290,6 +5290,7 @@ mod test_gloas_fork_choice {
     // ── find_head_gloas: proposer boost & gloas_head_payload_status ──
 
     /// Insert a Gloas block with custom proposer_index and ptc_timely.
+    #[allow(clippy::too_many_arguments)]
     fn insert_gloas_block_ext(
         fc: &mut ProtoArrayForkChoice,
         slot: u64,
