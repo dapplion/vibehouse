@@ -29,6 +29,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — 18 compute_filtered_roots + get_ancestor_gloas + is_supporting_vote_gloas + get_gloas_children tests (run 64)
+- Added 7 unit tests for `compute_filtered_roots` (previously ZERO direct tests):
+  - Genesis only: single genesis block in filtered set
+  - Self-build chain all included: 4 self-build blocks all viable and filtered in
+  - External builder not revealed excluded: unrevealed external builder not in filtered set
+  - External builder revealed included: revealed payload makes block viable
+  - Parent propagation: non-viable parent included when it has a viable descendant
+  - Deep propagation chain: propagation works through 3 non-viable ancestors to viable leaf
+  - Fork with mixed viability: only viable branch and its ancestors included
+- Added 4 unit tests for `get_ancestor_gloas` (previously 3, now 7):
+  - Unknown root returns None
+  - Multi-hop chain: walk from root(3) at slot 3 back to root(1) at slot 1 with correct payload status
+  - At genesis slot: walk back to genesis correctly
+  - Future slot returns Pending (slot >= block's own slot)
+- Added 4 unit tests for `is_supporting_vote_gloas` (previously 5, now 9):
+  - Ancestor with Pending status always supports (Pending matches any payload status)
+  - Ancestor Full matches Full path (vote through FULL parent relationship)
+  - Ancestor Empty does NOT match Full path (EMPTY ≠ FULL)
+  - Ancestor Empty matches Empty path (vote through EMPTY parent relationship)
+- Added 3 unit tests for `get_gloas_children` (previously 4, now 7):
+  - Filtered roots excludes non-viable: external builder child excluded from children
+  - Pending unknown root returns Empty only (EMPTY child always generated)
+  - Multiple children different payload paths: FULL and EMPTY nodes get correct children
+- These functions are the core of Gloas ePBS fork choice tree filtering and head selection
+- All 107 proto_array tests pass (was 89), all 60 fork_choice tests pass
+
 ### 2026-02-23 — 16 get_gloas_weight + should_apply_proposer_boost_gloas tests (run 63)
 - Added 8 unit tests for `get_gloas_weight` (previously ZERO direct tests):
   - No votes returns zero weight
