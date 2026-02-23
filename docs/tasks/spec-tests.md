@@ -29,6 +29,37 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-23 — 25 ePBS pool + observation edge case tests (run 59)
+- Added 10 edge case tests to `execution_bid_pool.rs` (was 4, now 14):
+  - Per-slot independence: best bid selection independent across slots
+  - Wrong slot: queries for non-existent slots return None
+  - Prune boundary: slot exactly at retention threshold is retained
+  - Prune at zero: saturating_sub prevents underflow, keeps all
+  - Single builder: lone bid is best
+  - Insert after prune: pool reusable after pruning
+  - Many builders: 100 builders same slot, highest value wins
+  - Equal values: tied bids return one deterministically
+  - Empty slot count: bid_count_for_slot returns 0 for unknown slots
+  - Prune idempotent: repeated prune calls are safe
+- Added 6 edge case tests to `observed_execution_bids.rs` (was 5, now 11):
+  - Same builder different slots: both observations are New
+  - Prune at zero: slot 0 retained with saturating_sub
+  - Prune boundary slot: exact boundary retained, one below pruned
+  - Equivocation preserves original: 3rd bid equivocates against 1st (not 2nd)
+  - Clear resets state: previously seen bid is New after clear
+  - Prune idempotent: double prune safe
+- Added 9 edge case tests to `observed_payload_attestations.rs` (was 6, now 15):
+  - Same validator different slots: no cross-slot equivocation
+  - Equivocation false→true: reverse direction equivocation detected
+  - Duplicate false: payload_present=false duplicates detected
+  - Prune at zero: slot 0 retained
+  - Prune boundary: exact boundary logic verified
+  - Equivocation preserves original: 3rd attestation with original value is Duplicate
+  - Clear resets state: previously seen attestation is New after clear
+  - Many validators: 512 validators same block all New
+  - Prune idempotent: double prune safe
+- All 186 beacon_chain lib tests pass
+
 ### 2026-02-20 — 37 ChainSpec + ForkName Gloas unit tests (run 57)
 - Added 22 unit tests to `chain_spec.rs` (previously had ZERO Gloas-specific tests):
   - Scheduling: `is_gloas_scheduled()` true when epoch set, false when None, false when far-future epoch
