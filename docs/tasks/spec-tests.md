@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-23 — Gloas attestation index validation + spec tracking (run 61)
+- Tracked consensus-specs PR #4918 ("Only allow attestations for known payload statuses")
+- Implemented 3 Gloas-specific checks in `validate_on_attestation` (fork_choice.rs):
+  1. `index in [0, 1]` — reject attestations with invalid committee index for Gloas blocks
+  2. Same-slot attestation must have `index == 0` — can't attest payload-present for current-slot block
+  3. `index == 1` requires payload revealed — commented out pending spec test vector update
+- Check 3 (PayloadNotRevealed) is fully implemented and unit-tested but disabled to maintain
+  EF spec test compatibility (test vectors pinned at v1.7.0-alpha.2, predating #4918)
+- Added 7 unit tests for the new validation: invalid index, same-slot non-zero index,
+  payload not revealed (ignored), payload revealed accepted, pre-Gloas block allows any index
+- All 60 fork_choice tests pass (1 skipped), all 8 EF fork choice tests pass
+
 ### 2026-02-23 — 11 Gloas beacon_chain integration tests (run 60)
 - Added `gloas.rs` integration test module in `beacon_node/beacon_chain/tests/`
 - Tests the full beacon chain harness through Gloas fork transition and block production:
