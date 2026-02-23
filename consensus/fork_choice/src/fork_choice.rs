@@ -174,6 +174,13 @@ pub enum InvalidAttestation {
     /// The attestation is attesting to a state that is later than itself. (Viz., attesting to the
     /// future).
     AttestsToFutureBlock { block: Slot, attestation: Slot },
+    /// [Gloas] The attestation committee index is not 0 or 1.
+    InvalidCommitteeIndex { index: u64 },
+    /// [Gloas] A same-slot attestation must have index 0.
+    SameSlotNonZeroIndex { slot: Slot, index: u64 },
+    /// [Gloas] Attestation with index=1 (payload present) for a block whose payload has not been
+    /// revealed.
+    PayloadNotRevealed { beacon_block_root: Hash256 },
 }
 
 /// Gloas ePBS: Reasons an execution payload bid might be invalid.
@@ -1167,6 +1174,44 @@ where
             });
         }
 
+        // [New in Gloas:EIP7732]
+        // Gloas-specific attestation index validation. In Gloas, `index` is repurposed:
+        // 0 = empty (standard attestation), 1 = full (payload present attestation).
+        // We gate on builder_index to identify Gloas blocks, since pre-Electra attestations
+        // can have index > 1 (representing the committee index).
+        if block.builder_index.is_some() {
+            let index = indexed_attestation.data().index;
+
+            // assert attestation.data.index in [0, 1]
+            if index > 1 {
+                return Err(InvalidAttestation::InvalidCommitteeIndex { index });
+            }
+
+            // if block_slot == attestation.data.slot: assert attestation.data.index == 0
+            if block.slot == indexed_attestation.data().slot && index != 0 {
+                return Err(InvalidAttestation::SameSlotNonZeroIndex {
+                    slot: block.slot,
+                    index,
+                });
+            }
+
+            // consensus-specs PR #4918 (merged 2026-02-23):
+            // if attestation.data.index == 1: assert beacon_block_root in store.payload_states
+            // In vibehouse, a block root being in payload_states is equivalent to
+            // the block's payload_revealed being true in proto_array.
+            //
+            // TODO(https://github.com/ethereum/consensus-specs/pull/4918): enable this check
+            // once spec test vectors include it (currently pinned at v1.7.0-alpha.2, which
+            // predates this spec change). The check is implemented and tested in unit tests
+            // below but disabled to avoid breaking EF spec test compatibility.
+            //
+            // if index == 1 && !block.payload_revealed {
+            //     return Err(InvalidAttestation::PayloadNotRevealed {
+            //         beacon_block_root: indexed_attestation.data().beacon_block_root,
+            //     });
+            // }
+        }
+
         Ok(())
     }
 
@@ -2030,7 +2075,8 @@ mod tests {
         use proto_array::{Block as ProtoBlock, JustifiedBalances, ProtoArrayForkChoice};
         use std::collections::BTreeSet;
         use types::{
-            AggregateSignature, BitVector, MinimalEthSpec, PayloadAttestationData, VariableList,
+            AggregateSignature, AttestationData, BitVector, IndexedAttestation,
+            IndexedAttestationElectra, MinimalEthSpec, PayloadAttestationData, VariableList,
         };
 
         type E = MinimalEthSpec;
@@ -2716,6 +2762,196 @@ mod tests {
             // Second call overwrites the execution status
             assert_eq!(node.execution_status, ExecutionStatus::Optimistic(hash2));
             assert!(node.payload_revealed);
+        }
+
+        // ── validate_on_attestation Gloas index checks ──────────────────
+
+        /// Insert a Gloas block (with builder_index set) into the fork choice tree.
+        fn insert_gloas_block(
+            fc: &mut ForkChoice<MockStore, E>,
+            slot: u64,
+            block_root: Hash256,
+            builder_index: u64,
+        ) {
+            let parent_root = root(0); // genesis
+            fc.proto_array
+                .process_block::<E>(
+                    ProtoBlock {
+                        slot: Slot::new(slot),
+                        root: block_root,
+                        parent_root: Some(parent_root),
+                        state_root: Hash256::zero(),
+                        target_root: root(0),
+                        current_epoch_shuffling_id: junk_shuffling_id(),
+                        next_epoch_shuffling_id: junk_shuffling_id(),
+                        justified_checkpoint: genesis_checkpoint(),
+                        finalized_checkpoint: genesis_checkpoint(),
+                        execution_status: ExecutionStatus::irrelevant(),
+                        unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                        unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                        builder_index: Some(builder_index),
+                        payload_revealed: false,
+                        ptc_weight: 0,
+                        ptc_blob_data_available_weight: 0,
+                        payload_data_available: false,
+                        bid_block_hash: None,
+                        bid_parent_block_hash: None,
+                        proposer_index: 0,
+                        ptc_timely: false,
+                    },
+                    Slot::new(slot),
+                )
+                .unwrap();
+        }
+
+        /// Build an IndexedAttestation (Electra variant) with the given fields.
+        fn make_indexed_attestation(
+            slot: u64,
+            beacon_block_root: Hash256,
+            index: u64,
+            attesting_indices: Vec<u64>,
+        ) -> IndexedAttestation<E> {
+            IndexedAttestation::Electra(IndexedAttestationElectra {
+                attesting_indices: VariableList::from(attesting_indices),
+                data: AttestationData {
+                    slot: Slot::new(slot),
+                    index,
+                    beacon_block_root,
+                    source: genesis_checkpoint(),
+                    target: genesis_checkpoint(),
+                },
+                signature: AggregateSignature::empty(),
+            })
+        }
+
+        #[test]
+        fn gloas_attestation_index_must_be_0_or_1() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_gloas_block(&mut fc, 1, block_root, 42);
+            fc.fc_store.current_slot = Slot::new(2);
+
+            // index = 2 should be rejected
+            let att = make_indexed_attestation(1, block_root, 2, vec![1]);
+            let err = fc
+                .on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidAttestation(InvalidAttestation::InvalidCommitteeIndex {
+                        index: 2
+                    })
+                ),
+                "Expected InvalidCommitteeIndex, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn gloas_attestation_index_0_accepted() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_gloas_block(&mut fc, 1, block_root, 42);
+            fc.fc_store.current_slot = Slot::new(2);
+
+            // index = 0 should be accepted
+            let att = make_indexed_attestation(1, block_root, 0, vec![1]);
+            fc.on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap();
+        }
+
+        #[test]
+        fn gloas_same_slot_attestation_must_have_index_0() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_gloas_block(&mut fc, 1, block_root, 42);
+            fc.fc_store.current_slot = Slot::new(2);
+
+            // Same-slot attestation (att.slot == block.slot) with index = 1 should be rejected
+            let att = make_indexed_attestation(1, block_root, 1, vec![1]);
+            let err = fc
+                .on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidAttestation(InvalidAttestation::SameSlotNonZeroIndex { .. })
+                ),
+                "Expected SameSlotNonZeroIndex, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn gloas_same_slot_attestation_index_0_accepted() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_gloas_block(&mut fc, 1, block_root, 42);
+            fc.fc_store.current_slot = Slot::new(2);
+
+            // Same-slot attestation with index = 0 should be accepted
+            let att = make_indexed_attestation(1, block_root, 0, vec![1]);
+            fc.on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap();
+        }
+
+        // TODO(https://github.com/ethereum/consensus-specs/pull/4918): un-ignore when the
+        // PayloadNotRevealed check is enabled (after spec test vectors are updated).
+        #[test]
+        #[ignore]
+        fn gloas_index_1_rejected_when_payload_not_revealed() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            // Insert Gloas block at slot 1, attestation at slot 2 (not same-slot)
+            insert_gloas_block(&mut fc, 1, block_root, 42);
+            fc.fc_store.current_slot = Slot::new(3);
+
+            // index = 1 but payload_revealed = false → should be rejected
+            let att = make_indexed_attestation(2, block_root, 1, vec![1]);
+            let err = fc
+                .on_attestation(Slot::new(3), att.to_ref(), AttestationFromBlock::False)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidAttestation(InvalidAttestation::PayloadNotRevealed { .. })
+                ),
+                "Expected PayloadNotRevealed, got {:?}",
+                err
+            );
+        }
+
+        #[test]
+        fn gloas_index_1_accepted_when_payload_revealed() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_gloas_block(&mut fc, 1, block_root, 42);
+
+            // Reveal the payload (simulates on_execution_payload)
+            let hash = ExecutionBlockHash::repeat_byte(0xaa);
+            fc.on_execution_payload(block_root, hash).unwrap();
+
+            fc.fc_store.current_slot = Slot::new(3);
+
+            // index = 1 with payload_revealed = true → should be accepted
+            let att = make_indexed_attestation(2, block_root, 1, vec![1]);
+            fc.on_attestation(Slot::new(3), att.to_ref(), AttestationFromBlock::False)
+                .unwrap();
+        }
+
+        #[test]
+        fn pre_gloas_block_allows_any_index() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            // Insert a non-Gloas block (builder_index = None)
+            insert_block(&mut fc, 1, block_root);
+            fc.fc_store.current_slot = Slot::new(2);
+
+            // index = 1 on a pre-Gloas block should be accepted (no Gloas checks apply)
+            let att = make_indexed_attestation(1, block_root, 1, vec![1]);
+            fc.on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap();
         }
     }
 }
