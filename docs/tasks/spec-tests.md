@@ -29,6 +29,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-23 — 15 should_extend_payload + get_payload_tiebreaker unit tests (run 62)
+- Added 8 unit tests for `should_extend_payload` (previously ZERO tests):
+  - Timely and data-available: returns true when both flags set
+  - Timely but not data-available: falls through to boost checks
+  - No proposer boost root: returns true (no boost = always extend)
+  - Boosted parent not this root: returns true (boost doesn't affect this block)
+  - Boosted parent IS this root and full (revealed): returns true
+  - Boosted parent IS this root and NOT full: returns false (the only false case)
+  - Boosted block not in fork choice: returns true (treat as no boost)
+  - Boosted block has no parent (genesis): returns true
+- Added 7 unit tests for `get_payload_tiebreaker` (previously ZERO tests):
+  - PENDING always returns ordinal value (0) regardless of slot position
+  - Non-previous-slot: EMPTY and FULL return ordinal values
+  - Previous-slot EMPTY: returns 1 (always favored)
+  - Previous-slot FULL with extend=true: returns 2 (highest priority)
+  - Previous-slot FULL with extend=false: returns 0 (lowest priority)
+  - Ordering verification: FULL(2) > EMPTY(1) > PENDING(0) when extending
+  - Unknown root: returns ordinal (fails previous-slot check)
+- These two methods are the heart of ePBS payload tiebreaking in head selection
+- All 73 proto_array tests pass (was 58), all 60 fork_choice tests pass
+
 ### 2026-02-23 — Gloas attestation index validation + spec tracking (run 61)
 - Tracked consensus-specs PR #4918 ("Only allow attestations for known payload statuses")
 - Implemented 3 Gloas-specific checks in `validate_on_attestation` (fork_choice.rs):
