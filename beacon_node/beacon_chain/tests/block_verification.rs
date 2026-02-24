@@ -79,11 +79,31 @@ async fn get_chain_segment() -> (
         let block_epoch = full_block.epoch();
 
         // Extract envelope for Gloas blocks (needed for ePBS two-phase import).
+        // Try full envelope first; fall back to blinded envelope if the full payload
+        // has been pruned (happens for finalized blocks due to ExecPayload pruning).
         let envelope = harness
             .chain
             .store
             .get_payload_envelope(&snapshot.beacon_block_root)
-            .unwrap();
+            .unwrap()
+            .or_else(|| {
+                harness
+                    .chain
+                    .store
+                    .get_blinded_payload_envelope(&snapshot.beacon_block_root)
+                    .unwrap()
+                    .map(|blinded| {
+                        // Reconstruct full envelope from blinded + expected withdrawals.
+                        // The snapshot state (post-block, post-envelope) still has the
+                        // payload_expected_withdrawals set during block processing.
+                        let withdrawals = snapshot
+                            .beacon_state
+                            .payload_expected_withdrawals()
+                            .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                            .unwrap_or_default();
+                        blinded.into_full_with_withdrawals(withdrawals)
+                    })
+            });
 
         segment.push(BeaconSnapshot {
             beacon_block_root: snapshot.beacon_block_root,
