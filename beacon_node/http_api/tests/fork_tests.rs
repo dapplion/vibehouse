@@ -4,7 +4,7 @@ use beacon_chain::{
     StateSkipConfig,
     test_utils::{DEFAULT_ETH1_BLOCK_HASH, HARNESS_GENESIS_TIME, RelativeSyncCommittee},
 };
-use eth2::types::{IndexedErrorMessage, StateId, SyncSubcommittee};
+use eth2::types::{BlockId, IndexedErrorMessage, StateId, SyncSubcommittee};
 use execution_layer::test_utils::generate_genesis_header;
 use genesis::{InteropGenesisBuilder, bls_withdrawal_credentials};
 use http_api::test_utils::*;
@@ -588,5 +588,204 @@ async fn bls_to_execution_changes_update_all_around_capella_fork() {
     let head_state = harness.get_current_state();
     for validator in head_state.validators() {
         assert!(validator.has_eth1_withdrawal_credential(&spec));
+    }
+}
+
+// ── Gloas (ePBS) tests ──────────────────────────────────────────────
+
+fn gloas_spec(gloas_fork_epoch: Epoch) -> ChainSpec {
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(gloas_fork_epoch);
+    spec
+}
+
+/// PTC duties endpoint should return 400 when Gloas is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_rejected_before_gloas_scheduled() {
+    let validator_count = 32;
+    // No Gloas fork configured
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // gloas_fork_epoch = None (not scheduled)
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+    let result = client
+        .post_validator_duties_ptc(Epoch::new(0), &indices)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should reject PTC duties when Gloas is not scheduled"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Gloas is not scheduled"),
+            "expected 'Gloas is not scheduled', got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// PTC duties endpoint should return duties after Gloas fork is active.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_returns_duties_after_gloas() {
+    let validator_count = 32;
+    let fork_epoch = Epoch::new(0); // Gloas from genesis
+    let spec = gloas_spec(fork_epoch);
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let all_validators: Vec<u64> = (0..validator_count as u64).collect();
+
+    // Advance a few slots so the chain has some state
+    let slots_per_epoch = E::slots_per_epoch();
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_val_indices = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_val_indices,
+        )
+        .await
+        .unwrap();
+
+    // Request PTC duties for the current epoch
+    let duties_response = client
+        .post_validator_duties_ptc(Epoch::new(0), &all_validators)
+        .await
+        .expect("PTC duties should succeed after Gloas fork");
+
+    let duties = &duties_response.data;
+
+    // PTC committee has PTC_SIZE members per slot. With 32 validators and
+    // minimal preset, we should get some duties.
+    assert!(
+        !duties.is_empty(),
+        "PTC duties should not be empty for {} validators",
+        validator_count
+    );
+
+    // All returned duties should have valid validator indices
+    for duty in duties {
+        assert!(
+            duty.validator_index < validator_count as u64,
+            "validator_index {} out of range",
+            duty.validator_index
+        );
+        // Slot should be within the requested epoch
+        assert_eq!(
+            duty.slot.epoch(slots_per_epoch),
+            Epoch::new(0),
+            "duty slot {} not in epoch 0",
+            duty.slot
+        );
+    }
+
+    // Dependent root should be non-zero
+    assert_ne!(
+        duties_response.dependent_root,
+        Hash256::zero(),
+        "dependent_root should be set"
+    );
+}
+
+/// PTC duties should reject epochs too far in the future.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_rejects_future_epoch() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+
+    // Current epoch is 0, requesting epoch 5 should fail (> current + 1)
+    let result = client
+        .post_validator_duties_ptc(Epoch::new(5), &indices)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should reject PTC duties for epoch too far in the future"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// Envelope retrieval should return 404 for non-existent block.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_not_found() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    // Request envelope for a non-existent block root
+    let fake_root = Hash256::repeat_byte(0xAB);
+    let result = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(fake_root))
+        .await;
+
+    // get_opt maps 404 → Ok(None)
+    let envelope = result.expect("request should not fail");
+    assert!(
+        envelope.is_none(),
+        "should return None for non-existent envelope"
+    );
+}
+
+/// Bid submission should return 400 when Gloas is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_before_gloas() {
+    let validator_count = 32;
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // gloas_fork_epoch = None
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    // Create a minimal bid (will be rejected at the fork guard, not content validation)
+    let bid = types::SignedExecutionPayloadBid::<E> {
+        message: types::ExecutionPayloadBid::default(),
+        signature: types::Signature::empty(),
+    };
+
+    let result = client.post_builder_bids(&bid).await;
+    assert!(
+        result.is_err(),
+        "should reject bid submission when Gloas is not scheduled"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Gloas is not scheduled"),
+            "expected 'Gloas is not scheduled', got: {}",
+            msg.message
+        );
     }
 }

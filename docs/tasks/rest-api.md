@@ -81,3 +81,14 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
   - `beacon_node/http_api/src/lib.rs`: GET endpoint + route wiring
   - `common/eth2/src/lib.rs`: client method
 - 24/24 store tests pass, 136/136 EF tests pass, 181/181 http_api tests pass
+
+### 2026-02-24 — Gloas HTTP API integration tests
+- **What**: Added 5 integration tests in `fork_tests.rs` covering Gloas-specific endpoints that previously had zero test coverage:
+  1. `ptc_duties_rejected_before_gloas_scheduled` — PTC duties returns 400 "Gloas is not scheduled" when fork not configured
+  2. `ptc_duties_returns_duties_after_gloas` — PTC duties returns valid duties with correct epoch/validator bounds after Gloas activation
+  3. `ptc_duties_rejects_future_epoch` — PTC duties rejects epoch too far in the future (>current+1)
+  4. `get_execution_payload_envelope_not_found` — Envelope GET returns None/404 for non-existent block root
+  5. `bid_submission_rejected_before_gloas` — Bid submission returns 400 "Gloas is not scheduled" pre-fork
+- **Test infrastructure**: Reuses existing `InteractiveTester<MinimalEthSpec>` pattern; added `gloas_spec()` helper that enables all forks through Gloas
+- **Files changed**: 1 file (`beacon_node/http_api/tests/fork_tests.rs`)
+- 5/5 new tests pass, 186/186 total http_api tests pass
