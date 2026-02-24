@@ -31,6 +31,18 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 57)
+- Checked consensus-specs PRs since run 56: no new Gloas spec changes merged
+  - #4918 (attestations for known payload statuses) merged 2026-02-23 — already implemented in run 52
+  - #4945 (inclusion list test fix, Heze only) and #4946 (CI dep bump) — no impact
+  - Open Gloas PRs: #4940, #4932, #4840, #4939, #4906, #4630, #4704, #4892, #4558, #4747, #4484 — all still open/unmerged
+- No new GitHub issues — existing 3 open issues are all RFCs/feature requests
+- **Added 10 unit tests for Gloas type coverage gaps** across 3 files in `consensus/types/src/`:
+  - `blinded_execution_payload_envelope.rs` (5 tests): `into_full_with_nonempty_withdrawals` validates header-to-payload field transfer with 2 actual withdrawals, `signed_into_full_with_nonempty_withdrawals` exercises the signed wrapper path, `blinded_preserves_execution_requests` verifies deposit requests survive blind→full roundtrip, `blinded_ssz_roundtrip_with_execution_requests` exercises SSZ with non-default requests
+  - `execution_payload_envelope.rs` (3 tests): `ssz_roundtrip_with_execution_requests` verifies envelope with deposit request SSZ roundtrips, `tree_hash_changes_with_execution_requests` confirms execution_requests affect tree hash, `execution_requests_default_is_empty` validates all 3 request lists start empty
+  - `beacon_block_body.rs` (2 tests): `attestations_mut_returns_electra_type` verifies Gloas mutable iterator yields same count as read-only, `attestations_mut_can_modify_attestation` proves mutations through `attestations_mut()` take effect on Gloas Electra-type attestations
+  - All 697/697 types tests pass (was 687)
+
 ### 2026-02-24 (run 56)
 - Checked consensus-specs PRs since run 55: no new Gloas spec changes merged
   - Open Gloas PRs: #4939, #4940, #4932, #4843, #4926, #4898, #4892 — all still open/unmerged
