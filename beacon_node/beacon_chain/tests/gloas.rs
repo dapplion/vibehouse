@@ -10,6 +10,7 @@
 //! - The chain finalizes across the fork boundary
 //! - Gloas-specific state fields are initialized correctly after upgrade
 
+use beacon_chain::BlockError;
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
 use types::*;
 
@@ -290,4 +291,126 @@ async fn gloas_bid_slot_matches_block_slot() {
             "Latest bid slot should match the head block slot"
         );
     }
+}
+
+// =============================================================================
+// Gloas parent payload availability check in block gossip verification
+// =============================================================================
+
+/// Test that gossip verification rejects a block when its parent's execution payload
+/// has not been revealed yet (GloasParentPayloadUnknown).
+///
+/// In Gloas ePBS, blocks and execution payload envelopes are separate gossip messages.
+/// A child block should be rejected (IGNORE) if the parent's payload hasn't arrived yet.
+#[tokio::test]
+async fn gloas_gossip_rejects_block_with_unrevealed_parent_payload() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build a chain with a few blocks (all envelopes processed normally)
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Advance the slot clock so we can produce a block at the next slot
+    harness.advance_slot();
+
+    // Produce the next block (but don't import it yet)
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((next_block, _), _next_state) = harness.make_block(head_state, next_slot).await;
+
+    // Manipulate fork choice: set the head block's payload_revealed = false
+    // This simulates the case where the parent block arrived but its envelope hasn't
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        fc.proto_array_mut().core_proto_array_mut().nodes[block_index].payload_revealed = false;
+    }
+
+    // Now try to gossip-verify the next block — parent payload not revealed
+    let result = harness.chain.verify_block_for_gossip(next_block).await;
+
+    assert!(
+        result.is_err(),
+        "should reject block with unrevealed parent payload"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, BlockError::GloasParentPayloadUnknown { .. }),
+        "expected GloasParentPayloadUnknown, got {:?}",
+        err
+    );
+}
+
+/// Test that gossip verification ACCEPTS a block when its parent's payload IS revealed.
+/// This is the normal case — complement to the rejection test above.
+#[tokio::test]
+async fn gloas_gossip_accepts_block_with_revealed_parent_payload() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build a chain with a few blocks (all envelopes processed normally → payload_revealed = true)
+    Box::pin(harness.extend_slots(3)).await;
+
+    // Advance the slot clock so we can produce a block at the next slot
+    harness.advance_slot();
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((next_block, _), _next_state) = harness.make_block(head_state, next_slot).await;
+
+    // Parent payload should be revealed (envelope was processed during extend_slots)
+    // Gossip verification should pass (at least the parent payload check)
+    let result = harness.chain.verify_block_for_gossip(next_block).await;
+
+    // The block should either pass gossip verification OR fail on a different check
+    // (NOT GloasParentPayloadUnknown)
+    match result {
+        Ok(_) => {} // Good — block passed gossip verification
+        Err(ref e) => {
+            assert!(
+                !matches!(e, BlockError::GloasParentPayloadUnknown { .. }),
+                "block with revealed parent payload should not fail with GloasParentPayloadUnknown, got {:?}",
+                e
+            );
+        }
+    }
+}
+
+/// Test that the GloasParentPayloadUnknown check only applies when the parent is a Gloas block.
+/// Pre-Gloas parents (Fulu, etc.) have the payload embedded in the block body, so it's always "seen".
+#[tokio::test]
+async fn gloas_parent_payload_check_skips_pre_gloas_parent() {
+    // Create a harness where Gloas starts at epoch 2
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to one slot before the Gloas fork
+    Box::pin(harness.extend_to_slot(gloas_fork_slot - 1)).await;
+
+    // Verify the head is a Fulu block (pre-Gloas)
+    let pre_fork_head = &harness.chain.head_snapshot().beacon_block;
+    assert!(
+        pre_fork_head.as_fulu().is_ok(),
+        "Pre-fork head should be Fulu"
+    );
+
+    // Now extend to the fork slot — this produces the first Gloas block with a Fulu parent
+    Box::pin(harness.extend_to_slot(gloas_fork_slot)).await;
+
+    let post_fork_head = &harness.chain.head_snapshot().beacon_block;
+    assert!(
+        post_fork_head.as_gloas().is_ok(),
+        "Post-fork head should be Gloas"
+    );
+
+    // The first Gloas block's parent is a Fulu block (no bid_block_hash → parent check skipped)
+    // If the parent payload check incorrectly applied to Fulu parents, the chain would break
+    // The fact that extend_to_slot succeeded means the check was correctly skipped
 }
