@@ -24,6 +24,7 @@ pub mod beacon_block_header;
 pub mod beacon_committee;
 pub mod beacon_response;
 pub mod beacon_state;
+pub mod blinded_execution_payload_envelope;
 pub mod bls_to_execution_change;
 pub mod builder;
 pub mod builder_bid;
@@ -155,6 +156,9 @@ pub use crate::beacon_response::{
     BeaconResponse, ForkVersionDecode, ForkVersionedResponse, UnversionedResponse,
 };
 pub use crate::beacon_state::{Error as BeaconStateError, *};
+pub use crate::blinded_execution_payload_envelope::{
+    BlindedExecutionPayloadEnvelope, SignedBlindedExecutionPayloadEnvelope,
+};
 pub use crate::blob_sidecar::{BlobIdentifier, BlobSidecar, BlobSidecarList, BlobsList};
 pub use crate::bls_to_execution_change::BlsToExecutionChange;
 pub use crate::builder::{Builder, BuilderIndex, BuilderPendingPayment, BuilderPendingWithdrawal};

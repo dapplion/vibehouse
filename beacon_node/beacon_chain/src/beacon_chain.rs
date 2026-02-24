@@ -1279,13 +1279,23 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Load execution payload envelopes for Gloas blocks from the store.
     ///
-    /// Returns a HashMap keyed by block root for use with `BlockReplayer::envelopes()`.
+    /// Returns a tuple of (full_envelopes, blinded_envelopes) keyed by block
+    /// root for use with `BlockReplayer::envelopes()` / `blinded_envelopes()`.
     /// Only loads envelopes for blocks that have a `signed_execution_payload_bid` (Gloas+).
+    ///
+    /// Full envelopes are returned when the payload is still available.
+    /// Blinded envelopes are returned as fallback when the full payload has
+    /// been pruned on finalization.
+    #[allow(clippy::type_complexity)]
     pub fn load_envelopes_for_blocks(
         &self,
         blocks: &[SignedBeaconBlock<T::EthSpec, BlindedPayload<T::EthSpec>>],
-    ) -> HashMap<Hash256, SignedExecutionPayloadEnvelope<T::EthSpec>> {
+    ) -> (
+        HashMap<Hash256, SignedExecutionPayloadEnvelope<T::EthSpec>>,
+        HashMap<Hash256, SignedBlindedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) {
         let mut envelopes = HashMap::new();
+        let mut blinded_envelopes = HashMap::new();
         for block in blocks {
             if block
                 .message()
@@ -1294,12 +1304,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .is_ok()
             {
                 let block_root = block.canonical_root();
-                if let Ok(Some(envelope)) = self.get_payload_envelope(&block_root) {
-                    envelopes.insert(block_root, envelope);
+                match self.get_payload_envelope(&block_root) {
+                    Ok(Some(envelope)) => {
+                        envelopes.insert(block_root, envelope);
+                    }
+                    _ => {
+                        if let Ok(Some(blinded)) =
+                            self.store.get_blinded_payload_envelope(&block_root)
+                        {
+                            blinded_envelopes.insert(block_root, blinded);
+                        }
+                    }
                 }
             }
         }
-        envelopes
+        (envelopes, blinded_envelopes)
     }
 
     /// Returns the blobs at the given root, if any.

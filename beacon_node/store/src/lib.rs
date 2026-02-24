@@ -264,10 +264,13 @@ pub enum DBColumn {
     BeaconBlock,
     #[strum(serialize = "blb")]
     BeaconBlob,
-    /// Signed execution payload envelopes for Gloas ePBS blocks.
+    /// Blinded execution payload envelopes for Gloas ePBS blocks.
     ///
     /// - Key: `Hash256` block root (one envelope per block).
-    /// - Value: SSZ-encoded `SignedExecutionPayloadEnvelope`.
+    /// - Value: SSZ-encoded `SignedBlindedExecutionPayloadEnvelope`.
+    ///
+    /// The full payload is stored separately in `ExecPayload` and pruned
+    /// on finalization. The blinded envelope is retained for block replay.
     #[strum(serialize = "bev")]
     BeaconEnvelope,
     #[strum(serialize = "bdc")]

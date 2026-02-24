@@ -113,16 +113,41 @@ where
                     // We keep prev_state_root as the block's pre-envelope root so that
                     // per_slot_processing sets state_roots[slot] consistently with the
                     // forward chain.
-                    if let Ok(Some(signed_envelope)) = self.get_payload_envelope(&block_root)
-                        && let Err(e) =
+                    //
+                    // Try full envelope first, then fall back to blinded envelope
+                    // (payload may have been pruned on finalization).
+                    let envelope_result = if let Ok(Some(signed_envelope)) =
+                        self.get_payload_envelope(&block_root)
+                    {
+                        Some(
                             state_processing::envelope_processing::process_execution_payload_envelope(
                                 &mut state,
                                 Some(block.state_root()),
                                 &signed_envelope,
                                 state_processing::VerifySignatures::False,
                                 &self.spec,
-                            )
+                            ),
+                        )
+                    } else if let Ok(Some(blinded)) = self.get_blinded_payload_envelope(&block_root)
                     {
+                        let withdrawals = state
+                            .payload_expected_withdrawals()
+                            .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                            .unwrap_or_default();
+                        let reconstructed = blinded.into_full_with_withdrawals(withdrawals);
+                        Some(
+                            state_processing::envelope_processing::process_execution_payload_envelope(
+                                &mut state,
+                                Some(block.state_root()),
+                                &reconstructed,
+                                state_processing::VerifySignatures::False,
+                                &self.spec,
+                            ),
+                        )
+                    } else {
+                        None
+                    };
+                    if let Some(Err(e)) = envelope_result {
                         warn!(
                             ?e,
                             ?block_root,

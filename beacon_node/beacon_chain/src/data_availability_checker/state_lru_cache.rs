@@ -158,6 +158,7 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
         // Gloas ePBS: load envelope for the block so the replayer can apply
         // full envelope processing (execution requests, builder payments, etc.)
         let mut envelopes = std::collections::HashMap::new();
+        let mut blinded_envelopes = std::collections::HashMap::new();
         if blinded_block
             .message()
             .body()
@@ -165,8 +166,16 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
             .is_ok()
         {
             let block_root = blinded_block.canonical_root();
-            if let Ok(Some(envelope)) = self.store.get_payload_envelope(&block_root) {
-                envelopes.insert(block_root, envelope);
+            match self.store.get_payload_envelope(&block_root) {
+                Ok(Some(envelope)) => {
+                    envelopes.insert(block_root, envelope);
+                }
+                _ => {
+                    if let Ok(Some(blinded)) = self.store.get_blinded_payload_envelope(&block_root)
+                    {
+                        blinded_envelopes.insert(block_root, blinded);
+                    }
+                }
             }
         }
 
@@ -178,6 +187,9 @@ impl<T: BeaconChainTypes> StateLRUCache<T> {
 
         if !envelopes.is_empty() {
             block_replayer = block_replayer.envelopes(envelopes);
+        }
+        if !blinded_envelopes.is_empty() {
+            block_replayer = block_replayer.blinded_envelopes(blinded_envelopes);
         }
 
         let block_replayer = debug_span!("reconstruct_state_apply_blocks")

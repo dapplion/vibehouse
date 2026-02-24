@@ -779,10 +779,44 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
     }
 
     /// Load the signed execution payload envelope for a Gloas block from disk.
+    ///
+    /// Reconstructs the full envelope from the blinded envelope (stored in
+    /// `BeaconEnvelope`) and the full payload (stored in `ExecPayload`).
+    /// Returns `None` if either component is missing (e.g. payload pruned
+    /// on finalization).
     pub fn get_payload_envelope(
         &self,
         block_root: &Hash256,
     ) -> Result<Option<SignedExecutionPayloadEnvelope<E>>, Error> {
+        let blinded: Option<SignedBlindedExecutionPayloadEnvelope<E>> =
+            self.get_item(block_root)?;
+        let Some(blinded) = blinded else {
+            return Ok(None);
+        };
+
+        // Try to load the full Gloas payload from ExecPayload column.
+        let key = block_root.as_slice();
+        match self.hot_db.get_bytes(DBColumn::ExecPayload, key)? {
+            Some(bytes) => {
+                let payload = ExecutionPayloadGloas::from_ssz_bytes(&bytes)?;
+                Ok(Some(blinded.into_full(payload)))
+            }
+            None => {
+                // Payload has been pruned — can't reconstruct full envelope.
+                Ok(None)
+            }
+        }
+    }
+
+    /// Load the blinded execution payload envelope for a Gloas block.
+    ///
+    /// Unlike `get_payload_envelope`, this always succeeds as long as the
+    /// blinded envelope exists (even if the full payload has been pruned).
+    /// Used by the block replayer for finalized blocks.
+    pub fn get_blinded_payload_envelope(
+        &self,
+        block_root: &Hash256,
+    ) -> Result<Option<SignedBlindedExecutionPayloadEnvelope<E>>, Error> {
         self.get_item(block_root)
     }
 
@@ -1151,40 +1185,45 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             // block.state_root()). Re-apply the envelope so that the returned
             // state has the correct latest_block_hash, execution request changes,
             // and builder payment state.
-            match self.get_payload_envelope(&block_root) {
-                Ok(Some(signed_envelope)) => {
-                    // Skip re-application if envelope was already applied (e.g. WSS
-                    // checkpoint stored as post-envelope state).
-                    let already_applied = state
-                        .latest_block_hash()
+            // Try full envelope first, then blinded (payload may be pruned).
+            let envelope_to_apply = match self.get_payload_envelope(&block_root) {
+                Ok(Some(env)) => Some(env),
+                _ => {
+                    // Fall back to blinded envelope + state's expected withdrawals
+                    self.get_blinded_payload_envelope(&block_root)
                         .ok()
-                        .is_some_and(|h| *h == signed_envelope.message.payload.block_hash);
-                    if !already_applied
-                        && let Err(e) =
-                            state_processing::envelope_processing::process_execution_payload_envelope(
-                                state,
-                                None,
-                                &signed_envelope,
-                                state_processing::VerifySignatures::False,
-                                &self.spec,
-                            )
-                    {
-                        warn!(
-                            ?e,
-                            ?block_root,
-                            state_slot = %state.slot(),
-                            "Failed to re-apply envelope in get_advanced_hot_state"
-                        );
-                    }
+                        .flatten()
+                        .map(|blinded| {
+                            let withdrawals = state
+                                .payload_expected_withdrawals()
+                                .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                                .unwrap_or_default();
+                            blinded.into_full_with_withdrawals(withdrawals)
+                        })
                 }
-                Ok(None) => {
-                    // No envelope found — pre-Gloas block or envelope pruned
-                }
-                Err(e) => {
+            };
+            if let Some(signed_envelope) = envelope_to_apply {
+                // Skip re-application if envelope was already applied (e.g. WSS
+                // checkpoint stored as post-envelope state).
+                let already_applied = state
+                    .latest_block_hash()
+                    .ok()
+                    .is_some_and(|h| *h == signed_envelope.message.payload.block_hash);
+                if !already_applied
+                    && let Err(e) =
+                        state_processing::envelope_processing::process_execution_payload_envelope(
+                            state,
+                            None,
+                            &signed_envelope,
+                            state_processing::VerifySignatures::False,
+                            &self.spec,
+                        )
+                {
                     warn!(
                         ?e,
                         ?block_root,
-                        "Error loading payload envelope in get_advanced_hot_state"
+                        state_slot = %state.slot(),
+                        "Failed to re-apply envelope in get_advanced_hot_state"
                     );
                 }
             }
@@ -1348,10 +1387,21 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 }
 
                 StoreOp::PutPayloadEnvelope(block_root, envelope) => {
+                    // Store the blinded envelope (header only) in BeaconEnvelope
+                    let blinded = SignedBlindedExecutionPayloadEnvelope::from_full(&envelope);
                     key_value_batch.push(KeyValueStoreOp::PutKeyValue(
                         DBColumn::BeaconEnvelope,
                         block_root.as_slice().to_vec(),
-                        envelope.as_ssz_bytes(),
+                        blinded.as_ssz_bytes(),
+                    ));
+                    // Store the full Gloas payload in ExecPayload (same column
+                    // as pre-Gloas payloads). This allows pruning the large
+                    // transaction data on finalization while keeping the
+                    // blinded envelope for block replay.
+                    key_value_batch.push(KeyValueStoreOp::PutKeyValue(
+                        DBColumn::ExecPayload,
+                        block_root.as_slice().to_vec(),
+                        envelope.message.payload.as_ssz_bytes(),
                     ));
                 }
 
@@ -2537,7 +2587,13 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
 
         // Gloas ePBS: load envelopes for Gloas blocks so the replayer can apply
         // full envelope processing (execution requests, builder payments, etc.)
+        //
+        // First try full envelopes (blinded + payload from ExecPayload).
+        // If the payload has been pruned (finalized), fall back to blinded
+        // envelopes which will be reconstructed with withdrawals from state
+        // during replay.
         let mut envelopes = std::collections::HashMap::new();
+        let mut blinded_envelopes = std::collections::HashMap::new();
         for block in &blocks {
             if block
                 .message()
@@ -2546,13 +2602,24 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 .is_ok()
             {
                 let block_root = block.canonical_root();
-                if let Ok(Some(envelope)) = self.get_payload_envelope(&block_root) {
-                    envelopes.insert(block_root, envelope);
+                match self.get_payload_envelope(&block_root) {
+                    Ok(Some(envelope)) => {
+                        envelopes.insert(block_root, envelope);
+                    }
+                    _ => {
+                        // Full payload may be pruned — try blinded envelope
+                        if let Ok(Some(blinded)) = self.get_blinded_payload_envelope(&block_root) {
+                            blinded_envelopes.insert(block_root, blinded);
+                        }
+                    }
                 }
             }
         }
         if !envelopes.is_empty() {
             block_replayer = block_replayer.envelopes(envelopes);
+        }
+        if !blinded_envelopes.is_empty() {
+            block_replayer = block_replayer.blinded_envelopes(blinded_envelopes);
         }
 
         let have_state_root_iterator = state_root_iter.is_some();
@@ -3289,11 +3356,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 ops.push(StoreOp::DeleteExecutionPayload(block_root));
             }
 
-            // Also prune any envelope stored for this block (Gloas ePBS).
-            if self.payload_envelope_exists(&block_root)? {
-                debug!(%slot, ?block_root, "Pruning payload envelope");
-                ops.push(StoreOp::DeletePayloadEnvelope(block_root));
-            }
+            // Note: blinded envelopes in BeaconEnvelope are NOT pruned here.
+            // They are small (no transactions/withdrawals lists) and are needed
+            // by the block replayer for state reconstruction of finalized blocks.
+            // Only the full payload in ExecPayload is pruned (above).
 
             if slot <= anchor_info.oldest_block_slot {
                 info!(%slot, "Payload pruning reached anchor oldest block slot");
@@ -3677,12 +3743,19 @@ pub fn migrate_database<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>>(
         // envelope's state_root (post-envelope) is different because envelope
         // processing modifies the state. Store a ColdStateSummary for the
         // post-envelope root so lookups by either root succeed.
-        if let Ok(Some(envelope)) = store.get_payload_envelope(&block_root) {
-            let post_envelope_root = envelope.message.state_root;
-            if post_envelope_root != Hash256::zero() && post_envelope_root != state_root {
-                cold_db_state_ops
-                    .push(ColdStateSummary { slot }.as_kv_store_op(post_envelope_root));
-            }
+        let post_envelope_root = if let Ok(Some(envelope)) = store.get_payload_envelope(&block_root)
+        {
+            Some(envelope.message.state_root)
+        } else if let Ok(Some(blinded)) = store.get_blinded_payload_envelope(&block_root) {
+            Some(blinded.message.state_root)
+        } else {
+            None
+        };
+        if let Some(post_root) = post_envelope_root
+            && post_root != Hash256::zero()
+            && post_root != state_root
+        {
+            cold_db_state_ops.push(ColdStateSummary { slot }.as_kv_store_op(post_root));
         }
 
         // Cold states are diffed with respect to each other, so we need to finish writing previous

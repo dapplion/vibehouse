@@ -58,7 +58,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 
     // Gloas ePBS: load envelopes for Gloas blocks so the replayer can apply
     // full envelope processing (execution requests, builder payments, etc.)
-    let envelopes = chain.load_envelopes_for_blocks(&blocks);
+    let (envelopes, blinded_envelopes) = chain.load_envelopes_for_blocks(&blocks);
 
     let mut block_replayer = BlockReplayer::new(state, &chain.spec)
         .pre_block_hook(Box::new(|state, block| {
@@ -85,6 +85,9 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 
     if !envelopes.is_empty() {
         block_replayer = block_replayer.envelopes(envelopes);
+    }
+    if !blinded_envelopes.is_empty() {
+        block_replayer = block_replayer.blinded_envelopes(blinded_envelopes);
     }
 
     let block_replayer = block_replayer

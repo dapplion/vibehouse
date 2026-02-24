@@ -9,7 +9,7 @@ use std::iter::Peekable;
 use std::marker::PhantomData;
 use types::{
     BeaconState, BeaconStateError, BlindedPayload, ChainSpec, EthSpec, ExecutionBlockHash, Hash256,
-    SignedBeaconBlock, SignedExecutionPayloadEnvelope, Slot,
+    SignedBeaconBlock, SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope, Slot,
 };
 
 pub type PreBlockHook<'a, E, Error> = Box<
@@ -44,10 +44,14 @@ pub struct BlockReplayer<
     post_slot_hook: Option<PostSlotHook<'a, Spec, Error>>,
     pub(crate) state_root_iter: Option<Peekable<StateRootIter>>,
     state_root_miss: bool,
-    /// Gloas ePBS: envelopes to apply after each block, keyed by block root.
+    /// Gloas ePBS: full envelopes to apply after each block, keyed by block root.
     /// When set, full envelope processing is applied after each Gloas block instead
     /// of just updating latest_block_hash from the bid.
     envelopes: HashMap<Hash256, SignedExecutionPayloadEnvelope<Spec>>,
+    /// Gloas ePBS: blinded envelopes for finalized blocks where the full payload
+    /// has been pruned. The replayer reconstructs a sufficient envelope by combining
+    /// the blinded header with expected withdrawals from state.
+    blinded_envelopes: HashMap<Hash256, SignedBlindedExecutionPayloadEnvelope<Spec>>,
     _phantom: PhantomData<Error>,
 }
 
@@ -102,6 +106,7 @@ where
             state_root_iter: None,
             state_root_miss: false,
             envelopes: HashMap::new(),
+            blinded_envelopes: HashMap::new(),
             _phantom: PhantomData,
         }
     }
@@ -176,6 +181,20 @@ where
         envelopes: HashMap<Hash256, SignedExecutionPayloadEnvelope<E>>,
     ) -> Self {
         self.envelopes = envelopes;
+        self
+    }
+
+    /// Supply blinded Gloas execution payload envelopes for finalized blocks.
+    ///
+    /// When the full payload has been pruned from the database, blinded
+    /// envelopes retain enough metadata (header fields, execution_requests,
+    /// builder_index, etc.) to reconstruct a sufficient envelope for state
+    /// replay by combining with expected withdrawals from the state.
+    pub fn blinded_envelopes(
+        mut self,
+        blinded_envelopes: HashMap<Hash256, SignedBlindedExecutionPayloadEnvelope<E>>,
+    ) -> Self {
+        self.blinded_envelopes = blinded_envelopes;
         self
     }
 
@@ -254,6 +273,22 @@ where
                             VerifySignatures::False,
                             self.spec,
                         ));
+                    } else if let Some(blinded) = self.blinded_envelopes.remove(&block_root) {
+                        // Reconstruct envelope from blinded + state's expected withdrawals.
+                        // Convert milhouse List → ssz_types VariableList via collect.
+                        let withdrawals = self
+                            .state
+                            .payload_expected_withdrawals()
+                            .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                            .unwrap_or_default();
+                        let envelope = blinded.into_full_with_withdrawals(withdrawals);
+                        drop(process_execution_payload_envelope(
+                            &mut self.state,
+                            None,
+                            &envelope,
+                            VerifySignatures::False,
+                            self.spec,
+                        ));
                     } else if bid.message.block_hash != ExecutionBlockHash::zero() {
                         // Only update latest_block_hash from the bid if it's non-zero.
                         // Genesis blocks have an empty bid with zero block_hash — applying
@@ -325,6 +360,27 @@ where
             if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
                 let block_root = block.canonical_root();
                 if let Some(envelope) = self.envelopes.remove(&block_root) {
+                    process_execution_payload_envelope(
+                        &mut self.state,
+                        None,
+                        &envelope,
+                        VerifySignatures::False,
+                        self.spec,
+                    )
+                    .map_err(|e| {
+                        BlockReplayError::BlockProcessing(
+                            BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
+                        )
+                    })?;
+                } else if let Some(blinded) = self.blinded_envelopes.remove(&block_root) {
+                    // Reconstruct from blinded envelope + state's expected withdrawals.
+                    // Convert milhouse List → ssz_types VariableList via collect.
+                    let withdrawals = self
+                        .state
+                        .payload_expected_withdrawals()
+                        .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                        .unwrap_or_default();
+                    let envelope = blinded.into_full_with_withdrawals(withdrawals);
                     process_execution_payload_envelope(
                         &mut self.state,
                         None,

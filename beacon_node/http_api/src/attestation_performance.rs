@@ -206,9 +206,12 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
             .collect::<Result<Vec<_>, _>>()?;
 
         // Gloas ePBS: load envelopes so the replayer can apply envelope processing.
-        let envelopes = chain.load_envelopes_for_blocks(&blocks);
+        let (envelopes, blinded_envelopes) = chain.load_envelopes_for_blocks(&blocks);
         if !envelopes.is_empty() {
             replayer = replayer.envelopes(envelopes);
+        }
+        if !blinded_envelopes.is_empty() {
+            replayer = replayer.blinded_envelopes(blinded_envelopes);
         }
 
         replayer = replayer
