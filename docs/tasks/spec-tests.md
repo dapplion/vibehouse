@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — spec compliance audit (run 69)
+- Full audit of consensus-specs PRs merged since v1.7.0-alpha.2 (2026-02-03):
+  - **#4918** (only allow attestations for known payload statuses, merged 2026-02-23) — ALREADY IMPLEMENTED (fork_choice.rs:1207-1215, checks `block.payload_revealed` for index=1 attestations)
+  - **#4923** (ignore block if parent payload unknown, merged 2026-02-16) — ALREADY IMPLEMENTED (block_verification.rs:972, `GloasParentPayloadUnknown` error type)
+  - **#4884** (payload data availability vote in store, merged 2026-02-12) — ALREADY IMPLEMENTED (proto_array tracks `ptc_blob_data_available_weight`, `should_extend_payload` uses `is_payload_data_available`)
+  - **#4897** (check pending deposit before applying to builder, merged 2026-02-12) — ALREADY IMPLEMENTED (process_operations.rs:714-719, `is_pending_validator` with 4 unit tests)
+  - **#4916** (refactor builder deposit conditions, merged 2026-02-12) — ALREADY IMPLEMENTED (short-circuit evaluation matches spec)
+  - **#4875** (move KZG commitments to bid, merged 2026-01-30) — ALREADY IMPLEMENTED (execution_payload_bid.rs:56)
+  - **#4879** (allow multiple preferences per slot, merged 2026-01-29) — gossip dedup check missing but proposer preferences pool is TODO (#30)
+  - **#4880** (clarify data column sidecar validation rules, merged 2026-01-30) — p2p-level change, deferred validation pattern present
+- Open Gloas PRs: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4843 (variable PTC deadline), #4939 (request missing envelopes), #4840 (EIP-7843), #4926 (SLOT_DURATION_MS), #4747 (fast confirmation rule)
+- All consensus-critical spec changes from the v1.7.0-alpha.2 series are implemented and tested
+- Spec test version: v1.7.0-alpha.2 (latest release), 78/78 + 138/138 passing
+- beacon_chain test fix confirmed: 439/439 pass after blinded envelope pruning fix (commit 181f591e6)
+
 ### 2026-02-24 — 24 SSE event & API type tests (run 68)
 - Checked consensus-specs PRs since run 67: no new Gloas spec changes merged
   - #4946 (bump actions/stale) — CI-only, no spec changes
