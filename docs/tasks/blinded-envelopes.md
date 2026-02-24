@@ -27,10 +27,16 @@ On retrieval, the full envelope is reconstructed by combining blinded + payload.
 - `beacon_node/beacon_chain/src/data_availability_checker/state_lru_cache.rs` — blinded fallback
 - `beacon_node/http_api/src/{attestation_performance,block_packing_efficiency,block_rewards}.rs` — updated for tuple return
 
+### Follow-up Fix: block_verification test failures
+The blinded envelope pruning broke 5 `beacon_chain` block_verification tests (`block_gossip_verification`, `chain_segment_full_segment`, `chain_segment_varying_chunk_size`, `invalid_signature_attestation`, `invalid_signature_attester_slashing`). Root cause: `get_chain_segment()` built a 320-block chain triggering finalization, which pruned `ExecPayload` entries. When it then called `get_payload_envelope()` for finalized blocks, it returned `None` because the full payload was gone. Without envelopes, `process_self_build_envelope` was skipped, leaving `payload_revealed=false` and `latest_block_hash` stale, causing cascading failures.
+
+Fix: `get_chain_segment()` now falls back to `get_blinded_payload_envelope()` + `into_full_with_withdrawals()` using the state's `payload_expected_withdrawals`, matching the block replayer's fallback pattern. All 439 beacon_chain tests pass.
+
 ### Testing
 - 6 unit tests for `BlindedExecutionPayloadEnvelope` (SSZ roundtrip, metadata preservation, reconstruction)
 - 14 block replayer tests pass (including blinded envelope fallback paths)
 - 280 state_processing tests pass
 - 24 store tests pass
 - 688 types tests pass
+- 439 beacon_chain tests pass (Gloas fork)
 - Full workspace clippy lint passes
