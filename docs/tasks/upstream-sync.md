@@ -31,6 +31,22 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 55)
+- Checked consensus-specs PRs since run 54: no new Gloas spec changes merged
+  - Open Gloas PRs: #4939, #4940, #4932, #4843, #4926, #4898, #4892, #4747, #4840, #4630, #4558 — all still open/unmerged
+  - #4926 (SLOT_DURATION_MS) and #4843 (variable PTC deadline) each have 1 approval, closest to merge
+  - Assessed #4898 (remove pending status from tiebreaker) and #4892 (remove impossible branch in forkchoice) — vibehouse already conforms to both, no code changes needed when merged
+- **Added 8 integration tests for `import_payload_attestation_message`** in `beacon_node/beacon_chain/tests/gloas.rs`. This REST API entry point for individual PTC votes was completely untested.
+  - Happy path (1): properly signed message from PTC member imports, returns aggregated attestation, appears in pool
+  - Non-PTC validator (1): rejects with PayloadAttestationValidatorNotInPtc
+  - Unknown validator index (1): out-of-range index correctly rejected
+  - Payload absent (1): payload_present=false attestation imports successfully
+  - Single bit set (1): aggregation_bits has exactly one bit at correct PTC position
+  - Second PTC member (1): bit 1 set for second member, bit 0 clear
+  - Invalid signature (1): wrong keypair rejected with PayloadAttestationVerificationFailed
+  - Unknown block root (1): unknown beacon_block_root rejected during gossip verification
+  - All 38/38 gloas integration tests pass (30 existing + 8 new)
+
 ### 2026-02-24 (run 54)
 - Checked consensus-specs PRs since run 53: #4946 (bump actions/stale, CI-only) — no spec changes merged
   - Open Gloas PRs: #4939, #4940, #4932, #4843, #4926, #4898, #4892, #4747 — all still open/unmerged

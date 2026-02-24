@@ -10,8 +10,10 @@
 //! - The chain finalizes across the fork boundary
 //! - Gloas-specific state fields are initialized correctly after upgrade
 
+use beacon_chain::BeaconChainError;
 use beacon_chain::BlockError;
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
+use state_processing::per_block_processing::gloas::get_ptc_committee;
 use types::*;
 
 const VALIDATOR_COUNT: usize = 32;
@@ -907,5 +909,411 @@ async fn gloas_payload_attestation_data_unrevealed() {
     assert!(
         !data.payload_present,
         "payload_present should be false when payload not revealed"
+    );
+}
+
+// =============================================================================
+// import_payload_attestation_message tests
+// =============================================================================
+
+/// Helper: sign a PayloadAttestationData for a specific validator using the
+/// deterministic keypair and the PTC_ATTESTER domain.
+fn sign_payload_attestation_data(
+    data: &PayloadAttestationData,
+    validator_index: usize,
+    state: &BeaconState<E>,
+    spec: &ChainSpec,
+) -> Signature {
+    let epoch = data.slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let message = data.signing_root(domain);
+    let keypair = test_utils::generate_deterministic_keypair(validator_index);
+    keypair.sk.sign(message)
+}
+
+/// Helper: get the PTC committee for a slot and return the first member's validator index.
+fn first_ptc_member(state: &BeaconState<E>, slot: Slot, spec: &ChainSpec) -> u64 {
+    let ptc = get_ptc_committee::<E>(state, slot, spec).expect("should get PTC committee");
+    assert!(!ptc.is_empty(), "PTC committee should not be empty");
+    ptc[0]
+}
+
+/// Test the happy path: import a properly signed payload attestation message
+/// from a PTC member. The attestation should be accepted and added to the pool.
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_happy_path() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a PTC member for the head slot
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data: data.clone(),
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_ok(),
+        "should import valid payload attestation message, got: {:?}",
+        result.err()
+    );
+
+    let attestation = result.unwrap();
+    assert_eq!(attestation.data.slot, head_slot);
+    assert_eq!(attestation.data.beacon_block_root, head_root);
+    assert!(attestation.data.payload_present);
+    assert!(attestation.data.blob_data_available);
+
+    // Verify it was added to the pool
+    let pool_result = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 1, head_root);
+    assert!(
+        !pool_result.is_empty(),
+        "imported attestation should be in the pool"
+    );
+}
+
+/// Test that importing a message from a validator NOT in the PTC fails with
+/// PayloadAttestationValidatorNotInPtc.
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_not_in_ptc() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a validator NOT in the PTC for this slot
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let non_ptc_validator = (0..VALIDATOR_COUNT as u64)
+        .find(|idx| !ptc.contains(idx))
+        .expect("should find a non-PTC validator");
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, non_ptc_validator as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index: non_ptc_validator,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(result.is_err(), "should reject non-PTC validator");
+    match result.unwrap_err() {
+        BeaconChainError::PayloadAttestationValidatorNotInPtc {
+            validator_index,
+            slot,
+        } => {
+            assert_eq!(validator_index, non_ptc_validator);
+            assert_eq!(slot, head_slot);
+        }
+        other => panic!(
+            "expected PayloadAttestationValidatorNotInPtc, got: {:?}",
+            other
+        ),
+    }
+}
+
+/// Test that importing a message with an out-of-range validator index fails.
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_unknown_validator() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let message = PayloadAttestationMessage {
+        validator_index: 99999,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: false,
+        },
+        signature: Signature::empty(),
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(result.is_err(), "should reject unknown validator index");
+    assert!(
+        matches!(
+            result.unwrap_err(),
+            BeaconChainError::PayloadAttestationValidatorNotInPtc { .. }
+        ),
+        "should be PayloadAttestationValidatorNotInPtc for out-of-range index"
+    );
+}
+
+/// Test that importing a message with payload_present=false also works (the PTC member
+/// is attesting that the payload was NOT present).
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_payload_absent() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: false,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data: data.clone(),
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_ok(),
+        "should import payload-absent attestation, got: {:?}",
+        result.err()
+    );
+
+    let attestation = result.unwrap();
+    assert!(!attestation.data.payload_present);
+}
+
+/// Test that the aggregation_bits field in the returned attestation has exactly one bit set
+/// at the correct PTC position.
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_single_bit_set() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let validator_index = ptc[0];
+    // The expected PTC position is 0 (first member)
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let attestation = harness
+        .chain
+        .import_payload_attestation_message(message)
+        .expect("should import");
+
+    // Exactly one bit should be set
+    let set_bits: Vec<usize> = (0..E::ptc_size())
+        .filter(|&i| attestation.aggregation_bits.get(i).unwrap_or(false))
+        .collect();
+    assert_eq!(
+        set_bits.len(),
+        1,
+        "exactly one aggregation bit should be set"
+    );
+    assert_eq!(set_bits[0], 0, "the first PTC member should have bit 0 set");
+}
+
+/// Test importing a message for a non-head PTC member (second member in the committee).
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_second_ptc_member() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+
+    // MinimalEthSpec PTC size is 2, so we need at least 2 members
+    if ptc.len() < 2 {
+        // Skip if PTC doesn't have a second member (shouldn't happen with 32 validators)
+        return;
+    }
+
+    let validator_index = ptc[1];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let attestation = harness
+        .chain
+        .import_payload_attestation_message(message)
+        .expect("should import second PTC member's attestation");
+
+    // Bit 1 should be set (second member), bit 0 should not
+    assert!(
+        attestation.aggregation_bits.get(1).unwrap_or(false),
+        "bit 1 should be set for second PTC member"
+    );
+    assert!(
+        !attestation.aggregation_bits.get(0).unwrap_or(false),
+        "bit 0 should not be set for second PTC member"
+    );
+}
+
+/// Test that importing a message with an invalid signature fails.
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_invalid_signature() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    // Sign with the WRONG keypair (validator 0 signs for a different validator)
+    let wrong_keypair_index = if validator_index == 0 { 1 } else { 0 };
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, wrong_keypair_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_err(),
+        "should reject message with invalid signature"
+    );
+    // The error goes through gossip verification, which wraps it as PayloadAttestationVerificationFailed
+    assert!(
+        matches!(
+            result.unwrap_err(),
+            BeaconChainError::PayloadAttestationVerificationFailed(..)
+        ),
+        "should be PayloadAttestationVerificationFailed"
+    );
+}
+
+/// Test that importing a message with an unknown beacon block root fails during
+/// gossip verification (the block must be known in fork choice).
+#[tokio::test]
+async fn gloas_import_payload_attestation_message_unknown_block_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let unknown_root = Hash256::repeat_byte(0xde);
+    let data = PayloadAttestationData {
+        beacon_block_root: unknown_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_err(),
+        "should reject message with unknown block root"
+    );
+    // This fails during gossip verification with UnknownBeaconBlockRoot
+    assert!(
+        matches!(
+            result.unwrap_err(),
+            BeaconChainError::PayloadAttestationVerificationFailed(..)
+        ),
+        "should be PayloadAttestationVerificationFailed for unknown block root"
     );
 }
