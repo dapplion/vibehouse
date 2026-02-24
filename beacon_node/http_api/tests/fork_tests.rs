@@ -789,3 +789,360 @@ async fn bid_submission_rejected_before_gloas() {
         );
     }
 }
+
+/// GET validator/payload_attestation_data should return data for the head slot.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn payload_attestation_data_returns_head_slot() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a Gloas block so there's a head to attest about
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+
+    let response = client
+        .get_validator_payload_attestation_data(head_slot)
+        .await
+        .expect("should return payload attestation data");
+
+    let data = response.data;
+    assert_eq!(data.slot, head_slot, "slot should match head slot");
+    assert_ne!(
+        data.beacon_block_root,
+        Hash256::zero(),
+        "block root should not be zero"
+    );
+    // After self-build envelope processing, payload_present should be true
+    assert!(
+        data.payload_present,
+        "payload should be present after envelope processing"
+    );
+}
+
+/// GET validator/payload_attestation_data for a future slot uses head block root,
+/// so payload_present reflects the head block's payload status.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn payload_attestation_data_future_slot_uses_head() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let future_slot = head_slot + 5;
+
+    let response = client
+        .get_validator_payload_attestation_data(future_slot)
+        .await
+        .expect("should return payload attestation data for future slot");
+
+    let data = response.data;
+    assert_eq!(data.slot, future_slot, "slot should match requested slot");
+    // Future slot falls back to head block root
+    assert_eq!(
+        data.beacon_block_root, head_root,
+        "future slot should use head block root"
+    );
+}
+
+/// POST beacon/pool/payload_attestations should accept a valid PTC member attestation.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_valid_ptc_member() {
+    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a PTC member for the head slot
+    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    assert!(!ptc.is_empty(), "PTC committee should not be empty");
+    let validator_index = ptc[0];
+
+    // Sign the attestation
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let message_root = data.signing_root(domain);
+    let keypair = generate_deterministic_keypair(validator_index as usize);
+    let signature = keypair.sk.sign(message_root);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = client
+        .post_beacon_pool_payload_attestations(&[message])
+        .await;
+    assert!(
+        result.is_ok(),
+        "should accept valid PTC member attestation, got: {:?}",
+        result.err()
+    );
+}
+
+/// POST beacon/pool/payload_attestations should reject a non-PTC validator.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_non_ptc_rejected() {
+    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a validator NOT in the PTC
+    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let non_ptc_validator = (0..validator_count as u64)
+        .find(|idx| !ptc.contains(idx))
+        .expect("should find a non-PTC validator");
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let message_root = data.signing_root(domain);
+    let keypair = generate_deterministic_keypair(non_ptc_validator as usize);
+    let signature = keypair.sk.sign(message_root);
+
+    let message = PayloadAttestationMessage {
+        validator_index: non_ptc_validator,
+        data,
+        signature,
+    };
+
+    let result = client
+        .post_beacon_pool_payload_attestations(&[message])
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject non-PTC validator attestation"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// POST beacon/pool/payload_attestations with empty list should succeed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_empty_list() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let result = client.post_beacon_pool_payload_attestations(&[]).await;
+    assert!(
+        result.is_ok(),
+        "empty payload attestation list should succeed, got: {:?}",
+        result.err()
+    );
+}
+
+/// GET beacon/execution_payload_envelope/{block_id} should return envelope for a produced block.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_success() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a Gloas block (self-build produces block + envelope)
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Retrieve the envelope via the REST API
+    let result = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(head_root))
+        .await
+        .expect("request should succeed");
+
+    let response = result.expect("envelope should exist for self-build block");
+    let envelope = &response.data;
+
+    // Verify envelope fields match
+    assert_eq!(
+        envelope.message.beacon_block_root, head_root,
+        "envelope beacon_block_root should match"
+    );
+    assert_eq!(
+        envelope.message.slot, head_slot,
+        "envelope slot should match head slot"
+    );
+}
+
+/// GET beacon/execution_payload_envelope with slot BlockId should work.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_by_slot() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+
+    // Retrieve by slot
+    let result = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Slot(head_slot))
+        .await
+        .expect("request should succeed");
+
+    let response = result.expect("envelope should exist for produced block");
+    assert_eq!(
+        response.data.message.slot, head_slot,
+        "envelope slot should match"
+    );
+}
+
+/// GET beacon/execution_payload_envelope for "head" BlockId.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_head() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_root = harness.chain.head_snapshot().beacon_block_root;
+
+    let result = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Head)
+        .await
+        .expect("request should succeed");
+
+    let response = result.expect("envelope should exist for head block");
+    assert_eq!(
+        response.data.message.beacon_block_root, head_root,
+        "head envelope should match head root"
+    );
+}
