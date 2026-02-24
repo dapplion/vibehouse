@@ -31,6 +31,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 56)
+- Checked consensus-specs PRs since run 55: no new Gloas spec changes merged
+  - Open Gloas PRs: #4939, #4940, #4932, #4843, #4926, #4898, #4892 — all still open/unmerged
+- **Added 9 HTTP API integration tests for Gloas endpoints** in `beacon_node/http_api/tests/fork_tests.rs`. Previously only 4 Gloas HTTP API tests existed (PTC duties x3 + envelope 404 x1).
+  - GET validator/payload_attestation_data (2): head slot returns payload_present=true after self-build envelope, future slot falls back to head block root
+  - POST beacon/pool/payload_attestations (3): valid PTC member accepted and imported, non-PTC validator rejected with 400, empty list succeeds
+  - GET beacon/execution_payload_envelope (3): by block root returns envelope, by slot works, by "head" works
+  - All 13/13 Gloas HTTP API tests pass (4 existing + 9 new)
+
 ### 2026-02-24 (run 55)
 - Checked consensus-specs PRs since run 54: no new Gloas spec changes merged
   - Open Gloas PRs: #4939, #4940, #4932, #4843, #4926, #4898, #4892, #4747, #4840, #4630, #4558 — all still open/unmerged
