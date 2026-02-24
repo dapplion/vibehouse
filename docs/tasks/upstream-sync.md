@@ -31,6 +31,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 68)
+- Checked consensus-specs PRs since run 67: no new Gloas spec changes merged
+  - #4941 (execution proof construction, EIP-8025) merged 2026-02-19 — not Gloas ePBS, no code changes needed
+  - #4926 (SLOT_DURATION_MS) has 1 approval (nflaig), naming change only, still open
+  - #4892 (remove impossible branch) has 2 approvals — vibehouse already conforms
+  - Open Gloas PRs: #4940, #4932, #4840, #4939, #4892, #4630, #4558, #4747 — all still open/unmerged
+- No new GitHub issues — existing 3 open issues are all RFCs/feature requests
+- **Added 24 SSE event & API type tests** (see spec-tests.md run 68 for details)
+- Workspace clippy: zero warnings
+
 ### 2026-02-24 (run 58)
 - Checked consensus-specs PRs since run 57: no new Gloas spec changes merged
   - #4946 (bump actions/stale) merged 2026-02-24 — CI-only, no spec changes

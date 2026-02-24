@@ -1875,6 +1875,268 @@ mod tests {
         };
         assert_ne!(a, c);
     }
+
+    // ── SSE event type tests ────────────────────────────────
+
+    #[test]
+    fn sse_execution_bid_json_roundtrip() {
+        let bid = SseExecutionBid {
+            slot: Slot::new(42),
+            block: Hash256::repeat_byte(0x01),
+            builder_index: 7,
+            block_hash: Hash256::repeat_byte(0x02),
+            value: 1_000_000_000,
+        };
+        let json = serde_json::to_string(&bid).unwrap();
+        let decoded: SseExecutionBid = serde_json::from_str(&json).unwrap();
+        assert_eq!(bid, decoded);
+    }
+
+    #[test]
+    fn sse_execution_bid_quoted_u64_fields() {
+        let bid = SseExecutionBid {
+            slot: Slot::new(42),
+            block: Hash256::repeat_byte(0x01),
+            builder_index: 7,
+            block_hash: Hash256::repeat_byte(0x02),
+            value: 1_000_000_000,
+        };
+        let json = serde_json::to_value(&bid).unwrap();
+        assert_eq!(json["builder_index"], serde_json::json!("7"));
+        assert_eq!(json["value"], serde_json::json!("1000000000"));
+    }
+
+    #[test]
+    fn sse_execution_payload_json_roundtrip() {
+        let payload = SseExecutionPayload {
+            slot: Slot::new(100),
+            beacon_block_root: Hash256::repeat_byte(0xAA),
+            builder_index: 3,
+            block_hash: Hash256::repeat_byte(0xBB),
+        };
+        let json = serde_json::to_string(&payload).unwrap();
+        let decoded: SseExecutionPayload = serde_json::from_str(&json).unwrap();
+        assert_eq!(payload, decoded);
+    }
+
+    #[test]
+    fn sse_execution_payload_quoted_u64_fields() {
+        let payload = SseExecutionPayload {
+            slot: Slot::new(100),
+            beacon_block_root: Hash256::repeat_byte(0xAA),
+            builder_index: 3,
+            block_hash: Hash256::repeat_byte(0xBB),
+        };
+        let json = serde_json::to_value(&payload).unwrap();
+        assert_eq!(json["builder_index"], serde_json::json!("3"));
+    }
+
+    #[test]
+    fn sse_payload_attestation_json_roundtrip() {
+        let att = SsePayloadAttestation {
+            slot: Slot::new(99),
+            beacon_block_root: Hash256::repeat_byte(0xCC),
+            payload_present: true,
+            blob_data_available: false,
+        };
+        let json = serde_json::to_string(&att).unwrap();
+        let decoded: SsePayloadAttestation = serde_json::from_str(&json).unwrap();
+        assert_eq!(att, decoded);
+    }
+
+    #[test]
+    fn sse_payload_attestation_both_flags_false() {
+        let att = SsePayloadAttestation {
+            slot: Slot::new(1),
+            beacon_block_root: Hash256::zero(),
+            payload_present: false,
+            blob_data_available: false,
+        };
+        let json = serde_json::to_string(&att).unwrap();
+        let decoded: SsePayloadAttestation = serde_json::from_str(&json).unwrap();
+        assert_eq!(att, decoded);
+        assert!(!decoded.payload_present);
+        assert!(!decoded.blob_data_available);
+    }
+
+    #[test]
+    fn sse_execution_proof_json_roundtrip() {
+        let proof = SseExecutionProof {
+            block_root: Hash256::repeat_byte(0xDD),
+            block_hash: Hash256::repeat_byte(0xEE),
+            subnet_id: 5,
+            version: 1,
+        };
+        let json = serde_json::to_string(&proof).unwrap();
+        let decoded: SseExecutionProof = serde_json::from_str(&json).unwrap();
+        assert_eq!(proof, decoded);
+    }
+
+    #[test]
+    fn sse_execution_proof_quoted_u64_fields() {
+        let proof = SseExecutionProof {
+            block_root: Hash256::repeat_byte(0xDD),
+            block_hash: Hash256::repeat_byte(0xEE),
+            subnet_id: 5,
+            version: 1,
+        };
+        let json = serde_json::to_value(&proof).unwrap();
+        assert_eq!(json["subnet_id"], serde_json::json!("5"));
+        assert_eq!(json["version"], serde_json::json!("1"));
+    }
+
+    // ── EventKind::from_sse_bytes parsing tests ─────────────
+
+    #[test]
+    fn event_kind_execution_bid_from_sse_bytes() {
+        let bid = SseExecutionBid {
+            slot: Slot::new(42),
+            block: Hash256::repeat_byte(0x01),
+            builder_index: 7,
+            block_hash: Hash256::repeat_byte(0x02),
+            value: 1_000_000_000,
+        };
+        let data = serde_json::to_string(&bid).unwrap();
+        let event = EventKind::<MainnetEthSpec>::from_sse_bytes("execution_bid", &data).unwrap();
+        assert!(matches!(event, EventKind::ExecutionBid(ref b) if *b == bid));
+        assert_eq!(event.topic_name(), "execution_bid");
+    }
+
+    #[test]
+    fn event_kind_execution_payload_from_sse_bytes() {
+        let payload = SseExecutionPayload {
+            slot: Slot::new(100),
+            beacon_block_root: Hash256::repeat_byte(0xAA),
+            builder_index: 3,
+            block_hash: Hash256::repeat_byte(0xBB),
+        };
+        let data = serde_json::to_string(&payload).unwrap();
+        let event =
+            EventKind::<MainnetEthSpec>::from_sse_bytes("execution_payload", &data).unwrap();
+        assert!(matches!(event, EventKind::ExecutionPayload(ref p) if *p == payload));
+        assert_eq!(event.topic_name(), "execution_payload");
+    }
+
+    #[test]
+    fn event_kind_payload_attestation_from_sse_bytes() {
+        let att = SsePayloadAttestation {
+            slot: Slot::new(99),
+            beacon_block_root: Hash256::repeat_byte(0xCC),
+            payload_present: true,
+            blob_data_available: false,
+        };
+        let data = serde_json::to_string(&att).unwrap();
+        let event =
+            EventKind::<MainnetEthSpec>::from_sse_bytes("payload_attestation", &data).unwrap();
+        assert!(matches!(event, EventKind::PayloadAttestation(ref a) if *a == att));
+        assert_eq!(event.topic_name(), "payload_attestation");
+    }
+
+    #[test]
+    fn event_kind_execution_proof_received_from_sse_bytes() {
+        let proof = SseExecutionProof {
+            block_root: Hash256::repeat_byte(0xDD),
+            block_hash: Hash256::repeat_byte(0xEE),
+            subnet_id: 5,
+            version: 1,
+        };
+        let data = serde_json::to_string(&proof).unwrap();
+        let event =
+            EventKind::<MainnetEthSpec>::from_sse_bytes("execution_proof_received", &data).unwrap();
+        assert!(matches!(event, EventKind::ExecutionProofReceived(ref p) if *p == proof));
+        assert_eq!(event.topic_name(), "execution_proof_received");
+    }
+
+    #[test]
+    fn event_kind_from_sse_bytes_invalid_json_returns_error() {
+        let result = EventKind::<MainnetEthSpec>::from_sse_bytes("execution_bid", "not valid json");
+        assert!(result.is_err());
+    }
+
+    // ── EventTopic parsing tests ────────────────────────────
+
+    #[test]
+    fn event_topic_execution_bid_parse() {
+        assert_eq!(
+            EventTopic::from_str("execution_bid").unwrap(),
+            EventTopic::ExecutionBid
+        );
+    }
+
+    #[test]
+    fn event_topic_execution_payload_parse() {
+        assert_eq!(
+            EventTopic::from_str("execution_payload").unwrap(),
+            EventTopic::ExecutionPayload
+        );
+    }
+
+    #[test]
+    fn event_topic_payload_attestation_parse() {
+        assert_eq!(
+            EventTopic::from_str("payload_attestation").unwrap(),
+            EventTopic::PayloadAttestation
+        );
+    }
+
+    #[test]
+    fn event_topic_execution_proof_received_parse() {
+        assert_eq!(
+            EventTopic::from_str("execution_proof_received").unwrap(),
+            EventTopic::ExecutionProofReceived
+        );
+    }
+
+    #[test]
+    fn event_topic_unknown_returns_error() {
+        assert!(EventTopic::from_str("unknown_event_type").is_err());
+    }
+
+    // ── ExecutionProofStatus tests ──────────────────────────
+
+    #[test]
+    fn execution_proof_status_json_roundtrip() {
+        let status = ExecutionProofStatus {
+            block_root: Hash256::repeat_byte(0xFF),
+            received_proof_subnet_ids: vec![0, 3, 7],
+            required_proofs: 4,
+            is_fully_proven: false,
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let decoded: ExecutionProofStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(status, decoded);
+    }
+
+    #[test]
+    fn execution_proof_status_quoted_fields() {
+        let status = ExecutionProofStatus {
+            block_root: Hash256::repeat_byte(0xFF),
+            received_proof_subnet_ids: vec![0, 3, 7],
+            required_proofs: 4,
+            is_fully_proven: true,
+        };
+        let json = serde_json::to_value(&status).unwrap();
+        assert_eq!(json["required_proofs"], serde_json::json!("4"));
+        // quoted_u64_vec serializes each element as a quoted string
+        let subnet_ids = json["received_proof_subnet_ids"].as_array().unwrap();
+        assert_eq!(subnet_ids[0], serde_json::json!("0"));
+        assert_eq!(subnet_ids[1], serde_json::json!("3"));
+        assert_eq!(subnet_ids[2], serde_json::json!("7"));
+    }
+
+    #[test]
+    fn execution_proof_status_empty_subnets() {
+        let status = ExecutionProofStatus {
+            block_root: Hash256::zero(),
+            received_proof_subnet_ids: vec![],
+            required_proofs: 0,
+            is_fully_proven: true,
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        let decoded: ExecutionProofStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(status, decoded);
+        assert!(decoded.received_proof_subnet_ids.is_empty());
+    }
 }
 
 #[derive(Debug, Encode, Serialize)]

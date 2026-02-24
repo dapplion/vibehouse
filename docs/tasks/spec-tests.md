@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — 24 SSE event & API type tests (run 68)
+- Checked consensus-specs PRs since run 67: no new Gloas spec changes merged
+  - #4946 (bump actions/stale) — CI-only, no spec changes
+  - #4926 (SLOT_DURATION_MS) has 1 approval (nflaig), still open
+  - #4892 (remove impossible branch) has 2 approvals (ensi321, jtraglia), vibehouse already conforms
+  - #4941 (execution proof construction) merged 2026-02-19 — EIP-8025 only, not Gloas ePBS, no code changes needed
+  - Open Gloas PRs: #4940, #4932, #4840, #4939, #4892, #4630, #4558, #4747 — all still open/unmerged
+- No new GitHub issues — existing 3 open issues are all RFCs/feature requests
+- **Added 24 unit tests for SSE event types and API types** in `common/eth2/src/types.rs` (previously ZERO tests for Gloas SSE events):
+  - **SseExecutionBid** (2 tests): JSON roundtrip, quoted u64 fields (builder_index, value)
+  - **SseExecutionPayload** (2 tests): JSON roundtrip, quoted u64 field (builder_index)
+  - **SsePayloadAttestation** (2 tests): JSON roundtrip, both flags false
+  - **SseExecutionProof** (2 tests): JSON roundtrip, quoted u64 fields (subnet_id, version)
+  - **EventKind::from_sse_bytes parsing** (5 tests): execution_bid, execution_payload, payload_attestation, execution_proof_received, invalid JSON error
+  - **EventTopic parsing** (5 tests): execution_bid, execution_payload, payload_attestation, execution_proof_received, unknown topic error
+  - **ExecutionProofStatus** (3 tests): JSON roundtrip, quoted fields (required_proofs, quoted_u64_vec subnet_ids), empty subnets
+  - **PtcDutyData** (existing 4 tests preserved)
+- These tests cover the JSON serialization contract for ePBS SSE events consumed by external tools (block explorers, monitoring dashboards). Previously untested — a serialization regression would have silently broken external tool integrations.
+- All 29/29 eth2 tests pass (was 5 + 4 = 9 in the tests module, now 9 + 24 = 33 including 5 skipped)
+
 ### 2026-02-24 — 12 Gloas HTTP API integration tests (run 67)
 - Added 12 integration tests to `beacon_node/http_api/tests/fork_tests.rs` (19→31 Gloas-specific tests):
   - **proposer_lookahead endpoint** (4 tests — previously ZERO tests for this endpoint):
