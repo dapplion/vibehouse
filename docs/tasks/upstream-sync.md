@@ -31,6 +31,21 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 58)
+- Checked consensus-specs PRs since run 57: no new Gloas spec changes merged
+  - #4946 (bump actions/stale) merged 2026-02-24 — CI-only, no spec changes
+  - Open Gloas PRs: #4926, #4940, #4932, #4843, #4939, #4747 — all still open/unmerged
+  - #4926 (SLOT_DURATION_MS) now has approval from nflaig, closest to merge — naming change only, no logic impact on vibehouse
+- No new GitHub issues — existing 3 open issues are all RFCs/feature requests
+- **Added 6 HTTP API integration tests for Gloas endpoints** in `beacon_node/http_api/tests/fork_tests.rs`. Previously 18 fork_tests existed (4 sync + 1 BLS + 13 Gloas).
+  - POST beacon/execution_payload_envelope rejected pre-Gloas (1): returns 400 "Gloas is not scheduled"
+  - POST beacon/execution_payload_envelope valid self-build (1): re-submitting existing envelope accepted without 500
+  - GET validator/payload_attestation_data pre-Gloas (1): returns payload_present=false, blob_data_available=false
+  - GET beacon/execution_payload_envelope pre-Gloas slot (1): returns None for pre-Gloas blocks
+  - POST beacon/pool/payload_attestations rejected pre-Gloas (1): import fails when PTC committee unavailable
+  - GET beacon/execution_payload_envelope multiple blocks (1): two consecutive blocks have distinct envelopes with correct roots/slots
+  - All 24/24 fork_tests pass (18 existing + 6 new)
+
 ### 2026-02-24 (run 57)
 - Checked consensus-specs PRs since run 56: no new Gloas spec changes merged
   - #4918 (attestations for known payload statuses) merged 2026-02-23 — already implemented in run 52
