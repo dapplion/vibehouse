@@ -31,6 +31,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 54)
+- Checked consensus-specs PRs since run 53: #4946 (bump actions/stale, CI-only) — no spec changes merged
+  - Open Gloas PRs: #4939, #4940, #4932, #4843, #4926, #4898, #4892, #4747 — all still open/unmerged
+- **Issue triage**:
+  - #8689 (update_proposer_boost_root) — already implemented, commented on issue
+  - #8858 (events feature gating) — not applicable to vibehouse (no `events` feature), commented
+  - #8869 (block replayer for Gloas) — already fixed by blinded envelopes work
+  - #8809 (proposer_lookahead endpoint) — already implemented
+- **Dependency fix**: bumped `num-bigint-dig` 0.8.4 → 0.8.6 in `eth2_key_derivation` — fixes future Rust incompatibility (private `vec!` macro, rust-lang/rust#120192). 8/8 key derivation tests pass, full workspace clippy clean.
+
 ### 2026-02-24 (run 53)
 - Checked consensus-specs PRs since run 52:
   - #4931 (Rebase FOCIL onto Gloas) **merged** 2026-02-20 — FOCIL/EIP-7805 layered onto Gloas fork. Not a Gloas ePBS change, no implementation needed.
