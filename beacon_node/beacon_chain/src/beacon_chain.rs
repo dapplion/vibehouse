@@ -4975,7 +4975,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         {
             let block_delay = self
                 .slot_clock
-                .seconds_from_current_slot_start()
+                .millis_from_current_slot_start()
                 .ok_or(Error::UnableToComputeTimeAtSlot)?;
 
             fork_choice

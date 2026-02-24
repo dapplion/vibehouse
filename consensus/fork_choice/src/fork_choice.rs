@@ -21,8 +21,6 @@ use types::{
     BeaconStateError, ChainSpec, Checkpoint, Epoch, EthSpec, ExecPayload, ExecutionBlockHash,
     FixedBytesExtended, Hash256, IndexedAttestationRef, IndexedPayloadAttestation,
     PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid, Slot,
-    consts::bellatrix::INTERVALS_PER_SLOT,
-    consts::gloas::INTERVALS_PER_SLOT as INTERVALS_PER_SLOT_GLOAS,
 };
 
 #[derive(Debug)]
@@ -812,17 +810,19 @@ where
         // Add proposer score boost if the block is timely and the proposer matches
         // the expected proposer on the canonical chain.
         //
-        // Spec: `update_proposer_boost_root` (consensus-specs PR #4807)
-        let intervals_per_slot = if spec
+        // Spec: `update_proposer_boost_root` / `record_block_timeliness`
+        //
+        // Pre-Gloas: slot is split into 3 intervals (block, attestation, aggregate).
+        // Gloas: slot is split into 4 intervals (block, attestation, aggregate, PTC).
+        // Use millisecond precision to avoid integer division truncation that loses
+        // sub-second thresholds (e.g. 6s / 4 = 1s instead of correct 1.5s).
+        let block_epoch = block.slot().epoch(E::slots_per_epoch());
+        let is_gloas = spec
             .gloas_fork_epoch
-            .is_some_and(|fork_epoch| block.slot().epoch(E::slots_per_epoch()) >= fork_epoch)
-        {
-            INTERVALS_PER_SLOT_GLOAS
-        } else {
-            INTERVALS_PER_SLOT
-        };
-        let is_before_attesting_interval =
-            block_delay < Duration::from_secs(spec.seconds_per_slot / intervals_per_slot);
+            .is_some_and(|fork_epoch| block_epoch >= fork_epoch);
+        let intervals_per_slot: u64 = if is_gloas { 4 } else { 3 };
+        let attestation_due_ms = spec.seconds_per_slot.saturating_mul(1000) / intervals_per_slot;
+        let is_before_attesting_interval = block_delay < Duration::from_millis(attestation_due_ms);
 
         let is_first_block = self.fc_store.proposer_boost_root().is_zero();
         if current_slot == block.slot() && is_before_attesting_interval && is_first_block {
