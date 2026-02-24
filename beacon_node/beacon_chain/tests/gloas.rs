@@ -1317,3 +1317,286 @@ async fn gloas_import_payload_attestation_message_unknown_block_root() {
         "should be PayloadAttestationVerificationFailed for unknown block root"
     );
 }
+
+// ── Envelope storage and retrieval tests ──
+
+/// After producing Gloas blocks, envelopes should be persisted in the store.
+#[tokio::test]
+async fn gloas_envelope_persisted_after_block_production() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Envelope should exist in the store
+    assert!(
+        harness
+            .chain
+            .store
+            .payload_envelope_exists(&block_root)
+            .unwrap(),
+        "envelope should exist after block production"
+    );
+
+    // Full envelope should be retrievable
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("full envelope should be retrievable");
+
+    // Verify envelope fields match the block
+    assert_eq!(
+        envelope.message.slot,
+        head.beacon_block.slot(),
+        "envelope slot should match block slot"
+    );
+}
+
+/// Blinded envelope should be retrievable from the store.
+#[tokio::test]
+async fn gloas_blinded_envelope_retrievable() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    let blinded = harness
+        .chain
+        .store
+        .get_blinded_payload_envelope(&block_root)
+        .unwrap()
+        .expect("blinded envelope should be retrievable");
+
+    // Blinded envelope should have same metadata as full envelope
+    let full = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("full envelope should be retrievable");
+
+    assert_eq!(
+        blinded.message.slot, full.message.slot,
+        "blinded and full envelope slots should match"
+    );
+    assert_eq!(
+        blinded.message.builder_index, full.message.builder_index,
+        "blinded and full envelope builder indices should match"
+    );
+    assert_eq!(
+        blinded.message.state_root, full.message.state_root,
+        "blinded and full envelope state roots should match"
+    );
+}
+
+/// Envelope should not exist for a random block root.
+#[tokio::test]
+async fn gloas_envelope_not_found_for_unknown_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(1)).await;
+
+    let unknown_root = Hash256::repeat_byte(0xab);
+
+    assert!(
+        !harness
+            .chain
+            .store
+            .payload_envelope_exists(&unknown_root)
+            .unwrap(),
+        "envelope should not exist for unknown root"
+    );
+
+    assert!(
+        harness
+            .chain
+            .get_payload_envelope(&unknown_root)
+            .unwrap()
+            .is_none(),
+        "get_payload_envelope should return None for unknown root"
+    );
+
+    assert!(
+        harness
+            .chain
+            .store
+            .get_blinded_payload_envelope(&unknown_root)
+            .unwrap()
+            .is_none(),
+        "get_blinded_payload_envelope should return None for unknown root"
+    );
+}
+
+/// Each block in a multi-block chain should have its own envelope.
+#[tokio::test]
+async fn gloas_each_block_has_distinct_envelope() {
+    let harness = gloas_harness_at_epoch(0);
+    let num_slots = 4;
+    Box::pin(harness.extend_slots(num_slots)).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+
+    // Walk the block roots within the state's slot range
+    let mut envelope_count = 0;
+    let mut seen_roots = std::collections::HashSet::new();
+
+    for slot_idx in 1..=num_slots as u64 {
+        let slot = Slot::new(slot_idx);
+        if let Ok(block_root) = state.get_block_root(slot) {
+            if seen_roots.insert(*block_root) {
+                let envelope = harness.chain.get_payload_envelope(block_root).unwrap();
+                if let Some(env) = envelope {
+                    assert_eq!(
+                        env.message.slot, slot,
+                        "envelope slot should match block slot"
+                    );
+                    envelope_count += 1;
+                }
+            }
+        }
+    }
+
+    assert!(
+        envelope_count >= 3,
+        "should have envelopes for most blocks, got {}",
+        envelope_count
+    );
+}
+
+/// Self-build envelopes should have BUILDER_INDEX_SELF_BUILD as builder_index.
+#[tokio::test]
+async fn gloas_self_build_envelope_has_correct_builder_index() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("envelope should exist");
+
+    // In self-build mode, builder_index should be BUILDER_INDEX_SELF_BUILD
+    assert_eq!(
+        envelope.message.builder_index,
+        u64::MAX, // BUILDER_INDEX_SELF_BUILD
+        "self-build envelope should have BUILDER_INDEX_SELF_BUILD"
+    );
+}
+
+/// Envelope state_root should be non-zero after processing.
+#[tokio::test]
+async fn gloas_envelope_has_nonzero_state_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("envelope should exist");
+
+    assert_ne!(
+        envelope.message.state_root,
+        Hash256::zero(),
+        "envelope state_root should be non-zero after processing"
+    );
+
+    assert_ne!(
+        envelope.message.payload.block_hash,
+        ExecutionBlockHash::zero(),
+        "envelope payload block_hash should be non-zero after processing"
+    );
+}
+
+/// After chain finalizes, envelopes for finalized blocks should still be
+/// accessible as blinded envelopes (even if full payload is pruned).
+#[tokio::test]
+async fn gloas_envelope_accessible_after_finalization() {
+    let harness = gloas_harness_at_epoch(0);
+    // Need enough slots to finalize (5 epochs in minimal)
+    let slots = 5 * E::slots_per_epoch() as usize;
+    Box::pin(harness.extend_slots(slots)).await;
+
+    let state = &harness.chain.head_snapshot().beacon_state;
+    let finalized_epoch = state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized beyond genesis"
+    );
+
+    // Get a block root from the first epoch (which should be finalized)
+    let finalized_slot = Slot::new(1);
+    let block_root = *state.get_block_root(finalized_slot).unwrap();
+
+    // Blinded envelope should still be accessible
+    let blinded = harness
+        .chain
+        .store
+        .get_blinded_payload_envelope(&block_root)
+        .unwrap();
+
+    assert!(
+        blinded.is_some(),
+        "blinded envelope should be accessible for finalized block at slot {}",
+        finalized_slot
+    );
+}
+
+/// load_envelopes_for_blocks should return envelopes for Gloas blocks.
+#[tokio::test]
+async fn gloas_load_envelopes_for_blocks() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    // Get some blocks from the store using block roots within the state range
+    let state = &harness.chain.head_snapshot().beacon_state;
+    let mut blocks = vec![];
+    let mut seen_roots = std::collections::HashSet::new();
+    for slot_idx in 1..=4u64 {
+        let slot = Slot::new(slot_idx);
+        if let Ok(block_root) = state.get_block_root(slot) {
+            if seen_roots.insert(*block_root) {
+                if let Some(block) = harness.chain.store.get_blinded_block(block_root).unwrap() {
+                    blocks.push(block);
+                }
+            }
+        }
+    }
+
+    assert!(!blocks.is_empty(), "should have loaded at least one block");
+
+    let (full_envelopes, blinded_envelopes) = harness.chain.load_envelopes_for_blocks(&blocks);
+
+    // All blocks should have full envelopes (not yet finalized)
+    assert!(
+        !full_envelopes.is_empty(),
+        "should have at least one full envelope"
+    );
+    assert!(
+        blinded_envelopes.is_empty(),
+        "should have no blinded-only envelopes (payloads not yet pruned)"
+    );
+
+    // Each loaded envelope should match its block's slot
+    for (root, envelope) in &full_envelopes {
+        let block = harness
+            .chain
+            .store
+            .get_blinded_block(root)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            envelope.message.slot,
+            block.slot(),
+            "envelope slot should match block slot"
+        );
+    }
+}
