@@ -145,7 +145,9 @@ impl<E: EthSpec> SignedBlindedExecutionPayloadEnvelope<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ExecutionBlockHash, MinimalEthSpec, SignedExecutionPayloadEnvelope};
+    use crate::{
+        Address, ExecutionBlockHash, MinimalEthSpec, SignedExecutionPayloadEnvelope, Withdrawal,
+    };
     use ssz::{Decode, Encode};
 
     type E = MinimalEthSpec;
@@ -273,6 +275,182 @@ mod tests {
         assert_eq!(
             blinded.payload_header.withdrawals_root,
             expected_header.withdrawals_root
+        );
+    }
+
+    #[test]
+    fn into_full_with_nonempty_withdrawals() {
+        let full = ExecutionPayloadEnvelope::<E> {
+            builder_index: 5,
+            slot: Slot::new(42),
+            beacon_block_root: Hash256::repeat_byte(0xaa),
+            state_root: Hash256::repeat_byte(0xbb),
+            payload: ExecutionPayloadGloas {
+                block_hash: ExecutionBlockHash::repeat_byte(0xcc),
+                fee_recipient: Address::repeat_byte(0x11),
+                gas_limit: 30_000_000,
+                timestamp: 1700000000,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let blinded = BlindedExecutionPayloadEnvelope::from_full(&full);
+
+        // Create non-empty withdrawals
+        let mut withdrawals = Withdrawals::<E>::default();
+        withdrawals
+            .push(Withdrawal {
+                index: 0,
+                validator_index: 7,
+                address: Address::repeat_byte(0xdd),
+                amount: 1_000_000_000,
+            })
+            .unwrap();
+        withdrawals
+            .push(Withdrawal {
+                index: 1,
+                validator_index: 12,
+                address: Address::repeat_byte(0xee),
+                amount: 2_000_000_000,
+            })
+            .unwrap();
+
+        let reconstructed = blinded.into_full_with_withdrawals(withdrawals);
+
+        // Metadata preserved
+        assert_eq!(reconstructed.builder_index, 5);
+        assert_eq!(reconstructed.slot, Slot::new(42));
+        assert_eq!(reconstructed.beacon_block_root, Hash256::repeat_byte(0xaa));
+        assert_eq!(reconstructed.state_root, Hash256::repeat_byte(0xbb));
+
+        // Header fields transferred to payload
+        assert_eq!(
+            reconstructed.payload.block_hash,
+            ExecutionBlockHash::repeat_byte(0xcc)
+        );
+        assert_eq!(
+            reconstructed.payload.fee_recipient,
+            Address::repeat_byte(0x11)
+        );
+        assert_eq!(reconstructed.payload.gas_limit, 30_000_000);
+        assert_eq!(reconstructed.payload.timestamp, 1700000000);
+
+        // Withdrawals populated (not empty)
+        assert_eq!(reconstructed.payload.withdrawals.len(), 2);
+        assert_eq!(reconstructed.payload.withdrawals[0].validator_index, 7);
+        assert_eq!(reconstructed.payload.withdrawals[0].amount, 1_000_000_000);
+        assert_eq!(
+            reconstructed.payload.withdrawals[0].address,
+            Address::repeat_byte(0xdd)
+        );
+        assert_eq!(reconstructed.payload.withdrawals[1].validator_index, 12);
+        assert_eq!(reconstructed.payload.withdrawals[1].amount, 2_000_000_000);
+
+        // Transactions should be empty (pruned)
+        assert!(reconstructed.payload.transactions.is_empty());
+    }
+
+    #[test]
+    fn signed_into_full_with_nonempty_withdrawals() {
+        let signed = SignedExecutionPayloadEnvelope::<E> {
+            message: ExecutionPayloadEnvelope {
+                builder_index: 3,
+                slot: Slot::new(10),
+                payload: ExecutionPayloadGloas {
+                    block_hash: ExecutionBlockHash::repeat_byte(0xff),
+                    gas_used: 15_000_000,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let blinded = SignedBlindedExecutionPayloadEnvelope::from_full(&signed);
+
+        let mut withdrawals = Withdrawals::<E>::default();
+        withdrawals
+            .push(Withdrawal {
+                index: 5,
+                validator_index: 99,
+                address: Address::repeat_byte(0xab),
+                amount: 500_000_000,
+            })
+            .unwrap();
+
+        let reconstructed = blinded.into_full_with_withdrawals(withdrawals);
+        assert_eq!(reconstructed.message.builder_index, 3);
+        assert_eq!(reconstructed.message.slot, Slot::new(10));
+        assert_eq!(reconstructed.message.payload.gas_used, 15_000_000);
+        assert_eq!(reconstructed.message.payload.withdrawals.len(), 1);
+        assert_eq!(
+            reconstructed.message.payload.withdrawals[0].amount,
+            500_000_000
+        );
+        assert!(reconstructed.message.payload.transactions.is_empty());
+    }
+
+    #[test]
+    fn blinded_preserves_execution_requests() {
+        use crate::DepositRequest;
+
+        let mut full = ExecutionPayloadEnvelope::<E>::empty();
+        full.builder_index = 8;
+
+        // Add a non-default execution request (deposit)
+        full.execution_requests
+            .deposits
+            .push(DepositRequest {
+                pubkey: crate::PublicKeyBytes::empty(),
+                withdrawal_credentials: Hash256::repeat_byte(0x01),
+                amount: 32_000_000_000,
+                signature: crate::SignatureBytes::empty(),
+                index: 42,
+            })
+            .unwrap();
+
+        let blinded = BlindedExecutionPayloadEnvelope::from_full(&full);
+        assert_eq!(blinded.execution_requests.deposits.len(), 1);
+        assert_eq!(
+            blinded.execution_requests.deposits[0].amount,
+            32_000_000_000
+        );
+        assert_eq!(blinded.execution_requests.deposits[0].index, 42);
+
+        // Roundtrip via into_full preserves execution_requests
+        let reconstructed = blinded.into_full_with_withdrawals(Default::default());
+        assert_eq!(reconstructed.execution_requests.deposits.len(), 1);
+        assert_eq!(
+            reconstructed.execution_requests.deposits[0].amount,
+            32_000_000_000
+        );
+    }
+
+    #[test]
+    fn blinded_ssz_roundtrip_with_execution_requests() {
+        use crate::DepositRequest;
+
+        let mut full = ExecutionPayloadEnvelope::<E>::empty();
+        full.execution_requests
+            .deposits
+            .push(DepositRequest {
+                pubkey: crate::PublicKeyBytes::empty(),
+                withdrawal_credentials: Hash256::repeat_byte(0x03),
+                amount: 64_000_000_000,
+                signature: crate::SignatureBytes::empty(),
+                index: 7,
+            })
+            .unwrap();
+
+        let blinded = BlindedExecutionPayloadEnvelope::from_full(&full);
+        let bytes = blinded.as_ssz_bytes();
+        let decoded = BlindedExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(blinded, decoded);
+        assert_eq!(decoded.execution_requests.deposits.len(), 1);
+        assert_eq!(
+            decoded.execution_requests.deposits[0].amount,
+            64_000_000_000
         );
     }
 }

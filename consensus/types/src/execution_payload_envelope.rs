@@ -194,4 +194,70 @@ mod tests {
         env2.slot = Slot::new(2);
         assert_ne!(env1, env2);
     }
+
+    #[test]
+    fn ssz_roundtrip_with_execution_requests() {
+        use crate::DepositRequest;
+
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 42;
+        envelope.slot = Slot::new(100);
+
+        // Add a deposit request
+        envelope
+            .execution_requests
+            .deposits
+            .push(DepositRequest {
+                pubkey: crate::PublicKeyBytes::empty(),
+                withdrawal_credentials: crate::Hash256::repeat_byte(0x01),
+                amount: 32_000_000_000,
+                signature: crate::SignatureBytes::empty(),
+                index: 5,
+            })
+            .unwrap();
+
+        let bytes = envelope.as_ssz_bytes();
+        let decoded = ExecutionPayloadEnvelope::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(envelope, decoded);
+        assert_eq!(decoded.execution_requests.deposits.len(), 1);
+        assert_eq!(
+            decoded.execution_requests.deposits[0].amount,
+            32_000_000_000
+        );
+        assert_eq!(decoded.execution_requests.deposits[0].index, 5);
+    }
+
+    #[test]
+    fn tree_hash_changes_with_execution_requests() {
+        use crate::DepositRequest;
+
+        let env_empty = ExecutionPayloadEnvelope::<E>::empty();
+
+        let mut env_with_request = ExecutionPayloadEnvelope::<E>::empty();
+        env_with_request
+            .execution_requests
+            .deposits
+            .push(DepositRequest {
+                pubkey: crate::PublicKeyBytes::empty(),
+                withdrawal_credentials: crate::Hash256::repeat_byte(0x01),
+                amount: 32_000_000_000,
+                signature: crate::SignatureBytes::empty(),
+                index: 0,
+            })
+            .unwrap();
+
+        assert_ne!(
+            env_empty.tree_hash_root(),
+            env_with_request.tree_hash_root(),
+            "execution_requests should affect tree hash"
+        );
+    }
+
+    #[test]
+    fn execution_requests_default_is_empty() {
+        let envelope = ExecutionPayloadEnvelope::<E>::empty();
+        assert!(envelope.execution_requests.deposits.is_empty());
+        assert!(envelope.execution_requests.withdrawals.is_empty());
+        assert!(envelope.execution_requests.consolidations.is_empty());
+    }
 }

@@ -1510,5 +1510,76 @@ mod tests {
             // Same seed but different structure → different SSZ bytes
             assert_ne!(gloas_body.as_ssz_bytes(), fulu_body.as_ssz_bytes());
         }
+
+        // --- attestations_mut() for Gloas ---
+
+        #[test]
+        fn attestations_mut_returns_electra_type() {
+            let body = make_random_gloas_body();
+            let mut block = BeaconBlock::<E>::Gloas(BeaconBlockGloas {
+                slot: Slot::new(1),
+                proposer_index: 0,
+                parent_root: Hash256::ZERO,
+                state_root: Hash256::ZERO,
+                body,
+            });
+
+            let att_count = block.body().attestations_electra().unwrap().len();
+
+            let mut_count = block.body_mut().attestations_mut().count();
+
+            assert_eq!(
+                att_count, mut_count,
+                "attestations_mut should yield the same count as attestations_electra"
+            );
+        }
+
+        #[test]
+        fn attestations_mut_can_modify_attestation() {
+            let body = make_gloas_body();
+            let mut block = BeaconBlock::<E>::Gloas(BeaconBlockGloas {
+                slot: Slot::new(1),
+                proposer_index: 0,
+                parent_root: Hash256::ZERO,
+                state_root: Hash256::ZERO,
+                body,
+            });
+
+            // Add an attestation to work with
+            let attestation = crate::AttestationElectra {
+                aggregation_bits: ssz_types::BitList::with_capacity(1).unwrap(),
+                data: crate::AttestationData::default(),
+                signature: crate::AggregateSignature::empty(),
+                committee_bits: ssz_types::BitVector::new(),
+            };
+            block
+                .body_mut()
+                .attestations_electra_mut()
+                .unwrap()
+                .push(attestation)
+                .unwrap();
+
+            // Verify initial slot
+            assert_eq!(
+                block.body().attestations_electra().unwrap()[0].data.slot,
+                Slot::new(0)
+            );
+
+            // Mutate through attestations_mut
+            for att_ref_mut in block.body_mut().attestations_mut() {
+                match att_ref_mut {
+                    crate::AttestationRefMut::Electra(att) => {
+                        att.data.slot = Slot::new(99);
+                    }
+                    _ => panic!("Gloas attestations_mut should yield Electra variant"),
+                }
+            }
+
+            // Verify mutation took effect
+            assert_eq!(
+                block.body().attestations_electra().unwrap()[0].data.slot,
+                Slot::new(99)
+            );
+        }
     }
 }
