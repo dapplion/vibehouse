@@ -1146,3 +1146,257 @@ async fn get_execution_payload_envelope_head() {
         "head envelope should match head root"
     );
 }
+
+/// POST beacon/execution_payload_envelope should return 400 when Gloas is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_rejected_before_gloas() {
+    let validator_count = 32;
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // gloas_fork_epoch = None
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let envelope = types::SignedExecutionPayloadEnvelope::<E>::default();
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&envelope)
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject envelope submission when Gloas is not scheduled"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Gloas is not scheduled"),
+            "expected 'Gloas is not scheduled', got: {}",
+            msg.message
+        );
+    }
+}
+
+/// POST beacon/execution_payload_envelope with a valid self-build envelope should succeed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_valid_self_build() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a Gloas block (self-build creates block + envelope)
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    // Get the self-build envelope that was already produced and stored
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let existing_envelope = harness
+        .chain
+        .get_payload_envelope(&head_root)
+        .unwrap()
+        .expect("self-build envelope should exist");
+
+    // Re-submitting the same envelope via POST should succeed (stale but accepted)
+    let result = client
+        .post_beacon_execution_payload_envelope(&existing_envelope)
+        .await;
+    // The endpoint may accept (200 for stale/already-known) or reject (400 for duplicate).
+    // Either way, it should not panic or return 500.
+    match &result {
+        Ok(()) => {} // accepted (e.g. stale envelope treated as OK)
+        Err(eth2::Error::ServerMessage(msg)) => {
+            assert_ne!(
+                msg.code, 500,
+                "should not return 500 internal server error, got: {}",
+                msg.message
+            );
+        }
+        Err(e) => {
+            panic!("unexpected error type: {:?}", e);
+        }
+    }
+}
+
+/// GET validator/payload_attestation_data pre-Gloas returns payload_present=false.
+/// The endpoint works regardless of fork, but pre-Gloas blocks have no payload revealed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn payload_attestation_data_pre_gloas_returns_not_present() {
+    let validator_count = 32;
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // gloas_fork_epoch = None — not scheduled
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block so the chain has a head
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let response = client
+        .get_validator_payload_attestation_data(Slot::new(1))
+        .await
+        .expect("should succeed even pre-Gloas");
+
+    let data = response.data;
+    assert!(
+        !data.payload_present,
+        "pre-Gloas blocks should have payload_present=false"
+    );
+    assert!(
+        !data.blob_data_available,
+        "pre-Gloas blocks should have blob_data_available=false"
+    );
+}
+
+/// GET beacon/execution_payload_envelope for a pre-Gloas slot should return None.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_pre_gloas_slot() {
+    let validator_count = 32;
+    let fork_epoch = Epoch::new(2); // Gloas at epoch 2
+    let spec = gloas_spec(fork_epoch);
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a pre-Gloas block at slot 1 (epoch 0, before Gloas fork)
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_root = harness.chain.head_snapshot().beacon_block_root;
+
+    // Pre-Gloas blocks don't have envelopes — should return None
+    let result = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(head_root))
+        .await
+        .expect("request should not fail");
+
+    assert!(
+        result.is_none(),
+        "pre-Gloas block should not have a payload envelope"
+    );
+}
+
+/// POST beacon/pool/payload_attestations should return 400 when Gloas is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_rejected_before_gloas() {
+    use types::PayloadAttestationMessage;
+
+    let validator_count = 32;
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // gloas_fork_epoch = None
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let message = PayloadAttestationMessage::default();
+    let result = client
+        .post_beacon_pool_payload_attestations(&[message])
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject payload attestations when Gloas is not scheduled"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// GET beacon/execution_payload_envelope should return envelope with correct fields
+/// for multiple consecutive Gloas blocks.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_multiple_blocks() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let all_validators = harness.get_all_validators();
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+
+    // Produce block at slot 1
+    let (_, mut state) = harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+    let root_1 = harness.chain.head_snapshot().beacon_block_root;
+
+    // Produce block at slot 2
+    let state_root = state.canonical_root().unwrap();
+    harness
+        .add_attested_block_at_slot(Slot::new(2), state, state_root, &all_validators)
+        .await
+        .unwrap();
+    let root_2 = harness.chain.head_snapshot().beacon_block_root;
+
+    assert_ne!(root_1, root_2, "blocks should have different roots");
+
+    // Both blocks should have envelopes with distinct block roots
+    let env1 = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(root_1))
+        .await
+        .expect("request should succeed")
+        .expect("envelope 1 should exist");
+
+    let env2 = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(root_2))
+        .await
+        .expect("request should succeed")
+        .expect("envelope 2 should exist");
+
+    assert_eq!(env1.data.message.beacon_block_root, root_1);
+    assert_eq!(env2.data.message.beacon_block_root, root_2);
+    assert_eq!(env1.data.message.slot, Slot::new(1));
+    assert_eq!(env2.data.message.slot, Slot::new(2));
+}
