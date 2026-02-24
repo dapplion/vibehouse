@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — 8 Gloas envelope store integration tests (run 71)
+- No new consensus-specs changes since run 70
+- **Added 8 integration tests** to `beacon_node/beacon_chain/tests/gloas.rs` (previously ZERO tests for envelope store operations):
+  - `gloas_envelope_persisted_after_block_production`: verifies envelope exists in store and has correct slot
+  - `gloas_blinded_envelope_retrievable`: blinded + full envelope metadata match
+  - `gloas_envelope_not_found_for_unknown_root`: all three lookup methods return None/false
+  - `gloas_each_block_has_distinct_envelope`: each block in a 4-slot chain has its own envelope
+  - `gloas_self_build_envelope_has_correct_builder_index`: BUILDER_INDEX_SELF_BUILD (u64::MAX) verified
+  - `gloas_envelope_has_nonzero_state_root`: state_root and payload.block_hash are non-zero
+  - `gloas_envelope_accessible_after_finalization`: blinded envelope survives 5 epochs of finalization
+  - `gloas_load_envelopes_for_blocks`: batch loading returns full envelopes, slots match blocks
+- These tests cover the previously untested store persistence path: PutPayloadEnvelope → split storage (blinded + full payload) → get_payload_envelope reconstruction → blinded fallback after finalization
+- All 447 beacon_chain tests pass (was 439)
+
 ### 2026-02-24 — SSZ response support + spec tracking (run 70)
 - Checked consensus-specs PRs since run 69: no new Gloas spec changes merged
   - #4945 (fix inclusion list test for mainnet) — Heze-only, no Gloas impact
