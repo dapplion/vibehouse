@@ -22,6 +22,7 @@ use types::{
     FixedBytesExtended, Hash256, IndexedAttestationRef, IndexedPayloadAttestation,
     PayloadAttestation, RelativeEpoch, SignedBeaconBlock, SignedExecutionPayloadBid, Slot,
     consts::bellatrix::INTERVALS_PER_SLOT,
+    consts::gloas::INTERVALS_PER_SLOT as INTERVALS_PER_SLOT_GLOAS,
 };
 
 #[derive(Debug)]
@@ -812,8 +813,16 @@ where
         // the expected proposer on the canonical chain.
         //
         // Spec: `update_proposer_boost_root` (consensus-specs PR #4807)
+        let intervals_per_slot = if spec
+            .gloas_fork_epoch
+            .is_some_and(|fork_epoch| block.slot().epoch(E::slots_per_epoch()) >= fork_epoch)
+        {
+            INTERVALS_PER_SLOT_GLOAS
+        } else {
+            INTERVALS_PER_SLOT
+        };
         let is_before_attesting_interval =
-            block_delay < Duration::from_secs(spec.seconds_per_slot / INTERVALS_PER_SLOT);
+            block_delay < Duration::from_secs(spec.seconds_per_slot / intervals_per_slot);
 
         let is_first_block = self.fc_store.proposer_boost_root().is_zero();
         if current_slot == block.slot() && is_before_attesting_interval && is_first_block {

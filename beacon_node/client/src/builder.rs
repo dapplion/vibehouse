@@ -923,6 +923,12 @@ where
             Duration::from_secs(spec.seconds_per_slot),
         );
 
+        // Set Gloas fork slot for correct slot timing (4 intervals instead of 3).
+        let gloas_fork_slot = spec
+            .gloas_fork_epoch
+            .map(|epoch| epoch.start_slot(E::slots_per_epoch()));
+        slot_clock.set_gloas_fork_slot(gloas_fork_slot);
+
         self.slot_clock = Some(slot_clock);
         Ok(self)
     }

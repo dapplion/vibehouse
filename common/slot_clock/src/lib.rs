@@ -10,6 +10,7 @@ pub use crate::system_time_slot_clock::SystemTimeSlotClock;
 pub use metrics::scrape_for_metrics;
 pub use types::Slot;
 use types::consts::bellatrix::INTERVALS_PER_SLOT;
+use types::consts::gloas::INTERVALS_PER_SLOT as INTERVALS_PER_SLOT_GLOAS;
 
 /// A clock that reports the current slot.
 ///
@@ -66,6 +67,12 @@ pub trait SlotClock: Send + Sync + Sized + Clone {
     /// Returns the `Duration` from `UNIX_EPOCH` to the genesis time.
     fn genesis_duration(&self) -> Duration;
 
+    /// Returns the slot at which the Gloas fork activates, or `None` if not scheduled.
+    fn gloas_fork_slot(&self) -> Option<Slot>;
+
+    /// Set the Gloas fork slot. Enables Gloas-aware timing (4 intervals per slot instead of 3).
+    fn set_gloas_fork_slot(&self, slot: Option<Slot>);
+
     /// Returns the slot if the internal clock were advanced by `duration`.
     fn now_with_future_tolerance(&self, tolerance: Duration) -> Option<Slot> {
         self.slot_of(self.now_duration()?.checked_add(tolerance)?)
@@ -77,28 +84,45 @@ pub trait SlotClock: Send + Sync + Sized + Clone {
             .or_else(|| Some(self.genesis_slot()))
     }
 
+    /// Returns the number of intervals the current slot is divided into.
+    /// Pre-Gloas: 3. Gloas: 4.
+    fn current_intervals_per_slot(&self) -> u64 {
+        self.now()
+            .map(|slot| {
+                if self
+                    .gloas_fork_slot()
+                    .is_some_and(|fork_slot| slot >= fork_slot)
+                {
+                    INTERVALS_PER_SLOT_GLOAS
+                } else {
+                    INTERVALS_PER_SLOT
+                }
+            })
+            .unwrap_or(INTERVALS_PER_SLOT)
+    }
+
     /// Returns the delay between the start of the slot and when unaggregated attestations should be
     /// produced.
     fn unagg_attestation_production_delay(&self) -> Duration {
-        self.slot_duration() / INTERVALS_PER_SLOT as u32
+        self.slot_duration() / self.current_intervals_per_slot() as u32
     }
 
     /// Returns the delay between the start of the slot and when sync committee messages should be
     /// produced.
     fn sync_committee_message_production_delay(&self) -> Duration {
-        self.slot_duration() / INTERVALS_PER_SLOT as u32
+        self.slot_duration() / self.current_intervals_per_slot() as u32
     }
 
     /// Returns the delay between the start of the slot and when aggregated attestations should be
     /// produced.
     fn agg_attestation_production_delay(&self) -> Duration {
-        self.slot_duration() * 2 / INTERVALS_PER_SLOT as u32
+        self.slot_duration() * 2 / self.current_intervals_per_slot() as u32
     }
 
     /// Returns the delay between the start of the slot and when partially aggregated `SyncCommitteeContribution` should be
     /// produced.
     fn sync_committee_contribution_production_delay(&self) -> Duration {
-        self.slot_duration() * 2 / INTERVALS_PER_SLOT as u32
+        self.slot_duration() * 2 / self.current_intervals_per_slot() as u32
     }
 
     /// Returns the `Duration` since the start of the current `Slot` at seconds precision. Useful in determining whether to apply proposer boosts.
@@ -131,6 +155,7 @@ pub trait SlotClock: Send + Sync + Sized + Clone {
             self.genesis_duration(),
             self.slot_duration(),
         );
+        slot_clock.set_gloas_fork_slot(self.gloas_fork_slot());
         slot_clock.set_current_time(freeze_at);
         slot_clock
     }

@@ -385,6 +385,14 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             Duration::from_secs(context.eth2_config.spec.seconds_per_slot),
         );
 
+        // Set Gloas fork slot for correct slot timing (4 intervals instead of 3).
+        let gloas_fork_slot = context
+            .eth2_config
+            .spec
+            .gloas_fork_epoch
+            .map(|epoch| epoch.start_slot(E::slots_per_epoch()));
+        slot_clock.set_gloas_fork_slot(gloas_fork_slot);
+
         beacon_nodes.set_slot_clock(slot_clock.clone());
         proposer_nodes.set_slot_clock(slot_clock.clone());
 

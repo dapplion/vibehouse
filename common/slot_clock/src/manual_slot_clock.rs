@@ -14,6 +14,9 @@ pub struct ManualSlotClock {
     current_time: Arc<RwLock<Duration>>,
     /// The length of each slot.
     slot_duration: Duration,
+    /// The slot at which the Gloas fork activates.
+    /// When set, slot timing uses 4 intervals per slot instead of 3.
+    gloas_fork_slot: Arc<RwLock<Option<Slot>>>,
 }
 
 impl Clone for ManualSlotClock {
@@ -23,6 +26,7 @@ impl Clone for ManualSlotClock {
             genesis_duration: self.genesis_duration,
             current_time: Arc::clone(&self.current_time),
             slot_duration: self.slot_duration,
+            gloas_fork_slot: Arc::clone(&self.gloas_fork_slot),
         }
     }
 }
@@ -99,6 +103,7 @@ impl SlotClock for ManualSlotClock {
             current_time: Arc::new(RwLock::new(genesis_duration)),
             genesis_duration,
             slot_duration,
+            gloas_fork_slot: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -163,6 +168,14 @@ impl SlotClock for ManualSlotClock {
 
     fn genesis_duration(&self) -> Duration {
         self.genesis_duration
+    }
+
+    fn gloas_fork_slot(&self) -> Option<Slot> {
+        *self.gloas_fork_slot.read()
+    }
+
+    fn set_gloas_fork_slot(&self, slot: Option<Slot>) {
+        *self.gloas_fork_slot.write() = slot;
     }
 }
 

@@ -63,6 +63,14 @@ impl SlotClock for SystemTimeSlotClock {
     fn genesis_duration(&self) -> Duration {
         *self.clock.genesis_duration()
     }
+
+    fn gloas_fork_slot(&self) -> Option<Slot> {
+        self.clock.gloas_fork_slot()
+    }
+
+    fn set_gloas_fork_slot(&self, slot: Option<Slot>) {
+        self.clock.set_gloas_fork_slot(slot);
+    }
 }
 
 #[cfg(test)]

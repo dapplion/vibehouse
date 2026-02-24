@@ -27,6 +27,10 @@ pub mod deneb {
 }
 
 pub mod gloas {
+    /// Gloas splits the slot into 4 intervals (proposer block, attestation, aggregate, PTC)
+    /// instead of pre-Gloas 3 intervals.
+    pub const INTERVALS_PER_SLOT: u64 = 4;
+
     /// Size of the Payload Timeliness Committee (PTC)
     pub const PTC_SIZE: u64 = 512;
 
