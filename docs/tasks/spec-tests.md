@@ -29,6 +29,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — 12 Gloas HTTP API integration tests (run 67)
+- Added 12 integration tests to `beacon_node/http_api/tests/fork_tests.rs` (19→31 Gloas-specific tests):
+  - **proposer_lookahead endpoint** (4 tests — previously ZERO tests for this endpoint):
+    - `proposer_lookahead_rejected_pre_fulu`: pre-Fulu state returns 400
+    - `proposer_lookahead_returns_data_gloas`: Gloas state returns 16-entry vector with valid indices
+    - `proposer_lookahead_returns_data_fulu`: Fulu state also returns lookahead data
+    - `proposer_lookahead_by_slot`: slot-based state_id works correctly
+  - **PTC duties edge cases** (3 tests):
+    - `ptc_duties_past_epoch_rejected`: epoch too far in the past returns 400
+    - `ptc_duties_empty_indices`: empty validator list returns empty duties
+    - `ptc_duties_next_epoch`: next epoch (current+1) returns valid duties in correct slot range
+  - **payload attestation verification** (2 tests):
+    - `post_payload_attestation_wrong_signature`: wrong BLS key rejected
+    - `post_payload_attestation_mixed_valid_invalid`: mixed valid/invalid batch returns indexed error at correct index
+  - **envelope field verification** (1 test):
+    - `get_execution_payload_envelope_self_build_fields`: verifies builder_index=SELF_BUILD, non-zero state_root and block_hash
+  - **expected_withdrawals** (1 test):
+    - `expected_withdrawals_gloas`: endpoint works for Gloas head state
+  - **PTC duties consistency** (1 test):
+    - `ptc_duties_dependent_root_consistent`: repeated calls return same dependent_root and duty count
+- All 212 http_api tests pass (was 200)
+
 ### 2026-02-24 — 16 BeaconChain Gloas method integration tests (run 66)
 - Added 16 integration tests to `beacon_node/beacon_chain/tests/gloas.rs` (16→32):
   - **validator_ptc_duties** (4 tests):

@@ -1400,3 +1400,538 @@ async fn get_execution_payload_envelope_multiple_blocks() {
     assert_eq!(env1.data.message.slot, Slot::new(1));
     assert_eq!(env2.data.message.slot, Slot::new(2));
 }
+
+/// Self-build envelope should have BUILDER_INDEX_SELF_BUILD and correct state_root/block_hash.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_self_build_fields() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let response = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(head_root))
+        .await
+        .expect("request should succeed")
+        .expect("envelope should exist");
+
+    let envelope = &response.data.message;
+
+    // Self-build uses BUILDER_INDEX_SELF_BUILD (u64::MAX)
+    assert_eq!(
+        envelope.builder_index,
+        u64::MAX,
+        "self-build envelope should use BUILDER_INDEX_SELF_BUILD"
+    );
+
+    // State root should be non-zero (post-state computed by process_execution_payload)
+    assert_ne!(
+        envelope.state_root,
+        Hash256::zero(),
+        "state_root should be set"
+    );
+
+    // Block hash should be non-zero (from EL payload)
+    assert_ne!(
+        envelope.payload.block_hash.into_root(),
+        Hash256::zero(),
+        "block_hash should be set"
+    );
+}
+
+/// GET beacon/states/{state_id}/proposer_lookahead should return 400 for pre-Fulu state.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn proposer_lookahead_rejected_pre_fulu() {
+    let validator_count = 32;
+    // Only enable up to Electra — no Fulu, no Gloas
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    // fulu_fork_epoch = None, gloas_fork_epoch = None
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let result = client
+        .get_beacon_states_proposer_lookahead(StateId::Head)
+        .await;
+
+    // Should fail with 400 (pre-Fulu state has no proposer_lookahead)
+    assert!(
+        result.is_err(),
+        "should reject proposer_lookahead for pre-Fulu state"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// GET beacon/states/{state_id}/proposer_lookahead should return lookahead for Gloas state.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn proposer_lookahead_returns_data_gloas() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block so state has been processed
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let response = client
+        .get_beacon_states_proposer_lookahead(StateId::Head)
+        .await
+        .expect("request should succeed")
+        .expect("should return data for Gloas state");
+
+    let lookahead = &response.data;
+
+    // MinimalEthSpec: ProposerLookaheadSlots = 16
+    assert_eq!(
+        lookahead.len(),
+        16,
+        "proposer_lookahead should have 16 entries (MinimalEthSpec)"
+    );
+
+    // All entries should be valid validator indices
+    for &proposer_index in lookahead {
+        assert!(
+            proposer_index < validator_count as u64,
+            "proposer_index {} out of range",
+            proposer_index
+        );
+    }
+}
+
+/// GET beacon/states/{state_id}/proposer_lookahead with Fulu state (non-Gloas) should also work.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn proposer_lookahead_returns_data_fulu() {
+    let validator_count = 32;
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // No gloas — Fulu only
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let response = client
+        .get_beacon_states_proposer_lookahead(StateId::Head)
+        .await
+        .expect("request should succeed")
+        .expect("should return data for Fulu state");
+
+    assert_eq!(
+        response.data.len(),
+        16,
+        "Fulu state should also have proposer_lookahead"
+    );
+}
+
+/// GET beacon/states/{state_id}/proposer_lookahead with slot-based state_id.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn proposer_lookahead_by_slot() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let response = client
+        .get_beacon_states_proposer_lookahead(StateId::Slot(Slot::new(1)))
+        .await
+        .expect("request should succeed")
+        .expect("should return data for slot-based state_id");
+
+    assert_eq!(response.data.len(), 16);
+}
+
+/// PTC duties should handle past epoch gracefully.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_past_epoch_rejected() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Advance to slot in epoch 3 (slot 24 for minimal with 8 slots/epoch)
+    let slots_per_epoch = E::slots_per_epoch();
+    let target_slot = Slot::new(slots_per_epoch * 3);
+    harness.extend_to_slot(target_slot).await;
+
+    // Verify we're at epoch 3
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    assert!(
+        head_slot.epoch(slots_per_epoch) >= Epoch::new(3),
+        "should be at epoch 3+, got epoch {}",
+        head_slot.epoch(slots_per_epoch)
+    );
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+
+    // Request epoch 0 when current epoch is 3 — should fail (too far in the past)
+    let result = client
+        .post_validator_duties_ptc(Epoch::new(0), &indices)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should reject PTC duties for epoch too far in the past"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+    }
+}
+
+/// PTC duties with empty validator index list should return empty duties.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_empty_indices() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let empty_indices: Vec<u64> = vec![];
+    let response = client
+        .post_validator_duties_ptc(Epoch::new(0), &empty_indices)
+        .await
+        .expect("empty index list should succeed");
+
+    assert!(
+        response.data.is_empty(),
+        "empty validator index list should return no duties"
+    );
+}
+
+/// PTC duties for next epoch should succeed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_next_epoch() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Current epoch is 0, request next epoch (1) — should succeed
+    let response = client
+        .post_validator_duties_ptc(Epoch::new(1), &indices)
+        .await
+        .expect("next epoch PTC duties should succeed");
+
+    assert!(
+        !response.data.is_empty(),
+        "next epoch duties should not be empty"
+    );
+
+    // All duties should have slots in epoch 1
+    for duty in &response.data {
+        assert_eq!(
+            duty.slot.epoch(slots_per_epoch),
+            Epoch::new(1),
+            "duty slot {} not in epoch 1",
+            duty.slot
+        );
+    }
+}
+
+/// POST payload attestation with wrong signature should fail.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_wrong_signature() {
+    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let validator_index = ptc[0];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let message_root = data.signing_root(domain);
+
+    // Sign with WRONG key (use a different validator's key)
+    let wrong_index = if validator_index == 0 { 1 } else { 0 };
+    let wrong_keypair = generate_deterministic_keypair(wrong_index as usize);
+    let signature = wrong_keypair.sk.sign(message_root);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = client
+        .post_beacon_pool_payload_attestations(&[message])
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject payload attestation with wrong signature"
+    );
+}
+
+/// POST mixed valid and invalid payload attestations returns indexed errors.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_mixed_valid_invalid() {
+    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    assert!(ptc.len() >= 2, "need at least 2 PTC members for this test");
+
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // Valid attestation from first PTC member
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let message_root = data.signing_root(domain);
+    let keypair = generate_deterministic_keypair(ptc[0] as usize);
+    let valid_message = PayloadAttestationMessage {
+        validator_index: ptc[0],
+        data: data.clone(),
+        signature: keypair.sk.sign(message_root),
+    };
+
+    // Invalid attestation: non-PTC validator
+    let non_ptc_validator = (0..validator_count as u64)
+        .find(|idx| !ptc.contains(idx))
+        .expect("should find non-PTC validator");
+    let invalid_keypair = generate_deterministic_keypair(non_ptc_validator as usize);
+    let invalid_message = PayloadAttestationMessage {
+        validator_index: non_ptc_validator,
+        data,
+        signature: invalid_keypair.sk.sign(message_root),
+    };
+
+    // Submit [valid, invalid] — should return indexed error for index 1
+    let result = client
+        .post_beacon_pool_payload_attestations(&[valid_message, invalid_message])
+        .await;
+
+    assert!(result.is_err(), "mixed valid/invalid should return error");
+    // The error should be an indexed error with failure at index 1
+    assert_server_indexed_error(result.unwrap_err(), 400, vec![1]);
+}
+
+/// GET expected_withdrawals with Gloas head state should succeed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn expected_withdrawals_gloas() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let response = client
+        .get_expected_withdrawals(&StateId::Head)
+        .await
+        .expect("expected_withdrawals should succeed for Gloas state");
+
+    // At genesis with default validators, there may or may not be withdrawals
+    // depending on validator balances. The key thing is the endpoint doesn't error.
+    let _withdrawals = &response.data;
+}
+
+/// PTC duties should return consistent dependent_root across calls for same epoch.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ptc_duties_dependent_root_consistent() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let indices: Vec<u64> = (0..validator_count as u64).collect();
+
+    let response1 = client
+        .post_validator_duties_ptc(Epoch::new(0), &indices)
+        .await
+        .expect("first call should succeed");
+    let response2 = client
+        .post_validator_duties_ptc(Epoch::new(0), &indices)
+        .await
+        .expect("second call should succeed");
+
+    assert_eq!(
+        response1.dependent_root, response2.dependent_root,
+        "dependent_root should be consistent across calls"
+    );
+    assert_eq!(
+        response1.data.len(),
+        response2.data.len(),
+        "duty count should be consistent"
+    );
+}
