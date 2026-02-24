@@ -1,8 +1,9 @@
 use crate::api_types::GenericResponse;
 use crate::unsupported_version_rejection;
-use crate::version::{V1, V2, add_consensus_version_header};
+use crate::version::{V1, V2, add_consensus_version_header, add_ssz_content_type_header};
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use eth2::types::{self, EndpointVersion, Hash256, Slot};
+use eth2::types::{self as api_types, EndpointVersion, Hash256, Slot};
+use ssz::Encode;
 use std::sync::Arc;
 use types::beacon_response::EmptyMetadata;
 use types::{CommitteeIndex, ForkVersionedResponse};
@@ -16,6 +17,7 @@ pub fn get_aggregate_attestation<T: BeaconChainTypes>(
     attestation_data_root: &Hash256,
     committee_index: Option<CommitteeIndex>,
     endpoint_version: EndpointVersion,
+    accept_header: Option<api_types::Accept>,
     chain: Arc<BeaconChain<T>>,
 ) -> Result<Response<Body>, warp::reject::Rejection> {
     let fork_name = chain.spec.fork_name_at_slot::<T::EthSpec>(slot);
@@ -49,6 +51,17 @@ pub fn get_aggregate_attestation<T: BeaconChainTypes>(
                 warp_utils::reject::custom_not_found("no matching aggregate found".to_string())
             })?
     };
+
+    if matches!(accept_header, Some(api_types::Accept::Ssz)) {
+        return Response::builder()
+            .status(200)
+            .body(aggregate_attestation.as_ssz_bytes().into())
+            .map(|res: Response<Body>| add_ssz_content_type_header(res))
+            .map(|resp| add_consensus_version_header(resp, fork_name))
+            .map_err(|e| {
+                warp_utils::reject::custom_server_error(format!("failed to create response: {e}",))
+            });
+    }
 
     if endpoint_version == V2 {
         let fork_versioned_response = ForkVersionedResponse {

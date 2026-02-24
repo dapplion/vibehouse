@@ -714,11 +714,13 @@ pub fn serve<T: BeaconChainTypes>(
         .and(warp::path("validator_identities"))
         .and(warp::path::end())
         .and(warp_utils::json::json_no_body())
+        .and(warp::header::optional::<api_types::Accept>("accept"))
         .then(
             |state_id: StateId,
              task_spawner: TaskSpawner<T::EthSpec>,
              chain: Arc<BeaconChain<T>>,
-             query: ValidatorIdentitiesRequestBody| {
+             query: ValidatorIdentitiesRequestBody,
+             accept_header: Option<api_types::Accept>| {
                 // Prioritise requests for validators at the head. These should be fast to service
                 // and could be required by the validator client.
                 let priority = if let StateId(eth2::types::StateId::Head) = state_id {
@@ -726,12 +728,24 @@ pub fn serve<T: BeaconChainTypes>(
                 } else {
                     Priority::P1
                 };
-                task_spawner.blocking_json_task(priority, move || {
-                    crate::validators::get_beacon_state_validator_identities(
+                task_spawner.blocking_response_task(priority, move || {
+                    let response = crate::validators::get_beacon_state_validator_identities(
                         state_id,
                         chain,
                         Some(&query.ids),
-                    )
+                    )?;
+                    match accept_header {
+                        Some(api_types::Accept::Ssz) => Response::builder()
+                            .status(200)
+                            .body(response.data.as_ssz_bytes().into())
+                            .map(|res: Response<Body>| add_ssz_content_type_header(res))
+                            .map_err(|e| {
+                                warp_utils::reject::custom_server_error(format!(
+                                    "failed to create response: {e}",
+                                ))
+                            }),
+                        _ => Ok(warp::reply::json(&response).into_response()),
+                    }
                 })
             },
         );
@@ -1156,10 +1170,12 @@ pub fn serve<T: BeaconChainTypes>(
         .clone()
         .and(warp::path("pending_deposits"))
         .and(warp::path::end())
+        .and(warp::header::optional::<api_types::Accept>("accept"))
         .then(
             |state_id: StateId,
              task_spawner: TaskSpawner<T::EthSpec>,
-             chain: Arc<BeaconChain<T>>| {
+             chain: Arc<BeaconChain<T>>,
+             accept_header: Option<api_types::Accept>| {
                 task_spawner.blocking_response_task(Priority::P1, move || {
                     let (data, execution_optimistic, finalized, fork_name) = state_id
                         .map_state_and_execution_optimistic_and_finalized(
@@ -1180,14 +1196,26 @@ pub fn serve<T: BeaconChainTypes>(
                             },
                         )?;
 
-                    execution_optimistic_finalized_beacon_response(
-                        ResponseIncludesVersion::Yes(fork_name),
-                        execution_optimistic,
-                        finalized,
-                        data,
-                    )
-                    .map(|res| warp::reply::json(&res).into_response())
-                    .map(|resp| add_consensus_version_header(resp, fork_name))
+                    match accept_header {
+                        Some(api_types::Accept::Ssz) => Response::builder()
+                            .status(200)
+                            .body(data.as_ssz_bytes().into())
+                            .map(|res: Response<Body>| add_ssz_content_type_header(res))
+                            .map(|resp| add_consensus_version_header(resp, fork_name))
+                            .map_err(|e| {
+                                warp_utils::reject::custom_server_error(format!(
+                                    "failed to create response: {e}",
+                                ))
+                            }),
+                        _ => execution_optimistic_finalized_beacon_response(
+                            ResponseIncludesVersion::Yes(fork_name),
+                            execution_optimistic,
+                            finalized,
+                            data,
+                        )
+                        .map(|res| warp::reply::json(&res).into_response())
+                        .map(|resp| add_consensus_version_header(resp, fork_name)),
+                    }
                 })
             },
         );
@@ -1197,10 +1225,12 @@ pub fn serve<T: BeaconChainTypes>(
         .clone()
         .and(warp::path("pending_partial_withdrawals"))
         .and(warp::path::end())
+        .and(warp::header::optional::<api_types::Accept>("accept"))
         .then(
             |state_id: StateId,
              task_spawner: TaskSpawner<T::EthSpec>,
-             chain: Arc<BeaconChain<T>>| {
+             chain: Arc<BeaconChain<T>>,
+             accept_header: Option<api_types::Accept>| {
                 task_spawner.blocking_response_task(Priority::P1, move || {
                     let (data, execution_optimistic, finalized, fork_name) = state_id
                         .map_state_and_execution_optimistic_and_finalized(
@@ -1221,14 +1251,26 @@ pub fn serve<T: BeaconChainTypes>(
                             },
                         )?;
 
-                    execution_optimistic_finalized_beacon_response(
-                        ResponseIncludesVersion::Yes(fork_name),
-                        execution_optimistic,
-                        finalized,
-                        data,
-                    )
-                    .map(|res| warp::reply::json(&res).into_response())
-                    .map(|resp| add_consensus_version_header(resp, fork_name))
+                    match accept_header {
+                        Some(api_types::Accept::Ssz) => Response::builder()
+                            .status(200)
+                            .body(data.as_ssz_bytes().into())
+                            .map(|res: Response<Body>| add_ssz_content_type_header(res))
+                            .map(|resp| add_consensus_version_header(resp, fork_name))
+                            .map_err(|e| {
+                                warp_utils::reject::custom_server_error(format!(
+                                    "failed to create response: {e}",
+                                ))
+                            }),
+                        _ => execution_optimistic_finalized_beacon_response(
+                            ResponseIncludesVersion::Yes(fork_name),
+                            execution_optimistic,
+                            finalized,
+                            data,
+                        )
+                        .map(|res| warp::reply::json(&res).into_response())
+                        .map(|resp| add_consensus_version_header(resp, fork_name)),
+                    }
                 })
             },
         );
@@ -1238,10 +1280,12 @@ pub fn serve<T: BeaconChainTypes>(
         .clone()
         .and(warp::path("pending_consolidations"))
         .and(warp::path::end())
+        .and(warp::header::optional::<api_types::Accept>("accept"))
         .then(
             |state_id: StateId,
              task_spawner: TaskSpawner<T::EthSpec>,
-             chain: Arc<BeaconChain<T>>| {
+             chain: Arc<BeaconChain<T>>,
+             accept_header: Option<api_types::Accept>| {
                 task_spawner.blocking_response_task(Priority::P1, move || {
                     let (data, execution_optimistic, finalized, fork_name) = state_id
                         .map_state_and_execution_optimistic_and_finalized(
@@ -1262,14 +1306,26 @@ pub fn serve<T: BeaconChainTypes>(
                             },
                         )?;
 
-                    execution_optimistic_finalized_beacon_response(
-                        ResponseIncludesVersion::Yes(fork_name),
-                        execution_optimistic,
-                        finalized,
-                        data,
-                    )
-                    .map(|res| warp::reply::json(&res).into_response())
-                    .map(|resp| add_consensus_version_header(resp, fork_name))
+                    match accept_header {
+                        Some(api_types::Accept::Ssz) => Response::builder()
+                            .status(200)
+                            .body(data.as_ssz_bytes().into())
+                            .map(|res: Response<Body>| add_ssz_content_type_header(res))
+                            .map(|resp| add_consensus_version_header(resp, fork_name))
+                            .map_err(|e| {
+                                warp_utils::reject::custom_server_error(format!(
+                                    "failed to create response: {e}",
+                                ))
+                            }),
+                        _ => execution_optimistic_finalized_beacon_response(
+                            ResponseIncludesVersion::Yes(fork_name),
+                            execution_optimistic,
+                            finalized,
+                            data,
+                        )
+                        .map(|res| warp::reply::json(&res).into_response())
+                        .map(|resp| add_consensus_version_header(resp, fork_name)),
+                    }
                 })
             },
         );
@@ -3739,14 +3795,16 @@ pub fn serve<T: BeaconChainTypes>(
         .and(warp::path::end())
         .and(warp::query::<api_types::ValidatorAttestationDataQuery>())
         .and(not_while_syncing_filter.clone())
+        .and(warp::header::optional::<api_types::Accept>("accept"))
         .and(task_spawner_filter.clone())
         .and(chain_filter.clone())
         .then(
             |query: api_types::ValidatorAttestationDataQuery,
              not_synced_filter: Result<(), Rejection>,
+             accept_header: Option<api_types::Accept>,
              task_spawner: TaskSpawner<T::EthSpec>,
              chain: Arc<BeaconChain<T>>| {
-                task_spawner.blocking_json_task(Priority::P0, move || {
+                task_spawner.blocking_response_task(Priority::P0, move || {
                     not_synced_filter?;
 
                     let current_slot = chain.slot().map_err(warp_utils::reject::unhandled_error)?;
@@ -3759,11 +3817,26 @@ pub fn serve<T: BeaconChainTypes>(
                         )));
                     }
 
-                    chain
+                    let attestation_data = chain
                         .produce_unaggregated_attestation(query.slot, query.committee_index)
                         .map(|attestation| attestation.data().clone())
-                        .map(api_types::GenericResponse::from)
-                        .map_err(warp_utils::reject::unhandled_error)
+                        .map_err(warp_utils::reject::unhandled_error)?;
+
+                    match accept_header {
+                        Some(api_types::Accept::Ssz) => Response::builder()
+                            .status(200)
+                            .body(attestation_data.as_ssz_bytes().into())
+                            .map(|res: Response<Body>| add_ssz_content_type_header(res))
+                            .map_err(|e| {
+                                warp_utils::reject::custom_server_error(format!(
+                                    "failed to create response: {e}",
+                                ))
+                            }),
+                        _ => Ok(warp::reply::json(&api_types::GenericResponse::from(
+                            attestation_data,
+                        ))
+                        .into_response()),
+                    }
                 })
             },
         );
@@ -3799,12 +3872,14 @@ pub fn serve<T: BeaconChainTypes>(
         .and(warp::path::end())
         .and(warp::query::<api_types::ValidatorAggregateAttestationQuery>())
         .and(not_while_syncing_filter.clone())
+        .and(warp::header::optional::<api_types::Accept>("accept"))
         .and(task_spawner_filter.clone())
         .and(chain_filter.clone())
         .then(
             |endpoint_version: EndpointVersion,
              query: api_types::ValidatorAggregateAttestationQuery,
              not_synced_filter: Result<(), Rejection>,
+             accept_header: Option<api_types::Accept>,
              task_spawner: TaskSpawner<T::EthSpec>,
              chain: Arc<BeaconChain<T>>| {
                 task_spawner.blocking_response_task(Priority::P0, move || {
@@ -3814,6 +3889,7 @@ pub fn serve<T: BeaconChainTypes>(
                         &query.attestation_data_root,
                         query.committee_index,
                         endpoint_version,
+                        accept_header,
                         chain,
                     )
                 })
