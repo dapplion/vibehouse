@@ -29,6 +29,31 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — 16 BeaconChain Gloas method integration tests (run 66)
+- Added 16 integration tests to `beacon_node/beacon_chain/tests/gloas.rs` (16→32):
+  - **validator_ptc_duties** (4 tests):
+    - `gloas_validator_ptc_duties_returns_duties`: all validators, correct count (ptc_size × slots_per_epoch), valid slot ranges and committee indices
+    - `gloas_validator_ptc_duties_no_match`: out-of-range validator index returns empty
+    - `gloas_validator_ptc_duties_future_epoch`: state advances for next epoch, all duties in correct slot range
+    - `gloas_validator_ptc_duties_unique_positions`: no duplicate (slot, ptc_committee_index) pairs
+  - **get_payload_attestation_data** (4 tests):
+    - `gloas_payload_attestation_data_head_slot`: returns head root with payload_present=true (envelope processed)
+    - `gloas_payload_attestation_data_past_slot`: returns non-zero block root for historical slot
+    - `gloas_payload_attestation_data_future_slot`: returns head root for slot beyond head
+    - `gloas_payload_attestation_data_unrevealed`: returns payload_present=false when fork choice payload_revealed=false
+  - **payload attestation pool** (5 tests):
+    - `gloas_payload_attestation_pool_insert_and_get`: insert + retrieve via get_payload_attestations_for_block
+    - `gloas_payload_attestation_pool_filters_by_root`: only attestations matching parent_block_root returned
+    - `gloas_payload_attestation_pool_wrong_slot_empty`: target_slot mismatch returns empty
+    - `gloas_payload_attestation_pool_max_limit`: capped at max_payload_attestations
+    - `gloas_payload_attestation_pool_prunes_old`: entries older than 2 epochs are pruned on insert
+  - **execution bid pool** (3 tests):
+    - `gloas_get_best_execution_bid_empty`: returns None when pool empty
+    - `gloas_get_best_execution_bid_returns_inserted`: returns directly-inserted bid
+    - `gloas_get_best_execution_bid_highest_value`: selects highest-value bid from multiple builders
+- These tests cover the previously untested BeaconChain integration paths for PTC duty computation, payload attestation data retrieval, payload attestation pool management, and execution bid pool selection
+- All 88 Gloas beacon_chain tests pass (was 72)
+
 ### 2026-02-24 — 12 find_head_gloas proposer boost + gloas_head_payload_status tests (run 65)
 - Added 9 unit tests to `proto_array_fork_choice.rs` (107→116):
   - `find_head_proposer_boost_changes_winner`: 21 validators, 11 vs 10 votes, boost flips winner (353.6e9 > 352e9)

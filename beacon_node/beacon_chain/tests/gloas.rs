@@ -414,3 +414,498 @@ async fn gloas_parent_payload_check_skips_pre_gloas_parent() {
     // If the parent payload check incorrectly applied to Fulu parents, the chain would break
     // The fact that extend_to_slot succeeded means the check was correctly skipped
 }
+
+// =============================================================================
+// Gloas BeaconChain method tests: PTC duties, payload attestation data,
+// payload attestation pool, bid/envelope fork choice integration
+// =============================================================================
+
+fn make_payload_attestation(
+    block_root: Hash256,
+    slot: Slot,
+    payload_present: bool,
+    blob_data_available: bool,
+) -> PayloadAttestation<E> {
+    PayloadAttestation {
+        aggregation_bits: Default::default(),
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present,
+            blob_data_available,
+        },
+        signature: AggregateSignature::empty(),
+    }
+}
+
+/// Test that validator_ptc_duties returns duties for validators in the PTC.
+#[tokio::test]
+async fn gloas_validator_ptc_duties_returns_duties() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Produce a few blocks to populate state
+    Box::pin(harness.extend_slots(2)).await;
+
+    let current_epoch = harness.chain.head_beacon_state_cloned().current_epoch();
+
+    // Query PTC duties for all validators
+    let all_indices: Vec<u64> = (0..VALIDATOR_COUNT as u64).collect();
+    let (duties, dependent_root) = harness
+        .chain
+        .validator_ptc_duties(&all_indices, current_epoch)
+        .expect("should compute PTC duties");
+
+    // PTC size is 2 for MinimalEthSpec, one PTC per slot, 8 slots per epoch = 16 duties total
+    let ptc_size = E::ptc_size();
+    let slots_per_epoch = E::slots_per_epoch();
+    assert_eq!(
+        duties.len(),
+        ptc_size * slots_per_epoch as usize,
+        "should have ptc_size * slots_per_epoch duties"
+    );
+
+    // Each duty should have a valid slot within the epoch
+    let start_slot = current_epoch.start_slot(slots_per_epoch);
+    for duty in &duties {
+        assert!(duty.slot >= start_slot);
+        assert!(duty.slot < start_slot + slots_per_epoch);
+        assert!(
+            (duty.validator_index as usize) < VALIDATOR_COUNT,
+            "validator index should be in range"
+        );
+        assert!(
+            (duty.ptc_committee_index as usize) < ptc_size,
+            "PTC committee index should be < PTC size"
+        );
+    }
+
+    // Dependent root should be non-zero
+    assert_ne!(
+        dependent_root,
+        Hash256::ZERO,
+        "dependent root should be non-zero"
+    );
+}
+
+/// Test that validator_ptc_duties returns empty when no requested validators are in PTC.
+#[tokio::test]
+async fn gloas_validator_ptc_duties_no_match() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(1)).await;
+
+    let current_epoch = harness.chain.head_beacon_state_cloned().current_epoch();
+
+    // Query with a validator index that's out of range (won't be in PTC)
+    let (duties, _) = harness
+        .chain
+        .validator_ptc_duties(&[9999], current_epoch)
+        .expect("should compute PTC duties");
+
+    assert!(
+        duties.is_empty(),
+        "should have no duties for non-existent validator"
+    );
+}
+
+/// Test that validator_ptc_duties works for a future epoch (advances state).
+#[tokio::test]
+async fn gloas_validator_ptc_duties_future_epoch() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let current_epoch = harness.chain.head_beacon_state_cloned().current_epoch();
+    let next_epoch = current_epoch + 1;
+
+    let all_indices: Vec<u64> = (0..VALIDATOR_COUNT as u64).collect();
+    let (duties, _) = harness
+        .chain
+        .validator_ptc_duties(&all_indices, next_epoch)
+        .expect("should compute PTC duties for next epoch");
+
+    let ptc_size = E::ptc_size();
+    let slots_per_epoch = E::slots_per_epoch();
+    assert_eq!(
+        duties.len(),
+        ptc_size * slots_per_epoch as usize,
+        "should have duties for next epoch"
+    );
+
+    // All duties should be in the next epoch's slot range
+    let start_slot = next_epoch.start_slot(slots_per_epoch);
+    for duty in &duties {
+        assert!(duty.slot >= start_slot);
+        assert!(duty.slot < start_slot + slots_per_epoch);
+    }
+}
+
+/// Test that get_payload_attestation_data returns correct data for the head slot.
+#[tokio::test]
+async fn gloas_payload_attestation_data_head_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    let data = harness
+        .chain
+        .get_payload_attestation_data(head_slot)
+        .expect("should get payload attestation data");
+
+    assert_eq!(
+        data.slot, head_slot,
+        "data slot should match requested slot"
+    );
+    assert_eq!(
+        data.beacon_block_root, head_root,
+        "block root should be head root"
+    );
+    // The harness processes envelopes during extend_slots, so payload should be present
+    assert!(
+        data.payload_present,
+        "payload should be present (envelope was processed)"
+    );
+}
+
+/// Test that get_payload_attestation_data returns data for a past slot.
+#[tokio::test]
+async fn gloas_payload_attestation_data_past_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let past_slot = head_slot - 2;
+
+    let data = harness
+        .chain
+        .get_payload_attestation_data(past_slot)
+        .expect("should get payload attestation data for past slot");
+
+    assert_eq!(data.slot, past_slot, "data slot should match past slot");
+    // The block root should be a valid block root (not zero)
+    assert_ne!(
+        data.beacon_block_root,
+        Hash256::ZERO,
+        "block root should be non-zero"
+    );
+}
+
+/// Test that get_payload_attestation_data returns head root for a future slot.
+#[tokio::test]
+async fn gloas_payload_attestation_data_future_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let future_slot = head.beacon_block.slot() + 5;
+
+    let data = harness
+        .chain
+        .get_payload_attestation_data(future_slot)
+        .expect("should get payload attestation data for future slot");
+
+    assert_eq!(
+        data.beacon_block_root, head_root,
+        "future slot should return head block root"
+    );
+    assert_eq!(data.slot, future_slot);
+}
+
+/// Test insert_payload_attestation_to_pool and get_payload_attestations_for_block.
+#[tokio::test]
+async fn gloas_payload_attestation_pool_insert_and_get() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Create a payload attestation for the head slot
+    let att = make_payload_attestation(head_root, head_slot, true, true);
+
+    // Insert into pool
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(att.clone());
+
+    // Query for the next slot's block (block_slot = head_slot + 1, targets head_slot)
+    let result = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 1, head_root);
+
+    assert_eq!(result.len(), 1, "should find the inserted attestation");
+    assert_eq!(result[0].data.beacon_block_root, head_root);
+    assert!(result[0].data.payload_present);
+}
+
+/// Test that get_payload_attestations_for_block filters by parent_block_root.
+#[tokio::test]
+async fn gloas_payload_attestation_pool_filters_by_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert two attestations: one matching root, one not
+    let matching = make_payload_attestation(head_root, head_slot, true, false);
+    let non_matching =
+        make_payload_attestation(Hash256::repeat_byte(0xff), head_slot, false, false);
+
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(matching.clone());
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(non_matching);
+
+    let result = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 1, head_root);
+
+    assert_eq!(
+        result.len(),
+        1,
+        "should only return attestation matching parent_block_root"
+    );
+    assert_eq!(result[0].data.beacon_block_root, head_root);
+}
+
+/// Test that get_payload_attestations_for_block returns empty for wrong slot.
+#[tokio::test]
+async fn gloas_payload_attestation_pool_wrong_slot_empty() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let att = make_payload_attestation(head_root, head_slot, true, false);
+    harness.chain.insert_payload_attestation_to_pool(att);
+
+    // Query with block_slot that doesn't target head_slot (target = block_slot - 1)
+    let result = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 3, head_root);
+
+    assert!(
+        result.is_empty(),
+        "should return empty when target slot doesn't match"
+    );
+}
+
+/// Test that payload attestation pool respects max_payload_attestations limit.
+#[tokio::test]
+async fn gloas_payload_attestation_pool_max_limit() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert more attestations than the max (MinimalEthSpec max = 2)
+    let max = E::max_payload_attestations();
+    for i in 0..(max + 3) {
+        let mut att = make_payload_attestation(head_root, head_slot, i % 2 == 0, false);
+        // Set different bits to make them distinct
+        if i < E::ptc_size() {
+            let _ = att.aggregation_bits.set(i, true);
+        }
+        harness.chain.insert_payload_attestation_to_pool(att);
+    }
+
+    let result = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 1, head_root);
+
+    assert_eq!(
+        result.len(),
+        max,
+        "should be capped at max_payload_attestations ({})",
+        max
+    );
+}
+
+/// Test that payload attestation pool prunes old entries.
+#[tokio::test]
+async fn gloas_payload_attestation_pool_prunes_old() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Insert an attestation at slot 1
+    Box::pin(harness.extend_slots(1)).await;
+    let early_root = harness.chain.head_snapshot().beacon_block_root;
+    let early_slot = Slot::new(1);
+
+    let att = make_payload_attestation(early_root, early_slot, true, false);
+    harness.chain.insert_payload_attestation_to_pool(att);
+
+    // Verify it's there
+    let result = harness
+        .chain
+        .get_payload_attestations_for_block(early_slot + 1, early_root);
+    assert_eq!(result.len(), 1);
+
+    // Now advance many epochs (pruning threshold is 2 epochs = 16 slots for minimal)
+    Box::pin(harness.extend_slots(20)).await;
+
+    // Insert a new attestation to trigger pruning
+    let new_root = harness.chain.head_snapshot().beacon_block_root;
+    let new_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let new_att = make_payload_attestation(new_root, new_slot, true, false);
+    harness.chain.insert_payload_attestation_to_pool(new_att);
+
+    // The old attestation should have been pruned
+    let result = harness
+        .chain
+        .get_payload_attestations_for_block(early_slot + 1, early_root);
+    assert!(result.is_empty(), "old attestation should be pruned");
+}
+
+/// Test that get_best_execution_bid returns None when pool is empty.
+#[tokio::test]
+async fn gloas_get_best_execution_bid_empty() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(1)).await;
+
+    let result = harness.chain.get_best_execution_bid(Slot::new(1));
+    assert!(
+        result.is_none(),
+        "should return None when no external bids in pool"
+    );
+}
+
+/// Test that get_best_execution_bid returns a bid that was inserted into the pool.
+#[tokio::test]
+async fn gloas_get_best_execution_bid_returns_inserted() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let target_slot = Slot::new(3);
+
+    // Create a bid and insert it directly into the pool
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot: target_slot,
+            builder_index: 0,
+            value: 1000,
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    let result = harness.chain.get_best_execution_bid(target_slot);
+    assert!(result.is_some(), "should return the inserted bid");
+    assert_eq!(result.unwrap().message.value, 1000);
+}
+
+/// Test that get_best_execution_bid returns highest-value bid.
+#[tokio::test]
+async fn gloas_get_best_execution_bid_highest_value() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let target_slot = Slot::new(3);
+
+    // Insert two bids with different values from different builders
+    let bid_low = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot: target_slot,
+            builder_index: 0,
+            value: 500,
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+    let bid_high = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot: target_slot,
+            builder_index: 1,
+            value: 2000,
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+
+    {
+        let mut pool = harness.chain.execution_bid_pool.lock();
+        pool.insert(bid_low);
+        pool.insert(bid_high);
+    }
+
+    let result = harness.chain.get_best_execution_bid(target_slot);
+    assert!(result.is_some());
+    assert_eq!(
+        result.unwrap().message.value,
+        2000,
+        "should return highest-value bid"
+    );
+}
+
+/// Test that validator_ptc_duties returns unique slot/committee_index pairs (no duplicates).
+#[tokio::test]
+async fn gloas_validator_ptc_duties_unique_positions() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let current_epoch = harness.chain.head_beacon_state_cloned().current_epoch();
+    let all_indices: Vec<u64> = (0..VALIDATOR_COUNT as u64).collect();
+    let (duties, _) = harness
+        .chain
+        .validator_ptc_duties(&all_indices, current_epoch)
+        .expect("should compute PTC duties");
+
+    // Check no duplicate (slot, ptc_committee_index) pairs
+    let mut seen = std::collections::HashSet::new();
+    for duty in &duties {
+        let key = (duty.slot, duty.ptc_committee_index);
+        assert!(
+            seen.insert(key),
+            "duplicate PTC position at slot {} index {}",
+            duty.slot,
+            duty.ptc_committee_index
+        );
+    }
+}
+
+/// Test that the payload_attestation_data returns payload_present=false when
+/// fork choice has payload_revealed=false for the block.
+#[tokio::test]
+async fn gloas_payload_attestation_data_unrevealed() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Set payload_revealed = false in fork choice for the head block
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        fc.proto_array_mut().core_proto_array_mut().nodes[block_index].payload_revealed = false;
+    }
+
+    let data = harness
+        .chain
+        .get_payload_attestation_data(head_slot)
+        .expect("should get payload attestation data");
+
+    assert_eq!(data.slot, head_slot);
+    assert_eq!(data.beacon_block_root, head_root);
+    assert!(
+        !data.payload_present,
+        "payload_present should be false when payload not revealed"
+    );
+}
