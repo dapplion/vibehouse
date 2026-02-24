@@ -31,6 +31,17 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-24 (run 53)
+- Checked consensus-specs PRs since run 52:
+  - #4931 (Rebase FOCIL onto Gloas) **merged** 2026-02-20 — FOCIL/EIP-7805 layered onto Gloas fork. Not a Gloas ePBS change, no implementation needed.
+  - #4942 (Promote EIP-7805 to Heze) **merged** 2026-02-20 — FOCIL moved to Heze fork. No impact on Gloas.
+  - #4945 (Fix inclusion list test for mainnet) **merged** 2026-02-23 — FOCIL test fix, no impact.
+  - Remaining open: #4939, #4940, #4932, #4843, #4926, #4898, #4892 — all still open/unmerged
+- **Spec compliance audit**: verified all Gloas gossip verification rules match spec (parent payload unknown [IGNORE], bid parent root mismatch [REJECT], old execution payload checks removed for Gloas)
+- **Block replayer audit**: all callers load envelopes for Gloas blocks (hot_cold_store, state_lru_cache, block_rewards, attestation_performance, block_packing_efficiency, store_tests)
+- **Devnet verification**: 4-node homogeneous devnet — finalized_epoch=8 at slot 80 (480s), no stalls
+- **Code quality**: `cargo clippy --release --workspace -- -D warnings` clean, `cargo check --release` clean
+
 ### 2026-02-24 (run 52)
 - consensus-specs PR #4918 merged (2026-02-23): enabled `PayloadNotRevealed` check in fork choice `validate_on_attestation`
   - Uncommented check: `if index == 1 && !block.payload_revealed → PayloadNotRevealed`
