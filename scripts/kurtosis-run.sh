@@ -4,12 +4,13 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient]
 #
 # Flags:
-#   --no-build     Skip Docker image build (use existing vibehouse:local)
-#   --no-teardown  Leave enclave running after completion (for inspection)
-#   --stateless    Use mixed stateless+proof-generator config (vibehouse-stateless.yaml)
+#   --no-build      Skip Docker image build (use existing vibehouse:local)
+#   --no-teardown   Leave enclave running after completion (for inspection)
+#   --stateless     Use mixed stateless+proof-generator config (vibehouse-stateless.yaml)
+#   --multiclient   Use vibehouse + lodestar config (vibehouse-multiclient.yaml)
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -35,12 +36,14 @@ TARGET_FINALIZED_EPOCH=8
 DO_BUILD=true
 DO_TEARDOWN=true
 STATELESS_MODE=false
+MULTICLIENT_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
-    --no-build)    DO_BUILD=false ;;
-    --no-teardown) DO_TEARDOWN=false ;;
-    --stateless)   STATELESS_MODE=true ;;
+    --no-build)     DO_BUILD=false ;;
+    --no-teardown)  DO_TEARDOWN=false ;;
+    --stateless)    STATELESS_MODE=true ;;
+    --multiclient)  MULTICLIENT_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
@@ -49,6 +52,9 @@ done
 if [ "$STATELESS_MODE" = true ]; then
   KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-stateless.yaml"
   echo "==> Stateless mode: using $KURTOSIS_CONFIG"
+elif [ "$MULTICLIENT_MODE" = true ]; then
+  KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-multiclient.yaml"
+  echo "==> Multi-client mode: using $KURTOSIS_CONFIG (vibehouse + lodestar)"
 fi
 
 # Detect if we need sudo for docker/kurtosis (docker socket not accessible)
@@ -106,7 +112,17 @@ tail -30 "$RUN_DIR/kurtosis.log" | grep -E '(RUNNING|STOPPED|Name)' || true
 
 # Step 4: Discover beacon API port
 echo "==> Discovering beacon API endpoint..."
-BEACON_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" cl-1-lighthouse-geth http)"
+BEACON_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" cl-1-lighthouse-geth http 2>/dev/null || true)"
+if [ -z "$BEACON_URL" ]; then
+  # Multi-client configs may use different service naming
+  BEACON_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" cl-1-lodestar-geth http 2>/dev/null || true)"
+fi
+if [ -z "$BEACON_URL" ]; then
+  echo "==> FAIL: Could not discover beacon API endpoint"
+  dump_logs
+  cleanup
+  exit 1
+fi
 echo "    Beacon API: $BEACON_URL"
 
 # Step 5: Poll beacon API for health checks
@@ -182,6 +198,19 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
   if [ "$finalized_epoch" -ge "$TARGET_FINALIZED_EPOCH" ]; then
     echo "==> SUCCESS: Finalized epoch $finalized_epoch (target was $TARGET_FINALIZED_EPOCH)"
     echo "    Chain progressed through gloas fork and finalized."
+
+    # In multi-client mode, verify cross-client consensus
+    if [ "$MULTICLIENT_MODE" = true ]; then
+      echo "==> Checking cross-client consensus..."
+      for node_name in cl-1-lighthouse-geth cl-2-lighthouse-geth cl-3-lodestar-geth cl-4-lodestar-geth; do
+        node_url="$($SUDO kurtosis port print "$ENCLAVE_NAME" "$node_name" http 2>/dev/null || echo "")"
+        if [ -n "$node_url" ]; then
+          node_head=$(curl -sf "$node_url/eth/v1/node/syncing" 2>/dev/null | jq -r '.data.head_slot' 2>/dev/null || echo "?")
+          node_fin=$(curl -sf "$node_url/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null | jq -r '.data.finalized.epoch' 2>/dev/null || echo "?")
+          echo "    $node_name: head=$node_head finalized=$node_fin"
+        fi
+      done
+    fi
 
     # In stateless mode, also check the stateless node's health
     if [ "$STATELESS_MODE" = true ]; then

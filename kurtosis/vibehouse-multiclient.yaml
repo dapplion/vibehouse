@@ -1,0 +1,30 @@
+# Multi-client Gloas devnet: vibehouse + lodestar
+# For interop testing ahead of epbs-devnet-0 (March 4, 2026).
+#
+# Usage:
+#   scripts/build-docker.sh
+#   kurtosis run github.com/ethpandaops/ethereum-package@6.0.0 \
+#     --args-file kurtosis/vibehouse-multiclient.yaml
+#
+# Both CL clients run with the same geth EL, minimal preset, gloas fork at epoch 1.
+participants:
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    count: 2
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lodestar
+    cl_image: ethpandaops/lodestar:epbs-devnet-0
+    count: 2
+network_params:
+  gloas_fork_epoch: 1
+  preset: minimal
+additional_services:
+  - dora
+  - spamoor
+snooper_enabled: true
+global_log_level: debug
+dora_params:
+  image: ethpandaops/dora:gloas-support
