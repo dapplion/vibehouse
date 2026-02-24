@@ -48,19 +48,31 @@ Participate in epbs-devnet-0 (launch target: Feb 18, 2026). Run vibehouse + geth
 2. Payload envelope import — needs full state transition wiring
 3. EL integration — `newPayload` for gloas payloads
 
-### Kurtosis config
-See `kurtosis/vibehouse-epbs.yaml`. Key params: gloas_fork_epoch=1, preset=minimal, spamoor + dora enabled.
+### Kurtosis configs
+- `kurtosis/vibehouse-epbs.yaml` — 4 vibehouse CL + geth EL (self-test, homogeneous)
+- `kurtosis/vibehouse-multiclient.yaml` — 2 vibehouse + 2 lodestar CL + geth EL (interop test)
+- `kurtosis/vibehouse-stateless.yaml` — 3 proof-generators + 1 stateless node (ZK proofs)
+
+Key params: gloas_fork_epoch=1, preset=minimal, spamoor + dora enabled.
 
 ### Infrastructure
 - `Dockerfile.dev` — minimal dev image (ubuntu:24.04 + binary copy, no Rust in Docker)
 - `scripts/build-docker.sh` — host `cargo build --release --features spec-minimal` + docker package (~30s incremental)
 - `scripts/kurtosis-run.sh` — bounded lifecycle: build → clean → start → poll beacon API → teardown
+  - Flags: `--no-build`, `--no-teardown`, `--stateless`, `--multiclient`
   - Polls `/eth/v1/node/syncing` + `/eth/v1/beacon/states/head/finality_checkpoints`
-  - Success = finalized epoch >= 3, stall detection (36s), 5-min timeout
+  - Success = finalized epoch >= 8, stall detection (36s), 12-min timeout
+  - Multi-client mode: cross-client health check (all 4 nodes compared)
   - Logs to `/tmp/kurtosis-runs/<RUN_ID>/` (build.log, kurtosis.log, health.log, dump/)
 - `docs/devnet-checks.md` — full list of 12 health checks for agent debugging
 
 ## Progress log
+
+### 2026-02-24: multi-client interop config
+- Added `kurtosis/vibehouse-multiclient.yaml`: 2 vibehouse + 2 lodestar CL nodes with geth EL
+- Updated `scripts/kurtosis-run.sh`: `--multiclient` flag, cross-client health check, resilient API discovery
+- Prep for epbs-devnet-0 (March 4, 2026) — vibehouse needs to interop with lodestar
+- All tests pass: 8/8 EF fork choice, 280/280 state_processing, release build clean
 
 ### 2026-02-17: deep devnet-0 readiness audit — all clear
 - **EF tests**: 136/136 pass, check_all_files_accessed passes (209,677 files, 122,748 excluded)
