@@ -6,6 +6,7 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 ## Status: DONE
 
 ### Done
+- [x] SSZ response support for 6 endpoints (#8892)
 - [x] SSE events for ePBS: `execution_bid`, `execution_payload`, `payload_attestation`
 - [x] `GET /eth/v1/beacon/states/{state_id}/proposer_lookahead` — Fulu/Gloas only, returns `proposer_lookahead` vector
 - [x] `POST /eth/v1/builder/bids` — accepts `SignedExecutionPayloadBid`, verifies, imports to fork choice, gossips
@@ -92,3 +93,19 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - **Test infrastructure**: Reuses existing `InteractiveTester<MinimalEthSpec>` pattern; added `gloas_spec()` helper that enables all forks through Gloas
 - **Files changed**: 1 file (`beacon_node/http_api/tests/fork_tests.rs`)
 - 5/5 new tests pass, 186/186 total http_api tests pass
+
+### 2026-02-24 — SSZ response support for 6 endpoints (#8892)
+- **What**: Added `application/octet-stream` (SSZ) response support to 6 HTTP API endpoints per beacon-APIs spec v4.0.0+:
+  - `GET /eth/v1/beacon/states/{state_id}/pending_deposits`
+  - `GET /eth/v1/beacon/states/{state_id}/pending_partial_withdrawals`
+  - `GET /eth/v1/beacon/states/{state_id}/pending_consolidations`
+  - `GET /eth/v1/validator/attestation_data`
+  - `GET /eth/v2/validator/aggregate_attestation`
+  - `POST /eth/v1/beacon/states/{state_id}/validator_identities`
+- **Pattern**: Each endpoint now checks the `Accept` header; when `application/octet-stream` is requested, the data is SSZ-encoded directly (bypassing JSON wrapper) with `Content-Type: application/octet-stream` and `Eth-Consensus-Version` headers
+- **Also**: Added `Encode`/`Decode` derives to `ValidatorIdentityData` API type for SSZ support
+- **Files changed**: 3 files
+  - `beacon_node/http_api/src/lib.rs`: Accept header + SSZ branch for 5 endpoints
+  - `beacon_node/http_api/src/aggregate_attestation.rs`: Accept header + SSZ branch
+  - `common/eth2/src/types.rs`: SSZ derives on `ValidatorIdentityData`
+- 212/212 http_api tests pass, 34/34 eth2 tests pass, full workspace clippy clean

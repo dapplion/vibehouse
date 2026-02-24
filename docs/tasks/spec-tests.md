@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-24 — SSZ response support + spec tracking (run 70)
+- Checked consensus-specs PRs since run 69: no new Gloas spec changes merged
+  - #4945 (fix inclusion list test for mainnet) — Heze-only, no Gloas impact
+  - #4946 (bump actions/stale) — CI-only
+  - Open Gloas PRs unchanged: #4940, #4932, #4843, #4939, #4840, #4926, #4898, #4892, #4747
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Added SSZ response support to 6 HTTP API endpoints** (#8892): pending_deposits, pending_partial_withdrawals, pending_consolidations, attestation_data, aggregate_attestation, validator_identities
+- 212/212 http_api tests pass, 34/34 eth2 tests pass
+
 ### 2026-02-24 — spec compliance audit (run 69)
 - Full audit of consensus-specs PRs merged since v1.7.0-alpha.2 (2026-02-03):
   - **#4918** (only allow attestations for known payload statuses, merged 2026-02-23) — ALREADY IMPLEMENTED (fork_choice.rs:1207-1215, checks `block.payload_revealed` for index=1 attestations)
