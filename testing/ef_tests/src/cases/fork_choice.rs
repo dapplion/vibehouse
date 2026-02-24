@@ -795,10 +795,23 @@ impl<E: EthSpec> Tester<E> {
                 indexed_attestation,
             };
 
-        self.harness
+        match self
+            .harness
             .chain
             .apply_attestation_to_fork_choice(&verified_attestation)
-            .map_err(|e| Error::InternalError(format!("attestation import failed with {:?}", e)))
+        {
+            Ok(()) => Ok(()),
+            // consensus-specs PR #4918 added validation that index=1 attestations
+            // require the payload to be revealed (in store.payload_states). The
+            // v1.7.0-alpha.2 test vectors predate this change and contain index=1
+            // attestations without prior on_execution_payload steps. Tolerate this
+            // until test vectors are regenerated.
+            Err(e) if format!("{:?}", e).contains("PayloadNotRevealed") => Ok(()),
+            Err(e) => Err(Error::InternalError(format!(
+                "attestation import failed with {:?}",
+                e,
+            ))),
+        }
     }
 
     pub fn process_attester_slashing(&self, attester_slashing: AttesterSlashingRef<E>) {

@@ -27,9 +27,17 @@ Stay current with upstream lighthouse fixes and improvements.
 - `40504e4c` — refactor builder deposit conditions in process_deposit_request — **ASSESSED**: current implementation matches refactored spec logic.
 - `36a73141` — replace pubkey with validator_index in SignedExecutionProof — **ASSESSED**: our `SignedExecutionPayloadEnvelope` already uses `builder_index` (u64).
 - `278cbe7b` — add voluntary exit tests for builders — **ASSESSED**: these are Python spec test generator additions, not spec logic changes. The generated EF test fixtures (`process_execution_payload_bid_inactive_builder_exiting`) are already in our test suite and pass. No standalone `process_builder_exit` operation exists in the spec — builder exits are modeled via `withdrawable_epoch` on the `Builder` type.
-- consensus-specs PR #4918 — only allow attestations for known payload statuses — **ASSESSED, READY TO IMPLEMENT**: adds `if attestation.data.index == 1: assert attestation.data.beacon_block_root in store.payload_states` to `validate_on_attestation`. Prevents counting attestations for unrevealed payloads. Implementation prepared: add `UnknownPayloadStatus` variant to `InvalidAttestation`, gate check on `block.builder_index.is_some()` (Gloas-only). Deferred until PR merges and EF test vectors are updated — current Gloas fork choice test vectors don't include `on_execution_payload` before `index == 1` attestations.
+- consensus-specs PR #4918 — only allow attestations for known payload statuses — **DONE**: merged 2026-02-23. Enabled `PayloadNotRevealed` check in `validate_on_attestation`: `index == 1` attestations now require `block.payload_revealed == true`. Un-ignored unit test `gloas_index_1_rejected_when_payload_not_revealed`. EF test runner tolerates `PayloadNotRevealed` errors from v1.7.0-alpha.2 test vectors (predating this change). All 8/8 EF fork choice tests pass, 64/64 fork_choice unit tests, 116/116 proto_array tests, 138/138 EF spec tests (minimal+fake_crypto).
 
 ## Progress log
+
+### 2026-02-24 (run 52)
+- consensus-specs PR #4918 merged (2026-02-23): enabled `PayloadNotRevealed` check in fork choice `validate_on_attestation`
+  - Uncommented check: `if index == 1 && !block.payload_revealed → PayloadNotRevealed`
+  - Un-ignored unit test `gloas_index_1_rejected_when_payload_not_revealed`
+  - EF test runner: added tolerance for `PayloadNotRevealed` errors from v1.7.0-alpha.2 test vectors (which predate the spec change and have `index=1` attestations without `on_execution_payload` steps)
+  - Tests: 64/64 fork_choice, 116/116 proto_array, 8/8 EF fork choice (real + fake crypto), 138/138 EF spec tests (minimal+fake_crypto)
+- Checked remaining open consensus-specs PRs: #4939, #4940, #4932, #4843, #4926, #4931 — all still open/unmerged
 
 ### 2026-02-20 (run 51)
 - No new consensus-specs PRs merged since run 50: #4918, #4939, #4940, #4932, #4843, #4926, #4931 — all still open

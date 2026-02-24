@@ -1195,21 +1195,15 @@ where
                 });
             }
 
-            // consensus-specs PR #4918 (merged 2026-02-23):
-            // if attestation.data.index == 1: assert beacon_block_root in store.payload_states
+            // [New in Gloas:EIP7732] consensus-specs PR #4918:
+            // If attesting for a full node, the payload must be known.
             // In vibehouse, a block root being in payload_states is equivalent to
             // the block's payload_revealed being true in proto_array.
-            //
-            // TODO(https://github.com/ethereum/consensus-specs/pull/4918): enable this check
-            // once spec test vectors include it (currently pinned at v1.7.0-alpha.2, which
-            // predates this spec change). The check is implemented and tested in unit tests
-            // below but disabled to avoid breaking EF spec test compatibility.
-            //
-            // if index == 1 && !block.payload_revealed {
-            //     return Err(InvalidAttestation::PayloadNotRevealed {
-            //         beacon_block_root: indexed_attestation.data().beacon_block_root,
-            //     });
-            // }
+            if index == 1 && !block.payload_revealed {
+                return Err(InvalidAttestation::PayloadNotRevealed {
+                    beacon_block_root: indexed_attestation.data().beacon_block_root,
+                });
+            }
         }
 
         Ok(())
@@ -3062,10 +3056,7 @@ mod tests {
                 .unwrap();
         }
 
-        // TODO(https://github.com/ethereum/consensus-specs/pull/4918): un-ignore when the
-        // PayloadNotRevealed check is enabled (after spec test vectors are updated).
         #[test]
-        #[ignore]
         fn gloas_index_1_rejected_when_payload_not_revealed() {
             let mut fc = new_fc();
             let block_root = root(1);
