@@ -690,7 +690,8 @@ mod tests {
     use std::sync::LazyLock;
     use tokio::sync::mpsc;
     use types::{
-        ChainSpec, Epoch, EthSpec, FixedBytesExtended, Hash256, Keypair, MinimalEthSpec, Slot,
+        ChainSpec, Epoch, EthSpec, FixedBytesExtended, ForkName, Hash256, Keypair, MinimalEthSpec,
+        Slot,
     };
 
     const VALIDATOR_COUNT: usize = 48;
@@ -718,7 +719,7 @@ mod tests {
     #[tokio::test]
     async fn check_all_blocks_from_altair_to_gloas() {
         let slots_per_epoch = MinimalEthSpec::slots_per_epoch() as usize;
-        let num_epochs = 12;
+        let num_epochs = 14;
         let bellatrix_fork_epoch = 2usize;
         let capella_fork_epoch = 4usize;
         let deneb_fork_epoch = 6usize;
@@ -807,6 +808,18 @@ mod tests {
                 .expect("block should exist");
             expected_blocks.push(block);
         }
+
+        // Verify that we actually produced Gloas blocks.
+        let gloas_start_slot = gloas_fork_epoch * slots_per_epoch;
+        assert!(
+            expected_blocks.len() > gloas_start_slot,
+            "should have blocks beyond the Gloas fork epoch"
+        );
+        assert_eq!(
+            expected_blocks.last().unwrap().fork_name(&spec).unwrap(),
+            ForkName::Gloas,
+            "last block should be a Gloas block"
+        );
 
         for epoch in 0..num_epochs {
             let start = epoch * slots_per_epoch;

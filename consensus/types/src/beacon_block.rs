@@ -1192,8 +1192,8 @@ mod tests {
                 slot: gloas_slot,
                 ..<_>::random_for_test(rng)
             });
-            // It's invalid to have a Fulu block with a epoch lower than the fork epoch.
-            let _bad_block = {
+            // It's invalid to have a Gloas block with a slot in the Fulu range.
+            let bad_block = {
                 let mut bad = good_block.clone();
                 *bad.slot_mut() = fulu_slot;
                 bad
@@ -1205,10 +1205,12 @@ mod tests {
                 good_block
             );
 
-            // TODO(gloas): Uncomment once Gloas has features since without features
-            // and with a Fulu slot it decodes successfully to Fulu.
-            //BeaconBlock::from_ssz_bytes(&bad_block.as_ssz_bytes(), &spec)
-            //    .expect_err("bad gloas block cannot be decoded");
+            // Gloas and Fulu have different SSZ layouts (Gloas has
+            // signed_execution_payload_bid + payload_attestations instead of
+            // execution_payload + blob_kzg_commitments + execution_requests),
+            // so a Gloas block at a Fulu slot should fail to decode.
+            BeaconBlock::from_ssz_bytes(&bad_block.as_ssz_bytes(), &spec)
+                .expect_err("bad gloas block cannot be decoded as fulu");
         }
     }
 }

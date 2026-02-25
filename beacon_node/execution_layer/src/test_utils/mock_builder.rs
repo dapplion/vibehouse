@@ -495,7 +495,8 @@ impl<E: EthSpec> MockBuilder<E> {
                 block.message.body.execution_payload.tree_hash_root()
             }
             SignedBlindedBeaconBlock::Gloas(_) => {
-                // TODO(EIP7732) Check if this is how we want to do error handling for gloas
+                // Gloas (ePBS): no traditional blinded block unblinding — builders reveal
+                // payloads via execution payload envelopes, not via this endpoint.
                 return Err("invalid fork".to_string());
             }
         };

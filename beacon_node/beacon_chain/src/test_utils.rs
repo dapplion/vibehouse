@@ -3518,7 +3518,8 @@ pub fn generate_rand_block_and_blobs<E: EthSpec>(
             message.body.blob_kzg_commitments = bundle.commitments.clone();
             bundle
         }
-        // TODO(EIP-7732) Add `SignedBeaconBlock::Gloas` variant
+        // Gloas (ePBS): blobs are part of the execution payload envelope, not the
+        // beacon block. Return the block with empty blob_sidecars.
         _ => return (block, blob_sidecars),
     };
 

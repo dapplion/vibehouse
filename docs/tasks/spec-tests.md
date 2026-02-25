@@ -29,6 +29,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas test coverage + TODO cleanup (run 74)
+- Checked consensus-specs PRs since run 73: no new Gloas spec changes merged
+  - Only #4946 (bump actions/stale) — CI-only
+  - All tracked Gloas PRs still open: #4940, #4932, #4843, #4939, #4840, #4926, #4747
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Extended beacon_block_streamer test to cover Gloas blocks** (#8588):
+  - Increased `num_epochs` from 12→14 so the test now produces 2 full epochs of Gloas blocks (was stopping exactly at the fork boundary)
+  - Added assertions verifying Gloas blocks were actually produced (fork name check on last block)
+  - Streamer correctly streams Gloas blocks from DB — no issues found
+- **Enabled Gloas SSZ cross-fork decode test**:
+  - Uncommented the disabled `bad_block` assertion in `decode_base_and_altair` test
+  - Gloas and Fulu have different SSZ layouts (signed_execution_payload_bid + payload_attestations vs execution_payload + blob_kzg_commitments + execution_requests)
+  - Confirmed: Gloas block at Fulu slot correctly fails SSZ decode
+  - Was previously disabled with TODO(gloas) — now enabled since Gloas has distinct features
+- **Resolved 3 Gloas TODO comments**: replaced TODO(EIP-7732) / TODO(EIP7732) in test_utils.rs, mock_builder.rs, and beacon_block.rs with explanatory comments documenting ePBS design decisions
+- All 698 types tests pass, beacon_block_streamer test passes, cargo fmt + clippy clean
+
 ### 2026-02-25 — fork choice state + execution proof integration tests (run 73)
 - Checked consensus-specs PRs since run 72: no new Gloas spec changes merged
   - No PRs merged since Feb 24
