@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — dead code cleanup + spec tracking (run 80)
+- Checked consensus-specs PRs since run 79: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - #4930 (rename execution_payload_states to payload_states) merged Feb 16 — already assessed in run 75, naming-only change in spec pseudocode, our impl uses different internal names
+  - #4931 (rebase FOCIL onto Gloas) merged Feb 20 — EIP-7805 inclusion lists, not in vibehouse scope yet
+  - #4942 (promote EIP-7805 to Heze) merged Feb 20 — creates new Heze fork stage, no Gloas impact
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (open issues are all upstream Lighthouse PRs targeting `unstable`, not vibehouse)
+- **Removed 4 dead error variants** from gloas verification enums (identified in run 79):
+  - `ExecutionBidError::BuilderPubkeyUnknown` — never returned, pubkey lookup maps to `InvalidSignature`
+  - `PayloadAttestationError::AttesterNotInPtc` — unreachable, PTC iteration makes it impossible
+  - `PayloadAttestationError::DuplicateAttestation` — never returned, duplicates silently `continue`
+  - `PayloadEnvelopeError::UnknownBuilder` — never returned, pubkey lookup maps to `InvalidSignature`
+  - Also removed the unreachable `DuplicateAttestation` match arm in gossip_methods.rs
+- Clippy clean (full workspace), cargo fmt clean, all 49 gloas_verification tests pass
+
 ### 2026-02-25 — gossip verification edge case tests (run 79)
 - Checked consensus-specs PRs since run 78: no new Gloas spec changes merged
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
