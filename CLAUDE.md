@@ -267,6 +267,9 @@ scripts/kurtosis-run.sh --no-build
 
 # Leave enclave running after test (for manual inspection)
 scripts/kurtosis-run.sh --no-teardown
+
+# Genesis sync test (stop non-validators, finalize, restart, verify sync)
+scripts/kurtosis-run.sh --sync
 ```
 
 ### How the Devnet Works

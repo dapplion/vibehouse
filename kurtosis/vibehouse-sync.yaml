@@ -1,0 +1,27 @@
+participants:
+  # 2 validator nodes (keep running, produce blocks)
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    count: 2
+  # 2 non-validator nodes (sync targets — stopped and restarted)
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    supernode: true
+    validator_count: 0
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    supernode: false
+    validator_count: 0
+network_params:
+  gloas_fork_epoch: 1
+  preset: minimal
+additional_services:
+  - spamoor
+snooper_enabled: true
+global_log_level: debug

@@ -4,18 +4,21 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync]
 #
 # Flags:
 #   --no-build      Skip Docker image build (use existing vibehouse:local)
 #   --no-teardown   Leave enclave running after completion (for inspection)
 #   --stateless     Use mixed stateless+proof-generator config (vibehouse-stateless.yaml)
 #   --multiclient   Use vibehouse + lodestar config (vibehouse-multiclient.yaml)
+#   --sync          Genesis sync test: stop non-validator nodes, let chain finalize,
+#                   restart them, verify they sync through the Gloas fork boundary
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
 #   kurtosis.log    — kurtosis run output (enclave startup)
 #   health.log      — beacon API polling results (JSON per poll)
+#   sync.log        — sync mode: non-validator node sync progress (--sync only)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,6 +40,7 @@ DO_BUILD=true
 DO_TEARDOWN=true
 STATELESS_MODE=false
 MULTICLIENT_MODE=false
+SYNC_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -44,12 +48,18 @@ for arg in "$@"; do
     --no-teardown)  DO_TEARDOWN=false ;;
     --stateless)    STATELESS_MODE=true ;;
     --multiclient)  MULTICLIENT_MODE=true ;;
+    --sync)         SYNC_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
 # Use stateless config when --stateless is set
-if [ "$STATELESS_MODE" = true ]; then
+if [ "$SYNC_MODE" = true ]; then
+  KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-sync.yaml"
+  TARGET_FINALIZED_EPOCH=4  # lower target for pre-sync phase
+  TIMEOUT=900               # 15 minutes total (finalization + sync)
+  echo "==> Sync mode: using $KURTOSIS_CONFIG (2 validators + 2 sync targets)"
+elif [ "$STATELESS_MODE" = true ]; then
   KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-stateless.yaml"
   echo "==> Stateless mode: using $KURTOSIS_CONFIG"
 elif [ "$MULTICLIENT_MODE" = true ]; then
@@ -125,6 +135,23 @@ if [ -z "$BEACON_URL" ]; then
 fi
 echo "    Beacon API: $BEACON_URL"
 
+# Sync mode: stop non-validator nodes and wait for finalization on validators first
+if [ "$SYNC_MODE" = true ]; then
+  SYNC_NODE_SUPER="cl-3-lighthouse-geth"
+  SYNC_NODE_FULL="cl-4-lighthouse-geth"
+  SYNC_EL_SUPER="el-3-geth-lighthouse"
+  SYNC_EL_FULL="el-4-geth-lighthouse"
+
+  echo "==> Sync mode: stopping non-validator nodes..."
+  # Stop both CL and EL for non-validator nodes so they fall behind
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$SYNC_NODE_SUPER" 2>/dev/null || true
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$SYNC_NODE_FULL" 2>/dev/null || true
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$SYNC_EL_SUPER" 2>/dev/null || true
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$SYNC_EL_FULL" 2>/dev/null || true
+  echo "    Stopped: $SYNC_NODE_SUPER, $SYNC_NODE_FULL, $SYNC_EL_SUPER, $SYNC_EL_FULL"
+  echo "    Waiting for validator nodes to finalize past Gloas fork..."
+fi
+
 # Step 5: Poll beacon API for health checks
 echo "==> Polling beacon API (timeout: ${TIMEOUT}s, interval: ${POLL_INTERVAL}s)..."
 echo "    Target: finalized_epoch >= $TARGET_FINALIZED_EPOCH (gloas fork at epoch $GLOAS_FORK_EPOCH)"
@@ -194,10 +221,16 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
   fi
   prev_slot="$head_slot"
 
-  # Success: finalized past the gloas fork
+  # Success: finalized past the target
   if [ "$finalized_epoch" -ge "$TARGET_FINALIZED_EPOCH" ]; then
-    echo "==> SUCCESS: Finalized epoch $finalized_epoch (target was $TARGET_FINALIZED_EPOCH)"
+    echo "==> Finalized epoch $finalized_epoch (target was $TARGET_FINALIZED_EPOCH)"
     echo "    Chain progressed through gloas fork and finalized."
+
+    # In sync mode, break out to run the sync verification phase
+    if [ "$SYNC_MODE" = true ]; then
+      VALIDATOR_HEAD_SLOT="$head_slot"
+      break
+    fi
 
     # In multi-client mode, verify cross-client consensus
     if [ "$MULTICLIENT_MODE" = true ]; then
@@ -248,11 +281,161 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
       fi
     fi
 
+    echo "==> SUCCESS"
     echo "==> Full logs: $RUN_DIR"
     cleanup
     exit 0
   fi
 done
+
+# If we broke out of the loop in sync mode, run the sync verification phase
+if [ "$SYNC_MODE" = true ] && [ "${VALIDATOR_HEAD_SLOT:-0}" -gt 0 ]; then
+  echo ""
+  echo "==> SYNC PHASE: Restarting non-validator nodes..."
+  echo "    Validator head at slot $VALIDATOR_HEAD_SLOT when sync targets were stopped"
+
+  # Restart EL first, then CL (CL needs EL to be ready)
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$SYNC_EL_SUPER" 2>/dev/null || true
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$SYNC_EL_FULL" 2>/dev/null || true
+  sleep 5  # give EL a moment to start
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$SYNC_NODE_SUPER" 2>/dev/null || true
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$SYNC_NODE_FULL" 2>/dev/null || true
+  echo "    All non-validator nodes restarted."
+
+  # Discover sync target beacon API URLs
+  SYNC_SUPER_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" "$SYNC_NODE_SUPER" http 2>/dev/null || echo "")"
+  SYNC_FULL_URL="$($SUDO kurtosis port print "$ENCLAVE_NAME" "$SYNC_NODE_FULL" http 2>/dev/null || echo "")"
+
+  if [ -z "$SYNC_SUPER_URL" ] || [ -z "$SYNC_FULL_URL" ]; then
+    echo "==> FAIL: Could not discover sync target beacon API endpoints"
+    echo "    supernode=$SYNC_SUPER_URL fullnode=$SYNC_FULL_URL"
+    dump_logs
+    cleanup
+    exit 1
+  fi
+  echo "    Supernode API: $SYNC_SUPER_URL"
+  echo "    Fullnode API:  $SYNC_FULL_URL"
+
+  # Poll sync targets until they catch up
+  SYNC_TIMEOUT=360  # 6 minutes for sync
+  SYNC_POLL=6       # poll every slot
+  sync_elapsed=0
+  super_synced=false
+  full_synced=false
+  sync_start_time=$(date +%s)
+
+  echo "==> Polling sync targets (timeout: ${SYNC_TIMEOUT}s, interval: ${SYNC_POLL}s)..."
+  {
+    echo "=== sync phase ==="
+    echo "validator_head_at_restart=$VALIDATOR_HEAD_SLOT"
+  } >> "$RUN_DIR/sync.log"
+
+  while [ "$sync_elapsed" -lt "$SYNC_TIMEOUT" ]; do
+    sleep "$SYNC_POLL"
+    sync_elapsed=$((sync_elapsed + SYNC_POLL))
+
+    # Get current validator head for comparison
+    val_syncing=$(curl -sf "$BEACON_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    val_head="?"
+    if [ -n "$val_syncing" ]; then
+      val_head=$(echo "$val_syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "?")
+    fi
+
+    # Check supernode sync status
+    super_status="not_ready"
+    super_head="0"
+    super_is_syncing="true"
+    super_resp=$(curl -sf "$SYNC_SUPER_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    if [ -n "$super_resp" ]; then
+      super_head=$(echo "$super_resp" | jq -r '.data.head_slot' 2>/dev/null || echo "0")
+      super_is_syncing=$(echo "$super_resp" | jq -r '.data.is_syncing' 2>/dev/null || echo "true")
+
+      # Get detailed sync state from lighthouse-specific endpoint
+      super_lh=$(curl -sf "$SYNC_SUPER_URL/lighthouse/syncing" 2>/dev/null || echo "")
+      if [ -n "$super_lh" ]; then
+        super_status=$(echo "$super_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
+      fi
+
+      # Check if synced: not syncing and head within 2 slots of validator head
+      if [ "$super_is_syncing" = "false" ] && [ "$super_head" != "0" ]; then
+        super_synced=true
+      fi
+    fi
+
+    # Check fullnode sync status
+    full_status="not_ready"
+    full_head="0"
+    full_is_syncing="true"
+    full_resp=$(curl -sf "$SYNC_FULL_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    if [ -n "$full_resp" ]; then
+      full_head=$(echo "$full_resp" | jq -r '.data.head_slot' 2>/dev/null || echo "0")
+      full_is_syncing=$(echo "$full_resp" | jq -r '.data.is_syncing' 2>/dev/null || echo "true")
+
+      full_lh=$(curl -sf "$SYNC_FULL_URL/lighthouse/syncing" 2>/dev/null || echo "")
+      if [ -n "$full_lh" ]; then
+        full_status=$(echo "$full_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
+      fi
+
+      if [ "$full_is_syncing" = "false" ] && [ "$full_head" != "0" ]; then
+        full_synced=true
+      fi
+    fi
+
+    echo "    [${sync_elapsed}s] validator_head=$val_head | super: head=$super_head status=$super_status synced=$super_synced | full: head=$full_head status=$full_status synced=$full_synced"
+
+    # Log detailed state
+    {
+      echo "--- sync ${sync_elapsed}s ---"
+      echo "validator_head=$val_head"
+      echo "supernode: head=$super_head is_syncing=$super_is_syncing status=$super_status synced=$super_synced"
+      echo "fullnode: head=$full_head is_syncing=$full_is_syncing status=$full_status synced=$full_synced"
+    } >> "$RUN_DIR/sync.log"
+
+    # Success: both nodes synced
+    if [ "$super_synced" = true ] && [ "$full_synced" = true ]; then
+      sync_duration=$(($(date +%s) - sync_start_time))
+      echo ""
+      echo "==> SYNC SUCCESS: Both nodes synced through Gloas fork boundary"
+      echo "    Supernode: head=$super_head (synced)"
+      echo "    Fullnode:  head=$full_head (synced)"
+      echo "    Sync duration: ${sync_duration}s"
+
+      # Verify finality and fork version on sync targets
+      declare -A sync_urls=( ["supernode"]="$SYNC_SUPER_URL" ["fullnode"]="$SYNC_FULL_URL" )
+      for node_label in supernode fullnode; do
+        node_url="${sync_urls[$node_label]}"
+
+        fin_resp=$(curl -sf "$node_url/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null || echo "")
+        if [ -n "$fin_resp" ]; then
+          sync_fin=$(echo "$fin_resp" | jq -r '.data.finalized.epoch' 2>/dev/null || echo "0")
+          echo "    $node_label finalized_epoch=$sync_fin"
+        fi
+
+        fork_resp=$(curl -sf "$node_url/eth/v1/beacon/states/head/fork" 2>/dev/null || echo "")
+        if [ -n "$fork_resp" ]; then
+          fork_epoch=$(echo "$fork_resp" | jq -r '.data.epoch' 2>/dev/null || echo "?")
+          fork_version=$(echo "$fork_resp" | jq -r '.data.current_version' 2>/dev/null || echo "?")
+          echo "    $node_label fork: epoch=$fork_epoch version=$fork_version"
+        fi
+      done
+
+      echo ""
+      echo "==> SUCCESS: Sync test complete"
+      echo "==> Full logs: $RUN_DIR"
+      echo "==> Sync log: $RUN_DIR/sync.log"
+      cleanup
+      exit 0
+    fi
+  done
+
+  echo "==> TIMEOUT: Sync targets did not sync within ${SYNC_TIMEOUT}s"
+  echo "    Supernode: head=$super_head synced=$super_synced"
+  echo "    Fullnode:  head=$full_head synced=$full_synced"
+  echo "==> Sync log: $RUN_DIR/sync.log"
+  dump_logs
+  cleanup
+  exit 1
+fi
 
 echo "==> TIMEOUT: Did not reach finalized epoch $TARGET_FINALIZED_EPOCH within ${TIMEOUT}s"
 echo "    Last state: slot=$prev_slot finalized_epoch=$finalized_epoch"

@@ -58,16 +58,18 @@ ZK proofs for execution payloads enabling stateless CL nodes. 20 tasks across 7 
 
 ### 5. More devnet testing
 
+[docs/tasks/devnet-testing.md](docs/tasks/devnet-testing.md)
+
 Current devnet only tests the happy path (4 homogeneous nodes, self-build, minimal preset). Run more scenarios:
 
-- **Syncing** — new node joins late, must sync from peers (top priority)
+- **Syncing** — DONE (script): `scripts/kurtosis-run.sh --sync` — 2 validators + 2 sync targets, catches up through Gloas fork boundary
 - **Node churn** — kill/restart nodes mid-run, test recovery
 - **Mainnet preset** — realistic committee sizes, PTC dynamics
 - **Long-running** — 30+ min, catch memory leaks and stalls
 - **Builder path** — external bids via API, envelope reveal flow
 - **Payload withholding** — bid without reveal, fork choice handles it
 - **Network partitions** — split nodes, reconnect, test fork resolution
-- **Stateless + ZK** — proof-generators + stateless node (extend existing)
+- **Stateless + ZK** — DONE: proof-generators + stateless node (from priority 4)
 - **Slashing scenarios** — double-propose / surround-vote, verify detection
 
 ### 6. ROCQ formal proofs for consensus-critical invariants — LOWEST PRIORITY
