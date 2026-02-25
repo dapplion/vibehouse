@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — engine API Gloas wire format tests + spec tracking (run 90)
+- Checked consensus-specs PRs since run 89: no new Gloas spec changes merged
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Added 3 engine API Gloas wire format tests** (previously ZERO tests for V5 methods):
+  - `new_payload_v5_gloas_request`: verifies `engine_newPayloadV5` JSON-RPC wire format via echo client — constructs a `NewPayloadRequestGloas` with payload, empty versioned_hashes, parent_beacon_block_root, and empty execution_requests, then asserts the echoed JSON matches the expected 4-element params array `[JsonExecutionPayloadGloas, versioned_hashes, parent_beacon_block_root, execution_requests]`. Also tests auth failure without JWT
+  - `get_payload_v5_gloas_request`: verifies `engine_getPayloadV5` request wire format — sends `ForkName::Gloas` to `get_payload_v5`, asserts correct method name and payload_id encoding. Also tests auth failure
+  - `get_payload_v5_gloas_response`: verifies response deserialization via preloaded responses — constructs a full `JsonGetPayloadResponseGloas` JSON object with executionPayload (all fields including withdrawals, blobGasUsed, excessBlobGas), blockValue, blobsBundle, shouldOverrideBuilder, and executionRequests, then deserializes and asserts all fields match expected values including `ExecutionPayload::Gloas` variant, block_value=42, shouldOverrideBuilder=false
+- These tests close the execution_layer gap identified in run 89: if the JSON-RPC serialization is wrong, EL integration breaks completely. The V5 methods (newPayloadV5, getPayloadV5) are the Gloas-specific engine API endpoints
+- All 46 execution_layer tests pass (was 43), cargo fmt clean
+
 ### 2026-02-25 — envelope processing integration tests + spec tracking (run 89)
 - Checked consensus-specs PRs since run 88: no new Gloas spec changes merged
   - Only infrastructure PRs: #4946 (bump actions/stale, Feb 24), #4945 (fix inclusion list test for mainnet, Heze-only)
