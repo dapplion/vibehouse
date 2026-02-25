@@ -1603,6 +1603,230 @@ async fn gloas_load_envelopes_for_blocks() {
 }
 
 // =============================================================================
+// Payload pruning and blinded envelope fallback
+// =============================================================================
+
+/// After pruning a Gloas block's full payload, get_payload_envelope returns None
+/// but get_blinded_payload_envelope still returns Some.
+#[tokio::test]
+async fn gloas_pruned_payload_full_envelope_gone_blinded_survives() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Before pruning: full envelope exists
+    assert!(
+        harness
+            .chain
+            .get_payload_envelope(&block_root)
+            .unwrap()
+            .is_some(),
+        "full envelope should exist before pruning"
+    );
+
+    // Prune the execution payload for this block
+    harness
+        .chain
+        .store
+        .do_atomically_with_block_and_blobs_cache(vec![store::StoreOp::DeleteExecutionPayload(
+            block_root,
+        )])
+        .unwrap();
+
+    // After pruning: full envelope is gone (payload component missing)
+    assert!(
+        harness
+            .chain
+            .get_payload_envelope(&block_root)
+            .unwrap()
+            .is_none(),
+        "full envelope should be None after payload pruning"
+    );
+
+    // Blinded envelope survives pruning
+    let blinded = harness
+        .chain
+        .store
+        .get_blinded_payload_envelope(&block_root)
+        .unwrap();
+    assert!(
+        blinded.is_some(),
+        "blinded envelope should survive payload pruning"
+    );
+
+    // Blinded envelope has correct metadata
+    let blinded = blinded.unwrap();
+    assert_eq!(
+        blinded.message.slot,
+        head.beacon_block.slot(),
+        "blinded envelope slot should match block slot"
+    );
+}
+
+/// After pruning, load_envelopes_for_blocks falls back to blinded envelopes.
+#[tokio::test]
+async fn gloas_load_envelopes_falls_back_to_blinded_after_pruning() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    // Collect block roots and blocks
+    let state = &harness.chain.head_snapshot().beacon_state;
+    let mut blocks = vec![];
+    let mut block_roots = vec![];
+    let mut seen_roots = std::collections::HashSet::new();
+    for slot_idx in 1..=4u64 {
+        let slot = Slot::new(slot_idx);
+        if let Ok(block_root) = state.get_block_root(slot)
+            && seen_roots.insert(*block_root)
+            && let Some(block) = harness.chain.store.get_blinded_block(block_root).unwrap()
+        {
+            block_roots.push(*block_root);
+            blocks.push(block);
+        }
+    }
+    assert!(!blocks.is_empty(), "should have loaded at least one block");
+
+    // Before pruning: all envelopes are full, none blinded
+    let (full_before, blinded_before) = harness.chain.load_envelopes_for_blocks(&blocks);
+    assert!(!full_before.is_empty(), "should have full envelopes");
+    assert!(
+        blinded_before.is_empty(),
+        "should have no blinded envelopes before pruning"
+    );
+
+    // Prune all execution payloads
+    let ops: Vec<_> = block_roots
+        .iter()
+        .map(|root| store::StoreOp::DeleteExecutionPayload(*root))
+        .collect();
+    harness
+        .chain
+        .store
+        .do_atomically_with_block_and_blobs_cache(ops)
+        .unwrap();
+
+    // After pruning: no full envelopes, all fall back to blinded
+    let (full_after, blinded_after) = harness.chain.load_envelopes_for_blocks(&blocks);
+    assert!(
+        full_after.is_empty(),
+        "should have no full envelopes after pruning"
+    );
+    assert!(
+        !blinded_after.is_empty(),
+        "should have blinded envelopes as fallback"
+    );
+
+    // Blinded envelopes should cover the same block roots
+    for root in &block_roots {
+        assert!(
+            blinded_after.contains_key(root),
+            "blinded fallback should contain block root {:?}",
+            root
+        );
+    }
+}
+
+/// Pruning one block's payload produces a mix of full and blinded envelopes.
+#[tokio::test]
+async fn gloas_mixed_full_and_blinded_envelopes_after_partial_prune() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let state = &harness.chain.head_snapshot().beacon_state;
+    let mut blocks = vec![];
+    let mut block_roots = vec![];
+    let mut seen_roots = std::collections::HashSet::new();
+    for slot_idx in 1..=4u64 {
+        let slot = Slot::new(slot_idx);
+        if let Ok(block_root) = state.get_block_root(slot)
+            && seen_roots.insert(*block_root)
+            && let Some(block) = harness.chain.store.get_blinded_block(block_root).unwrap()
+        {
+            block_roots.push(*block_root);
+            blocks.push(block);
+        }
+    }
+    assert!(
+        block_roots.len() >= 2,
+        "need at least 2 blocks for partial prune test"
+    );
+
+    // Prune only the first block's payload
+    let pruned_root = block_roots[0];
+    harness
+        .chain
+        .store
+        .do_atomically_with_block_and_blobs_cache(vec![store::StoreOp::DeleteExecutionPayload(
+            pruned_root,
+        )])
+        .unwrap();
+
+    let (full, blinded) = harness.chain.load_envelopes_for_blocks(&blocks);
+
+    // The pruned block should be in blinded, the rest in full
+    assert!(
+        blinded.contains_key(&pruned_root),
+        "pruned block should fall back to blinded envelope"
+    );
+    assert!(
+        !full.contains_key(&pruned_root),
+        "pruned block should not have full envelope"
+    );
+
+    // Remaining blocks should still have full envelopes
+    for root in &block_roots[1..] {
+        assert!(
+            full.contains_key(root),
+            "non-pruned block {:?} should still have full envelope",
+            root
+        );
+    }
+}
+
+/// Blinded envelope preserves builder_index and state_root after pruning.
+#[tokio::test]
+async fn gloas_blinded_envelope_preserves_fields_after_pruning() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Capture fields from the full envelope before pruning
+    let full_envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("full envelope should exist");
+    let expected_builder_index = full_envelope.message.builder_index;
+    let expected_state_root = full_envelope.message.state_root;
+    let expected_slot = full_envelope.message.slot;
+
+    // Prune
+    harness
+        .chain
+        .store
+        .do_atomically_with_block_and_blobs_cache(vec![store::StoreOp::DeleteExecutionPayload(
+            block_root,
+        )])
+        .unwrap();
+
+    // Blinded envelope should preserve all metadata fields
+    let blinded = harness
+        .chain
+        .store
+        .get_blinded_payload_envelope(&block_root)
+        .unwrap()
+        .expect("blinded envelope should exist after pruning");
+
+    assert_eq!(blinded.message.builder_index, expected_builder_index);
+    assert_eq!(blinded.message.state_root, expected_state_root);
+    assert_eq!(blinded.message.slot, expected_slot);
+}
+
+// =============================================================================
 // Fork choice state verification after block + envelope processing
 // =============================================================================
 
