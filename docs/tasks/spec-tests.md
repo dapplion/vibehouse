@@ -29,6 +29,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas execution proof gossip handler integration tests + spec tracking (run 105)
+- Checked consensus-specs PRs since run 104: no new Gloas spec changes merged
+  - 5 PRs merged since run 104 affect Gloas (#4918, #4923, #4930, #4922, #4920) — all already confirmed implemented in runs 97-100
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+  - PRs to watch: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS rename), #4558 (cell dissemination)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Addressed execution proof gossip handler**: the `process_gossip_execution_proof` handler (gossip_methods.rs:3834-3950) had ZERO network-level integration tests. This handler processes ALL execution proofs from gossip — it validates proof structure (version, size, data), cross-references fork choice (block root, block hash), and routes errors to the correct MessageAcceptance. Execution proofs are the core mechanism for stateless validation (ZK substitute for engine_newPayload)
+- **Added 6 execution proof gossip handler integration tests** (previously ZERO tests for this handler):
+  - **UnknownBlockRoot → Ignore (1 test):**
+    - `test_gloas_gossip_execution_proof_unknown_root_ignored`: constructs proof with random block_root not in fork choice, verifies Ignore. Tests the race condition path: proofs may arrive before their block
+  - **InvalidVersion → Reject (1 test):**
+    - `test_gloas_gossip_execution_proof_invalid_version_rejected`: constructs proof with version=99 (unsupported), verifies Reject + peer penalty. Tests the structural validation gate
+  - **ProofDataEmpty → Reject (1 test):**
+    - `test_gloas_gossip_execution_proof_empty_data_rejected`: constructs proof with empty proof_data, verifies Reject. Tests the non-empty data requirement
+  - **ProofDataTooLarge → Reject (1 test):**
+    - `test_gloas_gossip_execution_proof_oversized_data_rejected`: constructs proof with proof_data exceeding MAX_EXECUTION_PROOF_SIZE (1 MB + 1 byte), verifies Reject. Tests the resource exhaustion protection
+  - **BlockHashMismatch → Reject (1 test):**
+    - `test_gloas_gossip_execution_proof_block_hash_mismatch_rejected`: constructs proof with correct block_root (head) but wrong block_hash (0xdd repeated), verifies Reject. Tests the bid block_hash cross-validation — a proof must attest to the same execution payload committed in the bid
+  - **Valid stub proof → Accept (1 test):**
+    - `test_gloas_gossip_execution_proof_valid_stub_accepted`: reads actual bid_block_hash from fork choice for the head block, constructs proof with matching block_root, block_hash, version=1 (stub), and non-empty proof_data, verifies Accept. Stub proofs skip cryptographic verification, exercising only structural and fork choice checks
+- Tests call `process_gossip_execution_proof` directly on `NetworkBeaconProcessor`, exercising the full pipeline: handler → `verify_execution_proof_for_gossip` → error routing → `propagate_validation_result` → network_rx capture. The Accept path additionally exercises `process_gossip_verified_execution_proof` → `check_gossip_execution_proof_availability_and_import`
+- These tests close a critical security gap: the gossip handler is the only defense against invalid execution proofs on the gossip network. The error→MessageAcceptance mapping determines whether invalid proofs are propagated (Accept→Reject bug) or valid proofs are dropped (Accept→Ignore bug). The BlockHashMismatch test is particularly important — without it, a malicious peer could send proofs for non-existent execution payloads that pass structural checks but reference the wrong block_hash, potentially confusing stateless nodes about payload validity
+- **Remaining handler gaps**: execution bid remaining error paths (DuplicateBid, BuilderEquivocation, InvalidSignature, InsufficientBuilderBalance, InvalidParentRoot, valid Accept) require a registered builder in the test state; payload attestation remaining paths (ValidatorEquivocation, valid Accept) require valid PTC committee signatures
+- All 123 network tests pass (was 117), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas gossip execution payload envelope handler tests + spec tracking (run 104)
 - Checked consensus-specs PRs since run 103: no new Gloas spec changes merged
   - No new PRs merged since run 103 (latest merges were Feb 23-24, all already tracked)
