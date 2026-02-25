@@ -2491,3 +2491,355 @@ async fn gloas_block_import_without_blob_data() {
         result.err()
     );
 }
+
+// =============================================================================
+// Envelope processing integration tests (process_pending_envelope, process_payload_envelope)
+// =============================================================================
+
+/// After importing a Gloas block WITHOUT processing its envelope, the fork choice
+/// node should have payload_revealed=false and no envelope in the store.
+/// This is the starting state before any envelope is processed via gossip.
+#[tokio::test]
+async fn gloas_block_import_without_envelope_has_payload_unrevealed() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build initial chain with envelopes processed (establishes head)
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Make a block + envelope for the next slot, but only import the block
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    assert!(
+        envelope.is_some(),
+        "Gloas block production should yield an envelope"
+    );
+
+    let block_root = block_contents.0.canonical_root();
+
+    // Import ONLY the block — no envelope processing
+    let result = harness
+        .process_block(next_slot, block_root, block_contents)
+        .await;
+    assert!(
+        result.is_ok(),
+        "block import should succeed, got {:?}",
+        result.err()
+    );
+
+    // Fork choice: payload should NOT be revealed (no envelope processed)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc
+        .get_block(&block_root)
+        .expect("block should be in fork choice");
+    assert!(
+        !proto_block.payload_revealed,
+        "payload_revealed should be false when envelope hasn't been processed"
+    );
+    drop(fc);
+
+    // Store: no envelope should be persisted yet
+    let stored_envelope = harness.chain.get_payload_envelope(&block_root).unwrap();
+    assert!(
+        stored_envelope.is_none(),
+        "no envelope should be in store before processing"
+    );
+}
+
+/// Self-build envelopes (Signature::empty) fail process_pending_envelope's
+/// state transition because process_execution_payload_envelope uses
+/// VerifySignatures::True. Verify the buffer is drained even on failure,
+/// and the gossip verification still marks the payload as revealed in
+/// fork choice (apply_payload_envelope_to_fork_choice runs before the
+/// state transition fails).
+#[tokio::test]
+async fn gloas_process_pending_envelope_self_build_drains_buffer() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only (no envelope processing)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Buffer the self-build envelope
+    harness
+        .chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(block_root, Arc::new(signed_envelope));
+
+    // process_pending_envelope:
+    // 1. Removes from buffer (always)
+    // 2. Re-verifies (skips sig for self-build) → Ok
+    // 3. Applies to fork choice → payload_revealed = true
+    // 4. process_payload_envelope → fails on VerifySignatures::True (BadSignature)
+    //    This is expected: self-build envelopes should use process_self_build_envelope
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Buffer should be drained regardless of state transition outcome
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "pending buffer should be empty after processing attempt"
+    );
+
+    // Fork choice: payload_revealed should be true because
+    // apply_payload_envelope_to_fork_choice runs BEFORE process_payload_envelope fails
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc.get_block(&block_root).unwrap();
+    assert!(
+        proto_block.payload_revealed,
+        "payload_revealed should be true (fork choice updated before state transition fails)"
+    );
+    drop(fc);
+}
+
+/// After importing a block without envelope, process_self_build_envelope
+/// reveals the payload in fork choice, persists the envelope to store, and
+/// updates the state cache.
+#[tokio::test]
+async fn gloas_self_build_envelope_reveals_payload_after_block_import() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Pre-condition: payload not yet revealed
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "pre-condition: not yet revealed"
+        );
+    }
+
+    // Process self-build envelope (the correct path for locally-built blocks)
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("should process self-build envelope");
+
+    // Fork choice: payload should now be revealed
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc.get_block(&block_root).unwrap();
+    assert!(
+        proto_block.payload_revealed,
+        "payload_revealed should be true after self-build envelope processing"
+    );
+    drop(fc);
+
+    // Store: envelope should be persisted
+    let stored_envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("envelope should be in store");
+    assert_eq!(stored_envelope.message.slot, next_slot);
+    assert_eq!(
+        stored_envelope.message.builder_index, harness.spec.builder_index_self_build,
+        "stored envelope should have self-build builder index"
+    );
+}
+
+/// process_pending_envelope with no buffered envelope is a safe no-op.
+#[tokio::test]
+async fn gloas_process_pending_envelope_noop_when_empty() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Confirm buffer is empty for this root
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "no pending envelope should exist"
+    );
+
+    // Call should be a no-op — no panic, no state change
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Head unchanged
+    let new_head = harness.chain.head_snapshot();
+    assert_eq!(new_head.beacon_block_root, block_root, "head unchanged");
+}
+
+/// After process_self_build_envelope, the head snapshot should have the
+/// correct latest_block_hash (updated by envelope processing).
+#[tokio::test]
+async fn gloas_self_build_envelope_updates_head_state_latest_block_hash() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Recompute head so the head snapshot points to the new block
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // Process self-build envelope
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("should process self-build envelope");
+
+    // The head state should now have latest_block_hash updated
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let latest_block_hash = head_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        *latest_block_hash, envelope_block_hash,
+        "latest_block_hash should match the envelope's payload block_hash"
+    );
+}
+
+/// Verify the gossip verification + fork choice flow works end-to-end for
+/// self-build envelopes. verify_payload_envelope_for_gossip skips BLS sig
+/// verification for BUILDER_INDEX_SELF_BUILD, and apply_payload_envelope_to_fork_choice
+/// updates the fork choice tree.
+#[tokio::test]
+async fn gloas_gossip_verify_and_fork_choice_for_self_build_envelope() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Use verify_payload_envelope_for_gossip to get a VerifiedPayloadEnvelope
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("self-build envelope should pass gossip verification");
+
+    // Apply to fork choice
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Verify fork choice updated
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc.get_block(&block_root).unwrap();
+    assert!(proto_block.payload_revealed, "payload should be revealed");
+    drop(fc);
+}
+
+/// After process_self_build_envelope, the state cache should hold the
+/// post-envelope state keyed by the block's state_root, with the correct
+/// latest_block_hash.
+#[tokio::test]
+async fn gloas_self_build_envelope_caches_post_envelope_state() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_state_root = block_contents.0.message().state_root();
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Process self-build envelope
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("should process");
+
+    // The state cache should now hold the post-envelope state under block_state_root.
+    // The post-envelope state has latest_block_hash updated to the envelope's block_hash.
+    let cached_state = harness
+        .chain
+        .get_state(&block_state_root, Some(next_slot), false)
+        .expect("should not error")
+        .expect("post-envelope state should be in cache");
+
+    let latest_block_hash = cached_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        *latest_block_hash, envelope_block_hash,
+        "cached state should have post-envelope latest_block_hash"
+    );
+}
