@@ -192,6 +192,13 @@ impl<T: BeaconChainTypes> VerifiedExecutionBid<T> {
     pub fn into_inner(self) -> SignedExecutionPayloadBid<T::EthSpec> {
         self.bid
     }
+
+    /// Create a `VerifiedExecutionBid` without running gossip validation.
+    /// For use in integration tests only.
+    #[doc(hidden)]
+    pub fn __new_for_testing(bid: SignedExecutionPayloadBid<T::EthSpec>) -> Self {
+        Self { bid }
+    }
 }
 
 /// A `PayloadAttestation` that has been validated for gossip.
