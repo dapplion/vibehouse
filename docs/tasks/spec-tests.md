@@ -29,6 +29,36 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — fork choice Gloas method tests + spec tracking (run 95)
+- Checked consensus-specs PRs since run 94: no new Gloas spec changes merged
+  - No new PRs merged since run 94
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+  - #4940 (Gloas fork choice tests): still open, will add test vectors when merged
+  - #4747 (Fast Confirmation Rule): updated Feb 25, still evolving, no action needed
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC — new comment from michaelsproul), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** across fork_choice, beacon_chain, store, validator_client, and network — identified fork choice Gloas methods as highest-impact untested paths (0% direct test coverage for 3 critical methods)
+- **Added 13 fork choice Gloas method integration tests** (previously ZERO tests for these paths):
+  - **on_execution_bid (3 tests):**
+    - `fc_on_execution_bid_rejects_unknown_block_root`: verifies UnknownBeaconBlockRoot error for non-existent root
+    - `fc_on_execution_bid_rejects_slot_mismatch`: verifies SlotMismatch error when bid.slot != block.slot
+    - `fc_on_execution_bid_updates_node_fields`: verifies bid sets builder_index, resets payload_revealed=false, initializes ptc_weight=0 and ptc_blob_data_available_weight=0
+  - **on_execution_payload (2 tests):**
+    - `fc_on_execution_payload_marks_revealed`: verifies payload_revealed=true, payload_data_available=true, execution_status=Optimistic(hash) after reveal
+    - `fc_on_execution_payload_rejects_unknown_root`: verifies MissingProtoArrayBlock error for non-existent root
+  - **on_payload_attestation (6 tests):**
+    - `fc_on_payload_attestation_rejects_future_slot`: verifies FutureSlot rejection
+    - `fc_on_payload_attestation_rejects_too_old`: verifies TooOld rejection (>1 epoch old)
+    - `fc_on_payload_attestation_ignores_slot_mismatch`: verifies silent return when data.slot != block.slot (per spec), no weight accumulated
+    - `fc_on_payload_attestation_quorum_triggers_payload_revealed`: verifies quorum threshold is strictly greater (PTC_SIZE/2), exactly-at-threshold does NOT trigger, one-more vote triggers payload_revealed=true
+    - `fc_on_payload_attestation_blob_quorum_independent`: verifies blob_data_available quorum is tracked independently from payload_present (payload_present=false, blob_data_available=true → only blob quorum reached)
+    - `fc_on_payload_attestation_rejects_unknown_root`: verifies UnknownBeaconBlockRoot error
+  - **Lifecycle tests (2 tests):**
+    - `fc_bid_then_payload_lifecycle`: full bid→reveal end-to-end, verifying state transitions at each step
+    - `fc_payload_attestation_quorum_sets_optimistic_from_bid_hash`: verifies that when PTC quorum is reached and execution_status is not yet set, it's set to Optimistic(bid_block_hash) — critical for fork choice head selection before envelope arrives
+- These tests close the biggest fork choice test gap: `on_execution_bid` (fork_choice.rs:1323), `on_payload_attestation` (fork_choice.rs:1398), and `on_execution_payload` (fork_choice.rs:1526) are the three methods that determine how Gloas blocks become viable for head selection. A regression in PTC quorum logic would prevent blocks from becoming head candidates; a regression in on_execution_bid would break builder tracking; a regression in on_execution_payload would prevent payload reveals from being recorded
+- All 522 beacon_chain tests pass (was 509), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas execution payload path tests + spec tracking (run 94)
 - Checked consensus-specs PRs since run 93: no new Gloas spec changes merged
   - No PRs merged since run 93; only infrastructure PRs (#4946 actions/stale bump)
