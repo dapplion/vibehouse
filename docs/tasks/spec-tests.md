@@ -29,6 +29,31 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — network gossip handler integration tests + spec tracking (run 100)
+- Checked consensus-specs PRs since run 99: no new Gloas spec changes merged
+  - **PR #4946** (merged Feb 24): actions/stale bump — CI only, no impact
+  - **PR #4945** (merged Feb 23): inclusion list test fix — FOCIL/EIP-7805, not Gloas
+  - **PR #4918** already tracked in run 99 (confirmed implemented)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Addressed P1 from run 96 gap analysis**: network gossip handlers (5 Gloas-specific gossip handler functions with ZERO test coverage)
+- **Added 6 network gossip handler integration tests** (previously ZERO tests in network crate for Gloas gossip):
+  - **Execution bid rejection tests (3 tests):**
+    - `test_gloas_gossip_bid_zero_payment_rejected`: constructs bid with execution_payment=0, verifies process_gossip_execution_bid maps ZeroExecutionPayment → MessageAcceptance::Reject
+    - `test_gloas_gossip_bid_wrong_slot_ignored`: constructs bid for slot 999, verifies SlotNotCurrentOrNext → MessageAcceptance::Ignore
+    - `test_gloas_gossip_bid_unknown_builder_rejected`: constructs bid with builder_index=9999 (not in registry), verifies UnknownBuilder → MessageAcceptance::Reject
+  - **Payload attestation rejection tests (3 tests):**
+    - `test_gloas_gossip_payload_attestation_unknown_root_ignored`: constructs attestation with random beacon_block_root, verifies UnknownBeaconBlockRoot → MessageAcceptance::Ignore
+    - `test_gloas_gossip_payload_attestation_future_slot_ignored`: constructs attestation for slot 999, verifies FutureSlot → MessageAcceptance::Ignore
+    - `test_gloas_gossip_payload_attestation_empty_bits_rejected`: constructs attestation with zero aggregation bits, verifies EmptyAggregationBits → MessageAcceptance::Reject
+  - Built `gloas_rig()` helper: creates TestRig with gloas_fork_epoch=0 (all blocks are Gloas)
+  - Built `drain_validation_result()` helper: drains network_rx for ValidationResult messages, skipping ReportPeer
+  - Built `assert_accept()`, `assert_reject()`, `assert_ignore()` helpers: pattern-match MessageAcceptance (no PartialEq on gossipsub type)
+- Tests call `process_gossip_execution_bid` and `process_gossip_payload_attestation` directly on `NetworkBeaconProcessor`, exercising the full pipeline: gossip handler → beacon_chain.verify_*_for_gossip → error mapping → propagate_validation_result → network_rx capture
+- These tests cover the security boundary for incoming gossip messages at the network layer. The gossip handlers are the first line of defense against malicious messages — they must correctly map verification errors to Accept/Reject/Ignore to prevent invalid messages from being propagated, and to penalize peers appropriately. A regression in any mapping could cause the node to propagate invalid messages (Reject→Accept bug) or drop valid ones (Accept→Ignore bug)
+- All 104 network tests pass (was 98), cargo fmt + clippy clean
+
 ### 2026-02-25 — apply_execution_bid_to_fork_choice tests + spec tracking (run 99)
 - Checked consensus-specs PRs since run 98: no new Gloas spec changes merged
   - **PR #4918** (merged Feb 23): "Only allow attestations for known payload statuses" — already confirmed implemented in run 97
