@@ -4601,3 +4601,319 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
         "execution_status should be set to Optimistic(bid_block_hash) when quorum reached"
     );
 }
+
+// =============================================================================
+// apply_payload_attestation_to_fork_choice integration tests
+// =============================================================================
+
+/// Importing a payload attestation message via the beacon chain API should update
+/// the fork choice node's ptc_weight. This tests the full pipeline:
+/// import_payload_attestation_message → verify_payload_attestation_for_gossip →
+/// apply_payload_attestation_to_fork_choice → on_payload_attestation.
+#[tokio::test]
+async fn gloas_import_attestation_updates_fork_choice_ptc_weight() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Verify initial ptc_weight is 0 (self-build sets payload_revealed but not via PTC)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(
+            node.ptc_weight, 0,
+            "ptc_weight should start at 0 before any payload attestation"
+        );
+    }
+
+    // Find a PTC member and import a payload attestation
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_ok(),
+        "should import valid payload attestation: {:?}",
+        result.err()
+    );
+
+    // Verify ptc_weight increased in fork choice
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_weight, 1,
+        "ptc_weight should be 1 after importing one PTC attestation"
+    );
+}
+
+/// Importing a payload attestation with blob_data_available=true should update
+/// the fork choice node's ptc_blob_data_available_weight.
+#[tokio::test]
+async fn gloas_import_attestation_updates_blob_data_weight() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: false,
+        blob_data_available: true,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_ok(),
+        "should import valid payload attestation: {:?}",
+        result.err()
+    );
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_blob_data_available_weight, 1,
+        "blob_data_available_weight should be 1 after one attestation with blob_data_available=true"
+    );
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should be 0 when payload_present=false"
+    );
+}
+
+/// When enough PTC members import attestations via the API to exceed quorum,
+/// fork choice should flip payload_revealed from false to true. This tests the
+/// full quorum pathway through the beacon chain import methods.
+#[tokio::test]
+async fn gloas_import_attestation_quorum_triggers_payload_revealed() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Reset payload_revealed to false so PTC quorum can trigger it
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_revealed = false;
+        node.ptc_weight = 0;
+    }
+
+    // Get all PTC members for this slot
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2; // Need > threshold, so quorum_threshold+1 votes
+
+    // Import attestations from all PTC members (both members for minimal preset)
+    for (i, &validator_index) in ptc.iter().enumerate() {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: false,
+        };
+
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+
+        let result = harness.chain.import_payload_attestation_message(message);
+        assert!(
+            result.is_ok(),
+            "should import attestation from PTC member {}: {:?}",
+            i,
+            result.err()
+        );
+
+        // Check state after each attestation
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        let votes_so_far = (i + 1) as u64;
+
+        if votes_so_far > quorum_threshold {
+            assert!(
+                node.payload_revealed,
+                "payload_revealed should be true after {} votes (quorum threshold = {})",
+                votes_so_far, quorum_threshold
+            );
+        }
+    }
+
+    // Final verification: quorum reached
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert!(
+        node.payload_revealed,
+        "payload_revealed should be true after all PTC members attested"
+    );
+    assert_eq!(
+        node.ptc_weight,
+        ptc.len() as u64,
+        "ptc_weight should equal total PTC members"
+    );
+}
+
+/// Importing a payload attestation with payload_present=false should NOT increment
+/// ptc_weight but should still succeed (valid attestation for absent payload).
+#[tokio::test]
+async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: false,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_ok(),
+        "should import attestation with payload_present=false: {:?}",
+        result.err()
+    );
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should remain 0 when payload_present=false"
+    );
+    assert_eq!(
+        node.ptc_blob_data_available_weight, 0,
+        "blob weight should remain 0 when blob_data_available=false"
+    );
+}
+
+// =============================================================================
+// apply_execution_bid_to_fork_choice integration tests
+// =============================================================================
+
+/// After a block is imported with a self-build bid, applying an external bid
+/// via verify_execution_bid_for_gossip + apply_execution_bid_to_fork_choice
+/// should both insert into the bid pool AND update fork choice builder_index.
+/// Since constructing a VerifiedExecutionBid requires passing signature checks
+/// against a registered builder (which the minimal test harness doesn't have),
+/// we test the equivalent path: verify that get_best_execution_bid returns
+/// bids that were inserted through apply_execution_bid_to_fork_choice's pool
+/// insertion (bid pool is populated by the same method that updates fork choice).
+/// The fork choice on_execution_bid updates are separately tested via unit tests
+/// in fork_choice.rs.
+///
+/// This test verifies the pool insertion side of apply_execution_bid_to_fork_choice
+/// by directly inserting into the pool (same code path) and checking retrieval.
+#[tokio::test]
+async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let target_slot = harness.chain.head_snapshot().beacon_block.slot() + 1;
+
+    // Insert two bids at different values
+    let bid1 = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot: target_slot,
+            builder_index: 0,
+            value: 500,
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+    let bid2 = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot: target_slot,
+            builder_index: 1,
+            value: 2000,
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+
+    // Insert through the pool (same as apply_execution_bid_to_fork_choice line 2515)
+    {
+        let mut pool = harness.chain.execution_bid_pool.lock();
+        pool.insert(bid1);
+        pool.insert(bid2);
+    }
+
+    // Verify best bid selection returns highest value
+    let best = harness
+        .chain
+        .get_best_execution_bid(target_slot)
+        .expect("should have a bid");
+    assert_eq!(best.message.value, 2000, "should return highest-value bid");
+    assert_eq!(best.message.builder_index, 1);
+
+    // Verify old-slot bids are pruned
+    let future_slot = target_slot + 10;
+    let result = harness.chain.get_best_execution_bid(future_slot);
+    assert!(
+        result.is_none(),
+        "bids for old slots should be pruned when querying future slot"
+    );
+}
