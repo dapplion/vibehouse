@@ -1195,3 +1195,265 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for LighthouseValidatorS
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bls::Keypair;
+    use eth2_keystore::KeystoreBuilder;
+    use initialized_validators::{Config as InitializedValidatorsConfig, InitializedValidators};
+    use slashing_protection::{SLASHING_PROTECTION_FILENAME, SlashingDatabase};
+    use slot_clock::TestingSlotClock;
+    use task_executor::test_utils::TestRuntime;
+    use tempfile::tempdir;
+    use types::{
+        ExecutionPayloadEnvelope, ForkName, Hash256, MinimalEthSpec, PayloadAttestationData, Slot,
+    };
+    use zeroize::Zeroizing;
+
+    type E = MinimalEthSpec;
+
+    /// Build a `LighthouseValidatorStore` with one validator whose keypair is
+    /// known.  Returns `(store, keypair, pubkey_bytes)`.
+    async fn store_with_validator() -> (
+        LighthouseValidatorStore<TestingSlotClock, E>,
+        Keypair,
+        PublicKeyBytes,
+    ) {
+        let validator_dir = tempdir().unwrap();
+        let validator_defs =
+            account_utils::validator_definitions::ValidatorDefinitions::open_or_create(
+                validator_dir.path(),
+            )
+            .unwrap();
+        let initialized_validators = InitializedValidators::from_definitions(
+            validator_defs,
+            validator_dir.path().into(),
+            InitializedValidatorsConfig::default(),
+        )
+        .await
+        .unwrap();
+
+        let spec = Arc::new(ForkName::Gloas.make_genesis_spec(E::default_spec()));
+        let slashing_db_path = validator_dir.path().join(SLASHING_PROTECTION_FILENAME);
+        let slashing_protection = SlashingDatabase::open_or_create(&slashing_db_path).unwrap();
+        let slot_clock = TestingSlotClock::new(
+            Slot::new(0),
+            std::time::Duration::from_secs(0),
+            std::time::Duration::from_secs(1),
+        );
+        let test_runtime = TestRuntime::default();
+
+        let store = LighthouseValidatorStore::<_, E>::new(
+            initialized_validators,
+            slashing_protection,
+            Hash256::repeat_byte(42),
+            spec,
+            None, // no doppelganger — simplifies signing
+            slot_clock,
+            &Config::default(),
+            test_runtime.task_executor.clone(),
+        );
+
+        // Create a keypair and keystore on disk, then register it.
+        let keypair = Keypair::random();
+        let password = "test-password-for-signing-tests";
+        let keystore = KeystoreBuilder::new(&keypair, password.as_bytes(), String::new())
+            .unwrap()
+            .build()
+            .unwrap();
+        let keystore_path = validator_dir.path().join("keystore.json");
+        let mut file = std::fs::File::create(&keystore_path).unwrap();
+        keystore.to_json_writer(&mut file).unwrap();
+
+        store
+            .add_validator_keystore(
+                &keystore_path,
+                PasswordStorage::ValidatorDefinitions(Zeroizing::new(password.to_string())),
+                true, // enabled
+                None, // graffiti
+                None, // fee_recipient
+                None, // gas_limit
+                None, // builder_proposals
+                None, // builder_boost_factor
+                None, // prefer_builder_proposals
+            )
+            .await
+            .expect("should add validator");
+
+        let pubkey_bytes = PublicKeyBytes::from(&keypair.pk);
+
+        (store, keypair, pubkey_bytes)
+    }
+
+    #[tokio::test]
+    async fn sign_execution_payload_envelope_uses_beacon_builder_domain() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.slot = Slot::new(1);
+        envelope.beacon_block_root = Hash256::repeat_byte(0xaa);
+        envelope.builder_index = 7;
+
+        let signed = store
+            .sign_execution_payload_envelope(pubkey_bytes, &envelope)
+            .await
+            .expect("should sign envelope");
+
+        // Independently compute the expected signing root.
+        let epoch = envelope.slot.epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let domain = store.spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &fork,
+            Hash256::repeat_byte(42), // genesis_validators_root
+        );
+        let expected_signing_root = envelope.signing_root(domain);
+
+        // Verify the signature against the expected signing root.
+        assert!(
+            signed.signature.verify(&keypair.pk, expected_signing_root),
+            "signature should verify with Domain::BeaconBuilder"
+        );
+
+        // Verify the envelope message is preserved.
+        assert_eq!(signed.message.slot, envelope.slot);
+        assert_eq!(signed.message.beacon_block_root, envelope.beacon_block_root);
+        assert_eq!(signed.message.builder_index, envelope.builder_index);
+    }
+
+    #[tokio::test]
+    async fn sign_execution_payload_envelope_wrong_domain_fails_verify() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let envelope = ExecutionPayloadEnvelope::<E>::empty();
+
+        let signed = store
+            .sign_execution_payload_envelope(pubkey_bytes, &envelope)
+            .await
+            .expect("should sign envelope");
+
+        // Compute signing root with WRONG domain (BeaconAttester instead of
+        // BeaconBuilder).
+        let epoch = envelope.slot.epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let wrong_domain = store.spec.get_domain(
+            epoch,
+            Domain::BeaconAttester,
+            &fork,
+            Hash256::repeat_byte(42),
+        );
+        let wrong_signing_root = envelope.signing_root(wrong_domain);
+
+        // The signature must NOT verify against the wrong domain.
+        assert!(
+            !signed.signature.verify(&keypair.pk, wrong_signing_root),
+            "signature should NOT verify with wrong domain"
+        );
+    }
+
+    #[tokio::test]
+    async fn sign_payload_attestation_uses_ptc_attester_domain() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xbb),
+            slot: Slot::new(5),
+            payload_present: true,
+            blob_data_available: true,
+        };
+        let validator_index = 42;
+
+        let msg = store
+            .sign_payload_attestation(pubkey_bytes, &data, validator_index)
+            .await
+            .expect("should sign payload attestation");
+
+        // Independently compute the expected signing root.
+        let epoch = data.slot.epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let domain =
+            store
+                .spec
+                .get_domain(epoch, Domain::PtcAttester, &fork, Hash256::repeat_byte(42));
+        let expected_signing_root = data.signing_root(domain);
+
+        // Verify the signature.
+        assert!(
+            msg.signature.verify(&keypair.pk, expected_signing_root),
+            "signature should verify with Domain::PtcAttester"
+        );
+
+        // Verify the message fields are correct.
+        assert_eq!(msg.validator_index, validator_index);
+        assert_eq!(msg.data, data);
+    }
+
+    #[tokio::test]
+    async fn sign_payload_attestation_wrong_domain_fails_verify() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xcc),
+            slot: Slot::new(3),
+            payload_present: false,
+            blob_data_available: false,
+        };
+
+        let msg = store
+            .sign_payload_attestation(pubkey_bytes, &data, 0)
+            .await
+            .expect("should sign payload attestation");
+
+        // Compute signing root with WRONG domain (BeaconAttester instead of
+        // PtcAttester).
+        let epoch = data.slot.epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let wrong_domain = store.spec.get_domain(
+            epoch,
+            Domain::BeaconAttester,
+            &fork,
+            Hash256::repeat_byte(42),
+        );
+        let wrong_signing_root = data.signing_root(wrong_domain);
+
+        assert!(
+            !msg.signature.verify(&keypair.pk, wrong_signing_root),
+            "signature should NOT verify with wrong domain"
+        );
+    }
+
+    #[tokio::test]
+    async fn sign_envelope_unknown_pubkey_returns_error() {
+        let (store, _, _) = store_with_validator().await;
+
+        let envelope = ExecutionPayloadEnvelope::<E>::empty();
+        let unknown_pubkey = PublicKeyBytes::from(&Keypair::random().pk);
+
+        let result = store
+            .sign_execution_payload_envelope(unknown_pubkey, &envelope)
+            .await;
+
+        assert!(result.is_err(), "unknown pubkey should return error");
+    }
+
+    #[tokio::test]
+    async fn sign_payload_attestation_unknown_pubkey_returns_error() {
+        let (store, _, _) = store_with_validator().await;
+
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::ZERO,
+            slot: Slot::new(0),
+            payload_present: false,
+            blob_data_available: false,
+        };
+        let unknown_pubkey = PublicKeyBytes::from(&Keypair::random().pk);
+
+        let result = store
+            .sign_payload_attestation(unknown_pubkey, &data, 0)
+            .await;
+
+        assert!(result.is_err(), "unknown pubkey should return error");
+    }
+}

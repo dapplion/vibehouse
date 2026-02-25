@@ -5937,10 +5937,12 @@ version = "0.1.0"
 dependencies = [
  "account_utils",
  "beacon_node_fallback",
+ "bls",
  "doppelganger_service",
  "either",
  "environment",
  "eth2",
+ "eth2_keystore",
  "futures",
  "initialized_validators",
  "logging",
@@ -5950,11 +5952,13 @@ dependencies = [
  "slashing_protection",
  "slot_clock",
  "task_executor",
+ "tempfile",
  "tokio",
  "tracing",
  "types",
  "validator_metrics",
  "validator_store",
+ "zeroize",
 ]
 
 [[package]]
