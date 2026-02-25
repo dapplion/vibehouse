@@ -2852,6 +2852,367 @@ async fn gloas_self_build_envelope_caches_post_envelope_state() {
 }
 
 // =============================================================================
+// process_self_build_envelope — EL execution status & error path tests
+// =============================================================================
+
+/// After process_self_build_envelope with a mock EL (returns Valid), the block's
+/// execution_status should transition from Optimistic to Valid. This is critical
+/// because without the explicit on_valid_execution_payload call in
+/// process_self_build_envelope, the head stays Optimistic and block production
+/// is disabled (the forkchoiceUpdated issued during block import returns SYNCING
+/// because the EL hasn't seen the payload yet).
+#[tokio::test]
+async fn gloas_self_build_envelope_marks_execution_status_valid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let payload_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Pre-condition: execution_status should be Optimistic after block import
+    // (the EL hasn't seen the payload yet, only the forkchoiceUpdated)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "pre-condition: should be Optimistic after block import, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // Process self-build envelope — mock EL returns Valid for newPayload
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("should process self-build envelope");
+
+    // Post-condition: execution_status should be Valid
+    // This transition happens because process_self_build_envelope:
+    // 1. Calls notify_new_payload → EL returns Valid
+    // 2. Calls on_valid_execution_payload to explicitly mark it in fork choice
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(
+                proto_block.execution_status,
+                ExecutionStatus::Valid(hash) if hash == payload_block_hash
+            ),
+            "should be Valid(payload_block_hash) after self-build envelope, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
+/// In stateless mode, process_self_build_envelope skips the EL newPayload call,
+/// so execution_status stays Optimistic. The payload is still processed
+/// (state transition runs, latest_block_hash updated) but the execution layer
+/// is not consulted. Execution validity is established later via execution proofs.
+#[tokio::test]
+async fn gloas_self_build_envelope_stateless_mode_stays_optimistic() {
+    // Use a stateless harness with a separate producer harness
+    let stateless = gloas_stateless_harness(1);
+    let producer = gloas_harness_at_epoch(0);
+
+    // Produce and import 2 blocks to build chain state
+    for _ in 0..2 {
+        producer.advance_slot();
+        stateless.advance_slot();
+        let head_state = producer.chain.head_beacon_state_cloned();
+        let next_slot = head_state.slot() + 1;
+        let (block_contents, _state, envelope) = producer
+            .make_block_with_envelope(head_state, next_slot)
+            .await;
+
+        let envelope = envelope.expect("should have envelope");
+        let block_root = block_contents.0.canonical_root();
+
+        producer
+            .process_block(next_slot, block_root, block_contents.clone())
+            .await
+            .expect("producer import ok");
+        producer
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .expect("producer envelope ok");
+
+        stateless
+            .process_block(next_slot, block_root, block_contents)
+            .await
+            .expect("stateless import ok");
+        stateless
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .expect("stateless envelope ok");
+    }
+
+    // Produce one more block for testing
+    producer.advance_slot();
+    stateless.advance_slot();
+    let head_state = producer.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = producer
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    producer
+        .process_block(next_slot, block_root, block_contents.clone())
+        .await
+        .expect("producer import ok");
+    producer
+        .chain
+        .process_self_build_envelope(&envelope)
+        .await
+        .expect("producer envelope ok");
+
+    stateless
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("stateless import ok");
+
+    // Process envelope in stateless mode
+    stateless
+        .chain
+        .process_self_build_envelope(&envelope)
+        .await
+        .expect("stateless envelope should succeed (skips EL)");
+
+    // execution_status should STILL be Optimistic (EL was not called)
+    {
+        let fc = stateless.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "stateless mode: should remain Optimistic (no EL verification), got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // But payload_revealed should be true (fork choice still updated)
+    {
+        let fc = stateless.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "stateless mode: payload_revealed should be true (fork choice updated)"
+        );
+    }
+
+    // And the state transition should have run (latest_block_hash updated)
+    // The state may or may not be the head yet, but the cached state under block_state_root
+    // should have latest_block_hash set. Check via get_state:
+    let block_state_root = stateless
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .unwrap()
+        .message()
+        .state_root();
+    let post_envelope_state = stateless
+        .chain
+        .get_state(&block_state_root, Some(next_slot), false)
+        .expect("should not error")
+        .expect("post-envelope state should be cached");
+    let latest_block_hash = post_envelope_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_ne!(
+        *latest_block_hash,
+        ExecutionBlockHash::zero(),
+        "stateless mode: state transition should still run (latest_block_hash set)"
+    );
+}
+
+/// process_self_build_envelope with a block_root not in the store should
+/// return an error (missing beacon block). This catches the case where the
+/// envelope arrives for a block that was never imported.
+#[tokio::test]
+async fn gloas_self_build_envelope_missing_block_root_errors() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Construct a fake envelope referencing a non-existent block
+    let fake_root = Hash256::from_slice(&[0xab; 32]);
+    let mut envelope = SignedExecutionPayloadEnvelope::<E>::default();
+    envelope.message.beacon_block_root = fake_root;
+    envelope.message.slot = Slot::new(3);
+
+    let result = harness.chain.process_self_build_envelope(&envelope).await;
+
+    assert!(result.is_err(), "should error for missing block root");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("Missing beacon block"),
+        "error should mention missing beacon block, got: {}",
+        err_msg
+    );
+}
+
+/// After process_self_build_envelope, producing the next block should work
+/// correctly — verifying that the state transition and cache updates leave
+/// the chain in a valid state for continued block production.
+#[tokio::test]
+async fn gloas_self_build_envelope_enables_next_block_production() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only (without envelope)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import ok");
+
+    // Process self-build envelope
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("envelope processing ok");
+
+    // Recompute head so the chain advances
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // Now produce the NEXT block — this should succeed because:
+    // 1. The state cache has the post-envelope state (latest_block_hash updated)
+    // 2. Fork choice has the block as Valid (EL returned Valid)
+    // 3. The head snapshot is updated
+    harness.advance_slot();
+    let new_head_state = harness.chain.head_beacon_state_cloned();
+    let next_next_slot = new_head_state.slot() + 1;
+    let (next_block_contents, _next_state, next_envelope) = harness
+        .make_block_with_envelope(new_head_state, next_next_slot)
+        .await;
+
+    // The next block should have been produced successfully
+    let next_block = &next_block_contents.0;
+    assert!(next_block.as_gloas().is_ok(), "next block should be Gloas");
+    assert_eq!(
+        next_block.slot(),
+        next_next_slot,
+        "next block should be at the correct slot"
+    );
+
+    // Its parent root should be the block we processed
+    assert_eq!(
+        next_block.message().parent_root(),
+        block_root,
+        "next block's parent should be the block whose envelope we processed"
+    );
+
+    // The bid's parent_block_hash should match the envelope's payload block_hash
+    // (this verifies the state transition correctly updated latest_block_hash)
+    let next_bid = next_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .unwrap();
+    assert_eq!(
+        next_bid.message.parent_block_hash, signed_envelope.message.payload.block_hash,
+        "next bid's parent_block_hash should be previous envelope's payload block_hash"
+    );
+
+    // Envelope should be produced too
+    assert!(next_envelope.is_some(), "next envelope should be produced");
+}
+
+/// process_self_build_envelope should persist the envelope to disk. After
+/// processing, the envelope should be retrievable via get_payload_envelope.
+/// This test specifically verifies the store persistence path (StoreOp::PutPayloadEnvelope)
+/// by checking all envelope fields, not just existence.
+#[tokio::test]
+async fn gloas_self_build_envelope_store_persistence_fields() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import ok");
+
+    // Pre-condition: no envelope in store yet
+    let pre = harness.chain.get_payload_envelope(&block_root).unwrap();
+    assert!(
+        pre.is_none(),
+        "pre-condition: no envelope in store before processing"
+    );
+
+    // Process self-build envelope
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("envelope processing ok");
+
+    // Verify all stored fields match the original envelope
+    let stored = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("envelope should be persisted");
+
+    assert_eq!(stored.message.slot, signed_envelope.message.slot);
+    assert_eq!(
+        stored.message.builder_index,
+        signed_envelope.message.builder_index
+    );
+    assert_eq!(
+        stored.message.beacon_block_root,
+        signed_envelope.message.beacon_block_root
+    );
+    assert_eq!(
+        stored.message.payload.block_hash, signed_envelope.message.payload.block_hash,
+        "stored payload block_hash should match"
+    );
+    assert_eq!(
+        stored.message.builder_index, harness.spec.builder_index_self_build,
+        "stored builder_index should be BUILDER_INDEX_SELF_BUILD"
+    );
+}
+
+// =============================================================================
 // Stateless validation — execution proof threshold tests
 // =============================================================================
 
