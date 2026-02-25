@@ -42,11 +42,11 @@ use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
     Address, AttesterSlashing, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecarList,
     DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid,
-    ExecutionPayloadEnvelope, ExecutionPayloadGloas, Hash256, MainnetEthSpec, PayloadAttestation,
-    PayloadAttestationData, ProposerPreferences, ProposerSlashing, RuntimeVariableList,
-    SignedAggregateAndProof, SignedBeaconBlock, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
-    SingleAttestation, Slot, SubnetId,
+    ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof, ExecutionProofSubnetId,
+    Hash256, MainnetEthSpec, PayloadAttestation, PayloadAttestationData, ProposerPreferences,
+    ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    SignedRoot, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
 };
 
 type E = MainnetEthSpec;
@@ -2884,4 +2884,247 @@ async fn test_gloas_gossip_payload_envelope_prior_to_finalization_ignored() {
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_ignore(result);
+}
+
+// ======== Gloas execution proof gossip handler integration tests ========
+//
+// These tests verify the network-level gossip handler for execution proofs
+// (process_gossip_execution_proof in gossip_methods.rs). The handler validates
+// proofs via verify_execution_proof_for_gossip and maps each error to the
+// correct MessageAcceptance (Accept/Reject/Ignore). Execution proofs enable
+// stateless validation — they are ZK proofs that substitute for engine_newPayload.
+// The gossip handler is the first line of defense against invalid proofs.
+
+/// Gloas gossip: execution proof with unknown block_root is IGNORED.
+///
+/// Per design: a proof referencing an unknown block root may be valid but we
+/// haven't received the block yet. The handler should Ignore (not Reject) so
+/// the peer is not penalized for race conditions in block/proof arrival order.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_unknown_root_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    let proof = Arc::new(ExecutionProof::new(
+        Hash256::repeat_byte(0xee), // unknown block root
+        ExecutionBlockHash::repeat_byte(0xaa),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42], // non-empty stub proof data
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: execution proof with unsupported version is REJECTED.
+///
+/// Per design: [REJECT] proof.version must be a supported proof version.
+/// Version 99 is not a valid proof version, so the handler should reject it.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_invalid_version_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+
+    let proof = Arc::new(ExecutionProof::new(
+        head.beacon_block_root,
+        ExecutionBlockHash::repeat_byte(0xaa),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        99, // unsupported version
+        vec![0x42],
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: execution proof with empty proof_data is REJECTED.
+///
+/// Per design: [REJECT] proof_data must be non-empty. An empty proof cannot
+/// provide any cryptographic attestation. The handler rejects these to prevent
+/// resource-wasting messages from being propagated.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_empty_data_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+
+    let proof = Arc::new(ExecutionProof::new(
+        head.beacon_block_root,
+        ExecutionBlockHash::repeat_byte(0xaa),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![], // empty proof data
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: execution proof with oversized proof_data is REJECTED.
+///
+/// Per design: [REJECT] proof_data must not exceed MAX_EXECUTION_PROOF_SIZE
+/// (1 MB). The handler rejects oversized proofs to prevent gossip bandwidth
+/// abuse and memory exhaustion on receiving nodes.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_oversized_data_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+
+    // MAX_EXECUTION_PROOF_SIZE is 1 MB. Exceed it by 1 byte.
+    let oversized_data = vec![0u8; types::execution_proof::MAX_EXECUTION_PROOF_SIZE + 1];
+
+    let proof = Arc::new(ExecutionProof::new(
+        head.beacon_block_root,
+        ExecutionBlockHash::repeat_byte(0xaa),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        types::execution_proof::PROOF_VERSION_STUB,
+        oversized_data,
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: execution proof with mismatched block_hash is REJECTED.
+///
+/// Per design: [REJECT] proof.block_hash must match the bid block_hash stored
+/// in fork choice for the referenced block root. A mismatch means the proof
+/// attests to a different execution payload than the one committed in the bid,
+/// which is invalid.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_block_hash_mismatch_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // The head block in Gloas has a bid with a specific block_hash.
+    // We construct a proof that references the correct block root but
+    // with a deliberately wrong block_hash.
+    let proof = Arc::new(ExecutionProof::new(
+        head_root,
+        ExecutionBlockHash::repeat_byte(0xdd), // wrong block_hash
+        ExecutionProofSubnetId::new(0).unwrap(),
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42],
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: valid stub execution proof for the head block is ACCEPTED.
+///
+/// This tests the full happy path: a proof with version=1 (stub), non-empty
+/// proof_data, correct block_root (head), and matching block_hash is verified
+/// and accepted. Stub proofs have no cryptographic verification (version 1),
+/// so only structural and fork choice checks apply.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_valid_stub_accepted() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Get the actual bid block_hash from fork choice for the head block.
+    let bid_block_hash = {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&head_root)
+            .expect("head must be in fork choice");
+        node.bid_block_hash
+            .expect("Gloas head must have bid_block_hash")
+    };
+
+    let proof = Arc::new(ExecutionProof::new(
+        head_root,
+        bid_block_hash, // correct block_hash matching the bid
+        ExecutionProofSubnetId::new(0).unwrap(),
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42], // valid stub proof data
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
 }
