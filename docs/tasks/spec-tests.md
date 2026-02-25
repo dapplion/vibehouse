@@ -29,6 +29,35 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — validator store Gloas signing tests + spec tracking (run 96)
+- Checked consensus-specs PRs since run 95: no new Gloas spec changes merged
+  - Notable: PR #4942 promotes EIP-7805 (FOCIL) to Heze fork — not ePBS/Gloas, no action needed
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted comprehensive test gap analysis** across validator_client, network, store, and http_api — identified 8 priority gaps:
+  - P1: Network gossip handlers (5 functions, zero coverage, complex TestRig required)
+  - P2: PayloadAttestationService::produce_payload_attestations (zero tests, entire file untested)
+  - P3: sign_payload_attestation + sign_execution_payload_envelope (zero tests for two new signing domains)
+  - P4: process_gossip_proposer_preferences (complex inline validation, untested)
+  - P5: poll_ptc_duties (duty fetch logic, needs mock BN)
+  - P6: Store reconstruct.rs envelope re-application (partially tested via WSS test)
+  - P7: get_execution_payload Gloas parent hash/withdrawals (no unit test)
+  - P8: post_block_import_logging_and_response self-build envelope branch
+- **Added 6 validator store Gloas signing domain unit tests** (previously ZERO tests in entire lighthouse_validator_store crate):
+  - **sign_execution_payload_envelope (3 tests):**
+    - `sign_execution_payload_envelope_uses_beacon_builder_domain`: creates a LighthouseValidatorStore with a known keypair, signs an ExecutionPayloadEnvelope, independently computes the expected signing root using Domain::BeaconBuilder, and verifies the signature matches. Also checks message fields (slot, beacon_block_root, builder_index) are preserved
+    - `sign_execution_payload_envelope_wrong_domain_fails_verify`: signs an envelope, computes signing root with Domain::BeaconAttester (wrong), and asserts the signature does NOT verify — proves the correct domain is used
+    - `sign_envelope_unknown_pubkey_returns_error`: verifies that signing with an unregistered pubkey returns an error
+  - **sign_payload_attestation (3 tests):**
+    - `sign_payload_attestation_uses_ptc_attester_domain`: signs PayloadAttestationData, independently computes expected signing root using Domain::PtcAttester, verifies signature matches. Also checks validator_index and data fields are correct in the returned PayloadAttestationMessage
+    - `sign_payload_attestation_wrong_domain_fails_verify`: signs data, computes signing root with Domain::BeaconAttester (wrong), asserts signature does NOT verify
+    - `sign_payload_attestation_unknown_pubkey_returns_error`: verifies error for unregistered pubkey
+  - Built `store_with_validator()` async helper that creates a LighthouseValidatorStore<TestingSlotClock, MinimalEthSpec> with Gloas genesis spec, creates a random Keypair, writes a keystore to disk via KeystoreBuilder, and registers it via add_validator_keystore
+  - Added dev-dependencies: bls, eth2_keystore, tempfile, zeroize
+- These tests close the validator store signing gap: `sign_execution_payload_envelope` (lib.rs:764) uses Domain::BeaconBuilder and `sign_payload_attestation` (lib.rs:788) uses Domain::PtcAttester. If either method used the wrong domain, all envelope signatures or PTC attestations from the VC would be rejected by peers. Previously no test verified domain correctness
+- All 6 lighthouse_validator_store tests pass (was 0), cargo fmt + clippy clean, full workspace lint passes
+
 ### 2026-02-25 — fork choice Gloas method tests + spec tracking (run 95)
 - Checked consensus-specs PRs since run 94: no new Gloas spec changes merged
   - No new PRs merged since run 94
