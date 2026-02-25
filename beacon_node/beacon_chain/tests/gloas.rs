@@ -5892,3 +5892,369 @@ async fn gloas_attestation_enabled_after_envelope_processing() {
         "after envelope: non-same-slot attestation should have index=1 (payload revealed)"
     );
 }
+
+// ── Early attester cache Gloas payload_present tests ──────────────────────
+//
+// The early attester cache (early_attester_cache.rs) is a fast-path for
+// attestation production that bypasses canonical_head. It independently
+// computes `payload_present` from the proto_block's `payload_revealed` field:
+//
+//   payload_present = gloas_enabled && request_slot > block.slot && payload_revealed
+//
+// Previously, ZERO tests exercised this logic with Gloas enabled. The existing
+// tests in attestation_production.rs use default_spec() which doesn't enable
+// Gloas, so the early cache always computed payload_present=false regardless of
+// the proto_block's payload_revealed state.
+
+/// Early attester cache: same-slot attestation in Gloas should always have
+/// index=0 (payload_present=false), even when payload_revealed=true.
+/// Same-slot attestors cannot know if the envelope has arrived yet.
+#[tokio::test]
+async fn gloas_early_cache_same_slot_payload_present_false() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    // Get proto_block from fork choice (payload_revealed=true after envelope processing)
+    let proto_block = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&head_root)
+        .expect("head should be in fork choice");
+    assert!(
+        proto_block.payload_revealed,
+        "pre-condition: head should have payload_revealed=true"
+    );
+
+    // Build available block for cache
+    let rpc_block =
+        harness.build_rpc_block_from_store_blobs(Some(head_root), head.beacon_block.clone());
+    let beacon_chain::data_availability_checker::MaybeAvailableBlock::Available(available_block) =
+        harness
+            .chain
+            .data_availability_checker
+            .verify_kzg_for_rpc_block(rpc_block)
+            .unwrap()
+    else {
+        panic!("block should be available")
+    };
+
+    // Add to early attester cache
+    harness
+        .chain
+        .early_attester_cache
+        .add_head_block(
+            head_root,
+            &available_block,
+            proto_block,
+            &head.beacon_state,
+            &harness.chain.spec,
+        )
+        .unwrap();
+
+    // Attest at the SAME slot as the head block
+    let early_att = harness
+        .chain
+        .early_attester_cache
+        .try_attest(head_slot, 0, &harness.chain.spec)
+        .unwrap()
+        .expect("should produce attestation from early cache");
+
+    assert_eq!(
+        early_att.data().index,
+        0,
+        "same-slot early cache attestation should have index=0 (payload_present=false)"
+    );
+}
+
+/// Early attester cache: non-same-slot attestation with payload_revealed=true
+/// should have index=1 (payload_present=true).
+#[tokio::test]
+async fn gloas_early_cache_non_same_slot_payload_revealed_index_one() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    let proto_block = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&head_root)
+        .expect("head should be in fork choice");
+    assert!(
+        proto_block.payload_revealed,
+        "pre-condition: payload_revealed should be true"
+    );
+
+    let rpc_block =
+        harness.build_rpc_block_from_store_blobs(Some(head_root), head.beacon_block.clone());
+    let beacon_chain::data_availability_checker::MaybeAvailableBlock::Available(available_block) =
+        harness
+            .chain
+            .data_availability_checker
+            .verify_kzg_for_rpc_block(rpc_block)
+            .unwrap()
+    else {
+        panic!("block should be available")
+    };
+
+    harness
+        .chain
+        .early_attester_cache
+        .add_head_block(
+            head_root,
+            &available_block,
+            proto_block,
+            &head.beacon_state,
+            &harness.chain.spec,
+        )
+        .unwrap();
+
+    // Attest at a LATER slot (non-same-slot) — should get payload_present=true
+    let attest_slot = head_slot + 1;
+    let early_att = harness
+        .chain
+        .early_attester_cache
+        .try_attest(attest_slot, 0, &harness.chain.spec)
+        .unwrap()
+        .expect("should produce attestation from early cache");
+
+    assert_eq!(
+        early_att.data().index,
+        1,
+        "non-same-slot early cache attestation with payload_revealed=true should have index=1"
+    );
+}
+
+/// Early attester cache: non-same-slot attestation with payload_revealed=false
+/// should have index=0 (payload_present=false). This tests the safety boundary:
+/// if the payload hasn't been revealed, even non-same-slot attestations must NOT
+/// indicate payload presence.
+#[tokio::test]
+async fn gloas_early_cache_non_same_slot_payload_not_revealed_index_zero() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    // Get proto_block and override payload_revealed to false
+    let mut proto_block = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&head_root)
+        .expect("head should be in fork choice");
+    proto_block.payload_revealed = false;
+
+    let rpc_block =
+        harness.build_rpc_block_from_store_blobs(Some(head_root), head.beacon_block.clone());
+    let beacon_chain::data_availability_checker::MaybeAvailableBlock::Available(available_block) =
+        harness
+            .chain
+            .data_availability_checker
+            .verify_kzg_for_rpc_block(rpc_block)
+            .unwrap()
+    else {
+        panic!("block should be available")
+    };
+
+    harness
+        .chain
+        .early_attester_cache
+        .add_head_block(
+            head_root,
+            &available_block,
+            proto_block,
+            &head.beacon_state,
+            &harness.chain.spec,
+        )
+        .unwrap();
+
+    // Non-same-slot attestation with payload_revealed=false → index=0
+    let attest_slot = head_slot + 1;
+    let early_att = harness
+        .chain
+        .early_attester_cache
+        .try_attest(attest_slot, 0, &harness.chain.spec)
+        .unwrap()
+        .expect("should produce attestation from early cache");
+
+    assert_eq!(
+        early_att.data().index,
+        0,
+        "non-same-slot early cache attestation with payload_revealed=false should have index=0"
+    );
+}
+
+/// Early attester cache attestation must match produce_unaggregated_attestation
+/// output in Gloas. This verifies consistency between the two attestation
+/// production paths (early cache vs canonical head).
+#[tokio::test]
+async fn gloas_early_cache_matches_canonical_attestation() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    let proto_block = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&head_root)
+        .expect("head should be in fork choice");
+
+    let rpc_block =
+        harness.build_rpc_block_from_store_blobs(Some(head_root), head.beacon_block.clone());
+    let beacon_chain::data_availability_checker::MaybeAvailableBlock::Available(available_block) =
+        harness
+            .chain
+            .data_availability_checker
+            .verify_kzg_for_rpc_block(rpc_block)
+            .unwrap()
+    else {
+        panic!("block should be available")
+    };
+
+    harness
+        .chain
+        .early_attester_cache
+        .add_head_block(
+            head_root,
+            &available_block,
+            proto_block,
+            &head.beacon_state,
+            &harness.chain.spec,
+        )
+        .unwrap();
+
+    // Same-slot attestation: both paths should agree
+    let canonical = harness
+        .chain
+        .produce_unaggregated_attestation(head_slot, 0)
+        .expect("canonical attestation should succeed");
+    let early = harness
+        .chain
+        .early_attester_cache
+        .try_attest(head_slot, 0, &harness.chain.spec)
+        .unwrap()
+        .expect("early cache should produce attestation");
+
+    assert_eq!(
+        canonical.data().index,
+        early.data().index,
+        "same-slot: early cache and canonical attestation should have matching index"
+    );
+    assert_eq!(
+        canonical.data().beacon_block_root,
+        early.data().beacon_block_root,
+        "same-slot: early cache and canonical attestation should have matching block root"
+    );
+
+    // Non-same-slot: advance slot and compare
+    harness.advance_slot();
+    let attest_slot = head_slot + 1;
+
+    let canonical_skip = harness
+        .chain
+        .produce_unaggregated_attestation(attest_slot, 0)
+        .expect("canonical attestation at skip slot should succeed");
+    let early_skip = harness
+        .chain
+        .early_attester_cache
+        .try_attest(attest_slot, 0, &harness.chain.spec)
+        .unwrap()
+        .expect("early cache should produce attestation at skip slot");
+
+    assert_eq!(
+        canonical_skip.data().index,
+        early_skip.data().index,
+        "non-same-slot: early cache and canonical attestation should have matching index"
+    );
+    assert_eq!(
+        canonical_skip.data().index,
+        1,
+        "non-same-slot: both should have index=1 (payload_present=true)"
+    );
+}
+
+/// Pre-Gloas (Fulu) early attester cache: index should always be the committee
+/// index, never payload_present. Verifies the Gloas payload_present logic is
+/// NOT triggered for pre-Gloas forks.
+#[tokio::test]
+async fn fulu_early_cache_uses_committee_index_not_payload_present() {
+    // Set Gloas at epoch 100 so we run entirely in Fulu
+    let harness = gloas_harness_at_epoch(100);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    // Verify we're in Fulu (not Gloas)
+    assert!(
+        !harness
+            .chain
+            .spec
+            .fork_name_at_slot::<E>(head_slot)
+            .gloas_enabled(),
+        "pre-condition: should be in Fulu, not Gloas"
+    );
+
+    let proto_block = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&head_root)
+        .expect("head should be in fork choice");
+
+    let rpc_block =
+        harness.build_rpc_block_from_store_blobs(Some(head_root), head.beacon_block.clone());
+    let beacon_chain::data_availability_checker::MaybeAvailableBlock::Available(available_block) =
+        harness
+            .chain
+            .data_availability_checker
+            .verify_kzg_for_rpc_block(rpc_block)
+            .unwrap()
+    else {
+        panic!("block should be available")
+    };
+
+    harness
+        .chain
+        .early_attester_cache
+        .add_head_block(
+            head_root,
+            &available_block,
+            proto_block,
+            &head.beacon_state,
+            &harness.chain.spec,
+        )
+        .unwrap();
+
+    // Non-same-slot attestation at skip slot — should have index=0 (committee index)
+    // NOT index=1 (which would mean payload_present=true if Gloas were active)
+    let attest_slot = head_slot + 1;
+    let early_att = harness
+        .chain
+        .early_attester_cache
+        .try_attest(attest_slot, 0, &harness.chain.spec)
+        .unwrap()
+        .expect("should produce attestation from early cache");
+
+    assert_eq!(
+        early_att.data().index,
+        0,
+        "Fulu early cache attestation should have index=0 (committee index, not payload_present)"
+    );
+}
