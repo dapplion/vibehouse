@@ -29,6 +29,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — bug fixes and config validation (run 78)
+- Checked consensus-specs PRs since run 77: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - #4747 (Fast Confirmation Rule) most active — many comments but no approvals yet
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Fixed #8400: BlobSchedule epoch uniqueness validation**:
+  - `BlobSchedule::new()` now deduplicates entries after sorting (safety net for programmatic construction)
+  - Deserialization rejects duplicate epochs with a clear error message ("duplicate epoch N in blob_schedule")
+  - Added 4 unit tests: dedup behavior, no-duplicates pass-through, empty schedule, YAML rejection of duplicates
+  - All 702 types tests pass
+- **Fixed #8252: ignore committee_index in attestation_data endpoint post-Electra**:
+  - Post-Electra (single committee per slot), the API now clamps committee_index to 0 instead of passing it through to `get_beacon_committee` which would fail with `NoCommittee`
+  - Matches behavior of prysm, nimbus, lodestar, and grandine (the 4/6 clients that already ignore it)
+  - All 212 http_api tests pass
+- 78/78 real crypto + 138/138 fake_crypto all pass
+
 ### 2026-02-25 — implement approved fork choice spec changes (run 77)
 - Checked consensus-specs PRs since run 76: only #4946 (bump actions/stale) merged — CI-only
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
