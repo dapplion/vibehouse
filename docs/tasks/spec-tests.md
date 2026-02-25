@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — issue triage + spec tracking (run 86)
+- Checked consensus-specs PRs since run 85: no new Gloas spec changes merged
+  - Only infrastructure PRs: actions/stale bump (#4946), inclusion list test fix (#4945)
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Issue triage — 6 open issues analyzed, all already resolved in code:**
+  - #8869 (block replayer doesn't process Gloas envelopes): Already implemented — BlockReplayer has full envelope processing (block_replayer.rs:355-402), all 7 callers load envelopes correctly
+  - #8689 (proposer boost index check): Fixed in run 84 — 3 altair proposer_boost tests pass (implemented PR #4807)
+  - #8888 (blinded payloads for ExecutionPayloadEnvelope): Fully implemented — BlindedExecutionPayloadEnvelope with 12 tests in blinded_execution_payload_envelope.rs
+  - #8817 (ExtendedPayloadAttributes SSE event): Disabled for Gloas at beacon_chain.rs:7337-7342 with clear comment
+  - #8629 (dependent root stability): Proved in run 85 with 2 tests
+  - #8590 (TODO tracking): Only 3 remaining TODOs, all investigation/design items about removing blinded block types post-Gloas
+- **EF spec tests: 78/78 real crypto + 138/138 fake_crypto — all pass (no regressions)**
+- Clippy clean on state_processing, beacon_chain, and types packages
+- No code changes needed this run — all analyzed issues already resolved
+
 ### 2026-02-25 — dependent root analysis + spec tracking (run 85)
 - Checked consensus-specs PRs since run 84: no new Gloas spec changes merged
   - Only infrastructure PRs (#4933-#4946): package renaming, CI, and Heze fork promotion
