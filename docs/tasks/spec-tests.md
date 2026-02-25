@@ -29,6 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — gossip verification error path tests + spec tracking (run 92)
+- Checked consensus-specs PRs since run 91: no new Gloas spec changes merged
+  - Only infrastructure PRs (#4946 actions/stale bump already tracked)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues triaged: #8892 (SSZ response support — actionable, spec compliance), #8893 (state storage design — discussion), #8790 (license Cargo.toml — low priority), #8741 (head monitor — enhancement), #8588 (streamer tests — TODO already removed), #8589 (GloasNotImplemented — already removed from code)
+- **Conducted systematic test gap analysis** of network gossip methods via subagent: identified 5 Gloas gossip handlers in gossip_methods.rs (execution bid, payload envelope, payload attestation, proposer preferences, execution proof) with ZERO integration tests. Network-level tests require complex TestRig harness, so focused on beacon_chain-level gossip verification error paths instead
+- **Added 9 gossip verification error path integration tests** (previously ZERO tests for these rejection paths):
+  - **Envelope verification (5 tests):**
+    - `gloas_envelope_gossip_rejects_slot_mismatch`: tampers envelope slot (+100), verifies `SlotMismatch` rejection
+    - `gloas_envelope_gossip_rejects_builder_index_mismatch`: tampers builder_index (wrapping_add 1), verifies `BuilderIndexMismatch` rejection
+    - `gloas_envelope_gossip_rejects_block_hash_mismatch`: tampers payload block_hash to random, verifies `BlockHashMismatch` rejection
+    - `gloas_envelope_gossip_buffers_unknown_block_root`: tampers beacon_block_root to random, verifies `BlockRootUnknown` rejection AND confirms envelope is buffered in `pending_gossip_envelopes` for later processing (critical for out-of-order arrival)
+    - `gloas_envelope_gossip_rejects_not_gloas_block`: uses Gloas fork at epoch 1, points envelope at genesis (Fulu) block root, verifies `NotGloasBlock` or `PriorToFinalization` rejection
+  - **Bid verification (4 tests):**
+    - `gloas_bid_gossip_rejects_slot_not_current_or_next`: sets bid slot to 999, verifies `SlotNotCurrentOrNext` rejection (first validation check)
+    - `gloas_bid_gossip_rejects_zero_execution_payment`: uses self-build bid (naturally has payment=0), verifies `ZeroExecutionPayment` rejection
+    - `gloas_bid_gossip_rejects_unknown_builder`: sets execution_payment=1 on self-build bid (builder_index=u64::MAX not in registry), verifies `UnknownBuilder` rejection
+    - `gloas_bid_gossip_rejects_nonexistent_builder_index`: sets builder_index=42 on bid, verifies `UnknownBuilder` rejection with correct index
+  - Built `import_block_get_envelope()` helper (produce block+envelope, import only block) and `assert_envelope_rejected()`/`assert_bid_rejected()` helpers that work around VerifiedPayloadEnvelope/VerifiedExecutionBid not implementing Debug
+- These tests cover the security boundary for incoming gossip messages: `verify_payload_envelope_for_gossip` (gloas_verification.rs:605-722) validates envelopes against committed bids in the block, and `verify_execution_bid_for_gossip` (gloas_verification.rs:327-441) validates builder bids against the head state. Without these tests, a regression in any rejection path could allow malformed messages to be imported and propagated
+- All 502 beacon_chain tests pass (was 493), cargo fmt + clippy clean
+
 ### 2026-02-25 — stateless validation execution proof threshold tests + spec tracking (run 91)
 - Checked consensus-specs PRs since run 90: no new Gloas spec changes merged
   - Only infrastructure PRs: actions/stale bump (#4946), no Gloas-affecting changes
