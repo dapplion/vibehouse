@@ -91,11 +91,6 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer has sent an invalid message.
     InvalidSignature,
-    /// Failed to retrieve builder public key.
-    ///
-    /// ## Peer scoring
-    /// Internal error, don't penalize.
-    BuilderPubkeyUnknown { builder_index: BuilderIndex },
     /// The parent block root does not match the head.
     ///
     /// ## Peer scoring
@@ -127,8 +122,6 @@ pub enum PayloadAttestationError {
     },
     /// The beacon block root does not match any known block.
     UnknownBeaconBlockRoot { root: Hash256 },
-    /// One or more attesting indices are not in the PTC for this slot.
-    AttesterNotInPtc { validator_index: u64, slot: Slot },
     /// A validator in this attestation has already submitted a conflicting attestation
     /// (different payload_present value for same slot/block).
     ///
@@ -139,8 +132,6 @@ pub enum PayloadAttestationError {
         slot: Slot,
         beacon_block_root: Hash256,
     },
-    /// We have already seen this exact attestation.
-    DuplicateAttestation,
     /// The aggregation bits are invalid (wrong size, etc).
     InvalidAggregationBits,
     /// The signature is invalid.
@@ -262,11 +253,6 @@ pub enum PayloadEnvelopeError {
     /// ## Peer scoring
     /// The peer has sent an invalid message.
     InvalidSignature,
-    /// The builder index is unknown (not in builder registry).
-    ///
-    /// ## Peer scoring
-    /// The peer has sent an invalid message.
-    UnknownBuilder { builder_index: u64 },
     /// Could not retrieve the beacon block from the database.
     ///
     /// ## Peer scoring
