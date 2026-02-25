@@ -1444,16 +1444,16 @@ async fn gloas_each_block_has_distinct_envelope() {
 
     for slot_idx in 1..=num_slots as u64 {
         let slot = Slot::new(slot_idx);
-        if let Ok(block_root) = state.get_block_root(slot) {
-            if seen_roots.insert(*block_root) {
-                let envelope = harness.chain.get_payload_envelope(block_root).unwrap();
-                if let Some(env) = envelope {
-                    assert_eq!(
-                        env.message.slot, slot,
-                        "envelope slot should match block slot"
-                    );
-                    envelope_count += 1;
-                }
+        if let Ok(block_root) = state.get_block_root(slot)
+            && seen_roots.insert(*block_root)
+        {
+            let envelope = harness.chain.get_payload_envelope(block_root).unwrap();
+            if let Some(env) = envelope {
+                assert_eq!(
+                    env.message.slot, slot,
+                    "envelope slot should match block slot"
+                );
+                envelope_count += 1;
             }
         }
     }
@@ -1562,12 +1562,11 @@ async fn gloas_load_envelopes_for_blocks() {
     let mut seen_roots = std::collections::HashSet::new();
     for slot_idx in 1..=4u64 {
         let slot = Slot::new(slot_idx);
-        if let Ok(block_root) = state.get_block_root(slot) {
-            if seen_roots.insert(*block_root) {
-                if let Some(block) = harness.chain.store.get_blinded_block(block_root).unwrap() {
-                    blocks.push(block);
-                }
-            }
+        if let Ok(block_root) = state.get_block_root(slot)
+            && seen_roots.insert(*block_root)
+            && let Some(block) = harness.chain.store.get_blinded_block(block_root).unwrap()
+        {
+            blocks.push(block);
         }
     }
 
