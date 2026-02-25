@@ -469,8 +469,8 @@ mod tests {
         BeaconStateGloas, Builder, BuilderPendingPayment, CACHED_EPOCHS, Checkpoint,
         CommitteeCache, Epoch, ExecutionPayloadBid, ExecutionPayloadEnvelope,
         ExecutionPayloadGloas, ExitCache, FixedVector, Fork, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, SignedExecutionPayloadBid, SlashingsCache,
-        SyncAggregate, SyncCommittee, Unsigned, Vector,
+        ProgressiveBalancesCache, PubkeyCache, SignedBlindedExecutionPayloadEnvelope,
+        SignedExecutionPayloadBid, SlashingsCache, SyncAggregate, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -1100,6 +1100,259 @@ mod tests {
         assert!(
             result.is_ok(),
             "anchor block envelope error should be silently dropped"
+        );
+    }
+
+    /// Build a blinded envelope from a full envelope.
+    fn make_blinded_envelope(
+        full: &SignedExecutionPayloadEnvelope<E>,
+    ) -> SignedBlindedExecutionPayloadEnvelope<E> {
+        SignedBlindedExecutionPayloadEnvelope::from_full(full)
+    }
+
+    // ── Blinded envelope builder method ──────────────────────────
+
+    #[test]
+    fn blinded_envelopes_builder_method_stores_blinded() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let envelope = make_valid_envelope(&state);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let root1 = Hash256::repeat_byte(0x01);
+        let root2 = Hash256::repeat_byte(0x02);
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(root1, blinded.clone());
+        blinded_envelopes.insert(root2, blinded);
+
+        let replayer = BlockReplayer::<E>::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter();
+
+        assert_eq!(replayer.blinded_envelopes.len(), 2);
+        assert!(replayer.blinded_envelopes.contains_key(&root1));
+        assert!(replayer.blinded_envelopes.contains_key(&root2));
+    }
+
+    #[test]
+    fn default_replayer_has_no_blinded_envelopes() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let replayer = BlockReplayer::<E>::new(state, &spec)
+            .no_signature_verification()
+            .no_state_root_iter();
+        assert!(replayer.blinded_envelopes.is_empty());
+    }
+
+    // ── Anchor block: blinded envelope fallback ──────────────────
+
+    #[test]
+    fn anchor_block_with_blinded_envelope_updates_latest_block_hash() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid_block_hash = bid.block_hash;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            bid_block_hash,
+            "blinded envelope reconstruction should update latest_block_hash"
+        );
+    }
+
+    #[test]
+    fn anchor_block_blinded_envelope_removes_from_map() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let other_root = Hash256::repeat_byte(0xAB);
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded.clone());
+        blinded_envelopes.insert(other_root, blinded);
+
+        let replayer = BlockReplayer::<E>::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        // Check map before consuming replayer
+        let used_removed = !replayer.blinded_envelopes.contains_key(&block_root);
+        let unused_remains = replayer.blinded_envelopes.contains_key(&other_root);
+        drop(replayer);
+
+        assert!(
+            used_removed,
+            "used blinded envelope should be removed from map"
+        );
+        assert!(
+            unused_remains,
+            "unused blinded envelope should remain in map"
+        );
+    }
+
+    #[test]
+    fn anchor_block_full_envelope_preferred_over_blinded() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid_block_hash = bid.block_hash;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        // Supply both full and blinded envelopes — full should win
+        let mut envelopes = HashMap::new();
+        envelopes.insert(block_root, envelope);
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded);
+
+        let replayer = BlockReplayer::<E>::new(state, &spec)
+            .no_signature_verification()
+            .envelopes(envelopes)
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        // Check map state before consuming replayer
+        let full_consumed = !replayer.envelopes.contains_key(&block_root);
+        let blinded_remains = replayer.blinded_envelopes.contains_key(&block_root);
+        let result_state = replayer.into_state();
+
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            bid_block_hash,
+            "full envelope should be used (not blinded)"
+        );
+        assert!(full_consumed, "full envelope should be consumed");
+        assert!(
+            blinded_remains,
+            "blinded envelope should remain unused when full is available"
+        );
+    }
+
+    #[test]
+    fn anchor_block_blinded_envelope_error_is_silently_dropped() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        // Create a blinded envelope with wrong beacon_block_root to cause processing error
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.beacon_block_root = Hash256::repeat_byte(0xFF);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded);
+
+        // Should not panic or return error — blinded envelope errors are dropped for anchor blocks
+        let result: Result<BlockReplayer<E>, _> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None);
+
+        assert!(
+            result.is_ok(),
+            "anchor block blinded envelope error should be silently dropped"
+        );
+    }
+
+    #[test]
+    fn anchor_block_blinded_envelope_sets_availability_bit() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        // Clear the availability bit for the current slot
+        let slot_index =
+            state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(slot_index, false)
+            .unwrap();
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert!(
+            result_state
+                .execution_payload_availability()
+                .unwrap()
+                .get(slot_index)
+                .unwrap(),
+            "blinded envelope reconstruction should set the availability bit"
         );
     }
 
