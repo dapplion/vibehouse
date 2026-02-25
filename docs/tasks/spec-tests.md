@@ -29,6 +29,38 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas slot timing unit tests + spec tracking (run 93)
+- Checked consensus-specs PRs since run 92: no new Gloas spec changes merged
+  - No new PRs since run 92; #4944 (ExecutionProofsByRoot) still open
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted comprehensive test gap analysis** across all Gloas code paths:
+  - observation caches (execution_bid_pool, observed_execution_bids, observed_payload_attestations): 100% covered (14+13+17 tests)
+  - gloas_verification.rs: 49 integration tests, ~85% coverage (remaining gaps are defensive error paths for internal errors)
+  - per_block_processing/gloas.rs: 60+ unit tests covering bid, withdrawal, PTC, payload attestation processing
+  - envelope_processing.rs: 23 unit tests
+  - block_replayer Gloas: 13+ tests
+  - fork_choice Gloas: well-tested with unit + integration tests
+  - **slot_clock Gloas timing: ZERO tests for the 4-interval slot timing mechanism** — identified as highest-impact gap
+- **Added 16 Gloas slot timing unit tests** (previously ZERO tests for 4-interval timing):
+  - `gloas_fork_slot_round_trip`: set/get/unset gloas_fork_slot on ManualSlotClock
+  - `current_intervals_pre_gloas_is_3`: no fork configured or before fork slot → 3 intervals
+  - `current_intervals_at_gloas_fork_is_4`: exactly at fork slot → 4 intervals
+  - `current_intervals_after_gloas_fork_is_4`: after fork slot → 4 intervals
+  - `current_intervals_one_before_gloas_fork_is_3`: slot 9 with fork at 10 → 3 intervals
+  - `unagg_attestation_delay_pre_gloas`: 12s/3 = 4s
+  - `unagg_attestation_delay_post_gloas`: 12s/4 = 3s
+  - `agg_attestation_delay_pre_gloas`: 2*12s/3 = 8s
+  - `agg_attestation_delay_post_gloas`: 2*12s/4 = 6s
+  - `sync_committee_delays_mirror_attestation_delays`: sync msg = unagg, sync contribution = agg, both pre and post Gloas
+  - `single_lookup_delay_changes_with_gloas`: 2s pre-Gloas → 1.5s post-Gloas
+  - `freeze_at_preserves_gloas_fork_slot`: frozen clock retains Gloas config and uses 4 intervals
+  - `timing_transition_at_fork_boundary`: slot 4→3 intervals, slot 5→4 intervals, slot 6→4 intervals (fork at 5)
+  - `gloas_fork_at_genesis`: Gloas from slot 0 immediately uses 4 intervals
+- These tests cover the `current_intervals_per_slot()` method (slot_clock/src/lib.rs:89-102) and all derived timing methods. The ManualSlotClock is the underlying implementation used by both test harnesses and the production SystemTimeSlotClock. A bug here would cause all validators to produce attestations and sync committee messages at the wrong timing after Gloas activation — PTC attestations would fire too early or too late, potentially missing the payload timeliness window
+- All 24 slot_clock tests pass (was 8), cargo fmt + clippy clean
+
 ### 2026-02-25 — gossip verification error path tests + spec tracking (run 92)
 - Checked consensus-specs PRs since run 91: no new Gloas spec changes merged
   - Only infrastructure PRs (#4946 actions/stale bump already tracked)
