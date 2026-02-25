@@ -30,7 +30,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 ## Progress log
 
 ### 2026-02-25 — Gloas block production payload attestation packing tests (run 83)
-- Checked consensus-specs PRs since run 82: no new Gloas spec changes merged
+- Checked consensus-specs PRs since run 82: **PR #4918 merged Feb 23** ("Only allow attestations for known payload statuses")
+  - Adds `index == 1 → block_root in payload_states` check to `validate_on_attestation` in fork-choice spec
+  - **Already implemented** in vibehouse at `fork_choice.rs:1207-1215` — checks `block.payload_revealed` before accepting index=1 attestations, with `PayloadNotRevealed` error variant and 3 unit tests
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
 - Spec test version: v1.7.0-alpha.2 remains latest release
 - Investigated open issues: #8858 (upstream Lighthouse), #8583 (pre-fork-point networking bug), #8887 (upstream reth) — none actionable
