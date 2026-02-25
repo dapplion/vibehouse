@@ -2159,3 +2159,217 @@ async fn gloas_execution_proof_pre_gloas_block_skips_hash_check() {
     }
     // If the block was pruned (not in fork choice), that's fine — skip the test
 }
+
+// ===== Block production payload attestation packing tests =====
+
+/// Test that payload attestations inserted into the pool are included in produced Gloas blocks.
+///
+/// This verifies the end-to-end path: insert_payload_attestation_to_pool →
+/// produce_block_on_state → get_payload_attestations_for_block → block body contains attestations.
+#[tokio::test]
+async fn gloas_block_production_includes_pool_attestations() {
+    let harness = gloas_harness_at_epoch(0);
+    // Produce 3 blocks to have a stable chain
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert a payload attestation targeting the head slot
+    let att = make_payload_attestation(head_root, head_slot, true, false);
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(att.clone());
+
+    // Advance the slot clock so we can produce the next block
+    harness.advance_slot();
+
+    // Produce a block at head_slot + 1 which should pack attestations for head_slot
+    let state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _blobs), _state) = harness.make_block(state, head_slot + 1).await;
+
+    let block = signed_block.message();
+    assert!(
+        block.fork_name_unchecked().gloas_enabled(),
+        "produced block should be Gloas"
+    );
+
+    let payload_attestations = block
+        .body()
+        .payload_attestations()
+        .expect("Gloas block should have payload_attestations");
+
+    assert!(
+        !payload_attestations.is_empty(),
+        "block should include payload attestation from pool"
+    );
+
+    // Verify the included attestation targets the correct block
+    assert_eq!(payload_attestations[0].data.beacon_block_root, head_root);
+    assert_eq!(payload_attestations[0].data.slot, head_slot);
+    assert!(payload_attestations[0].data.payload_present);
+}
+
+/// Test that block production only includes attestations matching the parent block root.
+#[tokio::test]
+async fn gloas_block_production_filters_attestations_by_parent_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert a matching attestation and a non-matching one (wrong root)
+    let matching = make_payload_attestation(head_root, head_slot, true, false);
+    let wrong_root = make_payload_attestation(Hash256::repeat_byte(0xde), head_slot, false, false);
+
+    harness.chain.insert_payload_attestation_to_pool(matching);
+    harness.chain.insert_payload_attestation_to_pool(wrong_root);
+
+    harness.advance_slot();
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _), _) = harness.make_block(state, head_slot + 1).await;
+
+    let payload_attestations = signed_block
+        .message()
+        .body()
+        .payload_attestations()
+        .expect("should have payload_attestations");
+
+    // Only the matching attestation should be included
+    for att in payload_attestations.iter() {
+        assert_eq!(
+            att.data.beacon_block_root, head_root,
+            "only attestations matching parent root should be included"
+        );
+    }
+}
+
+/// Test that block production respects the max_payload_attestations limit.
+#[tokio::test]
+async fn gloas_block_production_respects_max_payload_attestations() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let max_atts = E::max_payload_attestations();
+
+    // Insert more attestations than the max (each with different bits to differentiate)
+    for i in 0..max_atts + 5 {
+        let mut att = make_payload_attestation(head_root, head_slot, true, false);
+        // Set a different bit for each attestation to make them distinct
+        let _ = att.aggregation_bits.set(i % E::ptc_size(), true);
+        harness.chain.insert_payload_attestation_to_pool(att);
+    }
+
+    harness.advance_slot();
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _), _) = harness.make_block(state, head_slot + 1).await;
+
+    let payload_attestations = signed_block
+        .message()
+        .body()
+        .payload_attestations()
+        .expect("should have payload_attestations");
+
+    assert!(
+        payload_attestations.len() <= max_atts,
+        "should not exceed max_payload_attestations ({}), got {}",
+        max_atts,
+        payload_attestations.len()
+    );
+}
+
+/// Test that block production produces empty payload_attestations when pool is empty.
+#[tokio::test]
+async fn gloas_block_production_empty_pool_no_attestations() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+
+    // Don't insert any attestations — pool is empty
+    harness.advance_slot();
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _), _) = harness.make_block(state, head_slot + 1).await;
+
+    let payload_attestations = signed_block
+        .message()
+        .body()
+        .payload_attestations()
+        .expect("Gloas block should have payload_attestations field");
+
+    assert!(
+        payload_attestations.is_empty(),
+        "should have no payload attestations when pool is empty"
+    );
+}
+
+/// Test that the next block's self-build bid has parent_block_hash matching the current
+/// head state's latest_block_hash (proving block production reads the state correctly).
+#[tokio::test]
+async fn gloas_self_build_bid_parent_hash_matches_state() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+
+    // The head state's latest_block_hash was set by envelope processing of the head block.
+    let latest_block_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state has latest_block_hash");
+
+    // Produce the next block — its bid should reference the head state's latest_block_hash
+    harness.advance_slot();
+    let next_state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _), _) = harness.make_block(next_state, head_slot + 1).await;
+
+    let next_parent_block_hash = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid")
+        .message
+        .parent_block_hash;
+
+    assert_eq!(
+        next_parent_block_hash, latest_block_hash,
+        "next block's bid parent_block_hash should match previous state's latest_block_hash"
+    );
+}
+
+/// Test that self-build bid slot matches the block's slot.
+#[tokio::test]
+async fn gloas_self_build_bid_slot_matches_block() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let head = &harness.chain.head_snapshot().beacon_block;
+    let block = head.as_gloas().expect("should be Gloas block");
+
+    assert_eq!(
+        block.message.body.signed_execution_payload_bid.message.slot, block.message.slot,
+        "self-build bid slot should match block slot"
+    );
+    assert_eq!(
+        block
+            .message
+            .body
+            .signed_execution_payload_bid
+            .message
+            .parent_block_root,
+        block.message.parent_root,
+        "self-build bid parent_block_root should match block parent_root"
+    );
+}
