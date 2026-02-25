@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — implement approved fork choice spec changes (run 77)
+- Checked consensus-specs PRs since run 76: only #4946 (bump actions/stale) merged — CI-only
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - Three PRs now approved and close to merge: #4898 (remove pending from tiebreaker), #4892 (remove impossible branch), #4843 (variable PTC deadline)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues
+- **Implemented consensus-specs #4898** (remove pending status from tiebreaker):
+  - `get_payload_tiebreaker` no longer special-cases `PAYLOAD_STATUS_PENDING` — pending nodes at the previous slot now fall through to the EMPTY/FULL tiebreaker logic
+  - The spec author confirmed: `get_node_children` resolves pending status before the tiebreaker is called, making the PENDING check redundant
+  - Updated 2 unit tests to reflect new behavior (removed PENDING from ordering tests)
+- **Confirmed consensus-specs #4892** (remove impossible branch) already implemented:
+  - Our `is_supporting_vote_gloas` already has `debug_assert!(vote.current_slot >= block.slot)` + exact equality check (`vote.current_slot == block.slot`)
+  - No code change needed — our implementation matches the post-#4892 spec
+- All 116 proto_array tests pass, all 64 fork_choice tests pass, all 8 EF fork_choice tests pass
+- 78/78 real crypto + 138/138 fake_crypto all pass
+
 ### 2026-02-25 — blinded envelope block replayer tests (run 76)
 - Checked consensus-specs PRs since run 75: no new Gloas spec changes merged
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
