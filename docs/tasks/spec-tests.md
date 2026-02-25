@@ -29,6 +29,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas execution payload path tests + spec tracking (run 94)
+- Checked consensus-specs PRs since run 93: no new Gloas spec changes merged
+  - No PRs merged since run 93; only infrastructure PRs (#4946 actions/stale bump)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+  - #4898 (remove pending from tiebreaker): approved but unmerged; our code already implements the target behavior
+  - New PR to watch: #4747 (Fast Confirmation Rule) updated Feb 25
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues triaged: #8892 (SSZ response support) already fully implemented for all 5 endpoints, #8858 (events feature gating) references file that doesn't exist in vibehouse, #8828 (block production endpoints) is design-level discussion
+- **Conducted systematic test gap analysis** of execution_payload.rs via subagent — identified ZERO tests for:
+  - `PayloadNotifier::new()` Gloas path (returns `Irrelevant` status)
+  - `validate_execution_payload_for_gossip()` Gloas early-return
+  - `build_self_build_envelope()` state root computation
+  - `get_execution_payload()` Gloas gas_limit extraction from bid
+- **Added 7 execution payload path integration tests** (previously ZERO tests for these paths):
+  - `gloas_payload_notifier_returns_irrelevant`: constructs a `PayloadNotifier` for a Gloas block with `NotifyExecutionLayer::Yes`, asserts `notify_new_payload()` returns `PayloadVerificationStatus::Irrelevant` without calling the EL. A bug here would cause unnecessary EL calls or block import failures for Gloas blocks
+  - `fulu_payload_notifier_does_not_return_irrelevant`: complement test — Fulu block with execution enabled goes through EL verification and returns `Verified` (not `Irrelevant`). Uses `make_block_return_pre_state` to provide the correct pre-block state that `partially_verify_execution_payload` expects
+  - `gloas_gossip_skips_execution_payload_validation`: calls `validate_execution_payload_for_gossip` directly with a Gloas block and its parent's `ProtoBlock`, asserts `Ok(())`. This is the gossip-level check that timestamps and merge transitions don't apply to Gloas blocks
+  - `fulu_gossip_validates_execution_payload`: complement test — Fulu block goes through full timestamp validation and passes. Ensures the early-return only fires for Gloas blocks
+  - `gloas_self_build_envelope_state_root_differs_from_block`: verifies `build_self_build_envelope()` produces an envelope whose `state_root` differs from the block's (pre-envelope) `state_root`, both are non-zero, and the envelope references the correct `beacon_block_root` and `slot`. This tests the complex state root discovery path where `process_execution_payload_envelope` runs on a cloned state and the state root is captured from the `InvalidStateRoot` error
+  - `gloas_self_build_envelope_payload_block_hash_consistency`: after extending the chain, verifies the envelope's payload `block_hash` is non-zero (real EL payload) and differs from the bid's `parent_block_hash` (parent vs child execution block hash)
+  - `gloas_block_production_gas_limit_from_bid`: verifies the Gloas-specific path in `get_execution_payload` that reads `gas_limit` from `state.latest_execution_payload_bid()` instead of `state.latest_execution_payload_header()`. Asserts both the source bid gas_limit and the produced payload gas_limit are non-zero
+- These tests close the largest execution payload gap: the functions in `execution_payload.rs` that handle Gloas's fundamentally different payload architecture (no payload in block body, payload via separate envelope). `PayloadNotifier::new` is called on EVERY block import (block_verification.rs:1458), and `validate_execution_payload_for_gossip` on every gossip block (block_verification.rs:1093). A regression in either would break block import or gossip for all Gloas blocks
+- All 509 beacon_chain tests pass (was 502), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas slot timing unit tests + spec tracking (run 93)
 - Checked consensus-specs PRs since run 92: no new Gloas spec changes merged
   - No new PRs since run 92; #4944 (ExecutionProofsByRoot) still open
