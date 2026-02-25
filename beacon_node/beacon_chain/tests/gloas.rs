@@ -5632,3 +5632,263 @@ async fn gloas_block_production_uses_gloas_withdrawals() {
     // in the most recent envelope processing
     let _ = expected.len();
 }
+
+// =============================================================================
+// Attestation production: payload_present (data.index) determination
+// =============================================================================
+// These tests exercise the full `produce_unaggregated_attestation` → `empty_for_signing`
+// pipeline in a Gloas context, verifying that `data.index` correctly reflects the
+// payload_present state from fork choice. The payload_present logic at
+// beacon_chain.rs:2206-2217 reads `payload_revealed` from the fork choice node:
+//   - Same-slot attestation (block.slot == request_slot): always payload_present=false → index=0
+//   - Non-same-slot (block.slot < request_slot) with payload_revealed=true: index=1
+//   - Non-same-slot (block.slot < request_slot) with payload_revealed=false: index=0
+//
+// Previously, there were ZERO integration tests for this logic with Gloas enabled.
+// The existing attestation_production.rs tests use default_spec() which doesn't enable Gloas,
+// so the Gloas branch (checking fork choice payload_revealed) was never exercised.
+
+/// Same-slot attestation in Gloas: data.index should always be 0, regardless of
+/// payload_revealed state. Per spec, same-slot attestations cannot know whether
+/// the payload is present (the envelope arrives after the block).
+#[tokio::test]
+async fn gloas_attestation_same_slot_payload_present_false() {
+    let harness = gloas_harness_at_epoch(0);
+    // Produce blocks so chain advances and has valid execution status
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+
+    // Verify pre-condition: payload IS revealed for the head block (envelope was processed)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&head.beacon_block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "pre-condition: head block should have payload_revealed=true after extend_slots"
+        );
+    }
+
+    // Produce attestation at the SAME slot as the head block (same-slot attestation)
+    let attestation = harness
+        .chain
+        .produce_unaggregated_attestation(head_slot, 0)
+        .expect("should produce attestation");
+
+    // Same-slot: data.index must be 0 (payload_present=false)
+    assert_eq!(
+        attestation.data().index,
+        0,
+        "same-slot Gloas attestation should have index=0 (payload_present=false), \
+         even though payload_revealed=true in fork choice. \
+         Same-slot attestors cannot know if the envelope has arrived."
+    );
+}
+
+/// Non-same-slot attestation with payload revealed: data.index should be 1.
+/// This happens when a block was produced at an earlier slot, the envelope
+/// was processed (payload_revealed=true in fork choice), and the attester
+/// is producing for a later slot (skip slot or late attestation).
+#[tokio::test]
+async fn gloas_attestation_non_same_slot_payload_revealed_index_one() {
+    let harness = gloas_harness_at_epoch(0);
+    // Produce blocks with envelope processing (payload_revealed=true)
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+
+    // Verify pre-condition: payload IS revealed
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&head.beacon_block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "pre-condition: payload_revealed should be true"
+        );
+    }
+
+    // Advance the slot clock WITHOUT producing a block (creates a skip slot)
+    harness.advance_slot();
+    let attest_slot = head_slot + 1;
+
+    // Produce attestation at a slot AFTER the head block (non-same-slot)
+    let attestation = harness
+        .chain
+        .produce_unaggregated_attestation(attest_slot, 0)
+        .expect("should produce attestation for skip slot");
+
+    // Non-same-slot with payload_revealed=true: data.index must be 1 (payload_present=true)
+    assert_eq!(
+        attestation.data().index,
+        1,
+        "non-same-slot Gloas attestation should have index=1 (payload_present=true) \
+         when payload_revealed=true in fork choice. \
+         head_slot={}, attest_slot={}",
+        head_slot,
+        attest_slot
+    );
+}
+
+/// When a Gloas block is imported without its execution payload envelope
+/// being processed, the block stays Optimistic in fork choice (the EL
+/// hasn't validated the payload yet). Attestation production correctly
+/// refuses to attest to Optimistic blocks.
+///
+/// This is important: if a block's payload isn't revealed (no envelope),
+/// the node MUST NOT produce attestations for it, because the execution
+/// payload could be invalid.
+#[tokio::test]
+async fn gloas_attestation_refused_for_unrevealed_payload_block() {
+    let harness = gloas_harness_at_epoch(0);
+    // Produce initial blocks (with envelopes) to establish a valid chain
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Now produce a block WITHOUT processing its envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only — no envelope processing
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Verify: payload_revealed should be false and execution_status Optimistic
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "pre-condition: payload_revealed should be false"
+        );
+        let exec_status = fc.get_block_execution_status(&block_root).unwrap();
+        assert!(
+            !exec_status.is_valid_or_irrelevant(),
+            "pre-condition: execution_status should be Optimistic (not valid)"
+        );
+    }
+
+    // Advance slot for non-same-slot attestation
+    harness.advance_slot();
+    let attest_slot = next_slot + 1;
+
+    // Attestation production should FAIL because the head block is Optimistic
+    let result = harness
+        .chain
+        .produce_unaggregated_attestation(attest_slot, 0);
+
+    assert!(
+        result.is_err(),
+        "should refuse to attest to a Gloas block whose payload envelope hasn't been processed \
+         (execution status is Optimistic, not Valid)"
+    );
+    // Verify the specific error
+    match result {
+        Err(BeaconChainError::HeadBlockNotFullyVerified { .. }) => {}
+        other => panic!("expected HeadBlockNotFullyVerified error, got {:?}", other),
+    }
+}
+
+/// Pre-Gloas (Fulu) attestations should always have data.index=0, regardless
+/// of slot relationship. This verifies the Gloas branch is not triggered
+/// for pre-Gloas blocks.
+#[tokio::test]
+async fn fulu_attestation_always_index_zero() {
+    // Gloas fork at epoch 2 — blocks at epoch 0 and 1 are Fulu
+    let harness = gloas_harness_at_epoch(2);
+    // Produce some Fulu blocks
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+
+    // Verify this is a Fulu block (not Gloas)
+    assert!(
+        !head.beacon_block.fork_name_unchecked().gloas_enabled(),
+        "pre-condition: head block should be Fulu, not Gloas"
+    );
+
+    // Advance slot for non-same-slot attestation
+    harness.advance_slot();
+    let attest_slot = head_slot + 1;
+
+    let attestation = harness
+        .chain
+        .produce_unaggregated_attestation(attest_slot, 0)
+        .expect("should produce Fulu attestation");
+
+    // Pre-Gloas: index is always 0 (no payload_present repurposing)
+    assert_eq!(
+        attestation.data().index,
+        0,
+        "Fulu (pre-Gloas) attestation should always have index=0"
+    );
+}
+
+/// After envelope processing, a Gloas block transitions from Optimistic
+/// to Valid execution status, enabling attestation production. The attestation
+/// should have data.index=1 (payload_present=true) for non-same-slot.
+///
+/// This tests the full lifecycle: block import (Optimistic, no attestation) →
+/// envelope processing (Valid, attestation possible with index=1).
+#[tokio::test]
+async fn gloas_attestation_enabled_after_envelope_processing() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce block WITHOUT envelope processing
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let block_root = block_contents.0.canonical_root();
+    let signed_envelope = envelope.expect("should have envelope");
+
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Advance past the block slot
+    harness.advance_slot();
+    let attest_slot = next_slot + 1;
+
+    // Before envelope processing: attestation production should FAIL (Optimistic)
+    let result_before = harness
+        .chain
+        .produce_unaggregated_attestation(attest_slot, 0);
+    assert!(
+        result_before.is_err(),
+        "before envelope: should refuse to attest (block is Optimistic)"
+    );
+
+    // Process the envelope (flips payload_revealed=true AND marks execution Valid)
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("envelope processing should succeed");
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // After envelope processing: attestation production should succeed with index=1
+    let att_after = harness
+        .chain
+        .produce_unaggregated_attestation(attest_slot, 0)
+        .expect("after envelope: should produce attestation (block is now Valid)");
+    assert_eq!(
+        att_after.data().index,
+        1,
+        "after envelope: non-same-slot attestation should have index=1 (payload revealed)"
+    );
+}
