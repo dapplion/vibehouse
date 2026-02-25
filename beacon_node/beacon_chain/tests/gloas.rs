@@ -6619,3 +6619,175 @@ async fn fulu_early_cache_uses_committee_index_not_payload_present() {
         "Fulu early cache attestation should have index=0 (committee index, not payload_present)"
     );
 }
+
+// =============================================================================
+// Canonical head Gloas-specific branch tests
+// =============================================================================
+// These tests exercise the Gloas-specific branches in canonical_head.rs:
+// - parent_random(): reads prev_randao from bid instead of execution payload
+// - head_block_number(): returns 0 for Gloas blocks (block number is in envelope)
+// - get_pre_payload_attributes(): full pipeline using both of the above
+//
+// These methods are called during `prepare_beacon_proposer` to compute
+// FCU (forkchoiceUpdated) payload attributes for the execution layer.
+// If parent_random returns the wrong value, the EL will build a payload
+// with incorrect prev_randao, causing the block to be rejected by peers.
+// If head_block_number is wrong, SSE events will report incorrect data.
+
+/// For a Gloas head block, parent_random() should return the bid's prev_randao.
+/// This is the Gloas-specific path: Gloas blocks have execution payload bids
+/// instead of full execution payloads, so prev_randao comes from the bid.
+#[tokio::test]
+async fn gloas_canonical_head_parent_random_reads_from_bid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let cached_head = harness.chain.canonical_head.cached_head();
+
+    // Get the bid's prev_randao directly from the head block
+    let head_block = &cached_head.snapshot.beacon_block;
+    let bid = head_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have a bid");
+    let expected_prev_randao = bid.message.prev_randao;
+
+    // parent_random() should return this value
+    let parent_random = cached_head
+        .parent_random()
+        .expect("parent_random should succeed for Gloas block");
+
+    assert_eq!(
+        parent_random, expected_prev_randao,
+        "parent_random() should return bid.message.prev_randao for Gloas blocks"
+    );
+
+    // Sanity: prev_randao should not be zero (it's a real RANDAO mix)
+    assert_ne!(
+        parent_random,
+        Hash256::zero(),
+        "prev_randao should not be zero for a real chain"
+    );
+}
+
+/// For a Gloas head block, head_block_number() should return 0.
+/// Gloas blocks don't have execution payloads (they have bids), so the
+/// block number is in the envelope, not the block body. The method returns
+/// 0 as a fallback since this value is only used for SSE events and the EL
+/// tracks block numbers internally.
+#[tokio::test]
+async fn gloas_canonical_head_block_number_returns_zero() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let cached_head = harness.chain.canonical_head.cached_head();
+
+    // Confirm this is a Gloas block
+    assert!(
+        cached_head
+            .snapshot
+            .beacon_block
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .is_ok(),
+        "head block should be Gloas (has bid)"
+    );
+
+    let block_number = cached_head
+        .head_block_number()
+        .expect("head_block_number should succeed for Gloas block");
+
+    assert_eq!(
+        block_number, 0,
+        "head_block_number() should return 0 for Gloas blocks (block number is in envelope)"
+    );
+}
+
+/// get_pre_payload_attributes should work correctly for Gloas heads.
+/// It calls parent_random() and head_block_number() internally, so this
+/// test verifies the full pipeline produces valid payload attributes.
+#[tokio::test]
+async fn gloas_get_pre_payload_attributes_succeeds() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let cached_head = harness.chain.canonical_head.cached_head();
+    let head_block_root = cached_head.head_block_root();
+    let head_slot = cached_head.head_slot();
+    let proposal_slot = head_slot + 1;
+
+    // Call get_pre_payload_attributes with proposer_head == head_block_root
+    // (the normal case, not re-org)
+    let attrs = harness
+        .chain
+        .get_pre_payload_attributes(proposal_slot, head_block_root, &cached_head)
+        .expect("should not error");
+
+    let attrs = attrs.expect("should produce payload attributes for Gloas head");
+
+    // prev_randao should match head_random() (not parent_random, since proposer_head == head)
+    let expected_randao = cached_head
+        .head_random()
+        .expect("head_random should succeed");
+    assert_eq!(
+        attrs.prev_randao, expected_randao,
+        "payload attributes prev_randao should match head_random() when proposer_head == head"
+    );
+
+    // parent_block_number should be 0 (head_block_number returns 0 for Gloas)
+    assert_eq!(
+        attrs.parent_block_number, 0,
+        "parent_block_number should be 0 for Gloas (head_block_number returns 0)"
+    );
+
+    // parent_beacon_block_root should be the head
+    assert_eq!(
+        attrs.parent_beacon_block_root, head_block_root,
+        "parent_beacon_block_root should be the head block root"
+    );
+}
+
+/// get_pre_payload_attributes with re-org (proposer_head == parent) should use
+/// parent_random() and head_block_number - 1 for Gloas blocks.
+#[tokio::test]
+async fn gloas_get_pre_payload_attributes_reorg_uses_parent_random() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let cached_head = harness.chain.canonical_head.cached_head();
+    let parent_block_root = cached_head.parent_block_root();
+    let head_slot = cached_head.head_slot();
+    let proposal_slot = head_slot + 1;
+
+    // Call with proposer_head == parent (simulating a re-org of the head)
+    let attrs = harness
+        .chain
+        .get_pre_payload_attributes(proposal_slot, parent_block_root, &cached_head)
+        .expect("should not error");
+
+    let attrs = attrs.expect("should produce payload attributes for re-org case");
+
+    // prev_randao should match parent_random() — the bid's prev_randao
+    let expected_parent_randao = cached_head
+        .parent_random()
+        .expect("parent_random should succeed");
+    assert_eq!(
+        attrs.prev_randao, expected_parent_randao,
+        "re-org payload attributes prev_randao should match parent_random() (bid.prev_randao)"
+    );
+
+    // parent_block_number should be head_block_number.saturating_sub(1) = 0.saturating_sub(1) = 0
+    // For Gloas, head_block_number() returns 0, and 0.saturating_sub(1) = 0
+    assert_eq!(
+        attrs.parent_block_number, 0,
+        "re-org parent_block_number should be 0 (head_block_number=0, sub(1) saturates to 0)"
+    );
+
+    // parent_beacon_block_root should be the parent
+    assert_eq!(
+        attrs.parent_beacon_block_root, parent_block_root,
+        "parent_beacon_block_root should be the parent block root in re-org case"
+    );
+}
