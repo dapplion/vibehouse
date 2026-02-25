@@ -29,6 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — gossip peer-scoring spec compliance fix + code audit (run 81)
+- Checked consensus-specs PRs since run 80: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Conducted full Gloas code audit** — 8 potential issues identified by code analysis agent, 5 verified as false positives:
+  - ISSUE 1 (next_withdrawal_validator_index corruption): FALSE POSITIVE — phases 1-3 use `reserved_limit = max_withdrawals - 1`, so the last withdrawal is always from the validator sweep (phase 4), never a builder withdrawal
+  - ISSUE 2 (gossip slot window collapse to 0): FUNCTIONALLY CORRECT — spec says `data.slot == current_slot` with clock disparity; 500ms / 12s = 0 extra slots, so current-slot-only window is spec-compliant
+  - ISSUE 3 (self-build bids rejected by gossip): FALSE POSITIVE — self-build bids are never gossipped; the gossip topic is exclusively for external builder bids
+  - ISSUE 5 (duplicate validator indices in indexed payload attestation): FALSE POSITIVE — spec uses `sorted(indices)` not `sorted(set(indices))`, so non-decreasing order (duplicates allowed) matches spec
+  - ISSUE 7 (is_parent_block_full zero hash at genesis): FALSE POSITIVE — upgrade sets both `latest_execution_payload_bid.block_hash` and `latest_block_hash` from `pre.latest_execution_payload_header.block_hash`, so they match at fork boundary (correct: parent IS full)
+- **Fixed gossip peer-scoring for ePBS bid and attestation error paths** (2 real issues):
+  - `process_gossip_execution_bid` catch-all was using Ignore+HighToleranceError for all errors; now:
+    - `UnknownBuilder`/`InactiveBuilder` → Reject+LowToleranceError (spec: [REJECT] builder_index valid/active)
+    - `InvalidSignature` → Reject+LowToleranceError (spec: [REJECT] valid signature)
+    - `InsufficientBuilderBalance` → Ignore without penalty (spec: [IGNORE] bid.value ≤ excess balance)
+    - `InvalidParentRoot` → Ignore without penalty (spec: [IGNORE] known parent block)
+  - `process_gossip_payload_attestation` catch-all similarly fixed:
+    - `PastSlot`/`FutureSlot` → Ignore without penalty (spec: [IGNORE] current slot)
+    - `EmptyAggregationBits`/`InvalidAggregationBits` → Reject+LowToleranceError (malformed message)
+- All 96 network tests pass, all 468 beacon_chain tests pass, all 36 http_api fork tests pass
+- Clippy clean (full workspace via git hook), cargo fmt clean
+
 ### 2026-02-25 — dead code cleanup + spec tracking (run 80)
 - Checked consensus-specs PRs since run 79: no new Gloas spec changes merged
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
