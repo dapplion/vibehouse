@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — fork transition boundary integration tests + spec tracking (run 98)
+- Checked consensus-specs PRs since run 97: no new Gloas spec changes merged
+  - Only #4931 (FOCIL rebase onto Gloas — EIP-7805 Heze, not Gloas ePBS) already tracked
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** of fork transition boundary coverage — identified that Fulu→Gloas fork transition invariants had no dedicated integration tests:
+  - Existing `fulu_to_gloas_fork_transition` only checks variant change, not bid parent_block_hash correctness
+  - No test verified state upgrade copies Fulu EL header block_hash into latest_block_hash
+  - No test verified chain continuity through a full epoch after fork transition
+  - No test verified execution_payload_availability initialization (all bits true)
+  - No test verified builder_pending_payments initialization (all default)
+- **Added 5 fork transition boundary integration tests** (previously ZERO tests for these invariants):
+  - `gloas_fork_transition_bid_parent_hash_from_fulu_header`: extends chain to last Fulu slot, captures Fulu EL header block_hash, extends to first Gloas slot, verifies first Gloas bid's `parent_block_hash` equals the Fulu header's `block_hash`. This is the critical chain continuity invariant: state upgrade copies the hash and block production reads from it
+  - `gloas_fork_transition_latest_block_hash_matches_fulu_header`: verifies indirectly that `latest_block_hash` was correctly set from Fulu header by checking bid `parent_block_hash` (which reads from `latest_block_hash` at block production time)
+  - `gloas_fork_transition_chain_continues_full_epoch`: extends chain through fork and one full Gloas epoch (8 slots for minimal), verifies every slot has a Gloas block with a non-zero bid `block_hash`. Exercises the complete pipeline: fork upgrade → first block → envelope → state cache → next block repeatedly
+  - `gloas_fork_transition_execution_payload_availability_all_set`: verifies that after fork transition, all `execution_payload_availability` bits are set (spec: initialized to all-true), with at most one bit cleared (from per_slot_processing at the fork slot)
+  - `gloas_fork_transition_builder_pending_payments_all_default`: verifies all `builder_pending_payments` entries are default (zero weight, zero amount) after fork, confirming self-build bids (value=0) don't record pending payments
+- All 532 beacon_chain tests pass (was 527), cargo fmt clean
+
 ### 2026-02-25 — fork choice attestation integration tests + spec tracking (run 97)
 - Checked consensus-specs PRs since run 96: two Gloas-related PRs merged
   - **PR #4918 merged** (Feb 23): "Only allow attestations for known payload statuses" — adds `assert attestation.data.beacon_block_root in store.payload_states` when `index == 1`. **Already implemented** in vibehouse: `fork_choice.rs:1206-1215` checks `!block.payload_revealed` and returns `PayloadNotRevealed` error. 3 existing tests cover this. No code changes needed
