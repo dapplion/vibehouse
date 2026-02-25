@@ -63,7 +63,7 @@ ZK proofs for execution payloads enabling stateless CL nodes. 20 tasks across 7 
 Current devnet only tests the happy path (4 homogeneous nodes, self-build, minimal preset). Run more scenarios:
 
 - **Syncing** — DONE (script): `scripts/kurtosis-run.sh --sync` — 2 validators + 2 sync targets, catches up through Gloas fork boundary
-- **Node churn** — kill/restart nodes mid-run, test recovery
+- **Node churn** — DONE (script): `scripts/kurtosis-run.sh --churn` — kill validator node 4, verify chain continues (75% stake), restart, verify recovery
 - **Mainnet preset** — realistic committee sizes, PTC dynamics
 - **Long-running** — 30+ min, catch memory leaks and stalls
 - **Builder path** — external bids via API, envelope reveal flow

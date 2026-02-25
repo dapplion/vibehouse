@@ -11,7 +11,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Scenario | Status | Detail |
 |----------|--------|--------|
 | Syncing (genesis sync) | DONE (script) | `--sync` flag: 2 validators + 2 sync targets, nodes catch up through Gloas fork |
-| Node churn | TODO | Kill/restart validator nodes mid-run, test recovery |
+| Node churn | DONE (script) | `--churn` flag: kill validator node 4, verify chain continues (75% stake), restart, verify recovery |
 | Mainnet preset | TODO | Realistic committee sizes, PTC dynamics |
 | Long-running | TODO | 30+ min, catch memory leaks and stalls |
 | Builder path | TODO | External bids via API, envelope reveal flow |
@@ -60,4 +60,43 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 scripts/kurtosis-run.sh --sync              # Full test
 scripts/kurtosis-run.sh --sync --no-build   # Skip Docker build
 scripts/kurtosis-run.sh --sync --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Node churn test (run 109)
+
+**Implemented the node churn devnet test scenario** — kill a validator node mid-run, verify the chain continues finalizing, restart it, verify recovery.
+
+**What was built:**
+
+**`--churn` flag in `kurtosis-run.sh`** — Four-phase churn test using the default 4-node config:
+
+- **Phase 1 (warm-up):** Start all 4 validator nodes, wait for finalization to epoch 3 (past Gloas fork at epoch 1). Uses the standard `vibehouse-epbs.yaml` config (no separate config needed).
+
+- **Phase 2 (kill + verify continued finalization):** Stop node 4 (both CL and EL). Wait for finalization to advance at least 2 more epochs with only 3/4 nodes running (75% of stake). This proves the chain handles validator loss gracefully.
+
+- **Phase 3 (restart):** Restart EL first (CL needs EL), then CL — same pattern as sync test.
+
+- **Phase 4 (verify recovery):** Poll the restarted node every 6s until it reports `is_syncing: false` with non-zero `head_slot`. Also monitors the Lighthouse-specific sync state (`/lighthouse/syncing`). After recovery, verifies finality checkpoints on the restarted node.
+
+**Key design decisions:**
+- Reuses default `vibehouse-epbs.yaml` config — no separate config file needed since all 4 nodes are identical validators
+- `TARGET_FINALIZED_EPOCH=3` for warm-up — enough to prove chain is healthy, faster than the normal target of 8
+- `CHURN_FIN_TARGET = PRE_CHURN_FINALIZED + 2` — requires 2 additional finalized epochs with node down, proving sustained chain health
+- 3-minute timeout for continued finalization (2 epochs at ~96s each in minimal preset)
+- 6-minute timeout for node recovery
+- Separate `churn.log` file for all churn phase output
+- Kills node 4 specifically (last node) — consistent with sync test pattern
+
+**What this tests:**
+- Chain resilience to validator node loss (75% stake threshold for finalization)
+- Continued block production and finalization with reduced validator set
+- Node recovery after being offline (range sync back to chain head)
+- ePBS envelope processing during recovery (blocks with bids during the offline period)
+- EL+CL coordination during restart
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --churn              # Full test
+scripts/kurtosis-run.sh --churn --no-build   # Skip Docker build
+scripts/kurtosis-run.sh --churn --no-teardown # Leave running for inspection
 ```

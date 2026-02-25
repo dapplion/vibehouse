@@ -270,6 +270,9 @@ scripts/kurtosis-run.sh --no-teardown
 
 # Genesis sync test (stop non-validators, finalize, restart, verify sync)
 scripts/kurtosis-run.sh --sync
+
+# Node churn test (kill validator, verify chain continues, restart, verify recovery)
+scripts/kurtosis-run.sh --churn
 ```
 
 ### How the Devnet Works
