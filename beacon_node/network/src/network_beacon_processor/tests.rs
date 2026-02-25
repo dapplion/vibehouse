@@ -41,10 +41,11 @@ use tokio::sync::mpsc;
 use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
     Address, AttesterSlashing, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecarList,
-    DataColumnSubnetId, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid, Hash256,
-    MainnetEthSpec, PayloadAttestation, PayloadAttestationData, ProposerSlashing,
-    RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock, SignedExecutionPayloadBid,
-    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
+    DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid, Hash256,
+    MainnetEthSpec, PayloadAttestation, PayloadAttestationData, ProposerPreferences,
+    ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock,
+    SignedExecutionPayloadBid, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
+    SingleAttestation, Slot, SubnetId,
 };
 
 type E = MainnetEthSpec;
@@ -2291,6 +2292,321 @@ async fn test_gloas_gossip_payload_attestation_empty_bits_rejected() {
     rig.network_beacon_processor
         .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
         .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+// ======== Gloas (ePBS) proposer preferences gossip handler tests ========
+//
+// These tests verify the `process_gossip_proposer_preferences` handler which
+// validates SignedProposerPreferences messages per the consensus-specs p2p-interface.
+// The handler enforces: proposal_slot in next epoch (IGNORE), validator_index matches
+// proposer_lookahead (REJECT), valid signature (REJECT), then ACCEPT.
+
+/// Gloas gossip: proposer preferences with proposal_slot in the current epoch is IGNORED.
+///
+/// Per spec: [IGNORE] proposal_slot must be in the next epoch.
+/// The handler checks proposal_epoch != next_epoch and ignores the message.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_current_epoch_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // proposal_slot is in the current epoch → should be ignored
+    let signed_preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: current_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: proposer preferences with proposal_slot two epochs ahead is IGNORED.
+///
+/// Per spec: [IGNORE] proposal_slot must be in the next epoch (not further).
+/// A proposal_slot far in the future should also be ignored.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_far_future_epoch_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // proposal_slot far in the future (epoch 100) → should be ignored
+    let signed_preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: 100 * SLOTS_PER_EPOCH,
+            validator_index: 0,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: proposer preferences with wrong validator_index is REJECTED.
+///
+/// Per spec: [REJECT] validator_index must match proposer_lookahead for proposal_slot.
+/// A validator_index that is not the expected proposer for the slot should be rejected
+/// and the peer penalized.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_wrong_proposer_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+
+    // Get a valid next-epoch slot
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer for this slot from the lookahead
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    // Use a different validator_index (not the actual proposer)
+    let wrong_proposer = if actual_proposer == 0 { 1 } else { 0 };
+
+    let signed_preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: proposal_slot.as_u64(),
+            validator_index: wrong_proposer,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: proposer preferences with out-of-range validator_index is REJECTED.
+///
+/// Per spec: [REJECT] validator_index must be valid.
+/// A validator_index beyond the registry size should be rejected because the
+/// lookahead won't contain it, and the pubkey lookup would also fail.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_unknown_validator_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Use a validator_index that doesn't exist in the registry
+    let signed_preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: proposal_slot.as_u64(),
+            validator_index: 9999, // doesn't exist (only 32 validators)
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: proposer preferences with invalid signature is REJECTED.
+///
+/// Per spec: [REJECT] signature must verify against the validator's pubkey
+/// using Domain::ProposerPreferences.
+/// This test uses the correct proposer_index (passes lookahead check) but
+/// provides an empty signature that won't verify → reject + peer penalty.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_invalid_signature_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer from the lookahead
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    // Correct validator_index but empty (invalid) signature → reject at sig check
+    let signed_preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: proposal_slot.as_u64(),
+            validator_index: actual_proposer,
+            fee_recipient: Address::repeat_byte(0x42),
+            gas_limit: 30_000_000,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: proposer preferences with valid signature is ACCEPTED.
+///
+/// Per spec: all checks pass → [ACCEPT].
+/// This test constructs a valid SignedProposerPreferences: correct next-epoch
+/// proposal_slot, correct proposer_index from the lookahead, and a valid BLS
+/// signature using Domain::ProposerPreferences. Verifies the full validation
+/// pipeline succeeds.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_valid_accepted() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+    let spec = &rig.chain.spec;
+
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer from the lookahead
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    // Build the preferences message
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index: actual_proposer,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    // Compute the signing root with the correct domain
+    let domain = spec.get_domain(
+        next_epoch,
+        Domain::ProposerPreferences,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+
+    // Sign with the correct validator's secret key
+    let sk = &rig._harness.validator_keypairs[actual_proposer as usize].sk;
+    let signature = sk.sign(signing_root);
+
+    let signed_preferences = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+/// Gloas gossip: proposer preferences signed with wrong key is REJECTED.
+///
+/// Verifies that a valid-looking preferences message signed by a different
+/// validator's key (not the actual proposer) is rejected at the signature
+/// verification step. This catches key confusion bugs.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_wrong_key_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+    let spec = &rig.chain.spec;
+
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer from the lookahead
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index: actual_proposer,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    // Compute signing root correctly
+    let domain = spec.get_domain(
+        next_epoch,
+        Domain::ProposerPreferences,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+
+    // Sign with a DIFFERENT validator's key
+    let wrong_signer = if actual_proposer == 0 { 1 } else { 0 };
+    let wrong_sk = &rig._harness.validator_keypairs[wrong_signer as usize].sk;
+    let signature = wrong_sk.sign(signing_root);
+
+    let signed_preferences = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_reject(result);

@@ -29,6 +29,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — proposer preferences gossip handler tests + spec tracking (run 101)
+- Checked consensus-specs PRs since run 100: no new Gloas spec changes merged
+  - **PR #4946** (merged Feb 24): actions/stale bump — CI only, no impact
+  - No new Gloas PRs merged since run 100
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Addressed P4 from run 96 gap analysis**: `process_gossip_proposer_preferences` (complex inline validation with BLS signature verification, ZERO test coverage)
+- **Added 7 proposer preferences gossip handler integration tests** (previously ZERO tests for this handler):
+  - **Epoch check (IGNORE) tests (2 tests):**
+    - `test_gloas_gossip_proposer_preferences_current_epoch_ignored`: constructs preferences with proposal_slot in current epoch, verifies proposal_epoch != next_epoch → MessageAcceptance::Ignore
+    - `test_gloas_gossip_proposer_preferences_far_future_epoch_ignored`: constructs preferences with proposal_slot in epoch 100, verifies Ignore (not just off-by-one)
+  - **Proposer lookahead (REJECT) tests (2 tests):**
+    - `test_gloas_gossip_proposer_preferences_wrong_proposer_rejected`: reads actual proposer from `proposer_lookahead` at `slots_per_epoch + (proposal_slot % slots_per_epoch)`, uses a different validator_index, verifies Reject + peer penalty
+    - `test_gloas_gossip_proposer_preferences_unknown_validator_rejected`: uses validator_index=9999 (beyond registry), verifies Reject (lookahead won't contain it)
+  - **Signature verification (REJECT) tests (2 tests):**
+    - `test_gloas_gossip_proposer_preferences_invalid_signature_rejected`: uses correct proposer_index but `Signature::empty()`, verifies Reject at BLS verification step
+    - `test_gloas_gossip_proposer_preferences_wrong_key_rejected`: uses correct proposer_index, signs with a different validator's secret key, verifies Reject (catches key confusion bugs)
+  - **Full valid path (ACCEPT) test (1 test):**
+    - `test_gloas_gossip_proposer_preferences_valid_accepted`: constructs fully valid SignedProposerPreferences — correct next-epoch proposal_slot, correct proposer_index from lookahead, valid BLS signature using Domain::ProposerPreferences with the proposer's secret key — verifies MessageAcceptance::Accept
+- Tests exercise each validation check in the handler (gossip_methods.rs:3690-3828) in order: epoch check → lookahead check → pubkey lookup → signature verification → accept
+- The signature verification tests are particularly important: `Domain::ProposerPreferences` (domain index 13) is a Gloas-specific signing domain. If the handler used the wrong domain, all valid proposer preferences messages would be rejected, preventing proposers from communicating their fee_recipient/gas_limit preferences to builders
+- All 111 network tests pass (was 104), cargo fmt clean
+
 ### 2026-02-25 — network gossip handler integration tests + spec tracking (run 100)
 - Checked consensus-specs PRs since run 99: no new Gloas spec changes merged
   - **PR #4946** (merged Feb 24): actions/stale bump — CI only, no impact
