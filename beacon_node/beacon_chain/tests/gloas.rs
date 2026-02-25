@@ -15,6 +15,7 @@ use beacon_chain::BeaconChainError;
 use beacon_chain::BlockError;
 use beacon_chain::ChainConfig;
 use beacon_chain::execution_proof_verification::GossipExecutionProofError;
+use beacon_chain::gloas_verification::{ExecutionBidError, PayloadEnvelopeError};
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
@@ -3221,5 +3222,305 @@ async fn gloas_process_pending_proofs_below_threshold_stays_optimistic() {
         exec_status.is_optimistic_or_invalid(),
         "block should remain optimistic when pending proofs below threshold, got {:?}",
         exec_status
+    );
+}
+
+// ============================================================================
+// Envelope gossip verification — error paths
+// ============================================================================
+
+/// Helper: produce a block+envelope at next slot and import only the block.
+/// Returns (block_root, signed_envelope).
+async fn import_block_get_envelope(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+) -> (Hash256, SignedExecutionPayloadEnvelope<E>) {
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    (block_root, signed_envelope)
+}
+
+/// Helper: call `verify_payload_envelope_for_gossip` and assert it returns an
+/// error. Returns the error. Panics on Ok (VerifiedPayloadEnvelope doesn't impl
+/// Debug so we can't use expect_err).
+fn assert_envelope_rejected(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+    envelope: SignedExecutionPayloadEnvelope<E>,
+    context: &str,
+) -> PayloadEnvelopeError {
+    match harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(envelope))
+    {
+        Err(e) => e,
+        Ok(_) => panic!("envelope should have been rejected: {}", context),
+    }
+}
+
+/// Envelope with a tampered slot (different from the block's slot) is rejected
+/// with `SlotMismatch`.
+#[tokio::test]
+async fn gloas_envelope_gossip_rejects_slot_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Tamper the slot
+    signed_envelope.message.slot += 100;
+
+    let err = assert_envelope_rejected(&harness, signed_envelope, "tampered slot");
+    assert!(
+        matches!(err, PayloadEnvelopeError::SlotMismatch { .. }),
+        "expected SlotMismatch, got {:?}",
+        err
+    );
+}
+
+/// Envelope with a tampered builder_index (different from the committed bid) is
+/// rejected with `BuilderIndexMismatch`.
+#[tokio::test]
+async fn gloas_envelope_gossip_rejects_builder_index_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Tamper builder_index to something other than the committed bid's builder_index
+    signed_envelope.message.builder_index = signed_envelope.message.builder_index.wrapping_add(1);
+
+    let err = assert_envelope_rejected(&harness, signed_envelope, "tampered builder_index");
+    assert!(
+        matches!(err, PayloadEnvelopeError::BuilderIndexMismatch { .. }),
+        "expected BuilderIndexMismatch, got {:?}",
+        err
+    );
+}
+
+/// Envelope with a tampered payload block_hash (different from the committed
+/// bid's block_hash) is rejected with `BlockHashMismatch`.
+#[tokio::test]
+async fn gloas_envelope_gossip_rejects_block_hash_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Tamper the payload block_hash
+    signed_envelope.message.payload.block_hash = ExecutionBlockHash::from_root(Hash256::random());
+
+    let err = assert_envelope_rejected(&harness, signed_envelope, "tampered block_hash");
+    assert!(
+        matches!(err, PayloadEnvelopeError::BlockHashMismatch { .. }),
+        "expected BlockHashMismatch, got {:?}",
+        err
+    );
+}
+
+/// Envelope referencing an unknown beacon_block_root is buffered in
+/// `pending_gossip_envelopes` and returns `BlockRootUnknown`.
+#[tokio::test]
+async fn gloas_envelope_gossip_buffers_unknown_block_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Tamper beacon_block_root to something unknown
+    let fake_root = Hash256::random();
+    signed_envelope.message.beacon_block_root = fake_root;
+
+    let err = assert_envelope_rejected(&harness, signed_envelope, "unknown block root");
+    assert!(
+        matches!(err, PayloadEnvelopeError::BlockRootUnknown { .. }),
+        "expected BlockRootUnknown, got {:?}",
+        err
+    );
+
+    // Verify envelope was buffered for later processing
+    let pending = harness.chain.pending_gossip_envelopes.lock();
+    assert!(
+        pending.contains_key(&fake_root),
+        "envelope should be buffered in pending_gossip_envelopes"
+    );
+}
+
+/// Envelope for a pre-Gloas (Fulu) block is rejected with `NotGloasBlock`.
+/// We tamper the beacon_block_root to point at the genesis block (which is Fulu,
+/// not Gloas), and ensure the block root IS in fork choice so we get past the
+/// BlockRootUnknown check.
+#[tokio::test]
+async fn gloas_envelope_gossip_rejects_not_gloas_block() {
+    // Start with Gloas at epoch 1 so genesis is Fulu
+    let harness = gloas_harness_at_epoch(1);
+    // Extend into Gloas territory
+    Box::pin(harness.extend_slots(E::slots_per_epoch() as usize + 2)).await;
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Point the envelope at the genesis block root (a Fulu block)
+    let genesis_root = harness.chain.genesis_block_root;
+    signed_envelope.message.beacon_block_root = genesis_root;
+    // Set slot to genesis slot (0) to pass the slot check against genesis block's slot
+    signed_envelope.message.slot = Slot::new(0);
+
+    let err = assert_envelope_rejected(&harness, signed_envelope, "pre-Gloas block");
+    // This should fail with either PriorToFinalization (if finalized) or NotGloasBlock
+    // (if not finalized). Both are correct rejections.
+    assert!(
+        matches!(
+            err,
+            PayloadEnvelopeError::NotGloasBlock { .. }
+                | PayloadEnvelopeError::PriorToFinalization { .. }
+        ),
+        "expected NotGloasBlock or PriorToFinalization, got {:?}",
+        err
+    );
+}
+
+// ============================================================================
+// Execution bid gossip verification — error paths
+// ============================================================================
+
+/// Helper: extract the self-build bid from a freshly produced Gloas block.
+fn extract_self_build_bid<E: EthSpec>(
+    block: &SignedBeaconBlock<E>,
+) -> SignedExecutionPayloadBid<E> {
+    block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have a bid")
+        .clone()
+}
+
+/// Helper: call `verify_execution_bid_for_gossip` and assert it returns an error.
+/// Returns the error. Panics if the result is Ok (VerifiedExecutionBid doesn't
+/// impl Debug so we can't use expect_err).
+fn assert_bid_rejected(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+    bid: SignedExecutionPayloadBid<E>,
+    context: &str,
+) -> ExecutionBidError {
+    match harness.chain.verify_execution_bid_for_gossip(bid) {
+        Err(e) => e,
+        Ok(_) => panic!("bid should have been rejected: {}", context),
+    }
+}
+
+/// A bid for a slot that is neither current nor next is rejected with
+/// `SlotNotCurrentOrNext`. The slot check is the FIRST validation, so it
+/// triggers regardless of other bid fields.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_slot_not_current_or_next() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let mut bid = extract_self_build_bid(&block_contents.0);
+    // Set slot far in the future (well beyond current + 1)
+    bid.message.slot = Slot::new(999);
+
+    let err = assert_bid_rejected(&harness, bid, "far-future slot");
+    assert!(
+        matches!(err, ExecutionBidError::SlotNotCurrentOrNext { .. }),
+        "expected SlotNotCurrentOrNext, got {:?}",
+        err
+    );
+}
+
+/// A bid with execution_payment == 0 (after passing slot check) is rejected
+/// with `ZeroExecutionPayment`. Self-build bids naturally have payment == 0.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_zero_execution_payment() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let bid = extract_self_build_bid(&block_contents.0);
+    // Self-build bids have execution_payment = 0, which should be rejected.
+    assert_eq!(bid.message.execution_payment, 0);
+
+    let err = assert_bid_rejected(&harness, bid, "zero execution_payment");
+    assert!(
+        matches!(err, ExecutionBidError::ZeroExecutionPayment),
+        "expected ZeroExecutionPayment, got {:?}",
+        err
+    );
+}
+
+/// A bid with builder_index = BUILDER_INDEX_SELF_BUILD (u64::MAX) and
+/// execution_payment > 0 is rejected with `UnknownBuilder` because the
+/// self-build index doesn't correspond to any registered builder.
+/// This tests the builder registry lookup (check 2).
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_unknown_builder() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let mut bid = extract_self_build_bid(&block_contents.0);
+    // Set execution_payment > 0 to pass the payment check
+    bid.message.execution_payment = 1;
+    // builder_index is BUILDER_INDEX_SELF_BUILD (u64::MAX) from self-build,
+    // which doesn't exist in the empty builders registry
+
+    let err = assert_bid_rejected(&harness, bid, "unknown builder");
+    assert!(
+        matches!(err, ExecutionBidError::UnknownBuilder { .. }),
+        "expected UnknownBuilder, got {:?}",
+        err
+    );
+}
+
+/// A bid referencing a builder_index that exceeds the builders list length
+/// is rejected with `UnknownBuilder`. Tests with a small, non-MAX index.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_nonexistent_builder_index() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let mut bid = extract_self_build_bid(&block_contents.0);
+    bid.message.execution_payment = 1;
+    // Use builder_index = 42 — no builders in the default state
+    bid.message.builder_index = 42;
+
+    let err = assert_bid_rejected(&harness, bid, "nonexistent builder index");
+    assert!(
+        matches!(err, ExecutionBidError::UnknownBuilder { builder_index: 42 }),
+        "expected UnknownBuilder with index 42, got {:?}",
+        err
     );
 }
