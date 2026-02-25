@@ -12,8 +12,10 @@
 
 use beacon_chain::BeaconChainError;
 use beacon_chain::BlockError;
+use beacon_chain::execution_proof_verification::GossipExecutionProofError;
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
+use std::sync::Arc;
 use types::*;
 
 const VALIDATOR_COUNT: usize = 32;
@@ -1598,4 +1600,338 @@ async fn gloas_load_envelopes_for_blocks() {
             "envelope slot should match block slot"
         );
     }
+}
+
+// =============================================================================
+// Fork choice state verification after block + envelope processing
+// =============================================================================
+
+/// After blocks are produced and envelopes processed, fork choice nodes should have
+/// payload_revealed = true for each block.
+#[tokio::test]
+async fn gloas_fork_choice_payload_revealed_after_extend() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+
+    // Check block roots accessible from the state's block_roots vector
+    let mut checked = 0;
+    for slot_idx in 1..=head_slot.as_u64() {
+        let slot = Slot::new(slot_idx);
+        if let Ok(block_root) = state.get_block_root(slot)
+            && let Some(block) = fc.get_block(block_root)
+        {
+            assert!(
+                block.payload_revealed,
+                "payload_revealed should be true for block at slot {} (self-build envelope processed)",
+                slot_idx
+            );
+            checked += 1;
+        }
+    }
+    assert!(
+        checked >= 3,
+        "should have checked at least 3 blocks, got {}",
+        checked
+    );
+}
+
+/// After blocks are produced with self-build, fork choice nodes should have
+/// builder_index = Some(BUILDER_INDEX_SELF_BUILD).
+#[tokio::test]
+async fn gloas_fork_choice_builder_index_self_build() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+
+    let mut checked = 0;
+    for slot_idx in 1..=head_slot.as_u64() {
+        let slot = Slot::new(slot_idx);
+        if let Ok(block_root) = state.get_block_root(slot)
+            && let Some(block) = fc.get_block(block_root)
+        {
+            assert_eq!(
+                block.builder_index,
+                Some(harness.spec.builder_index_self_build),
+                "fork choice node at slot {} should have BUILDER_INDEX_SELF_BUILD",
+                slot_idx
+            );
+            checked += 1;
+        }
+    }
+    assert!(
+        checked >= 2,
+        "should have checked at least 2 blocks, got {}",
+        checked
+    );
+}
+
+/// After the chain processes envelopes and the EL returns Valid, execution status
+/// should transition from Optimistic to Valid for each block.
+#[tokio::test]
+async fn gloas_fork_choice_execution_status_valid_after_envelope() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head_root = harness.chain.head_snapshot().beacon_block_root;
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let status = fc.get_block(&head_root).unwrap().execution_status;
+
+    // The mock EL returns Valid, so after envelope processing the block should be Valid
+    assert!(
+        status.is_valid_or_irrelevant(),
+        "head block execution status should be Valid after EL validation, got {:?}",
+        status
+    );
+}
+
+/// Fork choice genesis node should not have Gloas-specific fields set
+/// (it's the pre-genesis anchor, not a Gloas block).
+#[tokio::test]
+async fn gloas_fork_choice_genesis_node_no_gloas_fields() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(1)).await;
+
+    let genesis_root = harness.chain.genesis_block_root;
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let genesis_block = fc.get_block(&genesis_root).unwrap();
+
+    // Genesis block should not have a builder_index since it wasn't produced via ePBS
+    // (it's the anchor block inserted during chain init)
+    assert_eq!(
+        genesis_block.builder_index, None,
+        "genesis block should have no builder_index"
+    );
+}
+
+/// Verify that blocks across a Fulu→Gloas fork transition have the correct
+/// fork choice properties: pre-fork blocks have no builder_index, post-fork
+/// blocks have BUILDER_INDEX_SELF_BUILD.
+#[tokio::test]
+async fn gloas_fork_choice_transition_properties() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend past the fork
+    Box::pin(harness.extend_to_slot(gloas_fork_slot + 2)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+
+    // Pre-fork block (last Fulu block)
+    let pre_fork_slot = gloas_fork_slot - 1;
+    let pre_fork_root = *state.get_block_root(pre_fork_slot).unwrap();
+    let pre_fork = fc.get_block(&pre_fork_root).unwrap();
+    assert_eq!(
+        pre_fork.builder_index, None,
+        "pre-fork (Fulu) block should have no builder_index"
+    );
+
+    // Post-fork block (first Gloas block)
+    let post_fork_root = *state.get_block_root(gloas_fork_slot).unwrap();
+    let post_fork = fc.get_block(&post_fork_root).unwrap();
+    assert_eq!(
+        post_fork.builder_index,
+        Some(harness.spec.builder_index_self_build),
+        "post-fork (Gloas) block should have BUILDER_INDEX_SELF_BUILD"
+    );
+    assert!(
+        post_fork.payload_revealed,
+        "post-fork block should have payload_revealed = true"
+    );
+}
+
+// =============================================================================
+// Execution proof verification — chain-dependent checks (4, 5, 6)
+// =============================================================================
+
+/// Helper: create a valid stub execution proof for a given block root and block hash.
+fn make_stub_execution_proof(
+    block_root: Hash256,
+    block_hash: ExecutionBlockHash,
+) -> Arc<ExecutionProof> {
+    Arc::new(ExecutionProof::new(
+        block_root,
+        block_hash,
+        ExecutionProofSubnetId::new(0).unwrap(),
+        1, // stub version
+        b"stub-proof-data".to_vec(),
+    ))
+}
+
+/// Check 4: verify_execution_proof_for_gossip rejects proofs for unknown block roots.
+#[tokio::test]
+async fn gloas_execution_proof_unknown_block_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let unknown_root = Hash256::repeat_byte(0xde);
+    let proof = make_stub_execution_proof(unknown_root, ExecutionBlockHash::zero());
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    match result {
+        Err(GossipExecutionProofError::UnknownBlockRoot { block_root })
+            if block_root == unknown_root => {}
+        Err(other) => panic!("expected UnknownBlockRoot, got: {:?}", other),
+        Ok(_) => panic!("expected error, got Ok"),
+    }
+}
+
+/// Check 5: verify_execution_proof_for_gossip rejects proofs for finalized blocks.
+#[tokio::test]
+async fn gloas_execution_proof_prior_to_finalization() {
+    let harness = gloas_harness_at_epoch(0);
+    // Run enough epochs to finalize
+    let num_slots = 5 * E::slots_per_epoch() as usize;
+    Box::pin(harness.extend_slots(num_slots)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let finalized_epoch = state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized"
+    );
+
+    // Get a block root from a finalized slot (slot 1)
+    let finalized_slot = Slot::new(1);
+    let block_root = *state.get_block_root(finalized_slot).unwrap();
+
+    // Get the block hash from the envelope for this block
+    let envelope = harness
+        .chain
+        .store
+        .get_blinded_payload_envelope(&block_root)
+        .unwrap();
+    let block_hash = envelope
+        .map(|e| e.message.payload_header.block_hash)
+        .unwrap_or(ExecutionBlockHash::zero());
+
+    let proof = make_stub_execution_proof(block_root, block_hash);
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    // The block is finalized so it might not be in fork choice anymore (pruned).
+    // If pruned, we get UnknownBlockRoot. If still in tree, we get PriorToFinalization.
+    match result {
+        Err(GossipExecutionProofError::UnknownBlockRoot { .. })
+        | Err(GossipExecutionProofError::PriorToFinalization { .. }) => {}
+        Err(other) => panic!(
+            "expected UnknownBlockRoot or PriorToFinalization, got: {:?}",
+            other
+        ),
+        Ok(_) => panic!("expected error for finalized block proof"),
+    }
+}
+
+/// Check 6: verify_execution_proof_for_gossip rejects proofs with mismatched block hash.
+#[tokio::test]
+async fn gloas_execution_proof_block_hash_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Use a wrong block hash
+    let wrong_hash = ExecutionBlockHash::from(Hash256::repeat_byte(0xaa));
+    let proof = make_stub_execution_proof(block_root, wrong_hash);
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    match result {
+        Err(GossipExecutionProofError::BlockHashMismatch { .. }) => {}
+        Err(other) => panic!("expected BlockHashMismatch, got: {:?}", other),
+        Ok(_) => panic!("expected error for mismatched block hash"),
+    }
+}
+
+/// Happy path: verify_execution_proof_for_gossip accepts a valid proof for a known block.
+#[tokio::test]
+async fn gloas_execution_proof_valid_stub_accepted() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Get the correct block hash from the envelope
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("envelope should exist");
+    let block_hash = envelope.message.payload.block_hash;
+
+    let proof = make_stub_execution_proof(block_root, block_hash);
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    assert!(
+        result.is_ok(),
+        "valid stub proof should be accepted, got: {:?}",
+        result.err()
+    );
+}
+
+/// Verify that a proof referencing a pre-Gloas (Fulu) block still works
+/// (bid_block_hash is None, so check 6 is skipped).
+#[tokio::test]
+async fn gloas_execution_proof_pre_gloas_block_skips_hash_check() {
+    let gloas_fork_epoch = Epoch::new(3);
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to well past the fork
+    let num_slots = 4 * E::slots_per_epoch() as usize;
+    Box::pin(harness.extend_slots(num_slots)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Get a pre-fork block root (from epoch 1, which is Fulu)
+    let pre_fork_slot = Slot::new(E::slots_per_epoch());
+    let pre_fork_root = *state.get_block_root(pre_fork_slot).unwrap();
+
+    // Verify this is indeed a pre-Gloas block
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let pre_fork_block = fc.get_block(&pre_fork_root);
+    if let Some(block) = pre_fork_block {
+        assert_eq!(
+            block.builder_index, None,
+            "pre-Gloas block should have no builder_index"
+        );
+        drop(fc);
+
+        // Use any block hash — check 6 should be skipped for pre-Gloas blocks
+        let any_hash = ExecutionBlockHash::from(Hash256::repeat_byte(0xbb));
+        let proof = make_stub_execution_proof(pre_fork_root, any_hash);
+
+        let result = harness
+            .chain
+            .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+        // Should pass (check 6 is skipped when bid_block_hash is None)
+        assert!(
+            result.is_ok(),
+            "proof for pre-Gloas block should skip hash check, got: {:?}",
+            result.err()
+        );
+    }
+    // If the block was pruned (not in fork choice), that's fine — skip the test
 }

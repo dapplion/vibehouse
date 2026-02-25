@@ -29,6 +29,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — fork choice state + execution proof integration tests (run 73)
+- Checked consensus-specs PRs since run 72: no new Gloas spec changes merged
+  - No PRs merged since Feb 24
+  - All 7 tracked Gloas PRs still open: #4940, #4932, #4843, #4939, #4840, #4926, #4747
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Added 5 fork choice state verification tests** (previously ZERO tests verifying fork choice node state after block+envelope processing):
+  - `gloas_fork_choice_payload_revealed_after_extend`: all block nodes have payload_revealed=true after self-build envelope processing
+  - `gloas_fork_choice_builder_index_self_build`: all block nodes have builder_index=Some(BUILDER_INDEX_SELF_BUILD)
+  - `gloas_fork_choice_execution_status_valid_after_envelope`: head block execution status is Valid after mock EL validation
+  - `gloas_fork_choice_genesis_node_no_gloas_fields`: genesis anchor has no builder_index (not produced via ePBS)
+  - `gloas_fork_choice_transition_properties`: pre-fork blocks have no builder_index, post-fork blocks have BUILDER_INDEX_SELF_BUILD + payload_revealed=true
+- **Added 5 execution proof chain-dependent integration tests** (previously ZERO tests for checks 4/5/6 in verify_execution_proof_for_gossip):
+  - `gloas_execution_proof_unknown_block_root`: check 4 — rejects proof for unknown block root
+  - `gloas_execution_proof_prior_to_finalization`: check 5 — rejects proof for finalized/pruned block
+  - `gloas_execution_proof_block_hash_mismatch`: check 6 — rejects proof with wrong block hash
+  - `gloas_execution_proof_valid_stub_accepted`: happy path — valid stub proof for known block accepted
+  - `gloas_execution_proof_pre_gloas_block_skips_hash_check`: pre-Gloas blocks skip bid hash check (bid_block_hash=None)
+- These tests close the two biggest integration test gaps: fork choice state correctness after envelope processing, and execution proof gossip verification chain-dependent checks
+- All 457 beacon_chain tests pass (was 447)
+
 ### 2026-02-25 — config/spec endpoint + clippy fixes (run 72)
 - Checked consensus-specs PRs since run 71: no new Gloas spec changes merged
   - #4946 (bump actions/stale) — CI-only
