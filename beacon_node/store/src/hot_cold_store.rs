@@ -1136,9 +1136,29 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         max_slot: Slot,
         state_root: Hash256,
     ) -> Result<Option<(Hash256, BeaconState<E>)>, Error> {
-        if let Some((cached_root, cached_state)) =
+        if let Some((cached_root, mut cached_state)) =
             self.get_advanced_hot_state_from_cache(block_root, max_slot)
         {
+            // Gloas ePBS: during range sync, envelopes are not available, so the
+            // cached state's `latest_block_hash` may not have been updated. Patch
+            // the clone from the block's bid so the next block's bid validation
+            // (`bid.parent_block_hash == state.latest_block_hash`) can pass.
+            // When the envelope WAS processed, bid.block_hash == latest_block_hash
+            // and this is a no-op. Skip genesis/default bids (zero block_hash).
+            if cached_state.fork_name_unchecked().gloas_enabled()
+                && let Ok(Some(block)) = self
+                    .get_blinded_block(&block_root)
+                    .map(|opt| opt.map(|b| b.deconstruct().0))
+                && let Ok(signed_bid) = block.body().signed_execution_payload_bid()
+            {
+                let bid_hash = signed_bid.message.block_hash;
+                if bid_hash.0 != Hash256::zero()
+                    && let Ok(h) = cached_state.latest_block_hash_mut()
+                    && *h != bid_hash
+                {
+                    *h = bid_hash;
+                }
+            }
             return Ok(Some((cached_root, cached_state)));
         }
 
@@ -1225,6 +1245,23 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                         state_slot = %state.slot(),
                         "Failed to re-apply envelope in get_advanced_hot_state"
                     );
+                }
+            } else if state.fork_name_unchecked().gloas_enabled()
+                && let Ok(Some(block)) = self
+                    .get_blinded_block(&block_root)
+                    .map(|opt| opt.map(|b| b.deconstruct().0))
+                && let Ok(signed_bid) = block.body().signed_execution_payload_bid()
+            {
+                // No envelope found (e.g. range sync — envelopes are not stored).
+                // Patch `latest_block_hash` from the block's bid so the next block's
+                // bid validation (`bid.parent_block_hash == state.latest_block_hash`)
+                // can pass. This is the disk-path equivalent of the cache-path
+                // patch above. Skip genesis/default bids (zero block_hash).
+                let bid_hash = signed_bid.message.block_hash;
+                if bid_hash.0 != Hash256::zero()
+                    && let Ok(h) = state.latest_block_hash_mut()
+                {
+                    *h = bid_hash;
                 }
             }
 
