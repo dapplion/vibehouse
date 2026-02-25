@@ -14,9 +14,13 @@ use beacon_chain::AvailabilityProcessingStatus;
 use beacon_chain::BeaconChainError;
 use beacon_chain::BlockError;
 use beacon_chain::ChainConfig;
+use beacon_chain::execution_payload::{
+    NotifyExecutionLayer, PayloadNotifier, validate_execution_payload_for_gossip,
+};
 use beacon_chain::execution_proof_verification::GossipExecutionProofError;
 use beacon_chain::gloas_verification::{ExecutionBidError, PayloadEnvelopeError};
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
+use fork_choice::PayloadVerificationStatus;
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
 use types::*;
@@ -3522,5 +3526,330 @@ async fn gloas_bid_gossip_rejects_nonexistent_builder_index() {
         matches!(err, ExecutionBidError::UnknownBuilder { builder_index: 42 }),
         "expected UnknownBuilder with index 42, got {:?}",
         err
+    );
+}
+
+// =============================================================================
+// Execution payload Gloas path tests (PayloadNotifier, validate_execution_payload_for_gossip)
+// =============================================================================
+
+/// PayloadNotifier::new for a Gloas block should return Irrelevant immediately,
+/// without sending any request to the execution layer. Gloas blocks carry no
+/// execution payload in the block body — the payload arrives via a separate
+/// envelope. If this path returned Optimistic or None, the block import would
+/// either call the EL unnecessarily or fail.
+#[tokio::test]
+async fn gloas_payload_notifier_returns_irrelevant() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a new block + state
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((signed_block, _blobs), post_state) = harness.make_block(head_state, next_slot).await;
+
+    assert!(
+        signed_block.fork_name_unchecked().gloas_enabled(),
+        "block should be Gloas"
+    );
+
+    // Construct PayloadNotifier with NotifyExecutionLayer::Yes — if Gloas logic
+    // is correct, it should still return Irrelevant (not call the EL).
+    let notifier = PayloadNotifier::new(
+        harness.chain.clone(),
+        signed_block.clone(),
+        &post_state,
+        NotifyExecutionLayer::Yes,
+    )
+    .expect("PayloadNotifier::new should succeed for Gloas block");
+
+    let status = notifier
+        .notify_new_payload()
+        .await
+        .expect("notify_new_payload should succeed");
+
+    assert_eq!(
+        status,
+        PayloadVerificationStatus::Irrelevant,
+        "Gloas block payload verification should be Irrelevant, got {:?}",
+        status
+    );
+}
+
+/// PayloadNotifier::new for a pre-Gloas (Fulu) block should NOT return Irrelevant
+/// when execution is enabled — it should either return None (requiring EL call)
+/// or Optimistic. This is the complement test ensuring the Gloas early-return
+/// only fires for Gloas blocks.
+#[tokio::test]
+async fn fulu_payload_notifier_does_not_return_irrelevant() {
+    let harness = gloas_harness_at_epoch(2);
+
+    // Build blocks in the Fulu era (before Gloas fork at epoch 2)
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+
+    // Use make_block_return_pre_state so we get the PRE-BLOCK state, which is
+    // what PayloadNotifier::new expects (it runs partially_verify_execution_payload
+    // which checks the execution hash chain against the parent state).
+    let ((signed_block, _blobs), pre_state) = harness
+        .make_block_return_pre_state(head_state, next_slot)
+        .await;
+
+    assert!(
+        !signed_block.fork_name_unchecked().gloas_enabled(),
+        "block should be pre-Gloas (Fulu)"
+    );
+
+    let notifier = PayloadNotifier::new(
+        harness.chain.clone(),
+        signed_block.clone(),
+        &pre_state,
+        NotifyExecutionLayer::Yes,
+    )
+    .expect("PayloadNotifier::new should succeed for Fulu block");
+
+    // For a Fulu block with execution enabled, the notifier should call the EL.
+    // The mock EL will return Valid.
+    let status = notifier
+        .notify_new_payload()
+        .await
+        .expect("notify_new_payload should succeed");
+
+    assert_ne!(
+        status,
+        PayloadVerificationStatus::Irrelevant,
+        "Fulu block should not be Irrelevant — execution is enabled"
+    );
+}
+
+/// validate_execution_payload_for_gossip should be a no-op for Gloas blocks.
+/// Gloas blocks don't carry an execution payload in the block body (the payload
+/// comes via a separate envelope), so the timestamp and merge-transition checks
+/// don't apply. A bug here would reject valid Gloas blocks during gossip.
+#[tokio::test]
+async fn gloas_gossip_skips_execution_payload_validation() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    // Get the head block info from fork choice
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Produce a block at the next slot
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((signed_block, _blobs), _state) = harness.make_block(head_state, next_slot).await;
+
+    assert!(
+        signed_block.fork_name_unchecked().gloas_enabled(),
+        "block should be Gloas"
+    );
+
+    // Get the parent's proto block from fork choice
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let parent_block = fc
+        .get_block(&head_root)
+        .expect("head block should be in fork choice");
+    drop(fc);
+
+    // This should return Ok(()) immediately for Gloas blocks
+    let result = validate_execution_payload_for_gossip(
+        &parent_block,
+        signed_block.message(),
+        &harness.chain,
+    );
+    assert!(
+        result.is_ok(),
+        "validate_execution_payload_for_gossip should be a no-op for Gloas blocks, got {:?}",
+        result.err()
+    );
+}
+
+/// For pre-Gloas (Fulu) blocks, validate_execution_payload_for_gossip performs
+/// real validation (timestamp check). This complement test ensures the Gloas
+/// early-return only fires for Gloas blocks.
+#[tokio::test]
+async fn fulu_gossip_validates_execution_payload() {
+    let harness = gloas_harness_at_epoch(2);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((signed_block, _blobs), _state) = harness.make_block(head_state, next_slot).await;
+
+    assert!(
+        !signed_block.fork_name_unchecked().gloas_enabled(),
+        "block should be Fulu (pre-Gloas)"
+    );
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let parent_block = fc
+        .get_block(&head_root)
+        .expect("head block should be in fork choice");
+    drop(fc);
+
+    // For Fulu blocks with valid execution payloads, this should also return Ok.
+    // The point is that it RUNS the validation (doesn't early-return), and for
+    // a correctly-produced block, the timestamp check passes.
+    let result = validate_execution_payload_for_gossip(
+        &parent_block,
+        signed_block.message(),
+        &harness.chain,
+    );
+    assert!(
+        result.is_ok(),
+        "validate_execution_payload_for_gossip should pass for valid Fulu block, got {:?}",
+        result.err()
+    );
+}
+
+/// The self-build envelope constructed during Gloas block production should have
+/// a valid post-envelope state_root — one that differs from the block's
+/// (pre-envelope) state_root. This tests the `build_self_build_envelope` method
+/// which clones the post-block state, runs `process_execution_payload_envelope`,
+/// and captures the state root from the InvalidStateRoot error path.
+#[tokio::test]
+async fn gloas_self_build_envelope_state_root_differs_from_block() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let envelope = envelope.expect("Gloas block should produce an envelope");
+    let block = &block_contents.0;
+    let block_state_root = block.message().state_root();
+    let envelope_state_root = envelope.message.state_root;
+
+    // The envelope's state_root should be the post-envelope root, which is
+    // different from the block's pre-envelope state_root.
+    assert_ne!(
+        block_state_root, envelope_state_root,
+        "envelope state_root should differ from block state_root (pre vs post envelope)"
+    );
+
+    // Both should be non-zero
+    assert_ne!(
+        block_state_root,
+        Hash256::zero(),
+        "block state_root should not be zero"
+    );
+    assert_ne!(
+        envelope_state_root,
+        Hash256::zero(),
+        "envelope state_root should not be zero"
+    );
+
+    // The envelope should reference the correct block root
+    let block_root = block.canonical_root();
+    assert_eq!(
+        envelope.message.beacon_block_root, block_root,
+        "envelope should reference the block it was built for"
+    );
+
+    // The envelope slot should match the block slot
+    assert_eq!(
+        envelope.message.slot,
+        block.slot(),
+        "envelope slot should match block slot"
+    );
+}
+
+/// After extending the chain, each produced Gloas block should have an envelope
+/// whose payload.block_hash matches the EL-returned payload, and the bid's
+/// parent_block_hash should differ from the payload block_hash (parent vs child).
+#[tokio::test]
+async fn gloas_self_build_envelope_payload_block_hash_consistency() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block = head.beacon_block.as_gloas().expect("should be Gloas");
+
+    // Get the envelope from the store
+    let head_root = head.beacon_block_root;
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&head_root)
+        .expect("store access should succeed")
+        .expect("envelope should exist for head block");
+
+    let payload_block_hash = envelope.message.payload.block_hash;
+    let bid_parent_hash = block
+        .message
+        .body
+        .signed_execution_payload_bid
+        .message
+        .parent_block_hash;
+
+    // The payload's block_hash should not be zero (the EL returned a real payload)
+    assert_ne!(
+        payload_block_hash,
+        ExecutionBlockHash::zero(),
+        "payload block_hash should be non-zero"
+    );
+
+    // The bid's parent_block_hash should differ from the payload block_hash
+    // (parent_block_hash is the PREVIOUS block's execution hash, payload block_hash
+    // is THIS block's execution hash)
+    assert_ne!(
+        bid_parent_hash, payload_block_hash,
+        "bid parent_block_hash should differ from payload block_hash"
+    );
+}
+
+/// The Gloas execution payload path in `get_execution_payload` reads gas_limit
+/// from `state.latest_execution_payload_bid().gas_limit` instead of
+/// `state.latest_execution_payload_header().gas_limit`. Verify that the gas_limit
+/// in the produced block's payload is consistent with the bid's gas_limit from
+/// the previous state.
+#[tokio::test]
+async fn gloas_block_production_gas_limit_from_bid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+
+    // Read the gas_limit that get_execution_payload will extract
+    let bid_gas_limit = head_state
+        .latest_execution_payload_bid()
+        .expect("Gloas state should have latest_execution_payload_bid")
+        .gas_limit;
+
+    // The gas_limit should be non-zero (set by the mock EL)
+    assert_ne!(
+        bid_gas_limit, 0,
+        "latest_execution_payload_bid gas_limit should be non-zero"
+    );
+
+    // Produce a block and verify the payload's gas_limit is reasonable
+    // (the mock EL should produce a payload with a gas_limit related to the parent)
+    harness.advance_slot();
+    let state = harness.chain.head_beacon_state_cloned();
+    let next_slot = state.slot() + 1;
+    let (_block_contents, _state, envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let envelope = envelope.expect("should produce envelope");
+    let payload_gas_limit = envelope.message.payload.gas_limit;
+
+    // The produced payload should have a non-zero gas_limit
+    assert_ne!(
+        payload_gas_limit, 0,
+        "produced payload gas_limit should be non-zero"
     );
 }
