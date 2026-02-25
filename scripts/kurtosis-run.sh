@@ -15,12 +15,15 @@ set -euo pipefail
 #                   restart them, verify they sync through the Gloas fork boundary
 #   --churn         Node churn test: finalize chain, kill a validator node, verify chain
 #                   continues finalizing (75% stake), restart node, verify recovery
+#   --mainnet       Mainnet preset test: realistic committee sizes, 32 slots/epoch,
+#                   12s slots, 512 validators (128/node × 4 nodes)
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
 #   kurtosis.log    — kurtosis run output (enclave startup)
 #   health.log      — beacon API polling results (JSON per poll)
 #   sync.log        — sync mode: non-validator node sync progress (--sync only)
+#   churn.log       — churn mode: kill/recovery phase progress (--churn only)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,6 +47,7 @@ STATELESS_MODE=false
 MULTICLIENT_MODE=false
 SYNC_MODE=false
 CHURN_MODE=false
+MAINNET_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -53,12 +57,21 @@ for arg in "$@"; do
     --multiclient)  MULTICLIENT_MODE=true ;;
     --sync)         SYNC_MODE=true ;;
     --churn)        CHURN_MODE=true ;;
+    --mainnet)      MAINNET_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
-# Use stateless config when --stateless is set
-if [ "$CHURN_MODE" = true ]; then
+# Select config based on mode
+if [ "$MAINNET_MODE" = true ]; then
+  KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-mainnet.yaml"
+  SLOTS_PER_EPOCH=32
+  GLOAS_FORK_SLOT=$((GLOAS_FORK_EPOCH * SLOTS_PER_EPOCH))
+  POLL_INTERVAL=24          # 2 slots at 12s each
+  TARGET_FINALIZED_EPOCH=4  # past Gloas fork, enough to prove chain works
+  TIMEOUT=2400              # 40 minutes (mainnet epochs are ~6.4 min each)
+  echo "==> Mainnet mode: using $KURTOSIS_CONFIG (4 nodes, 512 validators, 32 slots/epoch)"
+elif [ "$CHURN_MODE" = true ]; then
   # Churn uses the default 4-node config — all 4 are validators
   TARGET_FINALIZED_EPOCH=3  # lower initial target: just past Gloas fork
   TIMEOUT=900               # 15 minutes total (warm-up + kill + recovery)

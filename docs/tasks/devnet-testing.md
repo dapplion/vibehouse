@@ -12,7 +12,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 |----------|--------|--------|
 | Syncing (genesis sync) | DONE (script) | `--sync` flag: 2 validators + 2 sync targets, nodes catch up through Gloas fork |
 | Node churn | DONE (script) | `--churn` flag: kill validator node 4, verify chain continues (75% stake), restart, verify recovery |
-| Mainnet preset | TODO | Realistic committee sizes, PTC dynamics |
+| Mainnet preset | DONE (script) | `--mainnet` flag: 4 nodes, 512 validators, 32 slots/epoch, 12s slots, ~40 min timeout |
 | Long-running | TODO | 30+ min, catch memory leaks and stalls |
 | Builder path | TODO | External bids via API, envelope reveal flow |
 | Payload withholding | TODO | Bid without reveal, fork choice handles it |
@@ -99,4 +99,42 @@ scripts/kurtosis-run.sh --sync --no-teardown # Leave running for inspection
 scripts/kurtosis-run.sh --churn              # Full test
 scripts/kurtosis-run.sh --churn --no-build   # Skip Docker build
 scripts/kurtosis-run.sh --churn --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Mainnet preset test (run 110)
+
+**Implemented the mainnet preset devnet test scenario** — run with realistic mainnet parameters instead of the fast minimal preset.
+
+**What was built:**
+
+1. **`kurtosis/vibehouse-mainnet.yaml`** — Kurtosis config for mainnet preset:
+   - 4 nodes (vibehouse CL + geth EL), same as default
+   - `preset: mainnet` — 32 slots/epoch, 12s/slot, TARGET_COMMITTEE_SIZE=128, PTC_SIZE=512
+   - `num_validator_keys_per_node: 128` — 512 total validators
+   - Gloas fork at epoch 1 (slot 32)
+
+2. **`--mainnet` flag in `kurtosis-run.sh`** — Overrides timing constants:
+   - `SLOTS_PER_EPOCH=32`, recalculates `GLOAS_FORK_SLOT`
+   - `POLL_INTERVAL=24` (2 mainnet slots)
+   - `TARGET_FINALIZED_EPOCH=4` (past Gloas fork)
+   - `TIMEOUT=2400` (40 minutes — mainnet epochs are ~6.4 min each)
+
+**Key design decisions:**
+- 512 validators (128/node) — enough for meaningful committee sizes, though smaller than real mainnet. With mainnet TARGET_COMMITTEE_SIZE=128, we get 1 committee per slot (512 / (32 × 128) ≈ 0.125, clamped to 1).
+- 40-minute timeout — mainnet finalization is much slower: ~6.4 min/epoch, and we need 4+ epochs to justify + finalize past the Gloas fork.
+- No dora (explorer) — reduces resource overhead for the longer-running test.
+- Same health polling loop — the script's generic health check (finalization tracking, stall detection) works with any preset.
+
+**What this tests:**
+- Mainnet-preset committee sizes and committee assignment logic
+- PTC dynamics with PTC_SIZE=512 (vs 2 in minimal)
+- Longer epoch times (attestation aggregation over 32 slots)
+- Gloas fork transition at realistic timing (slot 32 instead of slot 8)
+- General chain health with heavier compute per epoch
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --mainnet              # Full test (~40 min)
+scripts/kurtosis-run.sh --mainnet --no-build   # Skip Docker build
+scripts/kurtosis-run.sh --mainnet --no-teardown # Leave running for inspection
 ```

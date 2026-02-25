@@ -273,6 +273,9 @@ scripts/kurtosis-run.sh --sync
 
 # Node churn test (kill validator, verify chain continues, restart, verify recovery)
 scripts/kurtosis-run.sh --churn
+
+# Mainnet preset test (32 slots/epoch, 12s slots, 512 validators, ~40 min)
+scripts/kurtosis-run.sh --mainnet
 ```
 
 ### How the Devnet Works

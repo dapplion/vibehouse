@@ -1,0 +1,18 @@
+participants:
+  - el_type: geth
+    el_image: ethpandaops/geth:epbs-devnet-0
+    cl_type: lighthouse
+    cl_image: vibehouse:local
+    count: 4
+network_params:
+  gloas_fork_epoch: 1
+  preset: mainnet
+  # 128 validators/node × 4 nodes = 512 total validators
+  # TARGET_COMMITTEE_SIZE=128 (mainnet), PTC_SIZE=512
+  # committees ~= 512 / (32 × 128) = ~0.125 → clamped to 1 per slot
+  # PTC fills from full committee, so PTC dynamics are exercised
+  num_validator_keys_per_node: 128
+additional_services:
+  - spamoor
+snooper_enabled: true
+global_log_level: debug
