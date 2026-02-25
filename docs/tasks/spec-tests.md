@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — process_epoch_single_pass Gloas integration tests (run 82)
+- Checked consensus-specs PRs since run 81: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Added 6 process_epoch_single_pass Gloas integration tests** (previously ZERO tests for the Gloas epoch processing dispatch path):
+  - `gloas_epoch_processing_dispatches_builder_payments`: payment above quorum is promoted to withdrawals through full epoch pipeline
+  - `gloas_epoch_processing_skips_payments_when_disabled`: config flag `builder_pending_payments=false` prevents processing
+  - `gloas_epoch_processing_rotates_payments`: second-half payments rotated to first half, second half cleared
+  - `gloas_epoch_processing_full_config`: full `SinglePassConfig::enable_all()` with rewards, registry, slashings, deposits, consolidations, builder payments, and proposer lookahead — end-to-end Gloas epoch processing
+  - `gloas_epoch_processing_below_quorum_not_promoted`: payment below quorum not promoted through pipeline
+  - `fulu_state_is_not_gloas_enabled`: Fulu state fork name does not have Gloas enabled (confirming dispatch skip)
+- Built `make_gloas_state_for_epoch_processing()` helper: full Gloas state with participation data, builder registry, pending payments, proposer lookahead — reusable for future epoch processing tests
+- Fixed typo `TOOO(EIP-7917)` → `TODO(EIP-7917)` in single_pass.rs
+- All 293 state_processing tests pass (was 287), cargo fmt + clippy clean
+
 ### 2026-02-25 — gossip peer-scoring spec compliance fix + code audit (run 81)
 - Checked consensus-specs PRs since run 80: no new Gloas spec changes merged
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558

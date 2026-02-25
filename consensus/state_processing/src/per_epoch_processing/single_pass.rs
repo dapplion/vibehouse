@@ -480,7 +480,7 @@ pub fn process_epoch_single_pass<E: EthSpec>(
     Ok(summary)
 }
 
-// TOOO(EIP-7917): use balances cache
+// TODO(EIP-7917): use balances cache
 pub fn process_proposer_lookahead<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
@@ -1294,9 +1294,11 @@ mod tests {
     use ssz_types::BitVector;
     use std::sync::Arc;
     use types::{
-        BeaconBlockHeader, BeaconStateFulu, CACHED_EPOCHS, CommitteeCache,
-        ExecutionPayloadHeaderFulu, FixedBytesExtended, FixedVector, Fork, Hash256, MinimalEthSpec,
-        PubkeyCache, SlashingsCache, Slot, SyncCommittee,
+        Address, BeaconBlockHeader, BeaconStateFulu, BeaconStateGloas, Builder,
+        BuilderPendingPayment, BuilderPendingWithdrawal, CACHED_EPOCHS, CommitteeCache,
+        ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadHeaderFulu, FixedBytesExtended,
+        FixedVector, Fork, Hash256, MinimalEthSpec, PubkeyCache, PublicKeyBytes, SlashingsCache,
+        Slot, SyncCommittee,
     };
 
     type E = MinimalEthSpec;
@@ -1632,6 +1634,364 @@ mod tests {
             &la1[slots_per_epoch..],
             &la2[slots_per_epoch..],
             "different randao_mixes should produce different proposer selections"
+        );
+    }
+
+    // ── Gloas process_epoch_single_pass integration tests ──
+
+    /// Build a minimal Gloas state at epoch 1 (slot 8) for epoch processing tests.
+    ///
+    /// The state has `NUM_VALIDATORS` active validators with participation data,
+    /// Gloas-specific fields (builders, pending payments, etc.), and all caches
+    /// required by `process_epoch_single_pass`.
+    fn make_gloas_state_for_epoch_processing(
+        payments: Vec<BuilderPendingPayment>,
+    ) -> (BeaconState<E>, ChainSpec) {
+        let mut spec = E::default_spec();
+        // All forks at epoch 0 so fork_name_at_epoch returns Gloas for any epoch.
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+        let slot = Slot::new(E::slots_per_epoch()); // slot 8 = epoch 1
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let mut validators = Vec::with_capacity(NUM_VALIDATORS);
+        let mut balances = Vec::with_capacity(NUM_VALIDATORS);
+        for _ in 0..NUM_VALIDATORS {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(Validator {
+                effective_balance: BALANCE,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..Validator::default()
+            });
+            balances.push(BALANCE);
+        }
+
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        // Participation: all validators participated with all flags in both epochs
+        let mut full_participation = ParticipationFlags::default();
+        for flag_index in 0..NUM_FLAG_INDICES {
+            full_participation.add_flag(flag_index).unwrap();
+        }
+        let participation = List::new(vec![full_participation; NUM_VALIDATORS]).unwrap();
+        let inactivity_scores = List::new(vec![0u64; NUM_VALIDATORS]).unwrap();
+
+        // Fill payments vector to full length (16 for minimal = 2 * slots_per_epoch)
+        let payments_limit = E::builder_pending_payments_limit();
+        let mut full_payments = payments;
+        full_payments.resize(payments_limit, BuilderPendingPayment::default());
+
+        let builder = Builder {
+            pubkey: PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: 100_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+
+        let mut state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::zero(),
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: participation.clone(),
+            current_epoch_participation: participation,
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            inactivity_scores,
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid {
+                block_hash: ExecutionBlockHash::repeat_byte(0x04),
+                ..Default::default()
+            },
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::new(vec![builder]).unwrap(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(
+                vec![0xFFu8; slots_per_hist / 8].into(),
+            )
+            .unwrap(),
+            builder_pending_payments: Vector::new(full_payments).unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: ExecutionBlockHash::repeat_byte(0x02),
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        // Initialize total active balance cache
+        let total_active = NUM_VALIDATORS as u64 * BALANCE;
+        state.set_total_active_balance(epoch, total_active, &spec);
+
+        // Initialize proposer lookahead
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+        let current_epoch = state.current_epoch();
+        let mut lookahead = Vec::with_capacity(<E as EthSpec>::ProposerLookaheadSlots::to_usize());
+        for i in 0..(spec.min_seed_lookahead.safe_add(1).unwrap().as_u64()) {
+            let target_epoch = current_epoch.safe_add(i).unwrap();
+            let proposers = state
+                .get_beacon_proposer_indices(target_epoch, &spec)
+                .unwrap();
+            assert_eq!(proposers.len(), slots_per_epoch);
+            lookahead.extend(proposers.into_iter().map(|x| x as u64));
+        }
+        *state.proposer_lookahead_mut().unwrap() = Vector::new(lookahead).unwrap();
+
+        (state, spec)
+    }
+
+    fn make_payment(weight: u64, amount: u64, builder_index: u64) -> BuilderPendingPayment {
+        BuilderPendingPayment {
+            weight,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount,
+                builder_index,
+            },
+        }
+    }
+
+    fn quorum_for_balance(total_active: u64) -> u64 {
+        let per_slot = total_active / E::slots_per_epoch();
+        per_slot.saturating_mul(6) / 10
+    }
+
+    #[test]
+    fn gloas_epoch_processing_dispatches_builder_payments() {
+        // Verify that process_epoch_single_pass with a Gloas state calls
+        // process_builder_pending_payments — a payment above quorum should
+        // be promoted to the pending withdrawals list.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payment = make_payment(quorum, 5_000_000_000, 0);
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![payment]);
+
+        // Use a config that only enables builder_pending_payments and
+        // effective_balance_updates (the latter is needed for cache finalization).
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "payment above quorum should be promoted to withdrawals"
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            5_000_000_000
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_skips_payments_when_disabled() {
+        // When builder_pending_payments is disabled, no payments should be processed
+        // even if they meet the quorum.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payment = make_payment(quorum, 5_000_000_000, 0);
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![payment]);
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: false,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            0,
+            "payments should not be processed when config flag is disabled"
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_rotates_payments() {
+        // Verify the full rotation: payments in the second half should move
+        // to the first half after epoch processing.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let mut payments = vec![BuilderPendingPayment::default(); 8]; // empty first half
+        for i in 0..8 {
+            payments.push(make_payment(
+                quorum + 100,
+                (i + 10) as u64 * 1_000_000_000,
+                0,
+            ));
+        }
+
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(payments);
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // No withdrawals from first half (all empty)
+        assert_eq!(gloas.builder_pending_withdrawals.len(), 0);
+
+        // Second-half payments should now be in first half
+        for i in 0..8 {
+            let p = gloas.builder_pending_payments.get(i).unwrap();
+            assert_eq!(
+                p.weight,
+                quorum + 100,
+                "slot {i} should have rotated payment weight"
+            );
+        }
+
+        // Second half should be cleared
+        for i in 8..16 {
+            let p = gloas.builder_pending_payments.get(i).unwrap();
+            assert_eq!(p.weight, 0, "second half slot {i} should be cleared");
+        }
+    }
+
+    #[test]
+    fn gloas_epoch_processing_full_config() {
+        // Run process_epoch_single_pass with the full default config on a Gloas state.
+        // This exercises the complete pipeline including rewards, registry updates,
+        // slashings, pending deposits, consolidations, and builder payments.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payment = make_payment(quorum, 3_000_000_000, 0);
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![payment]);
+
+        let conf = SinglePassConfig::enable_all();
+
+        let _summary = process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        // Builder payment should have been processed
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "full config should also process builder payments"
+        );
+
+        // Proposer lookahead should have been updated (shifted)
+        // Verify it still has the right length
+        assert_eq!(
+            gloas.proposer_lookahead.len(),
+            <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_below_quorum_not_promoted() {
+        // Payment below quorum should not be promoted through the epoch pipeline.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payment = make_payment(quorum - 1, 5_000_000_000, 0);
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![payment]);
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            0,
+            "payment below quorum should not be promoted"
+        );
+    }
+
+    #[test]
+    fn fulu_state_is_not_gloas_enabled() {
+        // Verify that a Fulu state's fork name does not have Gloas enabled,
+        // confirming the Gloas branch in process_epoch_single_pass would be skipped.
+        let (state, _spec) = make_fulu_state_with_lookahead();
+        let fork_name = state.fork_name_unchecked();
+        assert!(
+            !fork_name.gloas_enabled(),
+            "Fulu state should not have Gloas enabled"
+        );
+        assert!(
+            state.as_gloas().is_err(),
+            "Fulu state should not be a Gloas variant"
         );
     }
 }
