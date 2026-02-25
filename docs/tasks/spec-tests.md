@@ -29,6 +29,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — apply_execution_bid_to_fork_choice tests + spec tracking (run 99)
+- Checked consensus-specs PRs since run 98: no new Gloas spec changes merged
+  - **PR #4918** (merged Feb 23): "Only allow attestations for known payload statuses" — already confirmed implemented in run 97
+  - **PR #4923** (merged Feb 16): "Ignore beacon block if parent payload unknown" — already confirmed implemented (block_verification.rs:972-984, gossip_methods.rs:1291-1302, with 3 existing tests)
+  - **PR #4930** (merged Feb 16): "Rename execution_payload_states to payload_states" — cosmetic only, vibehouse already uses `payload_states` naming in comments
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** of beacon_chain Gloas methods — identified `apply_execution_bid_to_fork_choice` (line 2507) as the highest-impact untested path:
+  - Zero direct test coverage — all prior tests bypassed this method and manipulated the bid pool directly
+  - The method calls both `execution_bid_pool.insert()` AND `fork_choice.on_execution_bid()`, but only the pool path was tested
+  - `on_execution_bid` sets builder_index, resets payload_revealed, initializes PTC weights — critical for block viability
+- **Added 5 apply_execution_bid_to_fork_choice integration tests** (previously ZERO tests for this beacon_chain method):
+  - `gloas_apply_bid_to_fork_choice_updates_node_fields`: applies an external bid via VerifiedExecutionBid, verifies fork choice node has updated builder_index, payload_revealed=false, ptc_weight=0, ptc_blob_data_available_weight=0, payload_data_available=false. Also verifies pre-condition (self-build builder_index before external bid)
+  - `gloas_apply_bid_to_fork_choice_inserts_into_pool`: applies bid, verifies it's retrievable from the execution_bid_pool via get_best_execution_bid with correct value and builder_index
+  - `gloas_apply_bid_to_fork_choice_rejects_unknown_root`: verifies error when bid references a beacon block root not in fork choice
+  - `gloas_apply_bid_to_fork_choice_rejects_slot_mismatch`: verifies error when bid slot doesn't match block's actual slot
+  - `gloas_bid_then_envelope_lifecycle_via_beacon_chain`: full bid→reveal lifecycle — applies external bid (payload_revealed resets to false), then calls on_execution_payload (payload_revealed flips to true, execution_status=Optimistic), verifying the complete state machine through beacon_chain
+- Added `__new_for_testing` constructor on VerifiedExecutionBid (#[doc(hidden)]) to allow integration tests to construct verified bids without BLS signature validation against registered builders
+- All 537 beacon_chain tests pass (was 532), cargo fmt clean
+
 ### 2026-02-25 — fork transition boundary integration tests + spec tracking (run 98)
 - Checked consensus-specs PRs since run 97: no new Gloas spec changes merged
   - Only #4931 (FOCIL rebase onto Gloas — EIP-7805 Heze, not Gloas ePBS) already tracked
