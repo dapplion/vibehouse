@@ -112,7 +112,7 @@ pub fn get_extra_fields(spec: &ChainSpec) -> HashMap<String, Value> {
     let hex_string = |value: &[u8]| format!("0x{}", hex::encode(value)).into();
     let u32_hex = |v: u32| hex_string(&v.to_le_bytes());
     let u8_hex = |v: u8| hex_string(&v.to_le_bytes());
-    hashmap! {
+    let mut map = hashmap! {
         "bls_withdrawal_prefix".to_uppercase() => u8_hex(spec.bls_withdrawal_prefix_byte),
         "eth1_address_withdrawal_prefix".to_uppercase() => u8_hex(spec.eth1_address_withdrawal_prefix_byte),
         "domain_beacon_proposer".to_uppercase() => u32_hex(spec.domain_beacon_proposer),
@@ -134,13 +134,32 @@ pub fn get_extra_fields(spec: &ChainSpec) -> HashMap<String, Value> {
             altair::SYNC_COMMITTEE_SUBNET_COUNT.to_string().into(),
         "target_aggregators_per_sync_subcommittee".to_uppercase() =>
             altair::TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE.to_string().into(),
+        // Capella
+        "domain_bls_to_execution_change".to_uppercase() =>
+            u32_hex(spec.domain_bls_to_execution_change),
         // Deneb
         "versioned_hash_version_kzg".to_uppercase() => deneb::VERSIONED_HASH_VERSION_KZG.to_string().into(),
         // Electra
         "compounding_withdrawal_prefix".to_uppercase() => u8_hex(spec.compounding_withdrawal_prefix_byte),
         "unset_deposit_requests_start_index".to_uppercase() => spec.unset_deposit_requests_start_index.to_string().into(),
         "full_exit_request_amount".to_uppercase() => spec.full_exit_request_amount.to_string().into(),
+        // Networking
+        "attestation_subnet_count".to_uppercase() =>
+            spec.attestation_subnet_count.to_string().into(),
+    };
+    if let Some(reorg_head) = spec.reorg_head_weight_threshold {
+        map.insert(
+            "REORG_HEAD_WEIGHT_THRESHOLD".to_string(),
+            reorg_head.to_string().into(),
+        );
     }
+    if let Some(reorg_parent) = spec.reorg_parent_weight_threshold {
+        map.insert(
+            "REORG_PARENT_WEIGHT_THRESHOLD".to_string(),
+            reorg_parent.to_string().into(),
+        );
+    }
+    map
 }
 
 #[cfg(test)]
@@ -181,5 +200,29 @@ mod test {
         let from: ConfigAndPresetGloas =
             serde_yaml::from_reader(reader).expect("error while deserializing");
         assert_eq!(ConfigAndPreset::Gloas(from), yamlconfig);
+    }
+
+    #[test]
+    fn extra_fields_contains_missing_spec_values() {
+        let spec = ChainSpec::mainnet();
+        let extra = get_extra_fields(&spec);
+
+        // Domain types
+        assert!(extra.contains_key("DOMAIN_BLS_TO_EXECUTION_CHANGE"));
+        assert_eq!(
+            extra["DOMAIN_BLS_TO_EXECUTION_CHANGE"],
+            format!("0x{}", hex::encode(10u32.to_le_bytes()))
+        );
+
+        // Networking
+        assert!(extra.contains_key("ATTESTATION_SUBNET_COUNT"));
+        assert_eq!(extra["ATTESTATION_SUBNET_COUNT"], "64");
+
+        // Reorg thresholds (Option fields — mainnet sets them)
+        assert!(extra.contains_key("REORG_HEAD_WEIGHT_THRESHOLD"));
+        assert_eq!(extra["REORG_HEAD_WEIGHT_THRESHOLD"], "20");
+
+        assert!(extra.contains_key("REORG_PARENT_WEIGHT_THRESHOLD"));
+        assert_eq!(extra["REORG_PARENT_WEIGHT_THRESHOLD"], "160");
     }
 }
