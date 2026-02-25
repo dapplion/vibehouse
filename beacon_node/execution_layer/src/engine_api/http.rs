@@ -2251,4 +2251,187 @@ mod test {
             )
             .await;
     }
+
+    #[tokio::test]
+    async fn new_payload_v5_gloas_request() {
+        Tester::new(true)
+            .assert_request_equals(
+                |client| async move {
+                    let payload = types::ExecutionPayloadGloas::<MainnetEthSpec> {
+                        parent_hash: ExecutionBlockHash::repeat_byte(0),
+                        fee_recipient: Address::repeat_byte(1),
+                        state_root: Hash256::repeat_byte(1),
+                        receipts_root: Hash256::repeat_byte(0),
+                        logs_bloom: vec![1; 256].into(),
+                        prev_randao: Hash256::repeat_byte(1),
+                        block_number: 0,
+                        gas_limit: 1,
+                        gas_used: 2,
+                        timestamp: 42,
+                        extra_data: vec![].into(),
+                        base_fee_per_gas: Uint256::from(1),
+                        block_hash: ExecutionBlockHash::repeat_byte(1),
+                        transactions: vec![].into(),
+                        withdrawals: vec![].into(),
+                        blob_gas_used: 0,
+                        excess_blob_gas: 0,
+                    };
+                    let execution_requests: types::ExecutionRequests<MainnetEthSpec> =
+                        Default::default();
+                    let _ = client
+                        .new_payload_v5_gloas(NewPayloadRequestGloas {
+                            execution_payload: &payload,
+                            versioned_hashes: vec![],
+                            parent_beacon_block_root: Hash256::repeat_byte(0),
+                            execution_requests: &execution_requests,
+                        })
+                        .await;
+                },
+                json!({
+                    "id": STATIC_ID,
+                    "jsonrpc": JSONRPC_VERSION,
+                    "method": ENGINE_NEW_PAYLOAD_V5,
+                    "params": [{
+                        "parentHash": HASH_00,
+                        "feeRecipient": ADDRESS_01,
+                        "stateRoot": HASH_01,
+                        "receiptsRoot": HASH_00,
+                        "logsBloom": LOGS_BLOOM_01,
+                        "prevRandao": HASH_01,
+                        "blockNumber": "0x0",
+                        "gasLimit": "0x1",
+                        "gasUsed": "0x2",
+                        "timestamp": "0x2a",
+                        "extraData": "0x",
+                        "baseFeePerGas": "0x1",
+                        "blockHash": HASH_01,
+                        "transactions": [],
+                        "withdrawals": [],
+                        "blobGasUsed": "0x0",
+                        "excessBlobGas": "0x0",
+                    },
+                    [],
+                    HASH_00,
+                    []
+                    ]
+                }),
+            )
+            .await;
+
+        Tester::new(false)
+            .assert_auth_failure(|client| async move {
+                let payload = types::ExecutionPayloadGloas::<MainnetEthSpec>::default();
+                let execution_requests: types::ExecutionRequests<MainnetEthSpec> =
+                    Default::default();
+                client
+                    .new_payload_v5_gloas(NewPayloadRequestGloas {
+                        execution_payload: &payload,
+                        versioned_hashes: vec![],
+                        parent_beacon_block_root: Hash256::zero(),
+                        execution_requests: &execution_requests,
+                    })
+                    .await
+            })
+            .await;
+    }
+
+    #[tokio::test]
+    async fn get_payload_v5_gloas_request() {
+        Tester::new(true)
+            .assert_request_equals(
+                |client| async move {
+                    let _ = client
+                        .get_payload_v5::<MainnetEthSpec>(ForkName::Gloas, [42; 8])
+                        .await;
+                },
+                json!({
+                    "id": STATIC_ID,
+                    "jsonrpc": JSONRPC_VERSION,
+                    "method": ENGINE_GET_PAYLOAD_V5,
+                    "params": ["0x2a2a2a2a2a2a2a2a"]
+                }),
+            )
+            .await;
+
+        Tester::new(false)
+            .assert_auth_failure(|client| async move {
+                client
+                    .get_payload_v5::<MainnetEthSpec>(ForkName::Gloas, [42; 8])
+                    .await
+            })
+            .await;
+    }
+
+    #[tokio::test]
+    async fn get_payload_v5_gloas_response() {
+        Tester::new(true)
+            .with_preloaded_responses(
+                vec![json!({
+                    "jsonrpc": JSONRPC_VERSION,
+                    "id": STATIC_ID,
+                    "result": {
+                        "executionPayload": {
+                            "parentHash": HASH_00,
+                            "feeRecipient": ADDRESS_01,
+                            "stateRoot": HASH_01,
+                            "receiptsRoot": HASH_00,
+                            "logsBloom": LOGS_BLOOM_01,
+                            "prevRandao": HASH_01,
+                            "blockNumber": "0x1",
+                            "gasLimit": "0x1c95111",
+                            "gasUsed": "0x0",
+                            "timestamp": "0x5",
+                            "extraData": "0x",
+                            "baseFeePerGas": "0x7",
+                            "blockHash": HASH_01,
+                            "transactions": [],
+                            "withdrawals": [],
+                            "blobGasUsed": "0x0",
+                            "excessBlobGas": "0x0"
+                        },
+                        "blockValue": "0x2a",
+                        "blobsBundle": {
+                            "commitments": [],
+                            "proofs": [],
+                            "blobs": []
+                        },
+                        "shouldOverrideBuilder": false,
+                        "executionRequests": []
+                    }
+                })],
+                |client| async move {
+                    let response = client
+                        .get_payload_v5::<MainnetEthSpec>(ForkName::Gloas, [42; 8])
+                        .await
+                        .unwrap();
+
+                    let expected_payload = types::ExecutionPayloadGloas::<MainnetEthSpec> {
+                        parent_hash: ExecutionBlockHash::repeat_byte(0),
+                        fee_recipient: Address::repeat_byte(1),
+                        state_root: Hash256::repeat_byte(1),
+                        receipts_root: Hash256::repeat_byte(0),
+                        logs_bloom: vec![1; 256].into(),
+                        prev_randao: Hash256::repeat_byte(1),
+                        block_number: 1,
+                        gas_limit: u64::from_str_radix("1c95111", 16).unwrap(),
+                        gas_used: 0,
+                        timestamp: 5,
+                        extra_data: vec![].into(),
+                        base_fee_per_gas: Uint256::from(7),
+                        block_hash: ExecutionBlockHash::repeat_byte(1),
+                        transactions: vec![].into(),
+                        withdrawals: vec![].into(),
+                        blob_gas_used: 0,
+                        excess_blob_gas: 0,
+                    };
+
+                    let payload: ExecutionPayload<MainnetEthSpec> = response.clone().into();
+                    assert_eq!(payload, ExecutionPayload::Gloas(expected_payload),);
+
+                    assert_eq!(*response.block_value(), Uint256::from(42));
+                    assert!(!response.should_override_builder().unwrap());
+                },
+            )
+            .await;
+    }
 }
