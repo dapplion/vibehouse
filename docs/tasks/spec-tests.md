@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — store cold state dual-indexing tests + spec tracking (run 87)
+- Checked consensus-specs PRs since run 86: no new Gloas spec changes merged
+  - No PRs merged since Feb 24 (#4946 was the last)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+  - #4898 (remove pending from tiebreaker): approved but sitting unmerged 20 days
+  - #4892 (remove impossible branch): approved but sitting unmerged
+  - #4843 (variable PTC deadline): 1 approval (jtraglia), unresolved structural feedback from potuz
+  - #4939 (request missing envelopes): 0 approvals, unresolved correctness issues (block_hash vs beacon_block_root)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Added 2 store integration tests** for Gloas cold state dual-indexing after finalization:
+  - `gloas_cold_state_dual_indexing_after_finalization`: builds 7 epochs of Gloas blocks with disk-backed store, triggers finalization + freezer migration, verifies that for every finalized Gloas block both the pre-envelope state root (block.state_root) and post-envelope state root (envelope.state_root) resolve to the correct slot via `load_cold_state_slot` in the cold DB
+  - `gloas_cold_state_loadable_by_post_envelope_root`: verifies the full `load_cold_state` path — loads a complete state from the cold DB using the post-envelope root, confirms correct slot
+  - These tests cover the dual-indexing mechanism in `migrate_database` (hot_cold_store.rs:3741-3759) that stores ColdStateSummary entries for both pre-envelope and post-envelope state roots. Previously zero tests verified this critical path — a regression here would cause state lookup failures on archive nodes after finalization
+- All 476 beacon_chain tests pass (was 474), cargo fmt + clippy clean
+
 ### 2026-02-25 — issue triage + spec tracking (run 86)
 - Checked consensus-specs PRs since run 85: no new Gloas spec changes merged
   - Only infrastructure PRs: actions/stale bump (#4946), inclusion list test fix (#4945)
