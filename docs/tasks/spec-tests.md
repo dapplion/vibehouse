@@ -29,6 +29,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas self-build envelope EL/error path tests + spec tracking (run 107)
+- Checked consensus-specs PRs since run 106: no new Gloas spec changes merged
+  - #4946 (GH Actions dependency bump) and #4945 (inclusion list test fix — Heze, not Gloas) — both irrelevant
+  - New open PRs to track: #4947 (pre-fork subscription note for proposer_preferences topic), #4948 (reorder payload status constants — would change EMPTY 1→0, FULL 2→1)
+  - All previously tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4926, #4558, #4747
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Addressed process_self_build_envelope EL execution status and error paths**: the `process_self_build_envelope` method (beacon_chain.rs) transitions blocks from Optimistic to Valid via `on_valid_execution_payload` after the EL confirms the payload. Had ZERO tests verifying this critical execution status transition, the stateless mode behavior, error paths, or the chain's ability to continue producing blocks after envelope processing
+- **Added 5 self-build envelope integration tests** (previously ZERO tests for these paths):
+  - **Execution status transition (1 test):**
+    - `gloas_self_build_envelope_marks_execution_status_valid`: imports block (Optimistic), processes self-build envelope (mock EL returns Valid), verifies execution_status transitions to Valid(payload_block_hash). Tests the critical path: without this transition, head stays Optimistic and block production is disabled
+  - **Stateless mode behavior (1 test):**
+    - `gloas_self_build_envelope_stateless_mode_stays_optimistic`: uses stateless harness (no EL), processes self-build envelope, verifies execution_status remains Optimistic (EL not called) but payload_revealed=true and state transition still runs (latest_block_hash set). Tests the stateless validation path where EL verification is skipped
+  - **Missing block root error (1 test):**
+    - `gloas_self_build_envelope_missing_block_root_errors`: constructs envelope referencing non-existent block, verifies error mentioning "Missing beacon block". Tests the guard against envelopes arriving for unimported blocks
+  - **Continued block production (1 test):**
+    - `gloas_self_build_envelope_enables_next_block_production`: imports block, processes envelope, recomputes head, produces next block. Verifies the chain can continue producing blocks after envelope processing — parent_root matches, bid's parent_block_hash matches previous envelope's payload block_hash
+  - **Store persistence field verification (1 test):**
+    - `gloas_self_build_envelope_store_persistence_fields`: imports block (no envelope in store), processes envelope, verifies all stored envelope fields match (slot, builder_index, beacon_block_root, payload block_hash, BUILDER_INDEX_SELF_BUILD)
+- These tests close a critical gap: process_self_build_envelope is the ONLY code path that transitions self-built blocks from Optimistic to Valid. If this transition fails, the node cannot produce subsequent blocks (forkchoiceUpdated returns SYNCING for optimistic heads). The stateless mode test verifies that stateless nodes correctly skip EL calls while still performing state transitions
+- **Remaining gaps from run 96 analysis**: P2 (PayloadAttestationService), P5 (poll_ptc_duties) — both require mock BN infrastructure; P6 (store reconstruct blinded envelope fallback), P8 (post_block_import self-build envelope branch — now partially covered by these tests)
+- All 558 beacon_chain tests pass (was 553), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas early attester cache payload_present tests + spec tracking (run 106)
 - Checked consensus-specs PRs since run 105: no new Gloas spec changes merged
   - No new Gloas PRs merged since run 105 (latest merge was #4918 on Feb 23, already tracked)
