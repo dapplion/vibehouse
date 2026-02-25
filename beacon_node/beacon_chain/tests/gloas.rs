@@ -4917,3 +4917,209 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
         "bids for old slots should be pruned when querying future slot"
     );
 }
+
+// =============================================================================
+// Fork transition boundary — Fulu→Gloas invariants
+// =============================================================================
+
+/// Verify that the first Gloas block's bid parent_block_hash comes from the
+/// last Fulu block's execution payload header. This is the critical invariant
+/// at the fork boundary: the state upgrade copies the Fulu EL header's
+/// block_hash into `latest_block_hash`, and block production reads from there.
+#[tokio::test]
+async fn gloas_fork_transition_bid_parent_hash_from_fulu_header() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to the last Fulu slot (just before the fork).
+    let last_fulu_slot = gloas_fork_slot - 1;
+    Box::pin(harness.extend_to_slot(last_fulu_slot)).await;
+
+    // Capture the Fulu EL header's block_hash before the fork.
+    let fulu_state = harness.chain.head_beacon_state_cloned();
+    let fulu_el_block_hash = fulu_state
+        .latest_execution_payload_header()
+        .expect("Fulu state should have EL header")
+        .block_hash();
+
+    // Extend to the first Gloas slot.
+    Box::pin(harness.extend_to_slot(gloas_fork_slot)).await;
+
+    let gloas_head = harness.chain.head_snapshot();
+    let bid = gloas_head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("first Gloas block should have a bid");
+
+    assert_eq!(
+        bid.message.parent_block_hash, fulu_el_block_hash,
+        "first Gloas bid parent_block_hash should equal the last Fulu EL header block_hash"
+    );
+}
+
+/// Verify that after the Fulu→Gloas upgrade, the state's `latest_block_hash`
+/// matches the Fulu execution payload header's `block_hash`. This is set by
+/// `upgrade_state_to_gloas` and is essential for `process_execution_payload_bid`
+/// to accept the first bid.
+#[tokio::test]
+async fn gloas_fork_transition_latest_block_hash_matches_fulu_header() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to the last Fulu slot.
+    let last_fulu_slot = gloas_fork_slot - 1;
+    Box::pin(harness.extend_to_slot(last_fulu_slot)).await;
+
+    let fulu_el_block_hash = harness
+        .chain
+        .head_beacon_state_cloned()
+        .latest_execution_payload_header()
+        .expect("Fulu state should have EL header")
+        .block_hash();
+
+    // Extend past the fork to the first Gloas block.
+    Box::pin(harness.extend_to_slot(gloas_fork_slot)).await;
+
+    let gloas_state = harness.chain.head_beacon_state_cloned();
+    assert!(
+        gloas_state.fork_name_unchecked().gloas_enabled(),
+        "state should be Gloas after fork"
+    );
+
+    // After envelope processing, latest_block_hash changes to the envelope's
+    // block_hash. But if we look at the bid's parent_block_hash, it tells us
+    // what the state's latest_block_hash was at block production time.
+    let head_snap = harness.chain.head_snapshot();
+    let bid = head_snap
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        bid.message.parent_block_hash, fulu_el_block_hash,
+        "bid parent_block_hash proves latest_block_hash was set from Fulu header"
+    );
+}
+
+/// Verify that the chain continues producing valid Gloas blocks for a full
+/// epoch after the fork transition. This exercises the complete pipeline:
+/// fork upgrade → first Gloas block → envelope → state cache update →
+/// next block reads post-envelope state → repeat.
+#[tokio::test]
+async fn gloas_fork_transition_chain_continues_full_epoch() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Run through the fork and one full Gloas epoch.
+    let target_slot = gloas_fork_slot + E::slots_per_epoch();
+    Box::pin(harness.extend_to_slot(target_slot)).await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(head.beacon_block.slot(), target_slot);
+    assert!(head.beacon_block.as_gloas().is_ok());
+
+    // Verify each Gloas slot has a block with a non-zero bid block_hash.
+    let state = &head.beacon_state;
+    for slot_offset in 0..E::slots_per_epoch() {
+        let slot = gloas_fork_slot + slot_offset;
+        let block_root = *state.get_block_root(slot).expect("should have block root");
+
+        let block = harness
+            .chain
+            .get_blinded_block(&block_root)
+            .expect("should load block")
+            .expect("block should exist");
+
+        if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
+            assert_ne!(
+                bid.message.block_hash,
+                ExecutionBlockHash::zero(),
+                "Gloas block at slot {} should have non-zero bid block_hash",
+                slot
+            );
+        } else {
+            panic!("block at slot {} should be Gloas with a bid", slot);
+        }
+    }
+}
+
+/// Verify that execution_payload_availability bits are all set after the fork
+/// transition (spec: all bits = true on upgrade). This ensures per_slot_processing
+/// correctly clears bits going forward and the initial state is correct.
+#[tokio::test]
+async fn gloas_fork_transition_execution_payload_availability_all_set() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to the fork slot.
+    Box::pin(harness.extend_to_slot(gloas_fork_slot)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = state.as_gloas().expect("should be Gloas state");
+
+    // At the fork slot, the block has been processed (which clears the
+    // NEXT slot's bit via per_slot_processing). But most bits should still
+    // be true from the fork upgrade initialization.
+    let bits = &gloas_state.execution_payload_availability;
+    let total_bits = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+    let set_count = (0..total_bits)
+        .filter(|i| bits.get(*i).unwrap_or(false))
+        .count();
+
+    // At minimum, all but a few bits should be set (per_slot_processing
+    // clears one bit per slot since the fork). We've only processed one
+    // Gloas slot, so at most one bit should be cleared.
+    assert!(
+        set_count >= total_bits - 1,
+        "at most one bit should be cleared after one Gloas slot (got {}/{} set)",
+        set_count,
+        total_bits
+    );
+}
+
+/// Verify that the Gloas fork transition correctly initializes
+/// builder_pending_payments as all-default (zero weight, zero amount).
+/// This is critical because non-zero initial payments would cause
+/// incorrect builder payment processing at the first epoch boundary.
+#[tokio::test]
+async fn gloas_fork_transition_builder_pending_payments_all_default() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    Box::pin(harness.extend_to_slot(gloas_fork_slot)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = state.as_gloas().expect("should be Gloas state");
+
+    let payments_limit = E::builder_pending_payments_limit();
+    assert_eq!(
+        gloas_state.builder_pending_payments.len(),
+        payments_limit,
+        "builder_pending_payments should have exactly {} entries",
+        payments_limit
+    );
+
+    // The first slot's bid records a pending payment for the proposer.
+    // Check that all OTHER entries are still default (zero).
+    let mut non_default_count = 0;
+    for i in 0..payments_limit {
+        let payment = gloas_state.builder_pending_payments.get(i).unwrap();
+        if payment.weight != 0 || payment.withdrawal.amount != 0 {
+            non_default_count += 1;
+        }
+    }
+
+    // Self-build bids have value=0, so no pending payment is recorded.
+    assert_eq!(
+        non_default_count, 0,
+        "all builder_pending_payments should be default (self-build bids have value=0)"
+    );
+}
