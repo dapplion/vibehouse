@@ -3817,8 +3817,20 @@ pub fn serve<T: BeaconChainTypes>(
                         )));
                     }
 
+                    // Post-Electra, committee_index is always 0 (single committee per slot).
+                    // Ignore the client-provided value to match spec behavior and interop.
+                    let committee_index = if chain
+                        .spec
+                        .fork_name_at_slot::<T::EthSpec>(query.slot)
+                        .electra_enabled()
+                    {
+                        0
+                    } else {
+                        query.committee_index
+                    };
+
                     let attestation_data = chain
-                        .produce_unaggregated_attestation(query.slot, query.committee_index)
+                        .produce_unaggregated_attestation(query.slot, committee_index)
                         .map(|attestation| attestation.data().clone())
                         .map_err(warp_utils::reject::unhandled_error)?;
 
