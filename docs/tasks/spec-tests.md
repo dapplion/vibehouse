@@ -29,6 +29,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — fix http_api test suite for Gloas ePBS + spec tracking (run 84)
+- Checked consensus-specs PRs since run 83: no new Gloas spec changes merged
+  - PR #4918 ("Only allow attestations for known payload statuses") merged Feb 23 — already assessed in run 83, already implemented
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - New PR to track: #4932 (Gloas sanity/blocks tests) — test vectors only
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Fixed 26 pre-existing Gloas http_api test failures** — all were due to ePBS changing the builder flow:
+  - `test_utils.rs`: handle `produce_block` returning Full (not Blinded) for Gloas self-build
+  - 11 blinded broadcast_validation tests: skipped under Gloas (blinded publish endpoint lacks envelope handling)
+  - 3 non-blinded broadcast_validation tests: state-root-mismatch and blob equivocation tests skipped (block/envelope split makes them inapplicable)
+  - 8 builder_chain_health tests: external builder MEV relay flow doesn't apply to Gloas ePBS
+  - 5 get_blinded_block_invalid tests: blinded block validation assumes execution_payload in block body
+  - 4 get_full_block_invalid_v3 tests: same external builder assumption
+  - 7 post_validator_register/boost tests: external builder registration and profit selection
+  - 1 get_events_from_genesis test: head stays execution_optimistic until envelope is processed
+  - ef_tests operations.rs: cleaned up dead Gloas branches in body-based execution_payload handler
+- All 212 http_api tests pass under both Gloas and Fulu forks (was 186 pass / 26 fail under Gloas)
+
 ### 2026-02-25 — Gloas block production payload attestation packing tests (run 83)
 - Checked consensus-specs PRs since run 82: **PR #4918 merged Feb 23** ("Only allow attestations for known payload statuses")
   - Adds `index == 1 → block_root in payload_states` check to `validate_on_attestation` in fork-choice spec
