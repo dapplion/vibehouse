@@ -966,7 +966,7 @@ where
         // Always use the builder, so that we produce a "real" blinded payload.
         let builder_boost_factor = Some(u64::MAX);
 
-        let BeaconBlockResponseWrapper::Blinded(block_response) = self
+        let response = self
             .chain
             .produce_block_on_state(
                 state,
@@ -979,22 +979,27 @@ where
                 BlockProductionVersion::V3,
             )
             .await
-            .unwrap()
-        else {
-            panic!("Should always be a blinded payload response");
-        };
+            .unwrap();
 
-        let mut block = block_response.block;
+        // Gloas ePBS: self-build always returns Full because there's no external
+        // builder path. Convert to blinded (which is a no-op for Gloas since the
+        // payload lives in the envelope, not the block body).
+        let (mut block, response_state) = match response {
+            BeaconBlockResponseWrapper::Blinded(resp) => (resp.block, resp.state),
+            BeaconBlockResponseWrapper::Full(resp) => {
+                (BeaconBlock::from(resp.block.to_ref()), resp.state)
+            }
+        };
         block_modifier(&mut block);
 
         let signed_block = block.sign(
             &self.validator_keypairs[proposer_index].sk,
-            &block_response.state.fork(),
-            block_response.state.genesis_validators_root(),
+            &response_state.fork(),
+            response_state.genesis_validators_root(),
             &self.spec,
         );
 
-        (signed_block, block_response.state)
+        (signed_block, response_state)
     }
 
     /// Returns a newly created block, signed by the proposer for the given slot.

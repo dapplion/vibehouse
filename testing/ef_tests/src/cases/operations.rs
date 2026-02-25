@@ -28,10 +28,10 @@ use std::fmt::Debug;
 use types::{
     Attestation, AttesterSlashing, BeaconBlock, BeaconBlockBody, BeaconBlockBodyBellatrix,
     BeaconBlockBodyCapella, BeaconBlockBodyDeneb, BeaconBlockBodyElectra, BeaconBlockBodyFulu,
-    BeaconBlockBodyGloas, BeaconState, BlindedPayload, ConsolidationRequest, Deposit,
-    DepositRequest, ExecutionPayload, ForkVersionDecode, FullPayload, Hash256, PayloadAttestation,
-    ProposerSlashing, SignedBlsToExecutionChange, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, SignedVoluntaryExit, Slot, SyncAggregate, WithdrawalRequest,
+    BeaconState, BlindedPayload, ConsolidationRequest, Deposit, DepositRequest, ExecutionPayload,
+    ForkVersionDecode, FullPayload, Hash256, PayloadAttestation, ProposerSlashing,
+    SignedBlsToExecutionChange, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedVoluntaryExit, Slot, SyncAggregate, WithdrawalRequest,
 };
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -299,9 +299,9 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, FullPayload<E>> {
     }
 
     fn is_enabled_for_fork(fork_name: ForkName) -> bool {
-        // [Modified in Gloas:EIP7732] Execution payload processing is different in Gloas.
-        // Tests use signed_envelope.ssz_snappy instead of body.ssz_snappy.
-        // Disable these tests for Gloas until proper envelope handler is implemented.
+        // [Modified in Gloas:EIP7732] Gloas uses envelope-based execution payload processing
+        // (signed_envelope.ssz_snappy via ExecutionPayloadEnvelopeOp), not body-based.
+        // This body-based handler only applies to Bellatrix through Fulu.
         fork_name.bellatrix_enabled() && !fork_name.gloas_enabled()
     }
 
@@ -313,8 +313,7 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, FullPayload<E>> {
                 ForkName::Deneb => BeaconBlockBody::Deneb(<_>::from_ssz_bytes(bytes)?),
                 ForkName::Electra => BeaconBlockBody::Electra(<_>::from_ssz_bytes(bytes)?),
                 ForkName::Fulu => BeaconBlockBody::Fulu(<_>::from_ssz_bytes(bytes)?),
-                ForkName::Gloas => BeaconBlockBody::Gloas(<_>::from_ssz_bytes(bytes)?),
-                _ => panic!(),
+                _ => panic!("body-based execution_payload tests not supported for {fork_name:?}"),
             })
         })
     }
@@ -346,9 +345,9 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, BlindedPayload<E>> {
     }
 
     fn is_enabled_for_fork(fork_name: ForkName) -> bool {
-        // [Modified in Gloas:EIP7732] Execution payload processing is different in Gloas.
-        // Tests use signed_envelope.ssz_snappy instead of body.ssz_snappy.
-        // Disable these tests for Gloas until proper envelope handler is implemented.
+        // [Modified in Gloas:EIP7732] Gloas uses envelope-based execution payload processing
+        // (signed_envelope.ssz_snappy via ExecutionPayloadEnvelopeOp), not body-based.
+        // This body-based handler only applies to Bellatrix through Fulu.
         fork_name.bellatrix_enabled() && !fork_name.gloas_enabled()
     }
 
@@ -376,11 +375,7 @@ impl<E: EthSpec> Operation<E> for BeaconBlockBody<E, BlindedPayload<E>> {
                     let inner = <BeaconBlockBodyFulu<E, FullPayload<E>>>::from_ssz_bytes(bytes)?;
                     BeaconBlockBody::Fulu(inner.clone_as_blinded())
                 }
-                ForkName::Gloas => {
-                    let inner = <BeaconBlockBodyGloas<E, FullPayload<E>>>::from_ssz_bytes(bytes)?;
-                    BeaconBlockBody::Gloas(inner.clone_as_blinded())
-                }
-                _ => panic!(),
+                _ => panic!("body-based execution_payload tests not supported for {fork_name:?}"),
             })
         })
     }

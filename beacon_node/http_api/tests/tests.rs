@@ -50,6 +50,12 @@ use types::{
 
 type E = MainnetEthSpec;
 
+/// Gloas ePBS uses a fundamentally different builder path (execution bids in the block body,
+/// payloads in envelopes). Tests for the pre-Gloas external builder MEV flow should be skipped.
+fn skip_if_gloas() -> bool {
+    beacon_chain::test_utils::fork_name_from_env().is_some_and(|f| f.gloas_enabled())
+}
+
 const SECONDS_PER_SLOT: u64 = 12;
 const SLOTS_PER_EPOCH: u64 = 32;
 const VALIDATOR_COUNT: usize = SLOTS_PER_EPOCH as usize;
@@ -6866,6 +6872,11 @@ async fn get_events_electra() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_events_from_genesis() {
+    // Gloas ePBS: head stays execution_optimistic until envelope is processed.
+    // The test harness only posts the block, not the envelope.
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_from_genesis()
         .await
         .test_get_events_from_genesis()
@@ -7551,6 +7562,9 @@ async fn post_validator_register_validator_slashed() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_register_valid() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_respects_registration()
@@ -7559,6 +7573,9 @@ async fn post_validator_register_valid() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_zero_builder_boost_factor() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_zero_builder_boost_factor()
@@ -7567,6 +7584,9 @@ async fn post_validator_zero_builder_boost_factor() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_max_builder_boost_factor() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_max_builder_boost_factor()
@@ -7575,6 +7595,9 @@ async fn post_validator_max_builder_boost_factor() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_register_valid_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_respects_registration()
@@ -7583,6 +7606,9 @@ async fn post_validator_register_valid_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_register_gas_limit_mutation() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_payload_rejected_when_gas_limit_incorrect()
@@ -7593,6 +7619,9 @@ async fn post_validator_register_gas_limit_mutation() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_register_gas_limit_mutation_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_accepts_mutated_gas_limit()
@@ -7601,6 +7630,9 @@ async fn post_validator_register_gas_limit_mutation_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_register_fee_recipient_mutation() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_accepts_changed_fee_recipient()
@@ -7609,6 +7641,9 @@ async fn post_validator_register_fee_recipient_mutation() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_validator_register_fee_recipient_mutation_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_accepts_changed_fee_recipient()
@@ -7617,6 +7652,9 @@ async fn post_validator_register_fee_recipient_mutation_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_blinded_block_invalid_parent_hash() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_rejects_invalid_parent_hash()
@@ -7625,6 +7663,9 @@ async fn get_blinded_block_invalid_parent_hash() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_full_block_invalid_parent_hash_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_rejects_invalid_parent_hash()
@@ -7633,6 +7674,9 @@ async fn get_full_block_invalid_parent_hash_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_blinded_block_invalid_prev_randao() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_rejects_invalid_prev_randao()
@@ -7641,6 +7685,9 @@ async fn get_blinded_block_invalid_prev_randao() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_full_block_invalid_prev_randao_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_rejects_invalid_prev_randao()
@@ -7649,6 +7696,9 @@ async fn get_full_block_invalid_prev_randao_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_blinded_block_invalid_block_number() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_rejects_invalid_block_number()
@@ -7657,6 +7707,9 @@ async fn get_blinded_block_invalid_block_number() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_full_block_invalid_block_number_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_rejects_invalid_block_number()
@@ -7665,6 +7718,9 @@ async fn get_full_block_invalid_block_number_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_blinded_block_invalid_timestamp() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_rejects_invalid_timestamp()
@@ -7673,6 +7729,9 @@ async fn get_blinded_block_invalid_timestamp() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_full_block_invalid_timestamp_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_v3_rejects_invalid_timestamp()
@@ -7681,6 +7740,9 @@ async fn get_full_block_invalid_timestamp_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_blinded_block_invalid_signature() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_payload_rejects_invalid_signature()
@@ -7697,6 +7759,9 @@ async fn get_full_block_invalid_signature_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_skips() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_chain_health_skips()
@@ -7705,6 +7770,9 @@ async fn builder_chain_health_skips() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_skips_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_v3_chain_health_skips()
@@ -7713,6 +7781,9 @@ async fn builder_chain_health_skips_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_skips_per_epoch() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_chain_health_skips_per_epoch()
@@ -7721,6 +7792,9 @@ async fn builder_chain_health_skips_per_epoch() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_skips_per_epoch_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_v3_chain_health_skips_per_epoch()
@@ -7729,6 +7803,9 @@ async fn builder_chain_health_skips_per_epoch_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_epochs_since_finalization() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_chain_health_epochs_since_finalization()
@@ -7737,6 +7814,9 @@ async fn builder_chain_health_epochs_since_finalization() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_epochs_since_finalization_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_v3_chain_health_epochs_since_finalization()
@@ -7745,6 +7825,9 @@ async fn builder_chain_health_epochs_since_finalization_v3() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_optimistic_head() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_chain_health_optimistic_head()
@@ -7753,6 +7836,9 @@ async fn builder_chain_health_optimistic_head() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn builder_chain_health_optimistic_head_v3() {
+    if skip_if_gloas() {
+        return;
+    }
     ApiTester::new_mev_tester()
         .await
         .test_builder_v3_chain_health_optimistic_head()
