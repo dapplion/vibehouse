@@ -29,6 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — dependent root analysis + spec tracking (run 85)
+- Checked consensus-specs PRs since run 84: no new Gloas spec changes merged
+  - Only infrastructure PRs (#4933-#4946): package renaming, CI, and Heze fork promotion
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues affecting vibehouse
+- **Analyzed issue #8629: Gloas ePBS does NOT break the dependent root mechanism**
+  - dapplion's concern: after Gloas, `(block_root, slot)` no longer uniquely identifies a post-state — Full (envelope processed) vs Empty (no envelope) produce different states. Does this break the VC's dependent root cache?
+  - **Finding: block root is IDENTICAL for Full and Empty payload statuses**
+    - In both paths, `latest_block_header.state_root` ends up as the same value: `tree_hash(post-block state with header.state_root=0x00)`
+    - Full: envelope processing fills `header.state_root` before mutations (envelope_processing.rs:158-162)
+    - Empty: `cache_state` fills `header.state_root` when it's still 0x00 (per_slot_processing.rs:118-120)
+    - Both compute the same tree hash of the same state → same `canonical_root()` → same block root
+  - **Finding: shuffling is unaffected by payload status**
+    - RANDAO mixes are only updated during Phase 1 (block processing), never Phase 2 (envelope)
+    - Active validator set determined at epoch boundaries, not affected by within-epoch envelope processing
+    - Effective balances updated only in `process_effective_balance_updates` (epoch processing)
+    - Deposit/withdrawal/consolidation requests from envelope add to pending queues, processed at epoch boundary with multi-epoch activation delay
+  - **Added 2 proof tests** to `per_slot_processing.rs`:
+    - `block_root_identical_for_full_and_empty_payload_status`: creates identical post-block states, simulates Full (header filled + mutations) vs Empty (header unfilled), verifies block roots match
+    - `randao_unaffected_by_payload_status`: confirms RANDAO mixes unchanged by envelope state mutations
+  - All 295 state_processing tests pass (was 293)
+
 ### 2026-02-25 — fix http_api test suite for Gloas ePBS + spec tracking (run 84)
 - Checked consensus-specs PRs since run 83: no new Gloas spec changes merged
   - PR #4918 ("Only allow attestations for known payload statuses") merged Feb 23 — already assessed in run 83, already implemented

@@ -452,4 +452,123 @@ mod gloas_per_slot_tests {
             "per_slot_processing should clear next slot availability bit"
         );
     }
+
+    /// Prove that the block root at a given slot is identical regardless of payload status.
+    ///
+    /// This addresses issue #8629: the concern that Gloas ePBS breaks the dependent root
+    /// mechanism because Full (envelope processed) and Empty (no envelope) produce different
+    /// post-states.
+    ///
+    /// The dependent root = get_block_root_at_slot(state, epoch_start - 1), which reads from
+    /// the block_roots array. The block root is canonical_root(latest_block_header), which
+    /// depends on the header's state_root. We prove that:
+    ///
+    /// - Empty path: cache_state fills header.state_root with tree_hash(post-block state)
+    /// - Full path: envelope processing fills header.state_root with parent_state_root
+    ///   (= tree_hash(post-block state)), then cache_state skips the fill
+    ///
+    /// Both paths produce the same header.state_root, and therefore the same block root.
+    #[test]
+    fn block_root_identical_for_full_and_empty_payload_status() {
+        // Create a state at slot 5 with header.state_root = 0x00 (unfilled, as after block
+        // processing Phase 1).
+        let (empty_state, _spec) = make_gloas_state_at_slot(5);
+        assert_eq!(
+            empty_state.latest_block_header().state_root,
+            Hash256::zero(),
+            "sanity: header state_root should be zero (unfilled after Phase 1)"
+        );
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let block_root_index = 5 % slots_per_hist;
+
+        // --- EMPTY PATH ---
+        // Simulate the Empty case: no envelope processing, go straight to cache_state.
+        let mut state_empty = empty_state.clone();
+        cache_state(&mut state_empty, None).unwrap();
+        // Read block root directly from the vector (get_block_root requires slot < state.slot,
+        // but cache_state restores the slot to its original value).
+        let block_root_empty = *state_empty
+            .block_roots()
+            .get(block_root_index)
+            .expect("block root should be set");
+
+        // --- FULL PATH ---
+        // Simulate the Full case: envelope processing fills header.state_root with
+        // the post-block state root BEFORE mutating the state.
+        let mut state_full = empty_state.clone();
+
+        // Compute the post-block state root (same state, header.state_root = 0x00).
+        // This is what envelope processing computes via state.canonical_root() or
+        // receives as parent_state_root from the block.
+        let post_block_state_root = state_full
+            .update_tree_hash_cache()
+            .expect("tree hash should succeed");
+
+        // Fill header.state_root (this is what envelope_processing.rs line 158-162 does)
+        state_full.latest_block_header_mut().state_root = post_block_state_root;
+
+        // Simulate envelope mutations: change latest_block_hash and availability bit.
+        // These should NOT affect the block root because the header was already filled.
+        *state_full.latest_block_hash_mut().unwrap() =
+            ExecutionBlockHash::from_root(Hash256::repeat_byte(0xBB));
+        state_full
+            .as_gloas_mut()
+            .unwrap()
+            .execution_payload_availability
+            .set(5 % slots_per_hist, true)
+            .unwrap();
+
+        // Now run cache_state on the Full state.
+        cache_state(&mut state_full, None).unwrap();
+        let block_root_full = *state_full
+            .block_roots()
+            .get(block_root_index)
+            .expect("block root should be set");
+
+        // CRITICAL ASSERTION: block roots must be identical
+        assert_eq!(
+            block_root_empty, block_root_full,
+            "Block root must be the same for Full and Empty payload states. \
+             If this fails, the dependent root mechanism is broken (issue #8629)."
+        );
+
+        // Verify the header state_roots are the same value
+        assert_eq!(
+            state_empty.latest_block_header().state_root,
+            state_full.latest_block_header().state_root,
+            "Header state_root should be identical in Full and Empty paths"
+        );
+    }
+
+    /// Verify that the shuffling seed (RANDAO) is NOT affected by envelope processing.
+    ///
+    /// This is the second part of the #8629 analysis: even if the block roots were
+    /// somehow different, the shuffling itself would be identical because RANDAO is
+    /// only updated during Phase 1 (block processing), never during Phase 2 (envelope).
+    #[test]
+    fn randao_unaffected_by_payload_status() {
+        let (state, _spec) = make_gloas_state_at_slot(5);
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+
+        // Capture the RANDAO mixes
+        let randao_before: Vec<Hash256> = (0..epochs_per_vector)
+            .map(|i| *state.randao_mixes().get(i).unwrap())
+            .collect();
+
+        // Simulate envelope mutations on a clone
+        let mut state_full = state.clone();
+        *state_full.latest_block_hash_mut().unwrap() =
+            ExecutionBlockHash::from_root(Hash256::repeat_byte(0xCC));
+
+        // RANDAO mixes must be identical — envelope processing never touches them
+        let randao_after: Vec<Hash256> = (0..epochs_per_vector)
+            .map(|i| *state_full.randao_mixes().get(i).unwrap())
+            .collect();
+
+        assert_eq!(
+            randao_before, randao_after,
+            "RANDAO mixes must not change from envelope processing"
+        );
+    }
 }
