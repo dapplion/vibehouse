@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — block verification tests for bid/DA bypass + spec tracking (run 88)
+- Checked consensus-specs PRs since run 87: no new Gloas spec changes merged
+  - PR #4941 "Update execution proof construction to use beacon block" merged Feb 19 — EIP-8025 (not EIP-7732/Gloas), not relevant to vibehouse
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** across block_verification.rs, store/, beacon_chain.rs, and fork_choice/ for untested Gloas code paths
+- **Added 3 block verification integration tests** (previously ZERO tests for these paths):
+  - `gloas_gossip_rejects_block_with_bid_parent_root_mismatch`: creates a Gloas block with a tampered `bid.message.parent_block_root` (different from `block.parent_root`) via `make_block_with_modifier`, verifies gossip verification returns `BidParentRootMismatch`. This is a consensus safety check in block_verification.rs:961-968 that previously had zero test coverage — a validator could craft a malformed block and this rejection path had never been exercised
+  - `gloas_gossip_accepts_block_with_matching_bid_parent_root`: complement test confirming a correctly-constructed block (where bid and block agree on parent root) passes the check — prevents false positives
+  - `gloas_block_import_without_blob_data`: imports a Gloas block through the RPC/sync path with `None` for blob items, verifying the full import pipeline completes successfully. Exercises the Gloas DA bypass at beacon_chain.rs:4398-4410 (skip DA cache insertion) and block_verification.rs:1268-1279 (skip AvailabilityPending path). Pre-Gloas blocks require blob/column data; Gloas blocks receive execution payloads separately via envelopes
+- All 479 beacon_chain tests pass (was 476), cargo fmt + clippy clean
+
 ### 2026-02-25 — store cold state dual-indexing tests + spec tracking (run 87)
 - Checked consensus-specs PRs since run 86: no new Gloas spec changes merged
   - No PRs merged since Feb 24 (#4946 was the last)
