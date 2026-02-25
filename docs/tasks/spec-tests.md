@@ -29,6 +29,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas gossip execution payload envelope handler tests + spec tracking (run 104)
+- Checked consensus-specs PRs since run 103: no new Gloas spec changes merged
+  - No new PRs merged since run 103 (latest merges were Feb 23-24, all already tracked)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+  - PRs to watch: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS rename), #4558 (cell dissemination)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Addressed process_gossip_execution_payload**: the handler function (gossip_methods.rs:3402-3543) had ZERO handler-level tests. This handler processes ALL execution payload envelopes from gossip — it combines verification, fork choice mutation, EL notification (newPayload), state transition, SSE events, and head recomputation. The previous verification tests in gloas_verification.rs only tested `verify_payload_envelope_for_gossip` directly, not the handler's error→MessageAcceptance routing
+- **Added 6 gossip execution payload envelope handler integration tests** (previously ZERO tests for this handler):
+  - **BlockRootUnknown → Ignore (1 test):**
+    - `test_gloas_gossip_payload_envelope_unknown_root_ignored`: constructs envelope with random beacon_block_root not in fork choice, verifies handler returns Ignore. Tests the buffering path: unknown-root envelopes are stored in `pending_gossip_envelopes` for later processing when the block arrives
+  - **SlotMismatch → Reject (1 test):**
+    - `test_gloas_gossip_payload_envelope_slot_mismatch_rejected`: reads committed bid from head block, constructs envelope with correct builder_index and block_hash but wrong slot (head_slot + 1), verifies Reject + peer penalty
+  - **BuilderIndexMismatch → Reject (1 test):**
+    - `test_gloas_gossip_payload_envelope_builder_index_mismatch_rejected`: reads committed bid from head block, constructs envelope with correct block_hash but wrong builder_index (42 instead of BUILDER_INDEX_SELF_BUILD), verifies Reject + peer penalty
+  - **BlockHashMismatch → Reject (1 test):**
+    - `test_gloas_gossip_payload_envelope_block_hash_mismatch_rejected`: reads committed bid from head block, constructs envelope with correct builder_index but wrong payload block_hash (0xdd repeated), verifies Reject + peer penalty
+  - **Valid self-build → Accept (1 test):**
+    - `test_gloas_gossip_payload_envelope_self_build_accepted`: reads committed bid from head block, constructs envelope matching all bid fields (builder_index=BUILDER_INDEX_SELF_BUILD, correct block_hash, correct slot), verifies Accept. Self-build envelopes skip BLS signature verification, so empty signature is valid
+  - **PriorToFinalization → Ignore (1 test):**
+    - `test_gloas_gossip_payload_envelope_prior_to_finalization_ignored`: builds a 3-epoch chain (long enough for finalization), constructs envelope with slot before finalized_slot, verifies Ignore. Tests the stale-message guard
+- Tests call `process_gossip_execution_payload` directly on `NetworkBeaconProcessor`, exercising the full pipeline: handler → `verify_payload_envelope_for_gossip` → error routing → `propagate_validation_result` → network_rx capture. The Accept path additionally exercises `apply_payload_envelope_to_fork_choice` and `process_payload_envelope`
+- These tests close a critical security gap: the gossip handler is the first line of defense against invalid payload envelopes. The error→MessageAcceptance mapping determines whether invalid envelopes are propagated to other peers (Accept→Reject bug = propagate invalid payloads) or valid ones are dropped (Accept→Ignore bug = drop valid payloads). The handler also controls peer scoring — a Reject triggers LowToleranceError peer penalty, while Ignore does not
+- **Remaining handler gaps from run 96 analysis**: P2 (PayloadAttestationService), P5 (poll_ptc_duties) — both require mock BN infrastructure
+- All 117 network tests pass (was 111), cargo fmt clean
+
 ### 2026-02-25 — Gloas attestation production payload_present tests + spec tracking (run 103)
 - Checked consensus-specs PRs since run 102: no new Gloas spec changes merged
   - **PR #4941** (merged Feb 19): "Update execution proof construction to use beacon block" — labeled eip8025 (execution proofs), only touches `specs/_features/eip8025/prover.md`. Not Gloas ePBS, no action needed

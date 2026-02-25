@@ -41,10 +41,11 @@ use tokio::sync::mpsc;
 use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
     Address, AttesterSlashing, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecarList,
-    DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid, Hash256,
-    MainnetEthSpec, PayloadAttestation, PayloadAttestationData, ProposerPreferences,
-    ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedExecutionPayloadBid, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
+    DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid,
+    ExecutionPayloadEnvelope, ExecutionPayloadGloas, Hash256, MainnetEthSpec, PayloadAttestation,
+    PayloadAttestationData, ProposerPreferences, ProposerSlashing, RuntimeVariableList,
+    SignedAggregateAndProof, SignedBeaconBlock, SignedExecutionPayloadBid,
+    SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
     SingleAttestation, Slot, SubnetId,
 };
 
@@ -2610,4 +2611,277 @@ async fn test_gloas_gossip_proposer_preferences_wrong_key_rejected() {
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_reject(result);
+}
+
+// ======== Gloas (ePBS) execution payload envelope gossip handler tests ========
+//
+// These tests verify the `process_gossip_execution_payload` handler which
+// validates SignedExecutionPayloadEnvelope messages per the consensus-specs p2p-interface.
+// The handler enforces: block root known (IGNORE), not finalized (IGNORE), slot match (REJECT),
+// builder index match (REJECT), block hash match (REJECT), valid signature (REJECT), then ACCEPT.
+
+/// Gloas gossip: payload envelope for unknown beacon block root is IGNORED.
+///
+/// Per spec: [IGNORE] envelope.beacon_block_root is a known block in fork choice.
+/// An envelope referencing a random block root not in fork choice should be ignored
+/// (not rejected, because the block may arrive later — it gets buffered).
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_unknown_root_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas::default(),
+            execution_requests: <_>::default(),
+            builder_index: u64::MAX,
+            beacon_block_root: Hash256::repeat_byte(0xff), // unknown root
+            slot: current_slot,
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: payload envelope with slot mismatch is REJECTED.
+///
+/// Per spec: [REJECT] envelope.slot == block.slot
+/// An envelope whose slot doesn't match the committed block's slot is invalid.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_slot_mismatch_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Get the committed bid fields from the head block
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("head is a Gloas block");
+
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas {
+                block_hash: bid.message.block_hash,
+                ..Default::default()
+            },
+            execution_requests: <_>::default(),
+            builder_index: bid.message.builder_index,
+            beacon_block_root: head_root,
+            slot: head_slot.saturating_add(1u64), // wrong slot
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: payload envelope with builder index mismatch is REJECTED.
+///
+/// Per spec: [REJECT] envelope.builder_index == committed_bid.builder_index
+/// An envelope from a different builder than the committed bid is invalid.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_builder_index_mismatch_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("head is a Gloas block");
+
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas {
+                block_hash: bid.message.block_hash,
+                ..Default::default()
+            },
+            execution_requests: <_>::default(),
+            builder_index: 42, // wrong builder (bid has BUILDER_INDEX_SELF_BUILD)
+            beacon_block_root: head_root,
+            slot: head_slot,
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: payload envelope with block hash mismatch is REJECTED.
+///
+/// Per spec: [REJECT] envelope.payload.block_hash == committed_bid.block_hash
+/// An envelope whose payload block_hash doesn't match the bid is invalid.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_block_hash_mismatch_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("head is a Gloas block");
+
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas {
+                block_hash: ExecutionBlockHash::repeat_byte(0xdd), // wrong hash
+                ..Default::default()
+            },
+            execution_requests: <_>::default(),
+            builder_index: bid.message.builder_index, // correct builder
+            beacon_block_root: head_root,
+            slot: head_slot,
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: self-build payload envelope with matching fields is ACCEPTED.
+///
+/// Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) skip BLS
+/// signature verification. This test constructs an envelope that matches the
+/// committed bid's builder_index, block_hash, and slot — verifying the handler
+/// accepts it and propagates Accept to gossip.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("head is a Gloas block");
+
+    // Construct a self-build envelope matching all committed bid fields
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas {
+                block_hash: bid.message.block_hash,
+                ..Default::default()
+            },
+            execution_requests: <_>::default(),
+            builder_index: bid.message.builder_index, // BUILDER_INDEX_SELF_BUILD
+            beacon_block_root: head_root,
+            slot: head_slot,
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+/// Gloas gossip: payload envelope for a finalized slot is IGNORED.
+///
+/// Per spec: [IGNORE] envelope.slot >= finalized_slot
+/// An envelope for a slot that is already finalized should be ignored (stale).
+/// This test builds a longer chain so that some slots become finalized, then
+/// submits an envelope referencing a slot prior to finalization.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_prior_to_finalization_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Build a chain long enough for finalization to occur.
+    // MainnetEthSpec has 32 slots/epoch. 3 epochs should finalize epoch 1.
+    let mut rig = gloas_rig(SLOTS_PER_EPOCH * 3).await;
+
+    // Get the finalized checkpoint
+    let head = rig.chain.head_snapshot();
+    let finalized_checkpoint = head.beacon_state.finalized_checkpoint();
+    let finalized_epoch = finalized_checkpoint.epoch;
+    let finalized_slot = finalized_epoch.start_slot(E::slots_per_epoch());
+
+    // Only run this test if we actually have finalization beyond genesis
+    if finalized_epoch.as_u64() == 0 {
+        return;
+    }
+
+    // Build an envelope targeting a finalized block's root with a pre-finalized slot
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas::default(),
+            execution_requests: <_>::default(),
+            builder_index: u64::MAX,
+            beacon_block_root: finalized_checkpoint.root,
+            slot: finalized_slot.saturating_sub(1u64), // before finalization
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
 }
