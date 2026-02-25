@@ -8,8 +8,8 @@ use beacon_chain::data_availability_checker::AvailableBlock;
 use beacon_chain::historical_data_columns::HistoricalDataColumnError;
 use beacon_chain::schema_change::migrate_schema;
 use beacon_chain::test_utils::{
-    AttestationStrategy, BeaconChainHarness, BlockStrategy, DiskHarnessType, fork_name_from_env,
-    get_kzg, mock_execution_layer_from_parts, test_spec,
+    AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_TARGET_AGGREGATORS,
+    DiskHarnessType, fork_name_from_env, get_kzg, mock_execution_layer_from_parts, test_spec,
 };
 use beacon_chain::test_utils::{SyncCommitteeStrategy, generate_data_column_indices_rand_order};
 use beacon_chain::{
@@ -5600,6 +5600,228 @@ fn check_iterators_from_slot(harness: &TestHarness, slot: Slot) {
             .map(Result::unwrap)
             .map(|(_, slot)| slot),
         Some(harness.head_slot())
+    );
+}
+
+/// Verify that after Gloas blocks are migrated to the cold DB (freezer), both the
+/// pre-envelope state root (block.state_root) and the post-envelope state root
+/// (envelope.state_root) resolve to a valid cold state slot via `load_cold_state_slot`.
+///
+/// The ePBS two-phase state transition means each block has two distinct state roots:
+/// - Pre-envelope: the state after block processing but before envelope processing
+/// - Post-envelope: the state after envelope processing (updated latest_block_hash, etc.)
+///
+/// The freezer migration stores a ColdStateSummary for both roots so that lookups
+/// by either root succeed. This test verifies that mechanism.
+#[tokio::test]
+async fn gloas_cold_state_dual_indexing_after_finalization() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec.clone());
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: true,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build 7 epochs to ensure finalization (finalized epoch = current - 2).
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    let (_, _, _, _) = harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let head = harness.chain.head_snapshot();
+    let finalized_epoch = head.beacon_state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized: got epoch {}",
+        finalized_epoch
+    );
+
+    let split_slot = store.get_split_slot();
+    assert!(
+        split_slot > Slot::new(0),
+        "split slot should have advanced past genesis"
+    );
+
+    // Collect all Gloas block roots that are now in the cold DB (slot < split_slot).
+    let mut checked_count = 0;
+    for slot_num in 1..split_slot.as_u64() {
+        let slot = Slot::new(slot_num);
+        let fork_name = harness.chain.spec.fork_name_at_slot::<E>(slot);
+        if !fork_name.gloas_enabled() {
+            continue;
+        }
+
+        // Get block root at this slot.
+        let block_root = harness
+            .chain
+            .block_root_at_slot(slot, WhenSlotSkipped::Prev)
+            .unwrap();
+        let Some(block_root) = block_root else {
+            continue;
+        };
+
+        // Load the block to get the pre-envelope state root.
+        let block = store
+            .get_blinded_block(&block_root)
+            .expect("no error")
+            .expect("block should exist");
+        let pre_envelope_root = block.state_root();
+
+        // Load the envelope to get the post-envelope state root.
+        let post_envelope_root = if let Ok(Some(env)) = store.get_payload_envelope(&block_root) {
+            Some(env.message.state_root)
+        } else if let Ok(Some(blinded)) = store.get_blinded_payload_envelope(&block_root) {
+            Some(blinded.message.state_root)
+        } else {
+            None
+        };
+
+        // Verify pre-envelope root resolves in cold DB.
+        let pre_slot = store
+            .load_cold_state_slot(&pre_envelope_root)
+            .expect("no error loading pre-envelope cold state slot");
+        assert_eq!(
+            pre_slot,
+            Some(slot),
+            "pre-envelope root should resolve to slot {} in cold DB",
+            slot
+        );
+
+        // Verify post-envelope root also resolves in cold DB.
+        if let Some(post_root) = post_envelope_root
+            && post_root != Hash256::zero()
+            && post_root != pre_envelope_root
+        {
+            let post_slot = store
+                .load_cold_state_slot(&post_root)
+                .expect("no error loading post-envelope cold state slot");
+            assert_eq!(
+                post_slot,
+                Some(slot),
+                "post-envelope root should resolve to slot {} in cold DB",
+                slot
+            );
+            checked_count += 1;
+        }
+    }
+
+    assert!(
+        checked_count > 0,
+        "should have checked at least one Gloas block with distinct post-envelope root"
+    );
+}
+
+/// Verify that the cold state loaded by the post-envelope state root has the correct slot.
+/// This complements the dual-indexing test by verifying the full load_cold_state path.
+#[tokio::test]
+async fn gloas_cold_state_loadable_by_post_envelope_root() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec.clone());
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: true,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build 7 epochs to ensure finalization.
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    let (_, _, _, _) = harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let split_slot = store.get_split_slot();
+
+    // Find the first Gloas block in the cold DB with a distinct post-envelope root.
+    let mut found = false;
+    for slot_num in 1..split_slot.as_u64() {
+        let slot = Slot::new(slot_num);
+        if !harness
+            .chain
+            .spec
+            .fork_name_at_slot::<E>(slot)
+            .gloas_enabled()
+        {
+            continue;
+        }
+
+        let Some(block_root) = harness
+            .chain
+            .block_root_at_slot(slot, WhenSlotSkipped::Prev)
+            .unwrap()
+        else {
+            continue;
+        };
+
+        let post_root = if let Ok(Some(env)) = store.get_payload_envelope(&block_root) {
+            env.message.state_root
+        } else if let Ok(Some(blinded)) = store.get_blinded_payload_envelope(&block_root) {
+            blinded.message.state_root
+        } else {
+            continue;
+        };
+
+        let block = store.get_blinded_block(&block_root).unwrap().unwrap();
+        let pre_root = block.state_root();
+
+        if post_root == Hash256::zero() || post_root == pre_root {
+            continue;
+        }
+
+        // The key test: load_cold_state using the post-envelope root should succeed
+        // and return a state at the correct slot.
+        let loaded_state = store
+            .load_cold_state(&post_root)
+            .expect("no error loading cold state by post-envelope root");
+        assert!(
+            loaded_state.is_some(),
+            "cold state should be loadable by post-envelope root at slot {}",
+            slot,
+        );
+        assert_eq!(
+            loaded_state.unwrap().slot(),
+            slot,
+            "loaded state slot should match"
+        );
+        found = true;
+        break;
+    }
+
+    assert!(
+        found,
+        "should have found a loadable cold state by post-envelope root"
     );
 }
 
