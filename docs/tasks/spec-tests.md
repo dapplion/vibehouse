@@ -29,6 +29,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas attestation production payload_present tests + spec tracking (run 103)
+- Checked consensus-specs PRs since run 102: no new Gloas spec changes merged
+  - **PR #4941** (merged Feb 19): "Update execution proof construction to use beacon block" — labeled eip8025 (execution proofs), only touches `specs/_features/eip8025/prover.md`. Not Gloas ePBS, no action needed
+  - **PR #4946** (merged Feb 24): actions/stale bump — CI only, already tracked in run 102
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+  - PRs to watch: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS rename), #4558 (cell dissemination)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic analysis** of `produce_unaggregated_attestation` Gloas `payload_present` path (beacon_chain.rs:2206-2217) — found ZERO integration test coverage with Gloas enabled. The existing `attestation_production.rs` tests use `default_spec()` which sets `gloas_fork_epoch: None`, so the Gloas branch (reading `payload_revealed` from fork choice) was never exercised
+- **Key discovery during test writing**: Gloas blocks imported without envelope processing have `ExecutionStatus::Optimistic` (not `Irrelevant`). This is because fork_choice.rs:979-988 handles the bid-containing block body separately from the payload-containing body, and always sets `Optimistic(block_hash)` for the bid path. The `PayloadVerificationStatus::Irrelevant` from `PayloadNotifier` is unused because the code branches on the bid, not the payload. This means `produce_unaggregated_attestation` correctly refuses to attest to Gloas blocks whose envelopes haven't been processed — a safety-critical behavior
+- **Added 5 attestation production payload_present integration tests** (previously ZERO tests for this pipeline with Gloas):
+  - **Same-slot behavior (1 test):**
+    - `gloas_attestation_same_slot_payload_present_false`: produces blocks with envelopes (payload_revealed=true), then calls `produce_unaggregated_attestation` at the head block's slot. Verifies `data.index == 0` — same-slot attestations always have payload_present=false per spec, because the attester cannot know whether the envelope has arrived
+  - **Non-same-slot with revealed payload (1 test):**
+    - `gloas_attestation_non_same_slot_payload_revealed_index_one`: produces blocks with envelopes, advances slot without block (skip slot), attests. Verifies `data.index == 1` — the previous block's payload was revealed, so non-same-slot attestations include payload_present=true
+  - **Unrevealed payload safety check (1 test):**
+    - `gloas_attestation_refused_for_unrevealed_payload_block`: imports a Gloas block WITHOUT processing its envelope, verifies payload_revealed=false AND execution_status=Optimistic, then confirms `produce_unaggregated_attestation` returns `HeadBlockNotFullyVerified`. This tests the safety boundary: nodes must not attest to blocks whose execution payload hasn't been verified
+  - **Pre-Gloas baseline (1 test):**
+    - `fulu_attestation_always_index_zero`: produces Fulu blocks (pre-Gloas), attests at a skip slot, verifies `data.index == 0`. Confirms the Gloas payload_present logic is NOT triggered for pre-Gloas forks
+  - **Full lifecycle: Optimistic → Valid → attestation (1 test):**
+    - `gloas_attestation_enabled_after_envelope_processing`: imports block without envelope (Optimistic, attestation fails), then processes envelope (Valid, attestation succeeds with index=1). Tests the complete lifecycle from block-only import through envelope processing to attestation production
+- These tests close a significant gap: the `produce_unaggregated_attestation` function is called for EVERY attestation produced by the node. The Gloas `payload_present` logic determines `data.index`, which is a consensus-critical field — a wrong index would cause attestations to be rejected by peers or attributed to the wrong committee. Previously no integration test verified this pipeline with Gloas enabled
+- All 548 beacon_chain tests pass (was 543), cargo fmt clean
+
 ### 2026-02-25 — Gloas block verification edge case tests + spec tracking (run 102)
 - Checked consensus-specs PRs since run 101: no new Gloas spec changes merged
   - **PR #4946** (merged Feb 24): actions/stale bump — CI only, no impact
