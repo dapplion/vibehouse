@@ -1475,7 +1475,7 @@ impl ProtoArrayForkChoice {
 
     /// Tiebreaker between EMPTY and FULL payload statuses.
     ///
-    /// For PENDING or non-previous-slot nodes: use payload_status ordinal.
+    /// For non-previous-slot nodes: use payload_status ordinal.
     /// For previous-slot EMPTY: 1 (favored).
     /// For previous-slot FULL: 2 if should extend payload, else 0.
     fn get_payload_tiebreaker(&self, node: &GloasForkChoiceNode, current_slot: Slot) -> u8 {
@@ -1487,7 +1487,8 @@ impl ProtoArrayForkChoice {
             .and_then(|&idx| pa.nodes.get(idx))
             .is_some_and(|n| n.slot + 1 == current_slot);
 
-        if node.payload_status == GloasPayloadStatus::Pending || !is_previous_slot {
+        if !is_previous_slot {
+            // For non-previous-slot nodes (including PENDING): use ordinal value
             node.payload_status as u8
         } else if node.payload_status == GloasPayloadStatus::Empty {
             1
@@ -3934,8 +3935,8 @@ mod test_gloas_fork_choice {
     // ──────── get_payload_tiebreaker tests ────────────────────
 
     #[test]
-    fn tiebreaker_pending_returns_ordinal() {
-        // PENDING status always returns its ordinal value (0)
+    fn tiebreaker_pending_not_previous_slot_returns_ordinal() {
+        // PENDING status at a non-previous-slot returns its ordinal value (0)
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
@@ -3945,11 +3946,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        // Regardless of current_slot, PENDING returns ordinal
-        assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)),
-            GloasPayloadStatus::Pending as u8
-        );
+        // Non-previous-slot: PENDING returns ordinal
         assert_eq!(
             fc.get_payload_tiebreaker(&gloas_node, Slot::new(100)),
             GloasPayloadStatus::Pending as u8
@@ -4053,8 +4050,7 @@ mod test_gloas_fork_choice {
     #[test]
     fn tiebreaker_ordering_previous_slot() {
         // Verify the tiebreaker ordering at previous slot:
-        // When should_extend_payload=true: FULL(2) > EMPTY(1) > PENDING(0)
-        // When should_extend_payload=false: EMPTY(1) > PENDING(0) > FULL(0)
+        // When should_extend_payload=true: FULL(2) > EMPTY(1)
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
@@ -4064,10 +4060,6 @@ mod test_gloas_fork_choice {
         node.payload_revealed = true;
         node.payload_data_available = true;
 
-        let pending = GloasForkChoiceNode {
-            root: block_root,
-            payload_status: GloasPayloadStatus::Pending,
-        };
         let empty = GloasForkChoiceNode {
             root: block_root,
             payload_status: GloasPayloadStatus::Empty,
@@ -4078,13 +4070,11 @@ mod test_gloas_fork_choice {
         };
 
         let current_slot = Slot::new(2); // previous slot for block at slot 1
-        let tp = fc.get_payload_tiebreaker(&pending, current_slot);
         let te = fc.get_payload_tiebreaker(&empty, current_slot);
         let tf = fc.get_payload_tiebreaker(&full, current_slot);
 
-        // FULL > EMPTY > PENDING when extending
+        // FULL > EMPTY when extending
         assert!(tf > te, "FULL({}) should beat EMPTY({})", tf, te);
-        assert!(te > tp, "EMPTY({}) should beat PENDING({})", te, tp);
     }
 
     #[test]
