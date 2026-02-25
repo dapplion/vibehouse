@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas block production payload attestation packing tests (run 83)
+- Checked consensus-specs PRs since run 82: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Investigated open issues: #8858 (upstream Lighthouse), #8583 (pre-fork-point networking bug), #8887 (upstream reth) — none actionable
+- **Added 6 Gloas block production payload attestation packing tests** (previously ZERO tests for the pool→block body attestation packing path):
+  - `gloas_block_production_includes_pool_attestations`: end-to-end insert→produce→verify attestations packed in block body
+  - `gloas_block_production_filters_attestations_by_parent_root`: only attestations matching parent root are included
+  - `gloas_block_production_respects_max_payload_attestations`: block production respects the max limit
+  - `gloas_block_production_empty_pool_no_attestations`: empty pool produces empty attestation list
+  - `gloas_self_build_bid_parent_hash_matches_state`: next block's bid parent_block_hash matches head state's latest_block_hash
+  - `gloas_self_build_bid_slot_matches_block`: bid slot and parent_block_root match the containing block's fields
+- All 6 tests pass, all 474 beacon_chain tests pass, cargo fmt clean
+
 ### 2026-02-25 — process_epoch_single_pass Gloas integration tests (run 82)
 - Checked consensus-specs PRs since run 81: no new Gloas spec changes merged
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
