@@ -20,7 +20,7 @@ use beacon_chain::execution_payload::{
 use beacon_chain::execution_proof_verification::GossipExecutionProofError;
 use beacon_chain::gloas_verification::{ExecutionBidError, PayloadEnvelopeError};
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
-use fork_choice::PayloadVerificationStatus;
+use fork_choice::{ExecutionStatus, PayloadVerificationStatus};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
 use types::*;
@@ -3851,5 +3851,753 @@ async fn gloas_block_production_gas_limit_from_bid() {
     assert_ne!(
         payload_gas_limit, 0,
         "produced payload gas_limit should be non-zero"
+    );
+}
+
+// =============================================================================
+// Fork choice Gloas method tests: on_execution_bid, on_payload_attestation,
+// on_execution_payload
+// =============================================================================
+
+/// Helper: produce a Gloas block and return the head block_root and slot.
+async fn produce_gloas_block(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+) -> (Hash256, Slot) {
+    Box::pin(harness.extend_slots(1)).await;
+    let head = harness.chain.head_snapshot();
+    (head.beacon_block_root, head.beacon_block.slot())
+}
+
+/// on_execution_bid: rejects a bid for an unknown block root.
+#[tokio::test]
+async fn fc_on_execution_bid_rejects_unknown_block_root() {
+    let harness = gloas_harness_at_epoch(0);
+    let (_, slot) = produce_gloas_block(&harness).await;
+
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 1,
+            block_hash: ExecutionBlockHash::repeat_byte(0xaa),
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    let unknown_root = Hash256::repeat_byte(0xff);
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, unknown_root);
+
+    assert!(result.is_err(), "should reject bid for unknown block root");
+}
+
+/// on_execution_bid: rejects a bid with mismatched slot.
+#[tokio::test]
+async fn fc_on_execution_bid_rejects_slot_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot: slot + 100, // wrong slot
+            builder_index: 1,
+            block_hash: ExecutionBlockHash::repeat_byte(0xaa),
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root);
+
+    assert!(result.is_err(), "should reject bid with wrong slot");
+}
+
+/// on_execution_bid: accepts a valid bid and updates node fields.
+#[tokio::test]
+async fn fc_on_execution_bid_updates_node_fields() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 42,
+            block_hash: ExecutionBlockHash::repeat_byte(0xaa),
+            value: 1000,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .expect("valid bid should succeed");
+
+    // Verify node was updated
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .expect("block should exist in fork choice");
+
+    assert_eq!(
+        node.builder_index,
+        Some(42),
+        "builder_index should be set from bid"
+    );
+    // After on_execution_bid, payload_revealed is reset to false (awaiting builder reveal)
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should be false after bid (awaiting reveal)"
+    );
+    assert_eq!(node.ptc_weight, 0, "ptc_weight should be initialized to 0");
+    assert_eq!(
+        node.ptc_blob_data_available_weight, 0,
+        "ptc_blob_data_available_weight should be initialized to 0"
+    );
+    assert!(
+        !node.payload_data_available,
+        "payload_data_available should be false"
+    );
+}
+
+/// on_execution_payload: marks payload as revealed and sets execution status.
+#[tokio::test]
+async fn fc_on_execution_payload_marks_revealed() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    // First apply a bid to set payload_revealed=false
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 1,
+            block_hash: ExecutionBlockHash::repeat_byte(0xbb),
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    // Verify not yet revealed
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert!(!node.payload_revealed);
+
+    // Now reveal the payload
+    let payload_hash = ExecutionBlockHash::repeat_byte(0xcc);
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_payload(block_root, payload_hash)
+        .expect("on_execution_payload should succeed");
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+
+    assert!(
+        node.payload_revealed,
+        "payload_revealed should be true after on_execution_payload"
+    );
+    assert!(
+        node.payload_data_available,
+        "payload_data_available should be true after on_execution_payload"
+    );
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Optimistic(payload_hash),
+        "execution_status should be Optimistic with the payload hash"
+    );
+}
+
+/// on_execution_payload: rejects unknown block root.
+#[tokio::test]
+async fn fc_on_execution_payload_rejects_unknown_root() {
+    let harness = gloas_harness_at_epoch(0);
+    let _ = produce_gloas_block(&harness).await;
+
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_payload(
+            Hash256::repeat_byte(0xff),
+            ExecutionBlockHash::repeat_byte(0x01),
+        );
+
+    assert!(
+        result.is_err(),
+        "should reject on_execution_payload for unknown root"
+    );
+}
+
+/// on_payload_attestation: rejects a future slot attestation.
+#[tokio::test]
+async fn fc_on_payload_attestation_rejects_future_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot: slot + 100, // far future
+            payload_present: true,
+            blob_data_available: true,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            list.push(0).unwrap();
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec);
+
+    assert!(
+        result.is_err(),
+        "should reject payload attestation from future slot"
+    );
+}
+
+/// on_payload_attestation: rejects a too-old attestation.
+#[tokio::test]
+async fn fc_on_payload_attestation_rejects_too_old() {
+    let harness = gloas_harness_at_epoch(0);
+    // Produce enough blocks so current_slot is well ahead
+    Box::pin(harness.extend_slots(E::slots_per_epoch() as usize + 5)).await;
+
+    let head = harness.chain.head_snapshot();
+    let current_slot = head.beacon_block.slot();
+
+    // Construct attestation for slot 1 (way in the past)
+    let old_slot = Slot::new(1);
+    let old_root = *head
+        .beacon_state
+        .get_block_root(old_slot)
+        .expect("slot 1 should have a block root");
+
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: old_root,
+            slot: old_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            list.push(0).unwrap();
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, current_slot, &harness.spec);
+
+    assert!(
+        result.is_err(),
+        "should reject payload attestation older than 1 epoch"
+    );
+}
+
+/// on_payload_attestation: silently ignores attestation when data.slot != block.slot
+/// (e.g., attestation references a block but with a different slot — skip-slot scenario).
+#[tokio::test]
+async fn fc_on_payload_attestation_ignores_slot_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    // Apply a bid first so we can track weight changes
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 1,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    // Attestation with a different slot than the block
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot: slot + 1, // block is at `slot`, attestation says `slot + 1`
+            payload_present: true,
+            blob_data_available: true,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            list.push(0).unwrap();
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    // Should succeed (silently ignore per spec: `if data.slot != state.slot: return`)
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot + 1, &harness.spec)
+        .expect("should not error on slot mismatch (silent ignore)");
+
+    // Verify no weight was accumulated
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should remain 0 when attestation slot != block slot"
+    );
+}
+
+/// on_payload_attestation: accumulates ptc_weight and triggers payload_revealed
+/// when quorum (> PTC_SIZE/2) is reached.
+#[tokio::test]
+async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    // Apply a bid to initialize PTC tracking and set payload_revealed=false
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 1,
+            block_hash: ExecutionBlockHash::repeat_byte(0xdd),
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Send attestation with exactly quorum_threshold votes (should NOT trigger)
+    let attestation_below = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: true,
+            blob_data_available: false,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed_below = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            for i in 0..quorum_threshold {
+                list.push(i).unwrap();
+            }
+            list
+        },
+        data: attestation_below.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation_below, &indexed_below, slot, &harness.spec)
+        .unwrap();
+
+    // Check: ptc_weight should be exactly quorum_threshold, but NOT revealed yet
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.ptc_weight, quorum_threshold,
+        "ptc_weight should equal quorum_threshold"
+    );
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should still be false at exactly quorum_threshold (needs strictly greater)"
+    );
+
+    // Send one more vote to cross the threshold
+    let attestation_one_more = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: true,
+            blob_data_available: false,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed_one_more = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            list.push(quorum_threshold as u64).unwrap(); // one more attester
+            list
+        },
+        data: attestation_one_more.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(
+            &attestation_one_more,
+            &indexed_one_more,
+            slot,
+            &harness.spec,
+        )
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.ptc_weight,
+        quorum_threshold + 1,
+        "ptc_weight should be quorum_threshold + 1"
+    );
+    assert!(
+        node.payload_revealed,
+        "payload_revealed should be true after crossing quorum threshold"
+    );
+}
+
+/// on_payload_attestation: blob_data_available quorum is tracked independently
+/// from payload_present quorum.
+#[tokio::test]
+async fn fc_on_payload_attestation_blob_quorum_independent() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    // Apply bid
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 1,
+            block_hash: ExecutionBlockHash::repeat_byte(0xee),
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Send blob_data_available=true but payload_present=false
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: false,
+            blob_data_available: true,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            for i in 0..=quorum_threshold {
+                list.push(i).unwrap();
+            }
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+
+    // payload_present=false → ptc_weight should remain 0
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should be 0 when payload_present=false"
+    );
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should be false (no payload_present votes)"
+    );
+
+    // blob_data_available should have crossed quorum
+    assert_eq!(
+        node.ptc_blob_data_available_weight,
+        quorum_threshold + 1,
+        "ptc_blob_data_available_weight should be quorum_threshold + 1"
+    );
+    assert!(
+        node.payload_data_available,
+        "payload_data_available should be true after blob quorum reached"
+    );
+}
+
+/// on_payload_attestation: rejects attestation for unknown block root.
+#[tokio::test]
+async fn fc_on_payload_attestation_rejects_unknown_root() {
+    let harness = gloas_harness_at_epoch(0);
+    let (_, slot) = produce_gloas_block(&harness).await;
+
+    let unknown_root = Hash256::repeat_byte(0xab);
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: unknown_root,
+            slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            list.push(0).unwrap();
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec);
+
+    assert!(
+        result.is_err(),
+        "should reject payload attestation for unknown block root"
+    );
+}
+
+/// on_execution_bid followed by on_execution_payload: full lifecycle.
+/// Bid sets payload_revealed=false, then on_execution_payload reveals it.
+#[tokio::test]
+async fn fc_bid_then_payload_lifecycle() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let payload_hash = ExecutionBlockHash::repeat_byte(0xf0);
+
+    // 1. Apply bid
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 7,
+            block_hash: payload_hash,
+            value: 500,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(node.builder_index, Some(7));
+    assert!(!node.payload_revealed);
+    assert!(!node.payload_data_available);
+
+    // 2. Reveal payload
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_payload(block_root, payload_hash)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert!(node.payload_revealed);
+    assert!(node.payload_data_available);
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Optimistic(payload_hash)
+    );
+}
+
+/// on_payload_attestation with payload_present=true sets execution_status
+/// to Optimistic via bid_block_hash when quorum is reached and envelope
+/// hasn't arrived yet.
+#[tokio::test]
+async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid_hash = ExecutionBlockHash::repeat_byte(0xfa);
+
+    // Apply bid — this also stores bid_block_hash in the proto node via on_block
+    // We need to manually set bid_block_hash since on_execution_bid doesn't set it
+    // (it's set during on_block). Instead, test the quorum path by first setting
+    // the node's bid_block_hash directly through a write lock.
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        // Apply bid to reset PTC state
+        let bid = SignedExecutionPayloadBid::<E> {
+            message: ExecutionPayloadBid {
+                slot,
+                builder_index: 2,
+                block_hash: bid_hash,
+                ..Default::default()
+            },
+            signature: bls::Signature::empty(),
+        };
+        fc.on_execution_bid(&bid, block_root).unwrap();
+
+        // Set bid_block_hash on the proto_array node directly
+        // (normally set by on_block when block is imported)
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        let nodes = &mut fc.proto_array_mut().core_proto_array_mut().nodes;
+        if let Some(node) = nodes.get_mut(block_index) {
+            node.bid_block_hash = Some(bid_hash);
+            // Reset execution_status so the quorum path has to set it
+            node.execution_status = ExecutionStatus::irrelevant();
+        }
+    }
+
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Send enough votes to cross quorum
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: true,
+            blob_data_available: false,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            for i in 0..=quorum_threshold {
+                list.push(i).unwrap();
+            }
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert!(
+        node.payload_revealed,
+        "quorum should trigger payload_revealed"
+    );
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Optimistic(bid_hash),
+        "execution_status should be set to Optimistic(bid_block_hash) when quorum reached"
     );
 }
