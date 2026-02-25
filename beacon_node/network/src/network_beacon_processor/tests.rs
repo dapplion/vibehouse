@@ -40,10 +40,11 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
-    AttesterSlashing, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecarList,
-    DataColumnSubnetId, Epoch, EthSpec, Hash256, MainnetEthSpec, ProposerSlashing,
-    RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock, SignedVoluntaryExit,
-    SingleAttestation, Slot, SubnetId,
+    Address, AttesterSlashing, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecarList,
+    DataColumnSubnetId, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid, Hash256,
+    MainnetEthSpec, PayloadAttestation, PayloadAttestationData, ProposerSlashing,
+    RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock, SignedExecutionPayloadBid,
+    SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
 };
 
 type E = MainnetEthSpec;
@@ -2001,4 +2002,296 @@ async fn test_data_columns_by_range_request_only_returns_requested_columns() {
         !unique_received.is_empty(),
         "Should have received at least some data columns"
     );
+}
+
+// ======== Gloas (ePBS) gossip handler integration tests ========
+//
+// These tests verify the network-level gossip handlers for Gloas-specific
+// message types: execution bids, payload attestations, and execution payload
+// envelopes. They test the full pipeline from gossip_methods.rs through
+// beacon_chain verification to MessageAcceptance result on the network channel.
+
+/// Helper: create a Gloas-enabled TestRig where all blocks are Gloas blocks.
+async fn gloas_rig(chain_length: u64) -> TestRig {
+    let mut spec = test_spec::<E>();
+    spec.shard_committee_period = 2;
+    // Enable Gloas from genesis so all blocks are ePBS
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+    TestRig::new_parametric(
+        chain_length,
+        BeaconProcessorConfig::default(),
+        NodeCustodyType::Fullnode,
+        spec,
+    )
+    .await
+}
+
+/// Helper: drain network_rx for validation results, returning the first
+/// MessageAcceptance found within the timeout.
+async fn drain_validation_result(
+    network_rx: &mut mpsc::UnboundedReceiver<NetworkMessage<E>>,
+) -> MessageAcceptance {
+    let timeout = Duration::from_secs(5);
+    let deadline = tokio::time::sleep(timeout);
+    tokio::pin!(deadline);
+
+    loop {
+        tokio::select! {
+            _ = &mut deadline => panic!("timeout waiting for ValidationResult"),
+            msg = network_rx.recv() => {
+                match msg {
+                    Some(NetworkMessage::ValidationResult { validation_result, .. }) => {
+                        return validation_result;
+                    }
+                    Some(_) => continue, // skip ReportPeer etc.
+                    None => panic!("network_rx channel closed"),
+                }
+            }
+        }
+    }
+}
+
+/// Helper: assert that a MessageAcceptance is Accept.
+#[allow(dead_code)]
+fn assert_accept(result: MessageAcceptance) {
+    assert_matches!(result, MessageAcceptance::Accept);
+}
+
+/// Helper: assert that a MessageAcceptance is Reject.
+fn assert_reject(result: MessageAcceptance) {
+    assert_matches!(result, MessageAcceptance::Reject);
+}
+
+/// Helper: assert that a MessageAcceptance is Ignore.
+fn assert_ignore(result: MessageAcceptance) {
+    assert_matches!(result, MessageAcceptance::Ignore);
+}
+
+/// Gloas gossip: execution bid with zero execution_payment is REJECTED.
+///
+/// Per spec: [REJECT] bid.execution_payment > 0
+/// The gossip handler calls verify_execution_bid_for_gossip which returns
+/// ZeroExecutionPayment, and process_gossip_execution_bid maps that to Reject.
+#[tokio::test]
+async fn test_gloas_gossip_bid_zero_payment_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Construct a bid with zero execution_payment (like a self-build bid
+    // but with a non-self-build builder_index, which triggers the check)
+    let bid = SignedExecutionPayloadBid {
+        message: ExecutionPayloadBid {
+            slot: current_slot, // must be current or next to pass slot check
+            parent_block_root: head_root,
+            parent_block_hash: ExecutionBlockHash::zero(),
+            block_hash: ExecutionBlockHash::repeat_byte(0xaa),
+            prev_randao: Hash256::ZERO,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+            builder_index: 42, // not a self-build
+            value: 1000,
+            execution_payment: 0, // zero payment → reject
+            blob_kzg_commitments: <_>::default(),
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: execution bid for a distant future slot is IGNORED.
+///
+/// Per spec: [IGNORE] bid.slot in {current_slot, current_slot + 1}
+/// A bid for slot 999 when the chain is at slot 2 should be ignored.
+#[tokio::test]
+async fn test_gloas_gossip_bid_wrong_slot_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+
+    let bid = SignedExecutionPayloadBid {
+        message: ExecutionPayloadBid {
+            slot: Slot::new(999), // far future
+            parent_block_root: head.beacon_block_root,
+            parent_block_hash: ExecutionBlockHash::zero(),
+            block_hash: ExecutionBlockHash::repeat_byte(0xbb),
+            prev_randao: Hash256::ZERO,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+            builder_index: 42,
+            value: 1000,
+            execution_payment: 500,
+            blob_kzg_commitments: <_>::default(),
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: execution bid with non-existent builder_index is REJECTED.
+///
+/// Per spec: [REJECT] bid.builder_index is a valid and active builder
+/// Builder index 42 doesn't exist in the validator registry (only 32 validators in test).
+#[tokio::test]
+async fn test_gloas_gossip_bid_unknown_builder_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    let bid = SignedExecutionPayloadBid {
+        message: ExecutionPayloadBid {
+            slot: current_slot,
+            parent_block_root: head.beacon_block_root,
+            parent_block_hash: ExecutionBlockHash::zero(),
+            block_hash: ExecutionBlockHash::repeat_byte(0xcc),
+            prev_randao: Hash256::ZERO,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+            builder_index: 9999, // doesn't exist
+            value: 1000,
+            execution_payment: 500,
+            blob_kzg_commitments: <_>::default(),
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: payload attestation for unknown beacon block root is IGNORED.
+///
+/// Per spec: [IGNORE] data.beacon_block_root is a known block
+/// A payload attestation referencing a random block root not in fork choice
+/// should be ignored (not rejected, because the block may arrive later).
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_unknown_root_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Must have at least one aggregation bit set to pass the empty-bits check
+    let mut bits = ssz_types::BitVector::new();
+    bits.set(0, true).unwrap();
+
+    let attestation = PayloadAttestation {
+        aggregation_bits: bits,
+        data: PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xff), // unknown root
+            slot: current_slot,                            // must be current to pass slot check
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: bls::AggregateSignature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: payload attestation for a future slot is IGNORED.
+///
+/// Per spec: [IGNORE] data.slot == current_slot (with clock disparity)
+/// A payload attestation for slot 999 when the chain is at slot 2 should be ignored.
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_future_slot_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+
+    let attestation = PayloadAttestation {
+        aggregation_bits: ssz_types::BitVector::new(),
+        data: PayloadAttestationData {
+            beacon_block_root: head.beacon_block_root,
+            slot: Slot::new(999), // far future
+            payload_present: true,
+            blob_data_available: false,
+        },
+        signature: bls::AggregateSignature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: payload attestation with empty aggregation bits is REJECTED.
+///
+/// Per spec: aggregation bits must have at least one set bit.
+/// An attestation with zero set bits indicates no PTC members signed,
+/// which is invalid and should be rejected (mapped to Reject by gossip handler).
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_empty_bits_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    let attestation = PayloadAttestation {
+        aggregation_bits: ssz_types::BitVector::new(), // all zeros → empty
+        data: PayloadAttestationData {
+            beacon_block_root: head.beacon_block_root,
+            slot: current_slot, // must be current slot to pass slot check
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: bls::AggregateSignature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
 }
