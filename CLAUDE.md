@@ -14,6 +14,7 @@ Vibehouse is a fork of [Lighthouse](https://github.com/sigp/lighthouse) from v8.
 - Branch from `main` (not `unstable` - that's upstream's branch)
 - Origin: `dapplion/vibehouse`
 - **⚠️ NO UPSTREAM SYNC. NEVER cherry-pick, merge, or pull ANY code from sigp/lighthouse after v8.0.1.** vibehouse is an independent project, not a tracking fork. We write ALL our own code. If upstream has a useful fix, understand the problem and implement our own solution from scratch. Do not reference upstream diffs. Do not run `git cherry-pick`. Do not add sigp/lighthouse as a remote.
+- **⚠️ NO EXTERNAL INTERACTIONS. NEVER comment on, open, or modify issues/PRs on ANY repo other than dapplion/vibehouse.** Do not use `gh issue comment`, `gh pr comment`, or `gh api` to write to external repos. You may READ external issues/PRs for awareness, but NEVER write to them. This includes sigp/lighthouse, ethereum/consensus-specs, and any other repo. Only dapplion can interact with external projects.
 
 ---
 
