@@ -2373,3 +2373,121 @@ async fn gloas_self_build_bid_slot_matches_block() {
         "self-build bid parent_block_root should match block parent_root"
     );
 }
+
+/// Test that gossip verification rejects a Gloas block whose bid.parent_block_root
+/// does not match block.parent_root. This is the BidParentRootMismatch check in
+/// block_verification.rs — a consensus safety check ensuring the bid and block agree
+/// on their parent.
+#[tokio::test]
+async fn gloas_gossip_rejects_block_with_bid_parent_root_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build a chain with a few blocks
+    Box::pin(harness.extend_slots(3)).await;
+
+    harness.advance_slot();
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+
+    // Use make_block_with_modifier to create a block with a tampered bid parent root.
+    // The modifier runs before re-signing, so the proposer signature remains valid.
+    let ((block, _blobs), _state) = harness
+        .make_block_with_modifier(head_state, next_slot, |block| {
+            let body = block.body_gloas_mut().expect("should be Gloas block");
+            // Set bid.parent_block_root to a bogus value that differs from block.parent_root
+            body.signed_execution_payload_bid.message.parent_block_root =
+                Hash256::repeat_byte(0xde);
+        })
+        .await;
+
+    let result = harness.chain.verify_block_for_gossip(block).await;
+
+    assert!(
+        result.is_err(),
+        "should reject block with mismatched bid parent root"
+    );
+    let err = result.unwrap_err();
+    assert!(
+        matches!(err, BlockError::BidParentRootMismatch { .. }),
+        "expected BidParentRootMismatch, got {:?}",
+        err
+    );
+}
+
+/// Test that a valid Gloas block passes the BidParentRootMismatch check.
+/// Complement to the rejection test above — confirms that a correctly-constructed
+/// block (where bid.parent_block_root == block.parent_root) is not rejected by
+/// this check.
+#[tokio::test]
+async fn gloas_gossip_accepts_block_with_matching_bid_parent_root() {
+    let harness = gloas_harness_at_epoch(0);
+
+    Box::pin(harness.extend_slots(3)).await;
+
+    harness.advance_slot();
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((block, _blobs), _state) = harness.make_block(head_state, next_slot).await;
+
+    // Verify bid and block agree on parent root
+    let gloas_block = block.as_gloas().expect("should be Gloas block");
+    assert_eq!(
+        gloas_block
+            .message
+            .body
+            .signed_execution_payload_bid
+            .message
+            .parent_block_root,
+        gloas_block.message.parent_root,
+        "self-build bid should have matching parent_block_root"
+    );
+
+    // The block should pass gossip verification (or fail on a later check, not BidParentRootMismatch)
+    let result = harness.chain.verify_block_for_gossip(block).await;
+    match result {
+        Ok(_) => {}
+        Err(ref e) => {
+            assert!(
+                !matches!(e, BlockError::BidParentRootMismatch { .. }),
+                "valid block should not fail with BidParentRootMismatch, got {:?}",
+                e
+            );
+        }
+    }
+}
+
+/// Test that Gloas blocks import successfully without any blob/column sidecar data.
+/// In ePBS, the execution payload is delivered separately via the envelope, so the
+/// block itself is always "data available" from the block import perspective.
+/// This verifies the data availability bypass in block_verification.rs where Gloas
+/// blocks skip the AvailabilityPending path and go directly to Available.
+#[tokio::test]
+async fn gloas_block_import_without_blob_data() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build initial chain
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let ((block, _blobs), _state) = harness.make_block(head_state, next_slot).await;
+
+    let block_root = block.canonical_root();
+
+    // Import the block with NO blob items at all (pass None for blobs).
+    // For pre-Gloas blocks, this would cause the block to stall in AvailabilityPending.
+    // For Gloas blocks, the data availability bypass should make this succeed.
+    let result = harness
+        .process_block(next_slot, block_root, (block, None))
+        .await;
+
+    assert!(
+        result.is_ok(),
+        "Gloas block should import without blob data, got {:?}",
+        result.err()
+    );
+}
