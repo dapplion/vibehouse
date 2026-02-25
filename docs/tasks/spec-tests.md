@@ -29,6 +29,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — config/spec endpoint + clippy fixes (run 72)
+- Checked consensus-specs PRs since run 71: no new Gloas spec changes merged
+  - #4946 (bump actions/stale) — CI-only
+  - #4945 (fix inclusion list test for mainnet) — Heze-only, no Gloas impact
+  - #4918 (attestations for known payload statuses, merged Feb 23) — already implemented (run 69)
+  - Open Gloas PRs unchanged: #4940, #4932, #4843, #4939, #4840, #4926, #4898, #4892, #4747
+  - #4747 (Fast Confirmation Rule) updated Feb 24, most active tracked PR
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Fixed issue #8571**: added 4 missing values to `/eth/v1/config/spec` endpoint:
+  - `DOMAIN_BLS_TO_EXECUTION_CHANGE` (0x0a000000) — domain type from Capella
+  - `ATTESTATION_SUBNET_COUNT` (64) — networking constant
+  - `REORG_HEAD_WEIGHT_THRESHOLD` (20) — fork choice reorg threshold (conditional on spec config)
+  - `REORG_PARENT_WEIGHT_THRESHOLD` (160) — fork choice reorg threshold (conditional on spec config)
+  - Added `extra_fields_contains_missing_spec_values` test verifying all new values
+  - Remaining from issue: `EPOCHS_PER_SUBNET_SUBSCRIPTION`, `ATTESTATION_SUBNET_EXTRA_BITS`, `UPDATE_TIMEOUT`, `REORG_MAX_EPOCHS_SINCE_FINALIZATION` — these constants don't exist in the codebase yet
+- **Fixed 3 clippy collapsible-if lints** in `beacon_node/beacon_chain/tests/gloas.rs` that were blocking push
+- Confirmed issue #8589 (remove GloasNotImplemented) is already resolved in code — only appears in task docs
+
 ### 2026-02-24 — 8 Gloas envelope store integration tests (run 71)
 - No new consensus-specs changes since run 70
 - **Added 8 integration tests** to `beacon_node/beacon_chain/tests/gloas.rs` (previously ZERO tests for envelope store operations):
