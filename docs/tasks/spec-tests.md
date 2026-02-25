@@ -29,6 +29,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — stateless validation execution proof threshold tests + spec tracking (run 91)
+- Checked consensus-specs PRs since run 90: no new Gloas spec changes merged
+  - Only infrastructure PRs: actions/stale bump (#4946), no Gloas-affecting changes
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** — identified stateless validation proof threshold code as highest-impact untested path (zero test coverage for a central vibehouse feature)
+- **Added 7 stateless validation integration tests** (previously ZERO tests for execution proof threshold logic):
+  - `gloas_stateless_proof_threshold_marks_block_valid`: imports Gloas blocks into a stateless harness (stateless_validation=true), verifies block starts as Optimistic, sends a verified proof via `check_gossip_execution_proof_availability_and_import` with threshold=1, asserts return value is `Imported(block_root)` and fork choice execution_status flips from Optimistic to Valid
+  - `gloas_stateless_below_threshold_returns_missing_components`: with threshold=2, sends only 1 proof, asserts `MissingComponents` returned and block remains Optimistic in fork choice
+  - `gloas_stateless_duplicate_subnet_proofs_deduped`: with threshold=2, sends same subnet_0 proof twice via `check_gossip_execution_proof_availability_and_import`, verifies both return `MissingComponents` (HashSet deduplication prevents double-counting). Asserts tracker has exactly 1 unique subnet entry despite 2 submissions
+  - `gloas_process_pending_proofs_noop_when_not_stateless`: on a standard harness (stateless_validation=false), manually inserts proofs into `pending_execution_proofs` buffer, calls `process_pending_execution_proofs`, verifies buffer is NOT drained (early return when not stateless)
+  - `gloas_process_pending_proofs_drains_and_marks_valid`: on stateless harness with threshold=1, buffers a proof in `pending_execution_proofs`, calls `process_pending_execution_proofs`, verifies buffer is drained and block becomes execution-valid in fork choice
+  - `gloas_process_pending_proofs_noop_when_empty`: on stateless harness with no buffered proofs, calls `process_pending_execution_proofs` — verifies no panic and tracker remains empty
+  - `gloas_process_pending_proofs_below_threshold_stays_optimistic`: on stateless harness with threshold=3, buffers 1 proof, calls `process_pending_execution_proofs`, verifies buffer is drained AND proof transferred to tracker (1 entry) but block remains Optimistic
+- Built `gloas_stateless_harness()` helper with configurable proof threshold and `import_blocks_into_stateless()` helper using two-harness pattern: normal harness produces blocks, stateless harness imports them via `process_block` + `process_self_build_envelope` (which skips EL call in stateless mode)
+- These tests close the biggest untested code path: `check_gossip_execution_proof_availability_and_import` (beacon_chain.rs:4626-4674) and `process_pending_execution_proofs` (beacon_chain.rs:2844-2885) — the stateless validation mechanism that replaces EL verification with ZK proofs. If threshold logic had a bug (e.g., never reaching Valid, or counting duplicates), stateless nodes would be permanently stuck with an optimistic head
+- All 493 beacon_chain tests pass (was 486), cargo fmt clean
+
 ### 2026-02-25 — engine API Gloas wire format tests + spec tracking (run 90)
 - Checked consensus-specs PRs since run 89: no new Gloas spec changes merged
 - Spec test version: v1.7.0-alpha.2 remains latest release

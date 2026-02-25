@@ -10,8 +10,10 @@
 //! - The chain finalizes across the fork boundary
 //! - Gloas-specific state fields are initialized correctly after upgrade
 
+use beacon_chain::AvailabilityProcessingStatus;
 use beacon_chain::BeaconChainError;
 use beacon_chain::BlockError;
+use beacon_chain::ChainConfig;
 use beacon_chain::execution_proof_verification::GossipExecutionProofError;
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
@@ -2841,5 +2843,383 @@ async fn gloas_self_build_envelope_caches_post_envelope_state() {
     assert_eq!(
         *latest_block_hash, envelope_block_hash,
         "cached state should have post-envelope latest_block_hash"
+    );
+}
+
+// =============================================================================
+// Stateless validation — execution proof threshold tests
+// =============================================================================
+
+/// Creates a Gloas harness with stateless_validation enabled and custom proof threshold.
+/// Blocks must be imported via `process_block` since block production requires EL (which
+/// stateless mode skips). Use `gloas_harness_at_epoch(0)` to produce blocks, then import.
+fn gloas_stateless_harness(
+    min_proofs_required: usize,
+) -> BeaconChainHarness<EphemeralHarnessType<E>> {
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+    let chain_config = ChainConfig {
+        stateless_validation: true,
+        stateless_min_proofs_required: min_proofs_required,
+        ..ChainConfig::default()
+    };
+
+    let harness = BeaconChainHarness::builder(E::default())
+        .spec(spec.into())
+        .deterministic_keypairs(VALIDATOR_COUNT)
+        .fresh_ephemeral_store()
+        .mock_execution_layer()
+        .chain_config(chain_config)
+        .build();
+
+    harness.advance_slot();
+    harness
+}
+
+/// Helper: produces blocks on a normal harness, then imports them into the stateless harness
+/// via `process_block` (import path, no EL needed for Gloas blocks). Returns the block_root
+/// and block_hash of the last imported block.
+async fn import_blocks_into_stateless(
+    stateless: &BeaconChainHarness<EphemeralHarnessType<E>>,
+    num_blocks: usize,
+) -> (Hash256, ExecutionBlockHash) {
+    // Produce blocks on a normal harness with the same genesis
+    let producer = gloas_harness_at_epoch(0);
+    let mut block_root = Hash256::zero();
+    let mut block_hash = ExecutionBlockHash::zero();
+
+    for i in 0..num_blocks {
+        producer.advance_slot();
+        stateless.advance_slot();
+        let head_state = producer.chain.head_beacon_state_cloned();
+        let next_slot = head_state.slot() + 1;
+        let (block_contents, _state, envelope) = producer
+            .make_block_with_envelope(head_state, next_slot)
+            .await;
+
+        let envelope = envelope.expect("Gloas should produce envelope");
+        block_hash = envelope.message.payload.block_hash;
+        block_root = block_contents.0.canonical_root();
+
+        // Import block + envelope on the producer (so it can produce the next block)
+        producer
+            .process_block(next_slot, block_root, block_contents.clone())
+            .await
+            .unwrap_or_else(|e| panic!("producer import failed at block {}: {:?}", i, e));
+        producer
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .unwrap_or_else(|e| panic!("producer envelope failed at block {}: {:?}", i, e));
+
+        // Import the block on the stateless harness
+        stateless
+            .process_block(next_slot, block_root, block_contents)
+            .await
+            .unwrap_or_else(|e| panic!("stateless import failed at block {}: {:?}", i, e));
+
+        // Process the envelope on the stateless harness too — the envelope state transition
+        // updates latest_block_hash which subsequent blocks' bids depend on. In stateless
+        // mode, process_self_build_envelope skips the EL newPayload call but still runs
+        // the state transition. The block remains optimistic (not execution-valid) because
+        // no EL verification happened. This is what the proof threshold is meant to resolve.
+        stateless
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .unwrap_or_else(|e| panic!("stateless envelope failed at block {}: {:?}", i, e));
+    }
+
+    (block_root, block_hash)
+}
+
+/// In stateless mode, a Gloas block enters fork choice as optimistic. After receiving
+/// enough execution proofs to meet the threshold, `check_gossip_execution_proof_availability_and_import`
+/// marks it as execution-valid (Imported).
+#[tokio::test]
+async fn gloas_stateless_proof_threshold_marks_block_valid() {
+    let harness = gloas_stateless_harness(1);
+    let (block_root, block_hash) = import_blocks_into_stateless(&harness, 3).await;
+
+    // Verify the block is currently optimistic (no envelope processed)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let exec_status = fc
+            .get_block_execution_status(&block_root)
+            .expect("block should be in fork choice");
+        assert!(
+            exec_status.is_optimistic_or_invalid(),
+            "block should be optimistic before proof, got {:?}",
+            exec_status
+        );
+    }
+
+    // Verify the proof, then run it through the stateless import path
+    let proof = make_stub_execution_proof(block_root, block_hash);
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+
+    let verified = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, subnet_id)
+        .expect("proof should pass gossip verification");
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let result = harness
+        .chain
+        .check_gossip_execution_proof_availability_and_import(head_slot, block_root, verified)
+        .await
+        .expect("should not error");
+
+    // Threshold = 1, we sent 1 proof => Imported
+    assert_eq!(
+        result,
+        AvailabilityProcessingStatus::Imported(block_root),
+        "proof threshold reached should return Imported"
+    );
+
+    // Verify the block is now execution-valid in fork choice
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let exec_status = fc
+        .get_block_execution_status(&block_root)
+        .expect("block should be in fork choice");
+    assert!(
+        exec_status.is_valid_or_irrelevant(),
+        "block should be execution-valid after proof threshold, got {:?}",
+        exec_status
+    );
+}
+
+/// When the number of proofs is below the threshold, `check_gossip_execution_proof_availability_and_import`
+/// returns `MissingComponents`.
+#[tokio::test]
+async fn gloas_stateless_below_threshold_returns_missing_components() {
+    // Require 2 proofs, but only send 1
+    let harness = gloas_stateless_harness(2);
+    let (block_root, block_hash) = import_blocks_into_stateless(&harness, 3).await;
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+
+    let proof = make_stub_execution_proof(block_root, block_hash);
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+
+    let verified = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, subnet_id)
+        .expect("proof should pass gossip verification");
+
+    let result = harness
+        .chain
+        .check_gossip_execution_proof_availability_and_import(head_slot, block_root, verified)
+        .await
+        .expect("should not error");
+
+    // Only 1 proof for threshold=2 => MissingComponents
+    assert_eq!(
+        result,
+        AvailabilityProcessingStatus::MissingComponents(head_slot, block_root),
+        "below threshold should return MissingComponents"
+    );
+
+    // Block should still be optimistic
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let exec_status = fc
+        .get_block_execution_status(&block_root)
+        .expect("block should be in fork choice");
+    assert!(
+        exec_status.is_optimistic_or_invalid(),
+        "block should remain optimistic below threshold, got {:?}",
+        exec_status
+    );
+}
+
+/// Duplicate subnet proofs are deduplicated by the HashSet — sending the same subnet twice
+/// should NOT count as two distinct proofs toward the threshold.
+/// With MAX_EXECUTION_PROOF_SUBNETS=1, only subnet 0 is valid, so we verify that sending
+/// subnet 0 twice doesn't count as 2 proofs toward a threshold of 2.
+#[tokio::test]
+async fn gloas_stateless_duplicate_subnet_proofs_deduped() {
+    // Require 2 proofs, but only 1 valid subnet exists
+    let harness = gloas_stateless_harness(2);
+    let (block_root, block_hash) = import_blocks_into_stateless(&harness, 3).await;
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let subnet_0 = ExecutionProofSubnetId::new(0).unwrap();
+
+    // First proof on subnet 0
+    let proof1 = make_stub_execution_proof(block_root, block_hash);
+    let verified1 = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof1, subnet_0)
+        .expect("first proof should pass");
+
+    let result1 = harness
+        .chain
+        .check_gossip_execution_proof_availability_and_import(head_slot, block_root, verified1)
+        .await
+        .expect("should not error");
+
+    assert_eq!(
+        result1,
+        AvailabilityProcessingStatus::MissingComponents(head_slot, block_root),
+        "first proof should be MissingComponents (1 of 2)"
+    );
+
+    // Second proof on the SAME subnet 0 — should NOT reach threshold
+    let proof2 = make_stub_execution_proof(block_root, block_hash);
+    let verified2 = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof2, subnet_0)
+        .expect("second proof should pass");
+
+    let result2 = harness
+        .chain
+        .check_gossip_execution_proof_availability_and_import(head_slot, block_root, verified2)
+        .await
+        .expect("should not error");
+
+    // Still MissingComponents — duplicate subnet 0 was deduplicated, count stays at 1
+    assert_eq!(
+        result2,
+        AvailabilityProcessingStatus::MissingComponents(head_slot, block_root),
+        "duplicate subnet should NOT count twice toward threshold"
+    );
+
+    // Verify the tracker has exactly 1 unique subnet despite 2 proof submissions
+    let tracker = harness.chain.execution_proof_tracker.lock();
+    let subnets = tracker.get(&block_root).expect("should have tracker entry");
+    assert_eq!(
+        subnets.len(),
+        1,
+        "tracker should have 1 unique subnet (deduplicated), not 2"
+    );
+}
+
+/// `process_pending_execution_proofs` is a no-op when `stateless_validation = false`.
+/// This ensures standard (non-stateless) nodes don't accidentally trigger the proof path.
+#[tokio::test]
+async fn gloas_process_pending_proofs_noop_when_not_stateless() {
+    // Standard harness (stateless_validation = false)
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Manually insert a fake proof into pending_execution_proofs
+    {
+        let mut pending = harness.chain.pending_execution_proofs.lock();
+        pending.insert(block_root, vec![ExecutionProofSubnetId::new(0).unwrap()]);
+    }
+
+    // Call process_pending_execution_proofs — should be a no-op
+    harness.chain.process_pending_execution_proofs(block_root);
+
+    // The pending proofs should still be there (not drained) because the function
+    // returns early when stateless_validation is false
+    let pending = harness.chain.pending_execution_proofs.lock();
+    assert!(
+        pending.contains_key(&block_root),
+        "pending proofs should NOT be drained when stateless_validation is false"
+    );
+}
+
+/// `process_pending_execution_proofs` drains buffered proofs and marks the block as
+/// execution-valid when the threshold is reached.
+#[tokio::test]
+async fn gloas_process_pending_proofs_drains_and_marks_valid() {
+    let harness = gloas_stateless_harness(1);
+    let (block_root, _block_hash) = import_blocks_into_stateless(&harness, 3).await;
+
+    // Buffer a proof in pending_execution_proofs (simulates proof arriving before block)
+    {
+        let mut pending = harness.chain.pending_execution_proofs.lock();
+        pending.insert(block_root, vec![ExecutionProofSubnetId::new(0).unwrap()]);
+    }
+
+    // Call process_pending_execution_proofs
+    harness.chain.process_pending_execution_proofs(block_root);
+
+    // The buffer should be drained
+    let pending = harness.chain.pending_execution_proofs.lock();
+    assert!(
+        !pending.contains_key(&block_root),
+        "pending proofs should be drained after processing"
+    );
+    drop(pending);
+
+    // The block should now be execution-valid
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let exec_status = fc
+        .get_block_execution_status(&block_root)
+        .expect("block should be in fork choice");
+    assert!(
+        exec_status.is_valid_or_irrelevant(),
+        "block should be execution-valid after pending proofs met threshold, got {:?}",
+        exec_status
+    );
+}
+
+/// `process_pending_execution_proofs` with no buffered proofs is a safe no-op.
+#[tokio::test]
+async fn gloas_process_pending_proofs_noop_when_empty() {
+    let harness = gloas_stateless_harness(1);
+    let (block_root, _block_hash) = import_blocks_into_stateless(&harness, 3).await;
+
+    // No proofs buffered — call should not panic or change anything
+    harness.chain.process_pending_execution_proofs(block_root);
+
+    // The execution_proof_tracker should still be empty for this block
+    let tracker = harness.chain.execution_proof_tracker.lock();
+    assert!(
+        !tracker.contains_key(&block_root),
+        "tracker should be empty when no proofs were buffered"
+    );
+}
+
+/// Buffered proofs below threshold: `process_pending_execution_proofs` transfers proofs
+/// to the tracker but does NOT mark the block as execution-valid.
+#[tokio::test]
+async fn gloas_process_pending_proofs_below_threshold_stays_optimistic() {
+    let harness = gloas_stateless_harness(3); // need 3 proofs
+    let (block_root, _block_hash) = import_blocks_into_stateless(&harness, 3).await;
+
+    // Buffer only 1 proof (threshold = 3)
+    {
+        let mut pending = harness.chain.pending_execution_proofs.lock();
+        pending.insert(block_root, vec![ExecutionProofSubnetId::new(0).unwrap()]);
+    }
+
+    harness.chain.process_pending_execution_proofs(block_root);
+
+    // Buffer should be drained even though threshold not met
+    let pending = harness.chain.pending_execution_proofs.lock();
+    assert!(
+        !pending.contains_key(&block_root),
+        "pending proofs should be drained regardless of threshold"
+    );
+    drop(pending);
+
+    // But the proof should be in the tracker
+    let tracker = harness.chain.execution_proof_tracker.lock();
+    let subnets = tracker.get(&block_root).expect("should have tracker entry");
+    assert_eq!(subnets.len(), 1, "tracker should have 1 subnet");
+    drop(tracker);
+
+    // Block should still be optimistic (below threshold)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let exec_status = fc
+        .get_block_execution_status(&block_root)
+        .expect("block should be in fork choice");
+    assert!(
+        exec_status.is_optimistic_or_invalid(),
+        "block should remain optimistic when pending proofs below threshold, got {:?}",
+        exec_status
     );
 }
