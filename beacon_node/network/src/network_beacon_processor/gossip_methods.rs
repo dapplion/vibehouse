@@ -3296,18 +3296,73 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            // Spec: [REJECT] bid.builder_index is a valid/active builder index
+            Err(
+                e @ ExecutionBidError::UnknownBuilder { .. }
+                | e @ ExecutionBidError::InactiveBuilder { .. },
+            ) => {
+                warn!(
+                    builder_index,
+                    %peer_id,
+                    error = ?e,
+                    "Rejecting execution bid with invalid builder"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_invalid_builder",
+                );
+                return;
+            }
+            // Spec: [REJECT] valid signature
+            Err(ExecutionBidError::InvalidSignature) => {
+                warn!(
+                    builder_index,
+                    %peer_id,
+                    "Rejecting execution bid with invalid signature"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_bad_signature",
+                );
+                return;
+            }
+            // Spec: [IGNORE] bid.value <= builder's excess balance
+            Err(ExecutionBidError::InsufficientBuilderBalance { .. }) => {
+                debug!(
+                    builder_index,
+                    %peer_id,
+                    "Ignoring execution bid with insufficient builder balance"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // Spec: [IGNORE] parent_block_root references a known beacon block
+            Err(ExecutionBidError::InvalidParentRoot { .. }) => {
+                debug!(
+                    builder_index,
+                    %peer_id,
+                    "Ignoring execution bid with unknown parent block root"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // Internal errors (arithmetic, state access) — ignore with mild penalty
             Err(e) => {
                 debug!(
                     builder_index,
                     %peer_id,
                     error = ?e,
-                    "Dropping invalid execution bid"
+                    "Dropping execution bid due to internal error"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 self.gossip_penalize_peer(
                     peer_id,
                     PeerAction::HighToleranceError,
-                    "invalid_gossip_execution_bid",
+                    "execution_bid_internal_error",
                 );
                 return;
             }
@@ -3532,19 +3587,54 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            // Spec: [IGNORE] data.slot == current_slot (with MAXIMUM_GOSSIP_CLOCK_DISPARITY)
+            Err(
+                PayloadAttestationError::PastSlot { .. }
+                | PayloadAttestationError::FutureSlot { .. },
+            ) => {
+                debug!(
+                    %slot,
+                    ?beacon_block_root,
+                    peer = %peer_id,
+                    "Ignoring payload attestation for non-current slot"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // Reject: empty or malformed aggregation bits
+            Err(
+                e @ PayloadAttestationError::EmptyAggregationBits
+                | e @ PayloadAttestationError::InvalidAggregationBits,
+            ) => {
+                warn!(
+                    %slot,
+                    ?beacon_block_root,
+                    %peer_id,
+                    error = ?e,
+                    "Rejecting payload attestation with invalid aggregation bits"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "payload_attestation_invalid_bits",
+                );
+                return;
+            }
+            // Internal errors (PTC committee, state access, arithmetic) — ignore with mild penalty
             Err(e) => {
                 debug!(
                     %slot,
                     ?beacon_block_root,
                     %peer_id,
                     error = ?e,
-                    "Dropping invalid payload attestation"
+                    "Dropping payload attestation due to internal error"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 self.gossip_penalize_peer(
                     peer_id,
                     PeerAction::HighToleranceError,
-                    "invalid_gossip_payload_attestation",
+                    "payload_attestation_internal_error",
                 );
                 return;
             }
