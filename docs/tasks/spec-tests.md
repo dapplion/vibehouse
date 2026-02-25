@@ -29,6 +29,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — gossip verification edge case tests (run 79)
+- Checked consensus-specs PRs since run 78: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - #4843 (Variable PTC deadline) still under discussion, not close to merge
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Added 7 gossip verification edge case tests** (gloas_verification.rs: 42→49 tests):
+  - `attestation_duplicate_same_value_still_passes`: duplicate PTC attestation (same payload_present value) passes verification — confirms the relay-friendly behavior where duplicates are not rejected
+  - `attestation_mixed_duplicate_and_new_passes`: attestation with 2 PTC members, one already observed, passes — both indices preserved in attesting_indices (duplicates are not removed)
+  - `envelope_self_build_skips_signature_verification`: self-build envelope (BUILDER_INDEX_SELF_BUILD) with empty signature passes all checks — confirms BLS sig skip for proposer-built payloads
+  - `envelope_prior_to_finalization_direct`: explicit test using head block root but slot=0, verifying PriorToFinalization/SlotMismatch rejection
+  - `bid_second_builder_valid_signature_passes`: second builder (index=1) submits valid bid in multi-builder harness — verifies multi-builder bid verification
+  - `attestation_blob_data_available_true_passes`: PTC attestation with blob_data_available=true passes — verifies all 4 data field combinations work
+  - `attestation_payload_absent_blob_available_passes`: payload_present=false + blob_data_available=true passes — edge case combination
+- **Analysis of dead code in error enums**: identified 4 error variants that are defined but never returned:
+  - `ExecutionBidError::BuilderPubkeyUnknown` — pubkey lookup failure maps to `InvalidSignature` instead
+  - `PayloadAttestationError::AttesterNotInPtc` — PTC committee iteration makes this unreachable
+  - `PayloadAttestationError::DuplicateAttestation` — duplicates silently continue, never reject
+  - `PayloadEnvelopeError::UnknownBuilder` — pubkey lookup failure maps to `InvalidSignature` instead
+- Clippy clean, cargo fmt clean, all 49 gloas_verification tests pass
+
 ### 2026-02-25 — bug fixes and config validation (run 78)
 - Checked consensus-specs PRs since run 77: no new Gloas spec changes merged
   - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
