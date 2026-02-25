@@ -311,6 +311,273 @@ mod tests {
         assert!(clock.duration_to_next_epoch(slots_per_epoch).is_some(),);
     }
 
+    // ── Gloas 4-interval slot timing tests ─────────────────────
+
+    #[test]
+    fn gloas_fork_slot_round_trip() {
+        let clock = ManualSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(0),
+            Duration::from_secs(12),
+        );
+        assert_eq!(clock.gloas_fork_slot(), None, "default is None");
+
+        clock.set_gloas_fork_slot(Some(Slot::new(32)));
+        assert_eq!(clock.gloas_fork_slot(), Some(Slot::new(32)));
+
+        clock.set_gloas_fork_slot(None);
+        assert_eq!(clock.gloas_fork_slot(), None, "can be unset");
+    }
+
+    #[test]
+    fn current_intervals_pre_gloas_is_3() {
+        let clock = ManualSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(0),
+            Duration::from_secs(12),
+        );
+        // No Gloas fork configured — always 3.
+        assert_eq!(clock.current_intervals_per_slot(), 3);
+
+        // Gloas fork at slot 100, current slot = 0 → pre-Gloas → 3.
+        clock.set_gloas_fork_slot(Some(Slot::new(100)));
+        assert_eq!(
+            clock.current_intervals_per_slot(),
+            3,
+            "before fork slot should use 3 intervals"
+        );
+    }
+
+    #[test]
+    fn current_intervals_at_gloas_fork_is_4() {
+        let clock = ManualSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(0),
+            Duration::from_secs(12),
+        );
+        clock.set_gloas_fork_slot(Some(Slot::new(10)));
+        clock.set_slot(10); // exactly at fork slot
+        assert_eq!(
+            clock.current_intervals_per_slot(),
+            4,
+            "at fork slot should use 4 intervals"
+        );
+    }
+
+    #[test]
+    fn current_intervals_after_gloas_fork_is_4() {
+        let clock = ManualSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(0),
+            Duration::from_secs(12),
+        );
+        clock.set_gloas_fork_slot(Some(Slot::new(10)));
+        clock.set_slot(15); // well after fork
+        assert_eq!(
+            clock.current_intervals_per_slot(),
+            4,
+            "after fork slot should use 4 intervals"
+        );
+    }
+
+    #[test]
+    fn current_intervals_one_before_gloas_fork_is_3() {
+        let clock = ManualSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(0),
+            Duration::from_secs(12),
+        );
+        clock.set_gloas_fork_slot(Some(Slot::new(10)));
+        clock.set_slot(9); // one slot before fork
+        assert_eq!(
+            clock.current_intervals_per_slot(),
+            3,
+            "one slot before fork should still use 3 intervals"
+        );
+    }
+
+    #[test]
+    fn unagg_attestation_delay_pre_gloas() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        // No Gloas → 3 intervals → 12/3 = 4s
+        assert_eq!(
+            clock.unagg_attestation_production_delay(),
+            Duration::from_secs(4),
+            "pre-Gloas: unagg delay = slot_duration / 3"
+        );
+    }
+
+    #[test]
+    fn unagg_attestation_delay_post_gloas() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        clock.set_gloas_fork_slot(Some(Slot::new(0)));
+        // At Gloas → 4 intervals → 12/4 = 3s
+        assert_eq!(
+            clock.unagg_attestation_production_delay(),
+            Duration::from_secs(3),
+            "post-Gloas: unagg delay = slot_duration / 4"
+        );
+    }
+
+    #[test]
+    fn agg_attestation_delay_pre_gloas() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        // No Gloas → 3 intervals → 2*12/3 = 8s
+        assert_eq!(
+            clock.agg_attestation_production_delay(),
+            Duration::from_secs(8),
+            "pre-Gloas: agg delay = 2 * slot_duration / 3"
+        );
+    }
+
+    #[test]
+    fn agg_attestation_delay_post_gloas() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        clock.set_gloas_fork_slot(Some(Slot::new(0)));
+        // At Gloas → 4 intervals → 2*12/4 = 6s
+        assert_eq!(
+            clock.agg_attestation_production_delay(),
+            Duration::from_secs(6),
+            "post-Gloas: agg delay = 2 * slot_duration / 4"
+        );
+    }
+
+    #[test]
+    fn sync_committee_delays_mirror_attestation_delays() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+
+        // Pre-Gloas
+        assert_eq!(
+            clock.sync_committee_message_production_delay(),
+            clock.unagg_attestation_production_delay(),
+            "sync message delay should match unagg delay"
+        );
+        assert_eq!(
+            clock.sync_committee_contribution_production_delay(),
+            clock.agg_attestation_production_delay(),
+            "sync contribution delay should match agg delay"
+        );
+
+        // Post-Gloas
+        clock.set_gloas_fork_slot(Some(Slot::new(0)));
+        assert_eq!(
+            clock.sync_committee_message_production_delay(),
+            clock.unagg_attestation_production_delay(),
+            "post-Gloas: sync message delay should match unagg delay"
+        );
+        assert_eq!(
+            clock.sync_committee_contribution_production_delay(),
+            clock.agg_attestation_production_delay(),
+            "post-Gloas: sync contribution delay should match agg delay"
+        );
+    }
+
+    #[test]
+    fn single_lookup_delay_changes_with_gloas() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+
+        // Pre-Gloas: single_lookup = unagg_delay / 2 = 4/2 = 2s
+        assert_eq!(
+            clock.single_lookup_delay(),
+            Duration::from_secs(2),
+            "pre-Gloas: single lookup delay = unagg_delay / 2"
+        );
+
+        // Post-Gloas: single_lookup = unagg_delay / 2 = 3/2 = 1.5s
+        clock.set_gloas_fork_slot(Some(Slot::new(0)));
+        assert_eq!(
+            clock.single_lookup_delay(),
+            Duration::from_millis(1500),
+            "post-Gloas: single lookup delay = unagg_delay / 2"
+        );
+    }
+
+    #[test]
+    fn freeze_at_preserves_gloas_fork_slot() {
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        clock.set_gloas_fork_slot(Some(Slot::new(5)));
+        clock.set_slot(10); // post-Gloas
+
+        // Freeze the clock at a specific time (slot 10 start)
+        let frozen = clock.freeze_at(Duration::from_secs(120));
+        assert_eq!(
+            frozen.gloas_fork_slot(),
+            Some(Slot::new(5)),
+            "freeze_at should preserve gloas_fork_slot"
+        );
+        assert_eq!(
+            frozen.current_intervals_per_slot(),
+            4,
+            "frozen clock should use Gloas intervals"
+        );
+    }
+
+    #[test]
+    fn timing_transition_at_fork_boundary() {
+        // Simulate crossing the Gloas fork boundary.
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        clock.set_gloas_fork_slot(Some(Slot::new(5)));
+
+        // Pre-fork (slot 4)
+        clock.set_slot(4);
+        assert_eq!(clock.current_intervals_per_slot(), 3);
+        assert_eq!(
+            clock.unagg_attestation_production_delay(),
+            Duration::from_secs(4)
+        );
+        assert_eq!(
+            clock.agg_attestation_production_delay(),
+            Duration::from_secs(8)
+        );
+
+        // At fork (slot 5)
+        clock.set_slot(5);
+        assert_eq!(clock.current_intervals_per_slot(), 4);
+        assert_eq!(
+            clock.unagg_attestation_production_delay(),
+            Duration::from_secs(3)
+        );
+        assert_eq!(
+            clock.agg_attestation_production_delay(),
+            Duration::from_secs(6)
+        );
+
+        // Post fork (slot 6)
+        clock.set_slot(6);
+        assert_eq!(clock.current_intervals_per_slot(), 4);
+        assert_eq!(
+            clock.unagg_attestation_production_delay(),
+            Duration::from_secs(3)
+        );
+        assert_eq!(
+            clock.agg_attestation_production_delay(),
+            Duration::from_secs(6)
+        );
+    }
+
+    #[test]
+    fn gloas_fork_at_genesis() {
+        // Gloas from genesis (slot 0).
+        let slot_duration = Duration::from_secs(12);
+        let clock = ManualSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        clock.set_gloas_fork_slot(Some(Slot::new(0)));
+
+        // At genesis (slot 0) → should already be Gloas.
+        assert_eq!(clock.current_intervals_per_slot(), 4);
+        assert_eq!(
+            clock.unagg_attestation_production_delay(),
+            Duration::from_secs(3)
+        );
+    }
+
     #[test]
     fn test_tolerance() {
         let clock = ManualSlotClock::new(
