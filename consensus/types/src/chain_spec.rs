@@ -1732,6 +1732,18 @@ impl<'de> Deserialize<'de> for BlobSchedule {
         D: Deserializer<'de>,
     {
         let vec = Vec::<BlobParameters>::deserialize(deserializer)?;
+
+        // Reject duplicate epochs in config (they indicate a malformed blob schedule).
+        let mut seen = std::collections::HashSet::new();
+        for entry in &vec {
+            if !seen.insert(entry.epoch) {
+                return Err(serde::de::Error::custom(format!(
+                    "duplicate epoch {} in blob_schedule",
+                    entry.epoch
+                )));
+            }
+        }
+
         Ok(BlobSchedule::new(vec))
     }
 }
@@ -1740,6 +1752,8 @@ impl BlobSchedule {
     pub fn new(mut vec: Vec<BlobParameters>) -> Self {
         // reverse sort by epoch
         vec.sort_by(|a, b| b.epoch.cmp(&a.epoch));
+        // deduplicate consecutive entries with the same epoch (keeps the first after sort)
+        vec.dedup_by_key(|entry| entry.epoch);
         Self {
             schedule: vec,
             skip_serializing: false,
@@ -3061,6 +3075,57 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn blob_schedule_new_deduplicates_epochs() {
+        let entries = vec![
+            BlobParameters {
+                epoch: Epoch::new(10),
+                max_blobs_per_block: 6,
+            },
+            BlobParameters {
+                epoch: Epoch::new(10),
+                max_blobs_per_block: 9,
+            },
+            BlobParameters {
+                epoch: Epoch::new(20),
+                max_blobs_per_block: 12,
+            },
+        ];
+        let schedule = BlobSchedule::new(entries);
+        // Duplicates removed — only 2 entries remain (one per unique epoch).
+        assert_eq!(schedule.as_vec().len(), 2);
+        // Reverse sorted: epoch 20 first, then 10.
+        assert_eq!(schedule.as_vec()[0].epoch, Epoch::new(20));
+        assert_eq!(schedule.as_vec()[1].epoch, Epoch::new(10));
+    }
+
+    #[test]
+    fn blob_schedule_new_no_duplicates_unchanged() {
+        let entries = vec![
+            BlobParameters {
+                epoch: Epoch::new(5),
+                max_blobs_per_block: 6,
+            },
+            BlobParameters {
+                epoch: Epoch::new(15),
+                max_blobs_per_block: 9,
+            },
+            BlobParameters {
+                epoch: Epoch::new(25),
+                max_blobs_per_block: 12,
+            },
+        ];
+        let schedule = BlobSchedule::new(entries);
+        assert_eq!(schedule.as_vec().len(), 3);
+    }
+
+    #[test]
+    fn blob_schedule_empty_is_valid() {
+        let schedule = BlobSchedule::new(vec![]);
+        assert!(schedule.is_empty());
+        assert_eq!(schedule.max_blobs_for_epoch(Epoch::new(0)), None);
+    }
 }
 
 #[cfg(test)]
@@ -3553,5 +3618,62 @@ mod yaml_tests {
                 (epoch - 1).start_slot(E::slots_per_epoch()) - 1
             );
         }
+    }
+
+    #[test]
+    fn blob_schedule_duplicate_epochs_rejected_on_deserialize() {
+        let spec_contents = r#"
+        PRESET_BASE: 'mainnet'
+        MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 384
+        MIN_GENESIS_TIME: 1748264340
+        GENESIS_FORK_VERSION: 0x10355025
+        GENESIS_DELAY: 60
+        SECONDS_PER_SLOT: 12
+        SECONDS_PER_ETH1_BLOCK: 12
+        MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+        SHARD_COMMITTEE_PERIOD: 256
+        ETH1_FOLLOW_DISTANCE: 2048
+        INACTIVITY_SCORE_BIAS: 4
+        INACTIVITY_SCORE_RECOVERY_RATE: 16
+        EJECTION_BALANCE: 16000000000
+        MIN_PER_EPOCH_CHURN_LIMIT: 4
+        CHURN_LIMIT_QUOTIENT: 65536
+        MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 8
+        PROPOSER_SCORE_BOOST: 40
+        DEPOSIT_CHAIN_ID: 7042643276
+        DEPOSIT_NETWORK_ID: 7042643276
+        DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
+        ALTAIR_FORK_VERSION: 0x20355025
+        ALTAIR_FORK_EPOCH: 0
+        BELLATRIX_FORK_VERSION: 0x30355025
+        BELLATRIX_FORK_EPOCH: 0
+        CAPELLA_FORK_VERSION: 0x40355025
+        CAPELLA_FORK_EPOCH: 0
+        DENEB_FORK_VERSION: 0x50355025
+        DENEB_FORK_EPOCH: 0
+        ELECTRA_FORK_VERSION: 0x60355025
+        ELECTRA_FORK_EPOCH: 0
+        FULU_FORK_VERSION: 0x70355025
+        FULU_FORK_EPOCH: 256
+        GLOAS_FORK_VERSION: 0x80355025
+        GLOAS_FORK_EPOCH: 512
+        BLOB_SCHEDULE:
+          - EPOCH: 256
+            MAX_BLOBS_PER_BLOCK: 12
+          - EPOCH: 256
+            MAX_BLOBS_PER_BLOCK: 15
+          - EPOCH: 512
+            MAX_BLOBS_PER_BLOCK: 18
+        "#;
+        let result: Result<Config, _> = serde_yaml::from_str(spec_contents);
+        assert!(
+            result.is_err(),
+            "Duplicate epochs in blob_schedule should be rejected during deserialization"
+        );
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("duplicate epoch"),
+            "Error should mention duplicate epoch, got: {err}"
+        );
     }
 }
