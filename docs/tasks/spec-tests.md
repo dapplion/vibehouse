@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — blinded envelope block replayer tests (run 76)
+- Checked consensus-specs PRs since run 75: no new Gloas spec changes merged
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Added 7 blinded envelope block replayer tests** (previously ZERO tests for the blinded envelope reconstruction path in BlockReplayer):
+  - `blinded_envelopes_builder_method_stores_blinded`: builder method correctly stores blinded envelopes
+  - `default_replayer_has_no_blinded_envelopes`: empty by default
+  - `anchor_block_with_blinded_envelope_updates_latest_block_hash`: blinded envelope reconstruction via `into_full_with_withdrawals` correctly updates state's `latest_block_hash` — the critical path for replaying finalized blocks after payload pruning
+  - `anchor_block_blinded_envelope_removes_from_map`: consumed blinded entry removed, others preserved
+  - `anchor_block_full_envelope_preferred_over_blinded`: when both full and blinded envelopes are supplied, full takes priority and blinded remains unconsumed
+  - `anchor_block_blinded_envelope_error_is_silently_dropped`: malformed blinded envelope doesn't cause panic (best-effort processing)
+  - `anchor_block_blinded_envelope_sets_availability_bit`: reconstructed envelope correctly sets `execution_payload_availability` bit
+- These tests close the block replayer's blinded envelope gap: the previous 14 tests only covered full envelope and bid fallback anchor block paths. The blinded reconstruction path (used when replaying finalized blocks after the full payload has been pruned) had zero coverage.
+- All 287 state_processing tests pass (was 280), cargo fmt + clippy clean
+
 ### 2026-02-25 — payload pruning + blinded envelope fallback tests (run 75)
 - Checked consensus-specs PRs since run 74: no new Gloas spec changes merged
   - Only #4946 (bump actions/stale), #4945 (inclusion list test for mainnet — Heze-only), #4931 (rebase FOCIL onto Gloas — EIP-7805 Heze), #4930 (rename execution_payload_states to payload_states — spec-doc-only rename, no code change)
