@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — payload pruning + blinded envelope fallback tests (run 75)
+- Checked consensus-specs PRs since run 74: no new Gloas spec changes merged
+  - Only #4946 (bump actions/stale), #4945 (inclusion list test for mainnet — Heze-only), #4931 (rebase FOCIL onto Gloas — EIP-7805 Heze), #4930 (rename execution_payload_states to payload_states — spec-doc-only rename, no code change)
+  - All tracked Gloas PRs still open: #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- No new GitHub issues (3 open are all RFCs/feature requests)
+- **Added 4 payload pruning + blinded envelope fallback integration tests** (previously ZERO tests for the pruned-payload fallback path):
+  - `gloas_pruned_payload_full_envelope_gone_blinded_survives`: prune via DeleteExecutionPayload, verify get_payload_envelope returns None, get_blinded_payload_envelope returns Some with correct slot
+  - `gloas_load_envelopes_falls_back_to_blinded_after_pruning`: prune all payloads, verify load_envelopes_for_blocks returns only blinded envelopes (zero full), all block roots covered
+  - `gloas_mixed_full_and_blinded_envelopes_after_partial_prune`: prune one block's payload, verify mixed results — pruned block in blinded map, rest in full map
+  - `gloas_blinded_envelope_preserves_fields_after_pruning`: verify builder_index, state_root, and slot are preserved in blinded envelope after pruning
+- These tests close the biggest store integration gap: the blinded envelope fallback path used during payload pruning. Previously, no test verified that `load_envelopes_for_blocks` falls back correctly after `DeleteExecutionPayload`, or that blinded envelopes preserve metadata after the full payload is removed.
+- All 461 beacon_chain tests pass (was 457), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas test coverage + TODO cleanup (run 74)
 - Checked consensus-specs PRs since run 73: no new Gloas spec changes merged
   - Only #4946 (bump actions/stale) — CI-only
