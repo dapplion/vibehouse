@@ -29,6 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas early attester cache payload_present tests + spec tracking (run 106)
+- Checked consensus-specs PRs since run 105: no new Gloas spec changes merged
+  - No new Gloas PRs merged since run 105 (latest merge was #4918 on Feb 23, already tracked)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4926, #4558
+  - PRs to watch: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS rename), #4558 (cell dissemination), #4747 (Fast Confirmation Rule, updated Feb 25)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Addressed early attester cache Gloas payload_present gap**: the `EarlyAttesterCache::try_attest()` method (early_attester_cache.rs:132-148) independently computes `payload_present` from the proto_block's `payload_revealed` field, but had ZERO test coverage with Gloas enabled. The existing tests in `attestation_production.rs` use `default_spec()` which doesn't enable Gloas, so the early cache always computed `payload_present=false` regardless of the proto_block's `payload_revealed` state
+- **Added 5 early attester cache Gloas integration tests** (previously ZERO tests for this pipeline with Gloas):
+  - **Same-slot behavior (1 test):**
+    - `gloas_early_cache_same_slot_payload_present_false`: extends chain (payload_revealed=true), populates early cache, attests at same slot. Verifies `data.index == 0` — same-slot attestations always have payload_present=false, even when payload_revealed=true in the proto_block
+  - **Non-same-slot with revealed payload (1 test):**
+    - `gloas_early_cache_non_same_slot_payload_revealed_index_one`: extends chain (payload_revealed=true), populates early cache, attests at next slot. Verifies `data.index == 1` — non-same-slot attestations with payload_revealed=true have payload_present=true
+  - **Non-same-slot with unrevealed payload (1 test):**
+    - `gloas_early_cache_non_same_slot_payload_not_revealed_index_zero`: extends chain, clones proto_block with payload_revealed=false, populates early cache, attests at next slot. Verifies `data.index == 0` — the safety boundary: unrevealed payloads must not indicate presence
+  - **Consistency with canonical path (1 test):**
+    - `gloas_early_cache_matches_canonical_attestation`: populates early cache and compares early cache attestation with `produce_unaggregated_attestation` output at both same-slot and non-same-slot positions. Verifies both paths produce identical `data.index` values, catching divergence between the two attestation production pipelines
+  - **Pre-Gloas baseline (1 test):**
+    - `fulu_early_cache_uses_committee_index_not_payload_present`: sets gloas_fork_epoch=100 (runs in Fulu), populates early cache, attests at skip slot. Verifies `data.index == 0` (committee index), confirming the Gloas payload_present logic is NOT triggered for pre-Gloas forks
+- These tests close a critical gap: the early attester cache is the fast-path used when a block has just been imported but hasn't reached the database yet. If the cache computed `payload_present` incorrectly, attestations produced in the first moments after block import would have the wrong `data.index`, causing them to be rejected by peers or attributed to the wrong commitment. The consistency test is particularly important — it catches divergence between the early cache path and the canonical_head path, which would mean the same node produces different attestations depending on timing
+- **Remaining gaps from run 96 analysis**: P2 (PayloadAttestationService), P5 (poll_ptc_duties) — both require mock BN infrastructure; P6 (store reconstruct blinded envelope fallback), P8 (post_block_import self-build envelope branch)
+- All 553 beacon_chain tests pass (was 548), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas execution proof gossip handler integration tests + spec tracking (run 105)
 - Checked consensus-specs PRs since run 104: no new Gloas spec changes merged
   - 5 PRs merged since run 104 affect Gloas (#4918, #4923, #4930, #4922, #4920) — all already confirmed implemented in runs 97-100
