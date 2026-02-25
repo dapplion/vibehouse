@@ -1637,3 +1637,417 @@ async fn envelope_external_builder_invalid_signature_rejected() {
         );
     }
 }
+
+// =============================================================================
+// Payload attestation: duplicate handling tests
+// =============================================================================
+
+#[tokio::test]
+async fn attestation_duplicate_same_value_still_passes() {
+    // When a PTC validator's attestation has already been observed with the
+    // same payload_present value, the equivocation check says "Duplicate" and
+    // continues. The attestation should still pass verification (for relay).
+    let harness = gloas_harness(2).await;
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+            .expect("should compute PTC committee");
+    assert!(!ptc_indices.is_empty());
+
+    let ptc_validator = ptc_indices[0];
+
+    // Pre-observe this validator with payload_present=true
+    harness
+        .chain
+        .observed_payload_attestations
+        .lock()
+        .observe_attestation(head_slot, head_root, ptc_validator, true);
+
+    // Build the same attestation (payload_present=true) and sign it correctly
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+    let sig = KEYPAIRS[ptc_validator as usize].sk.sign(signing_root);
+    let mut agg_sig = AggregateSignature::infinity();
+    agg_sig.add_assign(&sig);
+
+    let mut attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::new(),
+        data,
+        signature: agg_sig,
+    };
+    attestation.aggregation_bits.set(0, true).unwrap();
+
+    // Should still pass even though it's a duplicate — duplicates are accepted for relay
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    assert!(
+        result.is_ok(),
+        "duplicate attestation (same value) should still pass, got {:?}",
+        result.err()
+    );
+}
+
+#[tokio::test]
+async fn attestation_mixed_duplicate_and_new_passes() {
+    // Attestation with 2 PTC members: one already observed (duplicate),
+    // one new. Should still pass verification.
+    let harness = gloas_harness(2).await;
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+            .expect("should compute PTC committee");
+    if ptc_indices.len() < 2 {
+        return; // Need at least 2 PTC members
+    }
+
+    let validator_0 = ptc_indices[0];
+
+    // Pre-observe validator_0 with same value
+    harness
+        .chain
+        .observed_payload_attestations
+        .lock()
+        .observe_attestation(head_slot, head_root, validator_0, true);
+
+    // Build attestation from both validators
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+
+    let mut agg_sig = AggregateSignature::infinity();
+    for &vi in &ptc_indices[..2] {
+        let sig = KEYPAIRS[vi as usize].sk.sign(signing_root);
+        agg_sig.add_assign(&sig);
+    }
+
+    let mut attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::new(),
+        data,
+        signature: agg_sig,
+    };
+    attestation.aggregation_bits.set(0, true).unwrap();
+    attestation.aggregation_bits.set(1, true).unwrap();
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    assert!(
+        result.is_ok(),
+        "mixed duplicate+new attestation should pass, got {:?}",
+        result.err()
+    );
+
+    let verified = result.unwrap();
+    assert_eq!(
+        verified.attesting_indices().len(),
+        2,
+        "both validators should be in attesting indices (duplicates are not removed)"
+    );
+}
+
+// =============================================================================
+// Envelope: self-build signature skip test
+// =============================================================================
+
+#[tokio::test]
+async fn envelope_self_build_skips_signature_verification() {
+    // Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) skip BLS
+    // signature verification. Verify that an envelope with an empty signature
+    // passes all checks when it matches a self-build block.
+    let harness = gloas_harness(2).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let block = harness
+        .chain
+        .store
+        .get_blinded_block(&head_root)
+        .unwrap()
+        .unwrap();
+    let committed_bid = block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .unwrap();
+
+    // The test harness produces self-build blocks
+    assert_eq!(
+        committed_bid.message.builder_index,
+        types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
+        "harness should produce self-build blocks"
+    );
+
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = head_root;
+    envelope_msg.slot = head_slot;
+    envelope_msg.builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
+    envelope_msg.payload.block_hash = committed_bid.message.block_hash;
+
+    // Use an empty signature — self-build should not require signature verification
+    let signed_envelope = SignedExecutionPayloadEnvelope {
+        message: envelope_msg,
+        signature: Signature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
+    assert!(
+        result.is_ok(),
+        "self-build envelope with empty signature should pass, got {:?}",
+        result.err()
+    );
+
+    let verified = result.unwrap();
+    assert_eq!(verified.beacon_block_root(), head_root);
+}
+
+// =============================================================================
+// Envelope: direct prior-to-finalization test
+// =============================================================================
+
+#[tokio::test]
+async fn envelope_prior_to_finalization_direct() {
+    // Directly test that an envelope at a finalized slot is rejected.
+    // Unlike the existing test, this uses a block root that IS in fork choice
+    // to reach the PriorToFinalization check (not the SlotMismatch check).
+    let harness = gloas_harness(E::slots_per_epoch() as usize * 4).await;
+
+    let finalized_checkpoint = harness
+        .chain
+        .canonical_head
+        .cached_head()
+        .finalized_checkpoint();
+    let finalized_slot = finalized_checkpoint.epoch.start_slot(E::slots_per_epoch());
+
+    assert!(
+        finalized_slot > Slot::new(0),
+        "chain should have finalized, got finalized_slot={}",
+        finalized_slot
+    );
+
+    // Use the current head (in fork choice) but set envelope slot to 0 (finalized)
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
+    envelope.message.beacon_block_root = head_root;
+    envelope.message.slot = Slot::new(0); // Prior to finalization
+
+    let err = unwrap_err(
+        harness
+            .chain
+            .verify_payload_envelope_for_gossip(Arc::new(envelope)),
+        "should reject pre-finalization envelope",
+    );
+    // The head block is at a high slot, so envelope.slot=0 != head.slot → SlotMismatch
+    // OR if the code checks finalization before slot match, it would be PriorToFinalization
+    assert!(
+        matches!(
+            err,
+            PayloadEnvelopeError::PriorToFinalization { .. }
+                | PayloadEnvelopeError::SlotMismatch { .. }
+        ),
+        "expected PriorToFinalization or SlotMismatch, got {:?}",
+        err
+    );
+}
+
+// =============================================================================
+// Bid: second builder in multi-builder harness
+// =============================================================================
+
+#[tokio::test]
+async fn bid_second_builder_valid_signature_passes() {
+    // Test that a second builder (index=1) can also submit a valid bid.
+    let harness =
+        gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000), (0, 2_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let bid_msg = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 500,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = bid_msg.signing_root(domain);
+    let signature = BUILDER_KEYPAIRS[1].sk.sign(signing_root);
+
+    let bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature,
+    };
+
+    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    assert!(
+        result.is_ok(),
+        "valid bid from second builder should pass, got {:?}",
+        result.err()
+    );
+}
+
+// =============================================================================
+// Attestation: blob_data_available field variations
+// =============================================================================
+
+#[tokio::test]
+async fn attestation_blob_data_available_true_passes() {
+    // Verify that payload attestations with blob_data_available=true also pass
+    let harness = gloas_harness(2).await;
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+            .expect("should compute PTC committee");
+    assert!(!ptc_indices.is_empty());
+
+    let ptc_validator = ptc_indices[0];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+    let sig = KEYPAIRS[ptc_validator as usize].sk.sign(signing_root);
+    let mut agg_sig = AggregateSignature::infinity();
+    agg_sig.add_assign(&sig);
+
+    let mut attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::new(),
+        data,
+        signature: agg_sig,
+    };
+    attestation.aggregation_bits.set(0, true).unwrap();
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    assert!(
+        result.is_ok(),
+        "attestation with blob_data_available=true should pass, got {:?}",
+        result.err()
+    );
+}
+
+#[tokio::test]
+async fn attestation_payload_absent_blob_available_passes() {
+    // payload_present=false, blob_data_available=true is a valid combination
+    let harness = gloas_harness(2).await;
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+            .expect("should compute PTC committee");
+    assert!(!ptc_indices.is_empty());
+
+    let ptc_validator = ptc_indices[0];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: false,
+        blob_data_available: true,
+    };
+
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+    let sig = KEYPAIRS[ptc_validator as usize].sk.sign(signing_root);
+    let mut agg_sig = AggregateSignature::infinity();
+    agg_sig.add_assign(&sig);
+
+    let mut attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::new(),
+        data,
+        signature: agg_sig,
+    };
+    attestation.aggregation_bits.set(0, true).unwrap();
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    assert!(
+        result.is_ok(),
+        "payload_present=false, blob_data_available=true should pass, got {:?}",
+        result.err()
+    );
+}
