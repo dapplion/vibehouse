@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas canonical_head and payload attributes tests (run 107 continued)
+- **Addressed canonical_head.rs Gloas branches**: `parent_random()` (line 172) and `head_block_number()` (line 189) had ZERO test coverage with Gloas-enabled heads. These methods are called during `prepare_beacon_proposer` → `get_pre_payload_attributes` to compute FCU payload attributes for the execution layer. If `parent_random()` returns the wrong value, the EL builds a payload with incorrect prev_randao, causing the block to be rejected by peers
+- **Added 4 canonical_head / payload attributes integration tests** (previously ZERO tests for these paths):
+  - **parent_random Gloas path (1 test):**
+    - `gloas_canonical_head_parent_random_reads_from_bid`: extends chain, reads bid's prev_randao from head block, verifies `parent_random()` returns it. Tests the Gloas-specific branch that reads from `bid.message.prev_randao` instead of `execution_payload.prev_randao()`
+  - **head_block_number Gloas path (1 test):**
+    - `gloas_canonical_head_block_number_returns_zero`: extends chain, verifies `head_block_number()` returns 0 for Gloas head. Tests the fallback (block number is in envelope, not block body)
+  - **get_pre_payload_attributes normal path (1 test):**
+    - `gloas_get_pre_payload_attributes_succeeds`: extends chain, calls `get_pre_payload_attributes` with proposer_head==head. Verifies prev_randao matches `head_random()`, parent_block_number==0, parent_beacon_block_root==head
+  - **get_pre_payload_attributes re-org path (1 test):**
+    - `gloas_get_pre_payload_attributes_reorg_uses_parent_random`: extends chain, calls with proposer_head==parent (simulating re-org). Verifies prev_randao matches `parent_random()` (bid's prev_randao), parent_block_number==0 (0.saturating_sub(1))
+- These tests close two gaps from the run 107 analysis: canonical_head.rs Gloas branches (#4 and #5) and the get_pre_payload_attributes Gloas pipeline. The re-org test is particularly important — it exercises the path where the proposer builds on the parent instead of the head, which requires reading prev_randao from the head block's bid (the parent's RANDAO was overwritten in the state)
+- All 562 beacon_chain tests pass (was 558), cargo fmt + clippy clean
+
 ### 2026-02-25 — Gloas self-build envelope EL/error path tests + spec tracking (run 107)
 - Checked consensus-specs PRs since run 106: no new Gloas spec changes merged
   - #4946 (GH Actions dependency bump) and #4945 (inclusion list test fix — Heze, not Gloas) — both irrelevant
