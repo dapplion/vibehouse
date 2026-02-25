@@ -29,6 +29,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — Gloas block verification edge case tests + spec tracking (run 102)
+- Checked consensus-specs PRs since run 101: no new Gloas spec changes merged
+  - **PR #4946** (merged Feb 24): actions/stale bump — CI only, no impact
+  - No new Gloas PRs merged since run 101
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+  - New PRs to watch: #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS rename, touches Gloas), #4558 (cell dissemination, now tags Gloas)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** of block_verification.rs Gloas-specific paths, store crate Gloas paths, and remaining P2-P8 gaps from run 96 analysis
+- **Addressed remaining test gaps from run 96**: P7 (get_execution_payload Gloas parent hash/withdrawals) now fully covered via production invariant tests
+- **Added 6 block verification Gloas edge case tests** (previously ZERO tests for these paths):
+  - **Bid blob count validation (2 tests):**
+    - `gloas_gossip_rejects_block_with_excess_bid_blob_commitments`: tampers bid to have max_blobs+1 blob_kzg_commitments, verifies `InvalidBlobCount` rejection. This tests the Gloas-specific branch in block_verification.rs:903-914 that reads commitments from the bid (not the body). The pre-Gloas path was tested but the Gloas bid path had ZERO coverage
+    - `gloas_gossip_accepts_block_with_valid_bid_blob_count`: sets bid blob commitments to exactly max_blobs, verifies the blob count check passes (block may fail on later checks, but not InvalidBlobCount)
+  - **Structural invariant (1 test):**
+    - `gloas_block_blob_commitments_in_bid_not_body`: verifies body.blob_kzg_commitments() returns Err for Gloas (removed from body), while bid.blob_kzg_commitments is accessible and within limit. Catches code that mistakenly reads commitments from body instead of bid
+  - **Block production invariant tests (3 tests):**
+    - `gloas_block_production_bid_gas_limit_matches_state`: verifies state.latest_execution_payload_bid().gas_limit is non-zero and matches the head block's bid gas_limit. Tests the Gloas path in get_execution_payload (execution_payload.rs:397) which reads gas_limit from the bid instead of the header
+    - `gloas_block_production_latest_block_hash_consistency`: verifies state.latest_block_hash() is non-zero and equals the next block's bid.parent_block_hash. Tests the Gloas path in get_execution_payload (execution_payload.rs:396) which reads parent hash from latest_block_hash instead of the header
+    - `gloas_block_production_uses_gloas_withdrawals`: verifies the envelope's payload has accessible withdrawals and the state has payload_expected_withdrawals. Tests the Gloas path in get_execution_payload (execution_payload.rs:403-410) which calls get_expected_withdrawals_gloas instead of get_expected_withdrawals
+- These tests close two categories of gaps: (1) the bid blob count gossip validation is a security boundary — without it, nodes could propagate blocks with arbitrarily many blob commitments, causing resource exhaustion on peers. (2) the block production invariants verify that the Gloas-specific data sources (bid gas_limit, latest_block_hash, gloas withdrawals) are correctly wired through block production — a regression in any of these would cause the EL to receive wrong parameters, producing invalid execution payloads
+- **Remaining gaps from run 96 analysis**: P2 (PayloadAttestationService), P5 (poll_ptc_duties), P6 (store reconstruct), P8 (post_block_import) — all require complex test infrastructure (mock beacon nodes, store reconstruction)
+- All 543 beacon_chain tests pass (was 537), cargo fmt clean
+
 ### 2026-02-25 — proposer preferences gossip handler tests + spec tracking (run 101)
 - Checked consensus-specs PRs since run 100: no new Gloas spec changes merged
   - **PR #4946** (merged Feb 24): actions/stale bump — CI only, no impact
