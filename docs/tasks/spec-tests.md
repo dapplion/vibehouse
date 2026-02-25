@@ -29,6 +29,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — envelope processing integration tests + spec tracking (run 89)
+- Checked consensus-specs PRs since run 88: no new Gloas spec changes merged
+  - Only infrastructure PRs: #4946 (bump actions/stale, Feb 24), #4945 (fix inclusion list test for mainnet, Heze-only)
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+  - New PR to track: #4944 (ExecutionProofsByRoot: multiple roots and choose indices) — p2p optimization
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues reviewed: #8893 (state storage design), #8828 (block production endpoints), #8840 (allocators), #8858 (upstream feature gating) — none actionable for this run
+- **Conducted systematic test gap analysis** via subagent across store/reconstruct.rs, beacon_chain, network, and execution_layer for untested Gloas code paths. Major gaps identified:
+  - process_payload_envelope (external envelope flow) — addressed this run
+  - process_pending_envelope (out-of-order arrival) — addressed this run
+  - process_pending_execution_proofs (stateless threshold) — deferred
+  - network gossip handlers for all 5 Gloas message types — deferred (requires complex harness)
+  - execution_layer Gloas newPayload/getPayload wire format — deferred
+- **Added 7 envelope processing integration tests** (previously ZERO tests for separate block/envelope processing):
+  - `gloas_block_import_without_envelope_has_payload_unrevealed`: imports a Gloas block via `process_block` (not `add_recompute_head_block_at_slot`), verifies fork choice has `payload_revealed=false` and no envelope in store. Establishes the pre-condition that block import alone does NOT process the envelope — essential for ePBS correctness
+  - `gloas_process_pending_envelope_self_build_drains_buffer`: buffers a self-build envelope in `pending_gossip_envelopes`, calls `process_pending_envelope`, verifies buffer is drained. Fork choice is updated (`payload_revealed=true`) because `apply_payload_envelope_to_fork_choice` runs before the state transition. The state transition fails with BadSignature (expected: self-build envelopes have Signature::empty and process_execution_payload_envelope uses VerifySignatures::True)
+  - `gloas_process_pending_envelope_noop_when_empty`: calling `process_pending_envelope` with no buffered envelope is a safe no-op (no panic, no state change)
+  - `gloas_self_build_envelope_reveals_payload_after_block_import`: imports block only, then separately calls `process_self_build_envelope`, verifies payload_revealed flips to true and envelope is persisted to store with correct builder_index
+  - `gloas_self_build_envelope_updates_head_state_latest_block_hash`: after `process_self_build_envelope`, verifies the head snapshot's state has `latest_block_hash` updated to the envelope's `payload.block_hash` — critical for subsequent block production
+  - `gloas_gossip_verify_and_fork_choice_for_self_build_envelope`: end-to-end test of `verify_payload_envelope_for_gossip` → `apply_payload_envelope_to_fork_choice` — verifies the gossip verification pipeline correctly handles self-build envelopes (skips BLS sig check) and updates fork choice
+  - `gloas_self_build_envelope_caches_post_envelope_state`: after `process_self_build_envelope`, verifies the state cache holds the post-envelope state keyed by the block's state_root, with correct `latest_block_hash`
+- These tests close the biggest beacon_chain integration gap: the block/envelope separation that is core to ePBS. Previously, blocks and envelopes were only tested as an atomic unit during `extend_slots`. Now each step (import, fork choice update, state transition, cache update, store persistence) is verified independently
+- All 486 beacon_chain tests pass (was 479), cargo fmt + clippy clean
+
 ### 2026-02-25 — block verification tests for bid/DA bypass + spec tracking (run 88)
 - Checked consensus-specs PRs since run 87: no new Gloas spec changes merged
   - PR #4941 "Update execution proof construction to use beacon block" merged Feb 19 — EIP-8025 (not EIP-7732/Gloas), not relevant to vibehouse
