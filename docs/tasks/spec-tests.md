@@ -29,6 +29,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-25 — fork choice attestation integration tests + spec tracking (run 97)
+- Checked consensus-specs PRs since run 96: two Gloas-related PRs merged
+  - **PR #4918 merged** (Feb 23): "Only allow attestations for known payload statuses" — adds `assert attestation.data.beacon_block_root in store.payload_states` when `index == 1`. **Already implemented** in vibehouse: `fork_choice.rs:1206-1215` checks `!block.payload_revealed` and returns `PayloadNotRevealed` error. 3 existing tests cover this. No code changes needed
+  - **PR #4931 merged** (Feb 20): "Rebase FOCIL onto Gloas" — FOCIL (EIP-7805) spec files rebased onto Gloas fork under `specs/_features/eip7805/`. FOCIL is assigned to Heze fork (PR #4942), not Gloas. No action needed for vibehouse
+  - All tracked Gloas PRs still open: #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4944
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Conducted systematic test gap analysis** for fork choice integration paths — identified `apply_payload_attestation_to_fork_choice` and `apply_execution_bid_to_fork_choice` as two beacon_chain methods with ZERO integration test coverage. These are the methods that bridge gossip-verified objects to fork choice state mutations
+- **Added 5 fork choice attestation import integration tests** (previously ZERO tests for this pipeline):
+  - **apply_payload_attestation_to_fork_choice via API import (4 tests):**
+    - `gloas_import_attestation_updates_fork_choice_ptc_weight`: imports a payload attestation via `import_payload_attestation_message`, verifies `ptc_weight` changes from 0 to 1 in fork choice. Tests full pipeline: `import_payload_attestation_message` → `verify_payload_attestation_for_gossip` → `apply_payload_attestation_to_fork_choice` → `on_payload_attestation`
+    - `gloas_import_attestation_updates_blob_data_weight`: imports attestation with `blob_data_available=true`, verifies `ptc_blob_data_available_weight` increments while `ptc_weight` stays 0 (payload_present=false)
+    - `gloas_import_attestation_quorum_triggers_payload_revealed`: resets `payload_revealed=false`, imports attestations from ALL PTC members (2 for minimal preset), verifies PTC quorum flips `payload_revealed=true`. Checks state after each vote to verify quorum threshold behavior
+    - `gloas_import_attestation_payload_absent_no_ptc_weight`: imports attestation with `payload_present=false, blob_data_available=false`, verifies both weights remain 0
+  - **Bid pool integration (1 test):**
+    - `gloas_bid_pool_insertion_and_retrieval_via_chain`: inserts bids at different values into the pool (same code path as `apply_execution_bid_to_fork_choice` line 2515), verifies `get_best_execution_bid` returns highest-value bid and prunes old-slot bids
+- These tests close the biggest fork choice integration gap: `apply_payload_attestation_to_fork_choice` (beacon_chain.rs:3179) is called on EVERY gossip payload attestation and every API-submitted attestation. The previous `import_payload_attestation_message` tests verified pool insertion but NOT fork choice state changes. A regression where `on_payload_attestation` fails silently would mean PTC votes never accumulate, blocks never reach quorum, and the chain stalls
+- All 527 beacon_chain tests pass (was 522), cargo fmt + clippy clean, full workspace lint passes
+
 ### 2026-02-25 — validator store Gloas signing tests + spec tracking (run 96)
 - Checked consensus-specs PRs since run 95: no new Gloas spec changes merged
   - Notable: PR #4942 promotes EIP-7805 (FOCIL) to Heze fork — not ePBS/Gloas, no action needed
