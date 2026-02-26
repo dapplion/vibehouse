@@ -107,8 +107,11 @@ use state_processing::{
     epoch_cache::initialize_epoch_cache,
     per_block_processing,
     per_block_processing::{
-        VerifySignatures, errors::AttestationValidationError, get_expected_withdrawals,
-        gloas::get_ptc_committee, verify_attestation_for_block_inclusion,
+        VerifySignatures,
+        errors::AttestationValidationError,
+        get_expected_withdrawals,
+        gloas::{get_indexed_payload_attestation, get_ptc_committee},
+        verify_attestation_for_block_inclusion,
     },
     per_slot_processing,
     state_advance::{complete_state_advance, partial_state_advance},
@@ -5045,6 +5048,38 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     &self.spec,
                 )
                 .map_err(|e| BlockError::BeaconChainError(Box::new(e.into())))?;
+
+            // Spec: notify_ptc_messages(store, state, block.body.payload_attestations)
+            // Apply in-block payload attestations to fork choice so the parent block's
+            // PTC quorum is updated. This is important during sync when gossip
+            // attestations may not have been received.
+            if let Ok(payload_attestations) = block.body().payload_attestations() {
+                for attestation in payload_attestations.iter() {
+                    match get_indexed_payload_attestation(&state, attestation, &self.spec) {
+                        Ok(indexed) => {
+                            if let Err(e) = fork_choice.on_payload_attestation(
+                                attestation,
+                                &indexed,
+                                current_slot,
+                                &self.spec,
+                            ) {
+                                debug!(
+                                    error = ?e,
+                                    slot = %attestation.data.slot,
+                                    "Failed to apply in-block payload attestation to fork choice"
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            debug!(
+                                error = ?e,
+                                slot = %attestation.data.slot,
+                                "Failed to index in-block payload attestation"
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         // If the block is recent enough and it was not optimistically imported, check to see if it

@@ -334,7 +334,7 @@ pub fn process_payload_attestation<E: EthSpec>(
 ///
 /// This unpacks the aggregation bitfield into an explicit list of validator indices
 /// for efficient signature verification.
-fn get_indexed_payload_attestation<E: EthSpec>(
+pub fn get_indexed_payload_attestation<E: EthSpec>(
     state: &BeaconState<E>,
     attestation: &PayloadAttestation<E>,
     spec: &ChainSpec,
