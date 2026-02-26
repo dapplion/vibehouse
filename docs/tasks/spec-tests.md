@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — attestation data.index spec compliance for Gloas (run 133)
+- Checked consensus-specs PRs since run 132: no new Gloas spec changes merged
+  - PR #4923 (ignore beacon block if parent payload unknown): already implemented in run 129
+  - PR #4930 (rename execution_payload_states to payload_states): cosmetic naming in spec text, no code change needed
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Deep audit of Gloas consensus code coverage** — reviewed process_deposit_request_gloas, compute_proposer_indices, process_execution_payload_envelope (early payment path), attestation data.index production
+- **Fixed spec compliance bug in attestation `data.index` production**:
+  - **Bug**: `produce_unaggregated_attestation` used `block.payload_revealed` from the proto_node to determine `data.index` for Gloas. `payload_revealed` is set by EITHER PTC quorum OR envelope receipt. The spec says attesters should follow the fork choice head's winning virtual child (EMPTY vs FULL), not the PTC signal
+  - **Impact**: When PTC quorum is reached (`payload_revealed=true`) but the actual winning fork choice head is the EMPTY virtual child (because no envelope was received), the attester would incorrectly vote `data.index=1` (FULL) instead of `data.index=0` (EMPTY). This is an incorrect attestation that would not earn the head reward
+  - **Fix**: For skip-slot attestations (head block from a prior slot), use `gloas_head_payload_status()` which reflects the fork choice head selection result. Same-slot attestations always have `data.index=0` per spec. Historical attestations still use `payload_revealed` as a fallback
+  - Early attester cache path already correctly handled same-slot guard (`request_slot > item.block.slot()`)
+- **Fixed stale comment on `gloas_head_payload_status()`**: comment said `1 = EMPTY, 2 = FULL` but after PR #4948 the values are `0 = EMPTY, 1 = FULL, 2 = PENDING`
+- **Verified spec compliance**: `compute_proposer_indices` is functionally identical to `compute_balance_weighted_selection(size=1, shuffle_indices=True)`, `process_deposit_request_gloas` matches spec after PRs #4897/#4916, `process_execution_payload_envelope` early payment path is correct
+- Verified: 576/576 beacon_chain tests pass, 193/193 proto_array+fork_choice tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — bid pool parent_block_root filtering (run 132)
 - Checked consensus-specs PRs since run 131: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
