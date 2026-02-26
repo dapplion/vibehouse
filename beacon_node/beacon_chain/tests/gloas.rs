@@ -19,7 +19,11 @@ use beacon_chain::execution_payload::{
 };
 use beacon_chain::execution_proof_verification::GossipExecutionProofError;
 use beacon_chain::gloas_verification::{ExecutionBidError, PayloadEnvelopeError};
-use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
+use beacon_chain::test_utils::{
+    BeaconChainHarness, DEFAULT_ETH1_BLOCK_HASH, EphemeralHarnessType, HARNESS_GENESIS_TIME,
+    InteropGenesisBuilder,
+};
+use execution_layer::test_utils::generate_genesis_header;
 use fork_choice::{ExecutionStatus, PayloadVerificationStatus};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
@@ -856,6 +860,283 @@ async fn gloas_get_best_execution_bid_highest_value() {
         result.unwrap().message.value,
         2000,
         "should return highest-value bid"
+    );
+}
+
+// =============================================================================
+// External builder path — block production with external bids
+// =============================================================================
+
+/// Extra keypairs for builder identities (separate from validator keypairs).
+static BUILDER_KEYPAIRS: std::sync::LazyLock<Vec<Keypair>> = std::sync::LazyLock::new(|| {
+    types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT + 4)[VALIDATOR_COUNT..]
+        .to_vec()
+});
+
+/// Create a Gloas harness with builders injected into the genesis state.
+///
+/// `builders`: slice of `(deposit_epoch, balance)` tuples.
+/// Each builder gets a pubkey from `BUILDER_KEYPAIRS` and `withdrawable_epoch = FAR_FUTURE_EPOCH`.
+fn gloas_harness_with_builders(
+    builders: &[(u64, u64)],
+) -> BeaconChainHarness<EphemeralHarnessType<E>> {
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+    let spec_arc = Arc::new(spec.clone());
+    let keypairs = types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT);
+
+    let header = generate_genesis_header::<E>(&spec, false);
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject builders into the Gloas state
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    for (i, &(deposit_epoch, balance)) in builders.iter().enumerate() {
+        let builder = Builder {
+            pubkey: BUILDER_KEYPAIRS[i].pk.clone().into(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance,
+            deposit_epoch: Epoch::new(deposit_epoch),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        gloas_state
+            .builders
+            .push(builder)
+            .expect("should push builder");
+    }
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let harness = BeaconChainHarness::builder(E::default())
+        .spec(spec_arc)
+        .keypairs(keypairs)
+        .genesis_state_ephemeral_store(state)
+        .mock_execution_layer()
+        .build();
+
+    harness.advance_slot();
+    harness
+}
+
+/// Build an external bid matching the current state (fills in parent_block_hash,
+/// parent_block_root, prev_randao from the state so the bid passes validation).
+fn make_external_bid(
+    state: &BeaconState<E>,
+    head_root: Hash256,
+    slot: Slot,
+    builder_index: u64,
+    value: u64,
+) -> SignedExecutionPayloadBid<E> {
+    let gloas_state = state.as_gloas().expect("state should be Gloas");
+    let current_epoch = state.current_epoch();
+    let randao_mix = *state
+        .get_randao_mix(current_epoch)
+        .expect("should get randao mix");
+
+    SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index,
+            value,
+            parent_block_hash: gloas_state.latest_block_hash,
+            parent_block_root: head_root,
+            prev_randao: randao_mix,
+            block_hash: ExecutionBlockHash::zero(),
+            fee_recipient: Address::zero(),
+            gas_limit: 30_000_000,
+            execution_payment: value,
+            blob_kzg_commitments: Default::default(),
+        },
+        signature: Signature::empty(),
+    }
+}
+
+/// Test that when an external bid is in the pool, `make_block` produces a block
+/// containing the external bid instead of a self-build bid.
+#[tokio::test]
+async fn gloas_external_bid_block_production() {
+    // deposit_epoch=0, balance=10 ETH — builder 0 is active once finalized_epoch >= 1
+    // Need enough slots for finalization: minimal preset, 8 slots/epoch
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Build an external bid from builder 0 that matches current state
+    let external_builder_index = 0u64;
+    let bid_value = 5000u64;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(
+        &state,
+        head_root,
+        next_slot,
+        external_builder_index,
+        bid_value,
+    );
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Advance slot clock and produce block
+    harness.advance_slot();
+    let ((signed_block, _blobs), _state, envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let block = signed_block.message();
+    assert!(
+        block.fork_name_unchecked().gloas_enabled(),
+        "produced block should be Gloas"
+    );
+
+    // Verify the block uses the external bid, not self-build
+    let block_bid = block
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, external_builder_index,
+        "block should use external builder's bid, not self-build"
+    );
+    assert_eq!(
+        block_bid.message.value, bid_value,
+        "block bid value should match external bid"
+    );
+
+    // External bid path: no self-build envelope should be returned
+    assert!(
+        envelope.is_none(),
+        "external bid block should not return a self-build envelope"
+    );
+}
+
+/// Test that self-build fallback works when no external bid is in the pool.
+#[tokio::test]
+async fn gloas_no_external_bid_falls_back_to_self_build() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Do NOT insert any external bid — pool is empty
+
+    harness.advance_slot();
+    let state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _blobs), _state, envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, harness.spec.builder_index_self_build,
+        "without external bid, should fall back to self-build"
+    );
+    assert_eq!(
+        block_bid.message.value, 0,
+        "self-build bid should have value 0"
+    );
+
+    // Self-build path: envelope should be returned for VC signing
+    assert!(
+        envelope.is_some(),
+        "self-build block should return an envelope for VC signing"
+    );
+}
+
+/// Test that an external bid for the wrong slot is ignored, falling back to self-build.
+#[tokio::test]
+async fn gloas_external_bid_wrong_slot_ignored() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Insert bid for a FUTURE slot (next_slot + 1), not the slot we'll produce at
+    let bid = make_external_bid(&state, head_root, next_slot + 1, 0, 9999);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    harness.advance_slot();
+    let ((signed_block, _blobs), _state, envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    // Should fall back to self-build since bid is for wrong slot
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, harness.spec.builder_index_self_build,
+        "bid for wrong slot should be ignored, falling back to self-build"
+    );
+    assert!(
+        envelope.is_some(),
+        "self-build fallback should return an envelope"
+    );
+}
+
+/// Test that the highest-value bid is selected when multiple external bids exist.
+#[tokio::test]
+async fn gloas_external_bid_highest_value_selected_for_block() {
+    // Two builders, both active with sufficient balance
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000), (0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Insert two bids from different builders with different values
+    {
+        let mut pool = harness.chain.execution_bid_pool.lock();
+        pool.insert(make_external_bid(&state, head_root, next_slot, 0, 500));
+        pool.insert(make_external_bid(&state, head_root, next_slot, 1, 3000));
+    }
+
+    harness.advance_slot();
+    let ((signed_block, _blobs), _state, envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, 1,
+        "should select highest-value bid (builder 1 with value 3000)"
+    );
+    assert_eq!(block_bid.message.value, 3000);
+    assert!(
+        envelope.is_none(),
+        "external bid block should not return a self-build envelope"
     );
 }
 

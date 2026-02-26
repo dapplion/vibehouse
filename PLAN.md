@@ -34,12 +34,12 @@ scripts/kurtosis-run.sh --no-build    # Skip Docker build
 | 2. State Transitions | DONE | bid processing, PTC attestations, builder payments, withdrawals |
 | 3. Fork Choice | DONE | 3-state payload model, all 8 reorg tests pass |
 | 4. P2P Networking | DONE | gossip topics, validation, beacon processor integration |
-| 5. Beacon Chain Integration | DONE (self-build) | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
+| 5. Beacon Chain Integration | DONE | [docs/tasks/beacon-chain-integration.md](docs/tasks/beacon-chain-integration.md) |
 | 6. Validator Client | DONE | [docs/tasks/validator-client.md](docs/tasks/validator-client.md) |
 | 7. REST API | DONE | [docs/tasks/rest-api.md](docs/tasks/rest-api.md) |
 | 8. Spec Tests | DONE | 78/78 + 138/138 passing, check_all_files_accessed passes |
 
-**Phase 5 remaining:** external builder path (not needed for self-build devnet)
+**Phase 5:** DONE — external builder path implemented and verified with integration tests (bid selection, block production, self-build fallback)
 
 **Phase 6:** DONE — all VC tasks complete (PTC duties, bid selection, duty discovery, external builder awareness)
 

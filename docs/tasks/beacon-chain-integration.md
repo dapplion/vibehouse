@@ -29,7 +29,7 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - ✅ Self-build envelope signing via validator client (proper BLS signature with DOMAIN_BEACON_BUILDER)
 
 ### Remaining
-- [ ] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals)
+- [x] Handle the two-phase block: external builder path (proposer commits to external bid, builder reveals) — code already implemented, now verified with integration tests
 - [x] `ProposerPreferences` gossip topic (GossipKind, PubsubMessage, beacon processor, validation)
 - [x] Fork choice `payload_data_availability_vote` tracking (separate `blob_data_available` vote, `ptc_blob_data_available_weight` + `payload_data_available` on ProtoNode)
 - [x] Fork choice `is_payload_data_available` / `should_extend_payload` functions (full spec version with proposer boost conditions)
@@ -50,6 +50,29 @@ Wire up gloas ePBS types through the beacon chain crate — block import pipelin
 - `common/eth2/src/types.rs` — API types (PtcDutyData, PayloadAttestationDataQuery, etc.)
 
 ## Progress log
+
+### 2026-02-26 — external builder path integration tests
+
+**Verified the external builder block production code path** with 4 integration tests in `beacon_node/beacon_chain/tests/gloas.rs`:
+
+1. **`gloas_external_bid_block_production`** — Insert external bid, produce block, verify block uses the external bid (not self-build) and no envelope is returned
+2. **`gloas_no_external_bid_falls_back_to_self_build`** — Verify self-build fallback with envelope when no external bid exists
+3. **`gloas_external_bid_wrong_slot_ignored`** — Verify wrong-slot bids are ignored, falling back to self-build
+4. **`gloas_external_bid_highest_value_selected_for_block`** — Verify highest-value bid wins among multiple builders
+
+**What was verified:**
+- `get_best_execution_bid(slot)` correctly selects from pool → block production uses external bid
+- EL payload fetch is skipped when external bid is selected (no `prepare_payload_handle`)
+- `complete_partial_beacon_block` inserts external bid into `BeaconBlockBodyGloas`
+- `per_block_processing` validates external bid fields (parent_block_hash, parent_block_root, prev_randao, builder active, balance)
+- No self-build envelope is returned for external bid blocks (builder reveals separately)
+- Self-build path correctly falls back when pool is empty or bid is for wrong slot
+
+**Key implementation details:**
+- Tests use `gloas_harness_with_builders` helper that injects `Builder` entries into genesis state
+- `make_external_bid` helper constructs bids with correct `parent_block_hash`, `parent_block_root`, `prev_randao` from current state
+- Builders need `deposit_epoch=0` and enough slots (~64 minimal-preset slots) for `finalized_epoch >= 1` (builder activation)
+- Builder balance must exceed `min_deposit_amount + bid_value` (spec: `can_builder_cover_bid`)
 
 ### 2026-02-19 — re-add is_pending_validator to process_deposit_request (spec PR #4916)
 - **Context**: consensus-specs PR #4916 (merged Feb 12) refactored `process_deposit_request` to explicitly check `is_pending_validator` — if a pubkey has a pending validator deposit with a valid signature, don't route the deposit to a builder even if the withdrawal credentials have the builder prefix.
