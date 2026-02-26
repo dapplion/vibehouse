@@ -1,4 +1,6 @@
-use eth2::types::{GenericResponse, SyncingData};
+use eth2::types::{
+    DutiesResponse, GenericResponse, PayloadAttestationData, PtcDutyData, SyncingData,
+};
 use eth2::{BeaconNodeHttpClient, StatusCode, Timeouts};
 use mockito::{Matcher, Mock, Server, ServerGuard};
 use regex::Regex;
@@ -8,7 +10,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tracing::info;
-use types::{ChainSpec, ConfigAndPreset, EthSpec, SignedBlindedBeaconBlock};
+use types::{ChainSpec, ConfigAndPreset, Epoch, EthSpec, Hash256, SignedBlindedBeaconBlock};
 
 pub struct MockBeaconNode<E: EthSpec> {
     server: ServerGuard,
@@ -121,6 +123,61 @@ impl<E: EthSpec> MockBeaconNode<E> {
                 }
             }"#,
             )
+            .create()
+    }
+
+    /// Mocks `POST /eth/v1/validator/duties/ptc/{epoch}` to return the given duties.
+    pub fn mock_post_validator_duties_ptc(
+        &mut self,
+        epoch: Epoch,
+        duties: Vec<PtcDutyData>,
+    ) -> Mock {
+        let path_pattern = Regex::new(&format!(
+            r"^/eth/v1/validator/duties/ptc/{}$",
+            epoch.as_u64()
+        ))
+        .unwrap();
+
+        let response = DutiesResponse {
+            dependent_root: Hash256::ZERO,
+            execution_optimistic: None,
+            data: duties,
+        };
+
+        self.server
+            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(serde_json::to_string(&response).unwrap())
+            .create()
+    }
+
+    /// Mocks `GET /eth/v1/validator/payload_attestation_data?slot={slot}` to return the given data.
+    pub fn mock_get_validator_payload_attestation_data(
+        &mut self,
+        data: PayloadAttestationData,
+    ) -> Mock {
+        let path_pattern = Regex::new(r"^/eth/v1/validator/payload_attestation_data").unwrap();
+
+        let response = GenericResponse::from(data);
+
+        self.server
+            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(serde_json::to_string(&response).unwrap())
+            .create()
+    }
+
+    /// Mocks `POST /eth/v1/beacon/pool/payload_attestations` to return 200 OK.
+    pub fn mock_post_beacon_pool_payload_attestations(&mut self) -> Mock {
+        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/payload_attestations$").unwrap();
+
+        self.server
+            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("{}")
             .create()
     }
 }

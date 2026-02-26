@@ -11558,6 +11558,7 @@ dependencies = [
  "types",
  "validator_metrics",
  "validator_store",
+ "validator_test_rig",
 ]
 
 [[package]]

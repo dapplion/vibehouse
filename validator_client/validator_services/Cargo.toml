@@ -22,3 +22,12 @@ tree_hash = { workspace = true }
 types = { workspace = true }
 validator_metrics = { workspace = true }
 validator_store = { workspace = true }
+
+[dev-dependencies]
+beacon_node_fallback = { workspace = true }
+eth2 = { workspace = true }
+slot_clock = { workspace = true }
+task_executor = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+types = { workspace = true }
+validator_test_rig = { workspace = true }

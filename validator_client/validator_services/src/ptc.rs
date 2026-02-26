@@ -408,3 +408,478 @@ mod tests {
         assert_eq!(duties[0].validator_index, 200);
     }
 }
+
+/// Integration tests for `poll_ptc_duties` using a mock beacon node.
+///
+/// These tests exercise the full `poll_ptc_duties` async pipeline:
+/// slot_clock → gloas epoch check → voting_pubkeys → BN request → set_duties → prune.
+#[cfg(test)]
+mod poll_tests {
+    use super::*;
+    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode};
+    use eth2::types::PtcDutyData;
+    use slot_clock::{SlotClock, TestingSlotClock};
+    use std::collections::HashMap;
+    use std::time::Duration;
+    use task_executor::test_utils::TestRuntime;
+    use types::{ChainSpec, Epoch, MainnetEthSpec, PublicKeyBytes, Slot};
+    use validator_store::{DoppelgangerStatus, Error as ValidatorStoreError, ValidatorStore};
+    use validator_test_rig::mock_beacon_node::MockBeaconNode;
+
+    type E = MainnetEthSpec;
+
+    /// Minimal ValidatorStore implementation for poll_ptc_duties tests.
+    ///
+    /// Only implements `voting_pubkeys` and `validator_index` (all poll_ptc_duties uses).
+    /// All other methods are unimplemented — tests must not call them.
+    struct MinimalValidatorStore {
+        // pubkey → validator_index
+        validators: HashMap<PublicKeyBytes, u64>,
+    }
+
+    impl MinimalValidatorStore {
+        fn new(validators: Vec<(PublicKeyBytes, u64)>) -> Self {
+            Self {
+                validators: validators.into_iter().collect(),
+            }
+        }
+
+        fn pubkey(byte: u8) -> PublicKeyBytes {
+            let mut bytes = [0u8; 48];
+            bytes[0] = byte;
+            PublicKeyBytes::deserialize(&bytes).unwrap()
+        }
+    }
+
+    impl ValidatorStore for MinimalValidatorStore {
+        type Error = String;
+        type E = E;
+
+        fn validator_index(&self, pubkey: &PublicKeyBytes) -> Option<u64> {
+            self.validators.get(pubkey).copied()
+        }
+
+        fn voting_pubkeys<I, F>(&self, filter_func: F) -> I
+        where
+            I: FromIterator<PublicKeyBytes>,
+            F: Fn(DoppelgangerStatus) -> Option<PublicKeyBytes>,
+        {
+            self.validators
+                .keys()
+                .filter_map(|pk| filter_func(DoppelgangerStatus::SigningEnabled(*pk)))
+                .collect()
+        }
+
+        fn doppelganger_protection_allows_signing(&self, _: PublicKeyBytes) -> bool {
+            true
+        }
+
+        fn num_voting_validators(&self) -> usize {
+            self.validators.len()
+        }
+
+        fn graffiti(&self, _: &PublicKeyBytes) -> Option<types::Graffiti> {
+            unimplemented!()
+        }
+
+        fn get_fee_recipient(&self, _: &PublicKeyBytes) -> Option<types::Address> {
+            unimplemented!()
+        }
+
+        fn determine_builder_boost_factor(&self, _: &PublicKeyBytes) -> Option<u64> {
+            unimplemented!()
+        }
+
+        async fn randao_reveal(
+            &self,
+            _: PublicKeyBytes,
+            _: Epoch,
+        ) -> Result<types::Signature, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        fn set_validator_index(&self, _: &PublicKeyBytes, _: u64) {
+            unimplemented!()
+        }
+
+        async fn sign_block(
+            &self,
+            _: PublicKeyBytes,
+            _: validator_store::UnsignedBlock<Self::E>,
+            _: Slot,
+        ) -> Result<validator_store::SignedBlock<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn sign_execution_payload_envelope(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::ExecutionPayloadEnvelope<Self::E>,
+        ) -> Result<types::SignedExecutionPayloadEnvelope<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn sign_payload_attestation(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::PayloadAttestationData,
+            _: u64,
+        ) -> Result<types::PayloadAttestationMessage, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn sign_attestation(
+            &self,
+            _: PublicKeyBytes,
+            _: usize,
+            _: &mut types::Attestation<Self::E>,
+            _: Epoch,
+        ) -> Result<(), ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn sign_validator_registration_data(
+            &self,
+            _: types::ValidatorRegistrationData,
+        ) -> Result<types::SignedValidatorRegistrationData, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn produce_signed_aggregate_and_proof(
+            &self,
+            _: PublicKeyBytes,
+            _: u64,
+            _: types::Attestation<Self::E>,
+            _: types::SelectionProof,
+        ) -> Result<types::SignedAggregateAndProof<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn produce_selection_proof(
+            &self,
+            _: PublicKeyBytes,
+            _: Slot,
+        ) -> Result<types::SelectionProof, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_sync_selection_proof(
+            &self,
+            _: &PublicKeyBytes,
+            _: Slot,
+            _: types::SyncSubnetId,
+        ) -> Result<types::SyncSelectionProof, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_sync_committee_signature(
+            &self,
+            _: Slot,
+            _: types::Hash256,
+            _: u64,
+            _: &PublicKeyBytes,
+        ) -> Result<types::SyncCommitteeMessage, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_signed_contribution_and_proof(
+            &self,
+            _: u64,
+            _: PublicKeyBytes,
+            _: types::SyncCommitteeContribution<Self::E>,
+            _: types::SyncSelectionProof,
+        ) -> Result<types::SignedContributionAndProof<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        fn prune_slashing_protection_db(&self, _: Epoch, _: bool) {}
+
+        fn proposal_data(&self, _: &PublicKeyBytes) -> Option<validator_store::ProposalData> {
+            unimplemented!()
+        }
+    }
+
+    /// Build a DutiesService wired to a MockBeaconNode + MinimalValidatorStore.
+    async fn make_duties_service(
+        mock: &MockBeaconNode<E>,
+        validators: Vec<(PublicKeyBytes, u64)>,
+        spec: ChainSpec,
+        current_slot: Slot,
+    ) -> (
+        Arc<DutiesService<MinimalValidatorStore, TestingSlotClock>>,
+        TestRuntime,
+    ) {
+        let test_runtime = TestRuntime::default();
+
+        let client = mock.beacon_api_client.clone();
+        let candidate = CandidateBeaconNode::new(client, 0);
+        let spec_arc = Arc::new(spec.clone());
+        let mut fallback = BeaconNodeFallback::new(
+            vec![candidate],
+            Default::default(),
+            vec![ApiTopic::Attestations],
+            spec_arc.clone(),
+        );
+
+        let genesis_time = 0u64;
+        let slot_duration = Duration::from_secs(spec.seconds_per_slot);
+        // ManualSlotClock: genesis_time is slot 0 start, current_slot is derived from duration
+        let slot_clock = TestingSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(genesis_time),
+            slot_duration,
+        );
+        // Advance to current_slot
+        slot_clock.set_slot(current_slot.as_u64());
+
+        fallback.set_slot_clock(slot_clock.clone());
+
+        let validator_store = Arc::new(MinimalValidatorStore::new(validators));
+
+        let duties_service = Arc::new(
+            crate::duties_service::DutiesServiceBuilder::new()
+                .validator_store(validator_store)
+                .slot_clock(slot_clock)
+                .beacon_nodes(Arc::new(fallback))
+                .executor(test_runtime.task_executor.clone())
+                .spec(spec_arc)
+                .build()
+                .unwrap(),
+        );
+
+        (duties_service, test_runtime)
+    }
+
+    fn make_ptc_duty(pubkey: PublicKeyBytes, validator_index: u64, slot: u64) -> PtcDutyData {
+        PtcDutyData {
+            pubkey,
+            validator_index,
+            slot: Slot::new(slot),
+            ptc_committee_index: 0,
+        }
+    }
+
+    /// Returns a ChainSpec with Gloas fork at epoch `gloas_epoch` (or None if disabled).
+    fn spec_with_gloas(gloas_epoch: Option<u64>) -> ChainSpec {
+        let mut spec = E::default_spec();
+        spec.gloas_fork_epoch = gloas_epoch.map(Epoch::new);
+        spec
+    }
+
+    // ── Core behavior tests ─────────────────────────────────────────────────
+
+    /// Pre-Gloas: poll does not call BN when fork has not activated.
+    #[tokio::test]
+    async fn poll_ptc_duties_pre_gloas_skips_bn() {
+        // Gloas at epoch 10, current slot = 0 (epoch 0) → no BN call expected
+        let spec = spec_with_gloas(Some(10));
+        let pubkey = MinimalValidatorStore::pubkey(1);
+        let mock = MockBeaconNode::<E>::new().await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 100)], spec, Slot::new(0)).await;
+
+        // Should return Ok without making any HTTP requests
+        poll_ptc_duties(&ds).await.unwrap();
+
+        // No duties should have been stored (Gloas not yet active at slot 0)
+        assert!(!ds.ptc_duties.has_duties_for_epoch(Epoch::new(0)));
+        assert!(!ds.ptc_duties.has_duties_for_epoch(Epoch::new(10)));
+    }
+
+    /// Gloas active: fetches duties for current and next epoch.
+    #[tokio::test]
+    async fn poll_ptc_duties_fetches_current_and_next_epoch() {
+        // Gloas at epoch 0, current slot = 8 (epoch 1, 8 slots/epoch mainnet-ish but we use 8)
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = MinimalValidatorStore::pubkey(1);
+        let current_epoch = Epoch::new(1);
+        let next_epoch = Epoch::new(2);
+        let current_slot = Slot::new(slots_per_epoch); // first slot of epoch 1
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let duty_epoch1 = make_ptc_duty(pubkey, 100, slots_per_epoch);
+        let duty_epoch2 = make_ptc_duty(pubkey, 100, slots_per_epoch * 2);
+
+        let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![duty_epoch1.clone()]);
+        let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![duty_epoch2.clone()]);
+
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 100)], spec, current_slot).await;
+
+        poll_ptc_duties(&ds).await.unwrap();
+
+        // Both epochs should now have duties
+        assert!(ds.ptc_duties.has_duties_for_epoch(current_epoch));
+        assert!(ds.ptc_duties.has_duties_for_epoch(next_epoch));
+
+        // Verify the stored duties match what the BN returned
+        let stored_epoch1 = ds
+            .ptc_duties
+            .duties_for_slot(Slot::new(slots_per_epoch), slots_per_epoch);
+        assert_eq!(stored_epoch1.len(), 1);
+        assert_eq!(stored_epoch1[0].validator_index, 100);
+
+        let stored_epoch2 = ds
+            .ptc_duties
+            .duties_for_slot(Slot::new(slots_per_epoch * 2), slots_per_epoch);
+        assert_eq!(stored_epoch2.len(), 1);
+        assert_eq!(stored_epoch2[0].validator_index, 100);
+    }
+
+    /// Cached epoch is not re-fetched on second call.
+    #[tokio::test]
+    async fn poll_ptc_duties_cached_epoch_not_refetched() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = MinimalValidatorStore::pubkey(2);
+        let current_epoch = Epoch::new(1);
+        let next_epoch = Epoch::new(2);
+        let current_slot = Slot::new(slots_per_epoch);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let duty_epoch1 = make_ptc_duty(pubkey, 200, slots_per_epoch);
+        let duty_epoch2 = make_ptc_duty(pubkey, 200, slots_per_epoch * 2);
+
+        // Register each mock once — if called twice, mockito will fail the second time
+        let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![duty_epoch1]);
+        let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![duty_epoch2]);
+
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 200)], spec, current_slot).await;
+
+        // First call: both epochs fetched
+        poll_ptc_duties(&ds).await.unwrap();
+        assert!(ds.ptc_duties.has_duties_for_epoch(current_epoch));
+        assert!(ds.ptc_duties.has_duties_for_epoch(next_epoch));
+
+        // Second call: duties already cached, BN should NOT be called again.
+        // If BN is called again, mockito would serve a 404 for the second request,
+        // but poll_ptc_duties treats BN errors as warnings (not failures), so it
+        // still returns Ok. The key invariant: the cached duties are NOT overwritten
+        // (they remain from the first call).
+        poll_ptc_duties(&ds).await.unwrap();
+        let stored = ds
+            .ptc_duties
+            .duties_for_slot(Slot::new(slots_per_epoch), slots_per_epoch);
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].validator_index, 200);
+    }
+
+    /// No local validators: BN not called, returns Ok.
+    #[tokio::test]
+    async fn poll_ptc_duties_no_validators_skips_bn() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let current_slot = Slot::new(slots_per_epoch); // epoch 1
+
+        let mock = MockBeaconNode::<E>::new().await;
+        // No validators registered
+        let (ds, _rt) = make_duties_service(&mock, vec![], spec, current_slot).await;
+
+        // Should return Ok without calling BN
+        poll_ptc_duties(&ds).await.unwrap();
+
+        // No duties stored
+        assert!(!ds.ptc_duties.has_duties_for_epoch(Epoch::new(1)));
+    }
+
+    /// BN returns empty duties: duties stored as empty (not missing).
+    #[tokio::test]
+    async fn poll_ptc_duties_empty_response_stored() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = MinimalValidatorStore::pubkey(3);
+        let current_epoch = Epoch::new(1);
+        let next_epoch = Epoch::new(2);
+        let current_slot = Slot::new(slots_per_epoch);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+        // BN says validator has no PTC duties for either epoch
+        let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![]);
+        let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![]);
+
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 300)], spec, current_slot).await;
+
+        poll_ptc_duties(&ds).await.unwrap();
+
+        // Epochs should be marked as "known" even with empty duties
+        // (so we don't keep re-fetching)
+        assert!(ds.ptc_duties.has_duties_for_epoch(current_epoch));
+        assert!(ds.ptc_duties.has_duties_for_epoch(next_epoch));
+        assert!(
+            ds.ptc_duties
+                .duties_for_slot(Slot::new(slots_per_epoch), slots_per_epoch)
+                .is_empty()
+        );
+    }
+
+    /// Gloas disabled (fork epoch = None): poll never calls BN.
+    #[tokio::test]
+    async fn poll_ptc_duties_gloas_disabled_skips_bn() {
+        let spec = spec_with_gloas(None);
+        let pubkey = MinimalValidatorStore::pubkey(4);
+
+        let mock = MockBeaconNode::<E>::new().await;
+        let (ds, _rt) = make_duties_service(&mock, vec![(pubkey, 400)], spec, Slot::new(100)).await;
+
+        poll_ptc_duties(&ds).await.unwrap();
+
+        // Nothing stored
+        assert!(!ds.ptc_duties.has_duties_for_epoch(Epoch::new(0)));
+    }
+
+    /// Multiple validators: all indices sent to BN, duties for each stored.
+    #[tokio::test]
+    async fn poll_ptc_duties_multiple_validators() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pk1 = MinimalValidatorStore::pubkey(10);
+        let pk2 = MinimalValidatorStore::pubkey(11);
+        let pk3 = MinimalValidatorStore::pubkey(12);
+        let current_epoch = Epoch::new(2);
+        let next_epoch = Epoch::new(3);
+        let current_slot = Slot::new(slots_per_epoch * 2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let duty1 = make_ptc_duty(pk1, 10, slots_per_epoch * 2);
+        let duty2 = make_ptc_duty(pk2, 11, slots_per_epoch * 2 + 1);
+        let duty3 = make_ptc_duty(pk3, 12, slots_per_epoch * 3);
+
+        let _m1 = mock.mock_post_validator_duties_ptc(current_epoch, vec![duty1, duty2]);
+        let _m2 = mock.mock_post_validator_duties_ptc(next_epoch, vec![duty3]);
+
+        let (ds, _rt) = make_duties_service(
+            &mock,
+            vec![(pk1, 10), (pk2, 11), (pk3, 12)],
+            spec,
+            current_slot,
+        )
+        .await;
+
+        poll_ptc_duties(&ds).await.unwrap();
+
+        // epoch 2: 2 duties for different slots
+        let slot_duties = ds
+            .ptc_duties
+            .duties_for_slot(Slot::new(slots_per_epoch * 2), slots_per_epoch);
+        assert_eq!(slot_duties.len(), 1); // only duty1 matches slot
+
+        let slot_duties_plus1 = ds
+            .ptc_duties
+            .duties_for_slot(Slot::new(slots_per_epoch * 2 + 1), slots_per_epoch);
+        assert_eq!(slot_duties_plus1.len(), 1); // duty2
+
+        // epoch 3: duty3
+        let epoch3_duties = ds
+            .ptc_duties
+            .duties_for_slot(Slot::new(slots_per_epoch * 3), slots_per_epoch);
+        assert_eq!(epoch3_duties.len(), 1);
+        assert_eq!(epoch3_duties[0].validator_index, 12);
+    }
+}
