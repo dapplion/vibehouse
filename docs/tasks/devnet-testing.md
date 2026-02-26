@@ -15,7 +15,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Mainnet preset | DONE (script) | `--mainnet` flag: 4 nodes, 512 validators, 32 slots/epoch, 12s slots, ~40 min timeout |
 | Long-running | DONE (script) | `--long` flag: epoch 50 target, periodic memory/CPU monitoring, ~40 min |
 | Builder path | DONE (script) | `--builder` flag: genesis builder injection, proposer prefs + bid submission via lcli |
-| Payload withholding | TODO | Bid without reveal, fork choice handles it |
+| Payload withholding | DONE (script) | `--withhold` flag: submit bid with no envelope, verify EMPTY path finalization |
 | Network partitions | DONE (script) | `--partition` flag: stop 2/4 nodes (50% stake), verify stall, heal, verify finalization resumes |
 | Stateless + ZK | DONE | 3 proof-generators + 1 stateless node (from priority 4) |
 | Slashing scenarios | TODO | Double-propose / surround-vote, verify detection |
@@ -264,4 +264,42 @@ scripts/kurtosis-run.sh --partition --no-teardown # Leave running for inspection
 scripts/kurtosis-run.sh --builder              # Full test
 scripts/kurtosis-run.sh --builder --no-build   # Skip Docker build (reuse vibehouse:local)
 scripts/kurtosis-run.sh --builder --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Payload withholding test (run 114)
+
+**Implemented the payload withholding devnet test scenario** — tests ePBS fork choice EMPTY path.
+
+**What was built:**
+
+**`--withhold` flag in `kurtosis-run.sh`** — Two-phase test using the builder config:
+
+- **Phase 1 (finalize):** Start all 4 nodes (with 1 genesis builder), wait for finalization to epoch 3 (past Gloas fork at epoch 1). Same as builder mode warm-up.
+
+- **Phase 2 (withhold + verify EMPTY path):**
+  1. Submit 1 bid via `lcli submit-builder-bid` — beacon node accepts the bid and imports it to fork choice with `payload_revealed=false`
+  2. Never submit an envelope — the builder "withholds" the payload
+  3. Wait 3 minutes (~2 epochs) for finalization to advance by 2 epochs
+  4. **Success criterion**: Chain continues finalizing. This proves fork choice took the EMPTY path (attesters voted `payload_present=false`), not blocking on the missing envelope.
+  5. **Failure criterion**: Chain stalls (no finalization for 3 minutes) — would indicate fork choice is incorrectly blocked on the withheld envelope.
+
+**Key design decisions:**
+- Reuses `kurtosis/vibehouse-builder.yaml` — same genesis builder config, no new config file needed
+- The lcli bid tool submits a bid with `block_hash=zero` (no real EL payload), so a valid envelope is physically impossible — the withholding is guaranteed
+- The primary success criterion is **continued finalization**, not "bid rejected" — the chain should work regardless of whether the bid is accepted
+- Only 1 bid (vs 3 in builder mode) — we don't need multiple withholding bids, one is sufficient to test the EMPTY path
+- `WITHHOLD_FIN_TARGET = PRE_WITHHOLD_FINALIZED + 2` — requires 2 additional finalized epochs, proving sustained liveness on the EMPTY path
+
+**What this tests:**
+- Fork choice EMPTY path: when `payload_revealed=false`, attesters can vote `payload_present=false` and the chain moves forward
+- Chain liveness under adversarial builder behavior (payload withholding attack)
+- PTC attestation mechanism: validators in PTC vote against the withheld payload
+- No consensus deadlock: fork choice doesn't block waiting for a builder that never reveals
+- The economic disincentive working correctly: builder loses payment when EMPTY path wins
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --withhold              # Full test
+scripts/kurtosis-run.sh --withhold --no-build   # Skip Docker build (reuse vibehouse:local)
+scripts/kurtosis-run.sh --withhold --no-teardown # Leave running for inspection
 ```

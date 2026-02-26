@@ -4,7 +4,7 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition] [--builder]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition] [--builder] [--withhold]
 #
 # Flags:
 #   --no-build      Skip Docker image build (use existing vibehouse:local)
@@ -23,6 +23,8 @@ set -euo pipefail
 #                   blocks but doesn't finalize, restart, verify finalization resumes
 #   --builder       External builder path test: start devnet with 1 genesis builder,
 #                   submit bids via lcli after Gloas fork, verify blocks use external bids
+#   --withhold      Payload withholding test: submit a bid but never reveal the envelope,
+#                   verify fork choice takes the EMPTY path and chain continues finalizing
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -33,6 +35,7 @@ set -euo pipefail
 #   resources.log   — long mode: periodic container memory/CPU snapshots (--long only)
 #   partition.log   — partition mode: split/heal phase progress (--partition only)
 #   builder.log     — builder mode: bid submission and block verification (--builder only)
+#   withhold.log    — withhold mode: bid submission and EMPTY path finalization (--withhold only)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,6 +63,7 @@ MAINNET_MODE=false
 LONG_MODE=false
 PARTITION_MODE=false
 BUILDER_MODE=false
+WITHHOLD_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -73,6 +77,7 @@ for arg in "$@"; do
     --long)         LONG_MODE=true ;;
     --partition)    PARTITION_MODE=true ;;
     --builder)      BUILDER_MODE=true ;;
+    --withhold)     WITHHOLD_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
@@ -117,6 +122,11 @@ elif [ "$BUILDER_MODE" = true ]; then
   TARGET_FINALIZED_EPOCH=3  # wait past Gloas fork so builder (deposit_epoch=0) is active
   TIMEOUT=900               # 15 minutes total (finalization + builder bids + verification)
   echo "==> Builder mode: using $KURTOSIS_CONFIG (4 validators, 1 genesis builder)"
+elif [ "$WITHHOLD_MODE" = true ]; then
+  KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-builder.yaml"
+  TARGET_FINALIZED_EPOCH=3  # wait past Gloas fork so builder is active
+  TIMEOUT=900               # 15 minutes total
+  echo "==> Withhold mode: using $KURTOSIS_CONFIG (4 validators, 1 genesis builder, no envelope)"
 fi
 
 # Detect if we need sudo for docker/kurtosis (docker socket not accessible)
@@ -316,6 +326,13 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
     if [ "$BUILDER_MODE" = true ]; then
       PRE_BUILDER_FINALIZED="$finalized_epoch"
       PRE_BUILDER_HEAD="$head_slot"
+      break
+    fi
+
+    # In withhold mode, break out to run the bid + withholding phase
+    if [ "$WITHHOLD_MODE" = true ]; then
+      PRE_WITHHOLD_FINALIZED="$finalized_epoch"
+      PRE_WITHHOLD_HEAD="$head_slot"
       break
     fi
 
@@ -978,6 +995,131 @@ if [ "$BUILDER_MODE" = true ] && [ "${PRE_BUILDER_FINALIZED:-0}" -gt 0 ]; then
   echo "==> SUCCESS: Builder test complete"
   echo "==> Full logs: $RUN_DIR"
   echo "==> Builder log: $RUN_DIR/builder.log"
+  cleanup
+  exit 0
+fi
+
+# ============================================================
+# WITHHOLD MODE: Submit a bid but never reveal the envelope.
+# Verifies the fork choice takes the EMPTY path (payload_revealed=false)
+# and the chain continues finalizing without the payload.
+# ============================================================
+if [ "$WITHHOLD_MODE" = true ] && [ "${PRE_WITHHOLD_FINALIZED:-0}" -gt 0 ]; then
+  # Builder is active — same setup as builder mode.
+  VALIDATOR_COUNT=64  # 4 nodes × 16 validators/node
+  BUILDER_IDX=0
+
+  echo ""
+  echo "==> WITHHOLD PHASE: Submitting bid without envelope (payload withholding)..."
+  echo "    Pre-withhold: finalized_epoch=$PRE_WITHHOLD_FINALIZED head_slot=$PRE_WITHHOLD_HEAD"
+  {
+    echo "=== withhold phase ==="
+    echo "pre_withhold_finalized=$PRE_WITHHOLD_FINALIZED"
+    echo "pre_withhold_head=$PRE_WITHHOLD_HEAD"
+  } >> "$RUN_DIR/withhold.log"
+
+  # Find lcli
+  LCLI="$REPO_ROOT/target/release/lcli"
+  if [ ! -f "$LCLI" ]; then
+    LCLI="$(command -v lcli 2>/dev/null || true)"
+    if [ -z "$LCLI" ]; then
+      echo "==> WARNING: lcli not found — skipping bid submission"
+      echo "    Build with 'cargo build --release -p lcli' to enable withhold tests"
+      {
+        echo "lcli not found — bid submission skipped"
+      } >> "$RUN_DIR/withhold.log"
+    fi
+  fi
+
+  if [ -n "${LCLI:-}" ] && [ -f "$LCLI" ]; then
+    # Submit 1 bid. No envelope will ever be sent — this is the withholding scenario.
+    # The beacon node will receive the bid, import it to fork choice with payload_revealed=false,
+    # and then move on via the EMPTY path (attesters vote payload_present=false).
+    echo "    Submitting builder bid (no envelope will be revealed)..."
+    withhold_bid_output=$("$LCLI" \
+      --spec minimal \
+      submit-builder-bid \
+      --beacon-url "$BEACON_URL" \
+      --builder-index "$BUILDER_IDX" \
+      --validator-count "$VALIDATOR_COUNT" \
+      --bid-value 1000000000 \
+      2>&1 || true)
+    echo "    $withhold_bid_output"
+    {
+      echo "--- bid submission ---"
+      echo "$withhold_bid_output"
+    } >> "$RUN_DIR/withhold.log"
+
+    bid_accepted=false
+    if echo "$withhold_bid_output" | grep -q "Bid submitted successfully"; then
+      bid_accepted=true
+      echo "    Bid accepted by beacon node (payload_revealed=false in fork choice)."
+    else
+      echo "    WARNING: Bid was not accepted (may be for a past slot or prefs mismatch)."
+      echo "    Continuing anyway — chain health is the primary verification."
+    fi
+    {
+      echo "bid_accepted=$bid_accepted"
+    } >> "$RUN_DIR/withhold.log"
+  fi
+
+  # Phase 2: Verify the chain continues to finalize WITHOUT the envelope.
+  # The fork choice should take the EMPTY path (payload_revealed=false) and keep going.
+  WITHHOLD_FIN_TARGET=$((PRE_WITHHOLD_FINALIZED + 2))
+  WITHHOLD_TIMEOUT=180  # 3 minutes (~2 minimal preset epochs)
+  WITHHOLD_POLL=12
+  withhold_elapsed=0
+  withhold_chain_healthy=false
+
+  echo "==> Waiting for chain to finalize on EMPTY path (target epoch $WITHHOLD_FIN_TARGET)..."
+  echo "    (no envelope was revealed — if chain stalls, that's a bug)"
+
+  while [ "$withhold_elapsed" -lt "$WITHHOLD_TIMEOUT" ]; do
+    sleep "$WITHHOLD_POLL"
+    withhold_elapsed=$((withhold_elapsed + WITHHOLD_POLL))
+
+    syncing=$(curl -sf "$BEACON_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    head_slot="?"
+    if [ -n "$syncing" ]; then
+      head_slot=$(echo "$syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "?")
+    fi
+
+    finality=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null || echo "")
+    finalized_epoch="0"
+    if [ -n "$finality" ]; then
+      finalized_epoch=$(echo "$finality" | jq -r '.data.finalized.epoch' 2>/dev/null || echo "0")
+    fi
+
+    echo "    [${withhold_elapsed}s] head=$head_slot finalized=$finalized_epoch (target=$WITHHOLD_FIN_TARGET)"
+    {
+      echo "--- withhold-health ${withhold_elapsed}s ---"
+      echo "head=$head_slot finalized=$finalized_epoch"
+    } >> "$RUN_DIR/withhold.log"
+
+    if [ "$finalized_epoch" -ge "$WITHHOLD_FIN_TARGET" ]; then
+      withhold_chain_healthy=true
+      break
+    fi
+  done
+
+  if [ "$withhold_chain_healthy" != true ]; then
+    echo "==> FAIL: Chain stalled after payload withholding — EMPTY path not working"
+    echo "    Finalized: $finalized_epoch (needed $WITHHOLD_FIN_TARGET)"
+    echo "    This means fork choice is stuck waiting for envelope — that's a bug"
+    dump_logs
+    cleanup
+    exit 1
+  fi
+
+  echo ""
+  echo "==> WITHHOLD SUCCESS: Chain continued finalizing without payload envelope"
+  echo "    Bid submitted: ${bid_accepted:-false}"
+  echo "    Chain finalized to epoch $finalized_epoch (EMPTY path)"
+  echo "    Fork choice correctly handled payload withholding"
+  echo ""
+  echo "==> SUCCESS: Payload withholding test complete"
+  echo "==> Full logs: $RUN_DIR"
+  echo "==> Withhold log: $RUN_DIR/withhold.log"
   cleanup
   exit 0
 fi

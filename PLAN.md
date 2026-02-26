@@ -66,8 +66,8 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 - **Node churn** — DONE (script): `scripts/kurtosis-run.sh --churn` — kill validator node 4, verify chain continues (75% stake), restart, verify recovery
 - **Mainnet preset** — DONE (script): `scripts/kurtosis-run.sh --mainnet` — 4 nodes, 512 validators, 32 slots/epoch, 12s slots
 - **Long-running** — DONE (script): `scripts/kurtosis-run.sh --long` — epoch 50 target, periodic memory/CPU monitoring, ~40 min
-- **Builder path** — external bids via API, envelope reveal flow
-- **Payload withholding** — bid without reveal, fork choice handles it
+- **Builder path** — DONE (script): `scripts/kurtosis-run.sh --builder` — genesis builder injection, proposer prefs + bid via lcli, chain health verified
+- **Payload withholding** — DONE (script): `scripts/kurtosis-run.sh --withhold` — submit bid, no envelope, verify EMPTY path finalization
 - **Network partitions** — DONE (script): `scripts/kurtosis-run.sh --partition` — stop 2/4 nodes (50% stake), verify finalization stalls, heal, verify recovery
 - **Stateless + ZK** — DONE: proof-generators + stateless node (from priority 4)
 - **Slashing scenarios** — double-propose / surround-vote, verify detection
