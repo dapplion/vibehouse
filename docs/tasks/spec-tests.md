@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix should_extend_payload spec compliance bug (run 121)
+- Checked consensus-specs PRs since run 120: no new Gloas spec changes merged to stable
+  - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - Newly merged since run 120: #4946 (bump actions/stale), #4945 (fix inclusion list test for mainnet) — neither affects Gloas
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Found and fixed spec compliance bug in `should_extend_payload`** (proto_array_fork_choice.rs):
+  - **Bug**: The last condition in `should_extend_payload` checked `parent_node.payload_revealed` (a runtime flag indicating whether the execution payload envelope has been received). The spec's `is_parent_node_full(store, store.blocks[proposer_root])` is a **static** check comparing `boosted_block.bid.parent_block_hash == parent.bid.block_hash` — whether the boosted block's bid declares that it builds on the FULL version of its parent
+  - **Impact**: `payload_revealed` can be true when the child builds on EMPTY (if child's bid.parent_block_hash doesn't match parent's bid.block_hash), or false when the child expects FULL but the envelope hasn't arrived yet. Using the wrong check meant `should_extend_payload` could return the wrong answer in edge cases, leading to incorrect payload tiebreaker values (FULL 2 vs 0)
+  - **Fix**: Replaced `parent_node.payload_revealed` with `self.get_parent_payload_status_of(boosted_node, parent_node) == GloasPayloadStatus::Full`, which correctly compares the bid block hashes per spec
+  - **Updated 2 tests**: `should_extend_payload_boosted_parent_is_this_root_and_full` (now sets `bid_parent_block_hash` to match parent's `bid_block_hash`) and `should_extend_payload_boosted_parent_is_this_root_and_not_full` (now verifies `bid_parent_block_hash` is None)
+- Verified: 116/116 proto_array tests pass, 64/64 fork_choice tests pass, 8/8 EF fork choice tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — dead code cleanup in fork choice and envelope processing (run 120)
 - Checked consensus-specs PRs since run 119: no new Gloas spec changes merged to stable
   - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
