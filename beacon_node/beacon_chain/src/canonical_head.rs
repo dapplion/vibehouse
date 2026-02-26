@@ -721,11 +721,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // caches except the tree hash cache.
             new_snapshot.beacon_state.build_all_caches(&self.spec)?;
 
+            // Gloas blocks have ExecutionStatus::Irrelevant (no payload in block body),
+            // so fork choice returns head_hash=None. The Gloas spec says forkchoiceUpdated
+            // should use head_block_hash=state.latest_block_hash. Extract it from the state
+            // before it's moved into Arc.
+            let head_hash = new_forkchoice_update_parameters.head_hash.or_else(|| {
+                new_snapshot
+                    .beacon_state
+                    .latest_block_hash()
+                    .ok()
+                    .filter(|h| **h != ExecutionBlockHash::zero())
+                    .copied()
+            });
+
             let new_cached_head = CachedHead {
                 snapshot: Arc::new(new_snapshot),
                 justified_checkpoint: new_view.justified_checkpoint,
                 finalized_checkpoint: new_view.finalized_checkpoint,
-                head_hash: new_forkchoice_update_parameters.head_hash,
+                head_hash,
                 justified_hash: new_forkchoice_update_parameters.justified_hash,
                 finalized_hash: new_forkchoice_update_parameters.finalized_hash,
             };
@@ -746,13 +759,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             new_head
         } else {
+            // See above: Gloas blocks have Irrelevant execution status, so head_hash
+            // from fork choice is None until the envelope arrives. Use state.latest_block_hash.
+            let head_hash = new_forkchoice_update_parameters.head_hash.or_else(|| {
+                old_cached_head
+                    .snapshot
+                    .beacon_state
+                    .latest_block_hash()
+                    .ok()
+                    .filter(|h| **h != ExecutionBlockHash::zero())
+                    .copied()
+            });
+
             let new_cached_head = CachedHead {
                 // The head hasn't changed, take a relatively cheap `Arc`-clone of the existing
                 // head.
                 snapshot: old_cached_head.snapshot.clone(),
                 justified_checkpoint: new_view.justified_checkpoint,
                 finalized_checkpoint: new_view.finalized_checkpoint,
-                head_hash: new_forkchoice_update_parameters.head_hash,
+                head_hash,
                 justified_hash: new_forkchoice_update_parameters.justified_hash,
                 finalized_hash: new_forkchoice_update_parameters.finalized_hash,
             };

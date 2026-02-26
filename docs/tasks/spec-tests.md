@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix Gloas forkchoice update head_hash (run 140)
+- **Bug found**: Gloas blocks use `ExecutionStatus::Irrelevant` in proto_array (no execution payload in block body). This caused `ForkchoiceUpdateParameters.head_hash` to be `None`, making `update_execution_engine_forkchoice` fall into the pre-merge PoW transition code path instead of sending a proper `forkchoiceUpdated` to the EL.
+- **Gloas spec**: `prepare_execution_payload` says `head_block_hash=state.latest_block_hash` for forkchoice updates.
+- **Fix**: In `canonical_head.rs`, when constructing `CachedHead`, if `head_hash` from fork choice is `None` (Gloas/Irrelevant), fall back to `state.latest_block_hash()` (filtered for non-zero). Applied in both head-changed and head-unchanged paths.
+- **Why it didn't break devnets**: After envelope import, `on_execution_payload` updates execution status from `Irrelevant` to `Optimistic(hash)`, so next `recompute_head` picks up the hash. Block production uses `state.latest_block_hash()` directly, bypassing the `ForkchoiceUpdateParameters` path. The window between block import and envelope import is typically <1 slot.
+- **Tests**: fork_choice 74/74, EF fork_choice 8/8, beacon_chain 576/576 — all pass.
+
 ### 2026-02-26 — full test suite verification, all green (run 139)
 - Checked consensus-specs PRs since run 138: no new Gloas spec changes merged
   - PRs #4947 and #4948 already handled in run 130
