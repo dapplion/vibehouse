@@ -28,6 +28,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — implement builder voluntary exit support (run 134)
+- Checked consensus-specs PRs since run 133: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Deep audit of Gloas block processing for spec compliance gaps** — reviewed process_withdrawals, process_execution_payload_bid, process_execution_payload_envelope, process_voluntary_exit, process_proposer_slashing, attestation weight accumulation
+- **Found spec compliance bug: builder voluntary exits not implemented**:
+  - **Bug**: Gloas spec modifies `process_voluntary_exit` to handle builder exits when `exit.validator_index` has `BUILDER_INDEX_FLAG` (2^40) set. Vibehouse only handled validator exits. A builder exit would fail with `ValidatorUnknown` since the flagged index exceeds any validator registry size
+  - **Spec reference**: `consensus-specs/specs/gloas/beacon-chain.md` "Modified process_voluntary_exit" — when `BUILDER_INDEX_FLAG` is set, extract builder_index, check `is_active_builder`, check no pending withdrawals, verify signature with builder pubkey, then call `initiate_builder_exit`
+  - **Fix**: Modified `verify_exit` to return `Result<bool>` (true=builder exit, false=validator exit). Added builder exit branch that checks: builder exists, builder is active at finalized epoch, no pending balance to withdraw (both `builder_pending_withdrawals` and `builder_pending_payments`), and signature verification using builder pubkey. Modified `process_exits` to dispatch to `initiate_builder_exit` or `initiate_validator_exit` based on the bool
+- **New functions added**:
+  - `get_pending_balance_to_withdraw_for_builder` — sums amounts from both `builder_pending_withdrawals` and `builder_pending_payments` for a given builder_index
+  - `initiate_builder_exit` — sets `builder.withdrawable_epoch = current_epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY` (no-op if already exiting)
+  - `verify_builder_exit` — validates builder index, activity, pending withdrawals, signature
+- **New error variants**: `ExitInvalid::BuilderUnknown`, `BuilderNotActive`, `BuilderPendingWithdrawalInQueue`; `BeaconStateError::UnknownBuilder`
+- **Files changed**: verify_exit.rs (107→175 lines), gloas.rs (+181 lines), process_operations.rs (+206 lines), errors.rs (+6 lines), beacon_state.rs (+1 line)
+- **26 new unit tests** covering:
+  - `get_pending_balance_to_withdraw_for_builder`: empty queues, from withdrawals only, from payments only, sums both queues, ignores other builders (5 tests)
+  - `initiate_builder_exit`: sets withdrawable_epoch, noop if already exiting, unknown builder error (3 tests)
+  - `verify_exit` builder path: returns true for builder, returns false for validator, unknown index rejected, not active rejected, pending withdrawals rejected, pending payment rejected, future epoch rejected (7 tests)
+  - `process_exits` builder path: sets withdrawable_epoch, mixed builder+validator exit (2 tests)
+  - Plus 9 existing builder deposit/exit tests that continue to pass
+- All 334 state_processing tests pass, all 15 EF operations tests pass, clippy clean
+- **Verified spec compliance** for many other functions: process_withdrawals (withdrawal sweep, builder sweep), process_execution_payload_bid (can_builder_cover_bid, is_active_builder), process_execution_payload_envelope (all 17 steps), proposer slashing payment removal — all correct
+
 ### 2026-02-26 — attestation data.index spec compliance for Gloas (run 133)
 - Checked consensus-specs PRs since run 132: no new Gloas spec changes merged
   - PR #4923 (ignore beacon block if parent payload unknown): already implemented in run 129
