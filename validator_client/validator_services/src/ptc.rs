@@ -64,7 +64,7 @@ impl PtcDutiesMap {
     }
 
     /// Store duties for an epoch.
-    fn set_duties(&self, epoch: Epoch, duties: Vec<PtcDutyData>) {
+    pub(crate) fn set_duties(&self, epoch: Epoch, duties: Vec<PtcDutyData>) {
         self.duties.write().insert(epoch, duties);
     }
 
