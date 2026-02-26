@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fork choice ePBS lifecycle integration tests (run 125)
+- Checked consensus-specs PRs since run 124: 3 Gloas-related PRs merged to stable since last tracked
+  - **#4918** (merged Feb 23): "Only allow attestations for known payload statuses" — adds `validate_on_attestation` check: `if attestation.data.index == 1: assert beacon_block_root in store.payload_states`. **Already implemented** in vibehouse at fork_choice.rs:1179-1187 (checks `!block.payload_revealed`), with 3 unit tests
+  - **#4930** (merged Feb 16): "Rename execution_payload_states to payload_states" — pure rename in spec Python code. **No vibehouse change needed** (we use internal naming)
+  - **#4923** (merged Feb 16): "Ignore beacon block if parent payload unknown" — adds gossip IGNORE for blocks whose parent payload hasn't been seen. **Already implemented** in vibehouse at block_verification.rs:971-984 (`GloasParentPayloadUnknown`), with 3 integration tests in beacon_chain/tests/gloas.rs
+  - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Coverage gap analysis**: fork choice `on_execution_bid`, `on_payload_attestation`, and `on_execution_payload` had individual unit tests but were missing multi-call interaction and lifecycle tests
+- **Added 5 lifecycle integration tests** for fork choice ePBS methods (fork_choice.rs):
+  - `payload_attestation_accumulates_across_multiple_calls`: two separate PTC attestation batches, each below quorum individually, together reaching quorum (2 > threshold of 1 for MinimalEthSpec). Verifies `ptc_weight` accumulation and quorum trigger
+  - `payload_attestation_quorum_without_bid_block_hash`: PTC quorum reached but `bid_block_hash` is None → `execution_status` stays `Irrelevant` (the `!is_execution_enabled() && bid_block_hash.is_none()` path)
+  - `payload_attestation_quorum_skipped_when_already_revealed`: envelope reveals payload first, then PTC attestations arrive and exceed quorum — the `!node.payload_revealed` guard prevents `execution_status` from being overwritten by `bid_block_hash`
+  - `blob_quorum_independent_of_payload_quorum`: blob `payload_data_available` quorum reached with `payload_present=false` — `payload_revealed` stays false, verifying independent quorum tracking
+  - `full_lifecycle_bid_then_ptc_then_envelope`: realistic end-to-end: `on_execution_bid` (sets builder_index, initializes PTC) → `on_payload_attestation` (PTC quorum sets `payload_revealed` and `execution_status` from `bid_block_hash`) → `on_execution_payload` (envelope updates `execution_status` with actual payload hash)
+- Verified: 69/69 fork_choice tests pass (was 64), 117/117 proto_array tests pass, 8/8 EF fork choice tests pass, cargo fmt + clippy clean
+- Commit: `875dbb4f4`
+
 ### 2026-02-26 — process_execution_payload_bid edge case unit tests (run 124)
 - Checked consensus-specs PRs since run 123: no new Gloas spec changes merged to stable
   - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
