@@ -25,7 +25,8 @@ use gossipsub::MessageAcceptance;
 use itertools::Itertools;
 use lighthouse_network::rpc::InboundRequestId;
 use lighthouse_network::rpc::methods::{
-    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, MetaDataV3,
+    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest,
+    ExecutionPayloadEnvelopesByRootRequest, MetaDataV3,
 };
 use lighthouse_network::{
     Client, MessageId, NetworkConfig, NetworkGlobals, PeerId, Response,
@@ -588,6 +589,25 @@ impl TestRig {
                 PeerId::random(),
                 InboundRequestId::new_unchecked(42, 24),
                 BlobsByRootRequest { blob_ids },
+            )
+            .unwrap();
+    }
+
+    pub fn enqueue_envelopes_by_root_request(&self, block_roots: Vec<Hash256>) {
+        let request = ExecutionPayloadEnvelopesByRootRequest {
+            block_roots: RuntimeVariableList::new(
+                block_roots,
+                self.chain
+                    .spec
+                    .max_execution_payload_envelopes_by_root_request,
+            )
+            .unwrap(),
+        };
+        self.network_beacon_processor
+            .send_execution_payload_envelopes_by_roots_request(
+                PeerId::random(),
+                InboundRequestId::new_unchecked(42, 24),
+                request,
             )
             .unwrap();
     }
@@ -3956,4 +3976,149 @@ async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_reject(result);
+}
+
+// ======== ExecutionPayloadEnvelopesByRoot RPC handler tests ========
+//
+// These tests verify the handle_execution_payload_envelopes_by_root_request handler
+// (rpc_methods.rs) for the Gloas-specific P2P protocol that serves payload envelopes
+// by beacon block root.
+
+/// Helper: drain all ExecutionPayloadEnvelopesByRoot responses from the network channel until
+/// the stream terminator (None) is received. Returns the received envelopes.
+async fn drain_envelopes_by_root_responses(
+    network_rx: &mut mpsc::UnboundedReceiver<NetworkMessage<E>>,
+) -> Vec<Arc<SignedExecutionPayloadEnvelope<E>>> {
+    let timeout = Duration::from_secs(5);
+    let deadline = tokio::time::sleep(timeout);
+    tokio::pin!(deadline);
+
+    let mut envelopes = Vec::new();
+    loop {
+        tokio::select! {
+            _ = &mut deadline => panic!("timeout waiting for ExecutionPayloadEnvelopesByRoot response"),
+            msg = network_rx.recv() => {
+                match msg {
+                    Some(NetworkMessage::SendResponse {
+                        response: Response::ExecutionPayloadEnvelopesByRoot(maybe_envelope),
+                        ..
+                    }) => {
+                        match maybe_envelope {
+                            Some(envelope) => envelopes.push(envelope),
+                            None => return envelopes, // stream terminator
+                        }
+                    }
+                    Some(_) => continue, // skip other messages
+                    None => panic!("network_rx channel closed"),
+                }
+            }
+        }
+    }
+}
+
+/// ExecutionPayloadEnvelopesByRoot: known block root → envelope served.
+///
+/// When a peer requests an envelope for a block root that is in our store,
+/// the handler should stream the full envelope followed by the stream terminator.
+#[tokio::test]
+async fn test_gloas_envelopes_by_root_known_root_served() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Find a Gloas block root that has an envelope stored (any slot > 0).
+    let block_root = rig
+        .chain
+        .block_root_at_slot(Slot::new(1), WhenSlotSkipped::None)
+        .unwrap()
+        .expect("should have block at slot 1");
+
+    // Verify the envelope is actually in the store (sanity check for test validity).
+    let stored_envelope = rig.chain.store.get_payload_envelope(&block_root).unwrap();
+    assert!(
+        stored_envelope.is_some(),
+        "envelope should be stored for a Gloas block (slot 1)"
+    );
+
+    rig.enqueue_envelopes_by_root_request(vec![block_root]);
+
+    let received = drain_envelopes_by_root_responses(&mut rig.network_rx).await;
+    assert_eq!(received.len(), 1, "should receive exactly one envelope");
+}
+
+/// ExecutionPayloadEnvelopesByRoot: unknown block root → no envelopes served.
+///
+/// When a peer requests an envelope for a block root not in our store,
+/// the handler should send only the stream terminator (no envelopes).
+#[tokio::test]
+async fn test_gloas_envelopes_by_root_unknown_root_not_served() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Request a random root that is certainly not in the store.
+    let unknown_root = Hash256::repeat_byte(0xab);
+
+    rig.enqueue_envelopes_by_root_request(vec![unknown_root]);
+
+    let received = drain_envelopes_by_root_responses(&mut rig.network_rx).await;
+    assert_eq!(received.len(), 0, "unknown roots should yield no envelopes");
+}
+
+/// ExecutionPayloadEnvelopesByRoot: mix of known and unknown roots → only known served.
+///
+/// When a peer requests multiple roots and only some are in the store, the handler
+/// should serve only the envelopes for the known roots, skipping the unknown ones.
+#[tokio::test]
+async fn test_gloas_envelopes_by_root_mixed_roots() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Find two known Gloas block roots.
+    let root1 = rig
+        .chain
+        .block_root_at_slot(Slot::new(1), WhenSlotSkipped::None)
+        .unwrap()
+        .expect("should have block at slot 1");
+    let root2 = rig
+        .chain
+        .block_root_at_slot(Slot::new(2), WhenSlotSkipped::None)
+        .unwrap()
+        .expect("should have block at slot 2");
+    let unknown_root = Hash256::repeat_byte(0xcd);
+
+    // Verify both known roots have envelopes.
+    assert!(
+        rig.chain
+            .store
+            .get_payload_envelope(&root1)
+            .unwrap()
+            .is_some(),
+        "slot 1 should have envelope"
+    );
+    assert!(
+        rig.chain
+            .store
+            .get_payload_envelope(&root2)
+            .unwrap()
+            .is_some(),
+        "slot 2 should have envelope"
+    );
+
+    // Request: [known, unknown, known] → should receive 2 envelopes.
+    rig.enqueue_envelopes_by_root_request(vec![root1, unknown_root, root2]);
+
+    let received = drain_envelopes_by_root_responses(&mut rig.network_rx).await;
+    assert_eq!(
+        received.len(),
+        2,
+        "should receive 2 envelopes for 2 known roots, skipping the unknown"
+    );
 }
