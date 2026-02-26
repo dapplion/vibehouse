@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — same-slot attestation weight edge case unit tests (run 127)
+- Checked consensus-specs PRs since run 126: no new Gloas spec changes merged
+  - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - Checked PRs #4916 (replace pubkey with validator index in SignedExecutionProof), #4897 (pending deposit check), #4884 (blob data availability vote), #4908 (builder voluntary exit tests) — all already implemented or not applicable
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Coverage gap analysis**: same-slot attestation weight accumulation in `process_attestation` (process_operations.rs:229-247) had 4 existing tests for current-epoch attestations but was missing: previous-epoch same-slot attestation path, multi-attester aggregate attestation weight, epoch boundary slot mapping, and weight saturation behavior
+- **Added 5 edge case unit tests** for same-slot attestation weight accumulation (process_operations.rs):
+  - `previous_epoch_same_slot_attestation_uses_first_half_index`: attestation at slot 10 in state at slot 17 — maps to payment index `10 % 8 = 2` (previous epoch first-half), verifies weight is added to correct payment
+  - `previous_epoch_attestation_does_not_touch_second_half`: same setup but verifies that the current-epoch payment at the same `slot % SLOTS_PER_EPOCH` offset (index 8+2=10) remains at weight 0 — confirms epoch isolation
+  - `multiple_attesters_accumulate_combined_weight`: aggregate attestation with all committee members attesting — verifies weight equals `committee_len * 32 ETH` (sum of effective balances)
+  - `epoch_boundary_slot_attestation_uses_correct_payment_index`: attestation at slot 8 (epoch 1 start) in state at slot 9 — maps to payment index `8 + (8 % 8) = 8`, verifies epoch boundary slot index mapping
+  - `weight_saturates_instead_of_overflowing`: payment weight pre-set near `u64::MAX`, attestation adds effective_balance — verifies `saturating_add` caps at `u64::MAX` instead of wrapping
+- Also added 2 helper functions: `make_prev_epoch_attestation` (creates Electra attestation targeting previous epoch) and `make_multi_attester_attestation` (creates aggregate with multiple committee bits set)
+- Verified: 312/312 state_processing tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — on_payload_attestation quorum edge case unit tests (run 126)
 - Checked consensus-specs PRs since run 125: no new Gloas spec changes merged to stable
   - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch in forkchoice), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
