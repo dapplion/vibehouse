@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — CI coverage improvements (run 115)
+- Checked consensus-specs PRs since run 114: no new Gloas spec changes merged
+  - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - Still open, not implementing until merged
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **CI improvements**: two gaps closed in test coverage for CI
+  - Added `operation_pool tests (gloas)` to `ci.yml` fork-specific-tests job — operation_pool runs in `unit-tests` job without FORK_NAME, but now also runs with `FORK_NAME=gloas` to exercise attestation reward calculations, pool operations, and pack_attestations with Gloas-era beacon state (ePBS bids, payload availability bits). All 26 tests pass
+  - Added `gloas` to `RECENT_FORKS` in Makefile — `nightly test-suite.yml` uses `make test-http-api` which iterates `RECENT_FORKS`. Adding gloas means nightly CI now runs all 212 http_api tests with `FORK_NAME=gloas`, catching Gloas-specific HTTP API regressions (gossip block import guards, payload envelope endpoints, PTC duty endpoints)
+- 570/570 beacon_chain tests pass, 26/26 operation_pool tests pass (verified locally)
+
 ### 2026-02-26 — blinded envelope fallback in reconstruct_historic_states (run 114)
 - Checked consensus-specs PRs since run 113: no new Gloas spec changes merged
   - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
