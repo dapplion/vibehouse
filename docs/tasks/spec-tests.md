@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — Proposer preferences pool + bid validation against preferences (run 111)
+- Checked consensus-specs PRs since run 110: no new Gloas spec changes merged
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Implemented proposer preferences pool**: `BeaconChain.proposer_preferences_pool` (`Mutex<HashMap<Slot, SignedProposerPreferences>>`) stores verified proposer preferences for bid validation. Pool auto-prunes entries older than 2 epochs. Methods: `insert_proposer_preferences` (returns false for dedup), `get_proposer_preferences`
+- **Added bid validation against proposer preferences** (spec compliance fix): `verify_execution_bid_for_gossip` now validates:
+  - [IGNORE] SignedProposerPreferences for bid.slot has been seen → `ProposerPreferencesNotSeen`
+  - [REJECT] bid.fee_recipient matches proposer's preferences → `FeeRecipientMismatch`
+  - [REJECT] bid.gas_limit matches proposer's preferences → `GasLimitMismatch`
+- **Updated gossip handler**: `process_gossip_proposer_preferences` now checks for dedup (IGNORE second message for same slot) and stores accepted preferences in the pool. `process_gossip_execution_bid` routes the 3 new error types correctly (ProposerPreferencesNotSeen → Ignore, FeeRecipientMismatch/GasLimitMismatch → Reject + LowToleranceError)
+- **Added 3 new bid gossip handler integration tests**:
+  - `test_gloas_gossip_bid_no_preferences_ignored`: bid without preferences in pool → Ignore
+  - `test_gloas_gossip_bid_fee_recipient_mismatch_rejected`: bid with wrong fee_recipient → Reject
+  - `test_gloas_gossip_bid_gas_limit_mismatch_rejected`: bid with wrong gas_limit → Reject
+- **Updated 4 existing bid tests** to insert matching preferences before bid submission (required after preferences check was added)
+- All 133 network tests pass (was 130), cargo fmt + clippy clean
+
 ### 2026-02-26 — Payload attestation gossip handler integration tests + InvalidSignature bug fix (run 110)
 - Checked consensus-specs PRs since run 109: no new Gloas spec changes merged
   - No new PRs merged since Feb 24. All tracked Gloas PRs still open: #4948, #4947, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
