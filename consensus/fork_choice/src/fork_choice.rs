@@ -1638,7 +1638,7 @@ where
     }
 
     /// Returns the Gloas head payload status from the last `get_head` call.
-    /// 1 = EMPTY, 2 = FULL. `None` for pre-Gloas heads.
+    /// 0 = EMPTY, 1 = FULL, 2 = PENDING. `None` for pre-Gloas heads.
     pub fn gloas_head_payload_status(&self) -> Option<u8> {
         self.proto_array.gloas_head_payload_status()
     }

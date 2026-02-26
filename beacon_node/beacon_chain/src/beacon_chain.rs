@@ -2208,17 +2208,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             // [Gloas/EIP-7732] Determine payload_present for attestation data.index.
             // Per spec: same-slot attestations always have data.index = 0.
-            // Non-same-slot attestations set data.index = 1 if payload was revealed.
-            // "Same-slot" means the block was produced at request_slot (not a skip).
+            // Non-same-slot attestations set data.index based on whether the
+            // payload was revealed: 1 if FULL (payload present), 0 otherwise.
             payload_present = if head_state.fork_name_unchecked().gloas_enabled() {
-                self.canonical_head
-                    .fork_choice_read_lock()
-                    .get_block(&beacon_block_root)
-                    .is_some_and(|block| {
-                        // If block.slot < request_slot, this is a non-same-slot attestation
-                        // (skip slot or late attestation). Check if payload was revealed.
-                        block.slot < request_slot && block.payload_revealed
-                    })
+                let fc = self.canonical_head.fork_choice_read_lock();
+                if request_slot > head_state.slot() {
+                    // Skip-slot: head block is from a prior slot.
+                    // Use the fork choice head payload status which reflects
+                    // whether the winning virtual child is FULL or EMPTY.
+                    // GloasPayloadStatus::Full == 1
+                    fc.gloas_head_payload_status().is_some_and(|s| s == 1)
+                } else if request_slot < head_state.slot() {
+                    // Historical block: check payload_revealed on the proto_node.
+                    fc.get_block(&beacon_block_root)
+                        .is_some_and(|block| block.payload_revealed)
+                } else {
+                    // Same-slot: always index=0 (spec: same-slot attestations
+                    // must have data.index == 0).
+                    false
+                }
             } else {
                 false
             };
