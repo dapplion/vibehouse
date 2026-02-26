@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — full test suite green, spec compliance verified (run 144)
+- Checked consensus-specs PRs since run 143: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - New open PRs: #4944 (ExecutionProofsByRoot, EIP-8025 — not Gloas scope)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Full test suite verification** — all passing:
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+  - 337/337 state_processing tests
+  - 193/193 fork_choice + proto_array tests
+  - 35/35 EF spec tests (operations/epoch/sanity subset)
+- **Spec compliance re-audit**:
+  - `get_ancestor`: matches spec exactly (Pending for block.slot <= target, walk-up with get_parent_payload_status)
+  - `is_supporting_vote`: matches spec + already ahead of PR #4892 (uses debug_assert + == instead of <=)
+  - `get_payload_status_tiebreaker`: matches spec exactly (Pending early-return, previous-slot EMPTY/FULL dispatch)
+  - `should_extend_payload`: 4-condition OR matches spec
+- **Upcoming spec test prep**: PR #4940 will add `on_execution_payload` fork choice test steps — our test runner already has `execution_payload` step handling and `head_payload_status` check wired up
+
 ### 2026-02-26 — implement pre-fork gossip subscription per spec PR #4947 (run 143)
 - Checked consensus-specs PRs since run 142: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
