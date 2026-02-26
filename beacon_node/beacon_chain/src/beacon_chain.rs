@@ -6226,7 +6226,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(Box::new(DoNotReOrg::HeadNotLate.into()));
         }
 
-        let parent_head_hash = info.parent_node.execution_status.block_hash();
+        // Gloas blocks have ExecutionStatus::Irrelevant (no payload in block body),
+        // so block_hash() returns None until the envelope is processed. Fall back to
+        // the canonical head_hash which already has the correct state.latest_block_hash
+        // from the cached head fix.
+        let parent_head_hash = info
+            .parent_node
+            .execution_status
+            .block_hash()
+            .or(canonical_forkchoice_params.head_hash);
         let forkchoice_update_params = ForkchoiceUpdateParameters {
             head_root: info.parent_node.root,
             head_hash: parent_head_hash,

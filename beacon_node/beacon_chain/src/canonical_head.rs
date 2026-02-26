@@ -277,11 +277,21 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
     ) -> Self {
         let fork_choice_view = fork_choice.cached_fork_choice_view();
         let forkchoice_update_params = fork_choice.get_forkchoice_update_parameters();
+        // Gloas blocks have ExecutionStatus::Irrelevant so head_hash is None.
+        // Fall back to state.latest_block_hash per the Gloas spec.
+        let head_hash = forkchoice_update_params.head_hash.or_else(|| {
+            snapshot
+                .beacon_state
+                .latest_block_hash()
+                .ok()
+                .filter(|h| **h != ExecutionBlockHash::zero())
+                .copied()
+        });
         let cached_head = CachedHead {
             snapshot,
             justified_checkpoint: fork_choice_view.justified_checkpoint,
             finalized_checkpoint: fork_choice_view.finalized_checkpoint,
-            head_hash: forkchoice_update_params.head_hash,
+            head_hash,
             justified_hash: forkchoice_update_params.justified_hash,
             finalized_hash: forkchoice_update_params.finalized_hash,
         };
@@ -328,11 +338,21 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
         };
 
         let forkchoice_update_params = fork_choice.get_forkchoice_update_parameters();
+        // Gloas blocks have ExecutionStatus::Irrelevant so head_hash is None.
+        // Fall back to state.latest_block_hash per the Gloas spec.
+        let head_hash = forkchoice_update_params.head_hash.or_else(|| {
+            snapshot
+                .beacon_state
+                .latest_block_hash()
+                .ok()
+                .filter(|h| **h != ExecutionBlockHash::zero())
+                .copied()
+        });
         let cached_head = CachedHead {
             snapshot: Arc::new(snapshot),
             justified_checkpoint: fork_choice_view.justified_checkpoint,
             finalized_checkpoint: fork_choice_view.finalized_checkpoint,
-            head_hash: forkchoice_update_params.head_hash,
+            head_hash,
             justified_hash: forkchoice_update_params.justified_hash,
             finalized_hash: forkchoice_update_params.finalized_hash,
         };
