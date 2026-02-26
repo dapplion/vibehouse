@@ -3621,6 +3621,22 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 );
                 return;
             }
+            // Spec: [REJECT] valid aggregate BLS signature
+            Err(PayloadAttestationError::InvalidSignature) => {
+                warn!(
+                    %slot,
+                    ?beacon_block_root,
+                    %peer_id,
+                    "Rejecting payload attestation with invalid signature"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "payload_attestation_bad_signature",
+                );
+                return;
+            }
             // Internal errors (PTC committee, state access, arithmetic) — ignore with mild penalty
             Err(e) => {
                 debug!(
