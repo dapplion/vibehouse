@@ -30,6 +30,26 @@ fn unwrap_err<T, E: std::fmt::Debug>(result: Result<T, E>, msg: &str) -> E {
     }
 }
 
+/// Insert matching proposer preferences into the chain's pool for bid validation.
+/// Per spec, bids are IGNORED if proposer preferences for the slot haven't been seen.
+fn insert_preferences_for_bid<T: beacon_chain::BeaconChainTypes>(
+    chain: &beacon_chain::BeaconChain<T>,
+    slot: Slot,
+    fee_recipient: Address,
+    gas_limit: u64,
+) {
+    let preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: slot.as_u64(),
+            validator_index: 0,
+            fee_recipient,
+            gas_limit,
+        },
+        signature: bls::Signature::empty(),
+    };
+    chain.insert_proposer_preferences(preferences);
+}
+
 const VALIDATOR_COUNT: usize = 24;
 
 static KEYPAIRS: LazyLock<Vec<Keypair>> =
@@ -526,6 +546,14 @@ async fn bid_invalid_signature() {
     bid.message.parent_block_root = head_root;
     // signature is Signature::empty() which is not valid for this message
 
+    // Insert matching proposer preferences so the bid reaches the signature check
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid.message.fee_recipient,
+        bid.message.gas_limit,
+    );
+
     let err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
         "should reject invalid signature",
@@ -556,6 +584,14 @@ async fn bid_valid_signature_passes() {
         parent_block_root: head_root,
         ..Default::default()
     };
+
+    // Insert matching proposer preferences so the bid reaches the signature check
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg.fee_recipient,
+        bid_msg.gas_limit,
+    );
 
     // Sign with the builder's secret key
     let domain = spec.get_domain(
@@ -1463,6 +1499,14 @@ async fn bid_balance_exactly_sufficient_passes() {
         ..Default::default()
     };
 
+    // Insert matching proposer preferences so the bid reaches the balance/signature checks
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg.fee_recipient,
+        bid_msg.gas_limit,
+    );
+
     let domain = spec.get_domain(
         current_slot.epoch(E::slots_per_epoch()),
         Domain::BeaconBuilder,
@@ -1917,6 +1961,14 @@ async fn bid_second_builder_valid_signature_passes() {
         parent_block_root: head_root,
         ..Default::default()
     };
+
+    // Insert matching proposer preferences so the bid reaches the signature check
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg.fee_recipient,
+        bid_msg.gas_limit,
+    );
 
     let domain = spec.get_domain(
         current_slot.epoch(E::slots_per_epoch()),
