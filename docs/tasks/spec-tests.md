@@ -28,6 +28,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix get_gloas_children and should_extend_payload envelope_received check (run 129)
+- Checked consensus-specs PRs since run 128: no new Gloas spec changes merged
+  - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - PR #4948 (reorder payload status constants) approved, likely to merge soon
+  - PR #4940 (Gloas fork choice tests) updated Feb 25
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Fork choice spec compliance audit**: systematically compared vibehouse's fork choice functions against consensus-specs Python reference:
+  - `get_weight` / `get_gloas_weight` ✓ (correct, uses De Morgan's law inversion of spec's positive filter)
+  - `is_supporting_vote` / `is_supporting_vote_gloas` ✓ (correct, `==` equivalent to spec's `<=` under slot invariant)
+  - `get_ancestor` / `get_ancestor_gloas` ✓ (correct, different variable names but same logic)
+  - `get_parent_payload_status` / `get_parent_payload_status_of` ✓ (correct)
+  - `should_apply_proposer_boost` / `should_apply_proposer_boost_gloas` — minor over-counting of equivocating validators (uses all equivocating indices instead of committee-at-slot), conservative and matches pre-Gloas behavior
+- **Found and fixed spec compliance bug** in `get_gloas_children` and `should_extend_payload`:
+  - **Bug**: `get_gloas_children` used `proto_node.payload_revealed` to decide whether to include the FULL virtual child. `payload_revealed` is set by BOTH `on_execution_payload` (actual envelope receipt) AND `on_payload_attestation` (PTC quorum). The spec's `get_node_children` only creates the FULL child when `root in store.payload_states`, which requires actual envelope processing — not just PTC quorum
+  - **Impact**: When PTC quorum was reached but no envelope received, vibehouse would create a FULL child that the spec wouldn't. This could cause FULL to win the head tiebreaker when spec says only EMPTY should exist
+  - **Fix**: Added `envelope_received: bool` field to `ProtoNode` and `Block`, set only by `on_execution_payload`. Changed `get_gloas_children` and `should_extend_payload` to check `envelope_received` instead of (or in addition to) `payload_revealed`
+  - Same pattern in `should_extend_payload`: spec's `is_payload_timely` and `is_payload_data_available` both require `root in store.payload_states`. Now checks `envelope_received && payload_revealed && payload_data_available`
+- **Added 2 edge case unit tests** for PTC-quorum-without-envelope:
+  - `find_head_ptc_quorum_without_envelope_stays_empty`: block with `payload_revealed=true` (PTC quorum) but `envelope_received=false` — FULL-supporting vote present but head is EMPTY because FULL child doesn't exist without envelope
+  - `find_head_ptc_quorum_with_envelope_becomes_full`: complementary test with `envelope_received=true` — FULL child exists and wins with FULL-supporting vote
+- Updated existing `should_extend_payload` and tiebreaker tests to set `envelope_received=true` alongside `payload_revealed` when simulating envelope receipt, ensuring tests exercise the intended code paths
+- Verified: 119/119 proto_array tests pass (was 117 + 2 new), 74/74 fork_choice tests pass, 8/8 EF fork choice tests pass, 2240/2240 workspace tests pass (8 web3signer failures are unrelated external service flakiness)
+
 ### 2026-02-26 — process_execution_payload_envelope edge case unit tests (run 128)
 - Checked consensus-specs PRs since run 127: no new Gloas spec changes merged
   - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
