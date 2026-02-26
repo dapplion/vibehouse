@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — on_payload_attestation quorum edge case unit tests (run 126)
+- Checked consensus-specs PRs since run 125: no new Gloas spec changes merged to stable
+  - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch in forkchoice), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - Newly tracked: #4926 (replace SECONDS_PER_SLOT with SLOT_DURATION_MS — touches gloas timing constants)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Coverage gap analysis**: `on_payload_attestation` quorum logic had tests for basic quorum reach/miss and multi-call accumulation, but was missing tests for quorum idempotency, simultaneous dual-quorum, empty attesting indices, post-quorum weight accumulation, and cross-block independence
+- **Added 5 edge case unit tests** for `on_payload_attestation` (fork_choice.rs):
+  - `blob_quorum_idempotent_after_reached`: blob data availability quorum already reached, additional attestations arrive — weight continues accumulating but `payload_data_available` stays true (no re-trigger), `payload_revealed` remains false (independent tracking)
+  - `both_quorums_reached_in_single_call`: single attestation batch with `payload_present=true` AND `blob_data_available=true` pushes both counters over threshold simultaneously — both `payload_revealed` and `payload_data_available` set in one call, `execution_status` set from `bid_block_hash`
+  - `payload_attestation_empty_indices_no_weight`: indexed attestation with zero attesting indices — `ptc_weight` and `ptc_blob_data_available_weight` remain 0, no quorum flags triggered
+  - `payload_quorum_does_not_retrigger_status_on_second_batch`: first batch reaches quorum and sets `execution_status` from `bid_block_hash`. `bid_block_hash` is then changed. Second batch arrives — weight accumulates but `!node.payload_revealed` guard prevents re-entering quorum path, so `execution_status` remains unchanged
+  - `independent_blocks_have_independent_ptc_state`: two blocks at different slots have independent PTC weight tracking — quorum reached on block_a does not affect block_b's `payload_revealed` or `payload_data_available` flags
+- Verified: 74/74 fork_choice tests pass (was 69), 117/117 proto_array tests pass, 8/8 EF fork choice tests pass, cargo fmt + clippy clean
+- Commit: `6011874ee`
+
 ### 2026-02-26 — fork choice ePBS lifecycle integration tests (run 125)
 - Checked consensus-specs PRs since run 124: 3 Gloas-related PRs merged to stable since last tracked
   - **#4918** (merged Feb 23): "Only allow attestations for known payload statuses" — adds `validate_on_attestation` check: `if attestation.data.index == 1: assert beacon_block_root in store.payload_states`. **Already implemented** in vibehouse at fork_choice.rs:1179-1187 (checks `!block.payload_revealed`), with 3 unit tests
