@@ -36,11 +36,12 @@ pub struct VoteTracker {
 
 /// Payload status for Gloas fork choice virtual nodes.
 /// Each block is modeled as 3 virtual nodes: PENDING, EMPTY, FULL.
+/// Ordinal values match consensus-specs: Empty=0, Full=1, Pending=2.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum GloasPayloadStatus {
-    Pending = 0,
-    Empty = 1,
-    Full = 2,
+    Empty = 0,
+    Full = 1,
+    Pending = 2,
 }
 
 /// A virtual fork choice node in the Gloas model: (root, payload_status).
@@ -3958,7 +3959,7 @@ mod test_gloas_fork_choice {
 
     #[test]
     fn tiebreaker_pending_not_previous_slot_returns_ordinal() {
-        // PENDING status at a non-previous-slot returns its ordinal value (0)
+        // PENDING status at a non-previous-slot returns its ordinal value (2)
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
@@ -4119,10 +4120,10 @@ mod test_gloas_fork_choice {
     }
 
     #[test]
-    fn tiebreaker_pending_at_previous_slot_returns_zero() {
-        // Per spec: PENDING nodes always return their ordinal value (0) regardless of slot.
-        // This tests that a PENDING node at the previous slot returns 0, not the
-        // should_extend_payload-based value.
+    fn tiebreaker_pending_at_previous_slot_returns_ordinal() {
+        // Per spec: PENDING nodes always return their ordinal value regardless of slot.
+        // This tests that a PENDING node at the previous slot returns Pending ordinal,
+        // not the should_extend_payload-based value.
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
@@ -4141,7 +4142,7 @@ mod test_gloas_fork_choice {
         };
 
         // Block at slot 1, current_slot = 2 (previous slot).
-        // Spec: PENDING → return 0, even though it's from the previous slot.
+        // Spec: PENDING → return ordinal (2), even though it's from the previous slot.
         assert_eq!(
             fc.get_payload_tiebreaker(&gloas_node, Slot::new(2)),
             GloasPayloadStatus::Pending as u8

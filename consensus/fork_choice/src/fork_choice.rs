@@ -3314,7 +3314,7 @@ mod tests {
             assert_eq!(head, root(1));
             assert_eq!(
                 fc.gloas_head_payload_status(),
-                Some(1), // 1 = EMPTY
+                Some(0), // 0 = EMPTY
                 "payload not revealed → head payload status should be EMPTY"
             );
         }
@@ -3344,7 +3344,7 @@ mod tests {
             assert_eq!(head, root(1));
             assert_eq!(
                 fc.gloas_head_payload_status(),
-                Some(2), // 2 = FULL
+                Some(1), // 1 = FULL
                 "payload revealed + FULL vote → head payload status should be FULL"
             );
         }
