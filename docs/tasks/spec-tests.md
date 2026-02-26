@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — full test suite verification, all green (run 139)
+- Checked consensus-specs PRs since run 138: no new Gloas spec changes merged
+  - PRs #4947 and #4948 already handled in run 130
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Full test suite verification** — all tests passing:
+  - 78/78 EF spec tests (real crypto, minimal+mainnet)
+  - 138/138 EF spec tests (fake crypto, minimal+mainnet)
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+  - 337/337 state_processing tests
+  - 193/193 fork_choice + proto_array tests
+  - 136/136 network tests (FORK_NAME=gloas)
+  - 26/26 operation_pool tests (FORK_NAME=gloas)
+  - 2260/2260 workspace tests (8 web3signer tests excluded — infra dependency, not code bugs)
+- **EF test handler readiness audit** — verified handlers are ready for upcoming spec PRs:
+  - PR #4940 (Gloas fork choice tests): `OnExecutionPayload` step handler and `head_payload_status` check already implemented; SSZ decode for `SignedExecutionPayloadEnvelope` wired; will pass when vectors are released
+  - PR #4932 (Gloas sanity/blocks tests): `SanityBlocks` handler already processes Gloas blocks with payload attestations via `per_block_processing`; no handler changes needed
+- **Coverage audit** — identified areas with strongest coverage:
+  - Per-block processing: 17+ builder deposit routing tests, 10+ equivocation tests, 26+ builder exit tests
+  - Envelope processing: 28+ unit tests covering all 17 verification steps
+  - Fork choice: 21 Gloas-specific unit tests + 8 EF tests
+  - Gossip verification: 70+ integration tests across all 5 Gloas topics
+  - State upgrade: 13 unit tests + builder onboarding tests
+  - Epoch processing: 15+ builder pending payments tests
+- **P2P spec gap noted**: PR #4939 (request missing envelopes for index-1 attestations) adds SHOULD-level requirement to queue attestations and request envelopes when `data.index=1` but payload not seen — not implemented yet, tracking for when PR merges
+
 ### 2026-02-26 — fix builder exit pruning bug in operation pool (run 138)
 - Checked consensus-specs PRs since run 137: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
