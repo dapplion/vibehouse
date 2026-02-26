@@ -68,7 +68,7 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 - **Long-running** — DONE (script): `scripts/kurtosis-run.sh --long` — epoch 50 target, periodic memory/CPU monitoring, ~40 min
 - **Builder path** — external bids via API, envelope reveal flow
 - **Payload withholding** — bid without reveal, fork choice handles it
-- **Network partitions** — split nodes, reconnect, test fork resolution
+- **Network partitions** — DONE (script): `scripts/kurtosis-run.sh --partition` — stop 2/4 nodes (50% stake), verify finalization stalls, heal, verify recovery
 - **Stateless + ZK** — DONE: proof-generators + stateless node (from priority 4)
 - **Slashing scenarios** — double-propose / surround-vote, verify detection
 

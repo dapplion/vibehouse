@@ -279,6 +279,9 @@ scripts/kurtosis-run.sh --mainnet
 
 # Long-running test (30+ min, epoch 50, resource monitoring, ~40 min)
 scripts/kurtosis-run.sh --long
+
+# Network partition test (stop 2/4 nodes, verify stall, heal, verify recovery)
+scripts/kurtosis-run.sh --partition
 ```
 
 ### How the Devnet Works

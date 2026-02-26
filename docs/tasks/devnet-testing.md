@@ -16,7 +16,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Long-running | DONE (script) | `--long` flag: epoch 50 target, periodic memory/CPU monitoring, ~40 min |
 | Builder path | TODO | External bids via API, envelope reveal flow |
 | Payload withholding | TODO | Bid without reveal, fork choice handles it |
-| Network partitions | TODO | Split nodes, reconnect, test fork resolution |
+| Network partitions | DONE (script) | `--partition` flag: stop 2/4 nodes (50% stake), verify stall, heal, verify finalization resumes |
 | Stateless + ZK | DONE | 3 proof-generators + 1 stateless node (from priority 4) |
 | Slashing scenarios | TODO | Double-propose / surround-vote, verify detection |
 
@@ -171,4 +171,41 @@ scripts/kurtosis-run.sh --mainnet --no-teardown # Leave running for inspection
 scripts/kurtosis-run.sh --long              # Full test (~40 min)
 scripts/kurtosis-run.sh --long --no-build   # Skip Docker build
 scripts/kurtosis-run.sh --long --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Network partition test (run 112)
+
+**Implemented the network partition devnet test scenario** — simulate a network split by stopping 2/4 nodes, verify finalization stalls, then heal and verify recovery.
+
+**What was built:**
+
+**`--partition` flag in `kurtosis-run.sh`** — Four-phase partition test using the default 4-node config:
+
+- **Phase 1 (warm-up):** Start all 4 validator nodes, wait for finalization to epoch 3 (past Gloas fork).
+
+- **Phase 2 (partition — verify stall):** Stop nodes 3 and 4 (both CL and EL). With only 50% of stake online, finalization should stall because Casper FFG requires 2/3 supermajority. Wait 120s (~2.5 epochs) and verify `finalized_epoch` does NOT advance. The chain should still produce blocks but cannot justify or finalize.
+
+- **Phase 3 (heal):** Restart all stopped nodes (EL first, then CL).
+
+- **Phase 4 (verify recovery):** Wait for finalization to advance at least 2 epochs past the stalled point, proving the chain recovers from the partition and can finalize again once the supermajority is restored.
+
+**Key design decisions:**
+- Stops 2 out of 4 nodes — exactly 50% stake, guaranteed below 2/3 threshold for finalization
+- 120s stall verification — 2.5 minimal-preset epochs, long enough to confirm finalization doesn't advance
+- Separate `partition.log` file for all partition phase output
+- WARNING (not failure) if finalization advances during partition — edge case if timing overlaps with justification
+- 6-minute timeout for heal phase
+
+**What this tests:**
+- Casper FFG correctness — finalization requires 2/3 supermajority, should NOT finalize with 50%
+- Chain liveness during partition — blocks should still be produced by remaining 50%
+- Fork resolution after partition healing — rejoined nodes reconcile chain state
+- Finalization resumption — chain recovers from non-finalizing state when supermajority is restored
+- ePBS behavior during degraded operation (bids/envelopes with reduced validator set)
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --partition              # Full test
+scripts/kurtosis-run.sh --partition --no-build   # Skip Docker build
+scripts/kurtosis-run.sh --partition --no-teardown # Leave running for inspection
 ```

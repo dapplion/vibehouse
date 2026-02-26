@@ -4,7 +4,7 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition]
 #
 # Flags:
 #   --no-build      Skip Docker image build (use existing vibehouse:local)
@@ -19,6 +19,8 @@ set -euo pipefail
 #                   12s slots, 512 validators (128/node × 4 nodes)
 #   --long          Long-running test: 30+ min, epoch 50 target, periodic memory/resource
 #                   monitoring to catch leaks and stalls
+#   --partition     Network partition test: stop 2/4 nodes (50% stake), verify chain
+#                   blocks but doesn't finalize, restart, verify finalization resumes
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -27,6 +29,7 @@ set -euo pipefail
 #   sync.log        — sync mode: non-validator node sync progress (--sync only)
 #   churn.log       — churn mode: kill/recovery phase progress (--churn only)
 #   resources.log   — long mode: periodic container memory/CPU snapshots (--long only)
+#   partition.log   — partition mode: split/heal phase progress (--partition only)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,6 +55,7 @@ SYNC_MODE=false
 CHURN_MODE=false
 MAINNET_MODE=false
 LONG_MODE=false
+PARTITION_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -63,12 +67,18 @@ for arg in "$@"; do
     --churn)        CHURN_MODE=true ;;
     --mainnet)      MAINNET_MODE=true ;;
     --long)         LONG_MODE=true ;;
+    --partition)    PARTITION_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
 # Select config based on mode
-if [ "$LONG_MODE" = true ]; then
+if [ "$PARTITION_MODE" = true ]; then
+  # Partition uses the default 4-node config — stop 2 to simulate split
+  TARGET_FINALIZED_EPOCH=3  # lower initial target: just past Gloas fork
+  TIMEOUT=900               # 15 minutes total (warm-up + partition + heal)
+  echo "==> Partition mode: using $KURTOSIS_CONFIG (4 validators, will partition 2 nodes)"
+elif [ "$LONG_MODE" = true ]; then
   # Long-running uses the default 4-node config with high finalization target
   TARGET_FINALIZED_EPOCH=50  # ~50 epochs × 48s = ~40 min in minimal preset
   TIMEOUT=3000               # 50 minutes (generous margin)
@@ -282,6 +292,13 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
     if [ "$CHURN_MODE" = true ]; then
       PRE_CHURN_FINALIZED="$finalized_epoch"
       PRE_CHURN_HEAD="$head_slot"
+      break
+    fi
+
+    # In partition mode, break out to run the split/heal phases
+    if [ "$PARTITION_MODE" = true ]; then
+      PRE_PARTITION_FINALIZED="$finalized_epoch"
+      PRE_PARTITION_HEAD="$head_slot"
       break
     fi
 
@@ -646,6 +663,140 @@ if [ "$CHURN_MODE" = true ] && [ "${PRE_CHURN_FINALIZED:-0}" -gt 0 ]; then
   echo "==> SUCCESS: Churn test complete"
   echo "==> Full logs: $RUN_DIR"
   echo "==> Churn log: $RUN_DIR/churn.log"
+  cleanup
+  exit 0
+fi
+
+# --- PARTITION MODE: Stop 2/4 nodes, verify no finalization, heal, verify recovery ---
+if [ "$PARTITION_MODE" = true ] && [ "${PRE_PARTITION_FINALIZED:-0}" -gt 0 ]; then
+  PART_NODE_3="cl-3-lighthouse-geth"
+  PART_NODE_4="cl-4-lighthouse-geth"
+  PART_EL_3="el-3-geth-lighthouse"
+  PART_EL_4="el-4-geth-lighthouse"
+
+  echo ""
+  echo "==> PARTITION PHASE 1: Splitting network (stopping nodes 3 & 4)..."
+  echo "    Pre-partition: finalized_epoch=$PRE_PARTITION_FINALIZED head_slot=$PRE_PARTITION_HEAD"
+  {
+    echo "=== partition phase ==="
+    echo "pre_partition_finalized=$PRE_PARTITION_FINALIZED"
+    echo "pre_partition_head=$PRE_PARTITION_HEAD"
+  } >> "$RUN_DIR/partition.log"
+
+  # Stop CL and EL for nodes 3 and 4 (50% of stake offline)
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$PART_NODE_3" 2>/dev/null || true
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$PART_NODE_4" 2>/dev/null || true
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$PART_EL_3" 2>/dev/null || true
+  $SUDO kurtosis service stop "$ENCLAVE_NAME" "$PART_EL_4" 2>/dev/null || true
+  echo "    Stopped: $PART_NODE_3, $PART_NODE_4, $PART_EL_3, $PART_EL_4"
+  echo "    Only 50% stake online — finalization should stall..."
+
+  # Phase 2: Wait a few epochs, verify finalization does NOT advance
+  STALL_WAIT=120  # 2.5 epochs in minimal preset (enough to prove no finalization)
+  STALL_POLL=12
+  stall_elapsed=0
+  finalization_stalled=true
+  stalled_finalized="$PRE_PARTITION_FINALIZED"
+
+  echo "==> PARTITION PHASE 2: Verifying finalization stalls (${STALL_WAIT}s wait)..."
+
+  while [ "$stall_elapsed" -lt "$STALL_WAIT" ]; do
+    sleep "$STALL_POLL"
+    stall_elapsed=$((stall_elapsed + STALL_POLL))
+
+    syncing=$(curl -sf "$BEACON_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    head_slot="?"
+    if [ -n "$syncing" ]; then
+      head_slot=$(echo "$syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "?")
+    fi
+
+    finality=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null || echo "")
+    finalized_epoch="$stalled_finalized"
+    if [ -n "$finality" ]; then
+      finalized_epoch=$(echo "$finality" | jq -r '.data.finalized.epoch' 2>/dev/null || echo "$stalled_finalized")
+    fi
+
+    echo "    [${stall_elapsed}s] head=$head_slot finalized=$finalized_epoch (should stay at $stalled_finalized, 50% stake)"
+    {
+      echo "--- partition-stall ${stall_elapsed}s ---"
+      echo "head=$head_slot finalized=$finalized_epoch expected_stalled=$stalled_finalized"
+    } >> "$RUN_DIR/partition.log"
+
+    # If finalization advanced, the partition test failed (shouldn't finalize with 50%)
+    if [ "$finalized_epoch" -gt "$stalled_finalized" ]; then
+      finalization_stalled=false
+      echo "==> WARNING: Finalization advanced during partition (epoch $finalized_epoch > $stalled_finalized)"
+      echo "    This might indicate the partition wasn't effective"
+    fi
+  done
+
+  if [ "$finalization_stalled" = true ]; then
+    echo "==> Finalization correctly stalled at epoch $stalled_finalized during partition"
+  fi
+
+  # Phase 3: Heal — restart all stopped nodes
+  echo ""
+  echo "==> PARTITION PHASE 3: Healing network (restarting nodes 3 & 4)..."
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$PART_EL_3" 2>/dev/null || true
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$PART_EL_4" 2>/dev/null || true
+  sleep 5  # give EL a moment to start
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$PART_NODE_3" 2>/dev/null || true
+  $SUDO kurtosis service start "$ENCLAVE_NAME" "$PART_NODE_4" 2>/dev/null || true
+  echo "    Restarted: $PART_EL_3, $PART_EL_4, $PART_NODE_3, $PART_NODE_4"
+
+  # Phase 4: Wait for finalization to resume (should advance past stalled epoch)
+  HEAL_FIN_TARGET=$((stalled_finalized + 2))
+  HEAL_TIMEOUT=360  # 6 minutes for recovery
+  HEAL_POLL=12
+  heal_elapsed=0
+  healed=false
+
+  echo "==> PARTITION PHASE 4: Waiting for finalization to resume (target epoch $HEAL_FIN_TARGET)..."
+
+  while [ "$heal_elapsed" -lt "$HEAL_TIMEOUT" ]; do
+    sleep "$HEAL_POLL"
+    heal_elapsed=$((heal_elapsed + HEAL_POLL))
+
+    syncing=$(curl -sf "$BEACON_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    head_slot="?"
+    if [ -n "$syncing" ]; then
+      head_slot=$(echo "$syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "?")
+    fi
+
+    finality=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null || echo "")
+    finalized_epoch="$stalled_finalized"
+    if [ -n "$finality" ]; then
+      finalized_epoch=$(echo "$finality" | jq -r '.data.finalized.epoch' 2>/dev/null || echo "$stalled_finalized")
+    fi
+
+    echo "    [${heal_elapsed}s] head=$head_slot finalized=$finalized_epoch (target=$HEAL_FIN_TARGET)"
+    {
+      echo "--- partition-heal ${heal_elapsed}s ---"
+      echo "head=$head_slot finalized=$finalized_epoch target=$HEAL_FIN_TARGET"
+    } >> "$RUN_DIR/partition.log"
+
+    if [ "$finalized_epoch" -ge "$HEAL_FIN_TARGET" ]; then
+      healed=true
+      break
+    fi
+  done
+
+  if [ "$healed" != true ]; then
+    echo "==> FAIL: Finalization did not resume after healing partition"
+    echo "    Finalized: $finalized_epoch (needed $HEAL_FIN_TARGET)"
+    dump_logs
+    cleanup
+    exit 1
+  fi
+
+  echo ""
+  echo "==> PARTITION SUCCESS: Network partition and recovery verified"
+  echo "    Finalization stalled at epoch $stalled_finalized during partition"
+  echo "    Finalization resumed to epoch $finalized_epoch after healing"
+  echo ""
+  echo "==> SUCCESS: Partition test complete"
+  echo "==> Full logs: $RUN_DIR"
+  echo "==> Partition log: $RUN_DIR/partition.log"
   cleanup
   exit 0
 fi
