@@ -355,6 +355,9 @@ where
             chain.pending_blocks() as u64,
         );
 
+        // Clean up any outstanding components_by_range entries for this chain to avoid leaks.
+        network.remove_range_components_by_chain_id(chain.id());
+
         network.status_peers(self.beacon_chain.as_ref(), chain.peers());
 
         let status = self.beacon_chain.status_message();

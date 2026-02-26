@@ -940,6 +940,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                         Ok(ProcessResult::SyncCompleted) => self.update_sync_state(),
                         Err(error) => {
                             error!(error = ?error, "Backfill sync failed");
+                            self.network.remove_backfill_range_components();
                             // Update the global status
                             self.update_sync_state();
                         }
@@ -1342,6 +1343,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                                 Err(_error) => {
                                     // The backfill sync has failed, errors are reported
                                     // within.
+                                    self.network.remove_backfill_range_components();
                                     self.update_sync_state();
                                 }
                             }
@@ -1369,7 +1371,10 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                             e,
                         ) {
                             Ok(_) => {}
-                            Err(_) => self.update_sync_state(),
+                            Err(_) => {
+                                self.network.remove_backfill_range_components();
+                                self.update_sync_state();
+                            }
                         }
                     }
                 },

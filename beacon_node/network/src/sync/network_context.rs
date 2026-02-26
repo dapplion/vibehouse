@@ -488,20 +488,25 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             "Retrying only failed column requests from other peers"
         );
 
-        // Attempt to find all required custody peers to request the failed columns from
-        let columns_by_range_peers_to_request = self
-            .select_columns_by_range_peers_to_request(
-                failed_columns,
-                peers,
-                active_request_count_by_peer,
-                peers_to_deprioritize,
-            )
-            .map_err(|e| format!("{:?}", e))?;
-
         // Reuse the id for the request that received partially correct responses
         let id = ComponentsByRangeRequestId { id, requester };
 
-        let data_column_requests = columns_by_range_peers_to_request
+        // Attempt to find all required custody peers to request the failed columns from.
+        // On failure, remove the stale entry to avoid a memory leak.
+        let columns_by_range_peers_to_request = match self.select_columns_by_range_peers_to_request(
+            failed_columns,
+            peers,
+            active_request_count_by_peer,
+            peers_to_deprioritize,
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                self.components_by_range_requests.remove(&id);
+                return Err(format!("{:?}", e));
+            }
+        };
+
+        let data_column_requests = match columns_by_range_peers_to_request
             .into_iter()
             .map(|(peer_id, columns)| {
                 self.send_data_columns_by_range_request(
@@ -521,7 +526,13 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 )
             })
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| format!("{:?}", e))?;
+        {
+            Ok(v) => v,
+            Err(e) => {
+                self.components_by_range_requests.remove(&id);
+                return Err(format!("{:?}", e));
+            }
+        };
 
         // instead of creating a new `RangeBlockComponentsRequest`, we reinsert
         // the new requests created for the failed requests
@@ -533,6 +544,23 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
 
         range_request.reinsert_failed_column_requests(data_column_requests)?;
         Ok(())
+    }
+
+    /// Removes all `components_by_range_requests` entries belonging to a range sync chain.
+    ///
+    /// Called when a chain is removed so that its outstanding meta-requests do not leak.
+    pub fn remove_range_components_by_chain_id(&mut self, chain_id: Id) {
+        self.components_by_range_requests.retain(|key, _| {
+            !matches!(key.requester, RangeRequestId::RangeSync { chain_id: cid, .. } if cid == chain_id)
+        });
+    }
+
+    /// Removes all `components_by_range_requests` entries belonging to the backfill sync.
+    ///
+    /// Called when the backfill sync fails so that its outstanding meta-requests do not leak.
+    pub fn remove_backfill_range_components(&mut self) {
+        self.components_by_range_requests
+            .retain(|key, _| !matches!(key.requester, RangeRequestId::BackfillSync { .. }));
     }
 
     /// A blocks by range request sent by the range sync algorithm
