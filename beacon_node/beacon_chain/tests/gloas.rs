@@ -7072,3 +7072,231 @@ async fn gloas_get_pre_payload_attributes_reorg_uses_parent_random() {
         "parent_beacon_block_root should be the parent block root in re-org case"
     );
 }
+
+// =============================================================================
+// External builder block import — end-to-end lifecycle tests
+// =============================================================================
+
+/// Test that a block produced with an external builder bid can be imported, and the
+/// fork choice node has payload_revealed=false (since no envelope has been processed).
+#[tokio::test]
+async fn gloas_external_bid_block_import_payload_unrevealed() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Insert an external bid for the next slot
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce a block using the external bid
+    harness.advance_slot();
+    let ((signed_block, blobs), _state, envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    // Confirm it's an external bid (not self-build) and no envelope returned
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(block_bid.message.builder_index, 0);
+    assert!(
+        envelope.is_none(),
+        "external bid should not produce self-build envelope"
+    );
+
+    // Import the block into the chain
+    let block_root = signed_block.canonical_root();
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("should import block with external bid");
+
+    // Verify fork choice: payload_revealed should be false (no envelope processed)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let block_index = *fc
+        .proto_array()
+        .core_proto_array()
+        .indices
+        .get(&block_root)
+        .expect("block should be in fork choice");
+    let node = &fc.proto_array().core_proto_array().nodes[block_index];
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should be false after import without envelope"
+    );
+    assert!(
+        matches!(node.execution_status, ExecutionStatus::Irrelevant(_)),
+        "Gloas block should have Irrelevant execution status (EL skipped during block import), got {:?}",
+        node.execution_status
+    );
+    drop(fc);
+
+    // Note: the block may or may not be the new head depending on fork choice weights.
+    // With payload_revealed=false, it competes with the previous head (which has
+    // payload_revealed=true from self-build). The important thing is that the block
+    // IS in fork choice and has the correct execution status.
+}
+
+/// Test that a block produced with an external bid can coexist in fork choice with
+/// the previous self-build block, and both have correct builder_index values.
+/// This verifies the block import pipeline correctly handles external bids
+/// without requiring an envelope to be processed.
+#[tokio::test]
+async fn gloas_external_bid_import_fork_choice_builder_index() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Verify the previous head was self-build
+    let prev_head_bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        prev_head_bid.message.builder_index, harness.spec.builder_index_self_build,
+        "previous head should be self-build"
+    );
+
+    // Insert external bid and produce block
+    let state = harness.chain.head_beacon_state_cloned();
+    let external_builder_index = 0u64;
+    let bid = make_external_bid(&state, head_root, next_slot, external_builder_index, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    harness.advance_slot();
+    let ((signed_block, blobs), _state, _envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    // Import block
+    let block_root = signed_block.canonical_root();
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("should import block with external bid");
+
+    // Verify the imported block's bid has the external builder_index in the stored block
+    let stored_block = harness
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .expect("stored block should exist");
+    let stored_bid = stored_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("stored block should have bid");
+    assert_eq!(
+        stored_bid.message.builder_index, external_builder_index,
+        "stored block bid should have external builder_index"
+    );
+    assert_eq!(
+        stored_bid.message.value, 5000,
+        "stored block bid should have correct value"
+    );
+}
+
+/// Test that apply_payload_envelope_to_fork_choice marks payload_revealed=true
+/// for a block that was imported with an external bid.
+#[tokio::test]
+async fn gloas_external_bid_envelope_reveals_payload_in_fork_choice() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Insert external bid and produce block
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    harness.advance_slot();
+    let ((signed_block, blobs), _state, _envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    // Import block
+    let block_root = signed_block.canonical_root();
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("should import block");
+
+    // Confirm payload_revealed = false
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .unwrap();
+        assert!(!fc.proto_array().core_proto_array().nodes[idx].payload_revealed);
+    }
+
+    // Construct a signed envelope matching the bid and sign with the builder's key
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = block_root;
+    envelope_msg.slot = next_slot;
+    envelope_msg.builder_index = bid.message.builder_index;
+    envelope_msg.payload.block_hash = bid.message.block_hash;
+
+    // Sign the envelope with the builder's secret key using DOMAIN_BEACON_BUILDER
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let epoch = next_slot.epoch(E::slots_per_epoch());
+    let domain = harness.spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = envelope_msg.signing_root(domain);
+    let builder_idx = bid.message.builder_index as usize;
+    let signature = BUILDER_KEYPAIRS[builder_idx].sk.sign(signing_root);
+
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: envelope_msg,
+        signature,
+    };
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(envelope))
+        .expect("envelope gossip verification should pass");
+
+    // Apply to fork choice (marks payload_revealed = true)
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply envelope to fork choice");
+
+    // Verify payload_revealed is now true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .unwrap();
+        let node = &fc.proto_array().core_proto_array().nodes[idx];
+        assert!(
+            node.payload_revealed,
+            "payload_revealed should be true after envelope applied to fork choice"
+        );
+    }
+}
