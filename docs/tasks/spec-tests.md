@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — process_execution_payload_envelope edge case unit tests (run 128)
+- Checked consensus-specs PRs since run 127: no new Gloas spec changes merged
+  - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - Checked recently merged: #4941 (execution proof construction, eip8025 only), #4931 (FOCIL rebase onto Gloas, eip7805 only) — neither affects core ePBS
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Coverage gap analysis**: `process_execution_payload_envelope` (envelope_processing.rs:112-300) had 22 existing unit tests covering all 10 field-level consistency checks, signature verification (5 tests), and basic state mutations (6 tests), but was missing: header state_root already-set path, payment queueing independent of PTC weight, payment append to existing withdrawals, availability bit at index 0, and builder index out-of-bounds in signature path
+- **Added 5 edge case unit tests** for `process_execution_payload_envelope` (envelope_processing.rs):
+  - `nonzero_header_state_root_preserved`: header state_root pre-set to 0x55 — envelope processing skips the `if state_root == default` branch, preserving the existing value instead of overwriting with canonical_root
+  - `nonzero_payment_queued_regardless_of_weight`: payment with `amount=3 ETH` but `weight=0` — envelope processing checks `amount > 0` (not weight), so payment is moved to pending withdrawals regardless of PTC weight
+  - `payment_appends_to_existing_pending_withdrawals`: 2 pre-existing withdrawals + 1 new payment — verifies push appends at end (3 total), preserving order of existing entries
+  - `availability_bit_set_at_slot_zero_index`: state at slot 0 with availability bit 0 cleared — envelope processing sets `execution_payload_availability[0 % 64] = true`, confirming the index formula works at the boundary
+  - `builder_index_out_of_bounds_rejected_with_verify`: bid's builder_index = 1 (beyond 1-element registry) — signature verification fails with `BadSignature` because pubkey lookup returns None
+- Verified: 317/317 state_processing tests pass (was 312), cargo fmt + clippy clean
+
 ### 2026-02-26 — same-slot attestation weight edge case unit tests (run 127)
 - Checked consensus-specs PRs since run 126: no new Gloas spec changes merged
   - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
