@@ -2428,4 +2428,295 @@ mod gloas_operations_tests {
             "duplicate attestation should not add weight again"
         );
     }
+
+    /// Create an Electra attestation targeting the PREVIOUS epoch.
+    /// State must be at an epoch > 0 so previous epoch exists.
+    fn make_prev_epoch_attestation(
+        state: &BeaconState<E>,
+        att_slot: u64,
+        att_index: u64,
+    ) -> Attestation<E> {
+        let prev_epoch = state.previous_epoch();
+        let target_slot = prev_epoch.start_slot(E::slots_per_epoch());
+        let target_root = *state.get_block_root(target_slot).unwrap();
+        let att_block_root = *state.get_block_root(Slot::new(att_slot)).unwrap();
+
+        let att_data = AttestationData {
+            slot: Slot::new(att_slot),
+            index: att_index,
+            beacon_block_root: att_block_root,
+            source: state.previous_justified_checkpoint(),
+            target: Checkpoint {
+                epoch: prev_epoch,
+                root: target_root,
+            },
+        };
+
+        let committee = state.get_beacon_committee(Slot::new(att_slot), 0).unwrap();
+        let committee_len = committee.committee.len();
+
+        let mut aggregation_bits =
+            BitList::<<E as EthSpec>::MaxValidatorsPerSlot>::with_capacity(committee_len).unwrap();
+        aggregation_bits.set(0, true).unwrap();
+
+        let mut committee_bits = BitVector::<<E as EthSpec>::MaxCommitteesPerSlot>::new();
+        committee_bits.set(0, true).unwrap();
+
+        Attestation::Electra(types::AttestationElectra {
+            aggregation_bits,
+            data: att_data,
+            signature: types::AggregateSignature::empty(),
+            committee_bits,
+        })
+    }
+
+    /// Create an attestation where multiple committee members attest.
+    fn make_multi_attester_attestation(
+        state: &BeaconState<E>,
+        att_slot: u64,
+        att_index: u64,
+        num_attesters: usize,
+    ) -> Attestation<E> {
+        let epoch = state.current_epoch();
+        let target_slot = epoch.start_slot(E::slots_per_epoch());
+        let target_root = *state.get_block_root(target_slot).unwrap();
+        let att_block_root = *state.get_block_root(Slot::new(att_slot)).unwrap();
+
+        let att_data = AttestationData {
+            slot: Slot::new(att_slot),
+            index: att_index,
+            beacon_block_root: att_block_root,
+            source: state.current_justified_checkpoint(),
+            target: Checkpoint {
+                epoch,
+                root: target_root,
+            },
+        };
+
+        let committee = state.get_beacon_committee(Slot::new(att_slot), 0).unwrap();
+        let committee_len = committee.committee.len();
+
+        let mut aggregation_bits =
+            BitList::<<E as EthSpec>::MaxValidatorsPerSlot>::with_capacity(committee_len).unwrap();
+        for i in 0..num_attesters.min(committee_len) {
+            aggregation_bits.set(i, true).unwrap();
+        }
+
+        let mut committee_bits = BitVector::<<E as EthSpec>::MaxCommitteesPerSlot>::new();
+        committee_bits.set(0, true).unwrap();
+
+        Attestation::Electra(types::AttestationElectra {
+            aggregation_bits,
+            data: att_data,
+            signature: types::AggregateSignature::empty(),
+            committee_bits,
+        })
+    }
+
+    #[test]
+    fn previous_epoch_same_slot_attestation_uses_first_half_index() {
+        // State at slot 17 (epoch 2). Attestation at slot 10 (epoch 1 = previous epoch).
+        // Slot 10 is a same-slot attestation (block_roots[10] != block_roots[9]).
+        // target.epoch = previous_epoch (1), so payment_slot_index = slot_mod = 10 % 8 = 2.
+        // This tests the `else` branch at line 236: previous epoch → slot_mod as usize.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(17);
+
+        // Payment in the first half (previous epoch): index = 10 % 8 = 2
+        let slot_mod = 10 % E::slots_per_epoch() as usize; // 2
+        set_payment(&mut state, slot_mod, 1_000_000_000);
+
+        let attestation = make_prev_epoch_attestation(&state, 10, 0);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_mod)
+            .unwrap()
+            .weight;
+        assert_eq!(
+            weight, 32_000_000_000,
+            "previous-epoch same-slot attestation should add weight to first-half index"
+        );
+    }
+
+    #[test]
+    fn previous_epoch_attestation_does_not_touch_second_half() {
+        // Same setup as above but verify the second-half slot (current epoch) is untouched.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(17);
+
+        let slot_mod = 10 % E::slots_per_epoch() as usize; // 2
+        let current_epoch_index = E::slots_per_epoch() as usize + slot_mod; // 10
+        set_payment(&mut state, slot_mod, 500_000_000);
+        set_payment(&mut state, current_epoch_index, 999_000_000);
+
+        let attestation = make_prev_epoch_attestation(&state, 10, 0);
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // First half should have weight added
+        let first_half_weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_mod)
+            .unwrap()
+            .weight;
+        assert!(
+            first_half_weight > 0,
+            "previous-epoch payment should get weight"
+        );
+
+        // Second half should be untouched (weight stays 0)
+        let second_half_weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(current_epoch_index)
+            .unwrap()
+            .weight;
+        assert_eq!(
+            second_half_weight, 0,
+            "current-epoch payment at same slot_mod should NOT get weight from prev-epoch attestation"
+        );
+    }
+
+    #[test]
+    fn multiple_attesters_accumulate_combined_weight() {
+        // An aggregate attestation from multiple committee members should add
+        // the sum of their effective_balances to the payment weight.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(11);
+
+        let payment_index = E::slots_per_epoch() as usize + (10 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, payment_index, 1_000_000_000);
+
+        // Get how many members are in the committee for slot 10
+        let committee = state.get_beacon_committee(Slot::new(10), 0).unwrap();
+        let committee_len = committee.committee.len();
+        assert!(committee_len >= 1, "need at least 1 committee member");
+
+        // Create attestation with all committee members
+        let attestation = make_multi_attester_attestation(&state, 10, 0, committee_len);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+
+        // Each validator has effective_balance = 32_000_000_000
+        let expected_weight = committee_len as u64 * 32_000_000_000;
+        assert_eq!(
+            weight, expected_weight,
+            "weight should be sum of all attesting validators' effective_balances ({} validators)",
+            committee_len
+        );
+    }
+
+    #[test]
+    fn epoch_boundary_slot_attestation_uses_correct_payment_index() {
+        // Attestation at slot 8 (epoch 1 start, current epoch) at state slot 9.
+        // payment_slot_index = 8 + (8 % 8) = 8 + 0 = 8
+        // This tests that the epoch boundary slot maps to index 0 mod slots_per_epoch.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(9);
+
+        let payment_index = E::slots_per_epoch() as usize; // 8 + 0 = 8
+        set_payment(&mut state, payment_index, 2_000_000_000);
+
+        let attestation = make_attestation(&state, 8, 0);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+        assert_eq!(
+            weight, 32_000_000_000,
+            "epoch boundary attestation should use payment index SLOTS_PER_EPOCH + 0"
+        );
+    }
+
+    #[test]
+    fn weight_saturates_instead_of_overflowing() {
+        // Set initial weight near u64::MAX to verify saturating_add behavior.
+        let (mut state, spec, mut ctxt) = make_gloas_state_with_caches(11);
+
+        let payment_index = E::slots_per_epoch() as usize + (10 % E::slots_per_epoch() as usize);
+        set_payment(&mut state, payment_index, 1_000_000_000);
+
+        // Set weight near max
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(payment_index)
+            .unwrap()
+            .weight = u64::MAX - 1;
+
+        let attestation = make_attestation(&state, 10, 0);
+
+        altair_deneb::process_attestation(
+            &mut state,
+            attestation.to_ref(),
+            0,
+            &mut ctxt,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let weight = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(payment_index)
+            .unwrap()
+            .weight;
+        assert_eq!(
+            weight,
+            u64::MAX,
+            "weight should saturate at u64::MAX instead of overflowing"
+        );
+    }
 }
