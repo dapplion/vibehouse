@@ -1983,7 +1983,7 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
         // Retrieve any state that is advanced through to at most `block.slot()`: this is
         // particularly important if `block` descends from the finalized/split block, but at a slot
         // prior to the finalized slot (which is invalid and inaccessible in our DB schema).
-        let (parent_state_root, state) = chain
+        let (parent_state_root, mut state) = chain
             .store
             .get_advanced_hot_state(root, block.slot(), parent_block.state_root())?
             .ok_or_else(|| {
@@ -1991,6 +1991,35 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
                     format!("Missing state for parent block {root:?}",),
                 )
             })?;
+
+        // Gloas ePBS: the spec's on_block chooses between block_states (pre-envelope)
+        // and payload_states (post-envelope) based on whether the parent's payload was
+        // revealed. We determine this by comparing the child block's
+        // bid.parent_block_hash with the parent block's bid.block_hash.
+        //
+        // - Parent FULL (child_bid.parent_block_hash == parent_bid.block_hash):
+        //   state.latest_block_hash must equal parent_bid.block_hash. Patch if needed
+        //   (e.g. range sync where envelope isn't stored in DB).
+        // - Parent EMPTY (child_bid.parent_block_hash != parent_bid.block_hash):
+        //   state.latest_block_hash stays at the grandparent's block_hash. Don't patch.
+        if state.fork_name_unchecked().gloas_enabled()
+            && let Ok(child_bid) = block.message().body().signed_execution_payload_bid()
+            && let Ok(parent_bid) = parent_block.message().body().signed_execution_payload_bid()
+        {
+            let parent_bid_block_hash = parent_bid.message.block_hash;
+            if child_bid.message.parent_block_hash == parent_bid_block_hash
+                && parent_bid_block_hash != ExecutionBlockHash::zero()
+                && let Ok(h) = state.latest_block_hash_mut()
+                && *h != parent_bid_block_hash
+            {
+                // Parent is FULL: ensure latest_block_hash reflects the parent's
+                // revealed payload. This covers range sync where envelopes aren't
+                // stored but the original chain had them processed.
+                *h = parent_bid_block_hash;
+            }
+            // Parent is EMPTY: state.latest_block_hash is already the grandparent's
+            // block_hash (pre-envelope). No patching needed.
+        }
 
         if !state.all_caches_built() {
             debug!(
