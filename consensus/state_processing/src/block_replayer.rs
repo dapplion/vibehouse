@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::iter::Peekable;
 use std::marker::PhantomData;
 use types::{
-    BeaconState, BeaconStateError, BlindedPayload, ChainSpec, EthSpec, ExecutionBlockHash, Hash256,
-    SignedBeaconBlock, SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope, Slot,
+    BeaconState, BeaconStateError, BlindedPayload, ChainSpec, EthSpec, Hash256, SignedBeaconBlock,
+    SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadEnvelope, Slot,
 };
 
 pub type PreBlockHook<'a, E, Error> = Box<
@@ -259,9 +259,11 @@ where
             if i == 0 && block.slot() <= self.state.slot() {
                 // For Gloas blocks, the stored post-block state has latest_block_hash
                 // from before envelope processing (envelopes update it separately).
-                // Apply the bid's block_hash as a fallback so subsequent blocks can
-                // validate bid.parent_block_hash == state.latest_block_hash.
-                if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
+                // Apply the envelope to bring latest_block_hash up to date so the next
+                // block can validate bid.parent_block_hash == state.latest_block_hash.
+                // If no envelope exists, the anchor block took the EMPTY path and
+                // latest_block_hash is already correct as-is.
+                if let Ok(_bid) = block.message().body().signed_execution_payload_bid() {
                     let block_root = block.canonical_root();
                     if let Some(envelope) = self.envelopes.remove(&block_root) {
                         // Best-effort: envelope processing may fail for replayed
@@ -289,14 +291,9 @@ where
                             VerifySignatures::False,
                             self.spec,
                         ));
-                    } else if bid.message.block_hash != ExecutionBlockHash::zero() {
-                        // Only update latest_block_hash from the bid if it's non-zero.
-                        // Genesis blocks have an empty bid with zero block_hash — applying
-                        // it would corrupt the state's already-correct latest_block_hash.
-                        if let Ok(h) = self.state.latest_block_hash_mut() {
-                            *h = bid.message.block_hash;
-                        }
                     }
+                    // No envelope and no blinded envelope: anchor block took the EMPTY path.
+                    // latest_block_hash is left unchanged — it already reflects the last FULL block.
 
                     // Fix latest_block_header.state_root for Gloas states loaded from
                     // cold storage. The stored state may have state_root set to the
@@ -353,11 +350,13 @@ where
             .map_err(BlockReplayError::from)?;
 
             // Gloas ePBS: apply envelope processing after each Gloas block.
-            // The execution payload is delivered in a separate envelope. If we have
-            // the envelope, apply the full state transition (execution requests,
-            // builder payments, availability bits, latest_block_hash). Otherwise
-            // fall back to just updating latest_block_hash from the bid.
-            if let Ok(bid) = block.message().body().signed_execution_payload_bid() {
+            // The execution payload is delivered in a separate envelope. Apply the
+            // full state transition (execution requests, builder payments,
+            // availability bits, latest_block_hash) using the envelope if available.
+            // If no envelope is found, the block took the EMPTY path (builder withheld
+            // the payload) — in that case latest_block_hash is NOT updated, which is
+            // correct: the EMPTY path leaves state.latest_block_hash unchanged.
+            if let Ok(_bid) = block.message().body().signed_execution_payload_bid() {
                 let block_root = block.canonical_root();
                 if let Some(envelope) = self.envelopes.remove(&block_root) {
                     process_execution_payload_envelope(
@@ -393,12 +392,9 @@ where
                             BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
                         )
                     })?;
-                } else {
-                    *self
-                        .state
-                        .latest_block_hash_mut()
-                        .map_err(BlockReplayError::BeaconState)? = bid.message.block_hash;
                 }
+                // No envelope and no blinded envelope: EMPTY path was taken.
+                // latest_block_hash is left unchanged — correct for the EMPTY path.
             }
 
             if let Some(ref mut post_block_hook) = self.post_block_hook {
@@ -467,7 +463,7 @@ mod tests {
     use types::{
         Address, BeaconBlock, BeaconBlockBodyGloas, BeaconBlockGloas, BeaconBlockHeader,
         BeaconStateGloas, Builder, BuilderPendingPayment, CACHED_EPOCHS, Checkpoint,
-        CommitteeCache, Epoch, ExecutionPayloadBid, ExecutionPayloadEnvelope,
+        CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
         ExecutionPayloadGloas, ExitCache, FixedVector, Fork, MinimalEthSpec,
         ProgressiveBalancesCache, PubkeyCache, SignedBlindedExecutionPayloadEnvelope,
         SignedExecutionPayloadBid, SlashingsCache, SyncAggregate, SyncCommittee, Unsigned, Vector,
@@ -758,15 +754,16 @@ mod tests {
     }
 
     #[test]
-    fn anchor_block_without_envelope_falls_back_to_bid_hash() {
+    fn anchor_block_without_envelope_leaves_hash_unchanged() {
+        // No envelope supplied means the EMPTY path was taken.
+        // latest_block_hash should be left unchanged (not overwritten with bid.block_hash).
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
         let bid = state.latest_execution_payload_bid().unwrap().clone();
-        let bid_block_hash = bid.block_hash;
 
-        // Set state's latest_block_hash to something different from bid
+        let original_hash = ExecutionBlockHash::repeat_byte(0xFF);
         let mut state = state;
-        *state.latest_block_hash_mut().unwrap() = ExecutionBlockHash::repeat_byte(0xFF);
-        assert_ne!(*state.latest_block_hash().unwrap(), bid_block_hash);
+        *state.latest_block_hash_mut().unwrap() = original_hash;
+        assert_ne!(*state.latest_block_hash().unwrap(), bid.block_hash);
 
         let anchor_block = make_gloas_block(
             state.slot(),
@@ -775,7 +772,7 @@ mod tests {
             bid,
         );
 
-        // No envelopes supplied
+        // No envelopes supplied — simulates the EMPTY path
         let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
             .no_signature_verification()
             .no_state_root_iter()
@@ -785,13 +782,15 @@ mod tests {
         let result_state = replayer.into_state();
         assert_eq!(
             *result_state.latest_block_hash().unwrap(),
-            bid_block_hash,
-            "without envelope, should fall back to bid block_hash"
+            original_hash,
+            "without envelope (EMPTY path), latest_block_hash should be unchanged"
         );
     }
 
     #[test]
-    fn anchor_block_zero_block_hash_does_not_corrupt_state() {
+    fn anchor_block_no_envelope_does_not_change_latest_block_hash() {
+        // Without an envelope (EMPTY path), latest_block_hash is never updated
+        // regardless of the bid's block_hash value (including zero genesis bids).
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
         let original_hash = *state.latest_block_hash().unwrap();
 
@@ -818,7 +817,7 @@ mod tests {
         assert_eq!(
             *result_state.latest_block_hash().unwrap(),
             original_hash,
-            "zero block_hash bid should NOT overwrite existing latest_block_hash"
+            "without envelope, latest_block_hash should not be changed"
         );
     }
 
@@ -911,10 +910,11 @@ mod tests {
         );
     }
 
-    // ── Anchor block: envelope takes priority over fallback ───────
+    // ── Anchor block: envelope processing updates latest_block_hash ─
 
     #[test]
-    fn anchor_block_envelope_takes_priority_over_bid_fallback() {
+    fn anchor_block_envelope_updates_latest_block_hash_correctly() {
+        // When an envelope IS supplied, it should update latest_block_hash.
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
         let bid = state.latest_execution_payload_bid().unwrap().clone();
         let bid_block_hash = bid.block_hash;
@@ -922,16 +922,10 @@ mod tests {
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
 
-        // Change the bid's block_hash to something different to distinguish
-        // whether envelope or fallback path ran
-        let mut modified_bid = bid.clone();
-        modified_bid.block_hash = ExecutionBlockHash::repeat_byte(0xEE);
-
         let anchor_block = make_gloas_block(
             state.slot(),
             Hash256::zero(),
             Hash256::repeat_byte(0xDD),
-            // Use the original bid (matching the envelope) not the modified one
             bid,
         );
         let block_root = anchor_block.canonical_root();
@@ -947,19 +941,21 @@ mod tests {
             .unwrap();
 
         let result_state = replayer.into_state();
-        // Envelope sets latest_block_hash = payload.block_hash = bid.block_hash
+        // Envelope processing sets latest_block_hash = payload.block_hash
         assert_eq!(
             *result_state.latest_block_hash().unwrap(),
             bid_block_hash,
-            "envelope processing path should run (not bid fallback)"
+            "envelope processing should update latest_block_hash"
         );
     }
 
     #[test]
-    fn anchor_block_wrong_root_envelope_ignored_uses_fallback() {
+    fn anchor_block_wrong_root_envelope_leaves_hash_unchanged() {
+        // When the envelope map doesn't have the block root (wrong key),
+        // it behaves as if no envelope was provided (EMPTY path).
+        // latest_block_hash should be left unchanged.
         let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
         let bid = state.latest_execution_payload_bid().unwrap().clone();
-        let bid_block_hash = bid.block_hash;
 
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
@@ -975,9 +971,9 @@ mod tests {
         let mut envelopes = HashMap::new();
         envelopes.insert(Hash256::repeat_byte(0xFF), envelope);
 
-        // Set state hash to something different to verify fallback runs
+        let original_hash = ExecutionBlockHash::repeat_byte(0x99);
         let mut state = state;
-        *state.latest_block_hash_mut().unwrap() = ExecutionBlockHash::repeat_byte(0x99);
+        *state.latest_block_hash_mut().unwrap() = original_hash;
 
         let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
             .no_signature_verification()
@@ -989,8 +985,8 @@ mod tests {
         let result_state = replayer.into_state();
         assert_eq!(
             *result_state.latest_block_hash().unwrap(),
-            bid_block_hash,
-            "when envelope root doesn't match, fallback to bid block_hash"
+            original_hash,
+            "when no envelope found for block root, latest_block_hash should be unchanged"
         );
     }
 
