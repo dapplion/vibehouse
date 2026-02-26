@@ -1013,6 +1013,7 @@ where
                 // The PTC deadline is later than the attestation deadline, so any block
                 // that's current-slot is conservatively PTC-timely.
                 ptc_timely: current_slot == block.slot(),
+                envelope_received: false,
             },
             current_slot,
         )?;
@@ -1512,6 +1513,7 @@ where
 
         if let Some(node) = nodes.get_mut(block_index) {
             node.payload_revealed = true;
+            node.envelope_received = true;
             // When the envelope is received locally, blob data is also available
             node.payload_data_available = true;
             // Set execution status so that head_hash is available for forkchoice_updated.
@@ -2224,6 +2226,7 @@ mod tests {
                         bid_parent_block_hash: None,
                         proposer_index: 0,
                         ptc_timely: false,
+                        envelope_received: false,
                     },
                     Slot::new(slot),
                 )
@@ -3278,6 +3281,8 @@ mod tests {
                         bid_parent_block_hash,
                         proposer_index: 0,
                         ptc_timely: false,
+                        // In these tests, payload_revealed implies envelope receipt
+                        envelope_received: payload_revealed,
                     },
                     Slot::new(slot),
                 )
@@ -3393,6 +3398,7 @@ mod tests {
                         bid_parent_block_hash: None,
                         proposer_index: 0,
                         ptc_timely: false,
+                        envelope_received: false,
                     },
                     Slot::new(slot),
                 )

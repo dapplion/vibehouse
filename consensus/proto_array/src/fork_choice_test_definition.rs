@@ -219,6 +219,7 @@ impl ForkChoiceTestDefinition {
                         bid_parent_block_hash: None,
                         proposer_index: 0,
                         ptc_timely: false,
+                        envelope_received: false,
                     };
                     fork_choice
                         .process_block::<MainnetEthSpec>(block, slot)

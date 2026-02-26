@@ -137,6 +137,11 @@ pub struct ProtoNode {
     /// Whether this block was received before the PTC timeliness deadline.
     /// Used for equivocation detection in should_apply_proposer_boost.
     pub ptc_timely: bool,
+    /// Gloas ePBS: Has the execution payload envelope been received and processed?
+    /// Only set by on_execution_payload (actual envelope receipt), NOT by PTC quorum.
+    /// Maps to `root in store.payload_states` in the spec. Used in get_node_children
+    /// to decide whether the FULL virtual child exists.
+    pub envelope_received: bool,
 }
 
 #[derive(PartialEq, Debug, Encode, Decode, Serialize, Deserialize, Copy, Clone)]
@@ -370,6 +375,7 @@ impl ProtoArray {
             bid_parent_block_hash: block.bid_parent_block_hash,
             proposer_index: block.proposer_index,
             ptc_timely: block.ptc_timely,
+            envelope_received: block.envelope_received,
         };
 
         // If the parent has an invalid execution status, return an error before adding the block to
@@ -1205,6 +1211,7 @@ mod tests {
             bid_parent_block_hash: None,
             proposer_index: 0,
             ptc_timely: false,
+            envelope_received: false,
         }
     }
 

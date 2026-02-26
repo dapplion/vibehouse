@@ -198,6 +198,9 @@ pub struct Block {
     pub proposer_index: u64,
     /// Whether this block was received before the PTC timeliness deadline.
     pub ptc_timely: bool,
+    /// Gloas ePBS: Has the execution payload envelope been received and processed?
+    /// Only set by on_execution_payload, NOT by PTC quorum.
+    pub envelope_received: bool,
 }
 
 impl Block {
@@ -498,6 +501,7 @@ impl ProtoArrayForkChoice {
             bid_parent_block_hash: None,
             proposer_index: 0,
             ptc_timely: false,
+            envelope_received: false,
         };
 
         proto_array
@@ -954,6 +958,7 @@ impl ProtoArrayForkChoice {
             bid_parent_block_hash: block.bid_parent_block_hash,
             proposer_index: block.proposer_index,
             ptc_timely: block.ptc_timely,
+            envelope_received: block.envelope_received,
         })
     }
 
@@ -1169,10 +1174,11 @@ impl ProtoArrayForkChoice {
                     payload_status: GloasPayloadStatus::Empty,
                 }];
 
-                // Include FULL child only if execution payload has been revealed
+                // Include FULL child only if the execution payload envelope has been received
+                // (not just PTC quorum). Maps to `root in store.payload_states` in the spec.
                 if let Some(&idx) = pa.indices.get(&node.root)
                     && let Some(proto_node) = pa.nodes.get(idx)
-                    && proto_node.payload_revealed
+                    && proto_node.envelope_received
                 {
                     children.push(GloasForkChoiceNode {
                         root: node.root,
@@ -1512,12 +1518,15 @@ impl ProtoArrayForkChoice {
     fn should_extend_payload(&self, node: &GloasForkChoiceNode) -> bool {
         let pa = &self.proto_array;
 
-        // Check if payload is both timely and data-available
+        // Check if payload is both timely and data-available.
+        // Spec: is_payload_timely(store, root) AND is_payload_data_available(store, root)
+        // Both require `root in store.payload_states` (envelope actually received), plus
+        // PTC quorum. We use `envelope_received` to match the spec's payload_states check.
         let is_timely_and_available = pa
             .indices
             .get(&node.root)
             .and_then(|&idx| pa.nodes.get(idx))
-            .is_some_and(|n| n.payload_revealed && n.payload_data_available);
+            .is_some_and(|n| n.envelope_received && n.payload_revealed && n.payload_data_available);
 
         if is_timely_and_available {
             return true;
@@ -1736,6 +1745,7 @@ mod test_compute_deltas {
                     bid_parent_block_hash: None,
                     proposer_index: 0,
                     ptc_timely: false,
+                    envelope_received: false,
                 },
                 genesis_slot + 1,
             )
@@ -1768,6 +1778,7 @@ mod test_compute_deltas {
                     bid_parent_block_hash: None,
                     proposer_index: 0,
                     ptc_timely: false,
+                    envelope_received: false,
                 },
                 genesis_slot + 1,
             )
@@ -1889,6 +1900,7 @@ mod test_compute_deltas {
                         bid_parent_block_hash: None,
                         proposer_index: 0,
                         ptc_timely: false,
+                        envelope_received: false,
                     },
                     Slot::from(block.slot),
                 )
@@ -2607,6 +2619,8 @@ mod test_gloas_fork_choice {
                     bid_parent_block_hash,
                     proposer_index: 0,
                     ptc_timely: false,
+                    // In these tests, payload_revealed implies the envelope was received
+                    envelope_received: payload_revealed,
                 },
                 Slot::new(slot),
             )
@@ -3452,6 +3466,7 @@ mod test_gloas_fork_choice {
                     bid_parent_block_hash: None,
                     proposer_index: 0,
                     ptc_timely: false,
+                    envelope_received: false,
                 },
                 Slot::new(slot),
             )
@@ -3750,13 +3765,14 @@ mod test_gloas_fork_choice {
 
     #[test]
     fn should_extend_payload_timely_and_data_available() {
-        // When payload_revealed=true AND payload_data_available=true → true
+        // When envelope_received + payload_revealed + payload_data_available → true
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
 
-        // Set both flags
+        // Set all three flags (envelope received + PTC quorum + data available)
         let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
         node.payload_revealed = true;
         node.payload_data_available = true;
 
@@ -4009,8 +4025,9 @@ mod test_gloas_fork_choice {
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
 
-        // Make should_extend_payload return true by setting both flags
+        // Make should_extend_payload return true by setting all three flags
         let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
         node.payload_revealed = true;
         node.payload_data_available = true;
 
@@ -4063,6 +4080,7 @@ mod test_gloas_fork_choice {
 
         // Make should_extend_payload return true
         let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
         node.payload_revealed = true;
         node.payload_data_available = true;
 
@@ -4109,9 +4127,11 @@ mod test_gloas_fork_choice {
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
 
-        // Make payload revealed and data available so that should_extend_payload
-        // would return true (tiebreaker=2) if the PENDING check were missing.
+        // Make envelope received, payload revealed and data available so that
+        // should_extend_payload would return true (tiebreaker=2) if the PENDING
+        // check were missing.
         let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
         node.payload_revealed = true;
         node.payload_data_available = true;
 
@@ -4696,6 +4716,7 @@ mod test_gloas_fork_choice {
                     bid_parent_block_hash: None,
                     proposer_index: 5, // same proposer as parent
                     ptc_timely: true,  // PTC-timely
+                    envelope_received: false,
                 },
                 Slot::new(1),
             )
@@ -5325,6 +5346,7 @@ mod test_gloas_fork_choice {
         payload_revealed: bool,
         proposer_index: u64,
         ptc_timely: bool,
+        envelope_received: bool,
     ) {
         fc.proto_array
             .on_block::<MinimalEthSpec>(
@@ -5350,6 +5372,7 @@ mod test_gloas_fork_choice {
                     bid_parent_block_hash,
                     proposer_index,
                     ptc_timely,
+                    envelope_received,
                 },
                 Slot::new(slot),
             )
@@ -5446,6 +5469,7 @@ mod test_gloas_fork_choice {
             false,
             5,     // proposer_index
             false, // ptc_timely
+            false, // envelope_received
         );
 
         // Equivocating block at slot 1 from same proposer, ptc_timely=true
@@ -5457,8 +5481,9 @@ mod test_gloas_fork_choice {
             Some(exec_hash(10)),
             Some(exec_hash(0)),
             false,
-            5,    // same proposer
-            true, // ptc_timely
+            5,     // same proposer
+            true,  // ptc_timely
+            false, // envelope_received
         );
 
         // Child block at slot 2 (the one we'd boost)
@@ -5471,6 +5496,7 @@ mod test_gloas_fork_choice {
             Some(exec_hash(99)),
             false,
             0, // different proposer
+            false,
             false,
         );
 
@@ -5510,6 +5536,7 @@ mod test_gloas_fork_choice {
             false,
             5,
             false,
+            false,
         );
 
         // Equivocating block at slot 1 from same proposer, ptc_timely=true
@@ -5523,6 +5550,7 @@ mod test_gloas_fork_choice {
             false,
             5,
             true,
+            false,
         );
 
         // Child block at slot 2
@@ -5535,6 +5563,7 @@ mod test_gloas_fork_choice {
             Some(exec_hash(99)),
             false,
             0,
+            false,
             false,
         );
 
@@ -5704,9 +5733,10 @@ mod test_gloas_fork_choice {
             Some(GloasPayloadStatus::Empty as u8)
         );
 
-        // Now reveal the payload
+        // Now reveal the payload (simulating envelope receipt)
         if let Some(&idx) = fc.proto_array.indices.get(&root(1)) {
             fc.proto_array.nodes[idx].payload_revealed = true;
+            fc.proto_array.nodes[idx].envelope_received = true;
         }
 
         // Second call: payload revealed + FULL vote → FULL wins
@@ -5727,6 +5757,108 @@ mod test_gloas_fork_choice {
     }
 
     #[test]
+    fn find_head_ptc_quorum_without_envelope_stays_empty() {
+        // Edge case: PTC quorum reached (payload_revealed=true) but no actual
+        // envelope was received (envelope_received=false). This can happen when
+        // the PTC committee votes "present" but the node hasn't received/processed
+        // the execution payload envelope.
+        //
+        // Per spec: get_node_children only creates the FULL virtual child when
+        // `root in store.payload_states`, which requires actual envelope processing.
+        // PTC quorum alone is not sufficient.
+        //
+        // Expected: head should be EMPTY (not FULL), even with FULL-supporting votes.
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Insert a block with payload_revealed=true but envelope_received=false
+        // (simulating PTC quorum without actual envelope receipt)
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,  // payload_revealed (PTC quorum)
+            0,     // proposer_index
+            false, // ptc_timely
+            false, // envelope_received — no actual envelope!
+        );
+
+        let balances = balances(1);
+
+        // Vote with payload_present=true (supporting FULL)
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        // Without envelope, only EMPTY child exists, so head must be EMPTY
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Empty as u8),
+            "PTC quorum without envelope → head should be EMPTY, not FULL"
+        );
+    }
+
+    #[test]
+    fn find_head_ptc_quorum_with_envelope_becomes_full() {
+        // Complementary test: same setup as above but WITH envelope_received=true.
+        // Now the FULL child should exist and win with FULL-supporting votes.
+        let (mut fc, spec) = new_gloas_fc();
+
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,  // payload_revealed (PTC quorum)
+            0,     // proposer_index
+            false, // ptc_timely
+            true,  // envelope_received — actual envelope received!
+        );
+
+        let balances = balances(1);
+
+        // Vote with payload_present=true (supporting FULL)
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        // With envelope, FULL child exists and wins with FULL-supporting vote
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Full as u8),
+            "PTC quorum + envelope → head should be FULL"
+        );
+    }
+
+    #[test]
     fn find_head_proposer_boost_skipped_slots_always_applied() {
         // When the parent slot is not adjacent (skipped slots), boost should always
         // be applied regardless of parent weight or equivocation.
@@ -5743,6 +5875,7 @@ mod test_gloas_fork_choice {
             false,
             5,
             false,
+            false,
         );
 
         // Child block at slot 3 (skipped slot 2)
@@ -5755,6 +5888,7 @@ mod test_gloas_fork_choice {
             Some(exec_hash(99)),
             false,
             0,
+            false,
             false,
         );
 
@@ -5788,6 +5922,7 @@ mod test_gloas_fork_choice {
             false,
             5,
             false,
+            false,
         );
 
         // Equivocating block by same proposer (would suppress boost if parent weak)
@@ -5801,6 +5936,7 @@ mod test_gloas_fork_choice {
             false,
             5,
             true,
+            false,
         );
 
         // Child block at slot 2
@@ -5813,6 +5949,7 @@ mod test_gloas_fork_choice {
             Some(exec_hash(99)),
             false,
             0,
+            false,
             false,
         );
 
