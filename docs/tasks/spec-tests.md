@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix remaining Gloas head_hash fallback paths (run 141)
+- Checked consensus-specs PRs since run 140: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Audit of Gloas head_hash paths** — found 3 additional code paths that used `ForkchoiceUpdateParameters.head_hash` directly without the Gloas `state.latest_block_hash` fallback from run 140:
+  - **Proposer re-org path** (`beacon_chain.rs:6229`): `overridden_forkchoice_update_params_or_failure_reason` constructed re-org params using `parent_node.execution_status.block_hash()`, which returns `None` for Gloas `Irrelevant` status. Fix: fall back to `canonical_forkchoice_params.head_hash` (already correct from the cached head fix)
+  - **CanonicalHead::new** (`canonical_head.rs:284`): initialization path used raw fork choice `head_hash`. Fix: apply same `state.latest_block_hash()` fallback pattern from run 140
+  - **CanonicalHead::restore_from_store** (`canonical_head.rs:335`): database restoration path had same issue. Fix: same `state.latest_block_hash()` fallback
+- **Why these matter**: proposer re-org with a Gloas parent that hasn't received its envelope would send `None` to the EL, silently skipping the `forkchoiceUpdated` call; initialization/restoration at a Gloas head would start with no head_hash
+- **Tests**: fork_choice 193/193, EF fork_choice 8/8, beacon_chain 576/576 — all pass, clippy clean
+
 ### 2026-02-26 — fix Gloas forkchoice update head_hash (run 140)
 - **Bug found**: Gloas blocks use `ExecutionStatus::Irrelevant` in proto_array (no execution payload in block body). This caused `ForkchoiceUpdateParameters.head_hash` to be `None`, making `update_execution_engine_forkchoice` fall into the pre-merge PoW transition code path instead of sending a proper `forkchoiceUpdated` to the EL.
 - **Gloas spec**: `prepare_execution_payload` says `head_block_hash=state.latest_block_hash` for forkchoice updates.
