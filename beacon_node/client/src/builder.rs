@@ -978,12 +978,9 @@ fn inject_genesis_builders<E: EthSpec>(
     let all_keypairs = generate_deterministic_keypairs(validator_count + count);
     let builder_keypairs = &all_keypairs[validator_count..];
 
-    let gloas_state = match state.as_gloas_mut() {
-        Ok(s) => s,
-        Err(_) => {
-            warn!("--genesis-builders has no effect: genesis state is not a Gloas state");
-            return Ok(());
-        }
+    let Ok(gloas_state) = state.as_gloas_mut() else {
+        warn!("--genesis-builders has no effect: genesis state is not a Gloas state");
+        return Ok(());
     };
 
     for (i, keypair) in builder_keypairs.iter().enumerate() {
