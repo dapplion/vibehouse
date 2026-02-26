@@ -14,11 +14,13 @@ use beacon_chain::data_column_verification::validate_data_column_sidecar_for_gos
 use beacon_chain::kzg_utils::blobs_to_data_column_sidecars;
 use beacon_chain::observed_data_sidecars::DoNotObserve;
 use beacon_chain::test_utils::{
-    AttestationStrategy, BeaconChainHarness, BlockStrategy, EphemeralHarnessType,
-    fork_name_from_env, get_kzg, test_spec,
+    AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_ETH1_BLOCK_HASH,
+    EphemeralHarnessType, HARNESS_GENESIS_TIME, InteropGenesisBuilder, fork_name_from_env,
+    generate_deterministic_keypairs, get_kzg, test_spec,
 };
 use beacon_chain::{BeaconChain, WhenSlotSkipped};
 use beacon_processor::{work_reprocessing_queue::*, *};
+use execution_layer::test_utils::generate_genesis_header;
 use gossipsub::MessageAcceptance;
 use itertools::Itertools;
 use lighthouse_network::rpc::InboundRequestId;
@@ -36,17 +38,19 @@ use slot_clock::SlotClock;
 use std::collections::HashSet;
 use std::iter::Iterator;
 use std::sync::Arc;
+use std::sync::LazyLock;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use types::blob_sidecar::{BlobIdentifier, FixedBlobSidecarList};
 use types::{
-    Address, AttesterSlashing, BlobSidecar, BlobSidecarList, ChainSpec, DataColumnSidecarList,
-    DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash, ExecutionPayloadBid,
-    ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof, ExecutionProofSubnetId,
-    Hash256, MainnetEthSpec, PayloadAttestation, PayloadAttestationData, ProposerPreferences,
-    ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
-    SignedRoot, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
+    Address, AttesterSlashing, BlobSidecar, BlobSidecarList, Builder, ChainSpec,
+    DataColumnSidecarList, DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash,
+    ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof,
+    ExecutionProofSubnetId, Hash256, Keypair, MainnetEthSpec, PayloadAttestation,
+    PayloadAttestationData, ProposerPreferences, ProposerSlashing, RuntimeVariableList,
+    SignedAggregateAndProof, SignedBeaconBlock, SignedExecutionPayloadBid,
+    SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
+    SingleAttestation, Slot, SubnetId,
 };
 
 type E = MainnetEthSpec;
@@ -338,6 +342,121 @@ impl TestRig {
             attestations,
             next_block_attestations,
             next_block_aggregate_attestations,
+            attester_slashing,
+            proposer_slashing,
+            voluntary_exit,
+            beacon_processor_tx,
+            work_journal_rx,
+            network_rx,
+            sync_rx,
+            duplicate_cache,
+            network_beacon_processor,
+            _harness: harness,
+        }
+    }
+
+    /// Build a TestRig from a pre-built harness. This skips the next-block and
+    /// attestation setup (not needed for bid/envelope gossip tests) but wires up
+    /// the full beacon processor and network channels.
+    pub async fn new_from_harness(harness: BeaconChainHarness<T>) -> Self {
+        let spec = harness.chain.spec.clone();
+        let beacon_processor_config = BeaconProcessorConfig::default();
+
+        let chain = harness.chain.clone();
+
+        let (network_tx, network_rx) = mpsc::unbounded_channel();
+
+        let BeaconProcessorChannels {
+            beacon_processor_tx,
+            beacon_processor_rx,
+        } = BeaconProcessorChannels::new(&beacon_processor_config);
+
+        let (sync_tx, sync_rx) = mpsc::unbounded_channel();
+
+        let meta_data = if spec.is_peer_das_scheduled() {
+            MetaData::V3(MetaDataV3 {
+                seq_number: SEQ_NUMBER,
+                attnets: EnrAttestationBitfield::<MainnetEthSpec>::default(),
+                syncnets: EnrSyncCommitteeBitfield::<MainnetEthSpec>::default(),
+                custody_group_count: spec.custody_requirement,
+            })
+        } else {
+            MetaData::V2(MetaDataV2 {
+                seq_number: SEQ_NUMBER,
+                attnets: EnrAttestationBitfield::<MainnetEthSpec>::default(),
+                syncnets: EnrSyncCommitteeBitfield::<MainnetEthSpec>::default(),
+            })
+        };
+
+        let enr_key = CombinedKey::generate_secp256k1();
+        let enr = enr::Enr::builder().build(&enr_key).unwrap();
+        let network_config = Arc::new(NetworkConfig::default());
+        let network_globals = Arc::new(NetworkGlobals::new(
+            enr,
+            meta_data,
+            vec![],
+            false,
+            network_config,
+            spec,
+        ));
+
+        let executor = harness.runtime.task_executor.clone();
+
+        let (work_journal_tx, work_journal_rx) = mpsc::channel(16_364);
+
+        let duplicate_cache = DuplicateCache::default();
+        let network_beacon_processor = NetworkBeaconProcessor {
+            beacon_processor_send: beacon_processor_tx.clone(),
+            duplicate_cache: duplicate_cache.clone(),
+            chain: harness.chain.clone(),
+            network_tx,
+            sync_tx,
+            network_globals: network_globals.clone(),
+            invalid_block_storage: InvalidBlockStorage::Disabled,
+            executor: executor.clone(),
+        };
+        let network_beacon_processor = Arc::new(network_beacon_processor);
+
+        let beacon_processor = BeaconProcessor {
+            network_globals: network_globals.clone(),
+            executor,
+            current_workers: 0,
+            config: beacon_processor_config,
+        }
+        .spawn_manager(
+            beacon_processor_rx,
+            Some(work_journal_tx),
+            harness.chain.slot_clock.clone(),
+            chain.spec.maximum_gossip_clock_disparity(),
+            BeaconProcessorQueueLengths::from_state(
+                &chain.canonical_head.cached_head().snapshot.beacon_state,
+                &chain.spec,
+            )
+            .unwrap(),
+        );
+
+        assert!(beacon_processor.is_ok());
+
+        // Create dummy values for fields not needed by bid/envelope gossip tests.
+        let head = harness.chain.head_snapshot();
+        let attester_slashing = harness.make_attester_slashing(vec![0, 1]);
+        let proposer_slashing = harness.make_proposer_slashing(2);
+        let voluntary_exit = harness.make_voluntary_exit(3, harness.chain.epoch().unwrap());
+
+        // Build a next block for completeness (some TestRig methods need it).
+        let (next_block_tuple, _next_state) = harness
+            .make_block(head.beacon_state.clone(), harness.chain.slot().unwrap())
+            .await;
+        let block = next_block_tuple.0;
+
+        Self {
+            chain,
+            next_block: block,
+            next_blobs: None,
+            next_data_columns: None,
+            attestations: vec![],
+            next_block_attestations: vec![],
+            next_block_aggregate_attestations: vec![],
             attester_slashing,
             proposer_slashing,
             voluntary_exit,
@@ -2028,6 +2147,83 @@ async fn gloas_rig(chain_length: u64) -> TestRig {
     .await
 }
 
+/// Extra keypairs for builder identities (separate from validator keypairs).
+static BUILDER_KEYPAIRS: LazyLock<Vec<Keypair>> = LazyLock::new(|| {
+    generate_deterministic_keypairs(VALIDATOR_COUNT + 4)[VALIDATOR_COUNT..].to_vec()
+});
+
+/// Number of blocks needed to reach finalization in mainnet spec (SLOTS_PER_EPOCH=32).
+/// We need 4 full epochs (128 slots) to ensure finalized_epoch >= 1.
+const BLOCKS_TO_FINALIZE: u64 = SLOTS_PER_EPOCH * 4;
+
+/// Helper: create a Gloas TestRig with builders injected into genesis state.
+///
+/// `builders`: slice of `(deposit_epoch, balance)` tuples. Each builder gets a
+/// pubkey from `BUILDER_KEYPAIRS` and `withdrawable_epoch = FAR_FUTURE_EPOCH`.
+/// The chain is extended by `chain_length` blocks after genesis.
+async fn gloas_rig_with_builders(chain_length: u64, builders: &[(u64, u64)]) -> TestRig {
+    let mut spec = test_spec::<E>();
+    spec.shard_committee_period = 2;
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+    let spec_arc = Arc::new(spec.clone());
+
+    let header = generate_genesis_header::<E>(&spec, false);
+    let keypairs = generate_deterministic_keypairs(VALIDATOR_COUNT);
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject builders into the Gloas state
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    for (i, &(deposit_epoch, balance)) in builders.iter().enumerate() {
+        let builder = Builder {
+            pubkey: BUILDER_KEYPAIRS[i].pk.clone().into(),
+            version: 0,
+            execution_address: Address::ZERO,
+            balance,
+            deposit_epoch: Epoch::new(deposit_epoch),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        gloas_state
+            .builders
+            .push(builder)
+            .expect("should push builder");
+    }
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let harness = BeaconChainHarness::builder(MainnetEthSpec)
+        .spec(spec_arc)
+        .keypairs(keypairs)
+        .genesis_state_ephemeral_store(state)
+        .mock_execution_layer()
+        .chain_config(<_>::default())
+        .build();
+
+    harness.advance_slot();
+
+    for _ in 0..chain_length {
+        harness
+            .extend_chain(
+                1,
+                BlockStrategy::OnCanonicalHead,
+                AttestationStrategy::AllValidators,
+            )
+            .await;
+
+        harness.advance_slot();
+    }
+
+    TestRig::new_from_harness(harness).await
+}
+
 /// Helper: drain network_rx for validation results, returning the first
 /// MessageAcceptance found within the timeout.
 async fn drain_validation_result(
@@ -3124,6 +3320,294 @@ async fn test_gloas_gossip_execution_proof_valid_stub_accepted() {
             Duration::ZERO,
         )
         .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+// ======== Gloas (ePBS) execution bid gossip handler tests — builder paths ========
+//
+// These tests exercise execution bid gossip error paths that require a registered
+// builder in the genesis state: DuplicateBid, BuilderEquivocation, InvalidParentRoot,
+// InsufficientBuilderBalance, InvalidSignature, and the valid Accept happy path.
+
+/// Helper: construct a signed execution bid from the builder at `builder_idx` in
+/// `BUILDER_KEYPAIRS`, using the given bid message and chain state for signing.
+fn sign_bid(
+    rig: &TestRig,
+    builder_idx: usize,
+    bid_msg: ExecutionPayloadBid<E>,
+) -> SignedExecutionPayloadBid<E> {
+    let spec = &rig.chain.spec;
+    let head = rig.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let domain = spec.get_domain(
+        bid_msg.slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = bid_msg.signing_root(domain);
+    let signature = BUILDER_KEYPAIRS[builder_idx].sk.sign(signing_root);
+    SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature,
+    }
+}
+
+/// Gloas gossip: sending the same execution bid twice results in IGNORE (DuplicateBid).
+///
+/// Per spec: [IGNORE] The bid has not been previously seen.
+/// Sending a valid bid twice should result in Accept on first, Ignore on second.
+#[tokio::test]
+async fn test_gloas_gossip_bid_duplicate_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Builder 0: deposit_epoch=0, balance=1M. Need finalization (deposit_epoch < finalized_epoch).
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    // First submission → Accept
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid.clone(),
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second submission (same bid) → Ignore (DuplicateBid)
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: sending two different bids from the same builder for the same
+/// slot results in REJECT (BuilderEquivocation).
+///
+/// Per spec: [REJECT] No conflicting bid from the same builder for the same slot.
+/// The first bid is accepted; a second bid with different content from the same
+/// builder in the same slot is equivocation and must be rejected.
+#[tokio::test]
+async fn test_gloas_gossip_bid_equivocation_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    // First bid with value=100
+    let bid_msg1 = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        block_hash: ExecutionBlockHash::repeat_byte(0xaa),
+        ..Default::default()
+    };
+    let bid1 = sign_bid(&rig, 0, bid_msg1);
+
+    // Second bid with different value (→ different tree hash root = equivocation)
+    let bid_msg2 = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 200, // different value → different bid root
+        parent_block_root: head.beacon_block_root,
+        block_hash: ExecutionBlockHash::repeat_byte(0xbb),
+        ..Default::default()
+    };
+    let bid2 = sign_bid(&rig, 0, bid_msg2);
+
+    // First bid → Accept
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid1,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second bid (different content, same builder, same slot) → Reject (equivocation)
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid2,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: execution bid with wrong parent_block_root is IGNORED.
+///
+/// Per spec: [IGNORE] bid.parent_block_root == head_block_root
+/// A bid whose parent_block_root doesn't match the fork choice head is ignored
+/// (not rejected, because the head may change).
+#[tokio::test]
+async fn test_gloas_gossip_bid_invalid_parent_root_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = rig.chain.slot().unwrap();
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: Hash256::repeat_byte(0xff), // wrong parent root
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: execution bid from builder with insufficient balance is IGNORED.
+///
+/// Per spec: [IGNORE] builder.balance >= bid.value
+/// A bid whose value exceeds the builder's balance should be ignored (the builder
+/// cannot back the bid financially).
+#[tokio::test]
+async fn test_gloas_gossip_bid_insufficient_balance_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Builder 0 with very low balance (10 gwei)
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 10)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 1_000_000, // far exceeds builder balance of 10
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: execution bid with invalid BLS signature is REJECTED.
+///
+/// Per spec: [REJECT] The bid signature is valid.
+/// A bid signed with the wrong key should be rejected and the peer penalized.
+#[tokio::test]
+async fn test_gloas_gossip_bid_invalid_signature_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+
+    // Sign with the WRONG builder's key (builder 1's key for builder 0's bid)
+    let bid = SignedExecutionPayloadBid {
+        message: bid_msg.clone(),
+        signature: {
+            let spec = &rig.chain.spec;
+            let state = &head.beacon_state;
+            let domain = spec.get_domain(
+                bid_msg.slot.epoch(E::slots_per_epoch()),
+                Domain::BeaconBuilder,
+                &state.fork(),
+                state.genesis_validators_root(),
+            );
+            let signing_root = bid_msg.signing_root(domain);
+            BUILDER_KEYPAIRS[1].sk.sign(signing_root) // wrong key!
+        },
+    };
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: valid execution bid from a registered builder is ACCEPTED.
+///
+/// This tests the full happy path: a properly signed bid from a registered,
+/// active builder with sufficient balance, correct parent root, and valid slot
+/// is accepted and propagated to the network.
+#[tokio::test]
+async fn test_gloas_gossip_bid_valid_accepted() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_accept(result);
