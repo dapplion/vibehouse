@@ -28,6 +28,31 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — Execution bid gossip handler builder-path tests (run 109)
+- Checked consensus-specs PRs since run 108: no new Gloas spec changes merged
+  - No new PRs merged since Feb 24. All tracked Gloas PRs still open: #4948, #4947, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+  - PRs to watch: #4948 (reorder payload status constants), #4947 (pre-fork subscription for proposer_preferences), #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS rename)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- Open issues: #29 (ROCQ RFC), #28 (ZK proofs RFC), #27 (validator messaging RFC) — all RFCs, no bugs
+- **Addressed execution bid gossip handler builder-path error variants**: the `process_gossip_execution_bid` handler (gossip_methods.rs:3240-3398) had 3 tests covering simple error paths (ZeroExecutionPayment, SlotNotCurrentOrNext, UnknownBuilder) but ZERO tests for error paths requiring a registered builder: DuplicateBid, BuilderEquivocation, InvalidParentRoot, InsufficientBuilderBalance, InvalidSignature, and the happy-path Accept
+- **Built test infrastructure**: `gloas_rig_with_builders` helper creates a Gloas TestRig with builders injected into the genesis state via InteropGenesisBuilder + direct state mutation. Extends chain 128 blocks (4 epochs) to achieve finalization, enabling `is_active_at_finalized_epoch` check to pass. `TestRig::new_from_harness` is a new constructor that wraps a pre-built harness with full beacon processor + network channels. `sign_bid` helper properly signs bids using BUILDER_KEYPAIRS with Domain::BeaconBuilder
+- **Added 6 execution bid gossip handler integration tests** (previously ZERO tests for these paths):
+  - **DuplicateBid → Ignore (1 test):**
+    - `test_gloas_gossip_bid_duplicate_ignored`: sends the same signed bid twice. First returns Accept, second returns Ignore. Tests the observed_execution_bids deduplication — the equivocation check records the bid root on first verification, and a second identical bid is treated as a duplicate
+  - **BuilderEquivocation → Reject (1 test):**
+    - `test_gloas_gossip_bid_equivocation_rejected`: sends two different bids from builder 0 for the same slot (value=100 vs value=200 → different tree hash roots). First returns Accept, second returns Reject. Tests the equivocation detection — same builder_index + same slot + different bid root = equivocation
+  - **InvalidParentRoot → Ignore (1 test):**
+    - `test_gloas_gossip_bid_invalid_parent_root_ignored`: sends a bid with parent_block_root=0xff (doesn't match fork choice head). Returns Ignore. Tests the head-matching guard — bids for non-head parents are stale, not malicious
+  - **InsufficientBuilderBalance → Ignore (1 test):**
+    - `test_gloas_gossip_bid_insufficient_balance_ignored`: registers builder with balance=10, sends bid with value=1_000_000. Returns Ignore. Tests the balance check — builders can't bid more than their registered balance
+  - **InvalidSignature → Reject (1 test):**
+    - `test_gloas_gossip_bid_invalid_signature_rejected`: signs a bid for builder 0 using builder 1's secret key. Returns Reject. Tests BLS signature verification — the handler correctly rejects bids with invalid signatures and penalizes the peer
+  - **Valid Accept — happy path (1 test):**
+    - `test_gloas_gossip_bid_valid_accepted`: properly signed bid from a registered, active builder with sufficient balance, correct parent root, and valid slot. Returns Accept. Tests the complete validation pipeline end-to-end through the gossip handler
+- These tests close the execution bid gossip handler gap identified in run 105: all 6 remaining error paths that required a registered builder in the test state are now covered. The equivocation test is particularly important — equivocating builders must be penalized to prevent bid spam attacks. The happy-path Accept test exercises the full pipeline including `apply_execution_bid_to_fork_choice`
+- **Remaining handler gaps**: payload attestation remaining paths (ValidatorEquivocation, valid Accept) — require valid PTC committee signatures; P2 (PayloadAttestationService), P5 (poll_ptc_duties) — both require mock BN infrastructure
+- All 127 network tests pass (was 121), cargo fmt + clippy clean
+
 ### 2026-02-26 — Fix latest_block_hash for empty parent payloads (run 108)
 - **Fixed 5 Gloas fork_choice EF test failures** and **29 store_test failures** — all caused by incorrect `latest_block_hash` patching when the parent's payload was not revealed
 - **Root cause**: `get_advanced_hot_state` unconditionally patched `latest_block_hash` from the parent bid's `block_hash`, even when the parent's envelope hadn't been processed. The spec's `on_block` has a two-state model:
