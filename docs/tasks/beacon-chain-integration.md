@@ -350,6 +350,21 @@ Three test files used `ForkName::latest()` to create Gloas chains, but the test 
 - Wired up `send_gossip_execution_payload()` handler
 - Commit: `35b99ae6a`
 
+### 2026-02-26 — Fix block replayer EMPTY path bug (#8869)
+
+**Bug**: Querying Gloas states via HTTP API (`GET /eth/v1/beacon/states/{id}/...`) would return
+`500: LoadingHotStateError("get state", ..., BlockReplayError(BlockProcessing(ExecutionPayloadBidInvalid { reason: ParentBlockHashMismatch })))` when any block in the replay chain had taken the EMPTY path (builder withheld payload).
+
+**Root cause**: `BlockReplayer::apply_blocks` had a fallback when no envelope was found for a Gloas block: `*state.latest_block_hash_mut() = bid.block_hash`. This was intended for data-not-available cases but was wrong for the EMPTY path. In the EMPTY path, no envelope is ever stored, so the fallback would fire and set `latest_block_hash` to the builder's promised (but undelivered) hash. The next block's bid validation then fails because `bid.parent_block_hash != state.latest_block_hash`.
+
+**Fix**: Removed the bid fallback entirely from both the anchor block path and the non-anchor block path. The invariant is:
+- FULL path: a blinded envelope is always stored in `BeaconEnvelope` column when `PutPayloadEnvelope` is called. The blinded envelope path in the replayer handles this correctly.
+- EMPTY path: no envelope is stored. `latest_block_hash` should remain unchanged (the last FULL block's hash). This is now the correct behavior when no envelope is found.
+
+Updated 4 tests that relied on the (wrong) fallback behavior to assert the new correct semantics.
+
+**Commit**: `1ec1e5a54`
+
 ### 2026-02-15 — Block verification pipeline
 - Gossip verification checks `signed_execution_payload_bid.blob_kzg_commitments` for gloas
 - Gloas blocks marked as `MaybeAvailableBlock::Available` with `NoData`
