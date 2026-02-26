@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — VC proposer preferences broadcasting (run 119)
+- Identified missing spec feature: the Validator Client was not broadcasting proposer preferences, which is required by gloas/validator.md ("At the beginning of each epoch, a validator MAY broadcast SignedProposerPreferences")
+- **Implemented VC proposer preferences broadcasting** across 7 files:
+  - `signing_method/src/lib.rs`: added `ProposerPreferences` variant to `SignableMessage` + signing_root + Web3Signer error
+  - `validator_store/src/lib.rs`: added `sign_proposer_preferences` to `ValidatorStore` trait
+  - `lighthouse_validator_store/src/lib.rs`: implemented `sign_proposer_preferences` using `Domain::ProposerPreferences`
+  - `validator_services/src/duties_service.rs`: added `broadcast_proposer_preferences` (~170 lines) — fetches next-epoch duties, filters to local validators, signs preferences with configured fee_recipient/gas_limit, submits to BN
+  - `validator_services/src/ptc.rs` + `payload_attestation_service.rs`: added trait stubs for mock stores
+  - `beacon_node/http_api/src/lib.rs`: updated POST beacon/pool/proposer_preferences to gossip preferences via P2P after validation
+- All 42 VC tests pass, 573 beacon_chain tests pass, 136 network tests pass, 2205 workspace tests pass
+- Commit: `de6143492`
+
 ### 2026-02-26 — proposer preferences bid validation unit tests (run 118)
 - Checked consensus-specs PRs since run 117: no new Gloas spec changes merged to stable
   - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
