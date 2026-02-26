@@ -788,7 +788,9 @@ async fn gloas_get_best_execution_bid_empty() {
     let harness = gloas_harness_at_epoch(0);
     Box::pin(harness.extend_slots(1)).await;
 
-    let result = harness.chain.get_best_execution_bid(Slot::new(1));
+    let result = harness
+        .chain
+        .get_best_execution_bid(Slot::new(1), Hash256::zero());
     assert!(
         result.is_none(),
         "should return None when no external bids in pool"
@@ -815,7 +817,9 @@ async fn gloas_get_best_execution_bid_returns_inserted() {
     };
     harness.chain.execution_bid_pool.lock().insert(bid.clone());
 
-    let result = harness.chain.get_best_execution_bid(target_slot);
+    let result = harness
+        .chain
+        .get_best_execution_bid(target_slot, Hash256::zero());
     assert!(result.is_some(), "should return the inserted bid");
     assert_eq!(result.unwrap().message.value, 1000);
 }
@@ -854,7 +858,9 @@ async fn gloas_get_best_execution_bid_highest_value() {
         pool.insert(bid_high);
     }
 
-    let result = harness.chain.get_best_execution_bid(target_slot);
+    let result = harness
+        .chain
+        .get_best_execution_bid(target_slot, Hash256::zero());
     assert!(result.is_some());
     assert_eq!(
         result.unwrap().message.value,
@@ -5546,14 +5552,16 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
     // Verify best bid selection returns highest value
     let best = harness
         .chain
-        .get_best_execution_bid(target_slot)
+        .get_best_execution_bid(target_slot, Hash256::zero())
         .expect("should have a bid");
     assert_eq!(best.message.value, 2000, "should return highest-value bid");
     assert_eq!(best.message.builder_index, 1);
 
     // Verify old-slot bids are pruned
     let future_slot = target_slot + 10;
-    let result = harness.chain.get_best_execution_bid(future_slot);
+    let result = harness
+        .chain
+        .get_best_execution_bid(future_slot, Hash256::zero());
     assert!(
         result.is_none(),
         "bids for old slots should be pruned when querying future slot"
@@ -5678,10 +5686,10 @@ async fn gloas_apply_bid_to_fork_choice_inserts_into_pool() {
         .apply_execution_bid_to_fork_choice(&verified_bid)
         .expect("should succeed");
 
-    // Verify bid is retrievable from pool
+    // Verify bid is retrievable from pool (must pass matching parent_block_root)
     let best = harness
         .chain
-        .get_best_execution_bid(head_slot)
+        .get_best_execution_bid(head_slot, head_root)
         .expect("should have a bid in the pool");
     assert_eq!(best.message.value, 5000);
     assert_eq!(best.message.builder_index, 7);

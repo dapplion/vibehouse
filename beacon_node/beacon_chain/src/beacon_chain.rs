@@ -2527,16 +2527,18 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
-    /// Returns the best (highest value) external bid for the given slot, if any.
+    /// Returns the best (highest value) external bid for the given slot and parent root, if any.
     ///
     /// Used during block production to select a builder bid instead of self-building.
+    /// Filters by `parent_block_root` to avoid selecting stale bids after a re-org.
     pub fn get_best_execution_bid(
         &self,
         slot: Slot,
+        parent_block_root: Hash256,
     ) -> Option<SignedExecutionPayloadBid<T::EthSpec>> {
         let mut pool = self.execution_bid_pool.lock();
         pool.prune(slot);
-        pool.get_best_bid(slot).cloned()
+        pool.get_best_bid(slot, parent_block_root).cloned()
     }
 
     /// Applies a verified payload envelope to fork choice (gloas ePBS).
@@ -6493,8 +6495,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Gloas ePBS: check for external builder bids before starting EL payload fetch.
         // If a valid external bid is available, we skip the EL fetch entirely since the
         // builder will provide the execution payload via a separate envelope.
+        // Filter by parent_root to avoid selecting stale bids after a re-org.
         let selected_external_bid = if state.fork_name_unchecked() == ForkName::Gloas {
-            self.get_best_execution_bid(produce_at_slot)
+            self.get_best_execution_bid(produce_at_slot, parent_root)
         } else {
             None
         };
