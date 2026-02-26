@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — poll_ptc_duties integration tests (run 112)
+- Checked consensus-specs PRs since run 111: no new Gloas spec changes merged
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Closed P5 coverage gap**: `poll_ptc_duties` in `validator_services/src/ptc.rs` had ZERO integration tests. The function fetches PTC (Payload Timeliness Committee) duties from the beacon node for current + next epoch and caches them in `PtcDutiesMap`
+- **Added mock BN methods to `MockBeaconNode`** (`testing/validator_test_rig/src/mock_beacon_node.rs`):
+  - `mock_post_validator_duties_ptc(epoch, duties)`: mocks `POST /eth/v1/validator/duties/ptc/{epoch}`
+  - `mock_get_validator_payload_attestation_data(data)`: mocks `GET /eth/v1/validator/payload_attestation_data`
+  - `mock_post_beacon_pool_payload_attestations()`: mocks `POST /eth/v1/beacon/pool/payload_attestations`
+- **Added `MinimalValidatorStore`**: implements `ValidatorStore` trait with only the two methods needed by `poll_ptc_duties` (`voting_pubkeys` and `validator_index`) — all other async methods are `async fn { unimplemented!() }` stubs
+- **Added 7 integration tests** in `poll_tests` module (validator_services/src/ptc.rs):
+  - `poll_ptc_duties_pre_gloas_skips_bn`: slot 0 (pre-Gloas, spec slots_per_epoch=8, Gloas at epoch 1 = slot 8) → no BN call
+  - `poll_ptc_duties_fetches_current_and_next_epoch`: slot 16 (epoch 2) → fetches both epoch 2 and epoch 3 duties, stores in map
+  - `poll_ptc_duties_cached_epoch_not_refetched`: call twice with same slot → BN called only once (second call hits cache)
+  - `poll_ptc_duties_no_validators_skips_bn`: empty validator store → no BN call (early return)
+  - `poll_ptc_duties_empty_response_stored`: BN returns empty duties vec → stored as empty (not absent)
+  - `poll_ptc_duties_gloas_disabled_skips_bn`: `gloas_fork_epoch = u64::MAX` (disabled) → no BN call
+  - `poll_ptc_duties_multiple_validators`: 3 validators → all 3 pubkeys sent in request, duties returned and stored
+- **Remaining coverage gap**: P2 (PayloadAttestationService `produce_payload_attestations`) — more complex, requires producing and submitting a payload attestation with a real PTC slot
+- All 29 validator_services tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — Proposer preferences pool + bid validation against preferences (run 111)
 - Checked consensus-specs PRs since run 110: no new Gloas spec changes merged
 - Spec test version: v1.7.0-alpha.2 remains latest release
