@@ -1538,9 +1538,12 @@ impl ProtoArrayForkChoice {
                         if parent_node.root != node.root {
                             return true;
                         }
-                        // Boosted block's parent IS this root — check if parent is already FULL
-                        // (i.e., the parent's parent had its payload revealed)
-                        if parent_node.payload_revealed {
+                        // Boosted block's parent IS this root — check if parent is FULL
+                        // per spec: is_parent_node_full(store, store.blocks[proposer_root])
+                        // This compares boosted_block.bid.parent_block_hash with parent.bid.block_hash
+                        if self.get_parent_payload_status_of(boosted_node, parent_node)
+                            == GloasPayloadStatus::Full
+                        {
                             return true;
                         }
                     }
@@ -3831,8 +3834,8 @@ mod test_gloas_fork_choice {
 
     #[test]
     fn should_extend_payload_boosted_parent_is_this_root_and_full() {
-        // Boosted block's parent IS this root, and parent is already FULL (payload_revealed=true)
-        // → should extend (true)
+        // Boosted block's parent IS this root, and the boosted block builds on FULL parent
+        // (child.bid_parent_block_hash == parent.bid_block_hash) → should extend (true)
         let (mut fc, _spec) = new_gloas_fc();
         let parent_block = root(1);
         let child_block = root(2); // boosted block
@@ -3841,9 +3844,11 @@ mod test_gloas_fork_choice {
         insert_external_builder_block(&mut fc, 1, parent_block, root(0), 42);
         insert_external_builder_block(&mut fc, 2, child_block, parent_block, 42);
 
-        // Mark parent as FULL (payload revealed)
-        let parent_node = get_node_mut(&mut fc, &parent_block);
-        parent_node.payload_revealed = true;
+        // Make child build on FULL parent: set child's bid_parent_block_hash to match
+        // parent's bid_block_hash (both are 0xEE from insert_external_builder_block)
+        let parent_bid_hash = get_node(&fc, &parent_block).bid_block_hash.unwrap();
+        let child_node = get_node_mut(&mut fc, &child_block);
+        child_node.bid_parent_block_hash = Some(parent_bid_hash);
 
         // Set proposer boost to child_block
         fc.proto_array.previous_proposer_boost = ProposerBoost {
@@ -3855,14 +3860,14 @@ mod test_gloas_fork_choice {
             root: parent_block,
             payload_status: GloasPayloadStatus::Full,
         };
-        // Parent is already FULL → should extend
+        // Child builds on FULL parent → should extend
         assert!(fc.should_extend_payload(&gloas_node));
     }
 
     #[test]
     fn should_extend_payload_boosted_parent_is_this_root_and_not_full() {
-        // Boosted block's parent IS this root, but parent is NOT FULL (payload_revealed=false)
-        // → should NOT extend (false)
+        // Boosted block's parent IS this root, but the boosted block builds on EMPTY parent
+        // (child.bid_parent_block_hash != parent.bid_block_hash) → should NOT extend (false)
         let (mut fc, _spec) = new_gloas_fc();
         let parent_block = root(1);
         let child_block = root(2); // boosted block
@@ -3871,8 +3876,9 @@ mod test_gloas_fork_choice {
         insert_external_builder_block(&mut fc, 1, parent_block, root(0), 42);
         insert_external_builder_block(&mut fc, 2, child_block, parent_block, 42);
 
-        // Parent payload NOT revealed (default)
-        assert!(!get_node(&fc, &parent_block).payload_revealed);
+        // Child builds on EMPTY parent: bid_parent_block_hash is None (default from
+        // insert_external_builder_block), which doesn't match parent's bid_block_hash
+        assert!(get_node(&fc, &child_block).bid_parent_block_hash.is_none());
 
         // Set proposer boost to child_block
         fc.proto_array.previous_proposer_boost = ProposerBoost {
@@ -3884,7 +3890,7 @@ mod test_gloas_fork_choice {
             root: parent_block,
             payload_status: GloasPayloadStatus::Full,
         };
-        // Parent NOT full → should NOT extend
+        // Child builds on EMPTY parent → should NOT extend
         assert!(!fc.should_extend_payload(&gloas_node));
     }
 
