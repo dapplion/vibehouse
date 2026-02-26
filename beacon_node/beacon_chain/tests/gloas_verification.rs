@@ -1938,6 +1938,141 @@ async fn envelope_prior_to_finalization_direct() {
 }
 
 // =============================================================================
+// Bid: proposer preferences validation (ProposerPreferencesNotSeen, FeeRecipientMismatch,
+// GasLimitMismatch)
+// =============================================================================
+
+/// Bid submitted before any proposer preferences have been seen for the slot → IGNORE.
+/// Per spec, bids must be preceded by a SignedProposerPreferences for the same slot.
+/// Without it, the bid cannot be validated for fee_recipient/gas_limit compliance.
+#[tokio::test]
+async fn bid_no_proposer_preferences_ignored() {
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Build a bid with valid slot, builder index, and parent root
+    // but do NOT insert any proposer preferences for this slot
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+    bid.message.parent_block_root = head_root;
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject bid without proposer preferences",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::ProposerPreferencesNotSeen { slot } if slot == current_slot),
+        "expected ProposerPreferencesNotSeen for slot {}, got {:?}",
+        current_slot,
+        err
+    );
+}
+
+/// Bid with wrong fee_recipient → FeeRecipientMismatch → REJECT.
+/// The proposer published their preferences with a specific fee_recipient.
+/// A builder cannot override that address in their bid.
+#[tokio::test]
+async fn bid_fee_recipient_mismatch_rejected() {
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // The bid uses a specific fee_recipient
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+    bid.message.parent_block_root = head_root;
+    bid.message.fee_recipient = Address::from([0xaa; 20]);
+
+    // Insert proposer preferences with a DIFFERENT fee_recipient
+    let preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: current_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::from([0xbb; 20]), // different from bid's 0xaa
+            gas_limit: bid.message.gas_limit,
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness.chain.insert_proposer_preferences(preferences);
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject bid with wrong fee_recipient",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::FeeRecipientMismatch {
+                expected,
+                received,
+            } if expected == Address::from([0xbb; 20]) && received == Address::from([0xaa; 20])
+        ),
+        "expected FeeRecipientMismatch, got {:?}",
+        err
+    );
+}
+
+/// Bid with wrong gas_limit → GasLimitMismatch → REJECT.
+/// The proposer specified a gas_limit in their preferences.
+/// The builder's bid must match exactly.
+#[tokio::test]
+async fn bid_gas_limit_mismatch_rejected() {
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Build a bid with gas_limit = 30_000_000
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+    bid.message.parent_block_root = head_root;
+    bid.message.gas_limit = 30_000_000;
+
+    // Insert proposer preferences with a different gas_limit = 20_000_000
+    let preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: current_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: bid.message.fee_recipient,
+            gas_limit: 20_000_000, // different from bid's 30_000_000
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness.chain.insert_proposer_preferences(preferences);
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject bid with wrong gas_limit",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::GasLimitMismatch {
+                expected: 20_000_000,
+                received: 30_000_000,
+            }
+        ),
+        "expected GasLimitMismatch {{ expected: 20_000_000, received: 30_000_000 }}, got {:?}",
+        err
+    );
+}
+
+// =============================================================================
 // Bid: second builder in multi-builder harness
 // =============================================================================
 
