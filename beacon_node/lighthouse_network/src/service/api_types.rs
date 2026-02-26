@@ -5,6 +5,7 @@ use std::sync::Arc;
 use types::{
     BlobSidecar, DataColumnSidecar, Epoch, EthSpec, LightClientBootstrap,
     LightClientFinalityUpdate, LightClientOptimisticUpdate, LightClientUpdate, SignedBeaconBlock,
+    SignedExecutionPayloadEnvelope,
 };
 
 pub type Id = u32;
@@ -172,6 +173,8 @@ pub enum Response<E: EthSpec> {
     LightClientFinalityUpdate(Arc<LightClientFinalityUpdate<E>>),
     /// A response to a LightClientUpdatesByRange request.
     LightClientUpdatesByRange(Option<Arc<LightClientUpdate<E>>>),
+    /// A response to a get EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT request.
+    ExecutionPayloadEnvelopesByRoot(Option<Arc<SignedExecutionPayloadEnvelope<E>>>),
 }
 
 impl<E: EthSpec> std::convert::From<Response<E>> for RpcResponse<E> {
@@ -216,6 +219,14 @@ impl<E: EthSpec> std::convert::From<Response<E>> for RpcResponse<E> {
                 None => {
                     RpcResponse::StreamTermination(ResponseTermination::LightClientUpdatesByRange)
                 }
+            },
+            Response::ExecutionPayloadEnvelopesByRoot(r) => match r {
+                Some(e) => {
+                    RpcResponse::Success(RpcSuccessResponse::ExecutionPayloadEnvelopesByRoot(e))
+                }
+                None => RpcResponse::StreamTermination(
+                    ResponseTermination::ExecutionPayloadEnvelopesByRoot,
+                ),
             },
         }
     }

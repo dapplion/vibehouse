@@ -66,6 +66,11 @@ pub static SIGNED_BEACON_BLOCK_BELLATRIX_MAX: LazyLock<usize> =
 pub static BLOB_SIDECAR_SIZE: LazyLock<usize> =
     LazyLock::new(BlobSidecar::<MainnetEthSpec>::max_size);
 
+pub static SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX: LazyLock<usize> = LazyLock::new(|| {
+    // Use the same upper bound as bellatrix blocks since both contain a full execution payload.
+    *SIGNED_BEACON_BLOCK_BELLATRIX_MAX
+});
+
 pub static BLOB_SIDECAR_SIZE_MINIMAL: LazyLock<usize> =
     LazyLock::new(BlobSidecar::<MinimalEthSpec>::max_size);
 
@@ -264,6 +269,9 @@ pub enum Protocol {
     /// The `LightClientUpdatesByRange` protocol name
     #[strum(serialize = "light_client_updates_by_range")]
     LightClientUpdatesByRange,
+    /// The `ExecutionPayloadEnvelopesByRoot` protocol name.
+    #[strum(serialize = "execution_payload_envelopes_by_root")]
+    ExecutionPayloadEnvelopesByRoot,
 }
 
 impl Protocol {
@@ -283,6 +291,9 @@ impl Protocol {
             Protocol::LightClientOptimisticUpdate => None,
             Protocol::LightClientFinalityUpdate => None,
             Protocol::LightClientUpdatesByRange => None,
+            Protocol::ExecutionPayloadEnvelopesByRoot => {
+                Some(ResponseTermination::ExecutionPayloadEnvelopesByRoot)
+            }
         }
     }
 }
@@ -315,6 +326,7 @@ pub enum SupportedProtocol {
     LightClientOptimisticUpdateV1,
     LightClientFinalityUpdateV1,
     LightClientUpdatesByRangeV1,
+    ExecutionPayloadEnvelopesByRootV1,
 }
 
 impl SupportedProtocol {
@@ -339,6 +351,7 @@ impl SupportedProtocol {
             SupportedProtocol::LightClientOptimisticUpdateV1 => "1",
             SupportedProtocol::LightClientFinalityUpdateV1 => "1",
             SupportedProtocol::LightClientUpdatesByRangeV1 => "1",
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => "1",
         }
     }
 
@@ -365,6 +378,9 @@ impl SupportedProtocol {
             }
             SupportedProtocol::LightClientFinalityUpdateV1 => Protocol::LightClientFinalityUpdate,
             SupportedProtocol::LightClientUpdatesByRangeV1 => Protocol::LightClientUpdatesByRange,
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => {
+                Protocol::ExecutionPayloadEnvelopesByRoot
+            }
         }
     }
 
@@ -404,6 +420,12 @@ impl SupportedProtocol {
                 ProtocolId::new(SupportedProtocol::DataColumnsByRootV1, Encoding::SSZSnappy),
                 ProtocolId::new(SupportedProtocol::DataColumnsByRangeV1, Encoding::SSZSnappy),
             ]);
+        }
+        if fork_context.fork_exists(ForkName::Gloas) {
+            supported.push(ProtocolId::new(
+                SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+                Encoding::SSZSnappy,
+            ));
         }
         supported
     }
@@ -532,6 +554,9 @@ impl ProtocolId {
                 LightClientUpdatesByRangeRequest::ssz_max_len(),
             ),
             Protocol::MetaData => RpcLimits::new(0, 0), // Metadata requests are empty
+            Protocol::ExecutionPayloadEnvelopesByRoot => {
+                RpcLimits::new(0, spec.max_execution_payload_envelopes_by_root_request)
+            }
         }
     }
 
@@ -573,6 +598,9 @@ impl ProtocolId {
             Protocol::LightClientUpdatesByRange => {
                 rpc_light_client_updates_by_range_limits_by_fork(fork_context.current_fork_name())
             }
+            Protocol::ExecutionPayloadEnvelopesByRoot => {
+                RpcLimits::new(0, *SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX)
+            }
         }
     }
 
@@ -589,7 +617,8 @@ impl ProtocolId {
             | SupportedProtocol::LightClientBootstrapV1
             | SupportedProtocol::LightClientOptimisticUpdateV1
             | SupportedProtocol::LightClientFinalityUpdateV1
-            | SupportedProtocol::LightClientUpdatesByRangeV1 => true,
+            | SupportedProtocol::LightClientUpdatesByRangeV1
+            | SupportedProtocol::ExecutionPayloadEnvelopesByRootV1 => true,
             SupportedProtocol::StatusV1
             | SupportedProtocol::StatusV2
             | SupportedProtocol::BlocksByRootV1
@@ -728,6 +757,7 @@ pub enum RequestType<E: EthSpec> {
     LightClientOptimisticUpdate,
     LightClientFinalityUpdate,
     LightClientUpdatesByRange(LightClientUpdatesByRangeRequest),
+    ExecutionPayloadEnvelopesByRoot(ExecutionPayloadEnvelopesByRootRequest),
     Ping(Ping),
     MetaData(MetadataRequest<E>),
 }
@@ -753,6 +783,7 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::LightClientOptimisticUpdate => 1,
             RequestType::LightClientFinalityUpdate => 1,
             RequestType::LightClientUpdatesByRange(req) => req.count,
+            RequestType::ExecutionPayloadEnvelopesByRoot(req) => req.block_roots.len() as u64,
         }
     }
 
@@ -792,6 +823,9 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::LightClientUpdatesByRange(_) => {
                 SupportedProtocol::LightClientUpdatesByRangeV1
             }
+            RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
+                SupportedProtocol::ExecutionPayloadEnvelopesByRootV1
+            }
         }
     }
 
@@ -807,6 +841,9 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::BlobsByRoot(_) => ResponseTermination::BlobsByRoot,
             RequestType::DataColumnsByRoot(_) => ResponseTermination::DataColumnsByRoot,
             RequestType::DataColumnsByRange(_) => ResponseTermination::DataColumnsByRange,
+            RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
+                ResponseTermination::ExecutionPayloadEnvelopesByRoot
+            }
             RequestType::Status(_) => unreachable!(),
             RequestType::Goodbye(_) => unreachable!(),
             RequestType::Ping(_) => unreachable!(),
@@ -878,6 +915,10 @@ impl<E: EthSpec> RequestType<E> {
                 SupportedProtocol::LightClientUpdatesByRangeV1,
                 Encoding::SSZSnappy,
             )],
+            RequestType::ExecutionPayloadEnvelopesByRoot(_) => vec![ProtocolId::new(
+                SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+                Encoding::SSZSnappy,
+            )],
         }
     }
 
@@ -897,6 +938,7 @@ impl<E: EthSpec> RequestType<E> {
             RequestType::LightClientOptimisticUpdate => true,
             RequestType::LightClientFinalityUpdate => true,
             RequestType::LightClientUpdatesByRange(_) => true,
+            RequestType::ExecutionPayloadEnvelopesByRoot(_) => false,
         }
     }
 }
@@ -1018,6 +1060,11 @@ impl<E: EthSpec> std::fmt::Display for RequestType<E> {
             RequestType::LightClientUpdatesByRange(_) => {
                 write!(f, "Light client updates by range request")
             }
+            RequestType::ExecutionPayloadEnvelopesByRoot(req) => write!(
+                f,
+                "Execution payload envelopes by root: {} roots",
+                req.block_roots.len()
+            ),
         }
     }
 }

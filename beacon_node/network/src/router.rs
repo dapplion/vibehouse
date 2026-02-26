@@ -272,6 +272,15 @@ impl<T: BeaconChainTypes> Router<T> {
                             request,
                         ),
                 ),
+            RequestType::ExecutionPayloadEnvelopesByRoot(request) => self
+                .handle_beacon_processor_send_result(
+                    self.network_beacon_processor
+                        .send_execution_payload_envelopes_by_roots_request(
+                            peer_id,
+                            inbound_request_id,
+                            request,
+                        ),
+                ),
             _ => {}
         }
     }
@@ -308,6 +317,15 @@ impl<T: BeaconChainTypes> Router<T> {
             }
             Response::DataColumnsByRange(data_column) => {
                 self.on_data_columns_by_range_response(peer_id, app_request_id, data_column);
+            }
+            Response::ExecutionPayloadEnvelopesByRoot(envelope) => {
+                // Outbound requests for envelopes by root are not yet issued by sync;
+                // log and drop for now.
+                debug!(
+                    %peer_id,
+                    received = envelope.is_some(),
+                    "Received unexpected ExecutionPayloadEnvelopesByRoot response"
+                );
             }
             // Light client responses should not be received
             Response::LightClientBootstrap(_)

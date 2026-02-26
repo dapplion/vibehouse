@@ -1607,6 +1607,17 @@ impl<E: EthSpec> Network<E> {
                             request_type,
                         })
                     }
+                    RequestType::ExecutionPayloadEnvelopesByRoot(_) => {
+                        metrics::inc_counter_vec(
+                            &metrics::TOTAL_RPC_REQUESTS,
+                            &["execution_payload_envelopes_by_root"],
+                        );
+                        Some(NetworkEvent::RequestReceived {
+                            peer_id,
+                            inbound_request_id,
+                            request_type,
+                        })
+                    }
                 }
             }
             Ok(RPCReceived::Response(id, resp)) => {
@@ -1667,6 +1678,12 @@ impl<E: EthSpec> Network<E> {
                         peer_id,
                         Response::LightClientUpdatesByRange(Some(update)),
                     ),
+                    RpcSuccessResponse::ExecutionPayloadEnvelopesByRoot(resp) => self
+                        .build_response(
+                            id,
+                            peer_id,
+                            Response::ExecutionPayloadEnvelopesByRoot(Some(resp)),
+                        ),
                 }
             }
             Ok(RPCReceived::EndOfStream(id, termination)) => {
@@ -1679,6 +1696,9 @@ impl<E: EthSpec> Network<E> {
                     ResponseTermination::DataColumnsByRange => Response::DataColumnsByRange(None),
                     ResponseTermination::LightClientUpdatesByRange => {
                         Response::LightClientUpdatesByRange(None)
+                    }
+                    ResponseTermination::ExecutionPayloadEnvelopesByRoot => {
+                        Response::ExecutionPayloadEnvelopesByRoot(None)
                     }
                 };
                 self.build_response(id, peer_id, response)

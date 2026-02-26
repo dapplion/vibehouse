@@ -7,6 +7,7 @@ use beacon_chain::{BeaconChainError, BeaconChainTypes, BlockProcessStatus, WhenS
 use itertools::{Itertools, process_results};
 use lighthouse_network::rpc::methods::{
     BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
+    ExecutionPayloadEnvelopesByRootRequest,
 };
 use lighthouse_network::rpc::*;
 use lighthouse_network::{PeerId, ReportSource, Response, SyncInfo};
@@ -14,8 +15,9 @@ use lighthouse_tracing::{
     SPAN_HANDLE_BLOBS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST,
     SPAN_HANDLE_BLOCKS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOCKS_BY_ROOT_REQUEST,
     SPAN_HANDLE_DATA_COLUMNS_BY_RANGE_REQUEST, SPAN_HANDLE_DATA_COLUMNS_BY_ROOT_REQUEST,
-    SPAN_HANDLE_LIGHT_CLIENT_BOOTSTRAP, SPAN_HANDLE_LIGHT_CLIENT_FINALITY_UPDATE,
-    SPAN_HANDLE_LIGHT_CLIENT_OPTIMISTIC_UPDATE, SPAN_HANDLE_LIGHT_CLIENT_UPDATES_BY_RANGE,
+    SPAN_HANDLE_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_REQUEST, SPAN_HANDLE_LIGHT_CLIENT_BOOTSTRAP,
+    SPAN_HANDLE_LIGHT_CLIENT_FINALITY_UPDATE, SPAN_HANDLE_LIGHT_CLIENT_OPTIMISTIC_UPDATE,
+    SPAN_HANDLE_LIGHT_CLIENT_UPDATES_BY_RANGE,
 };
 use methods::LightClientUpdatesByRangeRequest;
 use slot_clock::SlotClock;
@@ -479,6 +481,78 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             request = ?request.data_column_ids,
             returned = send_data_column_count,
             "Received DataColumnsByRoot Request"
+        );
+
+        Ok(())
+    }
+
+    /// Handle an `ExecutionPayloadEnvelopesByRoot` request from the peer.
+    #[instrument(
+        name = SPAN_HANDLE_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_REQUEST,
+        parent = None,
+        level = "debug",
+        skip_all,
+        fields(peer_id = %peer_id, client = tracing::field::Empty)
+    )]
+    pub fn handle_execution_payload_envelopes_by_root_request(
+        self: Arc<Self>,
+        peer_id: PeerId,
+        inbound_request_id: InboundRequestId,
+        request: ExecutionPayloadEnvelopesByRootRequest,
+    ) {
+        let client = self.network_globals.client(&peer_id);
+        Span::current().record("client", field::display(client.kind));
+
+        self.terminate_response_stream(
+            peer_id,
+            inbound_request_id,
+            self.handle_execution_payload_envelopes_by_root_request_inner(
+                peer_id,
+                inbound_request_id,
+                request,
+            ),
+            Response::ExecutionPayloadEnvelopesByRoot,
+        );
+    }
+
+    /// Handle an `ExecutionPayloadEnvelopesByRoot` request from the peer.
+    fn handle_execution_payload_envelopes_by_root_request_inner(
+        &self,
+        peer_id: PeerId,
+        inbound_request_id: InboundRequestId,
+        request: ExecutionPayloadEnvelopesByRootRequest,
+    ) -> Result<(), (RpcErrorResponse, &'static str)> {
+        let mut send_count = 0;
+
+        for block_root in request.block_roots.as_slice() {
+            match self.chain.store.get_payload_envelope(block_root) {
+                Ok(Some(envelope)) => {
+                    self.send_response(
+                        peer_id,
+                        inbound_request_id,
+                        Response::ExecutionPayloadEnvelopesByRoot(Some(Arc::new(envelope))),
+                    );
+                    send_count += 1;
+                }
+                Ok(None) => {
+                    // Envelope not available — skip silently (peer may request from elsewhere)
+                }
+                Err(e) => {
+                    debug!(
+                        ?peer_id,
+                        block_root = ?block_root,
+                        error = ?e,
+                        "Error fetching execution payload envelope for peer"
+                    );
+                }
+            }
+        }
+
+        debug!(
+            %peer_id,
+            requested = request.block_roots.len(),
+            returned = send_count,
+            "ExecutionPayloadEnvelopesByRoot outgoing response processed"
         );
 
         Ok(())

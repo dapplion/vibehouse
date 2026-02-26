@@ -40,6 +40,8 @@ pub const SPAN_HANDLE_DATA_COLUMNS_BY_RANGE_REQUEST: &str = "handle_data_columns
 pub const SPAN_HANDLE_BLOCKS_BY_ROOT_REQUEST: &str = "handle_blocks_by_root_request";
 pub const SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST: &str = "handle_blobs_by_root_request";
 pub const SPAN_HANDLE_DATA_COLUMNS_BY_ROOT_REQUEST: &str = "handle_data_columns_by_root_request";
+pub const SPAN_HANDLE_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_REQUEST: &str =
+    "handle_execution_payload_envelopes_by_root_request";
 pub const SPAN_HANDLE_LIGHT_CLIENT_UPDATES_BY_RANGE: &str = "handle_light_client_updates_by_range";
 pub const SPAN_HANDLE_LIGHT_CLIENT_BOOTSTRAP: &str = "handle_light_client_bootstrap";
 pub const SPAN_HANDLE_LIGHT_CLIENT_OPTIMISTIC_UPDATE: &str =
@@ -71,6 +73,7 @@ pub const LH_BN_ROOT_SPAN_NAMES: &[&str] = &[
     SPAN_HANDLE_BLOCKS_BY_ROOT_REQUEST,
     SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST,
     SPAN_HANDLE_DATA_COLUMNS_BY_ROOT_REQUEST,
+    SPAN_HANDLE_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_REQUEST,
     SPAN_HANDLE_LIGHT_CLIENT_UPDATES_BY_RANGE,
     SPAN_HANDLE_LIGHT_CLIENT_BOOTSTRAP,
     SPAN_HANDLE_LIGHT_CLIENT_OPTIMISTIC_UPDATE,
