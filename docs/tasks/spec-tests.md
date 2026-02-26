@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — spec PR #4948 + notify_ptc_messages fix (run 130)
+- Checked consensus-specs PRs since run 129: 2 Gloas PRs merged
+  - **#4948** (merged Feb 26): "Reorder payload status constants" — changes ordinal values: Empty=0, Full=1, Pending=2 (was Pending=0, Empty=1, Full=2). **Implemented**: updated `GloasPayloadStatus` enum ordering, fixed 2 hardcoded test values in fork_choice.rs, updated test names/comments for accuracy
+  - **#4947** (merged Feb 26): "Add pre-fork subscription note for proposer_preferences topic" — SHOULD subscribe one epoch before fork activation. **Noted**: vibehouse already subscribes `SUBSCRIBE_DELAY_SLOTS=2` slots early; full-epoch early subscription is advisory, not implemented
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Analysis of #4948 impact**: The numeric values changed but relative ordering between EMPTY and FULL is preserved in all practical comparison contexts (they're only compared as siblings of the same PENDING parent). No behavioral change, but vibehouse must match the spec's ordinal values for correct `head_payload_status` reporting
+- **Found and fixed spec compliance gap**: `notify_ptc_messages` during block import
+  - **Bug**: When importing a block, in-block payload attestations (from `block.body.payload_attestations`) were processed at the state-processing level (updating `builder_pending_payments` weight) but NOT applied to fork choice for the parent block's PTC quorum tracking
+  - **Spec**: `on_block` calls `notify_ptc_messages(store, state, block.body.payload_attestations)` which extracts `IndexedPayloadAttestation` per in-block attestation and calls `on_payload_attestation_message` with `is_from_block=True`
+  - **Impact**: During sync (when gossip payload attestations aren't available), fork choice wouldn't have accurate PTC quorum data for blocks. This could affect head selection accuracy during sync completion, though it wouldn't cause consensus failures since block import doesn't gate on PTC quorum
+  - **Fix**: Added `notify_ptc_messages` equivalent in `import_block()` after `fork_choice.on_block()`: iterates block body's payload attestations, converts to `IndexedPayloadAttestation` via `get_indexed_payload_attestation`, and calls `fork_choice.on_payload_attestation()` for each. Made `get_indexed_payload_attestation` public
+- Verified: 119/119 proto_array tests pass, 74/74 fork_choice tests pass, 8/8 EF fork choice tests pass, 230/230 beacon_chain Gloas tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — fix get_gloas_children and should_extend_payload envelope_received check (run 129)
 - Checked consensus-specs PRs since run 128: no new Gloas spec changes merged
   - Open PRs unchanged: #4948, #4947, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
