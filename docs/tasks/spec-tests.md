@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — builder exit signature verification tests (run 136)
+- Checked consensus-specs PRs since run 135: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Coverage audit identified gap**: `verify_builder_exit()` signature verification path was untested — all existing builder exit tests used `VerifySignatures::False`
+- **Added 3 new unit tests** for builder exit signature verification:
+  - `verify_exit_builder_valid_signature_accepted`: builder signs voluntary exit with correct key and VoluntaryExit domain (EIP-7044 capella fork version), accepted with `VerifySignatures::True`
+  - `verify_exit_builder_wrong_signature_rejected`: builder exit signed with wrong key (validator key 0) is rejected
+  - `process_exits_builder_with_valid_signature`: end-to-end test — properly signed builder exit processed with signature verification, withdrawable_epoch correctly set
+- **Test helpers added**: `make_state_with_builder_keys()` (state with real builder keypair), `sign_builder_exit()` (computes EIP-7044 domain and signs VoluntaryExit with BUILDER_INDEX_FLAG)
+- All 337 state_processing tests pass, clippy clean
+
 ### 2026-02-26 — comprehensive spec compliance audit, no bugs found (run 135)
 - Checked consensus-specs PRs since run 134: no new Gloas spec changes merged
   - PR #4918 (attestations for known payload statuses): merged, already implemented (payload_revealed check in validate_on_attestation)
