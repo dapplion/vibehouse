@@ -534,13 +534,39 @@ impl<E: EthSpec> OperationPool<E> {
         )
     }
 
-    /// Prune if validator has already exited in the finalized state.
+    /// Prune if validator/builder has already exited in the finalized state.
+    ///
+    /// [Modified in Gloas:EIP7732] Also prunes builder exits (indices with
+    /// BUILDER_INDEX_FLAG set) by checking the builder's withdrawable_epoch.
     pub fn prune_voluntary_exits(&self, finalized_state: &BeaconState<E>, spec: &ChainSpec) {
-        prune_validator_hash_map(
-            &mut self.voluntary_exits.write(),
-            |_, validator| validator.exit_epoch != spec.far_future_epoch,
-            finalized_state,
-        );
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+
+        let head_fork = spec.fork_name_at_slot::<E>(finalized_state.slot());
+        let mut exits = self.voluntary_exits.write();
+        exits.retain(|&index, op| {
+            if !op.signature_is_still_valid(&finalized_state.fork()) {
+                return false;
+            }
+
+            if (index & BUILDER_INDEX_FLAG) != 0 {
+                // Builder exit: prune if builder has already exited
+                let builder_index = index & !BUILDER_INDEX_FLAG;
+                if head_fork.gloas_enabled()
+                    && let Ok(builders) = finalized_state.builders()
+                    && let Some(builder) = builders.get(builder_index as usize)
+                {
+                    return builder.withdrawable_epoch == spec.far_future_epoch;
+                }
+                // If pre-Gloas or builder not found, keep the exit
+                true
+            } else {
+                // Validator exit: prune if already exited
+                finalized_state
+                    .validators()
+                    .get(index as usize)
+                    .is_none_or(|validator| validator.exit_epoch == spec.far_future_epoch)
+            }
+        });
     }
 
     /// Check if an address change equal to `address_change` is already in the pool.
@@ -2140,5 +2166,112 @@ mod release_tests {
         // Pruning the attester slashings should remove all but slashing4.
         op_pool.prune_attester_slashings(&bellatrix_head.beacon_state);
         assert_eq!(op_pool.attester_slashings.read().len(), 1);
+    }
+
+    /// Test that builder exits (BUILDER_INDEX_FLAG set) are correctly pruned
+    /// when the builder has already exited in the finalized state.
+    #[cfg(feature = "fork_from_env")]
+    #[tokio::test]
+    async fn prune_builder_voluntary_exits() {
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+
+        let mut spec = test_spec::<MainnetEthSpec>();
+        spec.shard_committee_period = 0;
+        let harness = get_harness::<MainnetEthSpec>(32, Some(spec.clone()));
+
+        let op_pool = OperationPool::<MainnetEthSpec>::new();
+
+        // Create a valid validator exit (for validator 0) to get a valid SigVerifiedOp
+        let exit = harness.make_voluntary_exit(0, Epoch::new(0));
+        let head = harness.chain.canonical_head.cached_head().snapshot;
+
+        let verified_exit = exit
+            .clone()
+            .validate(&head.beacon_state, &harness.chain.spec)
+            .unwrap();
+
+        // Insert the verified exit under a builder-flagged key.
+        // Builder index 0 with BUILDER_INDEX_FLAG set.
+        let builder_key = BUILDER_INDEX_FLAG; // builder index 0
+        op_pool
+            .voluntary_exits
+            .write()
+            .insert(builder_key, verified_exit.clone());
+
+        // Also insert a regular validator exit for validator 1
+        let exit2 = harness.make_voluntary_exit(1, Epoch::new(0));
+        let verified_exit2 = exit2
+            .clone()
+            .validate(&head.beacon_state, &harness.chain.spec)
+            .unwrap();
+        op_pool.insert_voluntary_exit(verified_exit2);
+
+        assert_eq!(op_pool.voluntary_exits.read().len(), 2);
+
+        // Get a mutable state to set up builder data.
+        let mut state = head.beacon_state.clone();
+
+        // If the state is Gloas, add builders and test pruning.
+        if state.fork_name_unchecked().gloas_enabled() {
+            // Add a builder at index 0 that has NOT exited
+            let active_builder = types::Builder {
+                pubkey: types::PublicKeyBytes::empty(),
+                version: 0,
+                execution_address: types::Address::ZERO,
+                balance: 32_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: spec.far_future_epoch,
+            };
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .push(active_builder)
+                .unwrap();
+
+            // Prune — builder 0 is still active, so it should NOT be pruned
+            op_pool.prune_voluntary_exits(&state, &spec);
+            assert_eq!(
+                op_pool.voluntary_exits.read().len(),
+                2,
+                "active builder exit should not be pruned"
+            );
+
+            // Now mark builder 0 as exited
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .get_mut(0)
+                .unwrap()
+                .withdrawable_epoch = Epoch::new(10);
+
+            // Prune again — builder 0 has exited, so its exit should be pruned
+            op_pool.prune_voluntary_exits(&state, &spec);
+            assert_eq!(
+                op_pool.voluntary_exits.read().len(),
+                1,
+                "exited builder exit should be pruned"
+            );
+
+            // The remaining exit should be the validator exit (key = 1)
+            assert!(
+                op_pool.voluntary_exits.read().contains_key(&1),
+                "validator exit should remain"
+            );
+            assert!(
+                !op_pool.voluntary_exits.read().contains_key(&builder_key),
+                "builder exit should be removed"
+            );
+        } else {
+            // Not a Gloas state — builder exits can't be pruned (pre-Gloas)
+            // The builder exit should remain since there's no builder list to check
+            op_pool.prune_voluntary_exits(&state, &spec);
+            assert_eq!(
+                op_pool.voluntary_exits.read().len(),
+                2,
+                "pre-Gloas: builder exits should not be pruned"
+            );
+        }
     }
 }

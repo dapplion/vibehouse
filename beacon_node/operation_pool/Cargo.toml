@@ -6,6 +6,7 @@ edition = { workspace = true }
 
 [features]
 portable = ["beacon_chain/portable"]
+fork_from_env = ["beacon_chain/fork_from_env"]
 
 [dependencies]
 bitvec = { workspace = true }
