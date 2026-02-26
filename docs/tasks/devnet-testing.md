@@ -13,7 +13,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Syncing (genesis sync) | DONE (script) | `--sync` flag: 2 validators + 2 sync targets, nodes catch up through Gloas fork |
 | Node churn | DONE (script) | `--churn` flag: kill validator node 4, verify chain continues (75% stake), restart, verify recovery |
 | Mainnet preset | DONE (script) | `--mainnet` flag: 4 nodes, 512 validators, 32 slots/epoch, 12s slots, ~40 min timeout |
-| Long-running | TODO | 30+ min, catch memory leaks and stalls |
+| Long-running | DONE (script) | `--long` flag: epoch 50 target, periodic memory/CPU monitoring, ~40 min |
 | Builder path | TODO | External bids via API, envelope reveal flow |
 | Payload withholding | TODO | Bid without reveal, fork choice handles it |
 | Network partitions | TODO | Split nodes, reconnect, test fork resolution |
@@ -137,4 +137,38 @@ scripts/kurtosis-run.sh --churn --no-teardown # Leave running for inspection
 scripts/kurtosis-run.sh --mainnet              # Full test (~40 min)
 scripts/kurtosis-run.sh --mainnet --no-build   # Skip Docker build
 scripts/kurtosis-run.sh --mainnet --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Long-running test (run 111)
+
+**Implemented the long-running devnet test scenario** — sustained chain health for 50 epochs with periodic resource monitoring.
+
+**What was built:**
+
+**`--long` flag in `kurtosis-run.sh`** — Extended run using the default 4-node config:
+
+- `TARGET_FINALIZED_EPOCH=50` — ~50 epochs × 48s/epoch ≈ 40 min in minimal preset
+- `TIMEOUT=3000` (50 min) — generous margin for the long run
+- Periodic resource monitoring: every 5th poll (~60s), samples `docker stats` for all CL/EL containers
+- Resource snapshots logged to `resources.log` with container name, memory usage, and CPU %
+- Memory usage summary printed to stdout alongside chain health
+
+**Key design decisions:**
+- Reuses default `vibehouse-epbs.yaml` config — no separate config needed
+- 50-epoch target ensures ~40 min of continuous chain operation, well past the "30+ min" goal
+- Resource monitoring via `docker stats --no-stream` — non-intrusive, captures memory and CPU per container
+- Separate `resources.log` — easy to grep for memory trends over the run duration
+- Same stall detection as other modes — if chain stops advancing for 3 consecutive polls, test fails
+
+**What this tests:**
+- Memory leak detection over sustained operation (40 min of block production, attestation, finalization)
+- Chain stability over many epochs (50 epochs with continuous block production)
+- State management under sustained load (state cache behavior over many slots)
+- Resource usage trends (growing memory = potential leak)
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --long              # Full test (~40 min)
+scripts/kurtosis-run.sh --long --no-build   # Skip Docker build
+scripts/kurtosis-run.sh --long --no-teardown # Leave running for inspection
 ```

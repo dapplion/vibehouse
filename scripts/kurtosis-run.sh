@@ -4,7 +4,7 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long]
 #
 # Flags:
 #   --no-build      Skip Docker image build (use existing vibehouse:local)
@@ -17,6 +17,8 @@ set -euo pipefail
 #                   continues finalizing (75% stake), restart node, verify recovery
 #   --mainnet       Mainnet preset test: realistic committee sizes, 32 slots/epoch,
 #                   12s slots, 512 validators (128/node × 4 nodes)
+#   --long          Long-running test: 30+ min, epoch 50 target, periodic memory/resource
+#                   monitoring to catch leaks and stalls
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -24,6 +26,7 @@ set -euo pipefail
 #   health.log      — beacon API polling results (JSON per poll)
 #   sync.log        — sync mode: non-validator node sync progress (--sync only)
 #   churn.log       — churn mode: kill/recovery phase progress (--churn only)
+#   resources.log   — long mode: periodic container memory/CPU snapshots (--long only)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,6 +51,7 @@ MULTICLIENT_MODE=false
 SYNC_MODE=false
 CHURN_MODE=false
 MAINNET_MODE=false
+LONG_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -58,12 +62,18 @@ for arg in "$@"; do
     --sync)         SYNC_MODE=true ;;
     --churn)        CHURN_MODE=true ;;
     --mainnet)      MAINNET_MODE=true ;;
+    --long)         LONG_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
 
 # Select config based on mode
-if [ "$MAINNET_MODE" = true ]; then
+if [ "$LONG_MODE" = true ]; then
+  # Long-running uses the default 4-node config with high finalization target
+  TARGET_FINALIZED_EPOCH=50  # ~50 epochs × 48s = ~40 min in minimal preset
+  TIMEOUT=3000               # 50 minutes (generous margin)
+  echo "==> Long mode: using $KURTOSIS_CONFIG (4 nodes, target epoch $TARGET_FINALIZED_EPOCH, ~40 min)"
+elif [ "$MAINNET_MODE" = true ]; then
   KURTOSIS_CONFIG="$REPO_ROOT/kurtosis/vibehouse-mainnet.yaml"
   SLOTS_PER_EPOCH=32
   GLOAS_FORK_SLOT=$((GLOAS_FORK_EPOCH * SLOTS_PER_EPOCH))
@@ -228,6 +238,20 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
   fi
 
   echo "    [${elapsed}s] slot=$head_slot epoch=$current_epoch finalized=$finalized_epoch justified=$justified_epoch syncing=$is_syncing fork=$past_fork"
+
+  # Long mode: periodic resource monitoring (every 5th poll ≈ 60s)
+  if [ "$LONG_MODE" = true ] && [ $((elapsed % (POLL_INTERVAL * 5))) -eq 0 ]; then
+    resource_snapshot=$($SUDO docker stats --no-stream --format '{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}' 2>/dev/null | grep -E '(cl-|el-)' || echo "docker stats unavailable")
+    {
+      echo "--- resources ${elapsed}s ---"
+      echo "$resource_snapshot"
+    } >> "$RUN_DIR/resources.log"
+    # Show summary on stdout
+    mem_summary=$(echo "$resource_snapshot" | awk -F'\t' '{printf "%s=%s ", $1, $2}' 2>/dev/null || echo "")
+    if [ -n "$mem_summary" ]; then
+      echo "    [resources] $mem_summary"
+    fi
+  fi
 
   # Stall detection: if head_slot hasn't advanced in 3 polls, something is wrong
   if [ "$head_slot" -eq "$prev_slot" ] && [ "$head_slot" -ne "0" ]; then

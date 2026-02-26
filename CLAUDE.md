@@ -276,6 +276,9 @@ scripts/kurtosis-run.sh --churn
 
 # Mainnet preset test (32 slots/epoch, 12s slots, 512 validators, ~40 min)
 scripts/kurtosis-run.sh --mainnet
+
+# Long-running test (30+ min, epoch 50, resource monitoring, ~40 min)
+scripts/kurtosis-run.sh --long
 ```
 
 ### How the Devnet Works

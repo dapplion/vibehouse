@@ -65,7 +65,7 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 - **Syncing** — DONE (script): `scripts/kurtosis-run.sh --sync` — 2 validators + 2 sync targets, catches up through Gloas fork boundary
 - **Node churn** — DONE (script): `scripts/kurtosis-run.sh --churn` — kill validator node 4, verify chain continues (75% stake), restart, verify recovery
 - **Mainnet preset** — DONE (script): `scripts/kurtosis-run.sh --mainnet` — 4 nodes, 512 validators, 32 slots/epoch, 12s slots
-- **Long-running** — 30+ min, catch memory leaks and stalls
+- **Long-running** — DONE (script): `scripts/kurtosis-run.sh --long` — epoch 50 target, periodic memory/CPU monitoring, ~40 min
 - **Builder path** — external bids via API, envelope reveal flow
 - **Payload withholding** — bid without reveal, fork choice handles it
 - **Network partitions** — split nodes, reconnect, test fork resolution
