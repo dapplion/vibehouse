@@ -5825,6 +5825,184 @@ async fn gloas_cold_state_loadable_by_post_envelope_root() {
     );
 }
 
+/// Verify that `reconstruct_historic_states` correctly processes Gloas blocks when
+/// execution payloads have been pruned (only blinded envelopes remain).
+///
+/// After finalization, `try_prune_execution_payloads` deletes the full execution payload
+/// stored in the `ExecPayload` column for finalized Gloas blocks, retaining only the
+/// blinded envelope in the `BeaconEnvelope` column. When `reconstruct_historic_states` then
+/// replays blocks to compute intermediate states, it must fall back to the blinded envelope
+/// path to apply envelope processing and get correct `latest_block_hash` values.
+///
+/// The test verifies:
+/// 1. After payload pruning, `get_payload_envelope()` returns None for finalized Gloas blocks
+/// 2. `get_blinded_payload_envelope()` still succeeds (blinded envelopes are retained)
+/// 3. `reconstruct_historic_states()` completes without error
+/// 4. Cold states loaded after reconstruction have `latest_block_hash` equal to the
+///    bid's `block_hash` from the blinded envelope (envelope processing was correctly applied)
+#[tokio::test]
+async fn gloas_reconstruct_states_with_pruned_payloads() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    // Disable payload pruning during chain operation so we can prune manually after.
+    let store_config = StoreConfig {
+        prune_payloads: false,
+        ..StoreConfig::default()
+    };
+    let store = get_store_generic(&db_path, store_config, spec.clone());
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+
+    // Use reconstruct_historic_states: false so states are not auto-reconstructed.
+    // This leaves anchor state_lower_limit = 0 and state_upper_limit = MAX (no-retain mode),
+    // meaning reconstruct_historic_states() will find work to do.
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: false,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build 7 epochs to ensure finalization past the Gloas fork.
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let split_slot = store.get_split_slot();
+    assert!(
+        split_slot > Slot::new(0),
+        "chain should have finalized: split_slot={}",
+        split_slot
+    );
+
+    // Collect Gloas block roots in the cold DB, their pre-envelope state roots (block.state_root),
+    // and expected bid block_hash values from the blinded envelope before pruning.
+    // pre_state_root is stored in the cold DB by reconstruct_historic_states as the key.
+    let mut gloas_blocks: Vec<(Hash256, Hash256, Slot, ExecutionBlockHash)> = Vec::new();
+    for slot_num in 1..split_slot.as_u64() {
+        let slot = Slot::new(slot_num);
+        if !harness
+            .chain
+            .spec
+            .fork_name_at_slot::<E>(slot)
+            .gloas_enabled()
+        {
+            continue;
+        }
+        let Some(block_root) = harness
+            .chain
+            .block_root_at_slot(slot, WhenSlotSkipped::Prev)
+            .unwrap()
+        else {
+            continue;
+        };
+        // Load blinded envelope to get the bid's block_hash before pruning.
+        let Ok(Some(blinded)) = store.get_blinded_payload_envelope(&block_root) else {
+            continue;
+        };
+        let bid_block_hash = blinded.message.payload_header.block_hash;
+        // Get the pre-envelope state root from the block.
+        let Ok(Some(block)) = store.get_blinded_block(&block_root) else {
+            continue;
+        };
+        let pre_state_root = block.state_root();
+        gloas_blocks.push((block_root, pre_state_root, slot, bid_block_hash));
+    }
+    assert!(
+        !gloas_blocks.is_empty(),
+        "should have Gloas blocks in cold DB"
+    );
+
+    // Verify full payloads exist before pruning.
+    for (block_root, _, _, _) in &gloas_blocks {
+        assert!(
+            store.execution_payload_exists(block_root).unwrap(),
+            "full payload should exist before pruning for {:?}",
+            block_root
+        );
+    }
+
+    // Prune execution payloads (force=true to prune even if already marked pruned).
+    store.try_prune_execution_payloads(true).unwrap();
+
+    // Verify: full payloads gone, blinded envelopes retained.
+    let mut pruned_count = 0;
+    for (block_root, _, _, _) in &gloas_blocks {
+        // Full payload should be gone.
+        assert!(
+            !store.execution_payload_exists(block_root).unwrap(),
+            "full payload should be pruned for {:?}",
+            block_root
+        );
+        // get_payload_envelope should return None (requires full payload).
+        assert!(
+            store.get_payload_envelope(block_root).unwrap().is_none(),
+            "get_payload_envelope should return None after pruning for {:?}",
+            block_root
+        );
+        // Blinded envelope should still exist.
+        assert!(
+            store
+                .get_blinded_payload_envelope(block_root)
+                .unwrap()
+                .is_some(),
+            "blinded envelope should still exist after pruning for {:?}",
+            block_root
+        );
+        pruned_count += 1;
+    }
+    assert!(pruned_count > 0, "should have pruned at least one payload");
+
+    // Reconstruct historic states. This should use blinded envelopes for Gloas blocks since
+    // full payloads are gone. The reconstructed states must have correct latest_block_hash.
+    store.clone().reconstruct_historic_states(None).unwrap();
+
+    // Verify reconstructed states have correct latest_block_hash.
+    // reconstruct_historic_states stores states under the pre-envelope state root (block.state_root).
+    // The stored state content includes envelope processing: latest_block_hash == bid.block_hash.
+    // Use load_cold_state_by_slot which replays from snapshots/hdiffs stored during reconstruction.
+    let mut verified_count = 0;
+    for (block_root, pre_state_root, slot, bid_block_hash) in &gloas_blocks {
+        // Load the reconstructed state by pre-envelope root (this was the key used by reconstruction).
+        let Some(reconstructed_state) = store.load_cold_state(pre_state_root).unwrap() else {
+            // Not all slots have a ColdStateSummary — skip slots that aren't restoration points.
+            continue;
+        };
+        // The reconstructed state should have latest_block_hash == bid.block_hash because
+        // reconstruct_historic_states applied the blinded envelope (fallback path).
+        let Ok(state_lbh) = reconstructed_state.latest_block_hash() else {
+            // Not a Gloas state (e.g. pre-fork slot that somehow ended up in the loop).
+            continue;
+        };
+        assert_eq!(
+            *state_lbh, *bid_block_hash,
+            "reconstructed state latest_block_hash should match bid.block_hash \
+             for block_root {:?} at slot {}",
+            block_root, slot
+        );
+        verified_count += 1;
+    }
+    // At minimum, epoch-boundary states (restoration points) are stored under their pre-envelope
+    // root and must have correct latest_block_hash.
+    assert!(
+        verified_count > 0,
+        "should have verified at least one reconstructed Gloas state with correct latest_block_hash"
+    );
+}
+
 fn get_finalized_epoch_boundary_blocks(
     dump: &[BeaconSnapshot<MinimalEthSpec, BlindedPayload<MinimalEthSpec>>],
 ) -> HashSet<SignedBeaconBlockHash> {
