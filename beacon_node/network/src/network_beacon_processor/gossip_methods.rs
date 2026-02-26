@@ -3350,6 +3350,46 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            // Spec: [IGNORE] SignedProposerPreferences for bid.slot has been seen
+            Err(ExecutionBidError::ProposerPreferencesNotSeen { .. }) => {
+                debug!(
+                    builder_index,
+                    %peer_id,
+                    "Ignoring execution bid: proposer preferences not yet seen for this slot"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            // Spec: [REJECT] bid.fee_recipient matches proposer preferences
+            Err(ExecutionBidError::FeeRecipientMismatch { .. }) => {
+                warn!(
+                    builder_index,
+                    %peer_id,
+                    "Rejecting execution bid: fee_recipient does not match proposer preferences"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_fee_recipient_mismatch",
+                );
+                return;
+            }
+            // Spec: [REJECT] bid.gas_limit matches proposer preferences
+            Err(ExecutionBidError::GasLimitMismatch { .. }) => {
+                warn!(
+                    builder_index,
+                    %peer_id,
+                    "Rejecting execution bid: gas_limit does not match proposer preferences"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "execution_bid_gas_limit_mismatch",
+                );
+                return;
+            }
             // Internal errors (arithmetic, state access) — ignore with mild penalty
             Err(e) => {
                 debug!(
@@ -3785,6 +3825,17 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             return;
         }
 
+        // [IGNORE] first valid message for this validator+slot
+        if self.chain.get_proposer_preferences(proposal_slot).is_some() {
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                "Ignoring proposer preferences: already have preferences for this slot"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            return;
+        }
+
         // [REJECT] valid signature
         let head_snapshot = &self.chain.canonical_head.cached_head().snapshot;
         let Some(pubkey) = head_snapshot
@@ -3839,8 +3890,8 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             "Accepted proposer preferences"
         );
 
-        // TODO(dapplion/vibehouse#30): store in a proposer preferences pool for use
-        // during bid validation and block production
+        // Store in the proposer preferences pool for bid validation
+        self.chain.insert_proposer_preferences(signed_preferences);
     }
 
     /// Process an execution proof received via gossip.

@@ -29,8 +29,8 @@ use std::sync::Arc;
 use strum::AsRefStr;
 use tree_hash::TreeHash;
 use types::{
-    BeaconStateError, BuilderIndex, EthSpec, ExecutionBlockHash, Hash256, PayloadAttestation,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, Slot,
+    Address, BeaconStateError, BuilderIndex, EthSpec, ExecutionBlockHash, Hash256,
+    PayloadAttestation, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, Slot,
     consts::gloas::BUILDER_INDEX_SELF_BUILD,
 };
 
@@ -91,6 +91,33 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer has sent an invalid message.
     InvalidSignature,
+    /// No proposer preferences have been seen for the bid's slot.
+    ///
+    /// Spec: `[IGNORE] the SignedProposerPreferences where
+    /// preferences.proposal_slot is equal to bid.slot has been seen.`
+    ///
+    /// ## Peer scoring
+    /// Not malicious — preferences may not have arrived yet.
+    ProposerPreferencesNotSeen { slot: Slot },
+    /// The bid's fee_recipient does not match the proposer's preferences.
+    ///
+    /// Spec: `[REJECT] bid.fee_recipient matches the fee_recipient from
+    /// the proposer's SignedProposerPreferences.`
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    FeeRecipientMismatch {
+        expected: Address,
+        received: Address,
+    },
+    /// The bid's gas_limit does not match the proposer's preferences.
+    ///
+    /// Spec: `[REJECT] bid.gas_limit matches the gas_limit from
+    /// the proposer's SignedProposerPreferences.`
+    ///
+    /// ## Peer scoring
+    /// The peer has sent an invalid message.
+    GasLimitMismatch { expected: u64, received: u64 },
     /// The parent block root does not match the head.
     ///
     /// ## Peer scoring
@@ -416,6 +443,28 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(ExecutionBidError::InvalidParentRoot {
                 expected: head_block_root,
                 received: bid.message.parent_block_root,
+            });
+        }
+
+        // Check 4b: Proposer preferences validation
+        // Spec: [IGNORE] the SignedProposerPreferences for bid.slot has been seen.
+        // Spec: [REJECT] bid.fee_recipient matches the proposer's preferences.
+        // Spec: [REJECT] bid.gas_limit matches the proposer's preferences.
+        let preferences = self
+            .get_proposer_preferences(bid_slot)
+            .ok_or(ExecutionBidError::ProposerPreferencesNotSeen { slot: bid_slot })?;
+
+        if bid.message.fee_recipient != preferences.message.fee_recipient {
+            return Err(ExecutionBidError::FeeRecipientMismatch {
+                expected: preferences.message.fee_recipient,
+                received: bid.message.fee_recipient,
+            });
+        }
+
+        if bid.message.gas_limit != preferences.message.gas_limit {
+            return Err(ExecutionBidError::GasLimitMismatch {
+                expected: preferences.message.gas_limit,
+                received: bid.message.gas_limit,
             });
         }
 

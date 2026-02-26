@@ -2265,6 +2265,22 @@ fn assert_ignore(result: MessageAcceptance) {
     assert_matches!(result, MessageAcceptance::Ignore);
 }
 
+/// Helper: insert proposer preferences for a given slot into the chain's pool.
+/// This is required for bid validation — per spec, bids are IGNORED if preferences
+/// for the slot haven't been seen yet.
+fn insert_preferences_for_bid(rig: &TestRig, slot: Slot, fee_recipient: Address, gas_limit: u64) {
+    let preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: slot.as_u64(),
+            validator_index: 0, // doesn't matter for bid validation
+            fee_recipient,
+            gas_limit,
+        },
+        signature: bls::Signature::empty(),
+    };
+    rig.chain.insert_proposer_preferences(preferences);
+}
+
 /// Gloas gossip: execution bid with zero execution_payment is REJECTED.
 ///
 /// Per spec: [REJECT] bid.execution_payment > 0
@@ -3568,6 +3584,9 @@ async fn test_gloas_gossip_bid_duplicate_ignored() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
     let bid_msg = ExecutionPayloadBid {
         slot: current_slot,
         execution_payment: 1,
@@ -3612,6 +3631,9 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
     let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
+
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
 
     // First bid with value=100
     let bid_msg1 = ExecutionPayloadBid {
@@ -3740,6 +3762,9 @@ async fn test_gloas_gossip_bid_invalid_signature_rejected() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
     let bid_msg = ExecutionPayloadBid {
         slot: current_slot,
         execution_payment: 1,
@@ -3791,6 +3816,9 @@ async fn test_gloas_gossip_bid_valid_accepted() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
     let bid_msg = ExecutionPayloadBid {
         slot: current_slot,
         execution_payment: 1,
@@ -3809,4 +3837,123 @@ async fn test_gloas_gossip_bid_valid_accepted() {
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_accept(result);
+}
+
+/// Gloas gossip: execution bid without proposer preferences is IGNORED.
+///
+/// Per spec: [IGNORE] SignedProposerPreferences for bid.slot has been seen
+/// If no proposer preferences have been submitted for the slot, the bid is
+/// silently ignored (not rejected — the preferences may arrive later).
+#[tokio::test]
+async fn test_gloas_gossip_bid_no_preferences_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Do NOT insert preferences — this should cause the bid to be ignored
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: execution bid with mismatched fee_recipient is REJECTED.
+///
+/// Per spec: [REJECT] bid.fee_recipient matches proposer's declared preferences
+/// When the proposer has set a specific fee_recipient and the bid uses a different
+/// one, the bid must be rejected.
+#[tokio::test]
+async fn test_gloas_gossip_bid_fee_recipient_mismatch_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Insert preferences with a specific fee_recipient
+    let expected_fee_recipient = Address::repeat_byte(0xaa);
+    insert_preferences_for_bid(&rig, current_slot, expected_fee_recipient, 0);
+
+    // Bid uses a different fee_recipient
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        fee_recipient: Address::repeat_byte(0xbb), // mismatched
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: execution bid with mismatched gas_limit is REJECTED.
+///
+/// Per spec: [REJECT] bid.gas_limit matches proposer's declared preferences
+/// When the proposer has set a specific gas_limit and the bid uses a different
+/// one, the bid must be rejected.
+#[tokio::test]
+async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Insert preferences with a specific gas_limit
+    let expected_gas_limit = 30_000_000u64;
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, expected_gas_limit);
+
+    // Bid uses a different gas_limit
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        gas_limit: 15_000_000, // mismatched
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
 }

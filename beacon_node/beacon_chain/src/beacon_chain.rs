@@ -500,6 +500,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Gloas ePBS: pool of verified payload attestations for block inclusion.
     /// Keyed by the slot the attestation targets (i.e., data.slot).
     pub payload_attestation_pool: Mutex<HashMap<Slot, Vec<PayloadAttestation<T::EthSpec>>>>,
+    /// Gloas ePBS: pool of verified proposer preferences for bid validation.
+    /// Keyed by proposal_slot. Builders must match fee_recipient and gas_limit
+    /// from the proposer's preferences when submitting bids.
+    pub proposer_preferences_pool: Mutex<HashMap<Slot, SignedProposerPreferences>>,
     /// Gloas ePBS: buffer of gossip-received envelopes whose block root was not yet known
     /// in fork choice at verification time. Keyed by beacon_block_root.
     ///
@@ -3296,6 +3300,38 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Insert a verified proposer preferences message into the pool.
+    ///
+    /// Returns `true` if this is the first preferences message for the given slot
+    /// (i.e., it was inserted). Returns `false` if a preferences message for this
+    /// slot already exists (duplicate — per spec, only the first is accepted).
+    pub fn insert_proposer_preferences(
+        &self,
+        signed_preferences: SignedProposerPreferences,
+    ) -> bool {
+        let slot = Slot::new(signed_preferences.message.proposal_slot);
+        let mut pool = self.proposer_preferences_pool.lock();
+
+        if pool.contains_key(&slot) {
+            return false;
+        }
+
+        pool.insert(slot, signed_preferences);
+
+        // Prune preferences older than 2 epochs to bound memory.
+        let current_slot = self.slot().unwrap_or(slot);
+        let prune_before =
+            current_slot.saturating_sub(T::EthSpec::slots_per_epoch().saturating_mul(2));
+        pool.retain(|&s, _| s >= prune_before);
+
+        true
+    }
+
+    /// Get the proposer preferences for a given slot.
+    pub fn get_proposer_preferences(&self, slot: Slot) -> Option<SignedProposerPreferences> {
+        self.proposer_preferences_pool.lock().get(&slot).cloned()
     }
 
     /// Accepts an `VerifiedUnaggregatedAttestation` and attempts to apply it to the "naive
