@@ -1417,6 +1417,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - SSZ static test handler split into separate Fulu and Gloas handlers
 - Commit: `b7ce41079`
 
+### 2026-02-26 — external builder integration tests + bid test fixes (run 113)
+- Added 3 new integration tests in `gloas.rs` for external builder block import lifecycle:
+  - `gloas_external_bid_block_import_payload_unrevealed`: imports block with external bid, verifies payload_revealed=false in fork choice
+  - `gloas_external_bid_import_fork_choice_builder_index`: verifies stored block preserves correct builder_index and bid value
+  - `gloas_external_bid_envelope_reveals_payload_in_fork_choice`: constructs signed envelope, gossip-verifies it, applies to fork choice, verifies payload_revealed=true
+- Fixed 4 pre-existing test failures in `gloas_verification.rs` caused by proposer preferences validation added in run 111:
+  - `bid_invalid_signature`, `bid_valid_signature_passes`, `bid_balance_exactly_sufficient_passes`, `bid_second_builder_valid_signature_passes`
+  - Added `insert_preferences_for_bid` helper to insert matching preferences before bid reaches signature/balance checks
+- All 569 beacon_chain tests pass
+- Audited consensus-specs: PR #4918 (attestation index=1 requires payload_states) already implemented in vibehouse
+
 ### 2026-02-20 — 21 PubsubMessage Gloas gossip encode/decode tests (run 54)
 - Added 21 unit tests for all 5 Gloas PubsubMessage variants + Gloas BeaconBlock
 - Tests cover: SSZ round-trip encode/decode, kind() mapping, pre-Gloas fork rejection, invalid SSZ data
