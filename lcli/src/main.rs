@@ -3,6 +3,7 @@ mod check_deposit_data;
 mod generate_bootnode_enr;
 mod http_sync;
 mod indexed_attestations;
+mod inject_slashing;
 mod mnemonic_validators;
 mod mock_el;
 mod parse_ssz;
@@ -706,6 +707,41 @@ fn main() {
                         .display_order(0)
                 )
         )
+        .subcommand(
+            Command::new("inject-slashing")
+                .about(
+                    "Create and submit a proposer or attester slashing to a beacon node via HTTP API. \
+                    For devnet testing of slashing detection. \
+                    Uses deterministic (interop) keypairs — beacon node must use interop validators."
+                )
+                .arg(
+                    Arg::new("beacon-url")
+                        .long("beacon-url")
+                        .value_name("URL")
+                        .action(ArgAction::Set)
+                        .required(true)
+                        .help("URL of the beacon node HTTP API.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("type")
+                        .long("type")
+                        .value_name("TYPE")
+                        .action(ArgAction::Set)
+                        .required(true)
+                        .help("Type of slashing: 'proposer' (double-proposal) or 'attester' (double-vote).")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("validator-index")
+                        .long("validator-index")
+                        .value_name("N")
+                        .action(ArgAction::Set)
+                        .required(true)
+                        .help("Validator index to slash. Uses the interop keypair at this index.")
+                        .display_order(0)
+                )
+        )
         .get_matches();
 
     let result = matches
@@ -841,6 +877,11 @@ fn run<E: EthSpec>(env_builder: EnvironmentBuilder<E>, matches: &ArgMatches) -> 
             let network_config = get_network_config()?;
             submit_builder_bid::run::<E>(env, network_config, matches)
                 .map_err(|e| format!("Failed to run submit-builder-bid command: {}", e))
+        }
+        Some(("inject-slashing", matches)) => {
+            let network_config = get_network_config()?;
+            inject_slashing::run::<E>(env, network_config, matches)
+                .map_err(|e| format!("Failed to run inject-slashing command: {}", e))
         }
         Some((other, _)) => Err(format!("Unknown subcommand {}. See --help.", other)),
         _ => Err("No subcommand provided. See --help.".to_string()),

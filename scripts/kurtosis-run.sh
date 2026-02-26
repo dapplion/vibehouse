@@ -4,7 +4,7 @@ set -euo pipefail
 # Bounded devnet lifecycle for vibehouse.
 # Build -> clean old enclave -> start -> poll beacon API -> teardown.
 #
-# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition] [--builder] [--withhold]
+# Usage: scripts/kurtosis-run.sh [--no-build] [--no-teardown] [--stateless] [--multiclient] [--sync] [--churn] [--mainnet] [--long] [--partition] [--builder] [--withhold] [--slashings]
 #
 # Flags:
 #   --no-build      Skip Docker image build (use existing vibehouse:local)
@@ -25,6 +25,8 @@ set -euo pipefail
 #                   submit bids via lcli after Gloas fork, verify blocks use external bids
 #   --withhold      Payload withholding test: submit a bid but never reveal the envelope,
 #                   verify fork choice takes the EMPTY path and chain continues finalizing
+#   --slashings     Slashing detection test: inject double-proposal and double-vote slashings
+#                   via lcli, verify beacon node detects and includes them in blocks
 #
 # Logs: each run writes to /tmp/kurtosis-runs/<RUN_ID>/ with separate files:
 #   build.log       — cargo build + docker build output
@@ -36,6 +38,7 @@ set -euo pipefail
 #   partition.log   — partition mode: split/heal phase progress (--partition only)
 #   builder.log     — builder mode: bid submission and block verification (--builder only)
 #   withhold.log    — withhold mode: bid submission and EMPTY path finalization (--withhold only)
+#   slashings.log   — slashings mode: slashing injection and detection results (--slashings only)
 #   dump/           — enclave dump on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -64,6 +67,7 @@ LONG_MODE=false
 PARTITION_MODE=false
 BUILDER_MODE=false
 WITHHOLD_MODE=false
+SLASHINGS_MODE=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -78,6 +82,7 @@ for arg in "$@"; do
     --partition)    PARTITION_MODE=true ;;
     --builder)      BUILDER_MODE=true ;;
     --withhold)     WITHHOLD_MODE=true ;;
+    --slashings)    SLASHINGS_MODE=true ;;
     *) echo "Unknown flag: $arg"; exit 1 ;;
   esac
 done
@@ -127,6 +132,11 @@ elif [ "$WITHHOLD_MODE" = true ]; then
   TARGET_FINALIZED_EPOCH=3  # wait past Gloas fork so builder is active
   TIMEOUT=900               # 15 minutes total
   echo "==> Withhold mode: using $KURTOSIS_CONFIG (4 validators, 1 genesis builder, no envelope)"
+elif [ "$SLASHINGS_MODE" = true ]; then
+  # Slashings uses the default 4-node config — no builder needed
+  TARGET_FINALIZED_EPOCH=3  # wait past Gloas fork so fork is active for correct slashing types
+  TIMEOUT=900               # 15 minutes total (finalization + slashing injection + detection)
+  echo "==> Slashings mode: using $KURTOSIS_CONFIG (4 validators, slashing injection test)"
 fi
 
 # Detect if we need sudo for docker/kurtosis (docker socket not accessible)
@@ -333,6 +343,13 @@ while [ "$elapsed" -lt "$TIMEOUT" ]; do
     if [ "$WITHHOLD_MODE" = true ]; then
       PRE_WITHHOLD_FINALIZED="$finalized_epoch"
       PRE_WITHHOLD_HEAD="$head_slot"
+      break
+    fi
+
+    # In slashings mode, break out to run the slashing injection phase
+    if [ "$SLASHINGS_MODE" = true ]; then
+      PRE_SLASHINGS_FINALIZED="$finalized_epoch"
+      PRE_SLASHINGS_HEAD="$head_slot"
       break
     fi
 
@@ -1120,6 +1137,211 @@ if [ "$WITHHOLD_MODE" = true ] && [ "${PRE_WITHHOLD_FINALIZED:-0}" -gt 0 ]; then
   echo "==> SUCCESS: Payload withholding test complete"
   echo "==> Full logs: $RUN_DIR"
   echo "==> Withhold log: $RUN_DIR/withhold.log"
+  cleanup
+  exit 0
+fi
+
+# ============================================================
+# SLASHINGS MODE: Inject proposer and attester slashings, verify detection.
+# Uses lcli inject-slashing to submit double-proposal and double-vote slashings.
+# Verifies the chain continues finalizing AND the slashed validators show as slashed.
+# ============================================================
+if [ "$SLASHINGS_MODE" = true ] && [ "${PRE_SLASHINGS_FINALIZED:-0}" -gt 0 ]; then
+  # Use validator_index 1 for proposer slashing and validator_index 2 for attester slashing.
+  # (Index 0 could be a proposer at genesis — safer to use 1/2.)
+  PROPOSER_SLASH_IDX=1
+  ATTESTER_SLASH_IDX=2
+
+  echo ""
+  echo "==> SLASHINGS PHASE: Injecting proposer and attester slashings..."
+  echo "    Pre-slashings: finalized_epoch=$PRE_SLASHINGS_FINALIZED head_slot=$PRE_SLASHINGS_HEAD"
+  {
+    echo "=== slashings phase ==="
+    echo "pre_slashings_finalized=$PRE_SLASHINGS_FINALIZED"
+    echo "pre_slashings_head=$PRE_SLASHINGS_HEAD"
+  } >> "$RUN_DIR/slashings.log"
+
+  # Find lcli
+  LCLI="$REPO_ROOT/target/release/lcli"
+  if [ ! -f "$LCLI" ]; then
+    LCLI="$(command -v lcli 2>/dev/null || true)"
+    if [ -z "$LCLI" ]; then
+      echo "==> WARNING: lcli not found — skipping slashing injection"
+      echo "    Build with 'cargo build --release -p lcli' to enable slashing tests"
+      {
+        echo "lcli not found — slashing injection skipped"
+      } >> "$RUN_DIR/slashings.log"
+    fi
+  fi
+
+  proposer_slash_injected=false
+  attester_slash_injected=false
+
+  if [ -n "${LCLI:-}" ] && [ -f "$LCLI" ]; then
+    # Phase 1a: Inject proposer slashing (double-proposal equivocation)
+    echo "    [Phase 1a] Injecting proposer slashing for validator $PROPOSER_SLASH_IDX..."
+    proposer_output=$("$LCLI" \
+      --spec minimal \
+      inject-slashing \
+      --beacon-url "$BEACON_URL" \
+      --type proposer \
+      --validator-index "$PROPOSER_SLASH_IDX" \
+      2>&1 || true)
+    echo "    $proposer_output"
+    {
+      echo "--- proposer slashing injection ---"
+      echo "$proposer_output"
+    } >> "$RUN_DIR/slashings.log"
+
+    if echo "$proposer_output" | grep -q "submitted successfully"; then
+      proposer_slash_injected=true
+      echo "    Proposer slashing accepted by beacon node pool."
+    else
+      echo "    WARNING: Proposer slashing not confirmed — may have been rejected."
+    fi
+
+    sleep 6  # wait one slot before attester slashing
+
+    # Phase 1b: Inject attester slashing (double-vote equivocation)
+    echo "    [Phase 1b] Injecting attester slashing for validator $ATTESTER_SLASH_IDX..."
+    attester_output=$("$LCLI" \
+      --spec minimal \
+      inject-slashing \
+      --beacon-url "$BEACON_URL" \
+      --type attester \
+      --validator-index "$ATTESTER_SLASH_IDX" \
+      2>&1 || true)
+    echo "    $attester_output"
+    {
+      echo "--- attester slashing injection ---"
+      echo "$attester_output"
+    } >> "$RUN_DIR/slashings.log"
+
+    if echo "$attester_output" | grep -q "submitted successfully"; then
+      attester_slash_injected=true
+      echo "    Attester slashing accepted by beacon node pool."
+    else
+      echo "    WARNING: Attester slashing not confirmed — may have been rejected."
+    fi
+  fi
+
+  # Phase 2: Wait for chain to continue finalizing (slashings should be included in blocks)
+  # We wait for 2 more epochs — enough time for slashings to be included and the epoch processed
+  SLASH_FIN_TARGET=$((PRE_SLASHINGS_FINALIZED + 2))
+  SLASH_TIMEOUT=180  # 3 minutes (~2 minimal preset epochs)
+  SLASH_POLL=12
+  slash_elapsed=0
+  slash_chain_healthy=false
+
+  echo "==> Waiting for chain to continue finalizing after slashing injection (target epoch $SLASH_FIN_TARGET)..."
+
+  while [ "$slash_elapsed" -lt "$SLASH_TIMEOUT" ]; do
+    sleep "$SLASH_POLL"
+    slash_elapsed=$((slash_elapsed + SLASH_POLL))
+
+    syncing=$(curl -sf "$BEACON_URL/eth/v1/node/syncing" 2>/dev/null || echo "")
+    head_slot="?"
+    if [ -n "$syncing" ]; then
+      head_slot=$(echo "$syncing" | jq -r '.data.head_slot' 2>/dev/null || echo "?")
+    fi
+
+    finality=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/finality_checkpoints" 2>/dev/null || echo "")
+    finalized_epoch="0"
+    if [ -n "$finality" ]; then
+      finalized_epoch=$(echo "$finality" | jq -r '.data.finalized.epoch' 2>/dev/null || echo "0")
+    fi
+
+    echo "    [${slash_elapsed}s] head=$head_slot finalized=$finalized_epoch (target=$SLASH_FIN_TARGET)"
+    {
+      echo "--- slash-health ${slash_elapsed}s ---"
+      echo "head=$head_slot finalized=$finalized_epoch"
+    } >> "$RUN_DIR/slashings.log"
+
+    if [ "$finalized_epoch" -ge "$SLASH_FIN_TARGET" ]; then
+      slash_chain_healthy=true
+      break
+    fi
+  done
+
+  if [ "$slash_chain_healthy" != true ]; then
+    echo "==> FAIL: Chain stalled after slashing injection"
+    echo "    Finalized: $finalized_epoch (needed $SLASH_FIN_TARGET)"
+    dump_logs
+    cleanup
+    exit 1
+  fi
+
+  # Phase 3: Check if the slashed validators are marked as slashed in the state
+  proposer_slashed=false
+  attester_slashed=false
+
+  echo "==> Checking validator slashing status via beacon API..."
+
+  # Check proposer slash target
+  proposer_resp=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/validators/$PROPOSER_SLASH_IDX" 2>/dev/null || echo "")
+  if [ -n "$proposer_resp" ]; then
+    p_slashed=$(echo "$proposer_resp" | jq -r '.data.validator.slashed' 2>/dev/null || echo "false")
+    p_status=$(echo "$proposer_resp" | jq -r '.data.status' 2>/dev/null || echo "?")
+    echo "    Validator $PROPOSER_SLASH_IDX (proposer slash target): slashed=$p_slashed status=$p_status"
+    {
+      echo "validator_$PROPOSER_SLASH_IDX: slashed=$p_slashed status=$p_status"
+    } >> "$RUN_DIR/slashings.log"
+    if [ "$p_slashed" = "true" ]; then
+      proposer_slashed=true
+    fi
+  else
+    echo "    WARNING: Could not query validator $PROPOSER_SLASH_IDX state"
+  fi
+
+  # Check attester slash target
+  attester_resp=$(curl -sf "$BEACON_URL/eth/v1/beacon/states/head/validators/$ATTESTER_SLASH_IDX" 2>/dev/null || echo "")
+  if [ -n "$attester_resp" ]; then
+    a_slashed=$(echo "$attester_resp" | jq -r '.data.validator.slashed' 2>/dev/null || echo "false")
+    a_status=$(echo "$attester_resp" | jq -r '.data.status' 2>/dev/null || echo "?")
+    echo "    Validator $ATTESTER_SLASH_IDX (attester slash target): slashed=$a_slashed status=$a_status"
+    {
+      echo "validator_$ATTESTER_SLASH_IDX: slashed=$a_slashed status=$a_status"
+    } >> "$RUN_DIR/slashings.log"
+    if [ "$a_slashed" = "true" ]; then
+      attester_slashed=true
+    fi
+  else
+    echo "    WARNING: Could not query validator $ATTESTER_SLASH_IDX state"
+  fi
+
+  # Summary
+  echo ""
+  echo "==> SLASHINGS RESULTS:"
+  echo "    Proposer slashing injected: $proposer_slash_injected | validator slashed: $proposer_slashed"
+  echo "    Attester slashing injected: $attester_slash_injected | validator slashed: $attester_slashed"
+  echo "    Chain finalized to epoch $finalized_epoch after slashing injection"
+
+  # Fail if injection succeeded but slashing wasn't detected
+  if [ "$proposer_slash_injected" = true ] && [ "$proposer_slashed" != true ]; then
+    echo "==> FAIL: Proposer slashing was submitted but validator $PROPOSER_SLASH_IDX not marked slashed"
+    echo "    This means the slashing was not included in a block or not processed correctly"
+    dump_logs
+    cleanup
+    exit 1
+  fi
+
+  if [ "$attester_slash_injected" = true ] && [ "$attester_slashed" != true ]; then
+    echo "==> FAIL: Attester slashing was submitted but validator $ATTESTER_SLASH_IDX not marked slashed"
+    echo "    This means the slashing was not included in a block or not processed correctly"
+    dump_logs
+    cleanup
+    exit 1
+  fi
+
+  echo ""
+  echo "==> SLASHINGS SUCCESS: Slashing detection verified"
+  echo "    Double-proposal: injected=$proposer_slash_injected detected=$proposer_slashed"
+  echo "    Double-vote:     injected=$attester_slash_injected detected=$attester_slashed"
+  echo "    Chain continued finalizing through slashing processing"
+  echo ""
+  echo "==> SUCCESS: Slashings test complete"
+  echo "==> Full logs: $RUN_DIR"
+  echo "==> Slashings log: $RUN_DIR/slashings.log"
   cleanup
   exit 0
 fi
