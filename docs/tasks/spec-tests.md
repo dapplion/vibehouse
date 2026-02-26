@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — process_withdrawals_gloas edge case unit tests (run 123)
+- Checked consensus-specs PRs since run 122: no new Gloas spec changes merged to stable
+  - Open PRs unchanged: #4948 (reorder payload status constants — approved by potuz, likely merging soon), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Conducted spec compliance audit** of fork choice (validate_on_attestation, is_supporting_vote, get_parent_payload_status, get_payload_tiebreaker) and beacon-chain state processing (process_execution_payload_envelope, process_builder_pending_payments, process_withdrawals_gloas). All implementations confirmed spec-compliant with no divergences
+- **Added 7 edge case unit tests** for `process_withdrawals_gloas` (per_block_processing/gloas.rs):
+  - `withdrawals_max_withdrawals_reached_updates_validator_index_from_last`: when all 4 withdrawal slots filled, `next_withdrawal_validator_index = (last.validator_index + 1) % validators_len` (the `if` branch at line 752)
+  - `withdrawals_partial_amount_capped_to_excess`: pending partial withdrawal requesting 5 ETH when only 1 ETH excess → capped to 1 ETH
+  - `withdrawals_builder_sweep_round_robin_from_nonzero_index`: 2 exited builders, sweep starting from index 1 wraps around to index 0, verifies ordering and builder index update
+  - `withdrawals_pending_partial_not_withdrawable_yet_breaks`: future `withdrawable_epoch` prevents processing, partial stays in queue
+  - `withdrawals_partial_and_validator_sweep_same_validator`: validator has both pending partial (2 ETH) and sweep excess (2 ETH), sweep accounts for already-withdrawn partial amount
+  - `withdrawals_builder_sweep_zero_balance_skipped`: exited builder with zero balance produces no sweep withdrawal
+  - `withdrawals_pending_partial_insufficient_balance_skipped`: partial withdrawal counted as processed but generates no withdrawal entry when balance <= min_activation_balance
+- Verified: 302/302 state_processing tests pass (was 295), cargo fmt + clippy clean
+- Commit: `bcb55df71`
+
 ### 2026-02-26 — fix get_payload_tiebreaker spec compliance bug (run 122)
 - Checked consensus-specs PRs since run 121: no new Gloas spec changes merged to stable
   - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
