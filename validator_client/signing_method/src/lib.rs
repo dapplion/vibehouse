@@ -51,6 +51,8 @@ pub enum SignableMessage<'a, E: EthSpec, Payload: AbstractExecPayload<E> = FullP
     ExecutionPayloadEnvelope(&'a ExecutionPayloadEnvelope<E>),
     /// Gloas ePBS: sign payload attestation data with DOMAIN_PTC_ATTESTER.
     PayloadAttestationData(&'a PayloadAttestationData),
+    /// Gloas ePBS: sign proposer preferences with DOMAIN_PROPOSER_PREFERENCES.
+    ProposerPreferences(&'a ProposerPreferences),
 }
 
 impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignableMessage<'_, E, Payload> {
@@ -74,6 +76,7 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignableMessage<'_, E, Payload
             SignableMessage::VoluntaryExit(exit) => exit.signing_root(domain),
             SignableMessage::ExecutionPayloadEnvelope(e) => e.signing_root(domain),
             SignableMessage::PayloadAttestationData(d) => d.signing_root(domain),
+            SignableMessage::ProposerPreferences(p) => p.signing_root(domain),
         }
     }
 }
@@ -245,6 +248,11 @@ impl SigningMethod {
                         return Err(Error::Web3SignerRequestFailed(
                             "Web3Signer does not support PayloadAttestationData signing"
                                 .to_string(),
+                        ));
+                    }
+                    SignableMessage::ProposerPreferences(_) => {
+                        return Err(Error::Web3SignerRequestFailed(
+                            "Web3Signer does not support ProposerPreferences signing".to_string(),
                         ));
                     }
                 };

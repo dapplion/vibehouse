@@ -530,6 +530,14 @@ mod poll_tests {
             unimplemented!()
         }
 
+        async fn sign_proposer_preferences(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::ProposerPreferences,
+        ) -> Result<types::SignedProposerPreferences, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
         async fn sign_attestation(
             &self,
             _: PublicKeyBytes,

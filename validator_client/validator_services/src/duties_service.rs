@@ -20,7 +20,7 @@ use futures::{
     StreamExt,
     stream::{self, FuturesUnordered},
 };
-use parking_lot::{RwLock, RwLockWriteGuard};
+use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
 use safe_arith::{ArithError, SafeArith};
 use slot_clock::SlotClock;
 use std::cmp::min;
@@ -396,6 +396,7 @@ impl<S, T> DutiesServiceBuilder<S, T> {
             enable_high_validator_count_metrics: self.enable_high_validator_count_metrics,
             selection_proof_config: self.attestation_selection_proof_config,
             disable_attesting: self.disable_attesting,
+            preferences_broadcast_epochs: Mutex::new(HashSet::new()),
         })
     }
 }
@@ -428,6 +429,9 @@ pub struct DutiesService<S, T> {
     /// Pass the config for distributed or non-distributed mode.
     pub selection_proof_config: SelectionProofConfig,
     pub disable_attesting: bool,
+    /// Tracks epochs for which proposer preferences have already been broadcast.
+    /// Prevents re-broadcasting on every slot.
+    pub preferences_broadcast_epochs: Mutex<HashSet<Epoch>>,
 }
 
 impl<S: ValidatorStore, T: SlotClock + 'static> DutiesService<S, T> {
@@ -666,6 +670,29 @@ pub fn start_update_service<S: ValidatorStore + 'static, T: SlotClock + 'static>
             }
         },
         "duties_service_sync_committee",
+    );
+
+    // Spawn the task which broadcasts proposer preferences for next-epoch proposing slots (Gloas).
+    let duties_service = core_duties_service.clone();
+    core_duties_service.executor.spawn(
+        async move {
+            loop {
+                if let Err(e) = broadcast_proposer_preferences(&duties_service).await {
+                    error!(
+                        error = ?e,
+                        "Failed to broadcast proposer preferences"
+                    );
+                }
+
+                if let Some(duration) = duties_service.slot_clock.duration_to_next_slot() {
+                    sleep(duration).await;
+                } else {
+                    sleep(duties_service.slot_clock.slot_duration()).await;
+                    continue;
+                }
+            }
+        },
+        "duties_service_proposer_preferences",
     );
 
     // Spawn the task which keeps track of local PTC (Payload Timeliness Committee) duties.
@@ -1595,6 +1622,171 @@ async fn poll_beacon_proposers<S: ValidatorStore, T: SlotClock + 'static>(
         .proposers
         .write()
         .retain(|&epoch, _| epoch + HISTORICAL_DUTIES_EPOCHS >= current_epoch);
+
+    Ok(())
+}
+
+/// Broadcast `SignedProposerPreferences` for any local validators that are proposing in the
+/// next epoch. Per the Gloas spec (validator.md), at the beginning of each epoch a validator
+/// MAY broadcast preferences for their upcoming proposal slots. This tells builders the
+/// proposer's fee_recipient and gas_limit so they can construct matching bids.
+///
+/// This function is idempotent per epoch — it tracks which epochs have been broadcast and
+/// skips re-broadcasting. Called once per slot from the duties service loop.
+async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotClock + 'static>(
+    duties_service: &Arc<DutiesService<S, T>>,
+) -> Result<(), Error<S::Error>> {
+    let spec = &duties_service.spec;
+    let current_slot = duties_service
+        .slot_clock
+        .now()
+        .ok_or(Error::UnableToReadSlotClock)?;
+    let current_epoch = current_slot.epoch(S::E::slots_per_epoch());
+    let next_epoch = current_epoch.saturating_add(1u64);
+
+    // Only broadcast after Gloas is activated.
+    if spec
+        .gloas_fork_epoch
+        .is_none_or(|gloas_epoch| current_epoch < gloas_epoch)
+    {
+        return Ok(());
+    }
+
+    // Check if we've already broadcast for this epoch's next-epoch.
+    {
+        let broadcast_epochs = duties_service.preferences_broadcast_epochs.lock();
+        if broadcast_epochs.contains(&next_epoch) {
+            return Ok(());
+        }
+    }
+
+    // No local validators → nothing to do.
+    let signing_pubkeys: HashSet<PublicKeyBytes> = duties_service
+        .validator_store
+        .voting_pubkeys(DoppelgangerStatus::only_safe);
+    if signing_pubkeys.is_empty() {
+        return Ok(());
+    }
+
+    // Fetch next-epoch proposer duties from the BN.
+    let next_epoch_duties = match duties_service
+        .beacon_nodes
+        .first_success(|beacon_node| async move {
+            beacon_node.get_validator_duties_proposer(next_epoch).await
+        })
+        .await
+    {
+        Ok(response) => response.data,
+        Err(e) => {
+            debug!(
+                error = %e,
+                %next_epoch,
+                "Failed to fetch next-epoch proposer duties for preferences broadcast"
+            );
+            return Ok(());
+        }
+    };
+
+    // Filter to local validators only.
+    let local_duties: Vec<_> = next_epoch_duties
+        .into_iter()
+        .filter(|d| signing_pubkeys.contains(&d.pubkey))
+        .collect();
+
+    if local_duties.is_empty() {
+        // Mark epoch as broadcast even if no local duties — avoids re-fetching.
+        duties_service
+            .preferences_broadcast_epochs
+            .lock()
+            .insert(next_epoch);
+        return Ok(());
+    }
+
+    debug!(
+        %next_epoch,
+        num_slots = local_duties.len(),
+        "Broadcasting proposer preferences for next epoch"
+    );
+
+    // Sign and submit preferences for each slot.
+    for duty in &local_duties {
+        let Some(fee_recipient) = duties_service
+            .validator_store
+            .get_fee_recipient(&duty.pubkey)
+        else {
+            warn!(
+                pubkey = %duty.pubkey,
+                slot = %duty.slot,
+                "Skipping proposer preferences: no fee_recipient configured"
+            );
+            continue;
+        };
+
+        let gas_limit = duties_service
+            .validator_store
+            .proposal_data(&duty.pubkey)
+            .map(|pd| pd.gas_limit)
+            .unwrap_or(30_000_000);
+
+        let preferences = types::ProposerPreferences {
+            proposal_slot: duty.slot.as_u64(),
+            validator_index: duty.validator_index,
+            fee_recipient,
+            gas_limit,
+        };
+
+        let signed_preferences = match duties_service
+            .validator_store
+            .sign_proposer_preferences(duty.pubkey, &preferences)
+            .await
+        {
+            Ok(signed) => signed,
+            Err(e) => {
+                warn!(
+                    pubkey = %duty.pubkey,
+                    slot = %duty.slot,
+                    error = ?e,
+                    "Failed to sign proposer preferences"
+                );
+                continue;
+            }
+        };
+
+        // Submit to BN (which will validate and gossip to the network).
+        if let Err(e) = duties_service
+            .beacon_nodes
+            .first_success(|beacon_node| {
+                let signed_preferences = signed_preferences.clone();
+                async move {
+                    beacon_node
+                        .post_beacon_pool_proposer_preferences(&signed_preferences)
+                        .await
+                }
+            })
+            .await
+        {
+            warn!(
+                pubkey = %duty.pubkey,
+                slot = %duty.slot,
+                error = %e,
+                "Failed to submit proposer preferences to BN"
+            );
+        } else {
+            debug!(
+                slot = %duty.slot,
+                validator_index = %duty.validator_index,
+                %fee_recipient,
+                %gas_limit,
+                "Broadcast proposer preferences"
+            );
+        }
+    }
+
+    // Mark this epoch as done.
+    let mut broadcast_epochs = duties_service.preferences_broadcast_epochs.lock();
+    broadcast_epochs.insert(next_epoch);
+    // Prune old entries.
+    broadcast_epochs.retain(|&e| e >= current_epoch.saturating_sub(1u64));
 
     Ok(())
 }

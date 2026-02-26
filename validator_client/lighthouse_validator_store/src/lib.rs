@@ -19,12 +19,13 @@ use tracing::{error, info, warn};
 use types::{
     AbstractExecPayload, Address, AggregateAndProof, Attestation, BeaconBlock, BlindedPayload,
     ChainSpec, ContributionAndProof, Domain, Epoch, EthSpec, ExecutionPayloadEnvelope, Fork,
-    Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage, PublicKeyBytes,
-    SelectionProof, Signature, SignedAggregateAndProof, SignedBeaconBlock,
-    SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedRoot,
-    SignedValidatorRegistrationData, SignedVoluntaryExit, Slot, SyncAggregatorSelectionData,
-    SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
-    ValidatorRegistrationData, VoluntaryExit, graffiti::GraffitiString,
+    Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage, ProposerPreferences,
+    PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof, SignedBeaconBlock,
+    SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    SignedRoot, SignedValidatorRegistrationData, SignedVoluntaryExit, Slot,
+    SyncAggregatorSelectionData, SyncCommitteeContribution, SyncCommitteeMessage,
+    SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData, VoluntaryExit,
+    graffiti::GraffitiString,
 };
 use validator_store::{
     DoppelgangerStatus, Error as ValidatorStoreError, ProposalData, SignedBlock, UnsignedBlock,
@@ -807,6 +808,30 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for LighthouseValidatorS
         Ok(PayloadAttestationMessage {
             validator_index,
             data: data.clone(),
+            signature,
+        })
+    }
+
+    async fn sign_proposer_preferences(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        preferences: &ProposerPreferences,
+    ) -> Result<SignedProposerPreferences, Error> {
+        let signing_epoch = Slot::new(preferences.proposal_slot).epoch(E::slots_per_epoch());
+        let signing_context = self.signing_context(Domain::ProposerPreferences, signing_epoch);
+        let signing_method = self.doppelganger_bypassed_signing_method(validator_pubkey)?;
+
+        let signature = signing_method
+            .get_signature::<E, BlindedPayload<E>>(
+                SignableMessage::ProposerPreferences(preferences),
+                signing_context,
+                &self.spec,
+                &self.task_executor,
+            )
+            .await?;
+
+        Ok(SignedProposerPreferences {
+            message: preferences.clone(),
             signature,
         })
     }

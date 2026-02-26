@@ -6,10 +6,10 @@ use std::sync::Arc;
 use types::{
     Address, Attestation, AttestationError, BlindedBeaconBlock, Epoch, EthSpec,
     ExecutionPayloadEnvelope, Graffiti, Hash256, PayloadAttestationData, PayloadAttestationMessage,
-    PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof, SignedBlindedBeaconBlock,
-    SignedContributionAndProof, SignedExecutionPayloadEnvelope, SignedValidatorRegistrationData,
-    Slot, SyncCommitteeContribution, SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId,
-    ValidatorRegistrationData,
+    ProposerPreferences, PublicKeyBytes, SelectionProof, Signature, SignedAggregateAndProof,
+    SignedBlindedBeaconBlock, SignedContributionAndProof, SignedExecutionPayloadEnvelope,
+    SignedProposerPreferences, SignedValidatorRegistrationData, Slot, SyncCommitteeContribution,
+    SyncCommitteeMessage, SyncSelectionProof, SyncSubnetId, ValidatorRegistrationData,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -118,6 +118,13 @@ pub trait ValidatorStore: Send + Sync {
         data: &PayloadAttestationData,
         validator_index: u64,
     ) -> impl Future<Output = Result<PayloadAttestationMessage, Error<Self::Error>>> + Send;
+
+    /// Sign proposer preferences with DOMAIN_PROPOSER_PREFERENCES (gloas ePBS).
+    fn sign_proposer_preferences(
+        &self,
+        validator_pubkey: PublicKeyBytes,
+        preferences: &ProposerPreferences,
+    ) -> impl Future<Output = Result<SignedProposerPreferences, Error<Self::Error>>> + Send;
 
     fn sign_attestation(
         &self,

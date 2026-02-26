@@ -2613,18 +2613,19 @@ pub fn serve<T: BeaconChainTypes>(
     // POST beacon/pool/proposer_preferences
     //
     // Accepts a signed proposer preferences message (Gloas ePBS).
-    // Validates the signature, inserts into the proposer preferences pool for bid validation.
-    // Intended for devnet testing via lcli — allows external tools to inject preferences
-    // without going through the P2P gossip path.
+    // Validates the signature, inserts into the proposer preferences pool for bid validation,
+    // and gossips the message to the P2P network.
     let post_beacon_pool_proposer_preferences = beacon_pool_path
         .clone()
         .and(warp::path("proposer_preferences"))
         .and(warp::path::end())
         .and(warp_utils::json::json())
+        .and(network_tx_filter.clone())
         .then(
             |task_spawner: TaskSpawner<T::EthSpec>,
              chain: Arc<BeaconChain<T>>,
-             signed_preferences: SignedProposerPreferences| {
+             signed_preferences: SignedProposerPreferences,
+             network_tx: UnboundedSender<NetworkMessage<T::EthSpec>>| {
                 task_spawner.blocking_json_task(Priority::P0, move || {
                     if !chain.spec.is_gloas_scheduled() {
                         return Err(warp_utils::reject::custom_bad_request(
@@ -2670,13 +2671,18 @@ pub fn serve<T: BeaconChainTypes>(
                         ));
                     }
 
-                    let inserted = chain.insert_proposer_preferences(signed_preferences);
+                    let inserted = chain.insert_proposer_preferences(signed_preferences.clone());
                     if inserted {
                         debug!(
                             %proposal_slot,
                             %validator_index,
                             "Inserted proposer preferences via HTTP"
                         );
+                        // Gossip the new preferences to the P2P network.
+                        publish_pubsub_message(
+                            &network_tx,
+                            PubsubMessage::ProposerPreferences(Box::new(signed_preferences)),
+                        )?;
                     } else {
                         debug!(
                             %proposal_slot,
