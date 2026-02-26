@@ -6622,6 +6622,7 @@ dependencies = [
  "slot_clock",
  "smallvec",
  "ssz_types",
+ "state_processing",
  "store",
  "strum 0.24.1",
  "task_executor",

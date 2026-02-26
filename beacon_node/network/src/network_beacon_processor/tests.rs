@@ -2494,6 +2494,204 @@ async fn test_gloas_gossip_payload_attestation_empty_bits_rejected() {
     assert_reject(result);
 }
 
+/// Helper: build a validly-signed payload attestation from a single PTC member.
+///
+/// Returns (attestation, ptc_validator_index, ptc_bit_index) where
+/// `ptc_validator_index` is the global validator index and `ptc_bit_index` is the
+/// position in the PTC bitfield. The attestation has a valid BLS aggregate signature
+/// using Domain::PtcAttester.
+fn build_valid_payload_attestation(
+    rig: &TestRig,
+    payload_present: bool,
+) -> (PayloadAttestation<E>, u64, usize) {
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_slot = rig.chain.slot().unwrap();
+    let spec = &rig.chain.spec;
+
+    // Get the PTC committee for the current slot
+    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+        head_state,
+        current_slot,
+        spec,
+    )
+    .expect("should get PTC committee");
+
+    // Pick the first PTC member
+    let ptc_bit_index = 0;
+    let validator_index = ptc_indices[ptc_bit_index];
+
+    // Build attestation data
+    let data = PayloadAttestationData {
+        beacon_block_root: head.beacon_block_root,
+        slot: current_slot,
+        payload_present,
+        blob_data_available: true,
+    };
+
+    // Compute the signing root
+    let epoch = current_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+
+    // Sign with the PTC member's secret key
+    let sk = &rig._harness.validator_keypairs[validator_index as usize].sk;
+    let individual_sig = sk.sign(signing_root);
+
+    // Wrap in AggregateSignature
+    let mut agg_sig = bls::AggregateSignature::infinity();
+    agg_sig.add_assign(&individual_sig);
+
+    // Set aggregation bits
+    let mut bits = ssz_types::BitVector::new();
+    bits.set(ptc_bit_index, true).unwrap();
+
+    let attestation = PayloadAttestation {
+        aggregation_bits: bits,
+        data,
+        signature: agg_sig,
+    };
+
+    (attestation, validator_index, ptc_bit_index)
+}
+
+/// Gloas gossip: valid payload attestation from a PTC member is ACCEPTED.
+///
+/// Per spec: all checks pass (current slot, known block root, valid PTC member,
+/// no equivocation, valid aggregation bits, valid BLS signature) → [ACCEPT].
+/// This test constructs a properly signed payload attestation from a real PTC
+/// committee member, exercises the full validation pipeline end-to-end, and
+/// verifies the gossip handler accepts and propagates the message.
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_valid_accepted() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let (attestation, _validator_index, _ptc_bit) = build_valid_payload_attestation(&rig, true);
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+/// Gloas gossip: payload attestation equivocation from a PTC member is REJECTED.
+///
+/// Per spec: a PTC member who sends two payload attestations for the same slot
+/// with different `payload_present` values is equivocating. The first attestation
+/// is accepted, the second is rejected with peer penalty.
+/// This test sends payload_present=true (Accept), then payload_present=false from
+/// the same validator (Reject). Equivocating PTC members must be penalized to
+/// prevent conflicting payload status attacks.
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_equivocation_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // First attestation: payload_present=true → should be accepted
+    let (attestation1, _validator_index, _ptc_bit) = build_valid_payload_attestation(&rig, true);
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation1)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second attestation from the same PTC member: payload_present=false → equivocation
+    let (attestation2, _validator_index2, _ptc_bit2) = build_valid_payload_attestation(&rig, false);
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation2)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
+/// Gloas gossip: payload attestation with invalid signature is REJECTED.
+///
+/// Per spec: [REJECT] the aggregate BLS signature must verify against the
+/// attesting PTC members' public keys. This test constructs an attestation
+/// with correct aggregation bits (valid PTC member) but signs with a different
+/// validator's key. The handler should reject and penalize the peer.
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_slot = rig.chain.slot().unwrap();
+    let spec = &rig.chain.spec;
+
+    // Get the PTC committee for the current slot
+    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+        head_state,
+        current_slot,
+        spec,
+    )
+    .expect("should get PTC committee");
+
+    let ptc_bit_index = 0;
+    let validator_index = ptc_indices[ptc_bit_index];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head.beacon_block_root,
+        slot: current_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+
+    // Compute the signing root
+    let epoch = current_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+
+    // Sign with the WRONG validator's key
+    let wrong_signer = if validator_index == 0 { 1 } else { 0 };
+    let wrong_sk = &rig._harness.validator_keypairs[wrong_signer as usize].sk;
+    let wrong_sig = wrong_sk.sign(signing_root);
+
+    let mut agg_sig = bls::AggregateSignature::infinity();
+    agg_sig.add_assign(&wrong_sig);
+
+    let mut bits = ssz_types::BitVector::new();
+    bits.set(ptc_bit_index, true).unwrap();
+
+    let attestation = PayloadAttestation {
+        aggregation_bits: bits,
+        data,
+        signature: agg_sig,
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
 // ======== Gloas (ePBS) proposer preferences gossip handler tests ========
 //
 // These tests verify the `process_gossip_proposer_preferences` handler which
