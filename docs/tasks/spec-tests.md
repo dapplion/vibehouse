@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — process_execution_payload_bid edge case unit tests (run 124)
+- Checked consensus-specs PRs since run 123: no new Gloas spec changes merged to stable
+  - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - Newly tracked: #4892 (remove impossible branch in forkchoice — labeled gloas, changes `is_supporting_vote` from `<=` to `assert >= + ==` — vibehouse already uses `debug_assert` for this, no change needed)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Coverage gap analysis**: `process_execution_payload_bid` had 17 existing unit tests but was missing tests for combined pending withdrawal+payment balance accounting, exact boundary conditions, bid overwrite behavior, and self-build common validation paths
+- **Added 5 edge case unit tests** for `process_execution_payload_bid` (per_block_processing/gloas.rs):
+  - `builder_bid_balance_accounts_for_both_withdrawals_and_payments`: verifies the spec's `get_pending_balance_to_withdraw_for_builder` correctly sums BOTH `builder_pending_withdrawals` AND `builder_pending_payments` when computing available balance. With 300 pending withdrawal + 400 pending payment, bid 301 fails but bid 300 succeeds (available = 1000 - 700 = 300)
+  - `builder_bid_exact_boundary_balance`: balance = min_deposit + bid_value passes; min_deposit + bid_value + 1 fails. Tests the exact `builder_balance - min_balance >= bid_amount` boundary
+  - `builder_bid_overwrites_cached_bid`: processes a builder bid (value=100), then a self-build bid. Verifies `state.latest_execution_payload_bid` is updated to the second bid, confirming overwrite behavior
+  - `self_build_bid_wrong_slot_still_rejected`: self-build bids must also pass common checks (slot, parent, randao). Verifies that self-build with mismatched block_slot is rejected with "slot" error
+  - `builder_bid_pending_payment_at_correct_slot_index`: verifies the exact slot index formula `SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH`. For slot=8, slots_per_epoch=8: index=8. Checks the payment is at index 8 and all other indices remain zero
+- Verified: 307/307 state_processing tests pass (was 302), cargo fmt + clippy clean
+- Commit: `e76997058`
+
 ### 2026-02-26 — process_withdrawals_gloas edge case unit tests (run 123)
 - Checked consensus-specs PRs since run 122: no new Gloas spec changes merged to stable
   - Open PRs unchanged: #4948 (reorder payload status constants — approved by potuz, likely merging soon), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)

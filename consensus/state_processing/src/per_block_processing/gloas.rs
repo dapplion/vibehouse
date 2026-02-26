@@ -2944,6 +2944,241 @@ mod tests {
         ));
     }
 
+    // ── process_execution_payload_bid additional edge case tests ──
+
+    #[test]
+    fn builder_bid_balance_accounts_for_both_withdrawals_and_payments() {
+        // The spec sums BOTH builder_pending_withdrawals AND builder_pending_payments
+        // when computing pending_withdrawals_amount. Test both together.
+        let min_deposit = E::default_spec().min_deposit_amount;
+        let builder_balance = min_deposit + 1000;
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, builder_balance);
+
+        // Add a pending withdrawal for 300
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 300,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Add a pending payment for 400
+        *state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(0)
+            .unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xEE),
+                amount: 400,
+                builder_index: 0,
+            },
+        };
+
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Available = balance - min_deposit - (300 + 400) = 1000 - 700 = 300
+        // Bid 301 should fail
+        let bid = make_builder_bid(&state, &spec, 301);
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("insufficient")
+        ));
+
+        // Bid 300 should succeed (exactly at boundary)
+        let bid = make_builder_bid(&state, &spec, 300);
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "bid exactly at available balance should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn builder_bid_exact_boundary_balance() {
+        // Balance exactly at min_deposit_amount + bid amount (zero pending) should succeed.
+        let min_deposit = E::default_spec().min_deposit_amount;
+        let bid_value = 500;
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, min_deposit + bid_value);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let bid = make_builder_bid(&state, &spec, bid_value);
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "bid at exact boundary should succeed: {:?}",
+            result.err()
+        );
+
+        // One more gwei should fail
+        let (mut state2, spec2) = make_gloas_state(8, 32_000_000_000, min_deposit + bid_value);
+        let bid = make_builder_bid(&state2, &spec2, bid_value + 1);
+        let result = process_execution_payload_bid(
+            &mut state2,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec2,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("insufficient")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_overwrites_cached_bid() {
+        // Processing a second bid should overwrite the cached latest_execution_payload_bid.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Process first bid (builder)
+        let bid1 = make_builder_bid(&state, &spec, 100);
+        process_execution_payload_bid(
+            &mut state,
+            &bid1,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+        assert_eq!(
+            state.as_gloas().unwrap().latest_execution_payload_bid.value,
+            100
+        );
+
+        // Process second bid (self-build), overwrites first
+        let bid2 = make_self_build_bid(&state, &spec);
+        process_execution_payload_bid(
+            &mut state,
+            &bid2,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+        assert_eq!(
+            state.as_gloas().unwrap().latest_execution_payload_bid.value,
+            0,
+            "second bid should overwrite cached bid"
+        );
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .latest_execution_payload_bid
+                .builder_index,
+            spec.builder_index_self_build,
+        );
+    }
+
+    #[test]
+    fn self_build_bid_wrong_slot_still_rejected() {
+        // Self-build bids must also pass common checks (slot, parent, randao).
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_self_build_bid(&state, &spec);
+        let wrong_slot = state.slot() + 1;
+        let parent_root = state.latest_block_header().parent_root;
+
+        // block_slot != bid.slot → should be rejected
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            wrong_slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("slot")
+        ));
+    }
+
+    #[test]
+    fn builder_bid_pending_payment_at_correct_slot_index() {
+        // Verify the exact slot index formula: SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot(); // slot 8
+        let parent_root = state.latest_block_header().parent_root;
+
+        let bid_value = 42_000;
+        let bid = make_builder_bid(&state, &spec, bid_value);
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // slot = 8, slots_per_epoch = 8
+        // slot_index = 8 + (8 % 8) = 8 + 0 = 8
+        let expected_index = E::slots_per_epoch() + (slot.as_u64() % E::slots_per_epoch());
+        assert_eq!(expected_index, 8);
+
+        let state_gloas = state.as_gloas().unwrap();
+        let payment = state_gloas
+            .builder_pending_payments
+            .get(expected_index as usize)
+            .unwrap();
+        assert_eq!(payment.withdrawal.amount, bid_value);
+        assert_eq!(payment.withdrawal.builder_index, 0);
+        assert_eq!(payment.weight, 0);
+
+        // Other indices should remain default (zero)
+        for i in 0..E::builder_pending_payments_limit() {
+            if i != expected_index as usize {
+                let p = state_gloas.builder_pending_payments.get(i).unwrap();
+                assert_eq!(
+                    p.withdrawal.amount, 0,
+                    "non-target index {} should be zero",
+                    i
+                );
+            }
+        }
+    }
+
     #[test]
     fn payload_attestation_payload_not_present_field() {
         // Test that attestation with payload_present=false is valid (field value is up to PTC)
