@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix get_payload_tiebreaker spec compliance bug (run 122)
+- Checked consensus-specs PRs since run 121: no new Gloas spec changes merged to stable
+  - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Found and fixed spec compliance bug in `get_payload_tiebreaker`** (proto_array_fork_choice.rs):
+  - **Bug**: The function only checked `!is_previous_slot` to decide when to return the ordinal status value. The spec says `if PENDING or not_previous_slot → return ordinal`. Missing the PENDING check meant that a PENDING node from the previous slot (e.g., the justified checkpoint when justified.slot + 1 == current_slot) would fall through to the EMPTY/FULL branches and incorrectly call `should_extend_payload`, returning 2 or 0 instead of the correct 0 (PENDING ordinal)
+  - **Impact**: In head selection, the `get_head` loop sorts children by `(weight, root, tiebreaker)`. A PENDING node from the previous slot with a timely payload would get tiebreaker=2 instead of 0, potentially causing it to win tiebreaks against FULL nodes that should have won. This is an edge case that occurs when the justified checkpoint is at the previous slot
+  - **Fix**: Added `node.payload_status == GloasPayloadStatus::Pending ||` before `!is_previous_slot` in the condition, matching the spec's OR semantics exactly
+  - **Added test**: `tiebreaker_pending_at_previous_slot_returns_zero` — sets up a PENDING node at the previous slot with payload_revealed+data_available (so should_extend_payload would return 2), verifies the tiebreaker correctly returns 0
+- Verified: 117/117 proto_array tests pass, 64/64 fork_choice tests pass, 8/8 EF fork choice tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — fix should_extend_payload spec compliance bug (run 121)
 - Checked consensus-specs PRs since run 120: no new Gloas spec changes merged to stable
   - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
