@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — proposer preferences bid validation unit tests (run 118)
+- Checked consensus-specs PRs since run 117: no new Gloas spec changes merged to stable
+  - Open PRs unchanged: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Closed coverage gap**: `ProposerPreferencesNotSeen`, `FeeRecipientMismatch`, and `GasLimitMismatch` error paths in `verify_execution_bid_for_gossip` (gloas_verification.rs) were only tested at the network integration level (tests.rs), not at the beacon_chain unit test level in `gloas_verification.rs`
+- **Added 3 unit tests** to `gloas_verification.rs`:
+  - `bid_no_proposer_preferences_ignored`: bid submitted without any preferences in the pool → `ProposerPreferencesNotSeen`. The IGNORE path: proposer hasn't published their fee_recipient/gas_limit requirements yet, so the bid cannot be validated and is silently dropped
+  - `bid_fee_recipient_mismatch_rejected`: bid with `fee_recipient=0xaa`, preferences require `fee_recipient=0xbb` → `FeeRecipientMismatch`. Tests that builders cannot override the proposer's preferred execution address (REJECT = peer penalty)
+  - `bid_gas_limit_mismatch_rejected`: bid with `gas_limit=30_000_000`, preferences require `gas_limit=20_000_000` → `GasLimitMismatch`. Tests that gas limits must match exactly between bid and proposer preferences (REJECT = peer penalty)
+- These paths are checked after parent_block_root validation (check 4) and before signature verification (check 5), so the tests use `BLOCKS_TO_FINALIZE` harness to ensure the builder is active at the finalized epoch
+- All 52 gloas_verification tests pass (was 49)
+
 ### 2026-02-26 — ExecutionPayloadEnvelopesByRoot RPC handler tests (run 117)
 - Checked consensus-specs PRs since run 116: no new Gloas spec changes merged to stable
   - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
