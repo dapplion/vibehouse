@@ -70,7 +70,7 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 - **Payload withholding** — DONE (script): `scripts/kurtosis-run.sh --withhold` — submit bid, no envelope, verify EMPTY path finalization
 - **Network partitions** — DONE (script): `scripts/kurtosis-run.sh --partition` — stop 2/4 nodes (50% stake), verify finalization stalls, heal, verify recovery
 - **Stateless + ZK** — DONE: proof-generators + stateless node (from priority 4)
-- **Slashing scenarios** — double-propose / surround-vote, verify detection
+- **Slashing scenarios** — DONE (script): `scripts/kurtosis-run.sh --slashings` — inject double-proposal and double-vote via lcli, verify slashed=true in state
 
 ### 6. ROCQ formal proofs for consensus-critical invariants — LOWEST PRIORITY
 [GitHub #29](https://github.com/dapplion/vibehouse/issues/29) — Dead last. Only after everything else is done.

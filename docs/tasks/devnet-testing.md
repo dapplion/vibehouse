@@ -4,7 +4,7 @@
 
 Test vibehouse under diverse devnet scenarios beyond the happy path. The initial 4-node devnet (priority 1) proved basic functionality — this task covers syncing, node churn, long-running, and adversarial scenarios.
 
-## Status: IN PROGRESS
+## Status: DONE (all scenarios implemented)
 
 ### Scenarios
 
@@ -18,7 +18,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Payload withholding | DONE (script) | `--withhold` flag: submit bid with no envelope, verify EMPTY path finalization |
 | Network partitions | DONE (script) | `--partition` flag: stop 2/4 nodes (50% stake), verify stall, heal, verify finalization resumes |
 | Stateless + ZK | DONE | 3 proof-generators + 1 stateless node (from priority 4) |
-| Slashing scenarios | TODO | Double-propose / surround-vote, verify detection |
+| Slashing scenarios | DONE (script) | `--slashings` flag: inject double-proposal and double-vote via lcli, verify slashed=true |
 
 ## Progress log
 
@@ -302,4 +302,51 @@ scripts/kurtosis-run.sh --builder --no-teardown # Leave running for inspection
 scripts/kurtosis-run.sh --withhold              # Full test
 scripts/kurtosis-run.sh --withhold --no-build   # Skip Docker build (reuse vibehouse:local)
 scripts/kurtosis-run.sh --withhold --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Slashing detection test (run 115)
+
+**Implemented the slashing detection devnet test scenario** — the last remaining devnet scenario.
+
+**What was built:**
+
+**1. `lcli inject-slashing` subcommand** — creates and submits proposer or attester slashings to a beacon node using deterministic interop keypairs:
+
+- `lcli/src/inject_slashing.rs` — full implementation:
+  - **Proposer slashing**: fetches head block header, creates two conflicting `BeaconBlockHeader`s for the same slot (same proposer, different `state_root`), signs both with `DOMAIN_BEACON_PROPOSER`, submits via `POST /eth/v1/beacon/pool/proposer_slashings`
+  - **Attester slashing**: creates two `AttestationData` with same target epoch but different committee index (double-vote), signs both with `DOMAIN_BEACON_ATTESTER`, selects Base vs Electra variant based on current fork name, submits via `POST /eth/v1/beacon/pool/attester_slashings/plain`
+  - Fetches fork, genesis_validators_root, and head_slot from beacon API at runtime
+
+- `lcli/src/main.rs` — `inject-slashing` subcommand with `--beacon-url`, `--type`, and `--validator-index` args
+
+**2. `--slashings` flag in `kurtosis-run.sh`** — Four-phase test using the default 4-node config:
+
+- **Phase 1 (warm-up):** Start all 4 validator nodes, wait for finalization to epoch 3 (past Gloas fork at epoch 1). Ensures fork-specific slashing type selection works correctly.
+
+- **Phase 2 (injection):** Inject proposer slashing for validator 1 (double-proposal), then attester slashing for validator 2 (double-vote), with a 1-slot gap between them. Checks acceptance by the beacon pool.
+
+- **Phase 3 (liveness verification):** Wait for chain to continue finalizing by 2 more epochs after slashing injection. Proves the chain doesn't stall when processing slashings.
+
+- **Phase 4 (detection verification):** Query `/eth/v1/beacon/states/head/validators/{idx}` for each slashed validator. Checks `slashed=true` in the validator state. Fails if slashing was accepted by the pool but the validator is not marked slashed.
+
+**Key design decisions:**
+- Validators 1 and 2 (not 0) — validator 0 is more likely to be proposer for genesis block, safer to target 1/2
+- Gloas fork uses Electra slashing types — `fork_name.electra_enabled()` selects the correct variant at runtime
+- Liveness check before detection check — ensures chain health takes priority; detection is secondary
+- Failure condition: injected but not detected. If injection fails (e.g., API down), it's a warning not a failure.
+- `lcli` found via `$REPO_ROOT/target/release/lcli` first, then PATH fallback — works with devnet from repo root
+
+**What this tests:**
+- Proposer slashing pool ingestion and inclusion in blocks
+- Attester slashing (double-vote) pool ingestion and inclusion in blocks
+- Slashing processing in state transitions (slash_validator, apply_penalties)
+- Chain liveness during slashing processing (2 validators losing 1/32 balance each)
+- Fork-correct slashing type selection (Electra format in Gloas fork)
+- Beacon API slashed status reporting
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --slashings              # Full test
+scripts/kurtosis-run.sh --slashings --no-build   # Skip Docker build (reuse vibehouse:local)
+scripts/kurtosis-run.sh --slashings --no-teardown # Leave running for inspection
 ```
