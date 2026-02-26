@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — spec audit, all tests green, is_head_weak deviation documented (run 142)
+- Checked consensus-specs PRs since run 141:
+  - **#4948 (Reorder payload status constants)**: MERGED Feb 26 — reorders PayloadStatus so EMPTY=0, FULL=1, PENDING=2. Vibehouse already matches (GloasPayloadStatus enum uses these ordinals since run 130).
+  - **#4923 (Ignore block if parent payload unknown)**: MERGED Feb 16 — adds gossip validation IGNORE rule for blocks whose parent execution payload hasn't been seen. Already implemented in vibehouse (GloasParentPayloadUnknown error, MessageAcceptance::Ignore, sync queue).
+  - **#4916 (Refactor builder deposit conditions)**: MERGED Feb 12 — refactors `process_deposit_request` to short-circuit `is_pending_validator` check. Vibehouse already matches (early return with `is_builder || (is_builder_prefix && !is_validator && !is_pending_validator(...))`).
+  - **#4931 (FOCIL rebased onto Gloas)**: MERGED Feb 20 — FOCIL is now "Heze" fork via #4942. Not Gloas scope, no action needed.
+  - **#4941 (Execution proof uses BeaconBlock)**: MERGED Feb 19 — EIP-8025 prover doc only, no consensus impact.
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - New open PR: #4944 (ExecutionProofsByRoot, EIP-8025)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Full EF spec test verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 8/8 fork choice tests (real crypto, minimal)
+- **Spec compliance audit** — verified:
+  - `get_payload_status_tiebreaker`: matches spec exactly (Empty=0, Full=1, Pending=2 ordinals, slot+1 check, should_extend_payload dispatch)
+  - `should_extend_payload`: 4-condition OR matches spec (timely+available, no boost root, parent mismatch, parent full)
+  - `should_apply_proposer_boost_gloas`: boost root zero check, skipped slots, is_head_weak, equivocation detection all correct
+  - `PayloadAttestationData`: `blob_data_available` field correctly implemented, tracked in fork choice via `ptc_blob_data_available_weight`
+  - `process_deposit_request_gloas`: routing logic matches spec (builder check → builder prefix + not validator + not pending → builder path)
+- **Known spec deviation documented**: `is_head_weak` equivocating validator committee filtering
+  - **Spec**: adds equivocating validators' balance ONLY for those in the head slot's beacon committees (`get_beacon_committee(head_state, head_block.slot, index)`)
+  - **Vibehouse**: adds ALL equivocating validators' balance (proto_array doesn't have committee membership info)
+  - **Impact**: overcounts equivocating weight → head appears stronger → re-orgs less likely (conservative/safer behavior)
+  - **Why**: proto_array architecture doesn't have access to beacon committee membership. Fixing requires either passing committee info into proto_array or restructuring the is_head_weak computation to the beacon_chain layer. Low priority since the deviation is strictly more conservative.
+
 ### 2026-02-26 — fix remaining Gloas head_hash fallback paths (run 141)
 - Checked consensus-specs PRs since run 140: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
