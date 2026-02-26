@@ -329,6 +329,7 @@ pub enum BlockProductionError {
     FailedToBuildBlobSidecars(String),
     MissingExecutionRequests,
     MissingExecutionBlockHash,
+    EnvelopeConstructionFailed(String),
 }
 
 easy_from_to!(BlockProcessingError, BlockProductionError);

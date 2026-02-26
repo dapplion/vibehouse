@@ -3108,7 +3108,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         post_block_state: &BeaconState<T::EthSpec>,
         gloas_payload: ExecutionPayloadGloas<T::EthSpec>,
         execution_requests: ExecutionRequests<T::EthSpec>,
-    ) -> Option<SignedExecutionPayloadEnvelope<T::EthSpec>> {
+    ) -> Result<SignedExecutionPayloadEnvelope<T::EthSpec>, BlockProductionError> {
         let beacon_block_root = block.tree_hash_root();
         let block_state_root = block.state_root();
         let slot = block.slot();
@@ -3143,7 +3143,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     %beacon_block_root,
                     "Constructed self-build execution payload envelope (state_root matched placeholder)"
                 );
-                Some(temp_envelope)
+                Ok(temp_envelope)
             }
             Err(
                 state_processing::envelope_processing::EnvelopeProcessingError::InvalidStateRoot {
@@ -3169,15 +3169,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     envelope_state_root = %actual_root,
                     "Constructed self-build execution payload envelope"
                 );
-                Some(envelope)
+                Ok(envelope)
             }
             Err(e) => {
-                // Unexpected error — log but don't fail block production
-                warn!(
-                    error = ?e,
-                    "Failed to construct self-build envelope during block production"
-                );
-                None
+                // Fail block production — publishing a self-build block without an envelope
+                // would stall the chain because no one would reveal the payload.
+                Err(BlockProductionError::EnvelopeConstructionFailed(format!(
+                    "{e:?}"
+                )))
             }
         }
     }
@@ -6330,15 +6329,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             let payload = block_contents
                                 .payload()
                                 .execution_payload_gloas()
-                                .ok()
-                                .cloned();
+                                .cloned()
+                                .map_err(|_| {
+                                    BlockProductionError::EnvelopeConstructionFailed(
+                                        "EL returned non-Gloas payload for Gloas slot".to_string(),
+                                    )
+                                })?;
                             let requests = match &block_contents {
-                                BlockProposalContents::PayloadAndBlobs { requests, .. } => {
-                                    requests.clone()
+                                BlockProposalContents::PayloadAndBlobs { requests, .. } => requests
+                                    .clone()
+                                    .ok_or(BlockProductionError::MissingExecutionRequests)?,
+                                _ => {
+                                    return Err(BlockProductionError::MissingExecutionRequests);
                                 }
-                                _ => None,
                             };
-                            payload.zip(requests)
+                            Some((payload, requests))
                         } else {
                             None
                         };
@@ -6369,13 +6374,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     // The envelope is returned to the VC for signing, then sent back
                     // in the publish request with a valid signature.
                     if let Some((gloas_payload, execution_requests)) = gloas_envelope_data {
-                        beacon_block_response.execution_payload_envelope = self
-                            .build_self_build_envelope(
+                        beacon_block_response.execution_payload_envelope =
+                            Some(self.build_self_build_envelope(
                                 &beacon_block_response.block,
                                 &beacon_block_response.state,
                                 gloas_payload,
                                 execution_requests,
-                            );
+                            )?);
                     }
 
                     Ok(BeaconBlockResponseWrapper::Full(beacon_block_response))
