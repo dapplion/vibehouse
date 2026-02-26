@@ -91,6 +91,8 @@ jobs:
         run: env FORK_NAME=fulu cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
       - name: network tests (gloas)
         run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
+      - name: operation_pool tests (gloas)
+        run: env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p operation_pool
 
   ci-success:
     name: ci-success
