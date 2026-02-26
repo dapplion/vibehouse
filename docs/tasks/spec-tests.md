@@ -28,6 +28,35 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — comprehensive spec compliance audit, no bugs found (run 135)
+- Checked consensus-specs PRs since run 134: no new Gloas spec changes merged
+  - PR #4918 (attestations for known payload statuses): merged, already implemented (payload_revealed check in validate_on_attestation)
+  - PR #4947 (pre-fork proposer_preferences subscription): merged, documentation-only, no code change needed
+  - PR #4930 (rename execution_payload_states to payload_states): merged, cosmetic spec naming, no code change needed
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Deep audit of Gloas spec compliance across all major functions** — systematically compared vibehouse implementations to the latest consensus-specs for every Modified/New function in Gloas
+- **Functions verified correct**:
+  - `get_attestation_participation_flag_indices` — Gloas payload matching constraint correctly implemented (same-slot check, availability bit comparison, head flag gating)
+  - `process_slot` (cache_state) — next slot availability bit clearing correctly indexed
+  - `get_next_sync_committee_indices` — functionally equivalent to spec's `compute_balance_weighted_selection(state, indices, seed, SYNC_COMMITTEE_SIZE, shuffle_indices=True)` — uses same shuffling + balance-weighted acceptance with identical randomness scheme
+  - `compute_proposer_indices` / `compute_proposer_index` — functionally equivalent to `compute_balance_weighted_selection(state, indices, seed, size=1, shuffle_indices=True)` per slot
+  - `get_ptc_committee` — correctly implements `compute_balance_weighted_selection` with `shuffle_indices=False`, concatenated committees, PTC_SIZE selection
+  - `process_attestation` — weight accumulation for same-slot attestations, builder_pending_payments indexing (current/previous epoch), payment writeback all correct
+  - `process_deposit_request` (Gloas routing) — builder/validator/pending routing matches spec, `is_pending_validator` signature verification correct
+  - `apply_deposit_for_builder` — top-up and new builder creation with signature verification, index reuse all correct
+  - `process_payload_attestation` — parent root check, slot+1 check, indexed attestation + signature verification all correct
+  - `is_valid_indexed_payload_attestation` — non-empty, sorted (non-decreasing), aggregate signature verification correct
+  - `process_execution_payload_envelope` — all 17 verification steps in correct order, execution requests processing, builder payment queue/clear, availability bit set, latest_block_hash update, state root verification all correct
+  - `process_builder_pending_payments` — quorum calculation, first-half check, rotation (second→first, clear second) all correct
+  - `initiate_builder_exit` — far_future_epoch check, MIN_BUILDER_WITHDRAWABILITY_DELAY correct
+  - `get_builder_payment_quorum_threshold` — integer division order (total/slots * numerator / denominator) matches spec
+  - `upgrade_to_gloas` — all field migration correct, new field initialization (availability all-true, payments default, builders empty, latest_block_hash from header) correct
+  - `onboard_builders_from_pending_deposits` — validator/builder routing, growing validator_pubkeys tracking, builder_pubkeys recomputation per iteration all correct
+  - `process_proposer_slashing` — payment clearing for current/previous epoch proposals correct
+  - `process_voluntary_exit` — builder exit path (BUILDER_INDEX_FLAG, is_active_builder, pending balance check, signature, initiate_builder_exit) correct
+- **No spec compliance bugs found** — all Gloas consensus-critical functions match the latest consensus-specs
+
 ### 2026-02-26 — implement builder voluntary exit support (run 134)
 - Checked consensus-specs PRs since run 133: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
