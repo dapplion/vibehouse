@@ -2739,6 +2739,221 @@ mod tests {
             assert!(node.payload_revealed);
         }
 
+        // ── ePBS lifecycle interaction tests ─────────────────────────────
+
+        #[test]
+        fn payload_attestation_accumulates_across_multiple_calls() {
+            // Two separate PTC attestation batches, each with 1 attester (below quorum),
+            // together reaching quorum (need > 1 for MinimalEthSpec ptc_size=2).
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+
+            // First batch: 1 attester — below quorum (need > 1)
+            let att1 = make_payload_attestation(1, block_root, true, true);
+            let indexed1 = make_indexed_payload_attestation(1, block_root, true, true, vec![0]);
+            fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 1);
+            assert!(!node.payload_revealed, "1 vote should not reach quorum");
+
+            // Second batch: 1 more attester — total 2, now > threshold (1)
+            let att2 = make_payload_attestation(1, block_root, true, true);
+            let indexed2 = make_indexed_payload_attestation(1, block_root, true, true, vec![1]);
+            fc.on_payload_attestation(&att2, &indexed2, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 2);
+            assert!(
+                node.payload_revealed,
+                "2 votes > threshold(1), should reach quorum"
+            );
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(ExecutionBlockHash::repeat_byte(0xAA))
+            );
+        }
+
+        #[test]
+        fn payload_attestation_quorum_without_bid_block_hash() {
+            // PTC quorum reached but bid_block_hash is None → execution_status stays irrelevant
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+            // bid_block_hash is None by default from insert_block
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+
+            let att = make_payload_attestation(1, block_root, true, false);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, false, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed, "quorum should reveal payload");
+            assert!(
+                !node.execution_status.is_execution_enabled(),
+                "no bid_block_hash → execution_status stays irrelevant"
+            );
+        }
+
+        #[test]
+        fn payload_attestation_quorum_skipped_when_already_revealed() {
+            // Envelope reveals payload first, then PTC attestations arrive.
+            // The PTC quorum path (!node.payload_revealed) should NOT re-trigger.
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Reveal payload via envelope
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xEE);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Set bid_block_hash to something different to detect if quorum path overwrites
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xBB));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+
+            let att = make_payload_attestation(1, block_root, true, false);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, false, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            // PTC weight still accumulates
+            assert!(node.ptc_weight > quorum_threshold);
+            // But execution_status should NOT be overwritten by bid_block_hash
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should remain from envelope, not overwritten by PTC quorum"
+            );
+        }
+
+        #[test]
+        fn blob_quorum_independent_of_payload_quorum() {
+            // Blob data availability quorum reached without payload timeliness quorum
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+
+            // payload_present=false, blob_data_available=true
+            let att = make_payload_attestation(1, block_root, false, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, false, true, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 0, "no payload_present votes");
+            assert!(!node.payload_revealed, "payload should NOT be revealed");
+            assert!(
+                node.payload_data_available,
+                "blob data should be available (independent quorum)"
+            );
+        }
+
+        #[test]
+        fn full_lifecycle_bid_then_ptc_then_envelope() {
+            // Realistic lifecycle: on_execution_bid → on_payload_attestation (quorum) → on_execution_payload
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // 1. Process bid
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Set bid_block_hash (normally set during block processing)
+            let bid_hash = ExecutionBlockHash::repeat_byte(0xAA);
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash = Some(bid_hash);
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(42));
+            assert!(!node.payload_revealed);
+            assert_eq!(node.ptc_weight, 0);
+
+            // 2. PTC attestations reach quorum
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(bid_hash),
+                "quorum should set execution_status from bid_block_hash"
+            );
+
+            // 3. Envelope arrives (execution payload reveal)
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "envelope should update execution_status with actual payload hash"
+            );
+        }
+
         // ── gloas_head_payload_status via get_head ─────────────────────
 
         /// Create a ForkChoice with Gloas enabled and sufficient balances.
