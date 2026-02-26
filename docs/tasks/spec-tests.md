@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — self-build envelope error handling audit (run 131)
+- Checked consensus-specs PRs since run 130: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - PR #4940 (Gloas fork choice tests) updated Feb 25 — covers `on_execution_payload` handler, will need support when merged
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Deep audit of Gloas block production path** — systematically reviewed self-build envelope construction, external bid selection, payload extraction, and publish flow
+- **Found and fixed chain-stall bug in `build_self_build_envelope`**:
+  - **Bug**: `build_self_build_envelope` returned `Option<SignedExecutionPayloadEnvelope>` and silently returned `None` on unexpected errors from `process_execution_payload_envelope`. This allowed block production to succeed and publish a self-build block without an envelope. Since no one else would reveal the payload (there's no external builder), the chain would stall indefinitely for that slot
+  - **Impact**: Any unexpected error in envelope processing (BeaconStateError, BlockProcessingError, ArithError, etc.) would cause a silent chain stall — the block is published to the network, the VC logs success, but the slot's payload is never revealed
+  - **Fix**: Changed return type to `Result<..., BlockProductionError>` with new `EnvelopeConstructionFailed` variant. Block production now fails if the envelope can't be constructed, preventing publication of an unusable block
+- **Found and fixed silent payload type mismatch in envelope data extraction**:
+  - **Bug**: At Gloas envelope data extraction, `execution_payload_gloas().ok().cloned()` silently converted a type mismatch (EL returning non-Gloas payload for Gloas slot) to `None`, skipping envelope construction. Similarly, missing `execution_requests` produced `None` via `.zip(requests)` instead of an error
+  - **Fix**: Both paths now return explicit errors (`EnvelopeConstructionFailed` and `MissingExecutionRequests`)
+- **Audit also confirmed correct implementations**: `latest_block_hash` patching, `notify_ptc_messages`, self-build bid fields, per_block_processing validation, gossip payload skip, envelope state transition via `get_state`
+- **Noted low-severity Issue A**: external bid pool `get_best_bid` doesn't filter by `parent_block_root` — after a re-org, a stale bid could be selected. However, `process_execution_payload_bid` in per_block_processing catches the mismatch, so block production fails safely (no invalid block published). Not fixed in this run to keep scope focused
+- Verified: 573/573 beacon_chain tests pass, 317/317 state_processing tests pass, 193/193 proto_array+fork_choice tests pass, 8/8 EF fork choice tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — spec PR #4948 + notify_ptc_messages fix (run 130)
 - Checked consensus-specs PRs since run 129: 2 Gloas PRs merged
   - **#4948** (merged Feb 26): "Reorder payload status constants" — changes ordinal values: Empty=0, Full=1, Pending=2 (was Pending=0, Empty=1, Full=2). **Implemented**: updated `GloasPayloadStatus` enum ordering, fixed 2 hardcoded test values in fork_choice.rs, updated test names/comments for accuracy
