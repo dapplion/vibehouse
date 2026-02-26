@@ -6,11 +6,10 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: IN PROGRESS
 
 ### Current results
-- **78/78 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets (as of 2026-02-19 run 19)
+- **78/78 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
 - **138/138 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass)
 - **check_all_files_accessed passes** — 209,677 files accessed, 122,748 intentionally excluded
-- All gloas fork_choice on_block tests pass (was 77/78 — fixed 2026-02-18)
-- All gloas fork_choice_reorg tests pass (4 previously failing now pass)
+- All 8 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
 - rewards/inactivity_scores tests running across all forks (was missing)
 - 3 altair proposer_boost tests now pass (were skipped, sigp/lighthouse#8689 — fixed by implementing PR #4807)
@@ -28,6 +27,15 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### 2026-02-26 — Fix latest_block_hash for empty parent payloads (run 108)
+- **Fixed 5 Gloas fork_choice EF test failures** and **29 store_test failures** — all caused by incorrect `latest_block_hash` patching when the parent's payload was not revealed
+- **Root cause**: `get_advanced_hot_state` unconditionally patched `latest_block_hash` from the parent bid's `block_hash`, even when the parent's envelope hadn't been processed. The spec's `on_block` has a two-state model:
+  - Parent FULL (envelope revealed) → use `payload_states` (post-envelope, `latest_block_hash = bid.block_hash`)
+  - Parent EMPTY (no envelope) → use `block_states` (pre-envelope, `latest_block_hash = grandparent's block_hash`)
+- **Fix**: Moved `latest_block_hash` patching from `get_advanced_hot_state` (store layer) to `load_parent` (block_verification layer) where we have access to both child and parent blocks. Now uses `is_parent_node_full` logic from the spec: only patches when `child_bid.parent_block_hash == parent_bid.block_hash` (parent is full). When parent is empty, the pre-envelope `latest_block_hash` is correct as-is
+- **Tests**: 78/78 EF tests pass, 138/138 fake_crypto pass, 566/566 beacon_chain tests pass, 121/121 network tests pass
+- **Files changed**: `block_verification.rs` (+29 lines), `hot_cold_store.rs` (-39 lines)
 
 ### 2026-02-25 — Gloas canonical_head and payload attributes tests (run 107 continued)
 - **Addressed canonical_head.rs Gloas branches**: `parent_random()` (line 172) and `head_block_number()` (line 189) had ZERO test coverage with Gloas-enabled heads. These methods are called during `prepare_beacon_proposer` → `get_pre_payload_attributes` to compute FCU payload attributes for the execution layer. If `parent_random()` returns the wrong value, the EL builds a payload with incorrect prev_randao, causing the block to be rejected by peers
