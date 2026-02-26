@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — ExecutionPayloadEnvelopesByRoot RPC handler tests (run 117)
+- Checked consensus-specs PRs since run 116: no new Gloas spec changes merged to stable
+  - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - Newly tracked: #4940 (Gloas fork choice tests — open, not merged)
+  - Recently merged but already implemented: #4918 (attestations for known payload statuses), #4923 (block queueing for unknown parent payload), #4897 (pending validator check before builder deposit)
+  - PR #4914 (replace prover_pubkey with validator_index in SignedExecutionProof) targets eip8025, not core Gloas spec — not applicable to vibehouse's ZK-proof ExecutionProof design
+  - PR #4931 (FOCIL onto Gloas) — in `specs/_features/eip7805/`, not stable Gloas spec. Does add `inclusion_list_bits: Bitvector` to `ExecutionPayloadBid` and new IL satisfaction logic, but this is speculative/experimental, not scheduled
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Closed coverage gap**: `ExecutionPayloadEnvelopesByRoot` P2P protocol (handle_execution_payload_envelopes_by_root_request in rpc_methods.rs) had ZERO integration tests. This is the Gloas-specific RPC protocol for serving payload envelopes by beacon block root to peers
+- **Added `enqueue_envelopes_by_root_request` helper** to `TestRig` in tests.rs — creates an `ExecutionPayloadEnvelopesByRootRequest` from a list of block roots and sends it to the beacon processor
+- **Added `drain_envelopes_by_root_responses` helper** — drains `ExecutionPayloadEnvelopesByRoot` responses from the network channel until the stream terminator (None) is received, returning the collected envelopes
+- **Added 3 integration tests**:
+  - `test_gloas_envelopes_by_root_known_root_served`: requests block root at slot 1 (stored in Gloas chain) → verifies one envelope is returned. Confirms the happy path: handler finds the envelope in the store and streams it before the terminator
+  - `test_gloas_envelopes_by_root_unknown_root_not_served`: requests `Hash256::repeat_byte(0xab)` (not in store) → verifies no envelopes are returned. Confirms the handler silently skips unknown roots (only terminator sent)
+  - `test_gloas_envelopes_by_root_mixed_roots`: requests [slot1_root, unknown, slot2_root] → verifies 2 envelopes returned. Confirms the handler iterates all requested roots and only serves the ones it finds, skipping the unknown one mid-stream
+- All 136 network tests pass (was 133); cargo fmt + clippy clean
+
 ### 2026-02-26 — fix components_by_range_requests memory leak (run 116)
 - No new Gloas spec changes since run 115; open PRs unchanged
 - **Bug fixed**: `components_by_range_requests` entries in `SyncNetworkContext` could accumulate without being freed
