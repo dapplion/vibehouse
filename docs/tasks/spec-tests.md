@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix builder exit pruning bug in operation pool (run 138)
+- Checked consensus-specs PRs since run 137: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - PR #4941 (execution proof construction uses BeaconBlock) merged but is EIP-8025 prover doc only, no consensus impact
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Bug found**: `prune_voluntary_exits` in `operation_pool` never pruned builder exits (BUILDER_INDEX_FLAG set)
+  - Root cause: `prune_validator_hash_map` looked up `state.validators().get(flagged_index)` — the huge flagged index always returned `None`, so `is_none_or(...)` always returned `true` (keep)
+  - Impact: builder exits accumulated in the pool forever after the builder had already exited — not consensus-critical but a memory leak
+  - Fix: replaced generic `prune_validator_hash_map` call with custom logic that detects BUILDER_INDEX_FLAG and checks `state.builders().get(builder_index).withdrawable_epoch` instead
+  - Also handles pre-Gloas states gracefully (builder exits kept since no builder list to check)
+- **Test added**: `prune_builder_voluntary_exits` — verifies active builder exits are retained, exited builder exits are pruned, and validator exits are unaffected
+- All 26 operation_pool tests pass (including new test), clippy clean
+
 ### 2026-02-26 — comprehensive gossip validation and state transition audit (run 137)
 - Checked consensus-specs PRs since run 136: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
