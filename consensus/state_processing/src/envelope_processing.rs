@@ -1453,4 +1453,378 @@ mod tests {
             result,
         );
     }
+
+    // ── Edge case: header state_root already filled ───────────
+
+    #[test]
+    fn nonzero_header_state_root_preserved() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Pre-fill the header state_root with a non-zero value
+        let preset_root = Hash256::repeat_byte(0x55);
+        state.latest_block_header_mut().state_root = preset_root;
+
+        // Build envelope using the already-filled header (no state_root override needed)
+        let mut envelope = make_valid_envelope_with_parent_state_root(&state, None);
+        fix_envelope_state_root_with_parent(&state, &mut envelope, None, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // The header state_root should remain as the preset value, not overwritten
+        assert_eq!(
+            state.latest_block_header().state_root,
+            preset_root,
+            "non-zero header state_root should be preserved (not overwritten by envelope processing)"
+        );
+    }
+
+    // ── Edge case: payment with amount>0 queued regardless of weight ──
+
+    #[test]
+    fn nonzero_payment_queued_regardless_of_weight() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set up a pending payment with amount > 0 but weight = 0
+        // This is the builder payment from bid processing — the weight field is for
+        // PTC quorum tracking in epoch processing, but envelope processing moves
+        // the payment unconditionally (only skipping if amount == 0)
+        let slot = state.slot();
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        let payment = BuilderPendingPayment {
+            weight: 0, // zero weight — but amount is non-zero
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 3_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should still be queued — envelope processing checks amount > 0, not weight
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(
+            withdrawals.len(),
+            1,
+            "non-zero amount payment should be queued even with weight=0"
+        );
+        assert_eq!(withdrawals.get(0).unwrap().amount, 3_000_000_000);
+    }
+
+    // ── Edge case: payment appends to existing withdrawals ────
+
+    #[test]
+    fn payment_appends_to_existing_pending_withdrawals() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Pre-populate pending withdrawals with two existing entries
+        let existing1 = BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0xA1),
+            amount: 1_000_000_000,
+            builder_index: 0,
+        };
+        let existing2 = BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0xA2),
+            amount: 2_000_000_000,
+            builder_index: 0,
+        };
+        state
+            .builder_pending_withdrawals_mut()
+            .unwrap()
+            .push(existing1)
+            .unwrap();
+        state
+            .builder_pending_withdrawals_mut()
+            .unwrap()
+            .push(existing2)
+            .unwrap();
+
+        // Set up a new payment for this slot
+        let slot = state.slot();
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+        let payment = BuilderPendingPayment {
+            weight: 100,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xA3),
+                amount: 7_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Should have 3 withdrawals: 2 existing + 1 new
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(
+            withdrawals.len(),
+            3,
+            "new payment should be appended to existing pending withdrawals"
+        );
+        assert_eq!(
+            withdrawals.get(0).unwrap().fee_recipient,
+            Address::repeat_byte(0xA1),
+            "first existing withdrawal preserved"
+        );
+        assert_eq!(
+            withdrawals.get(1).unwrap().fee_recipient,
+            Address::repeat_byte(0xA2),
+            "second existing withdrawal preserved"
+        );
+        assert_eq!(
+            withdrawals.get(2).unwrap().fee_recipient,
+            Address::repeat_byte(0xA3),
+            "new payment appended at end"
+        );
+        assert_eq!(withdrawals.get(2).unwrap().amount, 7_000_000_000);
+    }
+
+    // ── Edge case: availability bit at slot 0 ──────────────────
+
+    #[test]
+    fn availability_bit_set_at_slot_zero_index() {
+        // Create state at slot 0 (epoch 0) to test availability index = 0
+        let spec = E::default_spec();
+        let slot = Slot::new(0);
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let keypairs = types::test_utils::generate_deterministic_keypairs(8);
+        let mut validators = Vec::with_capacity(8);
+        let mut balances = Vec::with_capacity(8);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: 32_000_000_000,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(32_000_000_000);
+        }
+
+        let builder = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xBB),
+            balance: 64_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+
+        let parent_block_hash = ExecutionBlockHash::repeat_byte(0x02);
+        let randao_mix = Hash256::repeat_byte(0x03);
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let mut randao_mixes = vec![Hash256::zero(); epochs_per_vector];
+        randao_mixes[epoch.as_usize() % epochs_per_vector] = randao_mix;
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                types::PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: types::PublicKeyBytes::empty(),
+        });
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        // Start with availability bit at index 0 CLEARED
+        let mut avail_bytes = vec![0xFFu8; slots_per_hist / 8];
+        avail_bytes[0] = 0xFE; // clear bit 0
+
+        let mut state = BeaconState::Gloas(BeaconStateGloas {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.fulu_fork_version,
+                current_version: spec.gloas_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot,
+                proposer_index: 0,
+                parent_root: Hash256::repeat_byte(0x01),
+                state_root: Hash256::repeat_byte(0x77), // non-zero to avoid filling
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(randao_mixes).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_bid: ExecutionPayloadBid {
+                parent_block_hash,
+                parent_block_root: Hash256::repeat_byte(0x01),
+                block_hash: ExecutionBlockHash::repeat_byte(0x04),
+                prev_randao: randao_mix,
+                slot,
+                ..Default::default()
+            },
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            builders: List::new(vec![builder]).unwrap(),
+            next_withdrawal_builder_index: 0,
+            execution_payload_availability: BitVector::from_bytes(avail_bytes.into()).unwrap(),
+            builder_pending_payments: Vector::new(vec![
+                BuilderPendingPayment::default();
+                E::builder_pending_payments_limit()
+            ])
+            .unwrap(),
+            builder_pending_withdrawals: List::default(),
+            latest_block_hash: parent_block_hash,
+            payload_expected_withdrawals: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        // Verify bit 0 is initially cleared
+        assert!(
+            !state
+                .execution_payload_availability()
+                .unwrap()
+                .get(0)
+                .unwrap(),
+            "sanity: availability bit 0 should be cleared before processing"
+        );
+
+        // Use the parent_state_root variant since header already has non-zero state_root
+        let mut envelope = make_valid_envelope_with_parent_state_root(&state, None);
+        fix_envelope_state_root_with_parent(&state, &mut envelope, None, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Bit 0 should now be set (slot 0 % 64 = 0)
+        assert!(
+            state
+                .execution_payload_availability()
+                .unwrap()
+                .get(0)
+                .unwrap(),
+            "availability bit at index 0 should be set after envelope at slot 0"
+        );
+    }
+
+    // ── Edge case: builder index out of bounds in signature path ──
+
+    #[test]
+    fn builder_index_out_of_bounds_rejected_with_verify() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        // Set bid's builder_index to one beyond the builder registry length
+        let builders_len = state.builders().unwrap().len() as u64;
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = builders_len; // out of bounds (registry has 1 builder at index 0)
+
+        let mut envelope = make_valid_envelope(&state);
+        // Sign with any key — doesn't matter since pubkey lookup should fail
+        sign_envelope(&state, &mut envelope, &keypairs[0].sk, &spec);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        sign_envelope(&state, &mut envelope, &keypairs[0].sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
+            "builder_index beyond registry length should be rejected: {:?}",
+            result,
+        );
+    }
 }
