@@ -526,6 +526,9 @@ pub fn get_config<E: EthSpec>(
 
     client_config.allow_insecure_genesis_sync = cli_args.get_flag("allow-insecure-genesis-sync");
 
+    client_config.genesis_builders =
+        clap_utils::parse_required::<usize>(cli_args, "genesis-builders")?;
+
     client_config.genesis = if eth2_network_config.genesis_state_is_known() {
         // Set up weak subjectivity sync, or start from the hardcoded genesis state.
         if let (Some(initial_state_path), Some(initial_block_path), opt_initial_blobs_path) = (

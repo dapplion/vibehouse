@@ -1280,6 +1280,18 @@ pub fn cli_app() -> Command {
                 .display_order(0)
         )
         .arg(
+            Arg::new("genesis-builders")
+                .long("genesis-builders")
+                .help("Inject N builders into the Gloas genesis state on first start. \
+                    Uses deterministic keypairs starting at index equal to the validator count. \
+                    For devnet testing of the external builder (ePBS) path only.")
+                .value_name("N")
+                .action(ArgAction::Set)
+                .default_value("0")
+                .help_heading(FLAG_HEADER)
+                .display_order(0)
+        )
+        .arg(
             Arg::new("reconstruct-historic-states")
                 .long("reconstruct-historic-states")
                 .help("After a checkpoint sync, reconstruct historic states in the database. This requires syncing all the way back to genesis.")

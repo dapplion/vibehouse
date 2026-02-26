@@ -19,7 +19,7 @@ use self::types::{Error as ResponseError, *};
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
 use ::types::{
     PayloadAttestationData, PayloadAttestationMessage, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope,
+    SignedExecutionPayloadEnvelope, SignedProposerPreferences,
 };
 use derivative::Derivative;
 use futures::Stream;
@@ -1007,6 +1007,27 @@ impl BeaconNodeHttpClient {
             .push("bids");
 
         self.post(path, bid).await?;
+
+        Ok(())
+    }
+
+    /// `POST beacon/pool/proposer_preferences`
+    ///
+    /// Submits signed proposer preferences to the beacon node's pool for bid validation.
+    /// Used by lcli devnet testing tools to inject preferences before submitting builder bids.
+    pub async fn post_beacon_pool_proposer_preferences(
+        &self,
+        preferences: &SignedProposerPreferences,
+    ) -> Result<(), Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("pool")
+            .push("proposer_preferences");
+
+        self.post(path, preferences).await?;
 
         Ok(())
     }

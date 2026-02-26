@@ -14,7 +14,7 @@ Test vibehouse under diverse devnet scenarios beyond the happy path. The initial
 | Node churn | DONE (script) | `--churn` flag: kill validator node 4, verify chain continues (75% stake), restart, verify recovery |
 | Mainnet preset | DONE (script) | `--mainnet` flag: 4 nodes, 512 validators, 32 slots/epoch, 12s slots, ~40 min timeout |
 | Long-running | DONE (script) | `--long` flag: epoch 50 target, periodic memory/CPU monitoring, ~40 min |
-| Builder path | TODO | External bids via API, envelope reveal flow |
+| Builder path | DONE (script) | `--builder` flag: genesis builder injection, proposer prefs + bid submission via lcli |
 | Payload withholding | TODO | Bid without reveal, fork choice handles it |
 | Network partitions | DONE (script) | `--partition` flag: stop 2/4 nodes (50% stake), verify stall, heal, verify finalization resumes |
 | Stateless + ZK | DONE | 3 proof-generators + 1 stateless node (from priority 4) |
@@ -208,4 +208,60 @@ scripts/kurtosis-run.sh --long --no-teardown # Leave running for inspection
 scripts/kurtosis-run.sh --partition              # Full test
 scripts/kurtosis-run.sh --partition --no-build   # Skip Docker build
 scripts/kurtosis-run.sh --partition --no-teardown # Leave running for inspection
+```
+
+### 2026-02-26 — Builder path test (run 113)
+
+**Implemented the external builder (ePBS) devnet test scenario** — the last remaining priority-5 devnet test.
+
+**What was built:**
+
+**1. `--genesis-builders N` CLI flag for beacon_node** — injects N builders directly into the genesis Gloas state using deterministic interop keypairs (same scheme as integration tests). Builders start at keypair index `validator_count` and are immediately active (deposit_epoch=0).
+
+- `beacon_node/src/cli.rs` — added `--genesis-builders` CLI arg
+- `beacon_node/src/config.rs` — parses `genesis-builders` → `client_config.genesis_builders`
+- `beacon_node/client/src/config.rs` — added `genesis_builders: usize` field
+- `beacon_node/client/src/builder.rs` — calls `inject_genesis_builders()` during genesis state initialization
+
+**2. `lcli submit-builder-bid` subcommand** — signs and submits a full builder bid with proper proposer preferences:
+
+1. Queries proposer duties for the target epoch to find the actual proposer for the slot
+2. Signs `ProposerPreferences` with the proposer's interop keypair
+3. Submits preferences to `POST /eth/v1/beacon/pool/proposer_preferences` (new HTTP endpoint)
+4. Signs `ExecutionPayloadBid` with the builder's interop keypair
+5. Submits bid to `POST /eth/v1/builder/bids`
+
+**3. `POST /eth/v1/beacon/pool/proposer_preferences` HTTP endpoint** — accepts `SignedProposerPreferences`, verifies signature against the validator's pubkey, inserts into the proposer preferences pool. Intended for devnet testing without requiring the P2P gossip path.
+
+- `beacon_node/http_api/src/lib.rs` — added endpoint
+- `common/eth2/src/lib.rs` — added `post_beacon_pool_proposer_preferences` client method
+
+**4. `kurtosis/vibehouse-builder.yaml`** — 4-node devnet with `--genesis-builders=1` in `cl_extra_params`.
+
+**5. `--builder` flag in `kurtosis-run.sh`** — Four-phase test:
+- **Phase 1:** Wait for finalization to epoch 3 (past Gloas fork at epoch 1)
+- **Phase 2:** Submit 3 bids via `lcli submit-builder-bid`, verify at least one is accepted
+- **Phase 3:** Wait for 2 more finalized epochs, confirm chain health after bid submission
+- **Phase 4:** Check recent blocks for external `builder_index` (non-self-build) in bid field
+
+**Key design decisions:**
+- Genesis builder injection bypasses the deposit contract flow — simpler than coordinating Eth1 deposits in the devnet
+- The `submit-builder-bid` tool submits proposer preferences first (same fee_recipient + gas_limit) so bid validation passes
+- `POST /eth/v1/beacon/pool/proposer_preferences` validates the signature but skips the gossip-specific `proposer_lookahead` check — simpler for the devnet testing use case
+- Finding external bids in recent blocks is non-fatal (they may have been for future slots or not won the fork choice) — bid acceptance is the primary verification
+- Builder keypairs at indices `[validator_count, validator_count+N)` — consistent with integration test patterns
+
+**What this tests:**
+- Builder registration and activation in the genesis Gloas state
+- Proposer preferences submission and pool storage
+- Bid signature verification against the builder registry pubkey
+- Bid validation (slot, execution_payment, fee_recipient match, gas_limit match, parent_block_root, equivocation check)
+- Fork choice importing of verified external bids
+- P2P gossip propagation of verified bids
+
+**Usage:**
+```bash
+scripts/kurtosis-run.sh --builder              # Full test
+scripts/kurtosis-run.sh --builder --no-build   # Skip Docker build (reuse vibehouse:local)
+scripts/kurtosis-run.sh --builder --no-teardown # Leave running for inspection
 ```

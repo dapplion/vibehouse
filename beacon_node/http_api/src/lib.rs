@@ -91,12 +91,12 @@ use tokio_stream::{
 use tracing::{debug, error, info, warn};
 use types::{
     Attestation, AttestationData, AttestationShufflingId, AttesterSlashing, BeaconStateError,
-    ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Epoch, EthSpec, ExecutionProof,
+    ChainSpec, Checkpoint, CommitteeCache, ConfigAndPreset, Domain, Epoch, EthSpec, ExecutionProof,
     ForkName, Hash256, PayloadAttestationMessage, ProposerPreparationData, ProposerSlashing,
     RelativeEpoch, SignedAggregateAndProof, SignedBlindedBeaconBlock, SignedBlsToExecutionChange,
     SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
-    SignedValidatorRegistrationData, SignedVoluntaryExit, SingleAttestation, Slot,
-    SyncCommitteeMessage, SyncContributionData,
+    SignedProposerPreferences, SignedRoot, SignedValidatorRegistrationData, SignedVoluntaryExit,
+    SingleAttestation, Slot, SyncCommitteeMessage, SyncContributionData,
 };
 use validator::pubkey_to_validator_index;
 use version::{
@@ -2606,6 +2606,86 @@ pub fn serve<T: BeaconChainTypes>(
                             failures,
                         ))
                     }
+                })
+            },
+        );
+
+    // POST beacon/pool/proposer_preferences
+    //
+    // Accepts a signed proposer preferences message (Gloas ePBS).
+    // Validates the signature, inserts into the proposer preferences pool for bid validation.
+    // Intended for devnet testing via lcli — allows external tools to inject preferences
+    // without going through the P2P gossip path.
+    let post_beacon_pool_proposer_preferences = beacon_pool_path
+        .clone()
+        .and(warp::path("proposer_preferences"))
+        .and(warp::path::end())
+        .and(warp_utils::json::json())
+        .then(
+            |task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>,
+             signed_preferences: SignedProposerPreferences| {
+                task_spawner.blocking_json_task(Priority::P0, move || {
+                    if !chain.spec.is_gloas_scheduled() {
+                        return Err(warp_utils::reject::custom_bad_request(
+                            "Gloas is not scheduled".to_string(),
+                        ));
+                    }
+
+                    let preferences = &signed_preferences.message;
+                    let proposal_slot = Slot::new(preferences.proposal_slot);
+                    let validator_index = preferences.validator_index;
+
+                    // Get the validator's public key
+                    let head_snapshot = chain.canonical_head.cached_head();
+                    let head_state = &head_snapshot.snapshot.beacon_state;
+                    let pubkey = head_state
+                        .validators()
+                        .get(validator_index as usize)
+                        .ok_or_else(|| {
+                            warp_utils::reject::custom_bad_request(format!(
+                                "Unknown validator index {validator_index}"
+                            ))
+                        })?
+                        .pubkey
+                        .decompress()
+                        .map_err(|_| {
+                            warp_utils::reject::custom_bad_request(
+                                "Invalid validator pubkey".to_string(),
+                            )
+                        })?;
+
+                    // Verify the signature
+                    let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
+                    let domain = chain.spec.get_domain(
+                        proposal_epoch,
+                        Domain::ProposerPreferences,
+                        &head_state.fork(),
+                        head_state.genesis_validators_root(),
+                    );
+                    let signing_root = preferences.signing_root(domain);
+                    if !signed_preferences.signature.verify(&pubkey, signing_root) {
+                        return Err(warp_utils::reject::custom_bad_request(
+                            "Invalid proposer preferences signature".to_string(),
+                        ));
+                    }
+
+                    let inserted = chain.insert_proposer_preferences(signed_preferences);
+                    if inserted {
+                        debug!(
+                            %proposal_slot,
+                            %validator_index,
+                            "Inserted proposer preferences via HTTP"
+                        );
+                    } else {
+                        debug!(
+                            %proposal_slot,
+                            %validator_index,
+                            "Proposer preferences already known for this slot"
+                        );
+                    }
+
+                    Ok(())
                 })
             },
         );
@@ -5511,6 +5591,7 @@ pub fn serve<T: BeaconChainTypes>(
                     .uor(post_beacon_pool_sync_committees)
                     .uor(post_beacon_pool_bls_to_execution_changes)
                     .uor(post_beacon_pool_payload_attestations)
+                    .uor(post_beacon_pool_proposer_preferences)
                     .uor(post_builder_bids)
                     .uor(post_beacon_execution_payload_envelope)
                     .uor(post_beacon_state_validators)

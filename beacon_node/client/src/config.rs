@@ -79,6 +79,12 @@ pub struct Config {
     pub genesis_state_url: Option<String>,
     pub genesis_state_url_timeout: Duration,
     pub allow_insecure_genesis_sync: bool,
+    /// Number of genesis builders to inject into the Gloas state on first start.
+    ///
+    /// Uses deterministic keypairs starting at index `validator_count` (interop style).
+    /// Only has effect when the genesis fork is Gloas.
+    /// Intended for devnet testing of the external builder (ePBS) path.
+    pub genesis_builders: usize,
 }
 
 impl Default for Config {
@@ -107,6 +113,7 @@ impl Default for Config {
             // This default value should always be overwritten by the CLI default value.
             genesis_state_url_timeout: Duration::from_secs(60),
             allow_insecure_genesis_sync: false,
+            genesis_builders: 0,
         }
     }
 }

@@ -45,8 +45,8 @@ use timer::spawn_timer;
 use tracing::{debug, info, warn};
 use types::data_column_custody_group::compute_ordered_custody_column_indices;
 use types::{
-    BeaconState, BlobSidecarList, ChainSpec, EthSpec, ExecutionBlockHash, Hash256,
-    SignedBeaconBlock, test_utils::generate_deterministic_keypairs,
+    Address, BeaconState, BlobSidecarList, Builder, ChainSpec, Epoch, EthSpec, ExecutionBlockHash,
+    Hash256, SignedBeaconBlock, test_utils::generate_deterministic_keypairs,
 };
 
 /// Interval between polling the eth1 node for genesis information.
@@ -294,7 +294,7 @@ where
             ClientGenesis::GenesisState => {
                 info!("Starting from known genesis state");
 
-                let genesis_state = genesis_state(&runtime_context, &config).await?;
+                let mut genesis_state = genesis_state(&runtime_context, &config).await?;
 
                 // If the user has not explicitly allowed genesis sync, prevent
                 // them from trying to sync from genesis if we're outside of the
@@ -335,6 +335,11 @@ where
                                         .to_string(),
                                 );
                     }
+                }
+
+                // Inject genesis builders if requested (for devnet ePBS testing).
+                if config.genesis_builders > 0 {
+                    inject_genesis_builders(&mut genesis_state, config.genesis_builders, &spec)?;
                 }
 
                 builder.genesis_state(genesis_state)?
@@ -950,4 +955,62 @@ async fn genesis_state<E: EthSpec>(
         )
         .await?
         .ok_or_else(|| "Genesis state is unknown".to_string())
+}
+
+/// Inject `count` deterministic builders into the Gloas genesis state for devnet testing.
+///
+/// Builders use keypairs at indices `[validators.len(), validators.len() + count)` from
+/// the standard interop deterministic keypair sequence. Each builder gets:
+/// - `deposit_epoch = 0` — active as soon as the first epoch is finalized
+/// - `balance = 32 ETH` (enough to cover bids in testing)
+/// - `execution_address = zeroed` (payments ignored in test scenarios)
+/// - `withdrawable_epoch = FAR_FUTURE_EPOCH` — not exiting
+///
+/// If the state is not a Gloas state (e.g., the genesis fork is pre-Gloas), this is a no-op
+/// with a warning.
+fn inject_genesis_builders<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    count: usize,
+    spec: &ChainSpec,
+) -> Result<(), String> {
+    let validator_count = state.validators().len();
+    // Builders use keypairs after all validators in the deterministic sequence.
+    let all_keypairs = generate_deterministic_keypairs(validator_count + count);
+    let builder_keypairs = &all_keypairs[validator_count..];
+
+    let gloas_state = match state.as_gloas_mut() {
+        Ok(s) => s,
+        Err(_) => {
+            warn!("--genesis-builders has no effect: genesis state is not a Gloas state");
+            return Ok(());
+        }
+    };
+
+    for (i, keypair) in builder_keypairs.iter().enumerate() {
+        let builder = Builder {
+            pubkey: keypair.pk.clone().into(),
+            version: 0,
+            execution_address: Address::ZERO,
+            // 32 ETH — enough to cover typical test bids
+            balance: 32_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        gloas_state
+            .builders
+            .push(builder)
+            .map_err(|e| format!("Failed to inject genesis builder {i}: {e:?}"))?;
+    }
+
+    state
+        .drop_all_caches()
+        .map_err(|e| format!("Failed to drop caches after genesis builder injection: {e:?}"))?;
+
+    info!(
+        count = count,
+        first_keypair_index = validator_count,
+        "Injected genesis builders into Gloas state"
+    );
+
+    Ok(())
 }

@@ -8,6 +8,7 @@ mod mock_el;
 mod parse_ssz;
 mod skip_slots;
 mod state_root;
+mod submit_builder_bid;
 mod transition_blocks;
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
@@ -629,6 +630,82 @@ fn main() {
                         .display_order(0)
                 )
         )
+        .subcommand(
+            Command::new("submit-builder-bid")
+                .about(
+                    "Submit an external builder bid to a beacon node via POST /eth/v1/builder/bids. \
+                    For devnet testing of the ePBS builder path (Gloas fork). \
+                    Uses deterministic builder keypairs compatible with --genesis-builders."
+                )
+                .arg(
+                    Arg::new("beacon-url")
+                        .long("beacon-url")
+                        .value_name("URL")
+                        .action(ArgAction::Set)
+                        .required(true)
+                        .help("URL of the beacon node HTTP API.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("builder-index")
+                        .long("builder-index")
+                        .value_name("N")
+                        .action(ArgAction::Set)
+                        .default_value("0")
+                        .help("Builder index (0-based) within the genesis builders list.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("validator-count")
+                        .long("validator-count")
+                        .value_name("N")
+                        .action(ArgAction::Set)
+                        .required(true)
+                        .help("Number of genesis validators (determines builder keypair offset).")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("bid-value")
+                        .long("bid-value")
+                        .value_name("GWEI")
+                        .action(ArgAction::Set)
+                        .default_value("1000000000")
+                        .help("Bid value in Gwei.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("fee-recipient")
+                        .long("fee-recipient")
+                        .value_name("ADDRESS")
+                        .action(ArgAction::Set)
+                        .help("Fee recipient address (20-byte hex). Used in both proposer preferences and bid. Defaults to zero address.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("gas-limit")
+                        .long("gas-limit")
+                        .value_name("N")
+                        .action(ArgAction::Set)
+                        .help("Gas limit. Used in both proposer preferences and bid. Defaults to 30_000_000.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("block-hash")
+                        .long("block-hash")
+                        .value_name("HASH")
+                        .action(ArgAction::Set)
+                        .help("EL block hash committed to in this bid (32-byte hex). Defaults to zero.")
+                        .display_order(0)
+                )
+                .arg(
+                    Arg::new("slot")
+                        .long("slot")
+                        .value_name("SLOT")
+                        .action(ArgAction::Set)
+                        .help("Target slot for the bid. Defaults to head_slot+1.")
+                        .display_order(0)
+                )
+        )
         .get_matches();
 
     let result = matches
@@ -759,6 +836,11 @@ fn run<E: EthSpec>(env_builder: EnvironmentBuilder<E>, matches: &ArgMatches) -> 
             let network_config = get_network_config()?;
             http_sync::run::<E>(env, network_config, matches)
                 .map_err(|e| format!("Failed to run http-sync command: {}", e))
+        }
+        Some(("submit-builder-bid", matches)) => {
+            let network_config = get_network_config()?;
+            submit_builder_bid::run::<E>(env, network_config, matches)
+                .map_err(|e| format!("Failed to run submit-builder-bid command: {}", e))
         }
         Some((other, _)) => Err(format!("Unknown subcommand {}. See --help.", other)),
         _ => Err("No subcommand provided. See --help.".to_string()),
