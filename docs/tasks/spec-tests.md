@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — dead code cleanup in fork choice and envelope processing (run 120)
+- Checked consensus-specs PRs since run 119: no new Gloas spec changes merged to stable
+  - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4940 (Gloas fork choice tests), #4939 (request missing envelopes for index-1), #4932 (Gloas sanity/blocks tests), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - PR #4942 (Promote EIP-7805 to Heze) merged — creates new Heze fork, does NOT affect Gloas
+  - PR #4941 (Update execution proof construction) merged — in `_features/eip8025/`, not Gloas
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Conducted coverage gap analysis** using comprehensive codebase scan. Found:
+  - 5 dead variants in `InvalidExecutionBid` enum (fork_choice.rs): `ParentMismatch`, `UnknownBuilder`, `BuilderNotActive`, `InsufficientBuilderBalance`, `ZeroValueBid` — validations done at gossip/state-processing layer, never at fork choice
+  - 3 dead variants in `InvalidPayloadAttestation` enum (fork_choice.rs): `SlotMismatch`, `InvalidAttester`, `InvalidSignature` — same pattern
+  - 1 dead variant in `EnvelopeProcessingError` (envelope_processing.rs): `ExecutionInvalid` — EL validity checked at beacon chain layer, not state processing
+  - Several hard-to-trigger internal error paths (`NotGloasBlock`, `MissingBeaconBlock`, `PtcCommitteeError`, `BeaconChainError`) that represent DB corruption or infrastructure failures — not practical to test
+- **Removed all dead code variants**: 30 lines deleted across fork_choice.rs and envelope_processing.rs
+- Verified: 64/64 fork_choice tests pass, 295/295 state_processing tests pass, 44/44 envelope tests pass, 116/116 proto_array tests pass, 8/8 EF fork choice tests pass, 2205/2205 workspace tests pass (excluding web3signer which needs external server)
+- Commit: `30738d1f8`
+
 ### 2026-02-26 — VC proposer preferences broadcasting (run 119)
 - Identified missing spec feature: the Validator Client was not broadcasting proposer preferences, which is required by gloas/validator.md ("At the beginning of each epoch, a validator MAY broadcast SignedProposerPreferences")
 - **Implemented VC proposer preferences broadcasting** across 7 files:
