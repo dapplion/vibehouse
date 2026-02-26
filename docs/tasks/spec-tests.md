@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — Payload attestation gossip handler integration tests + InvalidSignature bug fix (run 110)
+- Checked consensus-specs PRs since run 109: no new Gloas spec changes merged
+  - No new PRs merged since Feb 24. All tracked Gloas PRs still open: #4948, #4947, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Found and fixed a bug**: `PayloadAttestationError::InvalidSignature` was falling through to the catch-all error handler in `process_gossip_payload_attestation`, returning `MessageAcceptance::Ignore` instead of `Reject`. This was inconsistent with how attestations (`AttnError::InvalidSignature` → Reject), execution bids (`ExecutionBidError::InvalidSignature` → Reject), and payload envelopes (`PayloadEnvelopeError::InvalidSignature` → Reject) handle the same error. Invalid signatures indicate malicious behavior and must result in peer penalty + rejection
+- **Added `build_valid_payload_attestation` helper**: constructs a properly-signed payload attestation from a real PTC committee member. Gets PTC committee via `get_ptc_committee`, picks the first member, computes signing root with `Domain::PtcAttester`, signs with the validator's BLS key, wraps in `AggregateSignature`, and sets the correct aggregation bit
+- **Added 3 payload attestation gossip handler integration tests** (previously 3 tests covering simple error paths; now 6 total):
+  - **Valid Accept (1 test):**
+    - `test_gloas_gossip_payload_attestation_valid_accepted`: properly signed attestation from a real PTC committee member, correct slot, known block root, valid aggregation bits, valid BLS signature. Returns Accept. Tests the full validation pipeline end-to-end including signature verification
+  - **ValidatorEquivocation → Reject (1 test):**
+    - `test_gloas_gossip_payload_attestation_equivocation_rejected`: sends payload_present=true (Accept), then payload_present=false from the same PTC member (Reject). Tests the observed_payload_attestations equivocation detection — same validator + same slot + different payload_present = equivocation
+  - **InvalidSignature → Reject (1 test):**
+    - `test_gloas_gossip_payload_attestation_invalid_signature_rejected`: correct PTC aggregation bits but signed with a different validator's key. Returns Reject. Tests BLS aggregate signature verification and the new explicit InvalidSignature handler
+- These tests close the payload attestation gossip handler gap identified in run 109: ValidatorEquivocation and valid Accept paths are now covered, and the InvalidSignature bug was found and fixed in the process
+- **Remaining handler gaps**: P2 (PayloadAttestationService), P5 (poll_ptc_duties) — both require mock BN infrastructure
+- All 130 network tests pass (was 127), cargo fmt + clippy clean
+
 ### 2026-02-26 — Execution bid gossip handler builder-path tests (run 109)
 - Checked consensus-specs PRs since run 108: no new Gloas spec changes merged
   - No new PRs merged since Feb 24. All tracked Gloas PRs still open: #4948, #4947, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
