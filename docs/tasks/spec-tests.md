@@ -28,6 +28,39 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — comprehensive gossip validation and state transition audit (run 137)
+- Checked consensus-specs PRs since run 136: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Comprehensive gossip validation audit** — systematically reviewed all 5 Gloas gossip topics against the P2P spec:
+  - **Attestation gossip (Gloas)**: index range [0,1] validation, same-slot index=0 constraint, block root checks — all correct
+  - **Execution bid gossip**: 9 validation checks (slot, payment, builder active, balance, equivocation, parent root, proposer preferences, signature) — all correct with proper REJECT/IGNORE peer scoring
+  - **Execution payload envelope gossip**: 7 validation checks (block known, finalization, slot, Gloas block, builder_index, block_hash, signature) — all correct, self-build signature skip properly handled
+  - **Proposer preferences gossip**: 4 validation checks (next epoch, proposer match via lookahead, duplicate prevention, signature) — all correct
+  - **Payload attestation gossip**: 6 validation checks (slot timing, aggregation bits, block root, PTC membership, equivocation, aggregate signature) — all correct
+  - **Equivocation detection**: properly implemented for both execution bids (builder+slot→bid_root) and payload attestations (validator+slot+block+payload_present)
+- **State transition audit** — verified per-block processing ordering matches spec:
+  - `process_block` ordering: block_header → withdrawals → bid → randao → eth1_data → operations → sync_aggregate ✓
+  - `process_operations` ordering: proposer_slashings → attester_slashings → attestations → deposits → voluntary_exits → bls_to_execution_changes → payload_attestations ✓
+  - Execution requests correctly excluded from Gloas block body (routed to envelope processing instead)
+- **Withdrawal processing audit** — verified `process_withdrawals_gloas` against spec:
+  - 4-phase ordering correct: builder pending withdrawals → partial validator withdrawals → builder sweep → validator sweep
+  - Limits correct: first 3 phases limited to MAX_WITHDRAWALS_PER_PAYLOAD-1, validator sweep uses full limit
+  - `get_balance_after_withdrawals` equivalent correctly filters prior withdrawals by validator_index (builder withdrawals use BUILDER_INDEX_FLAG, so they can't collide with validator indices)
+  - `update_next_withdrawal_validator_index` logic correct: when withdrawals.len() == max, uses last withdrawal's validator_index (guaranteed to be from validator sweep since it's the only phase that fills to max); otherwise advances by MAX_VALIDATORS_PER_SWEEP
+  - `get_expected_withdrawals_gloas` mirrors `process_withdrawals_gloas` exactly, with consistency test
+- **Envelope processing audit** — verified `process_execution_payload_envelope` against spec's `process_execution_payload`:
+  - All 17 verification steps in correct order ✓
+  - Builder payment queue/clear ordering: spec reads payment, appends withdrawal, then clears; vibehouse clones payment, clears, then appends — functionally equivalent ✓
+  - Availability bit set at `state.slot % SLOTS_PER_HISTORICAL_ROOT` ✓
+  - State root verified as final step ✓
+- **Epoch processing ordering**: `process_builder_pending_payments` correctly placed after `process_pending_consolidations` and before `process_effective_balance_updates` ✓
+- **Reviewed upcoming PR readiness**:
+  - PR #4940 (Gloas fork choice tests): `OnExecutionPayload` step handler already implemented; may need `OnPayloadAttestation` step when PR merges
+  - PR #4932 (Gloas sanity/blocks tests): existing SanityBlocks handler should work for payload attestation tests
+  - PR #4939 (request missing envelopes for index-1 attestations): not yet merged, MAY/SHOULD requirement, not implemented yet
+- **No spec compliance bugs found** — all audited functions match the latest consensus-specs
+
 ### 2026-02-26 — builder exit signature verification tests (run 136)
 - Checked consensus-specs PRs since run 135: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
