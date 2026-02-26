@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — bid pool parent_block_root filtering (run 132)
+- Checked consensus-specs PRs since run 131: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Fixed Issue A from run 131**: `get_best_bid` now filters by `parent_block_root`
+  - **Bug**: `ExecutionBidPool::get_best_bid(slot)` only filtered by slot, not by the block's parent root. After a re-org, the chain head changes, and a bid valid for the old head's `parent_block_root` would be selected. `process_execution_payload_bid` in per-block processing would then reject the mismatched `parent_block_root`, causing block production to fail silently (the proposer wastes their slot)
+  - **Impact**: After any re-org during a slot where external builder bids exist, the proposer would select a stale bid, block processing would reject it, and the proposer would miss their slot. Self-build fallback would not kick in because the bid was "successfully" selected before block construction began
+  - **Fix**: Added `parent_block_root: Hash256` parameter to `get_best_bid` and `get_best_execution_bid`. The block production call site (`produce_partial_beacon_block`) already has `parent_root` available, so it now passes it through. Only bids matching the current chain head's parent root are considered
+  - **Added 3 new unit tests**: `best_bid_filters_by_parent_block_root`, `best_bid_wrong_parent_block_root_returns_none`, `best_bid_selects_highest_value_among_matching_parent`
+  - Updated 8 existing integration tests to pass the correct `parent_block_root`
+- Verified: 17/17 execution_bid_pool unit tests pass, 8/8 bid-related beacon_chain integration tests pass, cargo fmt + clippy clean
+
 ### 2026-02-26 — self-build envelope error handling audit (run 131)
 - Checked consensus-specs PRs since run 130: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
