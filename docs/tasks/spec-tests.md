@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — blinded envelope fallback in reconstruct_historic_states (run 114)
+- Checked consensus-specs PRs since run 113: no new Gloas spec changes merged
+  - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
+  - Still open, not implementing until merged
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Closed P6 coverage gap**: the blinded envelope fallback path in `reconstruct_historic_states` (reconstruct.rs:131-146) and `get_advanced_hot_state` (hot_cold_store.rs:1191-1203) had ZERO tests exercising the fallback path (where full payload is pruned and only blinded envelope remains)
+- **Added `gloas_reconstruct_states_with_pruned_payloads` test** (store_tests.rs):
+  - Builds 7-epoch Gloas chain with `reconstruct_historic_states: false` (states not auto-reconstructed)
+  - Collects Gloas block roots, pre-envelope state roots, and bid block_hashes before pruning
+  - Calls `try_prune_execution_payloads(force=true)` — deletes full payloads from ExecPayload column
+  - Verifies: `execution_payload_exists()` returns false, `get_payload_envelope()` returns None, `get_blinded_payload_envelope()` still returns Some (blinded envelopes are NOT pruned)
+  - Calls `reconstruct_historic_states(None)` — must use blinded envelope fallback for all Gloas blocks since full payloads are gone
+  - Loads reconstructed cold states by pre-envelope root and verifies `latest_block_hash == bid.block_hash` (confirms envelope processing was applied via blinded fallback)
+- **Key design insight**: `reconstruct_historic_states` stores states under `block.state_root()` (pre-envelope root). The state CONTENT has envelope applied (latest_block_hash updated). `load_cold_state_by_slot` replays from snapshots/hdiffs that include the envelope changes, so loaded states have correct `latest_block_hash`
+- **What this tests**: the only previously untested path — real production nodes prune payloads after finalization, then `reconstruct_historic_states` is used during WSS archive node setup. Without blinded envelope fallback, reconstruction would leave `latest_block_hash` at the grandparent's value, breaking bid validation for all reconstructed states
+- 570/570 beacon_chain tests pass (was 566), cargo fmt + clippy clean
+- **No remaining known coverage gaps** — all P1-P8 gaps from run 96 analysis are now closed
+
 ### 2026-02-26 — produce_payload_attestations integration tests (run 113)
 - Checked consensus-specs PRs since run 112: no new Gloas spec changes merged
   - Open PRs tracked: #4948 (reorder payload status constants, EMPTY=0/FULL=1/PENDING=2), #4947 (pre-fork subscription note), #4940, #4939, #4932, #4892 (already implemented), #4840, #4747, #4630, #4558
