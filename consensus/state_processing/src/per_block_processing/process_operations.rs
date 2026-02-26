@@ -2921,4 +2921,109 @@ mod gloas_operations_tests {
             "builder with pending payment should be rejected"
         );
     }
+
+    // ── builder exit signature verification tests ────────────
+
+    /// Create a state with a builder that has a real keypair for signature tests.
+    fn make_state_with_builder_keys() -> (BeaconState<E>, ChainSpec, Vec<types::Keypair>) {
+        // Generate NUM_VALIDATORS + 1 keypairs (the extra one is for the builder)
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+
+        // slot 512 = epoch 64 for MinimalEthSpec (8 slots/epoch)
+        let (mut state, spec, _ctxt) = make_gloas_state_with_caches(512);
+
+        // Add a builder with real pubkey from keypairs[NUM_VALIDATORS]
+        let builder_kp = &keypairs[NUM_VALIDATORS];
+        let builder = types::Builder {
+            pubkey: builder_kp.pk.compress(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance: 1_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(builder)
+            .unwrap();
+
+        // Set finalized checkpoint so builder is active
+        state.as_gloas_mut().unwrap().finalized_checkpoint = Checkpoint {
+            epoch: Epoch::new(1),
+            root: Hash256::repeat_byte(0xDD),
+        };
+
+        (state, spec, keypairs)
+    }
+
+    /// Sign a builder voluntary exit with the given secret key.
+    fn sign_builder_exit(
+        state: &BeaconState<E>,
+        builder_index: u64,
+        epoch: Epoch,
+        sk: &bls::SecretKey,
+        spec: &ChainSpec,
+    ) -> SignedVoluntaryExit {
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+        let exit = VoluntaryExit {
+            epoch,
+            validator_index: builder_index | BUILDER_INDEX_FLAG,
+        };
+        // EIP-7044: use capella fork version for VoluntaryExit domain
+        let domain = spec.compute_domain(
+            Domain::VoluntaryExit,
+            spec.capella_fork_version,
+            state.genesis_validators_root(),
+        );
+        let signing_root = exit.signing_root(domain);
+        let signature = sk.sign(signing_root);
+        SignedVoluntaryExit {
+            message: exit,
+            signature,
+        }
+    }
+
+    #[test]
+    fn verify_exit_builder_valid_signature_accepted() {
+        let (state, spec, keypairs) = make_state_with_builder_keys();
+        let builder_kp = &keypairs[NUM_VALIDATORS]; // builder's keypair
+        let exit = sign_builder_exit(&state, 0, state.current_epoch(), &builder_kp.sk, &spec);
+        let result = verify_exit(&state, None, &exit, VerifySignatures::True, &spec);
+        assert!(
+            result.is_ok(),
+            "valid builder exit signature should be accepted: {:?}",
+            result.err()
+        );
+        assert!(result.unwrap(), "should return true for builder exit");
+    }
+
+    #[test]
+    fn verify_exit_builder_wrong_signature_rejected() {
+        let (state, spec, keypairs) = make_state_with_builder_keys();
+        // Sign with validator key 0 instead of the builder's key
+        let wrong_kp = &keypairs[0];
+        let exit = sign_builder_exit(&state, 0, state.current_epoch(), &wrong_kp.sk, &spec);
+        let result = verify_exit(&state, None, &exit, VerifySignatures::True, &spec);
+        assert!(
+            result.is_err(),
+            "builder exit with wrong signature should be rejected"
+        );
+    }
+
+    #[test]
+    fn process_exits_builder_with_valid_signature() {
+        let (mut state, spec, keypairs) = make_state_with_builder_keys();
+        let builder_kp = &keypairs[NUM_VALIDATORS];
+        let current_epoch = state.current_epoch();
+        let exit = sign_builder_exit(&state, 0, current_epoch, &builder_kp.sk, &spec);
+        process_exits(&mut state, &[exit], VerifySignatures::True, &spec).unwrap();
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap();
+        assert_eq!(
+            builder.withdrawable_epoch,
+            current_epoch + spec.min_builder_withdrawability_delay,
+            "builder should have withdrawable_epoch set after verified exit"
+        );
+    }
 }
