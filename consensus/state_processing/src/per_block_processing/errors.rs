@@ -450,6 +450,12 @@ pub enum ExitInvalid {
     /// been invalid or an internal error occurred.
     SignatureSetError(SignatureSetError),
     PendingWithdrawalInQueue(u64),
+    /// [New in Gloas:EIP7732] The builder index does not exist in the registry.
+    BuilderUnknown(u64),
+    /// [New in Gloas:EIP7732] The builder is not active.
+    BuilderNotActive(u64),
+    /// [New in Gloas:EIP7732] The builder has pending withdrawals in the queue.
+    BuilderPendingWithdrawalInQueue(u64),
 }
 
 #[derive(Debug, PartialEq, Clone)]

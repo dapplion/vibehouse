@@ -957,6 +957,56 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     Ok(withdrawals)
 }
 
+/// Compute the total pending balance to withdraw for a builder.
+///
+/// Sums amounts from both `builder_pending_withdrawals` and `builder_pending_payments`
+/// for the given `builder_index`.
+///
+/// Spec: `get_pending_balance_to_withdraw_for_builder`
+pub fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
+    state: &BeaconState<E>,
+    builder_index: u64,
+) -> Result<u64, BeaconStateError> {
+    let state_gloas = state.as_gloas()?;
+    let mut total = 0u64;
+    for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
+        if withdrawal.builder_index == builder_index {
+            total = total.saturating_add(withdrawal.amount);
+        }
+    }
+    for payment in state_gloas.builder_pending_payments.iter() {
+        if payment.withdrawal.builder_index == builder_index {
+            total = total.saturating_add(payment.withdrawal.amount);
+        }
+    }
+    Ok(total)
+}
+
+/// Initiate the exit of a builder.
+///
+/// Sets the builder's `withdrawable_epoch` to `current_epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY`.
+/// Does nothing if the builder has already initiated exit.
+///
+/// Spec: `initiate_builder_exit`
+pub fn initiate_builder_exit<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    builder_index: u64,
+    spec: &ChainSpec,
+) -> Result<(), BeaconStateError> {
+    let current_epoch = state.current_epoch();
+    let state_gloas = state.as_gloas_mut()?;
+    let builder = state_gloas
+        .builders
+        .get_mut(builder_index as usize)
+        .ok_or(BeaconStateError::UnknownBuilder(builder_index))?;
+    // Return if builder already initiated exit
+    if builder.withdrawable_epoch != spec.far_future_epoch {
+        return Ok(());
+    }
+    builder.withdrawable_epoch = current_epoch.safe_add(spec.min_builder_withdrawability_delay)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3195,5 +3245,136 @@ mod tests {
             "payload_present=false should be valid: {:?}",
             result.err()
         );
+    }
+
+    // ── get_pending_balance_to_withdraw_for_builder tests ────────────
+
+    #[test]
+    fn pending_balance_to_withdraw_builder_empty_queues() {
+        let (state, _spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let pending = get_pending_balance_to_withdraw_for_builder(&state, 0).unwrap();
+        assert_eq!(pending, 0, "no pending withdrawals means zero balance");
+    }
+
+    #[test]
+    fn pending_balance_to_withdraw_builder_from_withdrawals() {
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 500,
+                builder_index: 0,
+            })
+            .unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 300,
+                builder_index: 0,
+            })
+            .unwrap();
+        let pending = get_pending_balance_to_withdraw_for_builder(&state, 0).unwrap();
+        assert_eq!(pending, 800);
+    }
+
+    #[test]
+    fn pending_balance_to_withdraw_builder_from_payments() {
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let state_gloas = state.as_gloas_mut().unwrap();
+        *state_gloas.builder_pending_payments.get_mut(0).unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 1000,
+                builder_index: 0,
+            },
+        };
+        let pending = get_pending_balance_to_withdraw_for_builder(&state, 0).unwrap();
+        assert_eq!(pending, 1000);
+    }
+
+    #[test]
+    fn pending_balance_to_withdraw_builder_sums_both_queues() {
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 200,
+                builder_index: 0,
+            })
+            .unwrap();
+        *state_gloas.builder_pending_payments.get_mut(0).unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 300,
+                builder_index: 0,
+            },
+        };
+        let pending = get_pending_balance_to_withdraw_for_builder(&state, 0).unwrap();
+        assert_eq!(pending, 500);
+    }
+
+    #[test]
+    fn pending_balance_to_withdraw_builder_ignores_other_builders() {
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 999,
+                builder_index: 0,
+            })
+            .unwrap();
+        // Query builder_index=1 which doesn't have any pending
+        let pending = get_pending_balance_to_withdraw_for_builder(&state, 1).unwrap();
+        assert_eq!(pending, 0, "should ignore other builder's pending balance");
+    }
+
+    // ── initiate_builder_exit tests ────────────
+
+    #[test]
+    fn initiate_builder_exit_sets_withdrawable_epoch() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let current_epoch = state.current_epoch();
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap();
+        assert_eq!(
+            builder.withdrawable_epoch,
+            current_epoch + spec.min_builder_withdrawability_delay,
+        );
+    }
+
+    #[test]
+    fn initiate_builder_exit_noop_if_already_exiting() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        // Set builder already exiting
+        let target_epoch = Epoch::new(99);
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = target_epoch;
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap();
+        assert_eq!(
+            builder.withdrawable_epoch, target_epoch,
+            "should not change already-set withdrawable_epoch"
+        );
+    }
+
+    #[test]
+    fn initiate_builder_exit_unknown_builder_returns_error() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+        let result = initiate_builder_exit::<E>(&mut state, 999, &spec);
+        assert!(result.is_err(), "should fail for unknown builder index");
     }
 }

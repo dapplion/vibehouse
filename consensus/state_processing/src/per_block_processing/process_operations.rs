@@ -387,10 +387,17 @@ pub fn process_exits<E: EthSpec>(
     // Verify and apply each exit in series. We iterate in series because higher-index exits may
     // become invalid due to the application of lower-index ones.
     for (i, exit) in voluntary_exits.iter().enumerate() {
-        verify_exit(state, None, exit, verify_signatures, spec)
+        let is_builder_exit = verify_exit(state, None, exit, verify_signatures, spec)
             .map_err(|e| e.into_with_index(i))?;
 
-        initiate_validator_exit(state, exit.message.validator_index as usize, spec)?;
+        if is_builder_exit {
+            // [New in Gloas:EIP7732] Builder exit path
+            let builder_index =
+                exit.message.validator_index & !types::consts::gloas::BUILDER_INDEX_FLAG;
+            gloas::initiate_builder_exit(state, builder_index, spec)?;
+        } else {
+            initiate_validator_exit(state, exit.message.validator_index as usize, spec)?;
+        }
     }
     Ok(())
 }
@@ -2717,6 +2724,201 @@ mod gloas_operations_tests {
             weight,
             u64::MAX,
             "weight should saturate at u64::MAX instead of overflowing"
+        );
+    }
+
+    // ── builder voluntary exit tests ────────────
+
+    /// Create a state with builders and a finalized checkpoint so builders are active.
+    /// Uses slot 512 (epoch 64 for minimal 8 slots/epoch) so validators pass
+    /// shard_committee_period check too.
+    fn make_state_with_builders() -> (BeaconState<E>, ChainSpec) {
+        // slot 512 = epoch 64 for MinimalEthSpec (8 slots/epoch)
+        let (mut state, spec, _ctxt) = make_gloas_state_with_caches(512);
+
+        // Add an active builder (deposit_epoch=0, withdrawable_epoch=FAR_FUTURE)
+        let builder = types::Builder {
+            pubkey: PublicKeyBytes::empty(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance: 1_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(builder)
+            .unwrap();
+
+        // Set finalized checkpoint epoch > deposit_epoch so builder is active
+        state.as_gloas_mut().unwrap().finalized_checkpoint = Checkpoint {
+            epoch: Epoch::new(1),
+            root: Hash256::repeat_byte(0xDD),
+        };
+
+        (state, spec)
+    }
+
+    fn make_builder_exit(builder_index: u64, epoch: Epoch) -> SignedVoluntaryExit {
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+        SignedVoluntaryExit {
+            message: VoluntaryExit {
+                epoch,
+                validator_index: builder_index | BUILDER_INDEX_FLAG,
+            },
+            signature: Signature::infinity().unwrap(),
+        }
+    }
+
+    fn make_validator_exit_msg(validator_index: u64, epoch: Epoch) -> SignedVoluntaryExit {
+        SignedVoluntaryExit {
+            message: VoluntaryExit {
+                epoch,
+                validator_index,
+            },
+            signature: Signature::infinity().unwrap(),
+        }
+    }
+
+    #[test]
+    fn verify_exit_builder_returns_true() {
+        let (state, spec) = make_state_with_builders();
+        let exit = make_builder_exit(0, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "builder exit should pass: {:?}",
+            result.err()
+        );
+        assert!(
+            result.unwrap(),
+            "verify_exit should return true for builder exits"
+        );
+    }
+
+    #[test]
+    fn verify_exit_validator_returns_false() {
+        let (state, spec) = make_state_with_builders();
+        let exit = make_validator_exit_msg(1, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "validator exit should pass: {:?}",
+            result.err()
+        );
+        assert!(
+            !result.unwrap(),
+            "verify_exit should return false for validator exits"
+        );
+    }
+
+    #[test]
+    fn verify_exit_builder_unknown_index_rejected() {
+        let (state, spec) = make_state_with_builders();
+        let exit = make_builder_exit(999, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(result.is_err(), "unknown builder index should be rejected");
+    }
+
+    #[test]
+    fn verify_exit_builder_not_active_rejected() {
+        let (mut state, spec) = make_state_with_builders();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(50);
+        let exit = make_builder_exit(0, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(result.is_err(), "exiting builder should be rejected");
+    }
+
+    #[test]
+    fn verify_exit_builder_with_pending_withdrawals_rejected() {
+        let (mut state, spec) = make_state_with_builders();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(types::BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 100,
+                builder_index: 0,
+            })
+            .unwrap();
+        let exit = make_builder_exit(0, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_err(),
+            "builder with pending withdrawals should be rejected"
+        );
+    }
+
+    #[test]
+    fn verify_exit_builder_future_epoch_rejected() {
+        let (state, spec) = make_state_with_builders();
+        let exit = make_builder_exit(0, Epoch::new(999));
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(result.is_err(), "future epoch should be rejected");
+    }
+
+    #[test]
+    fn process_exits_builder_sets_withdrawable_epoch() {
+        let (mut state, spec) = make_state_with_builders();
+        let current_epoch = state.current_epoch();
+        let exit = make_builder_exit(0, current_epoch);
+        process_exits(&mut state, &[exit], VerifySignatures::False, &spec).unwrap();
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap();
+        assert_eq!(
+            builder.withdrawable_epoch,
+            current_epoch + spec.min_builder_withdrawability_delay,
+        );
+    }
+
+    #[test]
+    fn process_exits_mixed_builder_and_validator() {
+        let (mut state, spec) = make_state_with_builders();
+        let current_epoch = state.current_epoch();
+        let builder_exit = make_builder_exit(0, current_epoch);
+        let validator_exit = make_validator_exit_msg(1, current_epoch);
+        process_exits(
+            &mut state,
+            &[builder_exit, validator_exit],
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap();
+        assert_eq!(
+            builder.withdrawable_epoch,
+            current_epoch + spec.min_builder_withdrawability_delay,
+        );
+        let validator = state.get_validator(1).unwrap();
+        assert_ne!(validator.exit_epoch, spec.far_future_epoch);
+    }
+
+    #[test]
+    fn verify_exit_builder_with_pending_payment_rejected() {
+        let (mut state, spec) = make_state_with_builders();
+        // Set a pending payment for builder 0
+        let state_gloas = state.as_gloas_mut().unwrap();
+        *state_gloas.builder_pending_payments.get_mut(0).unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: types::BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 500,
+                builder_index: 0,
+            },
+        };
+        let exit = make_builder_exit(0, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_err(),
+            "builder with pending payment should be rejected"
         );
     }
 }

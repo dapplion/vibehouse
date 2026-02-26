@@ -190,6 +190,7 @@ pub enum Error {
     ProposerLookaheadOutOfBounds {
         i: usize,
     },
+    UnknownBuilder(u64),
 }
 
 /// Control whether an epoch-indexed field can be indexed at the next epoch or not.
