@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — produce_payload_attestations integration tests (run 113)
+- Checked consensus-specs PRs since run 112: no new Gloas spec changes merged
+  - Open PRs tracked: #4948 (reorder payload status constants, EMPTY=0/FULL=1/PENDING=2), #4947 (pre-fork subscription note), #4940, #4939, #4932, #4892 (already implemented), #4840, #4747, #4630, #4558
+  - PR #4892 (remove impossible branch in forkchoice) — already implemented in vibehouse as `debug_assert!(vote.current_slot >= block.slot)` + `if vote.current_slot == block.slot { return false; }`
+  - PR #4948 still open — not implementing yet (PENDING=0→2 enum reorder requires spec finalization)
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Closed P2 coverage gap**: `produce_payload_attestations` in `payload_attestation_service.rs` had ZERO integration tests. This is the core VC routine that PTC members execute at 3/4 of each slot — reads duties from DutiesService.ptc_duties, fetches attestation data from BN, signs with validator store, submits to pool
+- **Made `PtcDutiesMap::set_duties` pub(crate)** to allow duty injection from the sibling test module
+- **Added test-only `produce_payload_attestations_for_testing` method** (wraps the private async fn) to expose it for integration tests
+- **Added `SigningValidatorStore`**: minimal ValidatorStore for produce_payload_attestations tests — implements `voting_pubkeys`, `validator_index`, and `sign_payload_attestation` (with configurable error injection and signed-indices recording). All other methods are `unimplemented!()` stubs
+- **Added 6 integration tests** in `produce_tests` module (payload_attestation_service.rs):
+  - `produce_no_duties_returns_ok_without_bn_call`: slot has duties for slot 999 (not current slot) → duties_for_slot returns empty → early return without any BN call
+  - `produce_with_duties_signs_and_submits`: happy path — duty present for current slot, BN returns attestation data, sign succeeds, POST to pool. Verifies sign was called for the correct validator_index
+  - `produce_multiple_duties_all_signed`: 3 validators with duties in same slot → all 3 signed and submitted in a single POST. Tests the duty iteration loop
+  - `produce_bn_error_returns_err`: no BN mock → BN returns 404 → produce_payload_attestations returns Err(()). Tests abort-on-fetch-failure
+  - `produce_sign_error_skips_submission`: sign errors for all duties → messages vec empty → returns Ok without POST (sign attempt recorded). Tests error resilience (function logs and continues, not a fatal abort)
+  - `produce_payload_present_false_propagated`: BN returns payload_present=false → sign still called with false data. Verifies false payload presence is a valid duty (not suppressed)
+- **No remaining P2 coverage gaps** — both `poll_ptc_duties` (run 112) and `produce_payload_attestations` (run 113) are now tested
+- All 35 validator_services tests pass (was 29), cargo fmt + clippy clean
+
 ### 2026-02-26 — poll_ptc_duties integration tests (run 112)
 - Checked consensus-specs PRs since run 111: no new Gloas spec changes merged
 - Spec test version: v1.7.0-alpha.2 remains latest release
