@@ -98,7 +98,7 @@ fn test_removing_topic_weight_on_old_topics() {
     let mut spec = MinimalEthSpec::default_spec();
     spec.altair_fork_epoch = Some(Epoch::new(0));
     spec.bellatrix_fork_epoch = Some(Epoch::new(0));
-    spec.capella_fork_epoch = Some(Epoch::new(1));
+    spec.capella_fork_epoch = Some(Epoch::new(2));
 
     // Build beacon chain.
     let beacon_chain = BeaconChainHarness::builder(MinimalEthSpec)
@@ -187,8 +187,8 @@ fn test_removing_topic_weight_on_old_topics() {
         .expect("topic score params");
     assert!(old_topic_params2.topic_weight > 0.0);
 
-    // Advance slot to the next fork
-    for _ in 0..MinimalEthSpec::slots_per_epoch() {
+    // Advance slot to the next fork (epoch 2)
+    for _ in 0..(MinimalEthSpec::slots_per_epoch() * 2) {
         beacon_chain.slot_clock.advance_slot();
     }
 

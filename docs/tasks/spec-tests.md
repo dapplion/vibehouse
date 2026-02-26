@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — implement pre-fork gossip subscription per spec PR #4947 (run 143)
+- Checked consensus-specs PRs since run 142: no new Gloas spec changes merged
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release
+- **Implemented spec PR #4947 compliance**: pre-fork gossip topic subscription now uses 1 full epoch instead of 2 slots
+  - **Spec reference**: PR #4947 (merged Feb 26) — "Nodes SHOULD subscribe to this topic at least one epoch before the fork activation"
+  - **Before**: `SUBSCRIBE_DELAY_SLOTS = 2` — subscribed only 2 slots (~12s) before fork
+  - **After**: `PRE_FORK_SUBSCRIBE_EPOCHS = 1` — subscribes 1 full epoch before fork (48s minimal, 384s mainnet)
+  - **Change**: renamed constant, updated both `required_gossip_fork_digests()` and `next_topic_subscriptions_delay()` to compute delay using `slots_per_epoch * seconds_per_slot` instead of `SUBSCRIBE_DELAY_SLOTS * seconds_per_slot`
+  - **Test fix**: `test_removing_topic_weight_on_old_topics` moved capella fork from epoch 1 to epoch 2 (was within the new subscription window at genesis)
+  - **Why this matters**: proposers need to broadcast preferences one epoch before the fork so builders can send bids in the first post-fork epoch. Without early subscription, those preferences would be dropped
+- **Tests**: 136/136 network tests pass (FORK_NAME=gloas), clippy clean
+
 ### 2026-02-26 — spec audit, all tests green, is_head_weak deviation documented (run 142)
 - Checked consensus-specs PRs since run 141:
   - **#4948 (Reorder payload status constants)**: MERGED Feb 26 — reorders PayloadStatus so EMPTY=0, FULL=1, PENDING=2. Vibehouse already matches (GloasPayloadStatus enum uses these ordinals since run 130).
@@ -257,7 +270,7 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 ### 2026-02-26 — spec PR #4948 + notify_ptc_messages fix (run 130)
 - Checked consensus-specs PRs since run 129: 2 Gloas PRs merged
   - **#4948** (merged Feb 26): "Reorder payload status constants" — changes ordinal values: Empty=0, Full=1, Pending=2 (was Pending=0, Empty=1, Full=2). **Implemented**: updated `GloasPayloadStatus` enum ordering, fixed 2 hardcoded test values in fork_choice.rs, updated test names/comments for accuracy
-  - **#4947** (merged Feb 26): "Add pre-fork subscription note for proposer_preferences topic" — SHOULD subscribe one epoch before fork activation. **Noted**: vibehouse already subscribes `SUBSCRIBE_DELAY_SLOTS=2` slots early; full-epoch early subscription is advisory, not implemented
+  - **#4947** (merged Feb 26): "Add pre-fork subscription note for proposer_preferences topic" — SHOULD subscribe one epoch before fork activation. **Implemented in run 143**: `PRE_FORK_SUBSCRIBE_EPOCHS=1` subscribes all gossip topics 1 epoch before fork
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
 - Spec test version: v1.7.0-alpha.2 remains latest release
 - **Analysis of #4948 impact**: The numeric values changed but relative ordering between EMPTY and FULL is preserved in all practical comparison contexts (they're only compared as siblings of the same PENDING parent). No behavioral change, but vibehouse must match the spec's ordinal values for correct `head_payload_status` reporting
