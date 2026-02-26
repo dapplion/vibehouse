@@ -83,8 +83,6 @@ pub enum EnvelopeProcessingError {
     BitFieldError(ssz::BitfieldError),
     /// Some kind of error calculating the builder payment index
     BuilderPaymentIndexOutOfBounds(usize),
-    /// The envelope was deemed invalid by the execution engine.
-    ExecutionInvalid,
 }
 
 impl From<BeaconStateError> for EnvelopeProcessingError {
