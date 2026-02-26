@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-26 — fix components_by_range_requests memory leak (run 116)
+- No new Gloas spec changes since run 115; open PRs unchanged
+- **Bug fixed**: `components_by_range_requests` entries in `SyncNetworkContext` could accumulate without being freed
+  - **Path 1 — retry failure**: In `retry_columns_by_range`, if peer selection or request sending failed, the function returned `Err` but left the entry in the map. Fixed by removing the entry before returning on both error paths.
+  - **Path 2 — chain removal**: When a range sync chain was removed (peer disconnect, chain failure, chain completed), its `components_by_range_requests` entries were never cleaned up. Fixed by calling `remove_range_components_by_chain_id(chain.id())` in `on_chain_removed` (range.rs).
+  - **Path 3 — backfill failure**: When backfill sync failed, its entries were never cleaned up. Fixed by calling `remove_backfill_range_components()` in the three error-handling branches in manager.rs (`on_batch_process_result`, `on_block_response`, `inject_error`).
+- All 133 network tests pass; full clippy clean
+
 ### 2026-02-26 — CI coverage improvements (run 115)
 - Checked consensus-specs PRs since run 114: no new Gloas spec changes merged
   - Open PRs tracked: #4948 (reorder payload status constants), #4947 (pre-fork subscription note), #4939 (request missing envelopes for index-1), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (Fast Confirmation Rule), #4630 (SSZ forward compat)
