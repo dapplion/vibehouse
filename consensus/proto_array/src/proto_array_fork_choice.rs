@@ -453,7 +453,7 @@ pub struct ProtoArrayForkChoice {
     pub(crate) votes: ElasticList<VoteTracker>,
     pub(crate) balances: JustifiedBalances,
     /// Gloas: payload status of the head from the last `find_head_gloas` call.
-    /// 1 = EMPTY, 2 = FULL. `None` for pre-Gloas heads.
+    /// 0 = EMPTY, 1 = FULL, 2 = PENDING. `None` for pre-Gloas heads.
     pub(crate) gloas_head_payload_status: Option<u8>,
 }
 

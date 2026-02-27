@@ -2750,11 +2750,15 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 ))
             })?;
 
+        // Skip BLS signature re-verification: the caller already holds a
+        // VerifiedPayloadEnvelope which passed gossip verification (BLS checked
+        // for external builders; skipped for self-build per spec). Re-verifying
+        // here would fail for self-build envelopes which carry Signature::empty().
         state_processing::envelope_processing::process_execution_payload_envelope(
             &mut state,
             Some(block_state_root),
             signed_envelope,
-            state_processing::VerifySignatures::True,
+            state_processing::VerifySignatures::False,
             &self.spec,
         )
         .map_err(|e| Error::EnvelopeProcessingError(format!("{:?}", e)))?;

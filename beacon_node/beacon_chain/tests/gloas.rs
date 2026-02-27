@@ -8176,3 +8176,259 @@ async fn gloas_load_parent_skips_patch_for_genesis_zero_hash() {
         "first block should be in fork choice"
     );
 }
+
+// =============================================================================
+// Gossip envelope processing, load_parent EMPTY path, historical attestation
+// =============================================================================
+
+/// Full gossip pipeline for a self-build envelope arriving at another node:
+/// verify_payload_envelope_for_gossip → apply_payload_envelope_to_fork_choice →
+/// process_payload_envelope. Verifies that the state transition runs, the envelope
+/// is persisted to the store, and the head state is updated with latest_block_hash.
+///
+/// This is the only test that exercises process_payload_envelope through the gossip
+/// verification path. All other tests use process_self_build_envelope which takes a
+/// different code path (no gossip verification, just direct state transition + EL).
+/// In a live network, when Node A produces a self-build block+envelope and gossips
+/// both, Node B processes the envelope through this gossip pipeline.
+#[tokio::test]
+async fn gloas_gossip_envelope_full_processing_pipeline() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block only (simulating gossip block arriving first)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Confirm payload_revealed is false before envelope processing
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .unwrap();
+        assert!(
+            !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "payload_revealed should be false before envelope"
+        );
+    }
+
+    // Step 1: Gossip verification (self-build envelopes skip BLS check)
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    // Step 2: Apply to fork choice (marks payload_revealed = true)
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Confirm payload_revealed is now true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .unwrap();
+        assert!(
+            fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "payload_revealed should be true after fork choice update"
+        );
+    }
+
+    // Step 3: Full envelope processing (EL newPayload + state transition)
+    harness
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("process_payload_envelope should succeed");
+
+    // Verify: envelope is persisted to the store
+    let stored_envelope = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error")
+        .expect("envelope should be persisted after processing");
+    assert_eq!(
+        stored_envelope.message.beacon_block_root, block_root,
+        "stored envelope should reference correct block root"
+    );
+
+    // Verify: the state cache has been updated with the post-envelope state.
+    // The post-envelope state should have latest_block_hash == envelope's block_hash.
+    let block_state_root = harness
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .unwrap()
+        .message()
+        .state_root();
+    let post_state = harness
+        .chain
+        .get_state(&block_state_root, Some(next_slot), false)
+        .expect("should not error")
+        .expect("post-envelope state should be in cache");
+    let latest_hash = post_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        *latest_hash, envelope_block_hash,
+        "post-envelope state latest_block_hash should match the envelope's block_hash"
+    );
+}
+
+/// Import a block whose parent had its payload unrevealed (parent EMPTY path).
+///
+/// In a live network, envelope delivery is not guaranteed. If a builder reveals
+/// their payload late or not at all, the next proposer builds on an EMPTY parent.
+/// The `load_parent` code (block_verification.rs) must handle this correctly:
+/// when child_bid.parent_block_hash != parent_bid_block_hash, no hash patching
+/// occurs and the block still imports successfully.
+#[tokio::test]
+async fn gloas_load_parent_empty_parent_unrevealed_payload() {
+    let harness = gloas_harness_at_epoch(0);
+    // Build initial chain with revealed payloads
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce block at slot 3 but DO NOT process its envelope
+    harness.advance_slot();
+    let state_before_3 = harness.chain.head_beacon_state_cloned();
+    let slot_3 = state_before_3.slot() + 1;
+    let (block_3_contents, _state_3, _envelope_3) = harness
+        .make_block_with_envelope(state_before_3, slot_3)
+        .await;
+    let block_3_root = block_3_contents.0.canonical_root();
+
+    // Import block 3 without envelope → payload_revealed = false (parent EMPTY)
+    harness
+        .process_block(slot_3, block_3_root, block_3_contents)
+        .await
+        .expect("block 3 import should succeed");
+
+    // Confirm block 3 has payload_revealed = false
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto = fc.get_block(&block_3_root).unwrap();
+        assert!(
+            !proto.payload_revealed,
+            "block 3 should have payload_revealed=false (no envelope processed)"
+        );
+    }
+
+    // Now produce block at slot 4 whose parent is the unrevealed block 3.
+    // This exercises the load_parent EMPTY path where
+    // child_bid.parent_block_hash != parent_bid_block_hash.
+    harness.advance_slot();
+    let state_for_4 = harness.chain.head_beacon_state_cloned();
+    let slot_4 = state_for_4.slot() + 1;
+    let (block_4_contents, _state_4, _envelope_4) =
+        harness.make_block_with_envelope(state_for_4, slot_4).await;
+    let block_4_root = block_4_contents.0.canonical_root();
+
+    // Import block 4 — this triggers load_parent which must handle the
+    // EMPTY parent case: no hash patching because parent's payload was not revealed.
+    harness
+        .process_block(slot_4, block_4_root, block_4_contents)
+        .await
+        .expect("block 4 import should succeed even with unrevealed parent payload");
+
+    // Verify block 4 is in fork choice
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    assert!(
+        fc.get_block(&block_4_root).is_some(),
+        "block 4 should be in fork choice"
+    );
+    // Block 3 (unrevealed parent) should still be there too
+    assert!(
+        fc.get_block(&block_3_root).is_some(),
+        "block 3 should still be in fork choice"
+    );
+}
+
+/// Request attestation for a historical slot (request_slot < head_state.slot())
+/// where the historical block's payload was revealed. Verifies that `data.index`
+/// is 1 (payload_present=true), exercising the `request_slot < head_state.slot()`
+/// branch in produce_unaggregated_attestation.
+///
+/// This branch looks up `payload_revealed` on the proto_node for the historical
+/// block (via fc.get_block), rather than using `gloas_head_payload_status()`.
+#[tokio::test]
+async fn gloas_attestation_historical_slot_payload_revealed() {
+    let harness = gloas_harness_at_epoch(0);
+    // Build chain with revealed payloads: slots 1, 2, 3
+    Box::pin(harness.extend_slots(3)).await;
+
+    let slot_3_root = harness.chain.head_snapshot().beacon_block_root;
+
+    // Verify slot 3 has payload_revealed = true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&slot_3_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "pre-condition: slot 3 payload should be revealed"
+        );
+    }
+
+    // Produce another block at slot 4 to advance the head
+    harness.advance_slot();
+    let state = harness.chain.head_beacon_state_cloned();
+    let slot_4 = state.slot() + 1;
+    let (block_4_contents, _state, _envelope) =
+        harness.make_block_with_envelope(state, slot_4).await;
+    let block_4_root = block_4_contents.0.canonical_root();
+    harness
+        .process_block(slot_4, block_4_root, block_4_contents)
+        .await
+        .expect("block 4 import ok");
+
+    // Process envelope for block 4 so it becomes the head
+    let envelope_4 = _envelope.expect("should have envelope");
+    harness
+        .chain
+        .process_self_build_envelope(&envelope_4)
+        .await
+        .expect("envelope 4 ok");
+
+    // Now head_state.slot() == 4. Request attestation for slot 3 (historical).
+    // This exercises the `request_slot < head_state.slot()` branch.
+    let head_state = harness.chain.head_beacon_state_cloned();
+    assert_eq!(head_state.slot(), slot_4, "head should be at slot 4");
+
+    let attestation = harness
+        .chain
+        .produce_unaggregated_attestation(Slot::new(3), 0)
+        .expect("should produce attestation for historical slot");
+
+    // Historical slot with payload_revealed=true → data.index must be 1
+    assert_eq!(
+        attestation.data().index,
+        1,
+        "historical slot Gloas attestation should have index=1 (payload_present=true) \
+         when payload_revealed=true on the historical block. \
+         head_slot={}, request_slot=3",
+        head_state.slot()
+    );
+}
