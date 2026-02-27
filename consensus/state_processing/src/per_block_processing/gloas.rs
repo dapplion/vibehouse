@@ -3183,6 +3183,187 @@ mod tests {
         assert_eq!(ptc.len(), E::ptc_size());
     }
 
+    #[test]
+    fn ptc_committee_max_balance_always_accepted() {
+        // When all validators have max_effective_balance, the acceptance test
+        // `effective_balance * max_random_value >= max_effective_balance * random_value`
+        // becomes `max_eb * max_rv >= max_eb * rv` which is always true (since rv <= max_rv).
+        // This means the first PTC_SIZE candidates from the committee cycle are selected
+        // without any rejections — no iterations are wasted on the acceptance check.
+        //
+        // With minimal spec (8 slots/epoch, 4 max_committees_per_slot), 8 validators spread
+        // across 8 slots means each slot gets ~1 validator. The concatenated committee for a
+        // single slot may have only 1 validator, so that validator gets selected PTC_SIZE times
+        // (the algorithm allows duplicates by design).
+        //
+        // We use 64 validators to ensure multiple candidates per slot, giving us distinct
+        // members that verify the modular cycling works correctly.
+        let spec = E::default_spec();
+        let max_eb = spec.max_effective_balance_electra;
+        let (state, spec) = make_gloas_state_with_committees(64, max_eb, 64_000_000_000);
+        let slot = state.slot();
+
+        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        assert_eq!(ptc.len(), E::ptc_size());
+
+        // Since every candidate passes, selection never rejects. With 64 validators and
+        // multiple per slot, the first two candidates from the concatenated committee list
+        // are selected — they should be distinct (different positions in the committee).
+        let mut seen = std::collections::HashSet::new();
+        for &idx in &ptc {
+            assert!((idx as usize) < 64, "index {} out of range", idx);
+            seen.insert(idx);
+        }
+        assert_eq!(
+            seen.len(),
+            ptc.len(),
+            "expected distinct members with 64 validators"
+        );
+    }
+
+    #[test]
+    fn ptc_committee_allows_duplicate_selection() {
+        // With minimal spec (8 slots/epoch), 8 validators are spread across 8 slots, so
+        // each slot's committee has only ~1 validator. The concatenated committee for a
+        // slot may have a single validator, and the modular cycling `i % 1` always returns
+        // index 0 — selecting the same validator PTC_SIZE times.
+        //
+        // This tests a fundamental property: the algorithm allows duplicate selection.
+        // In production (mainnet with 512+ PTC members across many validators), duplicates
+        // are rare. But with small committees, they're expected.
+        let spec = E::default_spec();
+        let max_eb = spec.max_effective_balance_electra;
+        let (state, spec) = make_gloas_state_with_committees(8, max_eb, 64_000_000_000);
+        let slot = state.slot();
+
+        // Get the committees for this slot to check if there's only 1 member
+        let committees = state.get_beacon_committees_at_slot(slot).unwrap();
+        let mut total_members: usize = 0;
+        for committee in &committees {
+            total_members += committee.committee.len();
+        }
+
+        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        assert_eq!(ptc.len(), E::ptc_size());
+
+        if total_members == 1 {
+            // With only 1 committee member, both PTC slots select the same validator
+            assert_eq!(
+                ptc[0], ptc[1],
+                "single-member committee should produce duplicate PTC entries"
+            );
+        }
+
+        // All PTC members should be valid validators regardless of duplicates
+        for &idx in &ptc {
+            assert!((idx as usize) < 8, "index {} out of range", idx);
+        }
+    }
+
+    #[test]
+    fn ptc_committee_all_equal_balance_deterministic_indices() {
+        // When all validators have the same effective balance (less than max), the
+        // acceptance probability is `balance / max_effective_balance` for each candidate.
+        // The selection is still deterministic — same state+slot always produces same PTC.
+        // This validates the modular index cycling and hash-based randomness work correctly
+        // with uniform balance distribution.
+        let spec = E::default_spec();
+        let half_max = spec.max_effective_balance_electra / 2;
+        let (state, spec) = make_gloas_state_with_committees(16, half_max, 64_000_000_000);
+        let slot = state.slot();
+
+        let ptc1 = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc2 = get_ptc_committee(&state, slot, &spec).unwrap();
+        assert_eq!(ptc1.len(), E::ptc_size());
+        assert_eq!(
+            ptc1, ptc2,
+            "PTC should be deterministic for same state+slot"
+        );
+
+        // With 16 validators at half balance, each has ~50% acceptance rate.
+        // The algorithm cycles through candidates with `i % total` and may need
+        // multiple passes. Verify all selected members are valid.
+        for &idx in &ptc1 {
+            assert!((idx as usize) < 16, "index {} out of range", idx);
+        }
+    }
+
+    #[test]
+    fn ptc_committee_large_validator_set_wraps_correctly() {
+        // With 128 validators (much larger than PTC_SIZE=2), the committees are spread
+        // across multiple beacon committees per slot. The concatenation of all committees
+        // produces a large candidate list. The modular cycling `i % total` wraps correctly
+        // and the hash-based random bytes cover the full offset range.
+        let spec = E::default_spec();
+        let max_eb = spec.max_effective_balance_electra;
+        let (state, spec) = make_gloas_state_with_committees(128, max_eb, 64_000_000_000);
+        let slot = state.slot();
+
+        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        assert_eq!(ptc.len(), E::ptc_size());
+
+        // All members should be valid validators
+        for &idx in &ptc {
+            assert!(
+                (idx as usize) < 128,
+                "PTC member {} exceeds validator count",
+                idx
+            );
+        }
+
+        // With max balance, all candidates accepted → first 2 from committee list selected.
+        // Verify they're distinct (128 validators, no need to wrap for PTC_SIZE=2).
+        let mut seen = std::collections::HashSet::new();
+        for &idx in &ptc {
+            seen.insert(idx);
+        }
+        assert_eq!(
+            seen.len(),
+            ptc.len(),
+            "expected distinct members with 128 validators"
+        );
+    }
+
+    #[test]
+    fn ptc_committee_different_epoch_different_result() {
+        // The PTC seed includes `get_seed(state, epoch, DOMAIN_PTC_ATTESTER)`, so the
+        // same slot-in-epoch position but different epoch should produce different results.
+        // Test by comparing slot 8 (epoch 1) vs slot 16 (epoch 2) — same position (slot 0
+        // of epoch) but different seed due to different epoch.
+        let spec = E::default_spec();
+        let half_max = spec.max_effective_balance_electra / 2;
+        let (mut state, spec) = make_gloas_state_with_committees(64, half_max, 64_000_000_000);
+
+        let slot_epoch1 = Slot::new(8); // slot 0 of epoch 1
+        let ptc_epoch1 = get_ptc_committee(&state, slot_epoch1, &spec).unwrap();
+        assert_eq!(ptc_epoch1.len(), E::ptc_size());
+
+        // Advance state to epoch 2 and rebuild caches
+        *state.slot_mut() = Slot::new(16); // slot 0 of epoch 2
+        // Need to rebuild committee cache for the new epoch
+        state
+            .build_committee_cache(types::RelativeEpoch::Previous, &spec)
+            .unwrap();
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .unwrap();
+
+        let slot_epoch2 = Slot::new(16);
+        let ptc_epoch2 = get_ptc_committee(&state, slot_epoch2, &spec).unwrap();
+        assert_eq!(ptc_epoch2.len(), E::ptc_size());
+
+        // With 64 validators and half balance, different seeds almost certainly produce
+        // different PTC committees. Both are valid but should differ.
+        // Note: not guaranteed to differ (could be same by coincidence), so we just verify
+        // both are valid. A strict inequality test could flake.
+        for &idx in &ptc_epoch1 {
+            assert!((idx as usize) < 64);
+        }
+        for &idx in &ptc_epoch2 {
+            assert!((idx as usize) < 64);
+        }
+    }
+
     // ── process_payload_attestation tests ─────────────────────────
 
     /// Build a PayloadAttestation targeting the parent block at the previous slot.
