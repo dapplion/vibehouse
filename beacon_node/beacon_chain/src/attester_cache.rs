@@ -85,6 +85,15 @@ pub struct CommitteeLengths {
 }
 
 impl CommitteeLengths {
+    /// Construct `CommitteeLengths` directly for unit tests (fields are private).
+    #[cfg(test)]
+    pub fn new_for_testing(epoch: Epoch, active_validator_indices_len: usize) -> Self {
+        Self {
+            epoch,
+            active_validator_indices_len,
+        }
+    }
+
     /// Instantiate `Self` using `state.current_epoch()`.
     pub fn new<E: EthSpec>(state: &BeaconState<E>, spec: &ChainSpec) -> Result<Self, Error> {
         let active_validator_indices_len = if let Ok(committee_cache) =

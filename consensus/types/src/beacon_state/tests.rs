@@ -574,6 +574,70 @@ mod gloas {
         );
     }
 
+    // --- update_builder_pubkey_cache ---
+
+    #[test]
+    fn update_builder_pubkey_cache_builds_from_empty() {
+        let mut state = make_gloas_state();
+        // Cache starts empty.
+        assert_eq!(state.builder_pubkey_cache().len(), 0);
+        // Update should populate from builders list.
+        state.update_builder_pubkey_cache().unwrap();
+        assert_eq!(state.builder_pubkey_cache().len(), 1);
+        // The builder at index 0 should be retrievable by pubkey.
+        let builder_pubkey = state.builders().unwrap().get(0).unwrap().pubkey;
+        assert_eq!(state.builder_pubkey_cache().get(&builder_pubkey), Some(0));
+    }
+
+    #[test]
+    fn update_builder_pubkey_cache_incremental_add() {
+        let mut state = make_gloas_state();
+        state.update_builder_pubkey_cache().unwrap();
+        assert_eq!(state.builder_pubkey_cache().len(), 1);
+
+        // Add a second builder.
+        let new_pubkey = PublicKeyBytes::deserialize(&[1u8; 48]).unwrap();
+        state
+            .builders_mut()
+            .unwrap()
+            .push(Builder {
+                pubkey: new_pubkey,
+                version: 0x03,
+                execution_address: Address::repeat_byte(0xCC),
+                balance: 32_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: Epoch::new(u64::MAX),
+            })
+            .unwrap();
+
+        // Incremental update should pick up only the new builder.
+        state.update_builder_pubkey_cache().unwrap();
+        assert_eq!(state.builder_pubkey_cache().len(), 2);
+        assert_eq!(state.builder_pubkey_cache().get(&new_pubkey), Some(1));
+    }
+
+    #[test]
+    fn update_builder_pubkey_cache_idempotent() {
+        let mut state = make_gloas_state();
+        state.update_builder_pubkey_cache().unwrap();
+        let len_after_first = state.builder_pubkey_cache().len();
+
+        // Second call with no new builders should be a no-op.
+        state.update_builder_pubkey_cache().unwrap();
+        assert_eq!(state.builder_pubkey_cache().len(), len_after_first);
+    }
+
+    #[test]
+    fn update_builder_pubkey_cache_pre_gloas_noop() {
+        use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+        let rng = &mut XorShiftRng::from_seed([42; 16]);
+        let mut state: BeaconState<E> = BeaconState::Base(BeaconStateBase::random_for_test(rng));
+
+        // Pre-Gloas state has no builders list — update should succeed (no-op).
+        assert!(state.update_builder_pubkey_cache().is_ok());
+        assert_eq!(state.builder_pubkey_cache().len(), 0);
+    }
+
     // --- SSZ roundtrip ---
 
     #[test]
