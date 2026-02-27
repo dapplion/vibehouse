@@ -437,7 +437,7 @@ where
         // If the current slot is not provided, use the value that was last provided to the store.
         let current_slot = current_slot.unwrap_or_else(|| fc_store.get_current_slot());
 
-        let proto_array = ProtoArrayForkChoice::new::<E>(
+        let mut proto_array = ProtoArrayForkChoice::new::<E>(
             current_slot,
             finalized_block_slot,
             finalized_block_state_root,
@@ -447,6 +447,33 @@ where
             next_epoch_shuffling_id,
             execution_status,
         )?;
+
+        // Gloas: initialize the anchor block as having its envelope received.
+        // The spec's get_forkchoice_store puts the anchor in payload_states
+        // (envelope_received=true, payload_revealed=true).
+        //
+        // For bid_block_hash, use state.latest_block_hash rather than bid.block_hash.
+        // Genesis blocks have default/zero bids, but the state's latest_block_hash
+        // reflects the actual EL genesis block hash. Child blocks set their
+        // bid.parent_block_hash = state.latest_block_hash, so the anchor's
+        // bid_block_hash must match for children to be Full-path.
+        if let Ok(bid) = anchor_block.message().body().signed_execution_payload_bid()
+            && let Some(&anchor_idx) = proto_array
+                .core_proto_array()
+                .indices
+                .get(&anchor_block_root)
+        {
+            let anchor_node = &mut proto_array.core_proto_array_mut().nodes[anchor_idx];
+            let block_hash = anchor_state
+                .latest_block_hash()
+                .copied()
+                .unwrap_or(bid.message.block_hash);
+            anchor_node.bid_block_hash = Some(block_hash);
+            anchor_node.bid_parent_block_hash = Some(bid.message.parent_block_hash);
+            anchor_node.builder_index = Some(bid.message.builder_index);
+            anchor_node.envelope_received = true;
+            anchor_node.payload_revealed = true;
+        }
 
         let mut fork_choice = Self {
             fc_store,

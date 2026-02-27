@@ -2222,11 +2222,18 @@ async fn gloas_fork_choice_genesis_node_no_gloas_fields() {
     let fc = harness.chain.canonical_head.fork_choice_read_lock();
     let genesis_block = fc.get_block(&genesis_root).unwrap();
 
-    // Genesis block should not have a builder_index since it wasn't produced via ePBS
-    // (it's the anchor block inserted during chain init)
+    // With FORK_NAME=gloas, the genesis block is a Gloas block with a default bid.
+    // The anchor init (from get_forkchoice_store) sets builder_index from the bid,
+    // which defaults to 0 for genesis blocks.
     assert_eq!(
-        genesis_block.builder_index, None,
-        "genesis block should have no builder_index"
+        genesis_block.builder_index,
+        Some(0),
+        "genesis block should have builder_index from default bid"
+    );
+    // Anchor init also sets envelope_received and payload_revealed
+    assert!(
+        genesis_block.payload_revealed,
+        "genesis block should have payload_revealed = true (anchor init)"
     );
 }
 
