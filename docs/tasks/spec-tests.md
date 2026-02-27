@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 Gloas signature set construction edge case tests (run 204)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 203
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+- **Added 5 tests** covering `execution_payload_bid_signature_set`, `payload_attestation_signature_set`, and `execution_payload_envelope_signature_set` edge cases (`per_block_processing/signature_sets.rs`):
+  1. `payload_attestation_multiple_valid_signers_verifies` — aggregate signature from two PTC members verifies correctly. All prior tests used a single signer; this tests the multi-pubkey aggregation path in `payload_attestation_signature_set`. A bug in pubkey collection ordering would cause aggregate verification failure.
+  2. `payload_attestation_wrong_data_field_invalidates` — signature signed with `payload_present=true` fails when `payload_present` is flipped to `false`. Confirms the `PayloadAttestationData` signing_root covers the `payload_present` field — critical since PTC members vote on payload timeliness and a bit-flip would reverse the vote.
+  3. `bid_signature_at_different_epoch_fails_cross_epoch` — bid signed at epoch 1 (slot 8) does NOT verify when the bid's slot is changed to epoch 2 (slot 16). Confirms the domain includes the epoch, preventing replay of valid bids across epochs.
+  4. `bid_signature_modified_value_invalidates` — bid signed with `value=100` fails when value is tampered to `999`. Confirms the signing_root covers the value field, preventing bid amount manipulation after signing.
+  5. `bid_and_envelope_same_builder_same_domain_different_roots` — bid signature does NOT verify as an envelope signature, even with the same builder_index, slot, and domain (both use `DOMAIN_BEACON_BUILDER`). Confirms cross-type signature non-transferability via different SSZ tree roots.
+- **Why these tests matter**: signature sets are the cryptographic backbone of ePBS — they gate builder bids, PTC attestations, and payload envelopes. The multi-signer test catches aggregation bugs that single-signer tests miss. The data-field tests catch signing_root coverage gaps. The cross-epoch and cross-type tests catch replay and type-confusion attacks. Prior coverage only had basic "valid/invalid/wrong-domain" tests; these add message-integrity, multi-party, and cross-type verification.
+- **Full test suite verification** — all passing:
+  - 407/407 state_processing tests (was 402, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 withdrawal processing interaction edge case tests (run 203)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 202
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
