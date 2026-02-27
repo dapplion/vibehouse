@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 fork transition boundary and envelope error path tests (run 177)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+  - Notable recent merges to track for next spec test release: #4918 (attestation payload status filter), #4923 (ignore block if parent payload unknown), #4914 (validator index in SignedExecutionProof)
+- **Added 3 tests** covering the fork transition boundary invariant and process_payload_envelope error paths:
+  1. `gloas_fork_transition_fulu_parent_has_no_bid_in_fork_choice` — explicitly verifies that the last Fulu block's fork choice node has `bid_block_hash = None` and the first Gloas block has `bid_block_hash = Some(...)`. This is the invariant that controls the `GloasParentPayloadUnknown` guard in block_verification.rs:977-984: the guard checks `parent_block.bid_block_hash.is_some()` — for a Fulu parent this is `None`, so the guard is bypassed. The existing test `gloas_parent_payload_check_skips_pre_gloas_parent` only implicitly verifies this (the chain doesn't break). This test directly inspects fork choice state to confirm both sides of the invariant.
+  2. `gloas_process_envelope_missing_state_returns_error` — exercises the `process_payload_envelope` error path when the post-block state has been evicted from the state cache and hot DB (beacon_chain.rs:2742-2751). After block import + gossip verification + fork choice update, deletes the state from both cache and disk, then calls `process_payload_envelope`. Verifies it returns `EnvelopeProcessingError` containing "Missing state". Also confirms `payload_revealed` remains true in fork choice (set during `apply_payload_envelope_to_fork_choice` before the state transition step). This simulates a real-world race condition where the state cache is full and evicts the state between block import and envelope arrival.
+  3. `gloas_process_envelope_missing_block_returns_error` — exercises the `process_payload_envelope` error path when the beacon block has been deleted from the store after gossip verification (beacon_chain.rs:2608-2617). After block import + gossip verification + fork choice update, deletes the block, then calls `process_payload_envelope`. Verifies it returns `EnvelopeProcessingError` containing "Missing beacon block". This can occur during finalization pruning when the store removes a block between envelope verification and state transition.
+- **Why these tests matter**: The fork transition boundary invariant (`bid_block_hash = None` for Fulu parents) is the single guard that prevents `GloasParentPayloadUnknown` from blocking the very first Gloas block. A regression that changed this field would break every fork transition. The two envelope error path tests cover real-world race conditions where state or block is unavailable during `process_payload_envelope` — both had zero integration-level coverage despite being reachable in production (state cache eviction, finalization pruning).
+- **Full test suite verification** — all passing:
+  - 616/616 beacon_chain tests (FORK_NAME=gloas, was 613, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 gossip verification + execution status lifecycle tests (run 176)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

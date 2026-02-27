@@ -10005,3 +10005,245 @@ async fn gloas_execution_status_lifecycle_bid_optimistic_to_valid() {
         );
     }
 }
+
+// =============================================================================
+// Fork transition boundary, envelope error path, and state eviction tests
+// =============================================================================
+
+/// Verify that at the Fulu→Gloas fork boundary, the last Fulu block's fork choice
+/// node has `bid_block_hash = None`. This is the field that controls whether the
+/// `GloasParentPayloadUnknown` guard fires in block_verification.rs:977-984.
+///
+/// The guard checks `parent_block.bid_block_hash.is_some()` — for a Fulu parent this
+/// is `None`, so the guard is bypassed. The existing test
+/// `gloas_parent_payload_check_skips_pre_gloas_parent` only implicitly verifies this
+/// (the chain doesn't break). This test explicitly inspects the fork choice state to
+/// confirm the invariant, and also verifies the first Gloas block's node has a
+/// non-None `bid_block_hash`.
+#[tokio::test]
+async fn gloas_fork_transition_fulu_parent_has_no_bid_in_fork_choice() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to the last Fulu slot.
+    let last_fulu_slot = gloas_fork_slot - 1;
+    Box::pin(harness.extend_to_slot(last_fulu_slot)).await;
+
+    let fulu_head_root = harness.chain.head_snapshot().beacon_block_root;
+
+    // Verify: the Fulu block in fork choice has bid_block_hash = None
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let fulu_block = fc
+            .get_block(&fulu_head_root)
+            .expect("Fulu head should be in FC");
+        assert!(
+            fulu_block.bid_block_hash.is_none(),
+            "Fulu block should have bid_block_hash = None in fork choice, got {:?}",
+            fulu_block.bid_block_hash
+        );
+    }
+
+    // Extend to the first Gloas slot (fork transition).
+    Box::pin(harness.extend_to_slot(gloas_fork_slot)).await;
+
+    let gloas_head_root = harness.chain.head_snapshot().beacon_block_root;
+    assert_ne!(
+        gloas_head_root, fulu_head_root,
+        "head should have advanced to Gloas block"
+    );
+
+    // Verify: the first Gloas block has bid_block_hash = Some(...)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let gloas_block = fc
+            .get_block(&gloas_head_root)
+            .expect("Gloas head should be in FC");
+        assert!(
+            gloas_block.bid_block_hash.is_some(),
+            "first Gloas block should have bid_block_hash = Some(...) in fork choice"
+        );
+        // The Fulu parent is still in FC with bid_block_hash = None
+        let fulu_block = fc
+            .get_block(&fulu_head_root)
+            .expect("Fulu parent still in FC");
+        assert!(
+            fulu_block.bid_block_hash.is_none(),
+            "Fulu parent should still have bid_block_hash = None after fork transition"
+        );
+    }
+}
+
+/// Exercise the `process_payload_envelope` error path when the post-block state has
+/// been evicted from the state cache and hot DB. This simulates a real-world race
+/// condition: the state cache is full and evicts the state between block import and
+/// envelope arrival, or the hot DB was pruned.
+///
+/// After block import + gossip verification + fork choice update, we delete the state
+/// and call `process_payload_envelope`. It should return an `EnvelopeProcessingError`
+/// containing "Missing state". The block's `payload_revealed` should remain true in
+/// fork choice (set during `apply_payload_envelope_to_fork_choice`), but the state
+/// transition was not applied.
+#[tokio::test]
+async fn gloas_process_envelope_missing_state_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block (state gets cached)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Gossip-verify the envelope and apply to fork choice
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Get the block's state root before evicting
+    let block_state_root = harness
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .unwrap()
+        .message()
+        .state_root();
+
+    // Evict the post-block state from both cache and hot DB
+    harness
+        .chain
+        .store
+        .delete_state(&block_state_root, next_slot)
+        .expect("should delete state");
+
+    // Verify state is gone
+    assert!(
+        harness
+            .chain
+            .get_state(&block_state_root, Some(next_slot), false)
+            .expect("should not error")
+            .is_none(),
+        "state should be gone after deletion"
+    );
+
+    // process_payload_envelope should fail with "Missing state"
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    let err = result.expect_err("should fail with missing state");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("Missing state"),
+        "error should mention 'Missing state', got: {}",
+        err_msg
+    );
+
+    // Fork choice should still have payload_revealed = true (set during apply_payload_envelope_to_fork_choice)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true (fork choice was updated before state transition failed)"
+        );
+    }
+}
+
+/// Exercise the `process_payload_envelope` error path when the beacon block has been
+/// deleted from the store after gossip verification. In a live network this can happen
+/// if finalization prunes the block between the envelope's gossip verification and the
+/// state transition step.
+///
+/// The code path at beacon_chain.rs:2608-2617 loads the block for `newPayload` and
+/// should return `EnvelopeProcessingError` containing "Missing beacon block" when the
+/// block is no longer in the store.
+#[tokio::test]
+async fn gloas_process_envelope_missing_block_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block normally
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Gossip-verify the envelope and apply to fork choice (block still in store at this point)
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Delete the block from the store (simulating finalization pruning)
+    harness
+        .chain
+        .store
+        .delete_block(&block_root)
+        .expect("should delete block from store");
+
+    // Verify block is gone
+    assert!(
+        harness
+            .chain
+            .store
+            .get_blinded_block(&block_root)
+            .unwrap()
+            .is_none(),
+        "block should be gone after deletion"
+    );
+
+    // process_payload_envelope should fail with "Missing beacon block"
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    let err = result.expect_err("should fail with missing block");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("Missing beacon block"),
+        "error should mention 'Missing beacon block', got: {}",
+        err_msg
+    );
+
+    // Fork choice should still have payload_revealed = true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true (fork choice was updated before block deletion)"
+        );
+    }
+}
