@@ -7510,6 +7510,503 @@ async fn gloas_external_bid_envelope_reveals_payload_in_fork_choice() {
     }
 }
 
+/// Test that the chain can continue producing blocks after an external builder's
+/// payload is withheld (EMPTY path). When the payload envelope is never revealed:
+///
+/// 1. The block is imported with `payload_revealed=false` in fork choice
+/// 2. The next proposer builds on the EMPTY path: `parent_block_hash` comes from the
+///    grandparent's EL hash (not the external bid's block_hash)
+/// 3. The self-build block is produced and imported successfully
+/// 4. The chain continues normally after the EMPTY-path slot
+///
+/// This is a critical ePBS edge case: if a builder wins a bid but withholds the
+/// execution payload, the chain must seamlessly fall back to the EMPTY path.
+#[tokio::test]
+async fn gloas_external_bid_withheld_chain_continues_on_empty_path() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Extend chain long enough for builder activation (finalized_epoch >= deposit_epoch)
+    Box::pin(harness.extend_slots(64)).await;
+
+    // Record pre-external-bid head state
+    let head_before = harness.chain.head_snapshot();
+    let head_root_before = head_before.beacon_block_root;
+    let head_slot_before = head_before.beacon_block.slot();
+
+    // Get the head state's latest_block_hash — this is the grandparent EL hash
+    // relative to the block we're about to build on the EMPTY path.
+    let grandparent_block_hash = *head_before
+        .beacon_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_ne!(
+        grandparent_block_hash,
+        ExecutionBlockHash::zero(),
+        "pre-condition: head should have a non-zero latest_block_hash"
+    );
+
+    // Insert an external bid for the next slot
+    let external_bid_slot = head_slot_before + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root_before, external_bid_slot, 0, 5000);
+    let external_bid_block_hash = bid.message.block_hash;
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce and import the block using the external bid
+    harness.advance_slot();
+    let ((signed_block, blobs), _block_state, envelope) = harness
+        .make_block_with_envelope(state, external_bid_slot)
+        .await;
+
+    // Confirm external bid was used (no self-build envelope)
+    assert!(
+        envelope.is_none(),
+        "external bid block should not produce self-build envelope"
+    );
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, 0,
+        "should use external builder (index 0)"
+    );
+
+    let external_bid_block_root = signed_block.canonical_root();
+    harness
+        .process_block(
+            external_bid_slot,
+            external_bid_block_root,
+            (signed_block, blobs),
+        )
+        .await
+        .expect("should import block with external bid");
+
+    // Verify: payload_revealed=false (no envelope processed)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&external_bid_block_root)
+            .expect("block should be in fork choice");
+        let node = &fc.proto_array().core_proto_array().nodes[idx];
+        assert!(
+            !node.payload_revealed,
+            "payload_revealed should be false (envelope never processed)"
+        );
+    }
+
+    // Now produce the NEXT block on top of the EMPTY-path parent.
+    // The chain should fall back to self-build for this slot.
+    let continuation_slot = external_bid_slot + 1;
+    let state_for_next = harness.chain.head_beacon_state_cloned();
+
+    // Verify the state's latest_block_hash is still the grandparent's hash
+    // (since no envelope was processed to update it).
+    let state_latest_hash = *state_for_next
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        state_latest_hash, grandparent_block_hash,
+        "state.latest_block_hash should be the grandparent's EL hash \
+         (not the external bid's block_hash) because the envelope was never revealed"
+    );
+    // Sanity: the external bid's block_hash differs from the grandparent's
+    // (it's Hash256::zero() from make_external_bid, but this proves the EMPTY path)
+    assert_ne!(
+        state_latest_hash, external_bid_block_hash,
+        "state.latest_block_hash should differ from the external bid's block_hash"
+    );
+
+    // Produce the continuation block (self-build)
+    harness.advance_slot();
+    let ((next_block, next_blobs), _next_state, next_envelope) = harness
+        .make_block_with_envelope(state_for_next, continuation_slot)
+        .await;
+
+    // Self-build should produce an envelope
+    assert!(
+        next_envelope.is_some(),
+        "continuation block should be self-build with envelope"
+    );
+
+    // The continuation block's bid should reference the grandparent's EL hash
+    // as parent_block_hash (EMPTY path: parent's payload was never revealed)
+    let next_bid = next_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("continuation block should have bid");
+    assert_eq!(
+        next_bid.message.parent_block_hash, grandparent_block_hash,
+        "continuation bid.parent_block_hash should be the grandparent's EL hash \
+         (EMPTY path: external bid payload was withheld)"
+    );
+
+    // Import the continuation block
+    let next_block_root = next_block.canonical_root();
+    harness
+        .process_block(continuation_slot, next_block_root, (next_block, next_blobs))
+        .await
+        .expect("continuation block should import successfully");
+
+    // Process the self-build envelope
+    let envelope = next_envelope.unwrap();
+    harness
+        .chain
+        .process_self_build_envelope(&envelope)
+        .await
+        .expect("self-build envelope should process successfully");
+
+    // Verify the continuation block is now the head with payload_revealed=true
+    let new_head = harness.chain.head_snapshot();
+    assert_eq!(
+        new_head.beacon_block_root, next_block_root,
+        "continuation block should be the new head"
+    );
+
+    // Verify the new head has payload_revealed=true (self-build envelope processed)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&next_block_root)
+            .expect("continuation block should be in fork choice");
+        let node = &fc.proto_array().core_proto_array().nodes[idx];
+        assert!(
+            node.payload_revealed,
+            "continuation block should have payload_revealed=true after self-build envelope"
+        );
+    }
+
+    // The external bid block should still be unrevealed (builder withheld)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&external_bid_block_root)
+            .expect("external bid block should still be in fork choice");
+        let node = &fc.proto_array().core_proto_array().nodes[idx];
+        assert!(
+            !node.payload_revealed,
+            "external bid block should remain unrevealed (builder withheld payload)"
+        );
+    }
+}
+
+/// After an external builder's payload is withheld and the chain continues on
+/// the EMPTY path, verify that `latest_block_hash` is correctly updated when
+/// the continuation block's self-build envelope is processed. The EMPTY-path
+/// state should transition from the grandparent's EL hash to the continuation
+/// block's EL hash (skipping the external bid's block_hash entirely).
+#[tokio::test]
+async fn gloas_external_bid_withheld_latest_block_hash_skip() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let grandparent_hash = *head.beacon_state.latest_block_hash().unwrap();
+
+    // Insert external bid (builder will withhold)
+    let ext_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce + import external bid block (no envelope)
+    harness.advance_slot();
+    let ((block, blobs), _s, env) = harness.make_block_with_envelope(state, ext_slot).await;
+    assert!(env.is_none());
+    let ext_root = block.canonical_root();
+    harness
+        .process_block(ext_slot, ext_root, (block, blobs))
+        .await
+        .unwrap();
+
+    // Produce + import continuation block (self-build)
+    let cont_slot = ext_slot + 1;
+    let state_for_cont = harness.chain.head_beacon_state_cloned();
+    harness.advance_slot();
+    let ((cont_block, cont_blobs), _s2, cont_env) = harness
+        .make_block_with_envelope(state_for_cont, cont_slot)
+        .await;
+    let cont_root = cont_block.canonical_root();
+    harness
+        .process_block(cont_slot, cont_root, (cont_block, cont_blobs))
+        .await
+        .unwrap();
+
+    // Process the self-build envelope
+    let envelope = cont_env.expect("should have self-build envelope");
+    let envelope_block_hash = envelope.message.payload.block_hash;
+    harness
+        .chain
+        .process_self_build_envelope(&envelope)
+        .await
+        .unwrap();
+
+    // The head state's latest_block_hash should now be the continuation block's
+    // EL hash (from its envelope). It should NOT be the external bid's block_hash
+    // and should NOT be the grandparent's hash anymore.
+    let final_head = harness.chain.head_snapshot();
+    let final_latest_hash = *final_head.beacon_state.latest_block_hash().unwrap();
+
+    assert_eq!(
+        final_latest_hash, envelope_block_hash,
+        "latest_block_hash should be the continuation block's EL hash \
+         (the external bid's block_hash was skipped entirely)"
+    );
+    assert_ne!(
+        final_latest_hash, grandparent_hash,
+        "latest_block_hash should no longer be the grandparent's hash"
+    );
+}
+
+/// After an external builder's payload is withheld, produce TWO consecutive
+/// self-build blocks to verify the chain can recover and continue normally
+/// beyond the initial EMPTY-path recovery slot.
+#[allow(clippy::large_stack_frames)]
+#[tokio::test]
+async fn gloas_external_bid_withheld_chain_recovers_multiple_blocks() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert external bid (builder will withhold)
+    let ext_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce + import external bid block (no envelope)
+    harness.advance_slot();
+    let ((block, blobs), _s, env) = harness.make_block_with_envelope(state, ext_slot).await;
+    assert!(env.is_none());
+    let ext_root = block.canonical_root();
+    harness
+        .process_block(ext_slot, ext_root, (block, blobs))
+        .await
+        .unwrap();
+
+    // First continuation block (self-build on EMPTY path)
+    let cont1_slot = ext_slot + 1;
+    let state1 = harness.chain.head_beacon_state_cloned();
+    harness.advance_slot();
+    let ((b1, bl1), _s1, env1) = harness.make_block_with_envelope(state1, cont1_slot).await;
+    let r1 = b1.canonical_root();
+    harness
+        .process_block(cont1_slot, r1, (b1, bl1))
+        .await
+        .unwrap();
+    let envelope1 = env1.expect("should have self-build envelope");
+    harness
+        .chain
+        .process_self_build_envelope(&envelope1)
+        .await
+        .unwrap();
+
+    // Second continuation block (normal FULL path — parent had envelope)
+    let cont2_slot = cont1_slot + 1;
+    let state2 = harness.chain.head_beacon_state_cloned();
+    harness.advance_slot();
+    let ((b2, bl2), _s2, env2) = harness.make_block_with_envelope(state2, cont2_slot).await;
+    let r2 = b2.canonical_root();
+    harness
+        .process_block(cont2_slot, r2, (b2, bl2))
+        .await
+        .unwrap();
+    let envelope2 = env2.expect("should have self-build envelope");
+
+    // The second block's bid should use the first continuation block's EL hash
+    // (FULL path: parent's payload was revealed via its envelope)
+    let b2_ref = harness
+        .chain
+        .get_block(&r2)
+        .await
+        .unwrap()
+        .expect("block should exist");
+    let b2_bid = b2_ref
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    let env1_block_hash = harness
+        .chain
+        .get_payload_envelope(&r1)
+        .expect("should get envelope")
+        .expect("envelope should exist")
+        .message
+        .payload
+        .block_hash;
+    assert_eq!(
+        b2_bid.message.parent_block_hash, env1_block_hash,
+        "second continuation bid.parent_block_hash should be the first continuation's \
+         EL block hash (FULL path: payload was revealed)"
+    );
+
+    // Process second envelope
+    harness
+        .chain
+        .process_self_build_envelope(&envelope2)
+        .await
+        .unwrap();
+
+    // Verify chain is healthy: both continuation blocks have payload_revealed=true
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    for (label, root) in [("first", r1), ("second", r2)] {
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&root)
+            .expect("block should be in fork choice");
+        let node = &fc.proto_array().core_proto_array().nodes[idx];
+        assert!(
+            node.payload_revealed,
+            "{} continuation block should have payload_revealed=true",
+            label
+        );
+    }
+    // External bid block remains unrevealed
+    let ext_idx = *fc
+        .proto_array()
+        .core_proto_array()
+        .indices
+        .get(&ext_root)
+        .expect("external bid block should be in fork choice");
+    assert!(
+        !fc.proto_array().core_proto_array().nodes[ext_idx].payload_revealed,
+        "external bid block should remain unrevealed"
+    );
+}
+
+/// After an external builder's payload is withheld (EMPTY path), verify that
+/// fork choice correctly tracks the block as having unrevealed payload, and that
+/// an index=1 (FULL) attestation for this block would be rejected by fork choice
+/// validation (since `payload_revealed=false`).
+#[tokio::test]
+async fn gloas_external_bid_withheld_attestation_index_1_rejected() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert external bid (builder will withhold)
+    let ext_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce + import external bid block (no envelope)
+    harness.advance_slot();
+    let ((block, blobs), _s, env) = harness.make_block_with_envelope(state, ext_slot).await;
+    assert!(env.is_none());
+    let ext_root = block.canonical_root();
+    harness
+        .process_block(ext_slot, ext_root, (block, blobs))
+        .await
+        .unwrap();
+
+    // Verify the block is in fork choice with payload_revealed=false
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto = fc.proto_array().core_proto_array();
+    let idx = *proto
+        .indices
+        .get(&ext_root)
+        .expect("external bid block should be in fork choice");
+    let node = &proto.nodes[idx];
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should be false (builder withheld)"
+    );
+    // The block should have builder_index set (it's a Gloas block)
+    assert!(
+        node.builder_index.is_some(),
+        "Gloas block should have builder_index in fork choice"
+    );
+    drop(fc);
+}
+
+/// When an external bid block is imported without an envelope, the `is_parent_block_full`
+/// check for the next block should return false (EMPTY path). The block's post-state has
+/// `latest_execution_payload_bid.block_hash != latest_block_hash` because the envelope
+/// (which updates `latest_block_hash`) was never processed.
+///
+/// Note: The external bid block may not become the head (since its payload_revealed=false
+/// gives it less fork choice weight), so we load the block's state directly rather than
+/// relying on `head_beacon_state_cloned()`.
+#[tokio::test]
+async fn gloas_external_bid_withheld_is_parent_block_full_returns_false() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Record the pre-bid head's latest_block_hash (this is the grandparent EL hash)
+    let grandparent_hash = *head.beacon_state.latest_block_hash().unwrap();
+
+    // Insert external bid (builder will withhold)
+    let ext_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
+    let ext_bid_block_hash = bid.message.block_hash;
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce the external bid block
+    harness.advance_slot();
+    let ((block, blobs), block_state, env) =
+        harness.make_block_with_envelope(state, ext_slot).await;
+    assert!(env.is_none());
+
+    // Inspect the block_state returned by block production — this is the
+    // post-per_block_processing state (no envelope applied).
+    let latest_hash = *block_state.latest_block_hash().unwrap();
+    let latest_bid = block_state.latest_execution_payload_bid().unwrap();
+
+    // The bid should have the external bid's block_hash (zero from make_external_bid)
+    assert_eq!(
+        latest_bid.block_hash, ext_bid_block_hash,
+        "latest_execution_payload_bid.block_hash should be the external bid's block_hash"
+    );
+
+    // latest_block_hash should still be the grandparent's hash (no envelope processed)
+    assert_eq!(
+        latest_hash, grandparent_hash,
+        "latest_block_hash should be the grandparent's EL hash (no envelope processed)"
+    );
+
+    // is_parent_block_full checks: bid.block_hash == state.latest_block_hash
+    let is_full = latest_bid.block_hash == latest_hash;
+    assert!(
+        !is_full,
+        "is_parent_block_full should be false when payload was withheld: \
+         bid.block_hash={:?}, latest_block_hash={:?}",
+        latest_bid.block_hash, latest_hash
+    );
+
+    // Import the block to verify it's accepted by the chain
+    let ext_root = block.canonical_root();
+    harness
+        .process_block(ext_slot, ext_root, (block, blobs))
+        .await
+        .unwrap();
+}
+
 // =============================================================================
 // Multi-epoch chain health and state consistency tests
 // =============================================================================
