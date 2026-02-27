@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 external builder envelope gossip verification tests (run 171)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 external builder envelope gossip verification tests** covering a previously untested consensus-critical path — external builders have real BLS signatures verified during gossip, unlike self-build envelopes which skip BLS:
+  1. `gloas_external_builder_envelope_invalid_signature_rejected` — constructs an external builder envelope signed with a validator key (not the builder key), verifies gossip verification rejects it with `InvalidSignature`. This is the first test exercising the `if envelope.builder_index != BUILDER_INDEX_SELF_BUILD` BLS verification branch in `verify_payload_envelope_for_gossip`.
+  2. `gloas_external_builder_envelope_valid_signature_accepted` — constructs an external builder envelope correctly signed by builder key 0 using `DOMAIN_BEACON_BUILDER`, verifies gossip verification passes and `apply_payload_envelope_to_fork_choice` sets `payload_revealed=true`. This exercises the same BLS path end-to-end (the path where the double-verification bug was fixed in run 169).
+  3. `gloas_external_builder_envelope_buffered_then_processed` — submits an external builder envelope BEFORE its block is imported (timing race that occurs on the live network), verifies it's buffered in `pending_gossip_envelopes` with `BlockRootUnknown`, then imports the block and calls `process_pending_envelope` which re-verifies and applies it. Verifies the full buffering → re-verification → fork choice update pipeline for external builder envelopes.
+- **Why these tests matter**: all previous envelope gossip verification tests used self-build envelopes (which skip BLS). The external builder BLS verification path in `verify_payload_envelope_for_gossip` (gloas_verification.rs:749-771) was never tested at the integration level. If this path had a bug (like the double-verification issue fixed in run 169), it would only be caught in a live devnet.
+- **Full test suite verification** — all passing:
+  - 598/598 beacon_chain tests (FORK_NAME=gloas, was 595, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 get_advanced_hot_state envelope re-application tests (run 170)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
