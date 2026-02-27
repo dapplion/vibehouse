@@ -2067,6 +2067,278 @@ mod builder_deposit_tests {
         );
         assert_eq!(state.builder_pubkey_cache().get(&original_pubkey), Some(1),);
     }
+
+    // ── deposit frontrunning edge case tests (spec PR #4897) ──
+
+    #[test]
+    fn builder_frontrunts_all_invalid_sig_pending_deposits() {
+        // Scenario from spec PR #4897: pending_deposits queue has multiple
+        // entries for pubkey P, ALL with invalid BLS signatures. A builder
+        // deposit (0x03 prefix) for pubkey P should succeed because
+        // is_pending_validator scans the entire list and finds no valid sig.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // Add 5 pending deposits for this pubkey, ALL with invalid signatures
+        for i in 0..5 {
+            state
+                .pending_deposits_mut()
+                .unwrap()
+                .push(PendingDeposit {
+                    pubkey: new_kp.pk.compress(),
+                    withdrawal_credentials: Hash256::repeat_byte(0x01),
+                    amount: (i as u64 + 1) * 1_000_000_000,
+                    signature: SignatureBytes::empty(), // invalid
+                    slot,
+                })
+                .unwrap();
+        }
+
+        // Builder deposit for the same pubkey — should create a builder
+        // because no pending deposit has a valid signature
+        let builder_request = make_builder_deposit_request(new_kp, 10_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request, &spec).unwrap();
+
+        assert_eq!(
+            state.as_gloas().unwrap().builders.len(),
+            1,
+            "builder should be created when all pending deposits have invalid sigs"
+        );
+        // The 5 invalid pending deposits remain, no new one added
+        assert_eq!(state.pending_deposits().unwrap().len(), 5);
+    }
+
+    #[test]
+    fn invalid_then_valid_pending_deposits_blocks_builder_creation() {
+        // Scenario from spec PR #4897: pending_deposits has invalid-sig
+        // entries first, then a valid-sig entry. A builder deposit must be
+        // routed to pending (not builder) because is_pending_validator finds
+        // the valid entry even though it appears after invalid ones.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // Add 3 pending deposits with INVALID signatures
+        for _ in 0..3 {
+            state
+                .pending_deposits_mut()
+                .unwrap()
+                .push(PendingDeposit {
+                    pubkey: new_kp.pk.compress(),
+                    withdrawal_credentials: Hash256::repeat_byte(0x01),
+                    amount: 1_000_000_000,
+                    signature: SignatureBytes::empty(), // invalid
+                    slot,
+                })
+                .unwrap();
+        }
+
+        // Add 1 pending deposit with VALID signature after the invalid ones
+        let val_request = make_validator_deposit_request(new_kp, 32_000_000_000, &spec);
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_kp.pk.compress(),
+                withdrawal_credentials: val_request.withdrawal_credentials,
+                amount: val_request.amount,
+                signature: val_request.signature,
+                slot,
+            })
+            .unwrap();
+
+        // Builder deposit for the same pubkey — should go to pending deposits
+        // because a valid pending deposit exists (even after 3 invalid ones)
+        let builder_request = make_builder_deposit_request(new_kp, 5_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request, &spec).unwrap();
+
+        assert_eq!(
+            state.as_gloas().unwrap().builders.len(),
+            0,
+            "no builder should be created when a valid pending deposit exists"
+        );
+        // 4 original + 1 new pending deposit
+        assert_eq!(state.pending_deposits().unwrap().len(), 5);
+        let last = state.pending_deposits().unwrap().get(4).unwrap().clone();
+        assert_eq!(last.pubkey, new_kp.pk.compress());
+        assert_eq!(last.amount, 5_000_000_000);
+    }
+
+    #[test]
+    fn pending_deposit_with_builder_creds_valid_sig_blocks_builder() {
+        // A pending deposit with 0x03 (builder) credentials AND a valid
+        // signature still counts as a "pending validator" — the spec's
+        // is_pending_validator checks signature validity regardless of the
+        // withdrawal credentials prefix. This prevents a builder from being
+        // created for a pubkey that has a legitimately signed pending deposit,
+        // even if that pending deposit uses builder credentials.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // Add a pending deposit with builder credentials (0x03) and valid sig
+        let builder_request_for_pending =
+            make_builder_deposit_request(new_kp, 10_000_000_000, &spec);
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_kp.pk.compress(),
+                withdrawal_credentials: builder_request_for_pending.withdrawal_credentials,
+                amount: builder_request_for_pending.amount,
+                signature: builder_request_for_pending.signature,
+                slot,
+            })
+            .unwrap();
+
+        // Another builder deposit for the same pubkey — should go to pending
+        // because a valid-sig pending deposit exists (even with 0x03 creds)
+        let builder_request2 = make_builder_deposit_request(new_kp, 5_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request2, &spec).unwrap();
+
+        assert_eq!(
+            state.as_gloas().unwrap().builders.len(),
+            0,
+            "no builder created — pending deposit with builder creds has valid sig"
+        );
+        assert_eq!(state.pending_deposits().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn sequential_builder_deposits_first_creates_second_topups() {
+        // Two builder deposits for the same pubkey in sequence.
+        // First creates the builder. Second hits the `is_builder` path
+        // (existing builder top-up) and never reaches is_pending_validator.
+        // This verifies the short-circuit: existing builder top-ups bypass
+        // the pending validator check entirely.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let new_kp = &extra_kps[NUM_VALIDATORS];
+
+        // Also add a pending deposit with valid sig for this pubkey
+        // (to prove the is_builder check short-circuits before is_pending_validator)
+        let val_request = make_validator_deposit_request(new_kp, 32_000_000_000, &spec);
+        let slot = state.slot();
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_kp.pk.compress(),
+                withdrawal_credentials: val_request.withdrawal_credentials,
+                amount: val_request.amount,
+                signature: val_request.signature,
+                slot,
+            })
+            .unwrap();
+
+        // First builder deposit — would normally go to pending because of
+        // the valid pending deposit above, but let's create the builder
+        // by clearing pending deposits first, then re-adding after creation.
+        // Actually, let's test the real scenario: with a pending valid deposit,
+        // the first builder deposit goes to pending (not builder).
+        let builder_request1 = make_builder_deposit_request(new_kp, 10_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request1, &spec).unwrap();
+
+        // First deposit went to pending (because of valid pending deposit)
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 0);
+        assert_eq!(state.pending_deposits().unwrap().len(), 2);
+
+        // Now let's test the is_builder short-circuit: manually create a builder
+        // for this pubkey so the next deposit hits the existing-builder path
+        let direct_request = make_builder_deposit_request(new_kp, 10_000_000_000, &spec);
+        let slot2 = state.slot();
+        // Clear pending deposits and directly create builder
+        *state.pending_deposits_mut().unwrap() = List::default();
+        apply_deposit_for_builder(&mut state, &direct_request, slot2, &spec).unwrap();
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 1);
+        let balance_after_creation = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+
+        // Re-add the valid pending deposit
+        let val_request2 = make_validator_deposit_request(new_kp, 32_000_000_000, &spec);
+        state
+            .pending_deposits_mut()
+            .unwrap()
+            .push(PendingDeposit {
+                pubkey: new_kp.pk.compress(),
+                withdrawal_credentials: val_request2.withdrawal_credentials,
+                amount: val_request2.amount,
+                signature: val_request2.signature,
+                slot: slot2,
+            })
+            .unwrap();
+
+        // Second builder deposit — should hit is_builder=true and top up,
+        // NOT go to pending deposits despite a valid pending deposit existing
+        let builder_request2 = make_builder_deposit_request(new_kp, 5_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request2, &spec).unwrap();
+
+        assert_eq!(
+            state.as_gloas().unwrap().builders.len(),
+            1,
+            "should top up existing builder, not create new"
+        );
+        assert_eq!(
+            state.as_gloas().unwrap().builders.get(0).unwrap().balance,
+            balance_after_creation + 5_000_000_000,
+            "balance should include top-up"
+        );
+        // Pending deposits should NOT have increased
+        assert_eq!(
+            state.pending_deposits().unwrap().len(),
+            1,
+            "no new pending deposit — is_builder short-circuited"
+        );
+    }
+
+    #[test]
+    fn pending_deposits_for_other_pubkeys_dont_affect_routing() {
+        // Validates that is_pending_validator correctly filters by pubkey.
+        // Pending deposits for other pubkeys (even with valid signatures)
+        // don't prevent builder creation for a different pubkey.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 3);
+        let target_kp = &extra_kps[NUM_VALIDATORS]; // pubkey for builder deposit
+        let other_kp1 = &extra_kps[NUM_VALIDATORS + 1];
+        let other_kp2 = &extra_kps[NUM_VALIDATORS + 2];
+        let slot = state.slot();
+
+        // Add valid-sig pending deposits for two OTHER pubkeys
+        for other_kp in [other_kp1, other_kp2] {
+            let val_request = make_validator_deposit_request(other_kp, 32_000_000_000, &spec);
+            state
+                .pending_deposits_mut()
+                .unwrap()
+                .push(PendingDeposit {
+                    pubkey: other_kp.pk.compress(),
+                    withdrawal_credentials: val_request.withdrawal_credentials,
+                    amount: val_request.amount,
+                    signature: val_request.signature,
+                    slot,
+                })
+                .unwrap();
+        }
+
+        // Builder deposit for target_kp — should create builder because
+        // the valid pending deposits are for OTHER pubkeys
+        let builder_request = make_builder_deposit_request(target_kp, 8_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &builder_request, &spec).unwrap();
+
+        assert_eq!(
+            state.as_gloas().unwrap().builders.len(),
+            1,
+            "builder should be created — pending deposits are for other pubkeys"
+        );
+        assert_eq!(
+            state.as_gloas().unwrap().builders.get(0).unwrap().pubkey,
+            target_kp.pk.compress()
+        );
+        // Original 2 pending deposits remain, no new one added
+        assert_eq!(state.pending_deposits().unwrap().len(), 2);
+    }
 }
 
 /// Tests for Gloas-specific proposer slashing payment removal and same-slot attestation weight.
