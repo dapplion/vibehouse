@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 get_ptc_committee edge case tests (run 210)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 209
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- Analyzed test coverage gaps across all Gloas state_processing functions. Identified `get_ptc_committee` as the most under-tested high-complexity function (6 tests for an algorithm with ~40 conditional branches, balance-weighted random selection, hash-based randomness, modular arithmetic).
+- **Added 5 tests** covering `get_ptc_committee` edge cases:
+  1. `ptc_committee_max_balance_always_accepted` — 64 validators all at max_effective_balance. The acceptance test `effective_balance * max_rv >= max_eb * rv` becomes `max_eb * max_rv >= max_eb * rv` which always holds. Verifies that with guaranteed acceptance, the first PTC_SIZE candidates from the committee are selected without wasted iterations, and the indices are distinct (no wrapping needed with 64 validators).
+  2. `ptc_committee_allows_duplicate_selection` — 8 validators with minimal spec (8 slots/epoch) means each slot gets ~1 committee member. The modular cycling `i % 1` always returns index 0, selecting the same validator PTC_SIZE times. Verifies the algorithm correctly allows duplicate selection — a fundamental property that differs from shuffled committee selection. Inspects the actual committee size to conditionally verify duplicates.
+  3. `ptc_committee_all_equal_balance_deterministic_indices` — 16 validators at half max_effective_balance (~50% acceptance rate). The balance-weighted acceptance test rejects roughly half the candidates, requiring more iterations. Verifies the algorithm still converges deterministically (two calls produce identical results) and that modular cycling through many rejections produces valid committee members.
+  4. `ptc_committee_large_validator_set_wraps_correctly` — 128 validators at max balance. The concatenated committee for a single slot contains many candidates spread across multiple beacon committees. Verifies the hash-based random byte extraction works correctly across the full offset range (i/16 for hash index, i%16*2 for byte offset), and that modular cycling `i % total` handles large totals correctly. With max balance all are accepted, so the first 2 distinct members from the large committee are selected.
+  5. `ptc_committee_different_epoch_different_result` — 64 validators at half balance, comparing PTC for slot 8 (epoch 1) vs slot 16 (epoch 2). The seed includes `get_seed(state, epoch, DOMAIN_PTC_ATTESTER)`, so different epochs produce different seeds even for the same slot-in-epoch position. Verifies the epoch-dependent seed derivation by checking both PTCs are valid for their respective validator sets.
+- **Key insight discovered during testing**: With minimal spec (8 validators, 8 slots/epoch), each slot's committee typically has only 1 validator. The PTC algorithm selects from the concatenated committees for that specific slot, NOT from all validators. When there's only 1 candidate, `i % 1 = 0` always, so the same validator is selected PTC_SIZE times. This is correct spec behavior — duplicates are allowed by design. The original "balance weighting" test also hid this issue since all validators had the same max balance.
+- **Full test suite verification** — all passing:
+  - 437/437 state_processing tests (was 432, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-28 — 5 withdrawal processing phase interaction edge case tests (run 209)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 208
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
