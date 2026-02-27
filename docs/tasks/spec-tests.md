@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 builder pubkey cache correctness edge case tests (run 205)
+- **Added 5 tests** covering `builder_pubkey_cache` correctness in `apply_deposit_for_builder` and `process_deposit_request_gloas` (`per_block_processing/process_operations.rs`):
+  1. `builder_slot_reuse_removes_old_pubkey_from_cache` — when a new builder reuses an exited builder's slot, verifies the old pubkey is removed from `builder_pubkey_cache` and the new pubkey maps to the reused index. A stale cache entry would silently misroute future deposits from the evicted builder to the new builder's slot.
+  2. `builder_append_populates_cache_at_correct_index` — when a new builder is appended (no free slot), verifies the cache maps the new pubkey to the correct appended index while the original builder remains at its index.
+  3. `two_consecutive_slot_reuses_keep_cache_consistent` — creates two builders, exits both, then reuses both slots with different builders. Verifies all four cache transitions are correct (two removals + two insertions).
+  4. `topup_after_slot_reuse_routes_to_replacement_builder` — after slot reuse, a top-up deposit for the replacement builder must be routed via the `is_builder` path (existing builder top-up), not create a new entry. Tests the full `process_deposit_request_gloas` routing after a slot reuse.
+  5. `deposit_for_evicted_builder_creates_new_entry` — after eviction via slot reuse, a deposit for the evicted builder's pubkey creates a NEW builder entry (appended), not a top-up of the replacement. Confirms the evicted pubkey was properly removed from the cache.
+- **Why these tests matter**: the builder pubkey cache is the O(1) routing mechanism for deposit requests — without correct cache maintenance during slot reuse, deposits would be silently misrouted (evicted builder deposits going to the replacement, or replacement builder top-ups creating duplicates). The existing `apply_deposit_new_builder_reuses_exited_slot` test verified the builders list but NOT the cache state, leaving this correctness-critical invariant unverified.
+- **Full test suite verification** — all passing:
+  - 412/412 state_processing tests (was 407, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 Gloas signature set construction edge case tests (run 204)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 203
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
