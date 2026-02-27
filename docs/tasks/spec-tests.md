@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 gossip verification + execution status lifecycle tests (run 176)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 tests** covering gossip verification error paths and the Gloas execution status lifecycle:
+  1. `gloas_gossip_envelope_invalid_block_hash_returns_error` — exercises the gossip-path `process_payload_envelope` when the EL returns `PayloadStatus::InvalidBlockHash` (beacon_chain.rs:2699-2710). Verifies the function returns an error mentioning "invalid block hash", `payload_revealed` remains true (set before EL call), and the envelope is NOT persisted to the store. This is the gossip-path counterpart of `gloas_self_build_envelope_el_invalid_block_hash_returns_error` — both paths return the same error text but go through completely separate code (process_payload_envelope vs process_self_build_envelope). `InvalidBlockHash` is distinct from `Invalid` (already tested in run 173): it indicates the payload's block hash itself is malformed, not that the payload execution failed.
+  2. `gloas_gossip_verify_envelope_missing_beacon_block` — exercises the `MissingBeaconBlock` error path in `verify_payload_envelope_for_gossip` (gloas_verification.rs:710-716). After importing a block normally, deletes it from the store (simulating finalization pruning where the hot DB has been cleaned but fork choice still references the block). Verifies that `verify_payload_envelope_for_gossip` returns `PayloadEnvelopeError::MissingBeaconBlock` with the correct block root. This race condition can occur during finalization when the store prunes a block that fork choice still references, or during a brief window when the DB write hasn't completed.
+  3. `gloas_execution_status_lifecycle_bid_optimistic_to_valid` — exercises the complete Gloas execution status lifecycle from block import to envelope processing. Key insight: Gloas blocks with a non-zero bid start as `Optimistic(bid_block_hash)` (fork_choice.rs:988), NOT `Irrelevant` — `Irrelevant` is only for zero bid hashes or pre-merge blocks. The test: (a) configures mock EL to return `Syncing` for `forkchoice_updated` so the block stays Optimistic after import; (b) imports block without envelope, verifies `Optimistic` status with bid's block_hash and `payload_revealed=false`; (c) resets mock EL to Valid, processes envelope through full gossip pipeline; (d) verifies status is now `Valid(bid_block_hash)` with `payload_revealed=true`. This is the first test that verifies the bid-based execution status path end-to-end.
+- **Why these tests matter**: The `InvalidBlockHash` gossip response path was untested (only `Invalid` and `Syncing` were covered). The `MissingBeaconBlock` error path in gossip verification had zero coverage — this is a real-world race condition during finalization. The execution status lifecycle test documents and verifies the unintuitive fact that Gloas blocks are `Optimistic` (not `Irrelevant`) when they have a bid, which is critical for understanding the fork choice model.
+- **Full test suite verification** — all passing:
+  - 613/613 beacon_chain tests (FORK_NAME=gloas, was 610, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 proposer boost timing and payload invalidation tests (run 175)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

@@ -9759,3 +9759,249 @@ async fn gloas_invalidation_stops_at_irrelevant_boundary() {
         );
     }
 }
+
+/// When the EL returns `InvalidBlockHash` for a gossip-received envelope's `newPayload`,
+/// `process_payload_envelope` should return an error mentioning "invalid block hash".
+/// This is the gossip-path counterpart of
+/// `gloas_self_build_envelope_el_invalid_block_hash_returns_error`.
+///
+/// The `InvalidBlockHash` EL response (distinct from `Invalid`) indicates the payload's
+/// block hash itself is malformed. The gossip path calls `process_payload_envelope`
+/// (beacon_chain.rs:2699-2710) which must propagate this as an error.
+#[tokio::test]
+async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block only (simulating gossip block arriving first)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Step 1: Gossip verification
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    // Step 2: Apply to fork choice (marks payload_revealed = true)
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Configure mock EL to return InvalidBlockHash for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_block_hash_on_new_payload();
+
+    // Step 3: process_payload_envelope should fail because EL says InvalidBlockHash
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    assert!(
+        result.is_err(),
+        "process_payload_envelope should error when EL returns InvalidBlockHash"
+    );
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("invalid block hash"),
+        "error should mention invalid block hash, got: {}",
+        err_msg
+    );
+
+    // payload_revealed should still be true (set before EL call)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should remain true (set by apply_payload_envelope_to_fork_choice)"
+        );
+    }
+
+    // The envelope should NOT be persisted to the store (errored before store write)
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error");
+    assert!(
+        stored.is_none(),
+        "envelope should not be stored when process_payload_envelope fails"
+    );
+}
+
+/// When the block is in fork choice but has been pruned from the store (e.g., due to
+/// finalization pruning a hot DB block that FC still references), the gossip verification
+/// path should return `MissingBeaconBlock`.
+///
+/// This exercises gloas_verification.rs:710-716 where `get_blinded_block` returns `None`
+/// for a block_root that passes the FC checks. In practice this can happen during
+/// finalization pruning or if the store is temporarily inconsistent.
+#[tokio::test]
+async fn gloas_gossip_verify_envelope_missing_beacon_block() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block normally
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Delete the block from the store (simulating finalization pruning)
+    // The block is still in fork choice but no longer in the hot DB.
+    harness
+        .chain
+        .store
+        .delete_block(&block_root)
+        .expect("should delete block from store");
+
+    // Gossip verification should fail with MissingBeaconBlock
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
+
+    match result {
+        Err(PayloadEnvelopeError::MissingBeaconBlock { block_root: root }) => {
+            assert_eq!(
+                root, block_root,
+                "error should reference the missing block root"
+            );
+        }
+        Ok(_) => panic!("expected MissingBeaconBlock error, got Ok"),
+        Err(e) => panic!("expected MissingBeaconBlock error, got: {:?}", e),
+    }
+}
+
+/// Verify the execution status lifecycle for Gloas blocks:
+///
+/// 1. After block import (without envelope), the fork choice node has
+///    `Optimistic(bid_block_hash)` — from fork_choice.rs:988 where the bid's
+///    block_hash is used since Gloas blocks carry a bid, not a payload.
+/// 2. After `forkchoice_updated` (which happens during recompute_head), the mock
+///    EL returns `Valid`, promoting the status to `Valid(bid_block_hash)`.
+/// 3. After envelope processing, `on_valid_execution_payload` is called again
+///    with the envelope's payload hash, confirming validity.
+///
+/// This exercises the Gloas-specific bid-based execution status path
+/// (fork_choice.rs:980-989), which is distinct from pre-Gloas payload-based status.
+#[tokio::test]
+async fn gloas_execution_status_lifecycle_bid_optimistic_to_valid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its envelope separately
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let bid_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Configure mock EL to return Syncing for forkchoice_updated (so the block
+    // stays Optimistic after import instead of being promoted to Valid).
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el.server.all_payloads_syncing_on_forkchoice_updated();
+
+    // Import block only (without envelope)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Step 1: Verify the block is Optimistic with the bid's block_hash
+    // (fork_choice.rs:988 sets Optimistic(bid.message.block_hash))
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        match proto_block.execution_status {
+            ExecutionStatus::Optimistic(hash) => {
+                assert_eq!(
+                    hash, bid_block_hash,
+                    "Optimistic status should use the bid's block_hash"
+                );
+            }
+            other => panic!(
+                "block should be Optimistic after import (EL syncing), got {:?}",
+                other
+            ),
+        }
+        // payload_revealed should be false (no envelope processed yet)
+        assert!(
+            !proto_block.payload_revealed,
+            "payload_revealed should be false before envelope"
+        );
+    }
+
+    // Reset mock EL to return Valid for newPayload (for envelope processing)
+    mock_el.server.all_payloads_valid();
+
+    // Step 2: Process the envelope through the gossip pipeline
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    harness
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("process_payload_envelope should succeed");
+
+    // Step 3: Verify the block is now Valid with the bid's block_hash
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        match proto_block.execution_status {
+            ExecutionStatus::Valid(hash) => {
+                assert_eq!(
+                    hash, bid_block_hash,
+                    "Valid status should preserve the bid's block_hash"
+                );
+            }
+            other => panic!(
+                "block should be Valid after envelope processing, got {:?}",
+                other
+            ),
+        }
+        // payload_revealed should now be true
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true after envelope processing"
+        );
+    }
+}
