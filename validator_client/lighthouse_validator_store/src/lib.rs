@@ -1481,4 +1481,97 @@ mod tests {
 
         assert!(result.is_err(), "unknown pubkey should return error");
     }
+
+    #[tokio::test]
+    async fn sign_proposer_preferences_uses_proposer_preferences_domain() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let preferences = ProposerPreferences {
+            proposal_slot: 10,
+            validator_index: 42,
+            fee_recipient: Address::repeat_byte(0xaa),
+            gas_limit: 30_000_000,
+        };
+
+        let signed = store
+            .sign_proposer_preferences(pubkey_bytes, &preferences)
+            .await
+            .expect("should sign proposer preferences");
+
+        // Independently compute the expected signing root.
+        let epoch = Slot::new(preferences.proposal_slot).epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let domain = store.spec.get_domain(
+            epoch,
+            Domain::ProposerPreferences,
+            &fork,
+            Hash256::repeat_byte(42),
+        );
+        let expected_signing_root = preferences.signing_root(domain);
+
+        // Verify the signature.
+        assert!(
+            signed.signature.verify(&keypair.pk, expected_signing_root),
+            "signature should verify with Domain::ProposerPreferences"
+        );
+
+        // Verify the message fields are preserved.
+        assert_eq!(signed.message.proposal_slot, preferences.proposal_slot);
+        assert_eq!(signed.message.validator_index, preferences.validator_index);
+        assert_eq!(signed.message.fee_recipient, preferences.fee_recipient);
+        assert_eq!(signed.message.gas_limit, preferences.gas_limit);
+    }
+
+    #[tokio::test]
+    async fn sign_proposer_preferences_wrong_domain_fails_verify() {
+        let (store, keypair, pubkey_bytes) = store_with_validator().await;
+
+        let preferences = ProposerPreferences {
+            proposal_slot: 5,
+            validator_index: 7,
+            fee_recipient: Address::repeat_byte(0xbb),
+            gas_limit: 25_000_000,
+        };
+
+        let signed = store
+            .sign_proposer_preferences(pubkey_bytes, &preferences)
+            .await
+            .expect("should sign proposer preferences");
+
+        // Compute signing root with WRONG domain (BeaconAttester instead of
+        // ProposerPreferences).
+        let epoch = Slot::new(preferences.proposal_slot).epoch(E::slots_per_epoch());
+        let fork = store.spec.fork_at_epoch(epoch);
+        let wrong_domain = store.spec.get_domain(
+            epoch,
+            Domain::BeaconAttester,
+            &fork,
+            Hash256::repeat_byte(42),
+        );
+        let wrong_signing_root = preferences.signing_root(wrong_domain);
+
+        assert!(
+            !signed.signature.verify(&keypair.pk, wrong_signing_root),
+            "signature should NOT verify with wrong domain"
+        );
+    }
+
+    #[tokio::test]
+    async fn sign_proposer_preferences_unknown_pubkey_returns_error() {
+        let (store, _, _) = store_with_validator().await;
+
+        let preferences = ProposerPreferences {
+            proposal_slot: 1,
+            validator_index: 0,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        };
+        let unknown_pubkey = PublicKeyBytes::from(&Keypair::random().pk);
+
+        let result = store
+            .sign_proposer_preferences(unknown_pubkey, &preferences)
+            .await;
+
+        assert!(result.is_err(), "unknown pubkey should return error");
+    }
 }

@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — sign_proposer_preferences validator store tests (run 167)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open, PR #4843 still approved but not merged
+- **Added 3 sign_proposer_preferences tests** to `lighthouse_validator_store`:
+  1. `sign_proposer_preferences_uses_proposer_preferences_domain` — verifies BLS signature uses `Domain::ProposerPreferences`, message fields preserved
+  2. `sign_proposer_preferences_wrong_domain_fails_verify` — signature must NOT verify with wrong domain (BeaconAttester)
+  3. `sign_proposer_preferences_unknown_pubkey_returns_error` — unknown validator key returns error
+- Previously `sign_execution_payload_envelope` (3 tests) and `sign_payload_attestation` (3 tests) had domain-correctness coverage, but `sign_proposer_preferences` had zero tests despite following the same pattern
+- **Full test suite verification** — 9/9 lighthouse_validator_store tests pass, clippy clean
+
 ### 2026-02-27 — envelope edge case integration tests (run 166)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
