@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 upgrade_to_gloas builder deposit edge case tests (run 202)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Verified #4948 (PayloadStatus constant reorder): already implemented — `GloasPayloadStatus` enum values match (Empty=0, Full=1, Pending=2)
+  - Verified #4918 (attestations only for known payload statuses): already implemented — `validate_on_attestation` checks `index == 1 && !block.payload_revealed` (fork_choice.rs:1213)
+  - Verified #4923 (ignore block if parent payload unknown): already implemented — `GloasParentPayloadUnknown` check in `GossipVerifiedBlock::new()` (block_verification.rs:971-984)
+  - No new spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering `upgrade_to_gloas` / `onboard_builders_from_pending_deposits` edge cases (`upgrade/gloas.rs`):
+  1. `upgrade_builder_pubkey_cache_populated_correctly` — after upgrade with 3 builder deposits, verifies each builder's pubkey maps to the correct index in `builder_pubkey_cache`. A stale cache would cause top-up deposits to create duplicate builders.
+  2. `upgrade_builder_deposit_invalid_signature_dropped` — 0x03 (builder) credentials with an invalid signature: builder NOT created, deposit consumed (not kept in pending). Verifies the `is_valid_deposit_signature` guard in `apply_builder_deposit` for new builders.
+  3. `upgrade_two_deposits_same_new_validator_pubkey_both_kept` — two deposits for the same NEW validator pubkey (0x01 credentials) are both kept in pending_deposits. Tests the `new_validator_pubkeys` tracking that prevents the second deposit from being misclassified as a builder deposit.
+  4. `upgrade_builder_topup_skips_signature_verification` — first deposit creates builder (valid sig), second deposit tops up same pubkey (INVALID sig). Total balance = sum. Verifies the top-up path doesn't re-verify signatures, matching spec behavior.
+  5. `upgrade_deposit_ordering_preserved` — interleaved validator and builder deposits: builder indices assigned in deposit order, validator deposits preserved in original order. Comprehensive ordering test.
+- **Why these tests matter**: `upgrade_to_gloas` runs exactly once during the Gloas fork transition. The pubkey cache test catches a class of bugs where builders get duplicated instead of topped up. The invalid signature test catches premature builder creation. The same-pubkey validator test catches misclassification. The top-up signature test verifies unconditional top-ups. The ordering test proves deterministic builder index assignment.
+- **Full test suite verification** — all passing:
+  - 26/26 upgrade::gloas tests (was 21, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 process_payload_attestation edge case tests (run 201)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked open PRs unchanged: #4940, #4932, #4840, #4630
