@@ -3673,6 +3673,115 @@ mod tests {
         );
     }
 
+    #[test]
+    fn payload_attestation_slot_overflow_fails_gracefully() {
+        // data.slot = u64::MAX: safe_add(1) should return an ArithError,
+        // which wraps into WrongSlot, not a panic from overflow.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let mut attestation = make_payload_attestation(&state, &[true, false]);
+        attestation.data.slot = Slot::new(u64::MAX);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        // Must be an error (WrongSlot from the safe_add overflow), NOT a panic
+        assert!(
+            result.is_err(),
+            "slot overflow should produce an error, not a panic"
+        );
+    }
+
+    #[test]
+    fn payload_attestation_two_attestations_same_block_both_succeed() {
+        // In a block, multiple PayloadAttestations can be included.
+        // Calling process_payload_attestation twice on the same state should both succeed.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let att1 = make_payload_attestation(&state, &[true, false]);
+        let att2 = make_payload_attestation(&state, &[false, true]);
+
+        let result1 =
+            process_payload_attestation(&mut state, &att1, VerifySignatures::False, &spec);
+        assert!(
+            result1.is_ok(),
+            "first attestation should succeed: {:?}",
+            result1.err()
+        );
+
+        let result2 =
+            process_payload_attestation(&mut state, &att2, VerifySignatures::False, &spec);
+        assert!(
+            result2.is_ok(),
+            "second attestation should also succeed: {:?}",
+            result2.err()
+        );
+    }
+
+    #[test]
+    fn payload_attestation_second_bit_only_maps_to_correct_ptc_member() {
+        // Set only bit[1] (not bit[0]) and verify the indexed attestation
+        // contains only the second PTC member.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let prev_slot = state.slot().saturating_sub(1u64);
+        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+
+        // Only bit[1] set
+        let attestation = make_payload_attestation(&state, &[false, true]);
+        let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
+
+        assert_eq!(
+            indexed.attesting_indices.len(),
+            1,
+            "only one bit set, one attester"
+        );
+        assert_eq!(
+            indexed.attesting_indices[0], ptc[1],
+            "bit[1] should map to ptc[1] = validator {}",
+            ptc[1]
+        );
+    }
+
+    #[test]
+    fn payload_attestation_present_true_blob_false_valid() {
+        // payload_present=true but blob_data_available=false is a valid split state
+        // (payload was revealed but blob data not yet available). process_payload_attestation
+        // does NOT validate the semantic correctness of these flags — that's fork choice's job.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let mut attestation = make_payload_attestation(&state, &[true, true]);
+        attestation.data.payload_present = true;
+        attestation.data.blob_data_available = false;
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "present=true, blob=false should be valid: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn payload_attestation_present_false_blob_true_valid() {
+        // payload_present=false but blob_data_available=true is also a valid PTC vote.
+        // The PTC member asserts the blob data is available even though the payload wasn't
+        // timely. process_payload_attestation does not enforce consistency between these flags.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        let mut attestation = make_payload_attestation(&state, &[true, true]);
+        attestation.data.payload_present = false;
+        attestation.data.blob_data_available = true;
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "present=false, blob=true should be valid: {:?}",
+            result.err()
+        );
+    }
+
     // ── get_pending_balance_to_withdraw_for_builder tests ────────────
 
     #[test]
