@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — all tests green, dead code cleanup, proposer_preferences HTTP tests (run 147)
+- Checked consensus-specs PRs since run 146: no new Gloas spec changes merged
+  - No new merged PRs affecting Gloas since #4947/#4948 (both Feb 26)
+  - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630
+  - #4906 (Add more tests for process_deposit_request) updated Feb 26 — Electra test refactoring only, no Gloas impact
+- Spec test version: v1.7.0-alpha.2 remains latest release, nightly vectors unchanged (Feb 26 build)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 337/337 state_processing tests
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+- **Dead code cleanup**: removed unreachable `new_payload_v4_gloas` function from engine API — Gloas always dispatches via `new_payload_v5_gloas` (engine_newPayloadV5). The v4 variant was leftover scaffolding, never called.
+- **New HTTP API integration tests**: added 5 tests for POST beacon/pool/proposer_preferences endpoint:
+  - Valid signed preferences accepted (200)
+  - Rejected when Gloas not scheduled (400)
+  - Invalid signature rejected (400)
+  - Unknown validator index rejected (400)
+  - Duplicate submission silently ignored (200)
+
 ### 2026-02-27 — full test suite green, no new spec changes (run 146)
 - Checked consensus-specs PRs since run 145: no new Gloas spec changes merged
   - #4947 and #4948 (both merged Feb 26) were already tracked in runs 142/145
