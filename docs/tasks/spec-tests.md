@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 withdrawal processing interaction edge case tests (run 203)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 202
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+- **Added 5 tests** covering `process_withdrawals_gloas` cross-phase interaction edge cases (`per_block_processing/gloas.rs`):
+  1. `withdrawals_pending_and_sweep_same_builder` — builder has both a pending withdrawal AND is picked up by the sweep (exited). Both produce withdrawal entries; balance saturates to 0 via sequential `min(amount, balance)` application.
+  2. `withdrawals_pending_amount_exceeds_builder_balance` — pending withdrawal amount (50B) exceeds builder balance (2B). Withdrawal records full amount but balance decrease saturates at 0. Tests the `saturating_sub(min(amount, balance))` in apply_withdrawals.
+  3. `withdrawals_builder_sweep_all_builders_wrapped` — 3 exited builders, sweep starts at index 1, wraps around to process all 3. Verifies sweep order (1→2→0) and `next_withdrawal_builder_index` wrap arithmetic.
+  4. `withdrawals_all_phases_continuous_index_sequence` — all 4 phases (builder pending, partial, builder sweep, validator sweep) produce withdrawals simultaneously. Verifies `withdrawal.index` is a continuous sequence starting from `next_withdrawal_index` and that `next_withdrawal_index` is updated correctly.
+  5. `withdrawals_only_builder_output_validator_index_still_advances` — only builder withdrawals produced (no validator excess balance). Verifies `next_withdrawal_validator_index` still advances by `max_validators_per_withdrawals_sweep` even when the validator sweep produces no withdrawals.
+- **Why these tests matter**: withdrawal processing is the most complex part of Gloas block processing with 4 interacting phases. These tests catch bugs in the balance application order (saturating vs. underflow), sweep wrap-around arithmetic, cross-phase index sequencing, and the "else" branch of the validator index update logic (which uses a different formula than the "max reached" branch).
+- **Full test suite verification** — all passing:
+  - 402/402 state_processing tests (was 397, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 upgrade_to_gloas builder deposit edge case tests (run 202)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Verified #4948 (PayloadStatus constant reorder): already implemented — `GloasPayloadStatus` enum values match (Empty=0, Full=1, Pending=2)

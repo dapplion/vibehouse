@@ -4676,4 +4676,295 @@ mod tests {
             "read-only path must also cap second partial at remaining excess"
         );
     }
+
+    // ── Withdrawal interaction edge case tests (run 203) ────────────
+
+    /// Builder pending withdrawal AND builder sweep for the same exited builder.
+    ///
+    /// Phase 1 (builder pending withdrawals) produces a withdrawal for the fee_recipient,
+    /// phase 3 (builder sweep) sees the builder is exited with balance > 0 and produces
+    /// another withdrawal for the builder's execution_address.
+    /// After application, the builder balance should be decreased by the sum of both
+    /// (saturating at 0).
+    #[test]
+    fn withdrawals_pending_and_sweep_same_builder() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 10_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make builder exited so sweep picks it up
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Add a pending withdrawal for the same builder
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 3_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Process withdrawals
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        // Both a pending withdrawal (3 Gwei) and a sweep withdrawal (full balance 10 Gwei)
+        let builder_ws: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
+            .collect();
+        assert_eq!(
+            builder_ws.len(),
+            2,
+            "should have both pending and sweep withdrawals"
+        );
+        assert_eq!(builder_ws[0].amount, 3_000_000_000, "pending amount");
+        assert_eq!(builder_ws[1].amount, 10_000_000_000, "sweep full balance");
+
+        // Builder balance after application: saturating_sub of both amounts
+        // min(3B, balance=10B) → 7B remaining, then min(10B, 7B) → 0
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(
+            builder.balance, 0,
+            "builder balance should be 0 after both withdrawals"
+        );
+    }
+
+    /// Builder pending withdrawal amount exceeds builder balance.
+    ///
+    /// The balance decrease uses `saturating_sub(min(amount, balance))`, so
+    /// the balance should never go negative — it saturates at 0.
+    #[test]
+    fn withdrawals_pending_amount_exceeds_builder_balance() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 2_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a pending withdrawal larger than the builder's balance
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 50_000_000_000, // much larger than 2 Gwei balance
+                builder_index: 0,
+            })
+            .unwrap();
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // The withdrawal should be recorded with the full amount (50B) in expected_withdrawals
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_ws: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
+            .collect();
+        assert_eq!(builder_ws.len(), 1);
+        assert_eq!(
+            builder_ws[0].amount, 50_000_000_000,
+            "withdrawal records the full requested amount"
+        );
+
+        // But the actual balance decrease is capped at min(50B, 2B) = 2B, so balance = 0
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(
+            builder.balance, 0,
+            "balance saturates at 0 when withdrawal exceeds balance"
+        );
+    }
+
+    /// Builder sweep processes all builders when builder count <= max_builders_per_sweep.
+    ///
+    /// With 3 exited builders, all of them should be swept and the
+    /// next_withdrawal_builder_index should wrap correctly.
+    #[test]
+    fn withdrawals_builder_sweep_all_builders_wrapped() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add 2 more exited builders (total 3)
+        for i in 1..=2u8 {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .push(Builder {
+                    pubkey: types::PublicKeyBytes::empty(),
+                    version: 0x03,
+                    execution_address: Address::repeat_byte(0xC0 + i),
+                    balance: (i as u64 + 1) * 1_000_000_000,
+                    deposit_epoch: Epoch::new(0),
+                    withdrawable_epoch: Epoch::new(0), // exited
+                })
+                .unwrap();
+        }
+
+        // Make builder 0 exited too
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Start sweep at index 1
+        state.as_gloas_mut().unwrap().next_withdrawal_builder_index = 1;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_ws: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index & BUILDER_INDEX_FLAG != 0)
+            .collect();
+        // All 3 builders should be swept (loop processes min(3, max_builders_per_sweep) = 3)
+        assert_eq!(builder_ws.len(), 3, "all 3 exited builders should be swept");
+
+        // Sweep order: index 1, 2, 0 (wraps around)
+        assert_eq!(builder_ws[0].amount, 2_000_000_000, "builder 1 amount");
+        assert_eq!(builder_ws[1].amount, 3_000_000_000, "builder 2 amount");
+        assert_eq!(builder_ws[2].amount, 5_000_000_000, "builder 0 amount");
+
+        // next_withdrawal_builder_index = (1 + 3) % 3 = 1
+        assert_eq!(
+            state.as_gloas().unwrap().next_withdrawal_builder_index,
+            1,
+            "next_withdrawal_builder_index should wrap to 1"
+        );
+    }
+
+    /// All 4 withdrawal phases active: verify continuous index sequencing.
+    ///
+    /// With builder pending withdrawals, pending partials, builder sweep, and validator sweep
+    /// all producing withdrawals, the withdrawal.index values should be a continuous
+    /// sequence starting from next_withdrawal_index.
+    #[test]
+    fn withdrawals_all_phases_continuous_index_sequence() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set starting withdrawal index to a non-zero value
+        *state.next_withdrawal_index_mut().unwrap() = 42;
+
+        // Phase 1: Builder pending withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xAA),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Phase 2: Pending partial withdrawal
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 2_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        // Phase 3: Builder sweep (make builder exited)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Phase 4: Validator 1 has excess balance for partial withdrawal
+        // (default validators have 34B with effective_balance = 34B, max_effective = 32B → excess)
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        // Verify indices are continuous starting from 42
+        for (i, w) in expected.iter().enumerate() {
+            assert_eq!(
+                w.index,
+                42 + i as u64,
+                "withdrawal {} should have index {}",
+                i,
+                42 + i as u64
+            );
+        }
+
+        // Verify next_withdrawal_index was updated
+        let final_index = state.next_withdrawal_index().unwrap();
+        assert_eq!(
+            final_index,
+            42 + expected.len() as u64,
+            "next_withdrawal_index should be past all withdrawals"
+        );
+    }
+
+    /// Validator sweep `next_withdrawal_validator_index` update when only builder
+    /// withdrawals are produced (no validator withdrawals).
+    ///
+    /// When withdrawals.len() < max_withdrawals AND all withdrawals are from builders,
+    /// the validator index should still advance by max_validators_per_withdrawals_sweep.
+    #[test]
+    fn withdrawals_only_builder_output_validator_index_still_advances() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // No validator has excess balance (32B == min_activation_balance → no partial)
+        // No validator is fully withdrawable (exit_epoch == far_future_epoch)
+        // Only builder pending withdrawal exists
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xEE),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Start validator sweep at index 3
+        *state.next_withdrawal_validator_index_mut().unwrap() = 3;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Only builder withdrawal should exist (no validator withdrawals)
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        assert!(
+            !expected.is_empty() && expected.len() < E::max_withdrawals_per_payload(),
+            "should have some withdrawals but not max"
+        );
+
+        // All withdrawals should be builder-flagged
+        assert!(
+            expected
+                .iter()
+                .all(|w| w.validator_index & BUILDER_INDEX_FLAG != 0),
+            "all withdrawals should be from builders"
+        );
+
+        // Even with no validator withdrawals, next_withdrawal_validator_index advances
+        // by max_validators_per_withdrawals_sweep
+        let new_index = state.next_withdrawal_validator_index().unwrap();
+        let expected_index =
+            (3 + spec.max_validators_per_withdrawals_sweep) % state.validators().len() as u64;
+        assert_eq!(
+            new_index, expected_index,
+            "validator index should advance by max_validators_per_withdrawals_sweep"
+        );
+    }
 }
