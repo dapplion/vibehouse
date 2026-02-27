@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — multi-epoch chain health integration tests (run 163)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - New open PR: #4950 (Extend by_root reqresp serve range) — dapplion's, not yet merged, no code changes needed
+- **Added 4 beacon_chain integration tests** for multi-epoch Gloas chain health:
+  1. `gloas_multi_epoch_builder_payments_rotation` — runs 3 epochs, verifies builder_pending_payments vector stays correctly sized and all entries are default after 2 epoch boundary rotations (self-build blocks have value=0)
+  2. `gloas_skip_slot_latest_block_hash_continuity` — skips a slot, produces next block, verifies bid parent_block_hash references last envelope's block_hash and parent_block_root references last actual block root
+  3. `gloas_two_forks_head_resolves_with_attestation_weight` — creates 75%/25% competing forks from a shared Gloas chain, verifies head follows majority attestation weight
+  4. `gloas_execution_payload_availability_multi_epoch` — runs 2 epochs, verifies all availability bits correctly track payload status (cleared by per_slot_processing, restored by envelope processing)
+- **Full test suite verification** — all passing:
+  - 583/583 beacon_chain tests (FORK_NAME=gloas, was 579, +4 new)
+  - Clippy clean
+
 ### 2026-02-27 — duplicate proposer preferences gossip test (run 162)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
 - **Added 1 gossip handler test** for proposer preferences deduplication:
