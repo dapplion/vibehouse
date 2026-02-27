@@ -45,3 +45,88 @@ impl arbitrary::Arbitrary<'_> for BuilderPubkeyCache {
         Ok(Self::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pk(byte: u8) -> PublicKeyBytes {
+        let mut bytes = [0u8; 48];
+        bytes[0] = byte;
+        PublicKeyBytes::deserialize(&bytes).unwrap()
+    }
+
+    #[test]
+    fn empty_cache_returns_none() {
+        let cache = BuilderPubkeyCache::default();
+        assert_eq!(cache.len(), 0);
+        assert_eq!(cache.get(&PublicKeyBytes::empty()), None);
+        assert_eq!(cache.get(&pk(0x01)), None);
+    }
+
+    #[test]
+    fn insert_and_get() {
+        let mut cache = BuilderPubkeyCache::default();
+        let key_a = pk(0x01);
+        let key_b = pk(0x02);
+
+        cache.insert(key_a, 0);
+        cache.insert(key_b, 1);
+
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get(&key_a), Some(0));
+        assert_eq!(cache.get(&key_b), Some(1));
+        // Unknown key still returns None
+        assert_eq!(cache.get(&pk(0x03)), None);
+    }
+
+    #[test]
+    fn remove_deletes_entry() {
+        let mut cache = BuilderPubkeyCache::default();
+        let key = pk(0x01);
+
+        cache.insert(key, 5);
+        assert_eq!(cache.get(&key), Some(5));
+        assert_eq!(cache.len(), 1);
+
+        cache.remove(&key);
+        assert_eq!(cache.get(&key), None);
+        assert_eq!(cache.len(), 0);
+    }
+
+    #[test]
+    fn insert_overwrites_same_pubkey() {
+        // If the same pubkey is inserted twice with different indices,
+        // the second insert overwrites the first.
+        let mut cache = BuilderPubkeyCache::default();
+        let key = pk(0x01);
+
+        cache.insert(key, 0);
+        assert_eq!(cache.get(&key), Some(0));
+
+        cache.insert(key, 7);
+        assert_eq!(cache.get(&key), Some(7));
+        // Length stays 1 — same key, updated value
+        assert_eq!(cache.len(), 1);
+    }
+
+    #[test]
+    fn index_reuse_via_remove_then_insert() {
+        // Simulates the index reuse pattern: exited builder at index 2
+        // is replaced by a new builder with a different pubkey.
+        let mut cache = BuilderPubkeyCache::default();
+        let old_pk = pk(0x01);
+        let new_pk = pk(0x02);
+
+        cache.insert(old_pk, 2);
+        assert_eq!(cache.get(&old_pk), Some(2));
+
+        // Remove old builder, insert new one at the same index
+        cache.remove(&old_pk);
+        cache.insert(new_pk, 2);
+
+        assert_eq!(cache.get(&old_pk), None);
+        assert_eq!(cache.get(&new_pk), Some(2));
+        assert_eq!(cache.len(), 1);
+    }
+}
