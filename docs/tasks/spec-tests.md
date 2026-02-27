@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 payload attestation gossip validation tests (run 180)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 tests** covering previously untested payload attestation gossip verification error paths in `gloas_verification.rs`:
+  1. `gloas_payload_attestation_gossip_rejects_empty_aggregation_bits` — exercises the `EmptyAggregationBits` error path (gloas_verification.rs:544). Creates a payload attestation with all-zero aggregation bits (BitVector::default()). This check (check 2) runs before beacon block root lookup, PTC committee retrieval, equivocation detection, and signature verification. An attestation with no bits set carries zero information — accepting it would pollute the attestation pool with vacuous votes, potentially filling aggregate slots without contributing any PTC weight to fork choice.
+  2. `gloas_payload_attestation_gossip_rejects_future_slot` — exercises the `FutureSlot` error path (gloas_verification.rs:536-540). Creates a payload attestation with slot = head + 1000. The slot validation is the FIRST check; it prevents attestations for arbitrary future slots from being accepted before the chain has reached that point. Without this guard, an attacker could flood the network with future attestations, consuming memory in the equivocation tracker and attestation pool. The maximum permissible slot is `current_slot + gossip_clock_disparity / seconds_per_slot` (effectively current_slot on minimal preset).
+  3. `gloas_payload_attestation_gossip_rejects_past_slot` — exercises the `PastSlot` error path (gloas_verification.rs:529-533). Advances the chain 8 slots then submits an attestation for slot 0. The past-slot check prevents stale attestations from re-entering the system. Without it, a peer could replay old attestations from finalized history, polluting the equivocation tracker with irrelevant entries, wasting PTC committee computation for old epochs, and potentially triggering false equivocation detections.
+- **Why these tests matter**: All three payload attestation slot/aggregation validation paths had zero test coverage at the integration level. These are the first checks in `verify_payload_attestation_for_gossip` — they guard against the most basic forms of invalid attestation gossip (empty, future, past). A regression in any of these would let invalid attestations consume chain resources (equivocation tracker memory, PTC committee computation, attestation pool space) without contributing meaningful votes.
+- **Full test suite verification** — all passing:
+  - 625/625 beacon_chain tests (FORK_NAME=gloas, was 622, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 proposer preferences bid validation tests (run 179)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
