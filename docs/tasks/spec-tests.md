@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — implement spec PR #4898: remove pending from tiebreaker (run 157)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Today's nightly vectors still building (sha 14e6ce5a5334, includes #4948/#4947 — no impact)
+  - Reviewed open PRs for merge readiness:
+    - #4892 (Remove impossible branch): APPROVED by 2 reviewers — **already implemented** (debug_assert + == check)
+    - #4898 (Remove pending from tiebreaker): APPROVED by 1 reviewer — **implemented this run**
+    - #4940, #4932 (test generators): no code changes needed, test-only
+    - #4939 (request missing envelopes): active discussion, unresolved, depends on #4918
+- **Implemented spec PR #4898**: removed PENDING check from `get_payload_tiebreaker`
+  - Old: `if node.payload_status == Pending || !is_previous_slot { return ordinal }`
+  - New: `if !is_previous_slot { return ordinal }` — PENDING check was dead code since `get_node_children` returns uniformly PENDING or non-PENDING children, and PENDING nodes are unique per root
+  - Updated test `tiebreaker_pending_at_previous_slot_returns_ordinal` → `tiebreaker_pending_at_previous_slot_unreachable_but_safe` to document that this path is unreachable
+  - All 193/193 fork_choice + proto_array tests pass
+  - All 8/8 EF fork choice spec tests pass (real crypto, minimal)
+
 ### 2026-02-27 — full spec verification, doc comment fix (run 156)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630
