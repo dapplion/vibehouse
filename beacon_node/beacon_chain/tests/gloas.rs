@@ -441,8 +441,12 @@ fn make_payload_attestation(
     payload_present: bool,
     blob_data_available: bool,
 ) -> PayloadAttestation<E> {
+    let mut aggregation_bits = BitVector::default();
+    aggregation_bits
+        .set(0, true)
+        .expect("PTC size >= 1, bit 0 should be settable");
     PayloadAttestation {
-        aggregation_bits: Default::default(),
+        aggregation_bits,
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,

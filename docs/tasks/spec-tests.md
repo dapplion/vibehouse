@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — fix CI failure in beacon_chain tests (run 158)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Open PRs unchanged: #4940, #4939, #4932, #4843, #4840, #4630
+- **CI failure identified and fixed**: `gloas_block_production_filters_attestations_by_parent_root` and `gloas_block_production_includes_pool_attestations` failing with `PayloadAttestationInvalid(AttesterIndexOutOfBounds)`
+  - Root cause: `make_payload_attestation` test helper created attestations with empty aggregation bits (all zeros)
+  - Regression introduced by run 152 (`f121b8311`) which correctly made structural checks (non-empty, sorted) unconditional in `process_payload_attestation` — before that fix, empty attestations were silently accepted during block production (when `verify_signatures = false`)
+  - Fix: set bit 0 in `make_payload_attestation` to create valid attestations with at least one PTC member
+  - The tests had never been caught by CI because intermediate runs were cancelled before beacon_chain tests completed
+- **Full test suite verification** — all passing:
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+
 ### 2026-02-27 — implement spec PR #4898: remove pending from tiebreaker (run 157)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Today's nightly vectors still building (sha 14e6ce5a5334, includes #4948/#4947 — no impact)
