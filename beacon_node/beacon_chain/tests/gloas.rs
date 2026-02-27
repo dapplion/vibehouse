@@ -7503,3 +7503,253 @@ async fn gloas_external_bid_envelope_reveals_payload_in_fork_choice() {
         );
     }
 }
+
+// =============================================================================
+// Multi-epoch chain health and state consistency tests
+// =============================================================================
+
+/// After running the chain for multiple Gloas epochs, verify that epoch processing
+/// correctly rotates builder_pending_payments. The payment window is 2*SLOTS_PER_EPOCH;
+/// after one epoch boundary, the first SLOTS_PER_EPOCH entries should be rotated out
+/// (moved from second half to first half).
+///
+/// With self-build blocks (value=0), no actual payments are generated, but the
+/// rotation mechanism must still execute correctly — the vector should remain
+/// properly sized and all entries should be default after rotation.
+#[tokio::test]
+async fn gloas_multi_epoch_builder_payments_rotation() {
+    let harness = gloas_harness_at_epoch(0);
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Run for 3 full epochs (24 slots with MinimalEthSpec)
+    // This ensures at least 2 epoch boundaries are crossed, triggering
+    // builder_pending_payments rotation twice.
+    let num_slots = 3 * slots_per_epoch as usize;
+    Box::pin(harness.extend_slots(num_slots)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = state.as_gloas().expect("should be Gloas");
+    let current_epoch = state.current_epoch();
+
+    assert!(
+        current_epoch >= Epoch::new(3),
+        "should be at epoch 3 or later (got epoch {})",
+        current_epoch
+    );
+
+    // Builder pending payments should still be properly sized
+    let payments_limit = E::builder_pending_payments_limit();
+    assert_eq!(
+        gloas_state.builder_pending_payments.len(),
+        payments_limit,
+        "builder_pending_payments should maintain correct size after epoch processing"
+    );
+
+    // With self-build blocks (value=0), all entries should still be default
+    // after rotation. Non-default entries would indicate a rotation bug.
+    for i in 0..payments_limit {
+        let payment = gloas_state.builder_pending_payments.get(i).unwrap();
+        assert_eq!(
+            payment.weight, 0,
+            "payment[{}].weight should be 0 after rotation (self-build blocks have value=0)",
+            i
+        );
+        assert_eq!(
+            payment.withdrawal.amount, 0,
+            "payment[{}].withdrawal.amount should be 0 after rotation",
+            i
+        );
+    }
+}
+
+/// Verify latest_block_hash continuity across a skip slot. When a slot is skipped
+/// (no block produced), the next block's bid parent_block_hash should reference the
+/// last processed envelope's block_hash, not the skipped slot.
+#[tokio::test]
+async fn gloas_skip_slot_latest_block_hash_continuity() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Produce initial blocks to establish a chain
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_root = head.beacon_block_root;
+
+    // Get the latest_block_hash from the current state (post-envelope)
+    let state = harness.chain.head_beacon_state_cloned();
+    let latest_hash_before_skip = *state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert!(
+        !latest_hash_before_skip.0.is_zero(),
+        "latest_block_hash should be non-zero before skip slot"
+    );
+
+    // Skip a slot: advance the slot clock without producing a block
+    harness.advance_slot();
+    let skip_slot = head_slot + 1;
+    harness.advance_slot();
+    let produce_slot = head_slot + 2;
+
+    // Produce a block at the slot after the skip
+    let ((next_block, _), _post_state, _envelope) = harness
+        .make_block_with_envelope(state.clone(), produce_slot)
+        .await;
+
+    let next_bid = next_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas block with bid");
+
+    // The bid's parent_block_hash should equal the last processed envelope's block_hash
+    // (the state's latest_block_hash before the skip), NOT some default or skipped value.
+    assert_eq!(
+        next_bid.message.parent_block_hash, latest_hash_before_skip,
+        "bid parent_block_hash after skip slot should equal latest_block_hash \
+         from the last processed envelope (skip_slot={}, produce_slot={})",
+        skip_slot, produce_slot
+    );
+
+    // The parent_block_root should reference the head (last actual block), not the skip slot
+    assert_eq!(
+        next_bid.message.parent_block_root, head_root,
+        "bid parent_block_root should reference the last actual block root, not the skip slot"
+    );
+}
+
+/// After a fork with two competing chains, verify the head is correctly resolved.
+/// Both chains produce Gloas blocks with envelopes; the one with more attestation
+/// weight should win.
+#[tokio::test]
+async fn gloas_two_forks_head_resolves_with_attestation_weight() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build initial shared chain
+    let initial_blocks = 3usize;
+    Box::pin(harness.extend_slots(initial_blocks)).await;
+
+    let shared_head = harness.chain.head_snapshot();
+    let shared_slot = shared_head.beacon_block.slot();
+
+    // Split validators: 75% honest, 25% faulty
+    let honest_validators: Vec<usize> = (0..24).collect();
+    let faulty_validators: Vec<usize> = (24..VALIDATOR_COUNT).collect();
+
+    // Create two competing forks
+    let (honest_head, faulty_head) = harness
+        .generate_two_forks_by_skipping_a_block(
+            &honest_validators,
+            &faulty_validators,
+            2, // honest fork: 2 blocks
+            2, // faulty fork: 2 blocks
+        )
+        .await;
+
+    assert_ne!(honest_head, faulty_head, "forks should be distinct");
+
+    // The head should follow the honest chain (more attestation weight)
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block_root, honest_head,
+        "head should follow the chain with more attestation weight (honest: 75% vs faulty: 25%)"
+    );
+
+    // Verify the head is a valid Gloas block
+    assert!(
+        head.beacon_block.as_gloas().is_ok(),
+        "head block should be a valid Gloas block"
+    );
+
+    // The head block should be beyond the shared ancestor
+    assert!(
+        head.beacon_block.slot() > shared_slot,
+        "head slot ({}) should be beyond shared ancestor ({})",
+        head.beacon_block.slot(),
+        shared_slot
+    );
+}
+
+/// Verify that execution_payload_availability bits correctly track payload status
+/// across multiple epochs. The flow per slot is:
+/// 1. per_slot_processing: advances state.slot → N, clears bit at index N
+/// 2. block processing: processes the block body
+/// 3. envelope processing: sets bit at index N back to true (payload available)
+///
+/// After extend_slots produces blocks at every slot, the last block's slot (N)
+/// should have availability=true (envelope processed). The per_slot_processing
+/// for the NEXT slot (N+1) hasn't run yet, so its bit is still set from the
+/// initial fork upgrade (all bits = true).
+#[tokio::test]
+async fn gloas_execution_payload_availability_multi_epoch() {
+    let harness = gloas_harness_at_epoch(0);
+    let slots_per_epoch = E::slots_per_epoch();
+    let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+
+    // Run for 2 full epochs (16 slots with MinimalEthSpec)
+    let num_slots = 2 * slots_per_epoch as usize;
+    Box::pin(harness.extend_slots(num_slots)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = state.as_gloas().expect("should be Gloas");
+    let current_slot = state.slot();
+
+    // Verify that the current slot's bit is true (envelope was processed for the head block)
+    let current_slot_index = current_slot.as_usize() % slots_per_hist;
+    assert!(
+        gloas_state
+            .execution_payload_availability
+            .get(current_slot_index)
+            .unwrap_or(false),
+        "current slot's availability bit (index {}) should be true (envelope processed)",
+        current_slot_index
+    );
+
+    // Verify that ALL slots that had blocks have availability=true.
+    // Slots 1 through current_slot all had blocks with envelopes.
+    for slot_num in 1..=current_slot.as_usize() {
+        let idx = slot_num % slots_per_hist;
+        assert!(
+            gloas_state
+                .execution_payload_availability
+                .get(idx)
+                .unwrap_or(false),
+            "slot {} (index {}) should have availability=true (block+envelope processed)",
+            slot_num,
+            idx
+        );
+    }
+
+    // Slot 0 (genesis) had no block processing in Gloas, but the fork upgrade
+    // initializes all bits to true. per_slot_processing for slot 0→1 would have
+    // cleared bit at index 1, but then envelope at slot 1 set it back. The bit
+    // at index 0 was only cleared by per_slot_processing if some later slot
+    // wraps around, which won't happen in 16 slots with slots_per_hist=8192.
+    // So index 0 should still be true from initialization.
+    assert!(
+        gloas_state
+            .execution_payload_availability
+            .get(0)
+            .unwrap_or(false),
+        "genesis index 0 should still be true from fork upgrade initialization"
+    );
+
+    // Count set bits — should be all true. With only 16 slots processed and
+    // slots_per_hist=8192, every cleared bit has been set back by envelope processing.
+    let set_count = (0..slots_per_hist)
+        .filter(|i| {
+            gloas_state
+                .execution_payload_availability
+                .get(*i)
+                .unwrap_or(false)
+        })
+        .count();
+
+    assert_eq!(
+        set_count, slots_per_hist,
+        "all {} availability bits should be set (16 slots processed, {} total bits, \
+         all cleared bits restored by envelope processing)",
+        slots_per_hist, slots_per_hist
+    );
+}
