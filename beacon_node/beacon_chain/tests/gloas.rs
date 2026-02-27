@@ -7945,3 +7945,234 @@ async fn gloas_execution_payload_availability_multi_epoch() {
         slots_per_hist, slots_per_hist
     );
 }
+
+// =============================================================================
+// Range sync — import Gloas blocks with envelope processing
+// =============================================================================
+
+/// Simulate range sync: build a chain on one harness, extract blocks + envelopes,
+/// import them into a fresh harness. This exercises the full import path including
+/// `load_parent`'s state patching and `get_advanced_hot_state`'s envelope
+/// re-application from store.
+#[tokio::test]
+async fn gloas_range_sync_import_with_envelopes() {
+    // Harness 1: build 4 blocks with all envelopes processed
+    let harness1 = gloas_harness_at_epoch(0);
+    Box::pin(harness1.extend_slots(4)).await;
+
+    // Extract blocks and envelopes from the chain dump
+    let chain_dump = harness1.chain.chain_dump().expect("should dump chain");
+    let mut blocks = Vec::new();
+    let mut envelopes = Vec::new();
+    for snapshot in chain_dump.iter().skip(1) {
+        // skip genesis
+        let full_block = harness1
+            .chain
+            .get_block(&snapshot.beacon_block_root)
+            .await
+            .unwrap()
+            .unwrap();
+        let envelope = harness1
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap();
+        blocks.push(Arc::new(full_block));
+        envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), 4, "should have 4 blocks");
+
+    // Verify parent hash chain: each block's bid.parent_block_hash should reference
+    // the previous block's bid.block_hash (all blocks take the FULL path via self-build).
+    for i in 1..blocks.len() {
+        let prev_bid_hash = blocks[i - 1]
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .expect("should be Gloas")
+            .message
+            .block_hash;
+        let cur_parent_hash = blocks[i]
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .expect("should be Gloas")
+            .message
+            .parent_block_hash;
+        assert_eq!(
+            cur_parent_hash,
+            prev_bid_hash,
+            "block {}'s bid.parent_block_hash should equal block {}'s bid.block_hash",
+            i + 1,
+            i
+        );
+    }
+
+    // Harness 2: fresh chain to replay blocks into (simulates range sync)
+    let harness2 = gloas_harness_at_epoch(0);
+
+    // Import blocks sequentially with envelope processing after each.
+    // This tests the full import path: load_parent → per_block_processing → state root check
+    // → envelope processing → state cache update.
+    for (i, (block, envelope)) in blocks.iter().zip(envelopes.iter()).enumerate() {
+        let rpc_block = beacon_chain::block_verification_types::RpcBlock::new_without_blobs(
+            None,
+            block.clone(),
+        );
+        let slot = block.slot();
+        harness2.set_current_slot(slot);
+
+        harness2
+            .chain
+            .process_chain_segment(vec![rpc_block], NotifyExecutionLayer::Yes)
+            .await
+            .into_block_error()
+            .unwrap_or_else(|e| {
+                panic!(
+                    "block {} (slot {}) import should succeed: {:?}",
+                    i + 1,
+                    slot,
+                    e
+                )
+            });
+
+        if let Some(signed_envelope) = envelope {
+            harness2
+                .chain
+                .process_self_build_envelope(signed_envelope)
+                .await
+                .unwrap_or_else(|e| {
+                    panic!("envelope {} processing should succeed: {:?}", i + 1, e)
+                });
+            harness2.chain.recompute_head_at_current_slot().await;
+        }
+    }
+
+    // Verify: all 4 blocks are in fork choice
+    {
+        let fc = harness2.chain.canonical_head.fork_choice_read_lock();
+        for (i, block) in blocks.iter().enumerate() {
+            let root = block.canonical_root();
+            assert!(
+                fc.get_block(&root).is_some(),
+                "block {} (root {:?}) should be in fork choice after range sync import",
+                i + 1,
+                root
+            );
+        }
+    }
+
+    // Verify head is the last block
+    harness2.chain.recompute_head_at_current_slot().await;
+    let head = harness2.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block_root,
+        blocks.last().unwrap().canonical_root(),
+        "head should be the last imported block"
+    );
+
+    // Verify the head state's latest_block_hash matches the last envelope's block_hash
+    let head_latest_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    let last_envelope_hash = envelopes
+        .last()
+        .unwrap()
+        .as_ref()
+        .expect("last block should have envelope")
+        .message
+        .payload
+        .block_hash;
+    assert_eq!(
+        head_latest_hash, last_envelope_hash,
+        "head state latest_block_hash should match the last envelope's payload block_hash"
+    );
+}
+
+/// Complementary test: when the parent's envelope WAS processed (normal path),
+/// load_parent does NOT need to patch because the cached state already has the
+/// correct latest_block_hash. This ensures the patching code is a no-op when
+/// envelopes are processed normally.
+#[tokio::test]
+async fn gloas_load_parent_no_patch_needed_when_envelope_processed() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build a base chain with envelopes (3 blocks).
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let head_slot = head_state.slot();
+    let head_latest_hash = *head_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+
+    // The head block's bid.block_hash should match the state's latest_block_hash
+    // (because the envelope was processed).
+    let head_bid_hash = harness
+        .chain
+        .head_snapshot()
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .block_hash;
+    assert_eq!(
+        head_latest_hash, head_bid_hash,
+        "with envelope processed, latest_block_hash should match head bid block_hash"
+    );
+
+    // Build and import the next block — should succeed without any patching needed
+    harness.advance_slot();
+    let next_slot = head_slot + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let block_root = block_contents.0.canonical_root();
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("next block import should succeed when parent envelope was processed");
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    assert!(
+        fc.get_block(&block_root).is_some(),
+        "next block should be in fork choice"
+    );
+}
+
+/// When the parent block is at genesis (bid.block_hash is zero), load_parent
+/// should NOT attempt to patch because zero hashes indicate genesis or default
+/// state, not a missing envelope.
+#[tokio::test]
+async fn gloas_load_parent_skips_patch_for_genesis_zero_hash() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // At genesis (epoch 0 = Gloas), the genesis block has a bid with zero block_hash.
+    // Build the first block (slot 1) which has parent = genesis.
+    harness.advance_slot();
+    let genesis_state = harness.chain.head_beacon_state_cloned();
+    let slot_1 = Slot::new(1);
+    let (block_1_contents, _state, _envelope) = harness
+        .make_block_with_envelope(genesis_state, slot_1)
+        .await;
+
+    let block_1_root = block_1_contents.0.canonical_root();
+
+    // Import block 1 — load_parent loads genesis state. Genesis bid has
+    // block_hash = zero. The patching code should skip because
+    // parent_bid_block_hash == ExecutionBlockHash::zero().
+    harness
+        .process_block(slot_1, block_1_root, block_1_contents)
+        .await
+        .expect("first block import should succeed (genesis parent, zero hash → no patch)");
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    assert!(
+        fc.get_block(&block_1_root).is_some(),
+        "first block should be in fork choice"
+    );
+}
