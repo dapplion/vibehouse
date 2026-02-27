@@ -1345,4 +1345,290 @@ mod tests {
 
         assert!(!sig_set.verify());
     }
+
+    // ──────── Gloas signature set edge case tests (run 204) ────────
+
+    #[test]
+    fn payload_attestation_multiple_valid_signers_verifies() {
+        // Aggregate signature from two PTC members should verify when both
+        // individual signatures are combined. This tests the multi-pubkey
+        // aggregation path in payload_attestation_signature_set, which all
+        // prior tests skip by using a single signer.
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xCC),
+            slot: Slot::new(8),
+            payload_present: true,
+            blob_data_available: true,
+        };
+
+        let epoch = data.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::PtcAttester,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = data.signing_root(domain);
+
+        // Both signers contribute to the aggregate
+        let sig0 = keypairs[0].sk.sign(signing_root);
+        let sig1 = keypairs[1].sk.sign(signing_root);
+        let mut agg_sig = bls::AggregateSignature::infinity();
+        agg_sig.add_assign(&sig0);
+        agg_sig.add_assign(&sig1);
+
+        let attestation = PayloadAttestation {
+            aggregation_bits: BitVector::new(),
+            data,
+            signature: agg_sig,
+        };
+
+        let pk0 = keypairs[0].pk.clone();
+        let pk1 = keypairs[1].pk.clone();
+        let sig_set = payload_attestation_signature_set(
+            &state,
+            |idx| match idx {
+                0 => Some(Cow::Owned(pk0.clone())),
+                1 => Some(Cow::Owned(pk1.clone())),
+                _ => None,
+            },
+            &attestation,
+            &[0, 1],
+            &spec,
+        )
+        .expect("should succeed");
+
+        assert!(
+            sig_set.verify(),
+            "aggregate of two valid signer signatures should verify"
+        );
+    }
+
+    #[test]
+    fn payload_attestation_wrong_data_field_invalidates() {
+        // A payload attestation signed with payload_present=true should
+        // NOT verify when the data is changed to payload_present=false.
+        // This confirms that the PayloadAttestationData signing_root covers
+        // the payload_present field — a critical property since PTC members
+        // vote on payload timeliness and a bit-flip would reverse the vote.
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut data = PayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xEE),
+            slot: Slot::new(8),
+            payload_present: true,
+            blob_data_available: false,
+        };
+
+        let epoch = data.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::PtcAttester,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signing_root = data.signing_root(domain);
+        let sig = keypairs[0].sk.sign(signing_root);
+        let mut agg_sig = bls::AggregateSignature::infinity();
+        agg_sig.add_assign(&sig);
+
+        // Flip payload_present AFTER signing
+        data.payload_present = false;
+
+        let attestation = PayloadAttestation {
+            aggregation_bits: BitVector::new(),
+            data,
+            signature: agg_sig,
+        };
+
+        let pk0 = keypairs[0].pk.clone();
+        let sig_set = payload_attestation_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pk0.clone()))
+                } else {
+                    None
+                }
+            },
+            &attestation,
+            &[0],
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(
+            !sig_set.verify(),
+            "attestation with flipped payload_present should fail verification"
+        );
+    }
+
+    #[test]
+    fn bid_signature_at_different_epoch_fails_cross_epoch() {
+        // A bid signed at epoch 1 (slot 8) should NOT verify when the
+        // signature set is constructed at epoch 2 (slot 16), because the
+        // domain includes the epoch. This confirms that moving a valid
+        // bid to a different slot/epoch invalidates its signature.
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let bid_epoch1 = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(8), // epoch 1
+            value: 42,
+            ..Default::default()
+        };
+
+        // Sign with epoch 1 domain
+        let epoch1 = bid_epoch1.slot.epoch(E::slots_per_epoch());
+        let domain1 = spec.get_domain(
+            epoch1,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signature = keypairs[0].sk.sign(bid_epoch1.signing_root(domain1));
+
+        // Now create a bid at epoch 2 with the same signature
+        let bid_epoch2 = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(16), // epoch 2
+            value: 42,
+            ..Default::default()
+        };
+        let signed_bid = SignedExecutionPayloadBid {
+            message: bid_epoch2,
+            signature,
+        };
+
+        let pubkey = keypairs[0].pk.clone();
+        let sig_set = execution_payload_bid_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_bid,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(
+            !sig_set.verify(),
+            "bid signed at epoch 1 should not verify when slot is epoch 2"
+        );
+    }
+
+    #[test]
+    fn bid_signature_modified_value_invalidates() {
+        // A valid bid signature should fail verification if any message
+        // field is modified after signing. This tests that the signing_root
+        // covers all bid fields — a modified `value` changes the root.
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let mut bid = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(8),
+            value: 100,
+            ..Default::default()
+        };
+
+        let epoch = bid.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+        let signature = keypairs[0].sk.sign(bid.signing_root(domain));
+
+        // Tamper with the bid value after signing
+        bid.value = 999;
+
+        let signed_bid = SignedExecutionPayloadBid {
+            message: bid,
+            signature,
+        };
+
+        let pubkey = keypairs[0].pk.clone();
+        let sig_set = execution_payload_bid_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_bid,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(
+            !sig_set.verify(),
+            "bid with modified value should fail signature verification"
+        );
+    }
+
+    #[test]
+    fn bid_and_envelope_same_builder_same_domain_different_roots() {
+        // Both bids and envelopes use DOMAIN_BEACON_BUILDER, so a signature
+        // valid for a bid MUST NOT verify as an envelope (and vice versa),
+        // because the messages have different SSZ tree roots. This tests
+        // cross-type signature non-transferability.
+        let (state, spec, keypairs) = make_gloas_state();
+
+        let bid = ExecutionPayloadBid::<E> {
+            builder_index: 0,
+            slot: Slot::new(8),
+            value: 50,
+            ..Default::default()
+        };
+
+        let epoch = bid.slot.epoch(E::slots_per_epoch());
+        let domain = spec.get_domain(
+            epoch,
+            Domain::BeaconBuilder,
+            &state.fork(),
+            state.genesis_validators_root(),
+        );
+
+        // Sign the BID
+        let bid_signature = keypairs[0].sk.sign(bid.signing_root(domain));
+
+        // Create an envelope with the SAME builder_index and slot, using the BID's signature
+        let mut envelope = ExecutionPayloadEnvelope::<E>::empty();
+        envelope.builder_index = 0;
+        envelope.slot = Slot::new(8);
+
+        let signed_envelope = SignedExecutionPayloadEnvelope {
+            message: envelope,
+            signature: bid_signature,
+        };
+
+        let pubkey = keypairs[0].pk.clone();
+        let sig_set = execution_payload_envelope_signature_set(
+            &state,
+            |idx| {
+                if idx == 0 {
+                    Some(Cow::Owned(pubkey.clone()))
+                } else {
+                    None
+                }
+            },
+            &signed_envelope,
+            &spec,
+        )
+        .expect("should succeed constructing set");
+
+        assert!(
+            !sig_set.verify(),
+            "bid signature should not verify as an envelope signature (different signing roots)"
+        );
+    }
 }
