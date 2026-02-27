@@ -6000,6 +6000,7 @@ mod test_gloas_fork_choice {
     /// falls through to `get_payload_tiebreaker`:
     ///   - EMPTY gets tiebreaker value 1
     ///   - FULL gets tiebreaker value 2 (when `should_extend_payload` is true)
+    ///
     /// So FULL wins. This exercises the third-level comparator in `find_head_gloas`
     /// which is unreachable when weights or roots differ.
     #[test]

@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 fork choice Gloas unit tests (run 183)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- Investigated `process_payload_attestation` (gloas.rs:237-332) — agent flagged missing weight accumulation. Verified this is correct per spec: `process_payload_attestation` is validation-only (no state mutations). Weight accumulation for builder payments is done separately in `process_operations.rs:229-247` via same-slot attestation processing (regular committee attestations add weight to `builder_pending_payments` when `is_gloas && will_set_new_flag && same_slot`).
+- **Added 5 tests** covering previously untested fork choice paths:
+  1. `queued_attestation_index_1_dequeued_as_payload_present` (fork_choice.rs) — exercises the `process_attestation_queue` pipeline where `attestation.index == 1` → `payload_present = true`. Submits a same-slot attestation with index=1 (queued, not processed immediately), advances the slot, calls `get_head`, and verifies the dequeued FULL vote results in `gloas_head_payload_status = FULL (1)`. This is the FIRST test that exercises the complete queue→dequeue→process_attestation pipeline for Gloas FULL votes. Without this, a bug in `QueuedAttestation` index preservation or `process_attestation_queue` extraction would silently drop FULL votes submitted during the current slot.
+  2. `queued_attestation_index_0_dequeued_as_payload_absent` (fork_choice.rs) — complement: same setup with index=0, verifies `gloas_head_payload_status = EMPTY (0)`. Confirms the index=0 path correctly maps to `payload_present=false`.
+  3. `find_head_gloas_tiebreaker_favors_full_when_timely` (proto_array_fork_choice.rs) — exercises the THIRD comparator in `find_head_gloas`'s `max_by`. When a PENDING node has both EMPTY and FULL virtual children (same root, equal weight because no votes), the tiebreaker decides. With `payload_data_available=true` and `envelope_received=true`, `should_extend_payload` returns true → `tiebreaker(FULL)=2 > tiebreaker(EMPTY)=1` → FULL wins. This is the ONLY test that reaches the payload tiebreaker through the actual `find_head_gloas` code path (prior tiebreaker tests used the function in isolation).
+  4. `find_head_gloas_tiebreaker_favors_empty_when_not_timely` (proto_array_fork_choice.rs) — complement: with a non-zero proposer boost root whose parent is this block (EMPTY parent status), and `payload_data_available=false`, `should_extend_payload` returns false → `tiebreaker(FULL)=0 < tiebreaker(EMPTY)=1` → EMPTY wins. Uses `ExecutionStatus::Invalid` on the child block to prevent it from becoming head while keeping it in fork choice for the `should_extend_payload` lookup.
+  5. `supporting_vote_multi_hop_ancestor` (proto_array_fork_choice.rs) — exercises `is_supporting_vote_gloas` with a 3-block chain (root(1)→root(2)→root(3)). A vote at root(3) is checked for support of root(1) — requiring the `while parent.slot > slot` loop in `get_ancestor_gloas` to iterate twice. Verifies PENDING always matches, FULL matches (because child→parent hash match gives FULL), and EMPTY does not match. Prior tests only covered single-hop ancestors.
+- **Why these tests matter**: The queued attestation tests cover the ONLY code path where Gloas attestation index semantics interact with deferred processing — a bug here would mean FULL votes submitted during the current slot are never counted, causing the chain to systematically favor EMPTY. The tiebreaker tests verify that when weight and root comparators tie (which happens every time EMPTY and FULL compete for the same block with no votes), the actual `find_head_gloas` code path correctly delegates to `get_payload_tiebreaker`. The multi-hop ancestor test ensures the `while` loop in `get_ancestor_gloas` works correctly through `is_supporting_vote_gloas` with chains longer than 2 blocks.
+- **Full test suite verification** — all passing:
+  - 198/198 fork_choice + proto_array tests (was 193, +5 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 bid signature and envelope finalization tests (run 182)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
