@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 proposer preferences bid validation tests (run 179)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+  - Verified PR #4948 (reorder PayloadStatus constants: EMPTY=0, FULL=1) is already aligned — vibehouse's `GloasPayloadStatus` enum already uses `Empty = 0, Full = 1, Pending = 2`
+  - Verified PR #4947 (pre-fork `proposer_preferences` topic subscription) is already handled — vibehouse subscribes to new fork topics `PRE_FORK_SUBSCRIBE_EPOCHS = 1` epoch before activation
+- **Added 3 tests** covering the proposer preferences validation checks in `gloas_verification.rs` (check 4b, lines 449-469):
+  1. `gloas_bid_gossip_rejects_no_proposer_preferences` — exercises the `ProposerPreferencesNotSeen` error path (gloas_verification.rs:454-455). Submits a bid for a slot where no `SignedProposerPreferences` have been inserted into the pool. The bid passes all checks 1-4 (slot, payment, builder exists/active, balance, equivocation, parent root) but fails at check 4b because `get_proposer_preferences()` returns `None`. Verifies the error contains the correct slot. This guard prevents builders from submitting bids before the proposer has declared their preferences — without it, builders could bid with arbitrary fee_recipient/gas_limit values and potentially win slots with unacceptable terms for the proposer.
+  2. `gloas_bid_gossip_rejects_fee_recipient_mismatch` — exercises the `FeeRecipientMismatch` error path (gloas_verification.rs:457-461). Inserts proposer preferences with `fee_recipient=0xAA..AA`, then submits a bid with `fee_recipient=0x00..00` (default from `make_external_bid`). The bid passes all checks including preferences existence but fails at the fee_recipient comparison. Verifies the error contains both the expected (0xAA..AA) and received (0x00..00) addresses. This is a critical validator protection check: without it, a builder could direct execution rewards to an arbitrary address, stealing the proposer's MEV revenue.
+  3. `gloas_bid_gossip_rejects_gas_limit_mismatch` — exercises the `GasLimitMismatch` error path (gloas_verification.rs:464-468). Inserts proposer preferences with `gas_limit=50_000_000` and `fee_recipient=Address::zero()` (matching the bid's default so the fee_recipient check passes). Then submits a bid with `gas_limit=30_000_000` (default). Verifies the error contains expected=50M and received=30M. A gas_limit mismatch could mean the builder is trying to use more (or less) gas than the proposer agreed to, affecting validator economics and block validation constraints.
+- **Why these tests matter**: The proposer preferences validation (check 4b) had zero test coverage at the integration level. These three error paths — `ProposerPreferencesNotSeen`, `FeeRecipientMismatch`, `GasLimitMismatch` — are critical for ePBS validator protection. They ensure that builders can only bid with parameters the proposer explicitly agreed to. A regression in any of these checks could let builders steal proposer revenue (fee_recipient), operate outside agreed constraints (gas_limit), or bid before the proposer is ready (preferences not seen).
+- **Full test suite verification** — all passing:
+  - 622/622 beacon_chain tests (FORK_NAME=gloas, was 619, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 bid/attestation equivocation and builder balance tests (run 178)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

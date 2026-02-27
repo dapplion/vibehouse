@@ -10469,3 +10469,184 @@ async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
         Ok(_) => panic!("second attestation should be rejected as equivocation"),
     }
 }
+
+// =============================================================================
+// Execution bid gossip: ProposerPreferencesNotSeen
+// =============================================================================
+
+/// When a bid arrives for a slot where no proposer preferences have been
+/// inserted into the pool, the bid is rejected with `ProposerPreferencesNotSeen`.
+///
+/// Spec: `[IGNORE] the SignedProposerPreferences where preferences.proposal_slot
+/// is equal to bid.slot has been seen.`
+///
+/// This check (check 4b) runs after parent root validation (check 4). The bid
+/// must pass checks 1-4 (slot, payment, builder exists/active, balance,
+/// equivocation, parent root) to reach the proposer preferences check.
+///
+/// This guard prevents builders from submitting bids before the proposer has
+/// declared their preferences. Without it, builders could bid with arbitrary
+/// fee_recipient/gas_limit values and potentially win slots with unacceptable
+/// terms for the proposer.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_no_proposer_preferences() {
+    // Builder 0: deposit_epoch=0, balance=10 ETH
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Verify NO proposer preferences exist for next_slot (precondition).
+    assert!(
+        harness.chain.get_proposer_preferences(next_slot).is_none(),
+        "no preferences should exist for slot {} before insertion",
+        next_slot
+    );
+
+    // Create a bid for next_slot. It will pass checks 1-4 (slot, payment,
+    // builder, balance, equivocation, parent root) but fail at check 4b
+    // because no proposer preferences have been inserted.
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+
+    let err = assert_bid_rejected(
+        &harness,
+        bid,
+        "bid should fail without proposer preferences",
+    );
+    match err {
+        ExecutionBidError::ProposerPreferencesNotSeen { slot } => {
+            assert_eq!(slot, next_slot);
+        }
+        other => panic!("expected ProposerPreferencesNotSeen, got {:?}", other),
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: FeeRecipientMismatch
+// =============================================================================
+
+/// When a bid's fee_recipient does not match the proposer's declared preferences,
+/// the bid is rejected with `FeeRecipientMismatch`.
+///
+/// Spec: `[REJECT] bid.fee_recipient matches the fee_recipient from the
+/// proposer's SignedProposerPreferences.`
+///
+/// This is a critical validator protection check: without it, a builder could
+/// direct execution rewards to an arbitrary address, stealing the proposer's
+/// MEV revenue. The proposer declares their preferred fee_recipient via
+/// `SignedProposerPreferences`, and all bids must match it exactly.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_fee_recipient_mismatch() {
+    // Builder 0: deposit_epoch=0, balance=10 ETH
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Insert proposer preferences with fee_recipient=0xAA..AA
+    let proposer_fee_recipient = Address::repeat_byte(0xAA);
+    let prefs = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: next_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: proposer_fee_recipient,
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+    assert!(
+        harness.chain.insert_proposer_preferences(prefs),
+        "preferences insertion should succeed"
+    );
+
+    // Create a bid with fee_recipient=0x00..00 (default from make_external_bid).
+    // This mismatches the proposer's preference of 0xAA..AA.
+    // The bid passes checks 1-4 (slot, payment, builder, balance, equivocation,
+    // parent root) but fails at fee_recipient comparison in check 4b.
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    assert_ne!(
+        bid.message.fee_recipient, proposer_fee_recipient,
+        "bid fee_recipient should differ from preferences"
+    );
+
+    let err = assert_bid_rejected(&harness, bid, "bid should fail with fee_recipient mismatch");
+    match err {
+        ExecutionBidError::FeeRecipientMismatch { expected, received } => {
+            assert_eq!(expected, proposer_fee_recipient);
+            assert_eq!(received, Address::zero());
+        }
+        other => panic!("expected FeeRecipientMismatch, got {:?}", other),
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: GasLimitMismatch
+// =============================================================================
+
+/// When a bid's gas_limit does not match the proposer's declared preferences,
+/// the bid is rejected with `GasLimitMismatch`.
+///
+/// Spec: `[REJECT] bid.gas_limit matches the gas_limit from the proposer's
+/// SignedProposerPreferences.`
+///
+/// This check runs after fee_recipient validation. The gas_limit determines the
+/// maximum computational work a builder's payload can include. A mismatch could
+/// mean the builder is trying to use more (or less) gas than the proposer agreed
+/// to, which affects validator economics and block validation constraints.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_gas_limit_mismatch() {
+    // Builder 0: deposit_epoch=0, balance=10 ETH
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Insert proposer preferences with gas_limit=50_000_000 (different from
+    // the default 30_000_000 used by make_external_bid).
+    // Use fee_recipient=Address::zero() so it matches the bid's default,
+    // ensuring we reach the gas_limit check (which comes after fee_recipient).
+    let proposer_gas_limit = 50_000_000u64;
+    let prefs = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: next_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::zero(),
+            gas_limit: proposer_gas_limit,
+        },
+        signature: Signature::empty(),
+    };
+    assert!(
+        harness.chain.insert_proposer_preferences(prefs),
+        "preferences insertion should succeed"
+    );
+
+    // Create a bid with gas_limit=30_000_000 (default from make_external_bid).
+    // This mismatches the proposer's preference of 50_000_000.
+    // The bid passes checks 1-4 and fee_recipient check, but fails at gas_limit.
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    assert_eq!(
+        bid.message.gas_limit, 30_000_000,
+        "bid gas_limit should be 30M (default)"
+    );
+
+    let err = assert_bid_rejected(&harness, bid, "bid should fail with gas_limit mismatch");
+    match err {
+        ExecutionBidError::GasLimitMismatch { expected, received } => {
+            assert_eq!(expected, proposer_gas_limit);
+            assert_eq!(received, 30_000_000);
+        }
+        other => panic!("expected GasLimitMismatch, got {:?}", other),
+    }
+}
