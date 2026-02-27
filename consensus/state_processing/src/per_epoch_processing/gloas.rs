@@ -722,4 +722,249 @@ mod tests {
             );
         }
     }
+
+    // ── Edge cases: builder pending payment processing ──
+
+    #[test]
+    fn zero_amount_payment_above_quorum_still_promoted() {
+        // The spec promotes any payment meeting quorum regardless of amount.
+        // A payment with weight >= quorum but amount=0 should still produce a
+        // withdrawal entry (the withdrawal just happens to transfer nothing).
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payment = make_payment(quorum, 0, 0);
+
+        let (mut state, spec) = make_state_for_payments(vec![payment]);
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "zero-amount payment above quorum should still be promoted"
+        );
+        assert_eq!(gloas.builder_pending_withdrawals.get(0).unwrap().amount, 0);
+    }
+
+    #[test]
+    fn two_consecutive_calls_promote_all_16_slots() {
+        // Both halves filled with qualifying payments. After two consecutive
+        // process_builder_pending_payments calls, all 16 should be promoted:
+        // - First call: promotes first-half (8), rotates second-half to first
+        // - Second call: promotes rotated payments (8)
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payments: Vec<_> = (0..16)
+            .map(|i| make_payment(quorum, (i + 1) as u64 * 1_000_000_000, 0))
+            .collect();
+
+        let (mut state, spec) = make_state_for_payments(payments);
+
+        // First call: 8 withdrawals from first half
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+        assert_eq!(
+            state.as_gloas().unwrap().builder_pending_withdrawals.len(),
+            8,
+            "first call should promote all 8 first-half payments"
+        );
+
+        // Second call: 8 more from rotated second half
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+        assert_eq!(
+            state.as_gloas().unwrap().builder_pending_withdrawals.len(),
+            16,
+            "second call should promote all 8 rotated second-half payments"
+        );
+
+        // Verify amounts: first 8 are from original first half, next 8 from original second half
+        for i in 0..8 {
+            assert_eq!(
+                state
+                    .as_gloas()
+                    .unwrap()
+                    .builder_pending_withdrawals
+                    .get(i)
+                    .unwrap()
+                    .amount,
+                (i + 1) as u64 * 1_000_000_000,
+            );
+        }
+        for i in 8..16 {
+            assert_eq!(
+                state
+                    .as_gloas()
+                    .unwrap()
+                    .builder_pending_withdrawals
+                    .get(i)
+                    .unwrap()
+                    .amount,
+                (i + 1) as u64 * 1_000_000_000,
+            );
+        }
+    }
+
+    #[test]
+    fn rotation_preserves_sparse_second_half_pattern() {
+        // Only some second-half slots have payments. After rotation, the sparse
+        // pattern (some filled, some default) must be preserved exactly.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let mut payments = vec![BuilderPendingPayment::default(); 8]; // empty first half
+
+        // Second half: slots 8, 10, 13 have payments; 9, 11, 12, 14, 15 are default
+        for i in 8..16 {
+            if i == 8 || i == 10 || i == 13 {
+                payments.push(make_payment(quorum, (i + 1) as u64 * 1_000_000_000, 0));
+            } else {
+                payments.push(BuilderPendingPayment::default());
+            }
+        }
+
+        let (mut state, spec) = make_state_for_payments(payments);
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // No first-half promotions (all default)
+        assert_eq!(gloas.builder_pending_withdrawals.len(), 0);
+
+        // Verify sparse pattern rotated correctly to first half
+        // Slot 8 → index 0 (has payment)
+        assert_eq!(
+            gloas.builder_pending_payments.get(0).unwrap().weight,
+            quorum
+        );
+        assert_eq!(
+            gloas
+                .builder_pending_payments
+                .get(0)
+                .unwrap()
+                .withdrawal
+                .amount,
+            9_000_000_000
+        );
+        // Slot 9 → index 1 (default)
+        assert_eq!(gloas.builder_pending_payments.get(1).unwrap().weight, 0);
+        // Slot 10 → index 2 (has payment)
+        assert_eq!(
+            gloas.builder_pending_payments.get(2).unwrap().weight,
+            quorum
+        );
+        assert_eq!(
+            gloas
+                .builder_pending_payments
+                .get(2)
+                .unwrap()
+                .withdrawal
+                .amount,
+            11_000_000_000
+        );
+        // Slot 11 → index 3 (default)
+        assert_eq!(gloas.builder_pending_payments.get(3).unwrap().weight, 0);
+        // Slot 12 → index 4 (default)
+        assert_eq!(gloas.builder_pending_payments.get(4).unwrap().weight, 0);
+        // Slot 13 → index 5 (has payment)
+        assert_eq!(
+            gloas.builder_pending_payments.get(5).unwrap().weight,
+            quorum
+        );
+        assert_eq!(
+            gloas
+                .builder_pending_payments
+                .get(5)
+                .unwrap()
+                .withdrawal
+                .amount,
+            14_000_000_000
+        );
+        // Slots 14, 15 → indices 6, 7 (default)
+        assert_eq!(gloas.builder_pending_payments.get(6).unwrap().weight, 0);
+        assert_eq!(gloas.builder_pending_payments.get(7).unwrap().weight, 0);
+
+        // Second half all cleared
+        for i in 8..16 {
+            assert_eq!(
+                gloas.builder_pending_payments.get(i).unwrap().weight,
+                0,
+                "second half index {} should be cleared after rotation",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn multi_builder_cross_half_promotion_and_rotation() {
+        // Builder 0 has qualifying payment in first half (promoted immediately).
+        // Builder 1 has sub-quorum payment in first half (not promoted) and
+        // qualifying payment in second half (rotated, then promoted on second call).
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+
+        let mut payments = vec![BuilderPendingPayment::default(); 16];
+        // Slot 0: builder 0 above quorum
+        payments[0] = make_payment(quorum, 3_000_000_000, 0);
+        // Slot 3: builder 1 below quorum
+        payments[3] = make_payment(quorum - 1, 4_000_000_000, 1);
+        // Slot 10 (second half): builder 1 above quorum
+        payments[10] = make_payment(quorum + 500, 5_000_000_000, 1);
+
+        let (mut state, spec) = make_state_for_payments(payments);
+
+        // First call: only builder 0 at slot 0 promoted
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builder_pending_withdrawals.len(), 1);
+        assert_eq!(
+            gloas
+                .builder_pending_withdrawals
+                .get(0)
+                .unwrap()
+                .builder_index,
+            0
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            3_000_000_000
+        );
+
+        // After rotation, builder 1's second-half payment (slot 10) is now at index 2
+        let rotated = gloas.builder_pending_payments.get(2).unwrap();
+        assert_eq!(rotated.weight, quorum + 500);
+        assert_eq!(rotated.withdrawal.builder_index, 1);
+
+        // Second call: builder 1's rotated payment now promoted
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builder_pending_withdrawals.len(), 2);
+        assert_eq!(
+            gloas
+                .builder_pending_withdrawals
+                .get(1)
+                .unwrap()
+                .builder_index,
+            1
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(1).unwrap().amount,
+            5_000_000_000
+        );
+    }
+
+    #[test]
+    fn max_weight_payment_promoted_without_overflow() {
+        // Payment with u64::MAX weight should be promoted without arithmetic
+        // overflow in the quorum comparison (weight >= quorum is a simple >=).
+        let payment = make_payment(u64::MAX, 1_000_000_000, 0);
+
+        let (mut state, spec) = make_state_for_payments(vec![payment]);
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "u64::MAX weight should trivially exceed quorum"
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            1_000_000_000
+        );
+    }
 }
