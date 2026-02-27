@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — builder pubkey cache for O(1) deposit routing (run 155)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+- Spec test version: v1.7.0-alpha.2, nightly vectors unchanged
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 337/337 state_processing tests
+  - 702/702 types tests
+- **Optimization: BuilderPubkeyCache (#8783)**
+  - Problem: `process_deposit_request_gloas` and `apply_deposit_for_builder` used O(n) linear scans of the builders list to find a builder by pubkey
+  - Solution: added `BuilderPubkeyCache` (rpds::HashTrieMapSync) to BeaconState for O(1) pubkey→index lookups
+  - Pattern: mirrors existing `PubkeyCache` for validators — persistent hash trie map, non-serialized cache field
+  - Cache population: `update_builder_pubkey_cache()` called at start of `process_deposit_requests` when Gloas-enabled
+  - Cache invalidation: handles builder index reuse (exited builders) by removing old pubkey before inserting new one
+  - Files: new `builder_pubkey_cache.rs`, modified `beacon_state.rs`, `process_operations.rs`, `gloas.rs` (upgrade + epoch), all fork upgrade files, `partial_beacon_state.rs`, 16+ test files
+  - All EF spec tests continue to pass — cache is transparent to state hashing/serialization
+
 ### 2026-02-27 — fork choice spec audit: 25 additional functions, 2 fixes (run 154)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630
