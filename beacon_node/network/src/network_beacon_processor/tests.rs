@@ -3043,6 +3043,71 @@ async fn test_gloas_gossip_proposer_preferences_wrong_key_rejected() {
     assert_reject(result);
 }
 
+/// Gloas gossip: a second proposer preferences message for the same slot is IGNORED.
+///
+/// The first valid message should be accepted, and a duplicate submission
+/// (same slot, even same content) should be ignored because we already have
+/// preferences for that slot in the pool.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_duplicate_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+    let spec = &rig.chain.spec;
+
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer from the lookahead
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index: actual_proposer,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    let domain = spec.get_domain(
+        next_epoch,
+        Domain::ProposerPreferences,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+    let sk = &rig._harness.validator_keypairs[actual_proposer as usize].sk;
+    let signature = sk.sign(signing_root);
+
+    let signed_preferences = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    // First submission — should be accepted
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(
+            junk_message_id(),
+            junk_peer_id(),
+            signed_preferences.clone(),
+        );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second submission (duplicate) — should be ignored
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
 // ======== Gloas (ePBS) execution payload envelope gossip handler tests ========
 //
 // These tests verify the `process_gossip_execution_payload` handler which
