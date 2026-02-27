@@ -3047,4 +3047,271 @@ mod gloas_operations_tests {
             "builder should have withdrawable_epoch set after verified exit"
         );
     }
+
+    // ── Builder exit edge case tests (run 199) ──────────────────
+
+    #[test]
+    fn duplicate_builder_exit_second_rejected() {
+        // Two exits for the same builder in one block: the first initiates the exit
+        // (sets withdrawable_epoch), the second should fail because the builder is
+        // no longer active (already exiting).
+        let (mut state, spec) = make_state_with_builders();
+        let current_epoch = state.current_epoch();
+        let exit1 = make_builder_exit(0, current_epoch);
+        let exit2 = make_builder_exit(0, current_epoch);
+        let result = process_exits(&mut state, &[exit1, exit2], VerifySignatures::False, &spec);
+        assert!(
+            result.is_err(),
+            "second exit for same builder should be rejected"
+        );
+    }
+
+    #[test]
+    fn builder_exit_pre_gloas_state_rejected() {
+        // On a Fulu (pre-Gloas) state, a builder-flagged index should be treated
+        // as a regular validator index. Since BUILDER_INDEX_FLAG is very large,
+        // the validator won't exist and should be rejected.
+        let mut spec = E::default_spec();
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        // gloas NOT set
+
+        let slot = Slot::new(512);
+        let epoch = slot.epoch(E::slots_per_epoch());
+
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let mut validators = Vec::new();
+        let mut balances = Vec::new();
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = 0x01;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            validators.push(types::Validator {
+                pubkey: kp.pk.compress(),
+                effective_balance: 32_000_000_000,
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+                withdrawal_credentials: Hash256::from_slice(&creds),
+                ..types::Validator::default()
+            });
+            balances.push(32_000_000_000u64);
+        }
+
+        let mut state = BeaconState::Fulu(types::BeaconStateFulu {
+            genesis_time: 0,
+            genesis_validators_root: Hash256::repeat_byte(0xAA),
+            slot,
+            fork: Fork {
+                previous_version: spec.electra_fork_version,
+                current_version: spec.fulu_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader::empty(),
+            block_roots: Vector::new(vec![
+                Hash256::zero();
+                <E as EthSpec>::SlotsPerHistoricalRoot::to_usize()
+            ])
+            .unwrap(),
+            state_roots: Vector::new(vec![
+                Hash256::zero();
+                <E as EthSpec>::SlotsPerHistoricalRoot::to_usize()
+            ])
+            .unwrap(),
+            historical_roots: List::default(),
+            eth1_data: types::Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 0,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(vec![
+                Hash256::zero();
+                <E as EthSpec>::EpochsPerHistoricalVector::to_usize()
+            ])
+            .unwrap(),
+            slashings: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::EpochsPerSlashingsVector::to_usize()
+            ])
+            .unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: Hash256::zero(),
+            },
+            inactivity_scores: List::default(),
+            current_sync_committee: Arc::new(SyncCommittee::<E> {
+                pubkeys: FixedVector::new(vec![
+                    PublicKeyBytes::empty();
+                    <E as EthSpec>::SyncCommitteeSize::to_usize()
+                ])
+                .unwrap(),
+                aggregate_pubkey: PublicKeyBytes::empty(),
+            }),
+            next_sync_committee: Arc::new(SyncCommittee::<E> {
+                pubkeys: FixedVector::new(vec![
+                    PublicKeyBytes::empty();
+                    <E as EthSpec>::SyncCommitteeSize::to_usize()
+                ])
+                .unwrap(),
+                aggregate_pubkey: PublicKeyBytes::empty(),
+            }),
+            latest_execution_payload_header: types::ExecutionPayloadHeaderFulu::default(),
+            next_withdrawal_index: 0,
+            next_withdrawal_validator_index: 0,
+            historical_summaries: List::default(),
+            deposit_requests_start_index: u64::MAX,
+            deposit_balance_to_consume: 0,
+            exit_balance_to_consume: 0,
+            earliest_exit_epoch: Epoch::new(0),
+            consolidation_balance_to_consume: 0,
+            earliest_consolidation_epoch: Epoch::new(0),
+            pending_deposits: List::default(),
+            pending_partial_withdrawals: List::default(),
+            pending_consolidations: List::default(),
+            proposer_lookahead: Vector::new(vec![
+                0u64;
+                <E as EthSpec>::ProposerLookaheadSlots::to_usize()
+            ])
+            .unwrap(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: types::BuilderPubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: types::EpochCache::default(),
+        });
+
+        // Build pubkey cache so validator lookups work
+        state.update_pubkey_cache().unwrap();
+
+        // Try a builder-flagged exit on Fulu state
+        let exit = make_builder_exit(0, epoch);
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_err(),
+            "builder-flagged exit on pre-Gloas state should fail as unknown validator"
+        );
+    }
+
+    #[test]
+    fn builder_exit_with_both_pending_withdrawals_and_payments_rejected() {
+        // A builder with both pending withdrawals and pending payments should
+        // be rejected (pending balance > 0 from either source).
+        let (mut state, spec) = make_state_with_builders();
+
+        // Add a pending withdrawal for builder 0
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(types::BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 100,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Also add a pending payment for builder 0
+        *state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(0)
+            .unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: types::BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 200,
+                builder_index: 0,
+            },
+        };
+
+        let exit = make_builder_exit(0, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_err(),
+            "builder with both pending withdrawals AND payments should be rejected"
+        );
+    }
+
+    #[test]
+    fn builder_exit_index_zero_correctly_extracted() {
+        // Builder index 0 with BUILDER_INDEX_FLAG should be correctly extracted.
+        // This tests the to_builder_index(BUILDER_INDEX_FLAG | 0) = 0 path.
+        let (state, spec) = make_state_with_builders();
+        let current_epoch = state.current_epoch();
+
+        // Explicitly verify that BUILDER_INDEX_FLAG | 0 == BUILDER_INDEX_FLAG
+        let exit = SignedVoluntaryExit {
+            message: VoluntaryExit {
+                epoch: current_epoch,
+                validator_index: types::consts::gloas::BUILDER_INDEX_FLAG, // builder 0
+            },
+            signature: Signature::infinity().unwrap(),
+        };
+
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "builder index 0 exit should succeed: {:?}",
+            result.err()
+        );
+        assert!(
+            result.unwrap(),
+            "should return true (is builder exit) for index 0"
+        );
+    }
+
+    #[test]
+    fn builder_exit_sets_correct_withdrawable_epoch_boundary() {
+        // Verify that initiate_builder_exit sets withdrawable_epoch to exactly
+        // current_epoch + min_builder_withdrawability_delay, and that once set
+        // the builder is no longer active (is_active requires far_future_epoch).
+        let (mut state, spec) = make_state_with_builders();
+        let current_epoch = state.current_epoch();
+        let finalized_epoch = state.finalized_checkpoint().epoch;
+        let exit = make_builder_exit(0, current_epoch);
+
+        // Before exit: builder should be active
+        let builder_before = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(
+            builder_before.withdrawable_epoch, spec.far_future_epoch,
+            "builder should have far_future_epoch before exit"
+        );
+        assert!(
+            builder_before.is_active_at_finalized_epoch(finalized_epoch, &spec),
+            "builder should be active before exit"
+        );
+
+        process_exits(&mut state, &[exit], VerifySignatures::False, &spec).unwrap();
+
+        let builder_after = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        let expected_withdrawable = current_epoch + spec.min_builder_withdrawability_delay;
+        assert_eq!(
+            builder_after.withdrawable_epoch, expected_withdrawable,
+            "withdrawable_epoch should be current_epoch + min_builder_withdrawability_delay"
+        );
+
+        // Once withdrawable_epoch is set (not far_future_epoch), builder is never active
+        // regardless of what finalized_epoch is — is_active requires far_future_epoch
+        assert!(
+            !builder_after.is_active_at_finalized_epoch(finalized_epoch, &spec),
+            "builder should not be active after exit (withdrawable_epoch != far_future)"
+        );
+        assert!(
+            !builder_after.is_active_at_finalized_epoch(Epoch::new(0), &spec),
+            "builder should not be active at any epoch after exit"
+        );
+    }
 }
