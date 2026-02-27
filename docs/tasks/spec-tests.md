@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 proposer boost timing and payload invalidation tests (run 175)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 tests** covering two previously untested consensus-critical code paths:
+  1. `gloas_proposer_boost_four_interval_boundary` — exercises the Gloas 4-interval proposer boost timing logic in `fork_choice.rs` lines 820-838. With minimal preset (6s slots), the Gloas threshold is `6000/4 = 1500ms`. Test verifies a block at 1499ms gets boost but at 1500ms does NOT. If `intervals_per_slot` were wrong (3 instead of 4), the threshold would be 2000ms and the 1500ms block would incorrectly receive boost, shifting head selection. This is the first test that verifies the Gloas-specific timing branch — all previous proposer boost tests (proto_array level) only tested boost application during head selection, not the granting logic in `on_block`.
+  2. `gloas_invalidate_one_marks_block_invalid` — exercises `InvalidateOne` on a Gloas block with `Optimistic` execution status. Sets a Gloas head to `Optimistic` (simulating EL syncing), calls `on_invalid_execution_payload(InvalidateOne)`, verifies the status becomes `Invalid` and `recompute_head` moves to the parent. This is the first payload invalidation test for any Gloas block — all 22 tests in `payload_invalidation.rs` run purely in Bellatrix.
+  3. `gloas_invalidation_stops_at_irrelevant_boundary` — exercises the `InvalidateMany` backward-walk stopping behavior at a Gloas block with `ExecutionStatus::Irrelevant` (proto_array.rs:563). Sets up a chain where head is Optimistic and parent is Irrelevant (zero bid hash), runs InvalidateMany from head with `latest_valid_ancestor=zero`. Verifies head becomes Invalid but parent remains Irrelevant (the walk correctly stops). Critical for Gloas where blocks before envelope processing or with zero bid hash have Irrelevant status — without this guard, invalidation could propagate through blocks that have no execution payload to validate.
+- **Why these tests matter**: The proposer boost timing logic and payload invalidation paths had zero Gloas-specific test coverage. A wrong `intervals_per_slot` value would silently give boost to late blocks, affecting head selection in adversarial scenarios. A broken invalidation path could leave invalid payloads in the canonical chain or incorrectly invalidate Irrelevant blocks that predate execution payloads.
+- **Full test suite verification** — all passing:
+  - 610/610 beacon_chain tests (FORK_NAME=gloas, was 607, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 canonical head head_hash fallback tests (run 174)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
