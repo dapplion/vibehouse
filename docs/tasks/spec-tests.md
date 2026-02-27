@@ -128,6 +128,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
   - 643/643 beacon_chain tests (FORK_NAME=gloas, was 638, +5 new)
   - Clippy clean, cargo fmt clean
 
+### 2026-02-27 — 5 builder exit edge case tests (run 199)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering previously untested edge cases in builder voluntary exit processing (`process_operations.rs`):
+  1. `duplicate_builder_exit_second_rejected` — submits two exits for the same builder in one block. The first initiates the exit (sets `withdrawable_epoch`), the second must fail because `is_active_at_finalized_epoch` checks `withdrawable_epoch == far_future_epoch`. This proves the same-block duplicate exit rejection works correctly.
+  2. `builder_exit_pre_gloas_state_rejected` — constructs a Fulu (pre-Gloas) state and submits a builder-flagged exit (BUILDER_INDEX_FLAG | 0). On a pre-Gloas state, the `gloas_enabled()` check in `verify_exit` is false, so the builder flag falls through to the validator path where the very large index doesn't exist. Rejected as unknown validator.
+  3. `builder_exit_with_both_pending_withdrawals_and_payments_rejected` — builder has both a pending withdrawal AND a pending payment. `get_pending_balance_to_withdraw_for_builder` sums both queues, so pending > 0 and the exit is rejected. Tests the interaction between the two pending balance sources.
+  4. `builder_exit_index_zero_correctly_extracted` — verifies that `BUILDER_INDEX_FLAG | 0` correctly extracts builder index 0 via `to_builder_index`. This is the boundary case where the builder index bits are all zero but the flag bit is set.
+  5. `builder_exit_sets_correct_withdrawable_epoch_boundary` — verifies the exact `withdrawable_epoch` value after exit processing (current_epoch + min_builder_withdrawability_delay) and confirms the builder is no longer active after exit because `is_active_at_finalized_epoch` requires `withdrawable_epoch == far_future_epoch`.
+- **Full test suite verification** — all passing:
+  - 387/387 state_processing tests (was 382, +5 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 5 EMPTY parent path and is_parent_block_full edge case tests (run 186)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4931 (Feb 20, FOCIL rebase)
   - All tracked PRs still open: #4940, #4932, #4840, #4630
