@@ -8432,3 +8432,259 @@ async fn gloas_attestation_historical_slot_payload_revealed() {
         head_state.slot()
     );
 }
+
+// =============================================================================
+// External builder envelope gossip verification tests
+// =============================================================================
+
+/// Helper: sign an ExecutionPayloadEnvelope with the given builder keypair using
+/// DOMAIN_BEACON_BUILDER, matching the pattern in `gloas_external_bid_envelope_reveals_payload_in_fork_choice`.
+fn sign_envelope_with_builder(
+    envelope_msg: &ExecutionPayloadEnvelope<E>,
+    builder_keypair: &Keypair,
+    slot: Slot,
+    fork: &Fork,
+    genesis_validators_root: Hash256,
+    spec: &ChainSpec,
+) -> SignedExecutionPayloadEnvelope<E> {
+    let epoch = slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(epoch, Domain::BeaconBuilder, fork, genesis_validators_root);
+    let signing_root = envelope_msg.signing_root(domain);
+    let signature = builder_keypair.sk.sign(signing_root);
+    SignedExecutionPayloadEnvelope {
+        message: envelope_msg.clone(),
+        signature,
+    }
+}
+
+/// External builder envelope with invalid BLS signature is rejected with
+/// `InvalidSignature` during gossip verification. This exercises the BLS
+/// verification path that is skipped for self-build envelopes.
+#[tokio::test]
+async fn gloas_external_builder_envelope_invalid_signature_rejected() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Extend enough to finalize (external builder tests need finalized builders)
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Insert external bid and produce block with it
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    harness.advance_slot();
+    let ((signed_block, blobs), _state, _envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let block_root = signed_block.canonical_root();
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("block import should succeed");
+
+    // Construct envelope matching the bid
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = block_root;
+    envelope_msg.slot = next_slot;
+    envelope_msg.builder_index = bid.message.builder_index;
+    envelope_msg.payload.block_hash = bid.message.block_hash;
+
+    // Sign with the WRONG key (validator key 0 instead of builder key 0)
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let validator_keypairs = types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT);
+    let wrong_keypair = &validator_keypairs[0]; // validator key, not builder key
+    let signed_envelope = sign_envelope_with_builder(
+        &envelope_msg,
+        wrong_keypair,
+        next_slot,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+        &harness.spec,
+    );
+
+    // Gossip verification should reject with InvalidSignature
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
+    assert!(
+        matches!(result, Err(PayloadEnvelopeError::InvalidSignature)),
+        "external builder envelope with wrong BLS signature should be rejected, got {:?}",
+        result.err()
+    );
+}
+
+/// External builder envelope with valid BLS signature passes gossip verification
+/// and can be applied to fork choice. This exercises the non-self-build BLS
+/// verification path end-to-end (the path that was fixed in run 169 to avoid
+/// double-verification).
+#[tokio::test]
+async fn gloas_external_builder_envelope_valid_signature_accepted() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Insert external bid and produce block
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    harness.advance_slot();
+    let ((signed_block, blobs), _state, _envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let block_root = signed_block.canonical_root();
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("block import should succeed");
+
+    // Pre-condition: payload_revealed should be false (external bid, no envelope yet)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "pre-condition: payload should not be revealed before envelope"
+        );
+    }
+
+    // Construct and sign envelope with correct builder key
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = block_root;
+    envelope_msg.slot = next_slot;
+    envelope_msg.builder_index = bid.message.builder_index;
+    envelope_msg.payload.block_hash = bid.message.block_hash;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let builder_keypair = &BUILDER_KEYPAIRS[bid.message.builder_index as usize];
+    let signed_envelope = sign_envelope_with_builder(
+        &envelope_msg,
+        builder_keypair,
+        next_slot,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+        &harness.spec,
+    );
+
+    // Gossip verification should pass with valid builder BLS signature
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("external builder envelope with valid BLS should pass gossip verification");
+
+    // Apply to fork choice — should mark payload_revealed = true
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply envelope to fork choice");
+
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload should be revealed after valid external builder envelope applied to fork choice"
+        );
+    }
+}
+
+/// External builder envelope arriving before its block is buffered in
+/// `pending_gossip_envelopes`, then successfully processed after the block
+/// is imported via `process_pending_envelope`. This exercises the full
+/// external builder buffering → re-verification → fork choice update pipeline.
+#[tokio::test]
+async fn gloas_external_builder_envelope_buffered_then_processed() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Insert external bid and produce block (but don't import yet)
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    harness.advance_slot();
+    let ((signed_block, blobs), _state, _envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+    let block_root = signed_block.canonical_root();
+
+    // Construct and sign envelope with correct builder key
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = block_root;
+    envelope_msg.slot = next_slot;
+    envelope_msg.builder_index = bid.message.builder_index;
+    envelope_msg.payload.block_hash = bid.message.block_hash;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let builder_keypair = &BUILDER_KEYPAIRS[bid.message.builder_index as usize];
+    let signed_envelope = sign_envelope_with_builder(
+        &envelope_msg,
+        builder_keypair,
+        next_slot,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+        &harness.spec,
+    );
+
+    // Submit envelope BEFORE block is imported — should be buffered
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
+    assert!(
+        matches!(result, Err(PayloadEnvelopeError::BlockRootUnknown { .. })),
+        "envelope before block should return BlockRootUnknown, got {:?}",
+        result.err()
+    );
+
+    // Verify envelope was buffered
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .contains_key(&block_root),
+        "envelope should be buffered in pending_gossip_envelopes"
+    );
+
+    // Now import the block
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("block import should succeed");
+
+    // Process the pending envelope (simulates what beacon_processor does after block import)
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Buffer should be drained
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "pending buffer should be empty after processing"
+    );
+
+    // The buffered envelope should have been re-verified and applied to fork choice
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload should be revealed after buffered external builder envelope was processed"
+        );
+    }
+}
