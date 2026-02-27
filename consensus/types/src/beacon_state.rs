@@ -4,6 +4,7 @@ use crate::FixedBytesExtended;
 use crate::historical_summary::HistoricalSummary;
 use crate::test_utils::TestRandom;
 use crate::*;
+pub use builder_pubkey_cache::BuilderPubkeyCache;
 use compare_fields::CompareFields;
 use compare_fields_derive::CompareFields;
 use derivative::Derivative;
@@ -37,8 +38,9 @@ pub use milhouse::{List, Vector, interface::Interface};
 use tracing::instrument;
 
 #[macro_use]
-mod committee_cache;
+mod builder_pubkey_cache;
 mod balance;
+mod committee_cache;
 mod exit_cache;
 mod iter;
 mod progressive_balances_cache;
@@ -669,6 +671,12 @@ where
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
     #[metastruct(exclude)]
+    pub builder_pubkey_cache: BuilderPubkeyCache,
+    #[serde(skip_serializing, skip_deserializing)]
+    #[ssz(skip_serializing, skip_deserializing)]
+    #[tree_hash(skip_hashing)]
+    #[test_random(default)]
+    #[metastruct(exclude)]
     pub exit_cache: ExitCache,
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing, skip_deserializing)]
@@ -742,6 +750,7 @@ impl<E: EthSpec> BeaconState<E> {
                 default_committee_cache,
             ],
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: EpochCache::default(),
@@ -2157,6 +2166,7 @@ impl<E: EthSpec> BeaconState<E> {
         self.drop_committee_cache(RelativeEpoch::Current)?;
         self.drop_committee_cache(RelativeEpoch::Next)?;
         self.drop_pubkey_cache();
+        *self.builder_pubkey_cache_mut() = BuilderPubkeyCache::default();
         self.drop_progressive_balances_cache();
         *self.exit_cache_mut() = ExitCache::default();
         *self.slashings_cache_mut() = SlashingsCache::default();
@@ -2315,6 +2325,36 @@ impl<E: EthSpec> BeaconState<E> {
     /// Completely drops the `pubkey_cache`, replacing it with a new, empty cache.
     pub fn drop_pubkey_cache(&mut self) {
         *self.pubkey_cache_mut() = PubkeyCache::default()
+    }
+
+    /// Incrementally update the builder pubkey cache with any builders not yet indexed.
+    ///
+    /// This is O(n) on first call (to build the full cache), but O(k) on subsequent
+    /// calls where k is the number of new builders added since last update.
+    pub fn update_builder_pubkey_cache(&mut self) -> Result<(), Error> {
+        // Take the cache out first to avoid borrow conflicts.
+        let mut cache = mem::take(self.builder_pubkey_cache_mut());
+        let cached_len = cache.len();
+
+        let builders_len = match self.builders() {
+            Ok(builders) => builders.len(),
+            Err(_) => {
+                // Pre-Gloas: no builders, nothing to cache
+                *self.builder_pubkey_cache_mut() = cache;
+                return Ok(());
+            }
+        };
+
+        // Only scan builders beyond what we've already cached.
+        // Note: this does NOT handle index reuse (exited builders replaced by new ones).
+        // Index reuse must be handled at the call site by calling `remove` + `insert`.
+        for i in cached_len..builders_len {
+            if let Some(builder) = self.builders().ok().and_then(|b| b.get(i)) {
+                cache.insert(builder.pubkey, i);
+            }
+        }
+        *self.builder_pubkey_cache_mut() = cache;
+        Ok(())
     }
 
     pub fn has_pending_mutations(&self) -> bool {

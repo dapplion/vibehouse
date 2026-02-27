@@ -5,8 +5,9 @@ use crate::common::{
 use std::mem;
 use std::sync::Arc;
 use types::{
-    BeaconState, BeaconStateAltair, BeaconStateError as Error, ChainSpec, EpochCache, EthSpec,
-    Fork, List, ParticipationFlags, PendingAttestation, RelativeEpoch, SyncCommittee,
+    BeaconState, BeaconStateAltair, BeaconStateError as Error, BuilderPubkeyCache, ChainSpec,
+    EpochCache, EthSpec, Fork, List, ParticipationFlags, PendingAttestation, RelativeEpoch,
+    SyncCommittee,
 };
 
 /// Translate the participation information from the epoch prior to the fork into Altair's format.
@@ -107,6 +108,7 @@ pub fn upgrade_to_altair<E: EthSpec>(
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),
         committee_caches: mem::take(&mut pre.committee_caches),
         pubkey_cache: mem::take(&mut pre.pubkey_cache),
+        builder_pubkey_cache: BuilderPubkeyCache::default(),
         exit_cache: mem::take(&mut pre.exit_cache),
         slashings_cache: mem::take(&mut pre.slashings_cache),
         epoch_cache: EpochCache::default(),

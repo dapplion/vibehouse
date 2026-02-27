@@ -667,6 +667,13 @@ pub fn process_deposit_requests<E: EthSpec>(
     deposit_requests: &[DepositRequest],
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
+    // Ensure builder pubkey cache is up-to-date for O(1) lookups in deposit routing
+    if state.fork_name_unchecked().gloas_enabled() {
+        state
+            .update_builder_pubkey_cache()
+            .map_err(BlockProcessingError::BeaconStateError)?;
+    }
+
     for request in deposit_requests {
         // [Modified in Gloas:EIP7732] Route builder deposits
         if state.fork_name_unchecked().gloas_enabled() {
@@ -703,11 +710,8 @@ fn process_deposit_request_gloas<E: EthSpec>(
 ) -> Result<(), BlockProcessingError> {
     let slot = state.slot();
 
-    // Check if pubkey belongs to an existing builder
-    let is_builder = state
-        .as_gloas()
-        .map(|s| s.builders.iter().any(|b| b.pubkey == request.pubkey))
-        .unwrap_or(false);
+    // Check if pubkey belongs to an existing builder (O(1) via cache)
+    let is_builder = state.builder_pubkey_cache().get(&request.pubkey).is_some();
 
     // Check if pubkey belongs to an existing validator (finalized)
     let is_validator = state.pubkey_cache().get(&request.pubkey).is_some();
@@ -783,18 +787,14 @@ fn apply_deposit_for_builder<E: EthSpec>(
     slot: Slot,
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
-    let state_gloas = state
-        .as_gloas_mut()
-        .map_err(BlockProcessingError::BeaconStateError)?;
-
-    // Check if builder already exists
-    let builder_index = state_gloas
-        .builders
-        .iter()
-        .position(|b| b.pubkey == request.pubkey);
+    // Use the builder pubkey cache for O(1) lookup
+    let builder_index = state.builder_pubkey_cache().get(&request.pubkey);
 
     if let Some(index) = builder_index {
         // Top-up existing builder
+        let state_gloas = state
+            .as_gloas_mut()
+            .map_err(BlockProcessingError::BeaconStateError)?;
         let builder = state_gloas
             .builders
             .get_mut(index)
@@ -812,6 +812,10 @@ fn apply_deposit_for_builder<E: EthSpec>(
         if is_valid_deposit_signature(&deposit_data, spec).is_err() {
             return Ok(());
         }
+
+        let state_gloas = state
+            .as_gloas_mut()
+            .map_err(BlockProcessingError::BeaconStateError)?;
 
         // Find slot for new builder (reuse exited builder slot or append)
         let current_epoch = state_gloas.slot.epoch(E::slots_per_epoch());
@@ -835,16 +839,29 @@ fn apply_deposit_for_builder<E: EthSpec>(
             withdrawable_epoch: spec.far_future_epoch,
         };
 
+        // If reusing an exited builder's slot, remove old pubkey from cache
         if new_index < state_gloas.builders.len() {
+            let old_pubkey = state_gloas.builders.get(new_index).map(|b| b.pubkey);
             *state_gloas
                 .builders
                 .get_mut(new_index)
                 .ok_or(BeaconStateError::UnknownValidator(new_index))? = builder;
+            // Update cache: remove old pubkey, insert new one
+            if let Some(old_pk) = old_pubkey {
+                state_gloas.builder_pubkey_cache.remove(&old_pk);
+            }
+            state_gloas
+                .builder_pubkey_cache
+                .insert(request.pubkey, new_index);
         } else {
+            let new_idx = state_gloas.builders.len();
             state_gloas
                 .builders
                 .push(builder)
                 .map_err(BlockProcessingError::MilhouseError)?;
+            state_gloas
+                .builder_pubkey_cache
+                .insert(request.pubkey, new_idx);
         }
     }
 
@@ -1201,13 +1218,15 @@ mod builder_deposit_tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),
         });
 
-        // Build the pubkey cache so lookups work
+        // Build caches so lookups work
         state.update_pubkey_cache().unwrap();
+        state.update_builder_pubkey_cache().unwrap();
 
         (state, spec)
     }
@@ -1802,10 +1821,11 @@ mod gloas_operations_tests {
     use types::test_utils::generate_deterministic_keypairs;
     use types::{
         Address, Attestation, AttestationData, BeaconBlockHeader, BeaconStateGloas,
-        BuilderPendingPayment, BuilderPendingWithdrawal, CACHED_EPOCHS, Checkpoint, CommitteeCache,
-        Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExitCache, FixedVector, Fork, Hash256,
-        List, MinimalEthSpec, ParticipationFlags, ProgressiveBalancesCache, PubkeyCache,
-        SignedBeaconBlockHeader, SlashingsCache, SyncCommittee, Unsigned, Vector,
+        BuilderPendingPayment, BuilderPendingWithdrawal, BuilderPubkeyCache, CACHED_EPOCHS,
+        Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExitCache,
+        FixedVector, Fork, Hash256, List, MinimalEthSpec, ParticipationFlags,
+        ProgressiveBalancesCache, PubkeyCache, SignedBeaconBlockHeader, SlashingsCache,
+        SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -1947,6 +1967,7 @@ mod gloas_operations_tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),

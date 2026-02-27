@@ -276,6 +276,7 @@ mod gloas_per_slot_tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),

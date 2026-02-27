@@ -4,8 +4,8 @@ use ssz_types::typenum::Unsigned;
 use std::mem;
 use types::{
     Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
-    BuilderPendingPayment, ChainSpec, DepositData, EthSpec, ExecutionPayloadBid, Fork, List,
-    PublicKeyBytes, Vector,
+    BuilderPendingPayment, BuilderPubkeyCache, ChainSpec, DepositData, EthSpec,
+    ExecutionPayloadBid, Fork, List, PublicKeyBytes, Vector,
 };
 
 /// Transform a `Fulu` state into a `Gloas` state.
@@ -114,6 +114,7 @@ pub fn upgrade_state_to_gloas<E: EthSpec>(
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),
         committee_caches: mem::take(&mut pre.committee_caches),
         pubkey_cache: mem::take(&mut pre.pubkey_cache),
+        builder_pubkey_cache: BuilderPubkeyCache::default(),
         exit_cache: mem::take(&mut pre.exit_cache),
         slashings_cache: mem::take(&mut pre.slashings_cache),
         epoch_cache: mem::take(&mut pre.epoch_cache),
@@ -144,12 +145,8 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
             continue;
         }
 
-        // Check if it's an existing builder or has builder credentials
-        let state_gloas = state.as_gloas().map_err(|_| Error::IncorrectStateVariant)?;
-        let is_existing_builder = state_gloas
-            .builders
-            .iter()
-            .any(|b| b.pubkey == deposit.pubkey);
+        // Check if it's an existing builder (O(1) via cache) or has builder credentials
+        let is_existing_builder = state.builder_pubkey_cache().get(&deposit.pubkey).is_some();
         let has_builder_credentials =
             deposit.withdrawal_credentials.as_slice().first().copied() == Some(0x03); // BUILDER_WITHDRAWAL_PREFIX
 
@@ -197,15 +194,14 @@ fn apply_builder_deposit<E: EthSpec>(
     slot: types::Slot,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let state_gloas = state
-        .as_gloas_mut()
-        .map_err(|_| Error::IncorrectStateVariant)?;
-
-    // Check if builder already exists
-    let builder_index = state_gloas.builders.iter().position(|b| b.pubkey == pubkey);
+    // Use builder pubkey cache for O(1) lookup
+    let builder_index = state.builder_pubkey_cache().get(&pubkey);
 
     if let Some(index) = builder_index {
         // Top-up existing builder
+        let state_gloas = state
+            .as_gloas_mut()
+            .map_err(|_| Error::IncorrectStateVariant)?;
         let builder = state_gloas
             .builders
             .get_mut(index)
@@ -221,6 +217,9 @@ fn apply_builder_deposit<E: EthSpec>(
         };
 
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
+            let state_gloas = state
+                .as_gloas_mut()
+                .map_err(|_| Error::IncorrectStateVariant)?;
             let current_epoch = state_gloas.slot.epoch(E::slots_per_epoch());
 
             // Find reusable index or append
@@ -247,15 +246,23 @@ fn apply_builder_deposit<E: EthSpec>(
             };
 
             if new_index < state_gloas.builders.len() {
+                // Reusing exited builder slot — update cache
+                let old_pubkey = state_gloas.builders.get(new_index).map(|b| b.pubkey);
                 *state_gloas
                     .builders
                     .get_mut(new_index)
                     .ok_or(Error::UnknownValidator(new_index))? = builder;
+                if let Some(old_pk) = old_pubkey {
+                    state_gloas.builder_pubkey_cache.remove(&old_pk);
+                }
+                state_gloas.builder_pubkey_cache.insert(pubkey, new_index);
             } else {
+                let new_idx = state_gloas.builders.len();
                 state_gloas
                     .builders
                     .push(builder)
                     .map_err(Error::MilhouseError)?;
+                state_gloas.builder_pubkey_cache.insert(pubkey, new_idx);
             }
         }
     }
@@ -385,6 +392,7 @@ mod tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),

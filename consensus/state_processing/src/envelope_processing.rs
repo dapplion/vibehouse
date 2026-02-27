@@ -310,10 +310,10 @@ mod tests {
     use types::test_utils::generate_deterministic_keypairs;
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
-        CACHED_EPOCHS, Checkpoint, CommitteeCache, Domain, Epoch, ExecutionBlockHash,
-        ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache,
-        FixedVector, Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, Signature,
-        SignedRoot, SlashingsCache, SyncCommittee, Unsigned, Vector,
+        BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, Domain, Epoch,
+        ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas,
+        ExitCache, FixedVector, Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache,
+        Signature, SignedRoot, SlashingsCache, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -459,6 +459,7 @@ mod tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),
@@ -1251,6 +1252,7 @@ mod tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),
@@ -1755,6 +1757,7 @@ mod tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),

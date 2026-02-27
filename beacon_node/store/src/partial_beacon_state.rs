@@ -327,6 +327,7 @@ macro_rules! impl_try_into_beacon_state {
             progressive_balances_cache: <_>::default(),
             committee_caches: <_>::default(),
             pubkey_cache: <_>::default(),
+            builder_pubkey_cache: <_>::default(),
             exit_cache: <_>::default(),
             slashings_cache: <_>::default(),
             epoch_cache: <_>::default(),

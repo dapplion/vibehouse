@@ -462,11 +462,12 @@ mod tests {
     use types::List;
     use types::{
         Address, BeaconBlock, BeaconBlockBodyGloas, BeaconBlockGloas, BeaconBlockHeader,
-        BeaconStateGloas, Builder, BuilderPendingPayment, CACHED_EPOCHS, Checkpoint,
-        CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope,
-        ExecutionPayloadGloas, ExitCache, FixedVector, Fork, MinimalEthSpec,
-        ProgressiveBalancesCache, PubkeyCache, SignedBlindedExecutionPayloadEnvelope,
-        SignedExecutionPayloadBid, SlashingsCache, SyncAggregate, SyncCommittee, Unsigned, Vector,
+        BeaconStateGloas, Builder, BuilderPendingPayment, BuilderPubkeyCache, CACHED_EPOCHS,
+        Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache, FixedVector, Fork,
+        MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache,
+        SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadBid, SlashingsCache,
+        SyncAggregate, SyncCommittee, Unsigned, Vector,
     };
 
     type E = MinimalEthSpec;
@@ -611,6 +612,7 @@ mod tests {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: types::EpochCache::default(),

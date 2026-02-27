@@ -1,7 +1,8 @@
 use safe_arith::SafeArith;
 use std::mem;
 use types::{
-    BeaconState, BeaconStateError as Error, BeaconStateFulu, ChainSpec, EthSpec, Fork, Vector,
+    BeaconState, BeaconStateError as Error, BeaconStateFulu, BuilderPubkeyCache, ChainSpec,
+    EthSpec, Fork, Vector,
 };
 
 /// Transform a `Electra` state into an `Fulu` state.
@@ -108,6 +109,7 @@ pub fn upgrade_state_to_fulu<E: EthSpec>(
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),
         committee_caches: mem::take(&mut pre.committee_caches),
         pubkey_cache: mem::take(&mut pre.pubkey_cache),
+        builder_pubkey_cache: BuilderPubkeyCache::default(),
         exit_cache: mem::take(&mut pre.exit_cache),
         slashings_cache: mem::take(&mut pre.slashings_cache),
         epoch_cache: mem::take(&mut pre.epoch_cache),

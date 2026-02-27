@@ -413,6 +413,7 @@ mod gloas {
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <_>::default(),
             pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
             exit_cache: ExitCache::default(),
             slashings_cache: SlashingsCache::default(),
             epoch_cache: EpochCache::default(),
