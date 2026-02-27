@@ -45,10 +45,11 @@ impl<E: EthSpec> IndexedPayloadAttestation<E> {
     }
 
     /// Checks if the attesting_indices list is sorted (required for validity).
+    /// Uses non-decreasing order (duplicates allowed) to match the spec's `sorted()`.
     pub fn is_sorted(&self) -> bool {
         self.attesting_indices
             .windows(2)
-            .all(|w| matches!(w, [a, b] if a < b))
+            .all(|w| matches!(w, [a, b] if a <= b))
     }
 
     /// Create an empty indexed payload attestation (used for defaults/testing).
@@ -139,7 +140,7 @@ mod tests {
 
     #[test]
     fn is_sorted_duplicate_indices() {
-        // Duplicate indices should fail is_sorted (requires strictly ascending: a < b)
+        // Duplicate indices should pass is_sorted (spec allows non-decreasing order)
         let mut att = IndexedPayloadAttestation::<E>::empty();
         att.attesting_indices.push(5).unwrap();
         att.attesting_indices.push(5).unwrap(); // duplicate
@@ -147,8 +148,8 @@ mod tests {
         let bytes = att.as_ssz_bytes();
         let decoded = IndexedPayloadAttestation::<E>::from_ssz_bytes(&bytes).unwrap();
         assert!(
-            !decoded.is_sorted(),
-            "duplicate indices [5, 5] should not be sorted (requires strict <)"
+            decoded.is_sorted(),
+            "duplicate indices [5, 5] should be sorted (spec uses non-decreasing order)"
         );
     }
 

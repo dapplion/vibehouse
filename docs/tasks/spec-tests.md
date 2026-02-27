@@ -28,6 +28,34 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — spec compliance fixes from bid/attestation/epoch audits (run 152)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+- Spec test version: v1.7.0-alpha.2, nightly vectors unchanged (Feb 26 build)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 337/337 state_processing tests
+  - 702/702 types tests
+- **Spec compliance audit: 3 additional function families**
+  1. `process_execution_payload_bid` (12 checks): **fully compliant**, zero discrepancies
+  2. `process_payload_attestation` + helpers: **2 discrepancies found and fixed**
+  3. `process_builder_pending_payments` + `get_builder_payment_quorum_threshold`: **1 discrepancy found and fixed**
+- **Fix 1 (CRITICAL): structural checks in `process_payload_attestation` now unconditional**
+  - Spec: `is_valid_indexed_payload_attestation` runs non-empty + sorted checks unconditionally
+  - Was: all checks gated behind `verify_signatures.is_true()`, so empty/unsorted attestations accepted during block replay
+  - Fixed: moved non-empty and sorted checks outside the `verify_signatures` gate
+  - File: `consensus/state_processing/src/per_block_processing/gloas.rs`
+- **Fix 2 (LOW): `IndexedPayloadAttestation::is_sorted()` now allows duplicates**
+  - Spec: Python's `sorted()` preserves duplicates, so `[5, 5]` is valid
+  - Was: used strict `<` (rejected duplicates)
+  - Fixed: changed to `<=` (non-decreasing order)
+  - File: `consensus/types/src/indexed_payload_attestation.rs`
+- **Fix 3 (LOW): `saturating_mul` → `safe_mul` in epoch quorum calculation**
+  - Spec: `uint64` overflow is an invalid state transition
+  - Was: `saturating_mul` would silently cap at u64::MAX (practically unreachable but spec deviation)
+  - Fixed: changed to `safe_mul` which returns error on overflow
+  - File: `consensus/state_processing/src/per_epoch_processing/gloas.rs`
+
 ### 2026-02-27 — all tests green, fork choice spec audit (run 151)
 - Checked consensus-specs PRs since run 150: no new Gloas spec changes merged
   - No new merged PRs since #4947/#4948 (both Feb 26)

@@ -20,7 +20,7 @@ pub fn process_builder_pending_payments<E: EthSpec>(
     let total_active_balance = state.get_total_active_balance()?;
     let per_slot_balance = total_active_balance.safe_div(E::slots_per_epoch())?;
     let quorum = per_slot_balance
-        .saturating_mul(spec.builder_payment_threshold_numerator)
+        .safe_mul(spec.builder_payment_threshold_numerator)?
         .safe_div(spec.builder_payment_threshold_denominator)?;
 
     let state_gloas = state.as_gloas_mut()?;
@@ -95,7 +95,7 @@ mod tests {
 
     fn quorum_for_balance(total_active: u64) -> u64 {
         let per_slot = total_active / E::slots_per_epoch();
-        per_slot.saturating_mul(6) / 10
+        (per_slot * 6) / 10
     }
 
     /// Build a minimal Gloas state for testing process_builder_pending_payments.

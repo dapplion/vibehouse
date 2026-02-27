@@ -269,23 +269,24 @@ pub fn process_payload_attestation<E: EthSpec>(
     // Spec: assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
     let indexed_attestation = get_indexed_payload_attestation(state, attestation, spec)?;
 
-    if verify_signatures.is_true() {
-        let indices = &indexed_attestation.attesting_indices;
-        if indices.is_empty() {
+    // Structural checks from is_valid_indexed_payload_attestation run unconditionally per spec.
+    let indices = &indexed_attestation.attesting_indices;
+    if indices.is_empty() {
+        return Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+        ));
+    }
+
+    // Verify indices are sorted (non-decreasing, duplicates allowed)
+    for w in indices.windows(2) {
+        if matches!(w, [a, b] if b < a) {
             return Err(BlockProcessingError::PayloadAttestationInvalid(
                 PayloadAttestationInvalid::AttesterIndexOutOfBounds,
             ));
         }
+    }
 
-        // Verify indices are sorted (non-decreasing, duplicates allowed)
-        for w in indices.windows(2) {
-            if matches!(w, [a, b] if b < a) {
-                return Err(BlockProcessingError::PayloadAttestationInvalid(
-                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-                ));
-            }
-        }
-
+    if verify_signatures.is_true() {
         let domain = spec.get_domain(
             data.slot.epoch(E::slots_per_epoch()),
             Domain::PtcAttester,
@@ -2822,13 +2823,18 @@ mod tests {
         let attestation = make_payload_attestation(&state, &[false, false]);
 
         // With no bits set, the indexed attestation has empty attesting_indices.
-        // With VerifySignatures::False, this should still succeed.
+        // Per spec, is_valid_indexed_payload_attestation rejects empty indices unconditionally.
         let result =
             process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
         assert!(
-            result.is_ok(),
-            "no-bits attestation should succeed without sig check: {:?}",
-            result.err()
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds
+                ))
+            ),
+            "no-bits attestation should fail even without sig check: {:?}",
+            result
         );
     }
 
