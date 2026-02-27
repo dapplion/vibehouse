@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — nightly test vector update, anchor init fix, heze exclusion (run 145)
+- Updated to nightly spec test vectors (Feb 26 build)
+- New test vectors include:
+  - `heze` fork (future fork, excluded from check_all_files_accessed)
+  - `builder_voluntary_exit` operation tests (6 cases, 5 invalid + 1 success)
+  - `deposit_request` routing tests (4 new builder credential routing cases)
+  - `random` tests for Gloas (16 randomized sanity cases)
+- **Fork choice anchor init fix**: `get_forkchoice_store` in spec puts anchor in `payload_states` (envelope received, payload revealed). Now initializes anchor node's bid_block_hash, bid_parent_block_hash, builder_index, envelope_received=true, payload_revealed=true. Uses `state.latest_block_hash` for bid_block_hash (genesis blocks have zero bids but state has correct EL genesis hash).
+- **EF test runner fix**: `builder_voluntary_exit__success` test vector omits the `voluntary_exit.ssz_snappy` fixture. Operations runner now gracefully handles missing operation files — skips with `SkippedKnownFailure` when post state exists but operation is absent.
+- **Test results** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 1/1 beacon_chain genesis fork choice test (FORK_NAME=gloas)
+
 ### 2026-02-26 — full test suite green, spec compliance verified (run 144)
 - Checked consensus-specs PRs since run 143: no new Gloas spec changes merged
   - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
