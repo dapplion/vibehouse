@@ -1,5 +1,5 @@
 use eth2::types::{
-    DutiesResponse, GenericResponse, PayloadAttestationData, PtcDutyData, SyncingData,
+    DutiesResponse, GenericResponse, PayloadAttestationData, ProposerData, PtcDutyData, SyncingData,
 };
 use eth2::{BeaconNodeHttpClient, StatusCode, Timeouts};
 use mockito::{Matcher, Mock, Server, ServerGuard};
@@ -178,6 +178,56 @@ impl<E: EthSpec> MockBeaconNode<E> {
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body("{}")
+            .create()
+    }
+
+    /// Mocks `GET /eth/v1/validator/duties/proposer/{epoch}` to return the given duties.
+    pub fn mock_get_validator_duties_proposer(
+        &mut self,
+        epoch: Epoch,
+        duties: Vec<ProposerData>,
+    ) -> Mock {
+        let path_pattern = Regex::new(&format!(
+            r"^/eth/v1/validator/duties/proposer/{}$",
+            epoch.as_u64()
+        ))
+        .unwrap();
+
+        let response = DutiesResponse {
+            dependent_root: Hash256::ZERO,
+            execution_optimistic: None,
+            data: duties,
+        };
+
+        self.server
+            .mock("GET", Matcher::Regex(path_pattern.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(serde_json::to_string(&response).unwrap())
+            .create()
+    }
+
+    /// Mocks `POST /eth/v1/beacon/pool/proposer_preferences` to return 200 OK.
+    pub fn mock_post_beacon_pool_proposer_preferences(&mut self) -> Mock {
+        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/proposer_preferences$").unwrap();
+
+        self.server
+            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body("{}")
+            .create()
+    }
+
+    /// Mocks `POST /eth/v1/beacon/pool/proposer_preferences` to return a 500 error.
+    pub fn mock_post_beacon_pool_proposer_preferences_error(&mut self) -> Mock {
+        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/proposer_preferences$").unwrap();
+
+        self.server
+            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .with_status(500)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"message":"Internal Server Error"}"#)
             .create()
     }
 }

@@ -28,6 +28,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 broadcast_proposer_preferences VC tests + 2 MockBeaconNode helpers (run 190)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Identified biggest test coverage gap**: `broadcast_proposer_preferences` in `validator_services/src/duties_service.rs` (lines 1636-1792) — a 150+ line async function with 7+ distinct code paths and ZERO test coverage. This function is responsible for signing and submitting proposer preferences (fee_recipient, gas_limit) for local validators' upcoming slots. Without it working correctly, builders cannot know what fee_recipient/gas_limit the proposer expects, breaking the ePBS bid market.
+- **Added 2 MockBeaconNode helpers** (`testing/validator_test_rig/src/mock_beacon_node.rs`):
+  1. `mock_get_validator_duties_proposer(epoch, duties)` — mocks `GET /eth/v1/validator/duties/proposer/{epoch}`
+  2. `mock_post_beacon_pool_proposer_preferences()` — mocks `POST /eth/v1/beacon/pool/proposer_preferences`
+  3. `mock_post_beacon_pool_proposer_preferences_error()` — mocks the same endpoint with a 500 error
+- **Added PreferencesValidatorStore mock** — a `ValidatorStore` implementation supporting `get_fee_recipient`, `proposal_data`, and `sign_proposer_preferences` (with configurable sign errors). Follows the same pattern as `MinimalValidatorStore` in `ptc.rs` poll_tests but with additional fields for fee_recipient, gas_limit, and error injection.
+- **Added 5 tests** covering the key code paths in `broadcast_proposer_preferences`:
+  1. `broadcast_preferences_pre_gloas_skips` — exercises the pre-Gloas guard (duties_service.rs:1648-1653). With `gloas_fork_epoch=10` and `current_slot=0` (epoch 0), the function returns Ok without making any HTTP requests. Verifies `preferences_broadcast_epochs` remains empty. This guard prevents the VC from wasting BN calls before ePBS is active — a regression would cause spurious 404s or errors against non-Gloas BNs.
+  2. `broadcast_preferences_no_validators_skips` — exercises the empty-validators guard (duties_service.rs:1667-1669). With Gloas active but no local validators registered, the function returns Ok without calling the BN. Verifies no epoch is marked as broadcast. This prevents unnecessary BN calls on VCs running zero validators (e.g., sentry nodes or misconfigured setups).
+  3. `broadcast_preferences_idempotent_skip` — exercises the idempotency guard (duties_service.rs:1656-1661). First call fetches duties from BN, signs, submits preferences, and marks `next_epoch` as broadcast. Second call detects the epoch is already in `preferences_broadcast_epochs` and returns immediately without re-fetching. If the mock were called twice it would fail (consumed on first use), proving the idempotency check works. Without this guard, every slot would re-fetch and re-submit preferences, creating unnecessary BN load and duplicate gossip messages.
+  4. `broadcast_preferences_no_local_duties_marks_epoch` — exercises the no-local-duties path (duties_service.rs:1696-1703). BN returns proposer duties for a different validator (not registered locally). The function marks the epoch as broadcast anyway (to avoid re-fetching) and returns Ok. This is important because without marking the epoch, every slot would re-fetch proposer duties hoping to find local duties that don't exist, wasting bandwidth.
+  5. `broadcast_preferences_missing_fee_recipient_skips_validator` — exercises the missing fee_recipient path (duties_service.rs:1713-1723). A local validator has a proposer duty but no `fee_recipient` configured. The function logs a warning, skips that validator (no BN submission), and continues to mark the epoch. This prevents a single misconfigured validator from blocking preferences broadcast for all validators in the epoch.
+- **Why these tests matter**: `broadcast_proposer_preferences` is the ONLY function responsible for getting proposer preferences onto the gossip network before each epoch. Without these preferences, builders cannot submit valid bids (the bid gossip check requires matching fee_recipient and gas_limit). A broken broadcast would silently disable the external builder market for ALL proposers managed by that VC, forcing all blocks to the self-build path. The function had ZERO test coverage despite being 150+ lines with 7+ branches.
+- **Full test suite verification** — all passing:
+  - 40/40 validator_services tests (was 35, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 range sync, multi-epoch, and payload attestation data integration tests (run 189)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

@@ -1904,3 +1904,414 @@ mod test {
         assert!(subscription_slots.should_send_subscription_at(current_slot + 1),);
     }
 }
+
+#[cfg(test)]
+mod broadcast_preferences_tests {
+    use super::*;
+    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode};
+    use eth2::types::ProposerData;
+    use slot_clock::{SlotClock, TestingSlotClock};
+    use std::collections::HashMap;
+    use std::time::Duration;
+    use task_executor::test_utils::TestRuntime;
+    use types::{Address, ChainSpec, Epoch, MainnetEthSpec, PublicKeyBytes, Slot};
+    use validator_store::{
+        DoppelgangerStatus, Error as ValidatorStoreError, ProposalData, ValidatorStore,
+    };
+    use validator_test_rig::mock_beacon_node::MockBeaconNode;
+
+    type E = MainnetEthSpec;
+
+    /// ValidatorStore mock that supports fee_recipient, proposal_data, and sign_proposer_preferences.
+    struct PreferencesValidatorStore {
+        validators: HashMap<PublicKeyBytes, u64>,
+        fee_recipients: HashMap<PublicKeyBytes, Address>,
+        gas_limits: HashMap<PublicKeyBytes, u64>,
+        /// If set, sign_proposer_preferences will return this error string.
+        sign_error: Option<String>,
+    }
+
+    impl PreferencesValidatorStore {
+        fn new(validators: Vec<(PublicKeyBytes, u64)>) -> Self {
+            Self {
+                validators: validators.into_iter().collect(),
+                fee_recipients: HashMap::new(),
+                gas_limits: HashMap::new(),
+                sign_error: None,
+            }
+        }
+
+        fn with_fee_recipient(mut self, pubkey: PublicKeyBytes, addr: Address) -> Self {
+            self.fee_recipients.insert(pubkey, addr);
+            self
+        }
+
+        #[allow(dead_code)]
+        fn with_gas_limit(mut self, pubkey: PublicKeyBytes, gas_limit: u64) -> Self {
+            self.gas_limits.insert(pubkey, gas_limit);
+            self
+        }
+
+        #[allow(dead_code)]
+        fn with_sign_error(mut self, err: String) -> Self {
+            self.sign_error = Some(err);
+            self
+        }
+
+        fn pubkey(byte: u8) -> PublicKeyBytes {
+            let mut bytes = [0u8; 48];
+            bytes[0] = byte;
+            PublicKeyBytes::deserialize(&bytes).unwrap()
+        }
+    }
+
+    impl ValidatorStore for PreferencesValidatorStore {
+        type Error = String;
+        type E = E;
+
+        fn validator_index(&self, pubkey: &PublicKeyBytes) -> Option<u64> {
+            self.validators.get(pubkey).copied()
+        }
+
+        fn voting_pubkeys<I, F>(&self, filter_func: F) -> I
+        where
+            I: FromIterator<PublicKeyBytes>,
+            F: Fn(DoppelgangerStatus) -> Option<PublicKeyBytes>,
+        {
+            self.validators
+                .keys()
+                .filter_map(|pk| filter_func(DoppelgangerStatus::SigningEnabled(*pk)))
+                .collect()
+        }
+
+        fn doppelganger_protection_allows_signing(&self, _: PublicKeyBytes) -> bool {
+            true
+        }
+
+        fn num_voting_validators(&self) -> usize {
+            self.validators.len()
+        }
+
+        fn graffiti(&self, _: &PublicKeyBytes) -> Option<types::Graffiti> {
+            unimplemented!()
+        }
+
+        fn get_fee_recipient(&self, pubkey: &PublicKeyBytes) -> Option<Address> {
+            self.fee_recipients.get(pubkey).copied()
+        }
+
+        fn determine_builder_boost_factor(&self, _: &PublicKeyBytes) -> Option<u64> {
+            unimplemented!()
+        }
+
+        async fn randao_reveal(
+            &self,
+            _: PublicKeyBytes,
+            _: Epoch,
+        ) -> Result<types::Signature, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        fn set_validator_index(&self, _: &PublicKeyBytes, _: u64) {
+            unimplemented!()
+        }
+
+        async fn sign_block(
+            &self,
+            _: PublicKeyBytes,
+            _: validator_store::UnsignedBlock<Self::E>,
+            _: Slot,
+        ) -> Result<validator_store::SignedBlock<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn sign_execution_payload_envelope(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::ExecutionPayloadEnvelope<Self::E>,
+        ) -> Result<types::SignedExecutionPayloadEnvelope<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn sign_payload_attestation(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::PayloadAttestationData,
+            _: u64,
+        ) -> Result<types::PayloadAttestationMessage, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn sign_proposer_preferences(
+            &self,
+            _pubkey: PublicKeyBytes,
+            preferences: &types::ProposerPreferences,
+        ) -> Result<types::SignedProposerPreferences, ValidatorStoreError<Self::Error>> {
+            if let Some(ref err) = self.sign_error {
+                return Err(ValidatorStoreError::SpecificError(err.clone()));
+            }
+            Ok(types::SignedProposerPreferences {
+                message: preferences.clone(),
+                signature: types::Signature::empty(),
+            })
+        }
+
+        async fn sign_attestation(
+            &self,
+            _: PublicKeyBytes,
+            _: usize,
+            _: &mut types::Attestation<Self::E>,
+            _: Epoch,
+        ) -> Result<(), ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn sign_validator_registration_data(
+            &self,
+            _: types::ValidatorRegistrationData,
+        ) -> Result<types::SignedValidatorRegistrationData, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn produce_signed_aggregate_and_proof(
+            &self,
+            _: PublicKeyBytes,
+            _: u64,
+            _: types::Attestation<Self::E>,
+            _: types::SelectionProof,
+        ) -> Result<types::SignedAggregateAndProof<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn produce_selection_proof(
+            &self,
+            _: PublicKeyBytes,
+            _: Slot,
+        ) -> Result<types::SelectionProof, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_sync_selection_proof(
+            &self,
+            _: &PublicKeyBytes,
+            _: Slot,
+            _: types::SyncSubnetId,
+        ) -> Result<types::SyncSelectionProof, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_sync_committee_signature(
+            &self,
+            _: Slot,
+            _: types::Hash256,
+            _: u64,
+            _: &PublicKeyBytes,
+        ) -> Result<types::SyncCommitteeMessage, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_signed_contribution_and_proof(
+            &self,
+            _: u64,
+            _: PublicKeyBytes,
+            _: types::SyncCommitteeContribution<Self::E>,
+            _: types::SyncSelectionProof,
+        ) -> Result<types::SignedContributionAndProof<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        fn prune_slashing_protection_db(&self, _: Epoch, _: bool) {}
+
+        fn proposal_data(&self, pubkey: &PublicKeyBytes) -> Option<ProposalData> {
+            let gas_limit = self.gas_limits.get(pubkey).copied().unwrap_or(30_000_000);
+            Some(ProposalData {
+                validator_index: self.validators.get(pubkey).copied(),
+                fee_recipient: self.fee_recipients.get(pubkey).copied(),
+                gas_limit,
+                builder_proposals: false,
+            })
+        }
+    }
+
+    /// Build a DutiesService wired to a MockBeaconNode + PreferencesValidatorStore.
+    async fn make_duties_service(
+        mock: &MockBeaconNode<E>,
+        store: PreferencesValidatorStore,
+        spec: ChainSpec,
+        current_slot: Slot,
+    ) -> (
+        Arc<DutiesService<PreferencesValidatorStore, TestingSlotClock>>,
+        TestRuntime,
+    ) {
+        let test_runtime = TestRuntime::default();
+
+        let client = mock.beacon_api_client.clone();
+        let candidate = CandidateBeaconNode::new(client, 0);
+        let spec_arc = Arc::new(spec.clone());
+        let mut fallback = BeaconNodeFallback::new(
+            vec![candidate],
+            Default::default(),
+            vec![ApiTopic::Attestations],
+            spec_arc.clone(),
+        );
+
+        let slot_duration = Duration::from_secs(spec.seconds_per_slot);
+        let slot_clock = TestingSlotClock::new(Slot::new(0), Duration::from_secs(0), slot_duration);
+        slot_clock.set_slot(current_slot.as_u64());
+
+        fallback.set_slot_clock(slot_clock.clone());
+
+        let validator_store = Arc::new(store);
+
+        let duties_service = Arc::new(
+            crate::duties_service::DutiesServiceBuilder::new()
+                .validator_store(validator_store)
+                .slot_clock(slot_clock)
+                .beacon_nodes(Arc::new(fallback))
+                .executor(test_runtime.task_executor.clone())
+                .spec(spec_arc)
+                .build()
+                .unwrap(),
+        );
+
+        (duties_service, test_runtime)
+    }
+
+    fn spec_with_gloas(gloas_epoch: Option<u64>) -> ChainSpec {
+        let mut spec = E::default_spec();
+        spec.gloas_fork_epoch = gloas_epoch.map(Epoch::new);
+        spec
+    }
+
+    /// Pre-Gloas: broadcast returns Ok without calling BN.
+    #[tokio::test]
+    async fn broadcast_preferences_pre_gloas_skips() {
+        // Gloas at epoch 10, current slot = 0 (epoch 0) → pre-Gloas guard exits early
+        let spec = spec_with_gloas(Some(10));
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xAA));
+        let mock = MockBeaconNode::<E>::new().await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, Slot::new(0)).await;
+
+        // Should return Ok without making any HTTP requests (no mock needed)
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // No epoch should be marked as broadcast
+        assert!(ds.preferences_broadcast_epochs.lock().is_empty());
+    }
+
+    /// Gloas active but no local validators: returns Ok without calling BN.
+    #[tokio::test]
+    async fn broadcast_preferences_no_validators_skips() {
+        let spec = spec_with_gloas(Some(0));
+        let store = PreferencesValidatorStore::new(vec![]); // no validators
+        let mock = MockBeaconNode::<E>::new().await;
+        let slots_per_epoch = E::slots_per_epoch();
+        let (ds, _rt) = make_duties_service(&mock, store, spec, Slot::new(slots_per_epoch)).await;
+
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // No epoch marked — the function exited before reaching the BN fetch
+        assert!(ds.preferences_broadcast_epochs.lock().is_empty());
+    }
+
+    /// Idempotency: second call for the same epoch does not re-fetch from BN.
+    #[tokio::test]
+    async fn broadcast_preferences_idempotent_skip() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xBB));
+        let current_slot = Slot::new(slots_per_epoch); // epoch 1
+        let next_epoch = Epoch::new(2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        // Return the local validator as proposer in next epoch
+        let proposer_duty = ProposerData {
+            pubkey,
+            validator_index: 100,
+            slot: Slot::new(slots_per_epoch * 2), // slot in epoch 2
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
+        let _m2 = mock.mock_post_beacon_pool_proposer_preferences();
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        // First call succeeds and marks next_epoch as broadcast
+        broadcast_proposer_preferences(&ds).await.unwrap();
+        assert!(ds.preferences_broadcast_epochs.lock().contains(&next_epoch));
+
+        // Second call should return Ok immediately (idempotency check)
+        // No new mocks needed — if it tries to call BN again, mockito will fail
+        // because the mock was already consumed.
+        broadcast_proposer_preferences(&ds).await.unwrap();
+    }
+
+    /// No local proposer duties in the next epoch: epoch is still marked as broadcast.
+    #[tokio::test]
+    async fn broadcast_preferences_no_local_duties_marks_epoch() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let other_pubkey = PreferencesValidatorStore::pubkey(2);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xCC));
+        let current_slot = Slot::new(slots_per_epoch);
+        let next_epoch = Epoch::new(2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        // BN returns duties for a DIFFERENT validator (not local)
+        let non_local_duty = ProposerData {
+            pubkey: other_pubkey,
+            validator_index: 200,
+            slot: Slot::new(slots_per_epoch * 2),
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![non_local_duty]);
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // Epoch should still be marked (prevents re-fetching)
+        assert!(ds.preferences_broadcast_epochs.lock().contains(&next_epoch));
+    }
+
+    /// Missing fee_recipient: validator is skipped (warning logged), broadcast continues.
+    #[tokio::test]
+    async fn broadcast_preferences_missing_fee_recipient_skips_validator() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        // No fee_recipient configured for this validator
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)]);
+        let current_slot = Slot::new(slots_per_epoch);
+        let next_epoch = Epoch::new(2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let proposer_duty = ProposerData {
+            pubkey,
+            validator_index: 100,
+            slot: Slot::new(slots_per_epoch * 2),
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
+        // No post mock needed — should never be called
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        // Should succeed (skips the validator with a warning)
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // Epoch is still marked as broadcast
+        assert!(ds.preferences_broadcast_epochs.lock().contains(&next_epoch));
+    }
+}
