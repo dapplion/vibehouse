@@ -5991,4 +5991,230 @@ mod test_gloas_fork_choice {
             "boost applied: equivocating indices make parent strong"
         );
     }
+
+    /// Verify that `find_head_gloas` uses the payload tiebreaker to decide
+    /// between EMPTY and FULL when both have equal weight.
+    ///
+    /// When a PENDING node at the previous slot has both EMPTY and FULL virtual
+    /// children (same root, same weight because no votes), the `max_by` comparator
+    /// falls through to `get_payload_tiebreaker`:
+    ///   - EMPTY gets tiebreaker value 1
+    ///   - FULL gets tiebreaker value 2 (when `should_extend_payload` is true)
+    /// So FULL wins. This exercises the third-level comparator in `find_head_gloas`
+    /// which is unreachable when weights or roots differ.
+    #[test]
+    fn find_head_gloas_tiebreaker_favors_full_when_timely() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Insert block at slot 1 with envelope received (FULL child exists)
+        // payload_revealed + envelope_received + payload_data_available makes
+        // should_extend_payload return true → tiebreaker(FULL) = 2 > 1 = tiebreaker(EMPTY)
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,  // payload_revealed
+            0,     // proposer_index
+            false, // ptc_timely
+            true,  // envelope_received
+        );
+
+        // Set payload_data_available so should_extend_payload returns true
+        if let Some(&idx) = fc.proto_array.indices.get(&root(1)) {
+            fc.proto_array.nodes[idx].payload_data_available = true;
+        }
+
+        let balances = balances(0); // no validators → no votes → EMPTY and FULL have equal weight
+
+        // current_slot=2 → block at slot 1 is the "previous slot"
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        // FULL wins the tiebreaker (2 > 1)
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Full as u8),
+            "with equal weight and timely payload, FULL should win via tiebreaker"
+        );
+    }
+
+    /// Verify that `find_head_gloas` tiebreaker favors EMPTY when the payload
+    /// is not timely and should NOT be extended.
+    ///
+    /// Same setup as above but without `payload_data_available`, so
+    /// `should_extend_payload` returns false → tiebreaker(FULL) = 0 < 1 = tiebreaker(EMPTY)
+    /// → EMPTY wins. This verifies the tiebreaker correctly suppresses FULL
+    /// when the payload is not available.
+    #[test]
+    fn find_head_gloas_tiebreaker_favors_empty_when_not_timely() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Insert block with envelope_received=true but payload_data_available=false
+        // (via insert_gloas_block_ext which defaults to false). should_extend_payload
+        // needs envelope_received AND payload_revealed AND payload_data_available,
+        // so it returns false.
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,  // payload_revealed (for FULL child to exist)
+            0,     // proposer_index
+            false, // ptc_timely
+            true,  // envelope_received (for FULL child to exist)
+        );
+
+        // payload_data_available stays false (from insert_gloas_block_ext default).
+        // Also need to ensure the proposer_boost doesn't interfere:
+        // The proposer_boost_root is Hash256::zero() by default → should_extend_payload
+        // returns true when no proposer boost root (the zero-root shortcut).
+        // To actually test the "not timely" path, we need a non-zero proposer boost root
+        // whose parent is this node but parent's status is NOT FULL.
+
+        // Insert a child block at slot 2 and set it as the proposer boost root.
+        // Its parent (root(1)) with bid_parent_block_hash != parent's bid_block_hash
+        // means parent was EMPTY. Mark execution-invalid so it's not viable for head
+        // (otherwise it would become head itself, bypassing the tiebreaker).
+        insert_gloas_block_ext(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // mismatched with root(1)'s exec_hash(1) → parent EMPTY
+            false,
+            0,
+            false,
+            false,
+        );
+        if let Some(&idx) = fc.proto_array.indices.get(&root(2)) {
+            fc.proto_array.nodes[idx].execution_status =
+                ExecutionStatus::Invalid(ExecutionBlockHash::zero());
+        }
+        fc.proto_array.previous_proposer_boost.root = root(2);
+
+        let balances = balances(0); // no votes
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        // EMPTY wins the tiebreaker (1 > 0)
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Empty as u8),
+            "with equal weight and non-timely payload, EMPTY should win via tiebreaker"
+        );
+    }
+
+    /// Verify that `is_supporting_vote_gloas` correctly resolves a multi-hop
+    /// ancestor (grandchild voting for grandparent).
+    ///
+    /// Chain: root(0) → root(1) → root(2) → root(3)
+    /// Vote at root(3), check if it supports root(1) at various payload statuses.
+    /// This exercises the `while parent.slot > slot` loop in `get_ancestor_gloas`
+    /// through the `is_supporting_vote_gloas` code path (not just as a standalone
+    /// function call). The ancestor must be resolved 2 hops up through root(2).
+    #[test]
+    fn supporting_vote_multi_hop_ancestor() {
+        let (mut fc, _spec) = new_gloas_fc();
+
+        // Block 1 at slot 1, bid_block_hash = exec_hash(1)
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        // Block 2 at slot 2, bid_parent matches parent's bid → parent was FULL
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // matches root(1)'s bid_block_hash → FULL
+            true,
+        );
+
+        // Block 3 at slot 3, bid_parent matches root(2)'s bid → root(2) parent was FULL
+        insert_gloas_block(
+            &mut fc,
+            3,
+            root(3),
+            root(2),
+            Some(exec_hash(3)),
+            Some(exec_hash(2)), // matches root(2)'s bid_block_hash → FULL
+            false,
+        );
+
+        // Vote for root(3) at slot 4 — ancestor at slot 1 is root(1), reached by
+        // walking 2 hops: root(3)→root(2)→root(1). The payload status at root(1)
+        // is determined by the child→parent relationship at root(2)→root(1), which
+        // is FULL (exec_hash(1) == exec_hash(1)).
+        let vote = VoteTracker {
+            current_root: root(3),
+            current_slot: Slot::new(4),
+            current_payload_present: false,
+            ..VoteTracker::default()
+        };
+
+        // PENDING always matches (ancestor check matches any status)
+        let pending_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+        assert!(
+            fc.is_supporting_vote_gloas(&pending_node, &vote),
+            "PENDING should always be supported through multi-hop ancestor"
+        );
+
+        // FULL matches because ancestor resolution gives FULL
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+        assert!(
+            fc.is_supporting_vote_gloas(&full_node, &vote),
+            "FULL should be supported: ancestor at slot 1 resolved through 2 hops is FULL"
+        );
+
+        // EMPTY does NOT match
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        assert!(
+            !fc.is_supporting_vote_gloas(&empty_node, &vote),
+            "EMPTY should NOT be supported: ancestor at slot 1 is FULL, not EMPTY"
+        );
+    }
 }

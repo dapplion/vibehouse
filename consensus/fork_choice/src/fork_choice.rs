@@ -3580,5 +3580,113 @@ mod tests {
             fc.on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
                 .unwrap();
         }
+
+        /// Verify that a queued attestation with index=1 is dequeued as
+        /// payload_present=true, influencing head selection toward FULL.
+        ///
+        /// Exercises the `process_attestation_queue` path where
+        /// `attestation.index == 1` → `payload_present = true`. A same-slot
+        /// attestation (att.slot == current_slot) is queued rather than
+        /// processed immediately. When the slot advances and the attestation
+        /// is dequeued, its `index` field must be correctly interpreted:
+        /// index=1 means FULL vote in Gloas.
+        ///
+        /// Without this, queued FULL votes would be lost — only immediately
+        /// processed attestations would count as FULL, breaking the deferred
+        /// attestation processing model specified in the fork choice spec.
+        #[test]
+        fn queued_attestation_index_1_dequeued_as_payload_present() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(1);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            // Insert a Gloas block at slot 1 with payload revealed (FULL child exists)
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                true, // payload revealed
+            );
+
+            // Set current slot to 2; submit attestation for block root(1)
+            // at slot 2 with index=1 (FULL vote). Since att.slot == current_slot,
+            // this attestation is QUEUED, not processed immediately.
+            fc.fc_store.current_slot = Slot::new(2);
+            let att = make_indexed_attestation(2, root(1), 1, vec![0]);
+            fc.on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap();
+
+            // Verify the attestation is queued
+            assert_eq!(
+                fc.queued_attestations().len(),
+                1,
+                "attestation at current slot should be queued"
+            );
+            assert_eq!(fc.queued_attestations()[0].index, 1);
+
+            // Advance to slot 3: get_head → update_time → process_attestation_queue
+            // dequeues the attestation with index=1 → payload_present=true
+            let head = fc.get_head(Slot::new(3), &spec).unwrap();
+            assert_eq!(head, root(1));
+
+            // The queued attestation voted FULL (index=1) → head payload status
+            // should be FULL (1).
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(1), // FULL
+                "queued attestation with index=1 should be dequeued as payload_present, \
+                 resulting in FULL head payload status"
+            );
+
+            // Verify the queue is now empty after dequeuing
+            assert!(
+                fc.queued_attestations().is_empty(),
+                "queue should be empty after get_head advanced the slot"
+            );
+        }
+
+        /// Verify that a queued attestation with index=0 is dequeued as
+        /// payload_present=false, resulting in EMPTY head payload status.
+        ///
+        /// This is the complement of `queued_attestation_index_1_dequeued_as_payload_present`:
+        /// index=0 means the attester votes for the EMPTY path (no payload present).
+        #[test]
+        fn queued_attestation_index_0_dequeued_as_payload_absent() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(1);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            // Insert a Gloas block at slot 1 with payload revealed
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                true,
+            );
+
+            // Submit attestation with index=0 at current slot → queued
+            fc.fc_store.current_slot = Slot::new(2);
+            let att = make_indexed_attestation(2, root(1), 0, vec![0]);
+            fc.on_attestation(Slot::new(2), att.to_ref(), AttestationFromBlock::False)
+                .unwrap();
+
+            assert_eq!(fc.queued_attestations().len(), 1);
+            assert_eq!(fc.queued_attestations()[0].index, 0);
+
+            // Advance to slot 3: dequeue with index=0 → payload_present=false
+            let head = fc.get_head(Slot::new(3), &spec).unwrap();
+            assert_eq!(head, root(1));
+
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(0), // EMPTY
+                "queued attestation with index=0 should be dequeued as payload_absent, \
+                 resulting in EMPTY head payload status"
+            );
+        }
     }
 }
