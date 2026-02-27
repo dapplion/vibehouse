@@ -28,6 +28,36 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — all tests green, spec compliance audit (run 150)
+- Checked consensus-specs PRs since run 149: no new Gloas spec changes merged
+  - No new merged PRs since #4947/#4948 (both Feb 26)
+  - Open PRs unchanged: #4950, #4944, #4940, #4939, #4932, #4926, #4906, #4902, #4898, #4892, #4843, #4840, #4747, #4630
+  - Reviewed #4898 (Remove pending status from tiebreaker): our `get_payload_tiebreaker` has the `PAYLOAD_STATUS_PENDING` early return that this PR would remove. Ready to update if/when it merges.
+- Spec test version: v1.7.0-alpha.2 remains latest release, nightly vectors unchanged (Feb 26 build)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 337/337 state_processing tests
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+- **Spec compliance audit: `process_execution_payload_envelope`** — all 16 spec checks verified in correct order:
+  1. Signature verification (with self-build/builder pubkey lookup) ✓
+  2. Cache latest block header state root ✓
+  3. Verify beacon_block_root matches latest_block_header ✓
+  4. Verify slot matches state ✓
+  5. Verify builder_index matches committed bid ✓
+  6. Verify prev_randao matches committed bid ✓
+  7. Verify withdrawals match payload_expected_withdrawals ✓
+  8. Verify gas_limit matches committed bid ✓
+  9. Verify block_hash matches committed bid ✓
+  10. Verify parent_hash matches latest_block_hash ✓
+  11. Verify timestamp matches compute_time_at_slot ✓
+  12. Execute newPayload (delegated to beacon chain layer) ✓
+  13. Process execution requests (deposits, withdrawals, consolidations) ✓
+  14. Process builder payment (move from pending to withdrawal queue) ✓
+  15. Set execution_payload_availability bit + update latest_block_hash ✓
+  16. Verify envelope state_root matches computed state root ✓
+
 ### 2026-02-27 — all tests green, POST envelope error path tests (run 149)
 - Checked consensus-specs PRs since run 148: no new Gloas spec changes merged
   - No new merged PRs since #4947/#4948 (both Feb 26)
