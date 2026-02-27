@@ -12357,3 +12357,232 @@ async fn gloas_gossip_unaggregated_non_same_slot_index_one_accepted() {
         .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
         .expect("non-same-slot attestation with index=1 should be accepted");
 }
+
+// ── Gloas aggregate attestation gossip verification tests ──
+//
+// These tests exercise the Gloas-specific gossip validation checks in
+// `IndexedAggregatedAttestation::verify_early_checks`:
+//   - [REJECT] aggregate.data.index < 2 (via verify_committee_index)
+//   - [REJECT] aggregate.data.index == 0 if block.slot == aggregate.data.slot (same-slot check)
+//
+// Previously, there were ZERO integration tests for these aggregate gossip rejection paths
+// in Gloas mode. The existing unaggregated tests above only cover the SingleAttestation path.
+
+/// Helper: produce a valid SignedAggregateAndProof from the harness at the current slot.
+///
+/// Returns the aggregate along with the aggregator's validator index.
+/// Uses `make_attestations` to get both unaggregated + aggregate attestations,
+/// then returns the first committee's aggregate.
+fn get_valid_aggregate(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+) -> (SignedAggregateAndProof<E>, usize) {
+    let head = harness.chain.head_snapshot();
+    let all_validators = (0..VALIDATOR_COUNT).collect::<Vec<_>>();
+    let attestations = harness.make_attestations(
+        &all_validators,
+        &head.beacon_state,
+        head.beacon_state_root(),
+        head.beacon_block_root.into(),
+        head.beacon_block.slot(),
+    );
+    // Find the first committee that has an aggregate
+    for (_, maybe_aggregate) in attestations {
+        if let Some(aggregate) = maybe_aggregate {
+            let aggregator_index = aggregate.message().aggregator_index() as usize;
+            return (aggregate, aggregator_index);
+        }
+    }
+    panic!("no aggregator found among committees — need more validators or different spec");
+}
+
+/// Helper: mutate the data.index field of a SignedAggregateAndProof's inner aggregate attestation.
+fn set_aggregate_data_index(aggregate: &mut SignedAggregateAndProof<E>, index: u64) {
+    match aggregate {
+        SignedAggregateAndProof::Base(inner) => {
+            inner.message.aggregate.data.index = index;
+        }
+        SignedAggregateAndProof::Electra(inner) => {
+            inner.message.aggregate.data.index = index;
+        }
+    }
+}
+
+/// Gloas gossip: aggregate attestation with data.index >= 2 is rejected.
+/// This tests the `[REJECT] aggregate.data.index < 2` check via verify_committee_index
+/// in the aggregate early_checks path.
+#[tokio::test]
+async fn gloas_gossip_aggregate_index_two_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let (mut aggregate, _) = get_valid_aggregate(&harness);
+    // Tamper: set index to 2 (invalid in Gloas — only 0 and 1 allowed)
+    set_aggregate_data_index(&mut aggregate, 2);
+
+    let err = harness
+        .chain
+        .verify_aggregated_attestation_for_gossip(&aggregate)
+        .err()
+        .expect("aggregate with index=2 should be rejected");
+
+    assert!(
+        matches!(err, AttestationError::CommitteeIndexNonZero(2)),
+        "expected CommitteeIndexNonZero(2), got {:?}",
+        err
+    );
+}
+
+/// Gloas gossip: aggregate attestation with data.index = 255 is rejected.
+/// Boundary test for the `[REJECT] aggregate.data.index < 2` check with a large value.
+#[tokio::test]
+async fn gloas_gossip_aggregate_large_index_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let (mut aggregate, _) = get_valid_aggregate(&harness);
+    // Tamper: set index to 255 (well above the max valid index of 1)
+    set_aggregate_data_index(&mut aggregate, 255);
+
+    let err = harness
+        .chain
+        .verify_aggregated_attestation_for_gossip(&aggregate)
+        .err()
+        .expect("aggregate with index=255 should be rejected");
+
+    assert!(
+        matches!(err, AttestationError::CommitteeIndexNonZero(255)),
+        "expected CommitteeIndexNonZero(255), got {:?}",
+        err
+    );
+}
+
+/// Gloas gossip: same-slot aggregate attestation with data.index = 1 is rejected.
+/// Per the spec, same-slot attestations MUST have index=0 (payload_present=false)
+/// because the envelope hasn't been seen yet at the same slot.
+/// This check is in verify_early_checks for aggregates at the head_block.slot == data.slot guard.
+#[tokio::test]
+async fn gloas_gossip_aggregate_same_slot_index_one_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend without attestations so the aggregator isn't already observed
+    Box::pin(harness.extend_slots_some_validators(3, vec![])).await;
+
+    let (mut aggregate, _) = get_valid_aggregate(&harness);
+
+    // Verify this is a same-slot aggregate (data.slot == head block slot)
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        aggregate.message().aggregate().data().slot,
+        head.beacon_block.slot(),
+        "pre-condition: aggregate should be same-slot as head block"
+    );
+
+    // Tamper: set index to 1 (payload_present=true, invalid for same-slot)
+    set_aggregate_data_index(&mut aggregate, 1);
+
+    let err = harness
+        .chain
+        .verify_aggregated_attestation_for_gossip(&aggregate)
+        .err()
+        .expect("same-slot aggregate with index=1 should be rejected");
+
+    assert!(
+        matches!(err, AttestationError::CommitteeIndexNonZero(1)),
+        "expected CommitteeIndexNonZero(1), got {:?}",
+        err
+    );
+}
+
+/// Gloas gossip: same-slot aggregate attestation with data.index = 0 is accepted.
+/// This is the valid case — same-slot attestations always have payload_present=false (index=0).
+/// We extend without attestations so the aggregate isn't rejected as already-known.
+#[tokio::test]
+async fn gloas_gossip_aggregate_same_slot_index_zero_accepted() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend without including attestations so validators are fresh for gossip
+    Box::pin(harness.extend_slots_some_validators(3, vec![])).await;
+
+    let (aggregate, _) = get_valid_aggregate(&harness);
+
+    // Verify this is same-slot with index=0 (produced correctly)
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        aggregate.message().aggregate().data().slot,
+        head.beacon_block.slot(),
+        "pre-condition: aggregate should be same-slot as head block"
+    );
+    assert_eq!(
+        aggregate.message().aggregate().data().index,
+        0,
+        "pre-condition: same-slot aggregate should have index=0"
+    );
+
+    harness
+        .chain
+        .verify_aggregated_attestation_for_gossip(&aggregate)
+        .expect("same-slot aggregate with index=0 should be accepted");
+}
+
+/// Gloas gossip: non-same-slot aggregate attestation with data.index = 1 does not trigger
+/// the CommitteeIndexNonZero rejection. In Gloas, index=1 (payload_present=true) is valid
+/// for non-same-slot attestations. We tamper with the index and verify that any error
+/// returned is NOT CommitteeIndexNonZero — proving the Gloas-specific checks correctly
+/// allow index=1 for non-same-slot aggregates.
+#[tokio::test]
+async fn gloas_gossip_aggregate_non_same_slot_index_one_not_committee_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend without attestations so validators are fresh for gossip
+    Box::pin(harness.extend_slots_some_validators(3, vec![])).await;
+
+    // Advance slot clock to create a skip slot (attestation slot > head block slot)
+    harness.advance_slot();
+
+    let head = harness.chain.head_snapshot();
+    let attest_slot = head.beacon_block.slot() + 1;
+
+    // Produce attestations for the skip slot (non-same-slot)
+    let all_validators = (0..VALIDATOR_COUNT).collect::<Vec<_>>();
+    let attestations = harness.make_attestations(
+        &all_validators,
+        &head.beacon_state,
+        head.beacon_state_root(),
+        head.beacon_block_root.into(),
+        attest_slot,
+    );
+
+    // Find the first aggregate
+    let mut aggregate = attestations
+        .into_iter()
+        .find_map(|(_, maybe_agg)| maybe_agg)
+        .expect("should find an aggregate for skip slot");
+
+    // Verify non-same-slot
+    assert_ne!(
+        aggregate.message().aggregate().data().slot,
+        head.beacon_block.slot(),
+        "pre-condition: aggregate should be non-same-slot"
+    );
+
+    // Tamper: set index to 1 (payload_present=true, valid for non-same-slot in Gloas)
+    set_aggregate_data_index(&mut aggregate, 1);
+
+    // The aggregate may fail for other reasons (e.g., signature mismatch since we
+    // changed data.index without re-signing), but it must NOT fail with
+    // CommitteeIndexNonZero — that would mean the Gloas check incorrectly rejects index=1.
+    match harness
+        .chain
+        .verify_aggregated_attestation_for_gossip(&aggregate)
+    {
+        Ok(_) => {} // Fully valid — the Gloas checks passed and so did everything else
+        Err(AttestationError::CommitteeIndexNonZero(idx)) => {
+            panic!(
+                "non-same-slot aggregate with index=1 should NOT be rejected as \
+                 CommitteeIndexNonZero, but got CommitteeIndexNonZero({idx})"
+            );
+        }
+        Err(_other) => {
+            // Some other error (e.g., InvalidSignature) is expected since we tampered
+            // with data.index without re-signing. The important thing is it's not
+            // CommitteeIndexNonZero.
+        }
+    }
+}
