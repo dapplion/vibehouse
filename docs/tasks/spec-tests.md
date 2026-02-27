@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 attestation participation flag Gloas edge case tests (run 207)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 206
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1), #4906 (more deposit request tests)
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering `get_attestation_participation_flag_indices` Gloas-specific edge cases (`common/get_attestation_participation.rs`):
+  1. `gloas_previous_epoch_same_slot_attestation_gets_all_flags` — previous-epoch attestation at slot 10 (epoch 1) from state at slot 17 (epoch 2). All existing tests used current-epoch attestations; this verifies the `previous_justified_checkpoint` path works identically for same-slot detection and flag assignment. Catches bugs where the source checkpoint selection (line 41-44) interacts incorrectly with the Gloas head flag logic.
+  2. `gloas_previous_epoch_historical_uses_availability` — previous-epoch historical (skipped-slot) attestation at slot 10. Clears availability bit at slot 10, then verifies index=0 matches (gets head flag) while index=1 mismatches (no head flag). Tests that the `execution_payload_availability` lookup works for both epoch paths, not just current-epoch.
+  3. `gloas_availability_slot_wrapping_modular_index` — attestation at slot 64 with state at slot 65. Slot 64 % 64 = 0, so the availability lookup wraps to index 0 in the bitvector. Clears bit 0, verifies index=0 matches. Catches off-by-one bugs in the `slot.as_usize().safe_rem(slots_per_historical_root)` calculation at the exact wraparound boundary.
+  4. `gloas_same_slot_at_epoch_boundary` — same-slot attestation at slot 16 (first slot of epoch 2). Verifies same-slot detection works at epoch boundaries where `block_roots[slot]` and `block_roots[slot-1]` span different epochs. Also tests that index=1 is still rejected for same-slot attestations at epoch boundaries.
+  5. `gloas_historical_index_one_with_availability_false_no_head` — the critical ePBS "payload withheld" scenario: attester votes index=1 (claiming payload FULL) but `execution_payload_availability=false` (payload EMPTY). Verifies head flag is denied while source and target flags are still awarded. Tests the exact case where a builder withholds the payload and the PTC correctly votes EMPTY.
+- **Why these tests matter**: `get_attestation_participation_flag_indices` determines which participation flags each attestation earns — these flags drive validator rewards/penalties. The Gloas modification adds the `payload_matches` condition which gates the TIMELY_HEAD flag on whether the attester's view of payload availability matches the chain's record. A bug here silently misrewards validators: false-positives inflate head-flag rewards when payloads were withheld; false-negatives penalize honest attesters who correctly voted. Prior tests only covered current-epoch attestations at small slot numbers. These 5 tests exercise the previous-epoch path, slot wraparound arithmetic, epoch-boundary same-slot detection, and the specific ePBS payload-withheld scenario.
+- **Full test suite verification** — all passing:
+  - 422/422 state_processing tests (was 417, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 deposit frontrunning edge case tests (run 206)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 205
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
