@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — full test suite green, no new spec changes (run 146)
+- Checked consensus-specs PRs since run 145: no new Gloas spec changes merged
+  - #4947 and #4948 (both merged Feb 26) were already tracked in runs 142/145
+  - New open PR: #4950 (Extend by_root reqresp serve range to match by_range) — not yet merged, no action needed
+  - Open PRs unchanged: #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release, nightly vectors unchanged (Feb 26 build)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 337/337 state_processing tests
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+- **PR #4940 readiness check**: our fork choice test runner already supports `OnExecutionPayload` step (lines 368-371, 840-870 of fork_choice.rs test handler), `head_payload_status` check (lines 872-890), and `on_execution_payload` implementation (fork_choice.rs lines 1517-1559). Ready to run those test vectors when they merge.
+
 ### 2026-02-27 — nightly test vector update, anchor init fix, heze exclusion (run 145)
 - Updated to nightly spec test vectors (Feb 26 build)
 - New test vectors include:
