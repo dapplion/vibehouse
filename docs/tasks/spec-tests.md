@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — fix gossip envelope BLS bug + 3 integration tests (run 169)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+  - PR #4947 (pre-fork proposer_preferences subscription): vibehouse already compliant — `PRE_FORK_SUBSCRIBE_EPOCHS = 1` subscribes to all Gloas topics (including `proposer_preferences`) one epoch before fork activation
+  - PR #4940 (initial Gloas fork choice tests): our EF test runner already has `OnExecutionPayload` step and `head_payload_status` check — ready for when vectors are released
+- **Fixed real bug in `process_payload_envelope`**: was calling `process_execution_payload_envelope` with `VerifySignatures::True`, but the caller already holds a `VerifiedPayloadEnvelope` (gossip-verified). Self-build envelopes carry `Signature::empty()` and skip BLS during gossip verification per spec, but the redundant BLS re-verification in `process_payload_envelope` would reject them. In a live network, any self-build envelope received via gossip at another node would fail state transition. Fixed by changing to `VerifySignatures::False`.
+- **Added 3 Gloas beacon_chain integration tests** covering previously untested code paths:
+  1. `gloas_gossip_envelope_full_processing_pipeline` — full gossip pipeline: `verify_payload_envelope_for_gossip` → `apply_payload_envelope_to_fork_choice` → `process_payload_envelope`. Verifies state transition runs (latest_block_hash updated), envelope persisted to store, and state cache updated. This is the ONLY test that exercises `process_payload_envelope` through the gossip path.
+  2. `gloas_load_parent_empty_parent_unrevealed_payload` — imports block whose parent had payload unrevealed (parent EMPTY path in `load_parent`). Verifies no hash patching occurs and the block imports successfully, exercising the `child_bid.parent_block_hash != parent_bid_block_hash` branch.
+  3. `gloas_attestation_historical_slot_payload_revealed` — requests attestation for `request_slot < head_state.slot()` with `payload_revealed=true` on the historical block. Verifies `data.index == 1` (payload_present=true), exercising the historical-slot branch that checks `fc.get_block(&beacon_block_root).is_some_and(|block| block.payload_revealed)`.
+- Also fixed stale doc comment on `gloas_head_payload_status` field: said `1 = EMPTY, 2 = FULL` but actual values are `0 = EMPTY, 1 = FULL, 2 = PENDING` (matched PR #4948)
+- **Full test suite verification** — all passing:
+  - 592/592 beacon_chain tests (FORK_NAME=gloas, was 589, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — load_parent and range sync integration tests (run 168)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
