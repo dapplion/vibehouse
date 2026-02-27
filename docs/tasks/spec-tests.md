@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 gossip envelope EL error path + cross-epoch withdrawal tests (run 173)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 Gloas beacon_chain integration tests** covering previously untested gossip-path EL error handling and cross-epoch withdrawal computation:
+  1. `gloas_gossip_envelope_el_invalid_returns_error` — exercises `process_payload_envelope` (the gossip code path) when the EL returns `PayloadStatus::Invalid` for `newPayload`. Verifies the function returns an error, `payload_revealed` remains true (set before EL call), and the envelope is NOT persisted to the store. The self-build equivalent (`gloas_self_build_envelope_el_invalid_returns_error`) exists but uses a completely separate code path (beacon_chain.rs:3372 vs 2684). A bug in the gossip path would silently accept invalid execution payloads from builders.
+  2. `gloas_gossip_envelope_el_syncing_stays_optimistic` — exercises `process_payload_envelope` when the EL returns `PayloadStatus::Syncing`. Verifies the function succeeds (Syncing is non-fatal), the block remains Optimistic (not promoted to Valid), `payload_revealed` stays true, and the envelope IS persisted to the store. Covers the common scenario where the EL hasn't fully synced and can't validate the payload yet.
+  3. `gloas_cross_epoch_withdrawal_uses_advanced_state` — exercises the cross-epoch branch of `get_expected_withdrawals` (beacon_chain.rs:6049-6062). Builds chain to slot 6 (epoch 0) and requests withdrawals for slot 8 (epoch 1, start). This forces `partial_state_advance` to the proposal epoch, then calls `get_expected_withdrawals_gloas` on the advanced state. The same-epoch branch was already tested by `gloas_block_production_uses_gloas_withdrawals`, but the cross-epoch branch (which runs during proposer preparation for next-epoch slots) had zero coverage.
+- **Why these tests matter**: the gossip EL error handling in `process_payload_envelope` (lines 2652-2712) had zero test coverage. All existing tests for EL error responses targeted `process_self_build_envelope` (which takes a different code path). In a live network, gossip-received envelopes are the primary path — self-build envelopes are only used by the proposer's own node. A silent bug in the gossip path would affect all non-proposer nodes.
+- **Full test suite verification** — all passing:
+  - 604/604 beacon_chain tests (FORK_NAME=gloas, was 601, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 Gloas pool/fork-choice field behavior tests (run 172)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - PR #4950 (extend by_root serve range) updated today but still open, not merged
