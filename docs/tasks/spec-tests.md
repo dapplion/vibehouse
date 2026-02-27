@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 bid gossip validation tests (run 181)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 tests** covering previously untested execution bid gossip verification error paths in `gloas_verification.rs`:
+  1. `gloas_bid_gossip_rejects_inactive_builder` — exercises the `InactiveBuilder` error path (gloas_verification.rs:399-400). Creates a builder with `deposit_epoch=100` (far future) and balance=10 ETH. After 64 slots on minimal preset, `finalized_epoch` reaches ~8, which is far below `deposit_epoch=100`. The `is_active_at_finalized_epoch` check requires `deposit_epoch < finalized_epoch` AND `withdrawable_epoch == far_future_epoch`, so this builder fails the first condition. This guard prevents unfinalized builders from bidding — without it, a builder could register and immediately bid before the network confirms their deposit, enabling deposit-then-withdraw attacks where the builder wins a slot but withdraws before paying.
+  2. `gloas_bid_gossip_rejects_duplicate_bid` — exercises the `DuplicateBid` error path (gloas_verification.rs:424-425). Submits the same bid twice (identical `tree_hash_root`). The first submission records the bid root in the equivocation tracker (as `New` at check 3), then continues to later checks where it may fail. The second identical bid hits the `Duplicate` branch immediately. This is distinct from `BuilderEquivocation` (two *different* bids for the same slot) — a duplicate is simply ignored because the network has already seen it. Without this check, peers could re-propagate the same bid repeatedly, wasting bandwidth and processing.
+  3. `gloas_bid_gossip_rejects_invalid_parent_root` — exercises the `InvalidParentRoot` error path (gloas_verification.rs:442-446). Creates a valid bid then tampers with `parent_block_root` to a wrong value (`0xdead`). The parent root check ensures bids are anchored to the current fork choice head. Without it, builders could submit bids referencing stale or non-existent parent blocks — the proposer would select a bid that the rest of the network can't build upon, leading to orphaned blocks. This is critical during reorgs when bids for the old head must be rejected.
+- **Why these tests matter**: All three bid gossip validation paths (`InactiveBuilder`, `DuplicateBid`, `InvalidParentRoot`) had zero integration-level test coverage. `InactiveBuilder` is a deposit safety check (prevents unfinalized builders from bidding), `DuplicateBid` prevents gossip amplification attacks, and `InvalidParentRoot` prevents stale-parent bid acceptance during reorgs. A regression in any would compromise ePBS bid market integrity.
+- **Full test suite verification** — all passing:
+  - 628/628 beacon_chain tests (FORK_NAME=gloas, was 625, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 payload attestation gossip validation tests (run 180)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
