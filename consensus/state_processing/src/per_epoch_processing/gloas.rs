@@ -665,4 +665,61 @@ mod tests {
             2_000_000_000
         );
     }
+
+    #[test]
+    fn minimum_active_balance_has_low_quorum() {
+        // set_total_active_balance clamps to max(balance, effective_balance_increment).
+        // With minimum balance, quorum should be very small, allowing low-weight payments.
+        let (mut state, spec) = make_state_for_payments(vec![]);
+
+        // Set total active balance to minimum (effective_balance_increment)
+        let epoch = state.slot().epoch(E::slots_per_epoch());
+        state.set_total_active_balance(epoch, 0, &spec);
+
+        // Compute expected quorum with the clamped minimum
+        let min_balance = spec.effective_balance_increment;
+        let expected_quorum = quorum_for_balance(min_balance);
+
+        // Create a payment with weight at the computed quorum
+        let payment = make_payment(expected_quorum, 1_000_000_000, 0);
+        let (mut state, spec) = make_state_for_payments(vec![payment]);
+        state.set_total_active_balance(epoch, 0, &spec);
+
+        process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "payment at minimum quorum should be promoted"
+        );
+    }
+
+    #[test]
+    fn minimum_active_balance_below_quorum_not_promoted() {
+        // Verify that even with minimum active balance, payments below quorum are rejected.
+        let (mut state, spec) = make_state_for_payments(vec![]);
+
+        let epoch = state.slot().epoch(E::slots_per_epoch());
+        state.set_total_active_balance(epoch, 0, &spec);
+
+        let min_balance = spec.effective_balance_increment;
+        let expected_quorum = quorum_for_balance(min_balance);
+
+        // Payment weight just below quorum
+        if expected_quorum > 0 {
+            let payment = make_payment(expected_quorum - 1, 1_000_000_000, 0);
+            let (mut state, spec) = make_state_for_payments(vec![payment]);
+            state.set_total_active_balance(epoch, 0, &spec);
+
+            process_builder_pending_payments::<E>(&mut state, &spec).unwrap();
+
+            let gloas = state.as_gloas().unwrap();
+            assert_eq!(
+                gloas.builder_pending_withdrawals.len(),
+                0,
+                "payment below minimum quorum should not be promoted"
+            );
+        }
+    }
 }

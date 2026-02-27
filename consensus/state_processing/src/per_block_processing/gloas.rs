@@ -4184,4 +4184,123 @@ mod tests {
             "third builder withdrawal should have amount 3 ETH"
         );
     }
+
+    // ── WithdrawalBuilderIndexInvalid error path tests ──
+
+    #[test]
+    fn process_withdrawals_rejects_oob_builder_pending_withdrawal_index() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a builder pending withdrawal with builder_index = 99 (only 1 builder exists)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 99,
+            })
+            .unwrap();
+
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: 99,
+                    builders_count: 1,
+                })
+            ),
+            "should reject OOB builder_index: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_rejects_oob_builder_pending_withdrawal_index() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a builder pending withdrawal with OOB builder_index
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 99,
+            })
+            .unwrap();
+
+        let result = get_expected_withdrawals_gloas::<E>(&state, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: 99,
+                    builders_count: 1,
+                })
+            ),
+            "read-only path should also reject OOB builder_index: {:?}",
+            result
+        );
+    }
+
+    // ── Non-zero next_withdrawal_index consistency test ──
+
+    #[test]
+    fn get_expected_withdrawals_matches_process_with_nonzero_withdrawal_index() {
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set a non-zero starting withdrawal index to catch off-by-one bugs
+        *state.next_withdrawal_index_mut().unwrap() = 42;
+
+        // Make builder 0 exiting so we get builder sweep withdrawals
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Add a builder pending withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Compute expected (read-only)
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+        assert!(!expected.is_empty(), "should produce withdrawals");
+        assert_eq!(
+            expected[0].index, 42,
+            "first withdrawal should start at index 42"
+        );
+
+        // Process (mutating)
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let actual = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        assert_eq!(expected.len(), actual.len());
+        for (e, a) in expected.iter().zip(actual.iter()) {
+            assert_eq!(e.index, a.index, "withdrawal indices should match");
+            assert_eq!(
+                e.validator_index, a.validator_index,
+                "validator indices should match"
+            );
+            assert_eq!(e.address, a.address, "addresses should match");
+            assert_eq!(e.amount, a.amount, "amounts should match");
+        }
+    }
 }
