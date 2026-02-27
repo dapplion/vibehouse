@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 withdrawal processing phase interaction edge case tests (run 209)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 208
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+  - PR #4947 (pre-fork proposer_preferences subscription note) merged — documentation only, no code change needed
+  - PR #4941 (execution proof construction update) — eip8025 feature, not Gloas core
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- Reviewed `process_withdrawals_gloas` and `get_expected_withdrawals_gloas` coverage gaps:
+  - Existing tests: basic sweep, round-robin, reserved_limit blocking, combined phases, partial/validator interactions, zero balance skip, pending partial limits, consistency checks
+  - Gaps: max_withdrawals hit validator index update formula, builder sweep wrap with mixed eligibility, multi-builder index flag encoding, partials_limit reduction by prior builder pending withdrawals, consistency with builder sweep wrapping
+- **Added 5 tests** covering `process_withdrawals_gloas`/`get_expected_withdrawals_gloas` phase interaction edge cases:
+  1. `withdrawals_max_hit_updates_validator_index_from_last_withdrawal` — fills reserved_limit (3) with builder pending withdrawals, then validator 0 (fully withdrawable) fills the 4th slot hitting max_withdrawals exactly. Verifies the alternate `next_withdrawal_validator_index` update formula: `(last.validator_index + 1) % len` instead of `(current + max_sweep) % len`. A bug in the branch condition would use the wrong formula, causing the validator sweep to skip or repeat validators in subsequent blocks.
+  2. `withdrawals_builder_sweep_wrap_with_mixed_eligibility` — 3 builders: 0 (active, zero balance), 1 (exited, 7B balance), 2 (exited, zero balance). Sweep starts at index 2 → wraps 2→0→1. Only builder 1 is eligible (exited + balance > 0). Verifies the modular wraparound `(index + 1) % builders_count` correctly traverses the list when starting near the end, and that both "active" and "zero balance" conditions are correctly rejected.
+  3. `withdrawals_builder_pending_multiple_builders_index_encoding` — 3 builders (indices 0, 1, 2) each with a pending withdrawal. Verifies the `BUILDER_INDEX_FLAG | builder_index` encoding produces distinct, decodable values for each index. Also verifies fee_recipient address and amount are correctly preserved. Prior tests only used builder index 0; this catches encoding bugs where the flag OR operation fails for non-zero indices.
+  4. `withdrawals_partials_limit_reduced_by_prior_builder_pending` — 2 builder pending withdrawals (prior=2) + 3 pending partials. The `partials_limit = min(2+2, 3) = 3` formula means only 1 partial fits before hitting the limit. Verifies that phase 2 correctly respects the reduced capacity, that only 1 pending partial is removed from the queue (2 remain), and that phase 4 (validator sweep) can still produce additional withdrawals beyond the reserved_limit. Tests the subtle interaction where builder pending withdrawals reduce the budget available for pending partials.
+  5. `get_expected_withdrawals_matches_process_with_builder_sweep_wrap` — 3 builders (0: exited, 1: exited with balance, 2: active), sweep starts at index 2 (wraps), plus a builder pending withdrawal and a validator with excess balance. Runs `get_expected_withdrawals_gloas` (read-only) and `process_withdrawals_gloas` (mutating) on the same state, verifying they produce identical withdrawal lists. Tests the consistency guarantee across all 4 phases when builder sweep wrapping and multiple phases interact.
+- **Why these tests matter**: `process_withdrawals_gloas` orchestrates 4 interacting withdrawal phases (builder pending, partials, builder sweep, validator sweep), each with their own limits and selection criteria. The existing combined-phases test covers the basic 1-withdrawal-per-phase case but doesn't exercise the capacity exhaustion interactions: when builder pending fills the reserved_limit, the partials_limit formula changes; when total withdrawals hit max_withdrawals, the validator index update takes a different code path. The builder sweep wrap test exercises the modular arithmetic path through mixed eligibility states, and the multi-builder index test verifies the BUILDER_INDEX_FLAG encoding for the full range of builder indices.
+- **Full test suite verification** — all passing:
+  - 432/432 state_processing tests (was 427, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-28 — 5 builder pending payments epoch rotation edge case tests (run 208)
 - Checked test coverage gaps in `process_builder_pending_payments` (per_epoch_processing/gloas.rs)
   - Existing tests covered: empty/default, quorum threshold, mixed payments, rotation, multiple builders, double call, minimum balance
