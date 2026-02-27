@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 Gloas aggregate attestation gossip verification tests (run 200)
+- Added 5 new integration tests in `beacon_node/beacon_chain/tests/gloas.rs` for `verify_aggregated_attestation_for_gossip` Gloas-specific rejection/acceptance paths:
+  - `gloas_gossip_aggregate_index_two_rejected`: aggregate with data.index=2 rejected by verify_committee_index ([REJECT] index < 2)
+  - `gloas_gossip_aggregate_large_index_rejected`: aggregate with data.index=255 rejected (boundary check)
+  - `gloas_gossip_aggregate_same_slot_index_one_rejected`: same-slot aggregate with data.index=1 rejected (payload_present invalid for same-slot)
+  - `gloas_gossip_aggregate_same_slot_index_zero_accepted`: same-slot aggregate with data.index=0 accepted (valid case)
+  - `gloas_gossip_aggregate_non_same_slot_index_one_not_committee_rejected`: non-same-slot aggregate with data.index=1 passes Gloas checks (not rejected as CommitteeIndexNonZero)
+- Added `get_valid_aggregate` and `set_aggregate_data_index` test helpers for aggregate attestation testing
+- Previously ZERO integration tests for aggregate attestation gossip verification in Gloas mode; existing tests only covered unaggregated (SingleAttestation) path
+- All 309 Gloas beacon_chain tests pass, clippy clean
+
 ### 2026-02-27 — 5 withdrawal edge case tests (run 198)
 - Added 5 new unit tests in `consensus/state_processing/src/per_block_processing/gloas.rs` for `process_withdrawals_gloas` / `get_expected_withdrawals_gloas` edge cases:
   - `pending_partial_withdrawal_bls_credentials_rejected`: BLS (0x00) credential validator in pending partial withdrawal triggers NonExecutionAddressWithdrawalCredential error
