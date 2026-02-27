@@ -32,6 +32,7 @@ use fork_choice::{
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
 use std::time::Duration;
+use tree_hash::TreeHash;
 use types::*;
 
 const VALIDATOR_COUNT: usize = 32;
@@ -10819,5 +10820,150 @@ async fn gloas_payload_attestation_gossip_rejects_past_slot() {
         }
         Err(other) => panic!("expected PastSlot, got {:?}", other),
         Ok(_) => panic!("past-slot attestation should be rejected"),
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: InactiveBuilder
+// =============================================================================
+
+/// A bid from a builder whose deposit has not yet been finalized is rejected
+/// with `InactiveBuilder` at check 2 (gloas_verification.rs:399-400).
+///
+/// The `is_active_at_finalized_epoch` check requires `deposit_epoch < finalized_epoch`
+/// AND `withdrawable_epoch == far_future_epoch`. A builder with deposit_epoch=100
+/// will not satisfy `deposit_epoch < finalized_epoch` when finalized_epoch is ~8
+/// (after 64 slots on minimal preset). This prevents unfinalized builders from
+/// participating in the bid market — without this guard, a builder could register
+/// and immediately start bidding before the network has confirmed their deposit,
+/// enabling deposit-then-withdraw attacks where the builder bids, wins a slot,
+/// but withdraws the deposit before paying the proposer.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_inactive_builder() {
+    // Builder 0: deposit_epoch=100, balance=10 ETH
+    // deposit_epoch=100 means the builder won't be active until finalized_epoch > 100
+    let harness = gloas_harness_with_builders(&[(100, 10_000_000_000)]);
+    // Extend to finalize — finalized_epoch will be ~8, far below deposit_epoch=100
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Verify precondition: builder exists but is inactive
+    let builder = state
+        .builders()
+        .unwrap()
+        .get(0)
+        .expect("builder 0 should exist");
+    assert_eq!(builder.deposit_epoch, Epoch::new(100));
+    assert!(
+        !builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, &harness.spec),
+        "builder should be inactive (deposit_epoch={} >= finalized_epoch={})",
+        builder.deposit_epoch,
+        state.finalized_checkpoint().epoch
+    );
+
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    let err = assert_bid_rejected(&harness, bid, "inactive builder");
+    match err {
+        ExecutionBidError::InactiveBuilder { builder_index } => {
+            assert_eq!(builder_index, 0);
+        }
+        other => panic!("expected InactiveBuilder, got {:?}", other),
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: DuplicateBid
+// =============================================================================
+
+/// Submitting the exact same bid twice (same tree_hash_root) is rejected with
+/// `DuplicateBid` at check 3 (gloas_verification.rs:424-425).
+///
+/// This is distinct from `BuilderEquivocation` which fires when two *different*
+/// bids (different roots) are submitted for the same builder+slot. A duplicate
+/// bid (same root) is simply ignored — the network has already seen it, so
+/// re-propagating it would be wasteful. The equivocation tracker records the
+/// bid root on the first observation (even if later checks fail), so the second
+/// identical bid hits the `Duplicate` branch immediately.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_duplicate_bid() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Create a bid — both submissions use the exact same bid (same tree_hash_root).
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    let bid_root = bid.tree_hash_root();
+
+    // First submission: passes checks 1-3 (slot, payment, builder, balance,
+    // equivocation=New). May fail at later checks (parent root, prefs, signature)
+    // but the observation is recorded.
+    let _ = harness.chain.verify_execution_bid_for_gossip(bid);
+
+    // Second submission: same bid, same root → Duplicate at check 3.
+    let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    assert_eq!(
+        bid_2.tree_hash_root(),
+        bid_root,
+        "second bid should have same root as first"
+    );
+
+    let err = assert_bid_rejected(&harness, bid_2, "duplicate bid");
+    match err {
+        ExecutionBidError::DuplicateBid {
+            bid_root: rejected_root,
+        } => {
+            assert_eq!(rejected_root, bid_root);
+        }
+        other => panic!("expected DuplicateBid, got {:?}", other),
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: InvalidParentRoot
+// =============================================================================
+
+/// A bid with a parent_block_root that doesn't match the fork choice head is
+/// rejected with `InvalidParentRoot` at check 4 (gloas_verification.rs:442-446).
+///
+/// The parent root check ensures bids are anchored to the current chain head.
+/// Without this check, a builder could submit bids referencing stale or
+/// non-existent parent blocks, which would be impossible to build upon. The
+/// proposer would select a bid that references a parent the rest of the network
+/// doesn't recognize, leading to an orphaned block. This is particularly
+/// important during reorgs — bids for the old head must be rejected once the
+/// chain switches to a new head.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_invalid_parent_root() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Create a bid with the correct fields, then tamper with parent_block_root.
+    let mut bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    let wrong_root = Hash256::from_low_u64_be(0xdead);
+    bid.message.parent_block_root = wrong_root;
+
+    let err = assert_bid_rejected(&harness, bid, "invalid parent root");
+    match err {
+        ExecutionBidError::InvalidParentRoot { expected, received } => {
+            assert_eq!(expected, head_root);
+            assert_eq!(received, wrong_root);
+        }
+        other => panic!("expected InvalidParentRoot, got {:?}", other),
     }
 }
