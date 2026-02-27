@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 builder pending payments epoch rotation edge case tests (run 208)
+- Checked test coverage gaps in `process_builder_pending_payments` (per_epoch_processing/gloas.rs)
+  - Existing tests covered: empty/default, quorum threshold, mixed payments, rotation, multiple builders, double call, minimum balance
+  - Gaps: zero-amount promotions, full 16-slot consecutive processing, sparse rotation preservation, multi-builder cross-half interaction, extreme weight values
+- **Added 5 tests** covering `process_builder_pending_payments` edge cases:
+  1. `zero_amount_payment_above_quorum_still_promoted` — payment with weight >= quorum but amount=0 still produces a withdrawal. The spec promotes any payment meeting quorum regardless of amount; this verifies the function doesn't inadvertently filter out zero-amount payments.
+  2. `two_consecutive_calls_promote_all_16_slots` — both halves (16 slots) filled with qualifying payments. First call promotes first-half (8), rotates second-half to first. Second call promotes rotated payments (8). Verifies cumulative total is 16 withdrawals and amounts are in correct order. Tests the full 2-epoch sliding window lifecycle.
+  3. `rotation_preserves_sparse_second_half_pattern` — second half has payments only at indices 8, 10, 13 (sparse). After rotation, verifies the sparse pattern (filled at 0, 2, 5; empty at 1, 3, 4, 6, 7) is exactly preserved in the first half, and all second-half slots are cleared. Catches bugs where rotation logic incorrectly fills or skips sparse entries.
+  4. `multi_builder_cross_half_promotion_and_rotation` — builder 0 has qualifying payment in first half (slot 0, promoted immediately). Builder 1 has sub-quorum payment in first half (slot 3, not promoted) and qualifying payment in second half (slot 10). After first call only builder 0 is promoted. After rotation + second call, builder 1's rotated payment is promoted. Tests cross-builder interaction across the epoch boundary.
+  5. `max_weight_payment_promoted_without_overflow` — payment with u64::MAX weight. Verifies no arithmetic overflow in the `weight >= quorum` comparison and that extreme values are handled correctly.
+- **Full test suite verification** — all passing:
+  - 427/427 state_processing tests (was 422, +5 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-28 — 5 attestation participation flag Gloas edge case tests (run 207)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 206
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1), #4906 (more deposit request tests)
