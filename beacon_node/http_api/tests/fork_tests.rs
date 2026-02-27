@@ -1235,6 +1235,246 @@ async fn post_execution_payload_envelope_valid_self_build() {
     }
 }
 
+/// POST beacon/execution_payload_envelope with an unknown block root should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_unknown_block_root() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block so the chain is active
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    // Create an envelope referencing a block root that doesn't exist in fork choice
+    let mut envelope = types::SignedExecutionPayloadEnvelope::<E>::default();
+    envelope.message.beacon_block_root = Hash256::repeat_byte(0xde);
+    envelope.message.slot = Slot::new(1);
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&envelope)
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject envelope with unknown block root"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("BlockRootUnknown"),
+            "expected BlockRootUnknown error, got: {}",
+            msg.message
+        );
+    }
+}
+
+/// POST beacon/execution_payload_envelope with mismatched slot should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_slot_mismatch() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Get the real envelope and modify the slot
+    let mut envelope = harness
+        .chain
+        .get_payload_envelope(&head_root)
+        .unwrap()
+        .expect("self-build envelope should exist");
+
+    // Change the slot to a different value (slot mismatch with the block)
+    envelope.message.slot = Slot::new(99);
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&envelope)
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject envelope with mismatched slot"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("SlotMismatch"),
+            "expected SlotMismatch error, got: {}",
+            msg.message
+        );
+    }
+}
+
+/// POST beacon/execution_payload_envelope with wrong builder_index should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_builder_index_mismatch() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let mut envelope = harness
+        .chain
+        .get_payload_envelope(&head_root)
+        .unwrap()
+        .expect("self-build envelope should exist");
+
+    // Change builder_index to something different from the committed bid
+    envelope.message.builder_index = 42;
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&envelope)
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject envelope with wrong builder index"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("BuilderIndexMismatch"),
+            "expected BuilderIndexMismatch error, got: {}",
+            msg.message
+        );
+    }
+}
+
+/// POST beacon/execution_payload_envelope with wrong block_hash should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_block_hash_mismatch() {
+    use types::ExecutionBlockHash;
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let mut envelope = harness
+        .chain
+        .get_payload_envelope(&head_root)
+        .unwrap()
+        .expect("self-build envelope should exist");
+
+    // Change the payload block_hash to something different from the committed bid
+    envelope.message.payload.block_hash = ExecutionBlockHash::repeat_byte(0xba);
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&envelope)
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject envelope with wrong block hash"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("BlockHashMismatch"),
+            "expected BlockHashMismatch error, got: {}",
+            msg.message
+        );
+    }
+}
+
+/// GET validator/payload_attestation_data for past slot returns correct data.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn payload_attestation_data_past_slot() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce two blocks
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    let (_, mut state_after_1) = harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let state_root_1 = state_after_1.canonical_root().unwrap();
+    harness
+        .add_attested_block_at_slot(Slot::new(2), state_after_1, state_root_1, &all_validators)
+        .await
+        .unwrap();
+
+    // Query for slot 1 (past slot, head is now at slot 2)
+    let response = client
+        .get_validator_payload_attestation_data(Slot::new(1))
+        .await
+        .expect("should return payload attestation data for past slot");
+
+    let data = response.data;
+    assert_eq!(data.slot, Slot::new(1), "slot should match requested slot");
+    // Slot 1 had a self-build envelope processed, so payload should be present
+    assert!(
+        data.payload_present,
+        "past slot with processed envelope should have payload_present=true"
+    );
+}
+
 /// GET validator/payload_attestation_data pre-Gloas returns payload_present=false.
 /// The endpoint works regardless of fork, but pre-Gloas blocks have no payload revealed.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

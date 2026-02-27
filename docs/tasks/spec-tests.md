@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — all tests green, POST envelope error path tests (run 149)
+- Checked consensus-specs PRs since run 148: no new Gloas spec changes merged
+  - No new merged PRs since #4947/#4948 (both Feb 26)
+  - Open PRs unchanged: #4950, #4944, #4940, #4939, #4932, #4926, #4906, #4902, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2 remains latest release, nightly vectors unchanged (Feb 26 build)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 337/337 state_processing tests
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+  - 222/222 http_api tests (FORK_NAME=fulu)
+- **New HTTP API tests**: 5 new tests for POST execution_payload_envelope error paths and payload attestation data:
+  - Envelope with unknown block root returns 400 (BlockRootUnknown)
+  - Envelope with slot mismatch returns 400 (SlotMismatch)
+  - Envelope with wrong builder_index returns 400 (BuilderIndexMismatch)
+  - Envelope with wrong block_hash returns 400 (BlockHashMismatch)
+  - Payload attestation data for past slot returns correct payload_present=true
+
 ### 2026-02-27 — all tests green, no new spec changes (run 148)
 - Checked consensus-specs PRs since run 147: no new Gloas spec changes merged
   - No new merged PRs since #4947/#4948 (both Feb 26)
