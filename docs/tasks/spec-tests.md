@@ -28,6 +28,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — all tests green, fork choice spec audit (run 151)
+- Checked consensus-specs PRs since run 150: no new Gloas spec changes merged
+  - No new merged PRs since #4947/#4948 (both Feb 26)
+  - Open PRs unchanged
+- Spec test version: v1.7.0-alpha.2, nightly vectors unchanged (Feb 26 build)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 337/337 state_processing tests
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+- **Spec compliance audit: Gloas fork choice functions** — all 7 core functions verified:
+  1. `on_execution_payload`: marks node as payload_revealed, envelope_received, data_available ✓
+  2. `get_head` / `find_head_gloas`: iterates with (weight, root, tiebreaker) tuple ordering ✓
+  3. `get_node_children` / `get_gloas_children`: PENDING→[EMPTY,FULL?], EMPTY/FULL→[PENDING children] ✓
+  4. `get_payload_status_tiebreaker`: previous-slot dispatch (EMPTY→1, FULL→2/0 via should_extend) ✓
+  5. `should_extend_payload`: timely+available || no boost || parent not this root || parent full ✓
+  6. `is_supporting_vote` / `is_supporting_vote_gloas`: same-root and ancestor cases with payload_present ✓
+  7. `get_weight` / `get_gloas_weight`: zero weight for non-pending previous-slot, attestation+boost scoring ✓
+  - Notable: `is_supporting_vote_gloas` uses `slot == block.slot` instead of spec's `slot <= block.slot`, but this is correct because `vote.slot >= block.slot` is always true (enforced by debug_assert)
+
 ### 2026-02-27 — all tests green, spec compliance audit (run 150)
 - Checked consensus-specs PRs since run 149: no new Gloas spec changes merged
   - No new merged PRs since #4947/#4948 (both Feb 26)
