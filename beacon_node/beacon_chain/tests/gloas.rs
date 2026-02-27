@@ -10,6 +10,7 @@
 //! - The chain finalizes across the fork boundary
 //! - Gloas-specific state fields are initialized correctly after upgrade
 
+use beacon_chain::AttestationError;
 use beacon_chain::AvailabilityProcessingStatus;
 use beacon_chain::BeaconChainError;
 use beacon_chain::BlockError;
@@ -22,8 +23,8 @@ use beacon_chain::gloas_verification::{
     ExecutionBidError, PayloadAttestationError, PayloadEnvelopeError,
 };
 use beacon_chain::test_utils::{
-    BeaconChainHarness, DEFAULT_ETH1_BLOCK_HASH, EphemeralHarnessType, HARNESS_GENESIS_TIME,
-    InteropGenesisBuilder,
+    AttestationStrategy, BeaconChainHarness, DEFAULT_ETH1_BLOCK_HASH, EphemeralHarnessType,
+    HARNESS_GENESIS_TIME, InteropGenesisBuilder,
 };
 use execution_layer::test_utils::generate_genesis_header;
 use fork_choice::{
@@ -12156,4 +12157,203 @@ async fn gloas_multi_epoch_latest_block_hash_consistency() {
             "recent block's bid.block_hash should be non-zero"
         );
     }
+}
+
+// ── Gloas attestation gossip verification tests ──
+//
+// These tests exercise the Gloas-specific gossip validation checks in
+// `IndexedUnaggregatedAttestation::verify_early_checks`:
+//   - [REJECT] attestation.data.index < 2 (index bounds check)
+//   - [REJECT] attestation.data.index == 0 if block.slot == attestation.data.slot (same-slot)
+//
+// Previously, there were ZERO integration tests for these gossip rejection paths.
+// The existing tests in gloas.rs only test attestation *production* (correct index values),
+// not gossip *verification* (rejection of invalid incoming attestations).
+
+/// Helper: produce a valid SingleAttestation from the harness and return it with its subnet_id.
+fn get_valid_single_attestation(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+) -> (SingleAttestation, SubnetId) {
+    let head = harness.chain.head_snapshot();
+    let attestations = harness.get_single_attestations(
+        &AttestationStrategy::AllValidators,
+        &head.beacon_state,
+        head.beacon_state_root(),
+        head.beacon_block_root,
+        head.beacon_block.slot(),
+    );
+    // Take the first valid attestation from the first committee
+    attestations
+        .into_iter()
+        .flatten()
+        .next()
+        .expect("should produce at least one attestation")
+}
+
+/// Gloas gossip: unaggregated attestation with data.index >= 2 is rejected.
+/// This tests the `[REJECT] attestation.data.index < 2` check.
+#[tokio::test]
+async fn gloas_gossip_unaggregated_index_two_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let (mut attestation, subnet_id) = get_valid_single_attestation(&harness);
+    // Tamper: set index to 2 (invalid in Gloas — only 0 and 1 allowed)
+    attestation.data.index = 2;
+
+    let err = harness
+        .chain
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
+        .err()
+        .expect("attestation with index=2 should be rejected");
+
+    assert!(
+        matches!(err, AttestationError::CommitteeIndexNonZero(2)),
+        "expected CommitteeIndexNonZero(2), got {:?}",
+        err
+    );
+}
+
+/// Gloas gossip: unaggregated attestation with data.index = 255 is rejected.
+/// Boundary test for the `[REJECT] attestation.data.index < 2` check with a large value.
+#[tokio::test]
+async fn gloas_gossip_unaggregated_large_index_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let (mut attestation, subnet_id) = get_valid_single_attestation(&harness);
+    // Tamper: set index to 255 (well above the max valid index of 1)
+    attestation.data.index = 255;
+
+    let err = harness
+        .chain
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
+        .err()
+        .expect("attestation with index=255 should be rejected");
+
+    assert!(
+        matches!(err, AttestationError::CommitteeIndexNonZero(255)),
+        "expected CommitteeIndexNonZero(255), got {:?}",
+        err
+    );
+}
+
+/// Gloas gossip: same-slot unaggregated attestation with data.index = 1 is rejected.
+/// Per the spec, same-slot attestations MUST have index=0 (payload_present=false)
+/// because the envelope hasn't been seen yet at the same slot.
+#[tokio::test]
+async fn gloas_gossip_unaggregated_same_slot_index_one_rejected() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let (mut attestation, subnet_id) = get_valid_single_attestation(&harness);
+
+    // Verify this is a same-slot attestation (attestation.data.slot == head block slot)
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        attestation.data.slot,
+        head.beacon_block.slot(),
+        "pre-condition: attestation should be same-slot as head block"
+    );
+
+    // Tamper: set index to 1 (payload_present=true, invalid for same-slot)
+    attestation.data.index = 1;
+
+    let err = harness
+        .chain
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
+        .err()
+        .expect("same-slot attestation with index=1 should be rejected");
+
+    assert!(
+        matches!(err, AttestationError::CommitteeIndexNonZero(1)),
+        "expected CommitteeIndexNonZero(1), got {:?}",
+        err
+    );
+}
+
+/// Gloas gossip: same-slot unaggregated attestation with data.index = 0 is accepted.
+/// This is the valid case — same-slot attestations always have payload_present=false.
+/// We extend using SomeValidators(vec![]) so no attestations are included in blocks,
+/// ensuring the gossip check won't reject as PriorAttestationKnown.
+#[tokio::test]
+async fn gloas_gossip_unaggregated_same_slot_index_zero_accepted() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend without including attestations so validators are fresh for gossip
+    Box::pin(harness.extend_slots_some_validators(3, vec![])).await;
+
+    let (attestation, subnet_id) = get_valid_single_attestation(&harness);
+
+    // Verify this is a same-slot attestation with index=0 (produced correctly)
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        attestation.data.slot,
+        head.beacon_block.slot(),
+        "pre-condition: attestation should be same-slot as head block"
+    );
+    assert_eq!(
+        attestation.data.index, 0,
+        "pre-condition: same-slot attestation should have index=0"
+    );
+
+    harness
+        .chain
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
+        .expect("same-slot attestation with index=0 should be accepted");
+}
+
+/// Gloas gossip: non-same-slot unaggregated attestation with data.index = 1 is accepted.
+/// When the attestation is for a later slot than the head block, index=1
+/// (payload_present=true) is valid in Gloas. We re-sign the attestation after
+/// changing the index to produce a valid signature.
+/// We extend without attestations to avoid PriorAttestationKnown duplicates.
+#[tokio::test]
+async fn gloas_gossip_unaggregated_non_same_slot_index_one_accepted() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend without including attestations so validators are fresh for gossip
+    Box::pin(harness.extend_slots_some_validators(3, vec![])).await;
+
+    // Advance slot clock to create a skip slot (attestation slot > head block slot)
+    harness.advance_slot();
+
+    let head = harness.chain.head_snapshot();
+    let attest_slot = head.beacon_block.slot() + 1;
+
+    // Produce attestations for the skip slot (non-same-slot)
+    let attestations = harness.get_single_attestations(
+        &AttestationStrategy::AllValidators,
+        &head.beacon_state,
+        head.beacon_state_root(),
+        head.beacon_block_root,
+        attest_slot,
+    );
+
+    let (mut attestation, subnet_id) = attestations
+        .into_iter()
+        .flatten()
+        .next()
+        .expect("should produce attestation for skip slot");
+
+    // Change index to 1 (payload_present=true) and re-sign
+    attestation.data.index = 1;
+    let validator_index = attestation.attester_index as usize;
+    let fork = harness
+        .chain
+        .spec
+        .fork_at_epoch(attestation.data.target.epoch);
+    let domain = harness.chain.spec.get_domain(
+        attestation.data.target.epoch,
+        Domain::BeaconAttester,
+        &fork,
+        head.beacon_state.genesis_validators_root(),
+    );
+    let message = attestation.data.signing_root(domain);
+    let mut agg_sig = AggregateSignature::infinity();
+    agg_sig.add_assign(&harness.validator_keypairs[validator_index].sk.sign(message));
+    attestation.signature = agg_sig;
+
+    harness
+        .chain
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
+        .expect("non-same-slot attestation with index=1 should be accepted");
 }
