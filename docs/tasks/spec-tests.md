@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — all tests green, no new spec changes (run 148)
+- Checked consensus-specs PRs since run 147: no new Gloas spec changes merged
+  - No new merged PRs since #4947/#4948 (both Feb 26)
+  - Open PRs unchanged: #4940 (fork choice tests), #4939 (index-1 attestation envelope request), #4932 (sanity/blocks tests), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 SSZ), #4926 (SLOT_DURATION_MS), #4898 (remove pending from tiebreaker)
+- Spec test version: v1.7.0-alpha.2 remains latest release, nightly vectors unchanged (Feb 26 build)
+- Clippy clean (beacon_chain, no warnings)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 193/193 fork_choice + proto_array tests
+  - 337/337 state_processing tests
+  - 576/576 beacon_chain tests (FORK_NAME=gloas)
+
 ### 2026-02-27 — all tests green, dead code cleanup, proposer_preferences HTTP tests (run 147)
 - Checked consensus-specs PRs since run 146: no new Gloas spec changes merged
   - No new merged PRs affecting Gloas since #4947/#4948 (both Feb 26)
