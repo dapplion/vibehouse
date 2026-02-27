@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — envelope edge case integration tests (run 166)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - PR #4843 (Variable PTC deadline) still open — approved but not yet merged
+- **Added 3 Gloas beacon_chain integration tests** for envelope processing edge cases:
+  1. `gloas_self_build_envelope_non_head_block_leaves_head_unchanged` — exercises the `try_update_head_state` no-op path (envelope for a fork block that isn't the canonical head)
+  2. `gloas_process_pending_envelope_reverify_failure_drains_buffer` — re-verification fails with SlotMismatch (corrupted envelope), buffer still drained
+  3. `gloas_process_pending_envelope_unknown_root_drains_buffer` — re-verification fails with BlockRootUnknown, buffer still drained
+- These tests cover previously untested defensive code paths in `try_update_head_state` (no-op branch) and `process_pending_envelope` (failure + cleanup paths)
+- **Full test suite verification** — all passing:
+  - 586/586 beacon_chain tests (FORK_NAME=gloas)
+  - Clippy clean
+
 ### 2026-02-27 — SSZ response support for Gloas HTTP API endpoints (run 165)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

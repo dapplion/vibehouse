@@ -7671,6 +7671,198 @@ async fn gloas_two_forks_head_resolves_with_attestation_weight() {
     );
 }
 
+/// When process_self_build_envelope is called for a block that is NOT the current
+/// canonical head, try_update_head_state should be a no-op — the head snapshot
+/// must remain unchanged. This tests the else-branch (mismatch) of
+/// try_update_head_state which silently does nothing.
+#[tokio::test]
+async fn gloas_self_build_envelope_non_head_block_leaves_head_unchanged() {
+    let harness = gloas_harness_at_epoch(0);
+    // Build 3 blocks with envelopes (extend_slots handles everything)
+    Box::pin(harness.extend_slots(3)).await;
+
+    // Record the current head — this is the canonical chain tip
+    let head_before = harness.chain.head_snapshot();
+    let head_root_before = head_before.beacon_block_root;
+    let head_latest_block_hash = *head_before
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+
+    // Create a fork block from an earlier state (slot 2, skipping slot 4 for the fork)
+    let fork_state = harness
+        .chain
+        .state_at_slot(Slot::new(2), beacon_chain::StateSkipConfig::WithStateRoots)
+        .expect("should get state at slot 2");
+
+    // Make a fork block at slot 5 (skipping slot 3/4 from the fork point)
+    let fork_slot = Slot::new(5);
+    harness.advance_slot(); // advance to slot 5
+    let (fork_block_contents, _fork_state, fork_envelope) = harness
+        .make_block_with_envelope(fork_state, fork_slot)
+        .await;
+
+    let fork_envelope = fork_envelope.expect("fork block should have envelope");
+    let fork_block_root = fork_block_contents.0.canonical_root();
+
+    // Import the fork block (no attestations, so it won't become head)
+    harness
+        .process_block(fork_slot, fork_block_root, fork_block_contents)
+        .await
+        .expect("fork block import should succeed");
+
+    // Verify the head is still the original chain tip (the fork block has no attestations)
+    let head_after_fork = harness.chain.head_snapshot();
+    assert_eq!(
+        head_after_fork.beacon_block_root, head_root_before,
+        "head should still be the original chain tip, not the fork block"
+    );
+
+    // Process self-build envelope for the NON-head fork block.
+    // This calls try_update_head_state(fork_block_root, state) which should be a no-op
+    // because fork_block_root != head_block_root.
+    harness
+        .chain
+        .process_self_build_envelope(&fork_envelope)
+        .await
+        .expect("should process self-build envelope for fork block");
+
+    // The head snapshot should be completely unchanged — try_update_head_state was a no-op
+    let head_after_envelope = harness.chain.head_snapshot();
+    assert_eq!(
+        head_after_envelope.beacon_block_root, head_root_before,
+        "head block root should be unchanged after processing non-head envelope"
+    );
+    let head_latest_after = *head_after_envelope
+        .beacon_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        head_latest_after, head_latest_block_hash,
+        "head state's latest_block_hash should be unchanged (try_update_head_state was no-op)"
+    );
+
+    // But the fork block's envelope should still be persisted to store
+    let stored = harness
+        .chain
+        .get_payload_envelope(&fork_block_root)
+        .unwrap()
+        .expect("fork block envelope should be in store");
+    assert_eq!(stored.message.slot, fork_slot);
+}
+
+/// process_pending_envelope should drain the buffer even when re-verification
+/// fails. When the buffered envelope has a slot that doesn't match the block's
+/// actual slot (simulating corruption or a malicious peer), the re-verification
+/// returns SlotMismatch and the envelope is discarded — but the buffer entry
+/// is always removed to prevent unbounded growth.
+#[tokio::test]
+async fn gloas_process_pending_envelope_reverify_failure_drains_buffer() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let mut bad_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Corrupt the envelope's slot so re-verification fails with SlotMismatch
+    bad_envelope.message.slot = Slot::new(999);
+
+    // Import the block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Buffer the corrupted envelope
+    harness
+        .chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(block_root, Arc::new(bad_envelope));
+
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_some(),
+        "pre-condition: envelope is buffered"
+    );
+
+    // process_pending_envelope: re-verification fails (SlotMismatch), but buffer is drained
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Buffer should be drained regardless of verification failure
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "buffer should be empty even after re-verification failure"
+    );
+
+    // Fork choice: payload should NOT be revealed (re-verification failed before
+    // apply_payload_envelope_to_fork_choice was called)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc.get_block(&block_root).unwrap();
+    assert!(
+        !proto_block.payload_revealed,
+        "payload_revealed should be false (envelope failed re-verification)"
+    );
+}
+
+/// process_pending_envelope should drain the buffer when the block root is
+/// unknown in fork choice. This covers the case where a block was pruned
+/// (e.g., finalized) between buffering and processing — the envelope should
+/// be discarded, not left in the buffer.
+#[tokio::test]
+async fn gloas_process_pending_envelope_unknown_root_drains_buffer() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    harness.advance_slot();
+    let (_block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let envelope = envelope.expect("should have envelope");
+    // Use a random block_root that is NOT in fork choice
+    let unknown_root = Hash256::repeat_byte(0xDE);
+
+    // Buffer the envelope under the unknown root
+    harness
+        .chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(unknown_root, Arc::new(envelope));
+
+    // process_pending_envelope: re-verification fails (BlockRootUnknown), buffer is drained
+    harness.chain.process_pending_envelope(unknown_root).await;
+
+    // Buffer should be drained
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&unknown_root)
+            .is_none(),
+        "buffer should be empty after processing with unknown root"
+    );
+}
+
 /// Verify that execution_payload_availability bits correctly track payload status
 /// across multiple epochs. The flow per slot is:
 /// 1. per_slot_processing: advances state.slot → N, clears bit at index N
