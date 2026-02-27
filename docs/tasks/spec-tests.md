@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 state processing error path tests (run 184)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering previously untested error paths in `per_block_processing/gloas.rs`:
+  1. `builder_bid_pubkey_decompression_failure_with_verify_signatures` — exercises the pubkey decompression error path (gloas.rs:115-118) in `process_execution_payload_bid` when `VerifySignatures::True` is used. The default `make_gloas_state` creates builders with `PublicKeyBytes::empty()` (all zeros), which is not a valid compressed BLS12-381 point. When signature verification is requested, `decompress()` fails before reaching the BLS verify step, returning `PayloadBidInvalid { reason: "failed to decompress" }`. All prior builder bid tests used `VerifySignatures::False`, so this path was never hit. Without this guard, a corrupted builder pubkey in the state registry would cause an unhandled error during block processing.
+  2. `withdrawal_rejects_invalid_builder_index_in_pending` — exercises the `WithdrawalBuilderIndexInvalid` error path (gloas.rs:507-511) in `process_withdrawals_gloas`. Inserts a `builder_pending_withdrawal` entry with `builder_index=99` when only 1 builder exists (index 0). The withdrawal processing attempts to look up builder 99, which is beyond the builders list length, and correctly returns the error rather than panicking on an OOB access. This guard prevents state corruption where a pending withdrawal references a builder that was removed or never existed.
+  3. `withdrawal_rejects_stale_builder_sweep_index` — exercises the `WithdrawalBuilderIndexInvalid` error path (gloas.rs:593-598) in the builder sweep phase of `process_withdrawals_gloas`. Sets `next_withdrawal_builder_index=5` when only 1 builder exists. This can occur if builders are removed from the registry while the sweep index is stale. The check prevents the sweep loop from starting at an invalid index, which would cause OOB access on every iteration.
+  4. `get_expected_withdrawals_rejects_invalid_builder_index` — exercises the same invalid builder index check (gloas.rs:802-807) in the read-only `get_expected_withdrawals_gloas` function. Verifies that the read-only computation path mirrors `process_withdrawals_gloas` behavior — both must reject invalid builder indices identically, otherwise the EL would receive a withdrawal list that the CL cannot actually process.
+  5. `get_expected_withdrawals_rejects_stale_builder_sweep_index` — exercises the stale sweep index check (gloas.rs:881-886) in the read-only function. Same invariant as test 3 but for the read-only path. Ensures that payload attributes sent to the EL via `get_expected_withdrawals_gloas` will fail-fast on stale indices rather than producing incorrect withdrawal lists.
+- **Why these tests matter**: The pubkey decompression path was the ONLY untested `VerifySignatures::True` code path in `process_execution_payload_bid` — all 17 prior builder bid unit tests used `VerifySignatures::False`. The four withdrawal error paths (`WithdrawalBuilderIndexInvalid` in pending + sweep, for both mutable and read-only functions) had zero test coverage despite being safety guards against state corruption. These guards prevent OOB panics when `builder_pending_withdrawals` or `next_withdrawal_builder_index` reference builders that no longer exist in the registry. A regression in the read-only `get_expected_withdrawals_gloas` would be especially dangerous — the EL would receive withdrawal lists that the CL would later reject during block processing, causing the block to fail validation.
+- **Full test suite verification** — all passing:
+  - 347/347 state_processing tests (was 342, +5 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 5 fork choice Gloas unit tests (run 183)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
