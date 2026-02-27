@@ -1830,4 +1830,308 @@ mod tests {
             result,
         );
     }
+
+    // ── Error value verification tests ─────────────────────────
+
+    #[test]
+    fn slot_mismatch_reports_correct_values() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        let bad_slot = Slot::new(999);
+        envelope.message.slot = bad_slot;
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        match result {
+            Err(EnvelopeProcessingError::SlotMismatch {
+                envelope_slot,
+                parent_state_slot,
+            }) => {
+                assert_eq!(
+                    envelope_slot, bad_slot,
+                    "error should report the envelope's slot"
+                );
+                assert_eq!(
+                    parent_state_slot,
+                    state.slot(),
+                    "error should report the state's slot"
+                );
+            }
+            other => panic!(
+                "expected SlotMismatch with correct values, got: {:?}",
+                other
+            ),
+        }
+    }
+
+    #[test]
+    fn latest_block_header_mismatch_reports_correct_values() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        let bad_root = Hash256::repeat_byte(0xDE);
+        envelope.message.beacon_block_root = bad_root;
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        match result {
+            Err(EnvelopeProcessingError::LatestBlockHeaderMismatch {
+                envelope_root,
+                block_header_root,
+            }) => {
+                assert_eq!(
+                    envelope_root, bad_root,
+                    "error should report the envelope's beacon_block_root"
+                );
+                // The block_header_root should be the tree_hash of the latest block header
+                // (after state_root filling since it was zero)
+                assert_ne!(
+                    block_header_root,
+                    Hash256::zero(),
+                    "block_header_root should be non-zero (header was filled)"
+                );
+                assert_ne!(
+                    block_header_root, bad_root,
+                    "block_header_root should differ from the bad root"
+                );
+            }
+            other => panic!(
+                "expected LatestBlockHeaderMismatch with correct values, got: {:?}",
+                other
+            ),
+        }
+    }
+
+    #[test]
+    fn timestamp_mismatch_reports_spec_computed_value() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut envelope = make_valid_envelope(&state);
+        let bad_timestamp = 12345u64;
+        envelope.message.payload.timestamp = bad_timestamp;
+
+        // Compute the expected spec-derived timestamp
+        let expected_timestamp = compute_timestamp_at_slot(&state, state.slot(), &spec).unwrap();
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        match result {
+            Err(EnvelopeProcessingError::TimestampMismatch {
+                state: state_ts,
+                envelope: envelope_ts,
+            }) => {
+                assert_eq!(
+                    state_ts, expected_timestamp,
+                    "error should report the spec-computed timestamp"
+                );
+                assert_eq!(
+                    envelope_ts, bad_timestamp,
+                    "error should report the envelope's timestamp"
+                );
+            }
+            other => panic!(
+                "expected TimestampMismatch with correct values, got: {:?}",
+                other
+            ),
+        }
+    }
+
+    // ── Payment index boundary tests ────────────────────────────
+
+    #[test]
+    fn envelope_at_last_slot_of_epoch_uses_correct_payment_index() {
+        // Test at the last slot of epoch 1 (slot 15 for minimal with 8 slots/epoch)
+        // payment_index = slots_per_epoch + (slot % slots_per_epoch) = 8 + 7 = 15
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Move state to the last slot of epoch 1 (slot 15)
+        let last_slot = Slot::new(E::slots_per_epoch().saturating_mul(2).saturating_sub(1));
+        state.as_gloas_mut().unwrap().slot = last_slot;
+        state.as_gloas_mut().unwrap().latest_block_header.slot = last_slot.saturating_sub(1u64);
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .slot = last_slot;
+
+        // Set up a pending payment at the expected index (15)
+        let slots_per_epoch = E::slots_per_epoch();
+        let expected_index = (slots_per_epoch + last_slot.as_u64() % slots_per_epoch) as usize;
+        assert_eq!(
+            expected_index, 15,
+            "sanity: payment index for slot 15 should be 15"
+        );
+
+        let payment = BuilderPendingPayment {
+            weight: 50,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xEE),
+                amount: 9_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(expected_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment at index 15 should be cleared
+        let cleared = state
+            .builder_pending_payments()
+            .unwrap()
+            .get(expected_index)
+            .unwrap()
+            .clone();
+        assert_eq!(
+            cleared,
+            BuilderPendingPayment::default(),
+            "payment at last-slot-of-epoch index should be cleared"
+        );
+
+        // Withdrawal should be queued
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(withdrawals.len(), 1);
+        assert_eq!(withdrawals.get(0).unwrap().amount, 9_000_000_000);
+    }
+
+    #[test]
+    fn all_state_mutations_applied_together() {
+        // Verify that a single valid envelope processing applies all mutations:
+        // 1. latest_block_hash updated
+        // 2. availability bit set
+        // 3. pending payment cleared and moved to withdrawals
+        // 4. latest_block_header state_root filled
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Clear availability bit for this slot
+        let slot = state.slot();
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let avail_index = slot.as_usize() % slots_per_hist;
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(avail_index, false)
+            .unwrap();
+
+        // Set up a pending payment
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+        let payment = BuilderPendingPayment {
+            weight: 42,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xF0),
+                amount: 2_500_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        // Capture pre-processing state
+        let old_block_hash = *state.latest_block_hash().unwrap();
+        assert_eq!(
+            state.latest_block_header().state_root,
+            Hash256::default(),
+            "sanity: header state_root should be zero"
+        );
+        assert!(
+            !state
+                .execution_payload_availability()
+                .unwrap()
+                .get(avail_index)
+                .unwrap(),
+            "sanity: availability bit should be cleared"
+        );
+        assert!(
+            state.builder_pending_withdrawals().unwrap().is_empty(),
+            "sanity: no pending withdrawals"
+        );
+
+        let mut envelope = make_valid_envelope(&state);
+        let expected_block_hash = envelope.message.payload.block_hash;
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // 1. latest_block_hash updated
+        assert_eq!(
+            *state.latest_block_hash().unwrap(),
+            expected_block_hash,
+            "latest_block_hash should be updated"
+        );
+        assert_ne!(
+            *state.latest_block_hash().unwrap(),
+            old_block_hash,
+            "latest_block_hash should differ from old value"
+        );
+
+        // 2. availability bit set
+        assert!(
+            state
+                .execution_payload_availability()
+                .unwrap()
+                .get(avail_index)
+                .unwrap(),
+            "availability bit should be set"
+        );
+
+        // 3. pending payment cleared and withdrawal queued
+        let cleared = state
+            .builder_pending_payments()
+            .unwrap()
+            .get(payment_index)
+            .unwrap()
+            .clone();
+        assert_eq!(cleared, BuilderPendingPayment::default());
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(withdrawals.len(), 1);
+        assert_eq!(withdrawals.get(0).unwrap().amount, 2_500_000_000);
+        assert_eq!(
+            withdrawals.get(0).unwrap().fee_recipient,
+            Address::repeat_byte(0xF0)
+        );
+
+        // 4. header state_root filled
+        assert_ne!(
+            state.latest_block_header().state_root,
+            Hash256::default(),
+            "header state_root should be filled"
+        );
+    }
 }
