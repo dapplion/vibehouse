@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — SSZ response support for Gloas HTTP API endpoints (run 165)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - Nightly vectors unchanged (commit a21e27dd, same since Feb 24)
+  - Notable: PR #4843 (Variable PTC deadline) is approved — renames `payload_present` → `payload_timely`, adds `MIN_PAYLOAD_DUE_BPS` config, adds `get_payload_due_ms` helper. Not yet merged.
+- **Added SSZ response support to 3 Gloas/Fulu HTTP API endpoints** (issue #8892):
+  1. `GET beacon/execution_payload_envelope/{block_id}` — now accepts `Accept: application/octet-stream`
+  2. `GET beacon/states/{state_id}/proposer_lookahead` — now accepts SSZ
+  3. `GET validator/payload_attestation_data` — switched from `blocking_json_task` to `blocking_response_task` with SSZ branch
+- These endpoints previously only returned JSON; now they follow the same pattern as other SSZ-enabled endpoints (pending_deposits, attestation_data, aggregate_attestation, etc.)
+- Note: issue #8892 listed several endpoints as missing SSZ support, but pending_deposits, pending_partial_withdrawals, pending_consolidations, aggregate_attestation, attestation_data, and validator_identities already had SSZ support. The three fixed above were the only ones actually missing it.
+- **Full test suite verification** — all passing:
+  - 226/226 HTTP API tests (FORK_NAME=fulu)
+  - 50/50 fork_tests
+  - Clippy clean
+
 ### 2026-02-27 — HTTP API builder bid submission tests (run 164)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
