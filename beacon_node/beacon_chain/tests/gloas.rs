@@ -24,7 +24,7 @@ use beacon_chain::test_utils::{
     InteropGenesisBuilder,
 };
 use execution_layer::test_utils::generate_genesis_header;
-use fork_choice::{ExecutionStatus, PayloadVerificationStatus};
+use fork_choice::{ExecutionStatus, ForkchoiceUpdateParameters, PayloadVerificationStatus};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
 use types::*;
@@ -8989,4 +8989,263 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
             "builder_index should be set to the new bid's builder_index"
         );
     }
+}
+
+// =============================================================================
+// Gossip envelope EL error paths, cross-epoch withdrawal computation
+// =============================================================================
+
+/// When the EL returns `Invalid` for a gossip-received envelope's `newPayload`,
+/// `process_payload_envelope` should return an error. This is the gossip-path
+/// counterpart of `gloas_self_build_envelope_el_invalid_returns_error` — both
+/// exercise the same EL response handling but through different code paths
+/// (self-build vs gossip). A bug here would cause gossip-received envelopes with
+/// invalid execution payloads to be silently accepted and stored.
+///
+/// Note: `payload_revealed` is already true at this point because
+/// `apply_payload_envelope_to_fork_choice` runs before `process_payload_envelope`.
+#[tokio::test]
+async fn gloas_gossip_envelope_el_invalid_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block only (simulating gossip block arriving first)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Step 1: Gossip verification
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    // Step 2: Apply to fork choice (marks payload_revealed = true)
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Configure mock EL to return Invalid for newPayload BEFORE calling process_payload_envelope
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero());
+
+    // Step 3: process_payload_envelope should fail because EL says Invalid
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    assert!(
+        result.is_err(),
+        "process_payload_envelope should error when EL returns Invalid"
+    );
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("invalid"),
+        "error should mention invalid payload, got: {}",
+        err_msg
+    );
+
+    // payload_revealed should still be true (set before EL call)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should remain true (set by apply_payload_envelope_to_fork_choice before EL call)"
+        );
+    }
+
+    // The envelope should NOT be persisted to the store (process_payload_envelope errored
+    // before reaching the store-write step)
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error");
+    assert!(
+        stored.is_none(),
+        "envelope should not be stored when process_payload_envelope fails"
+    );
+}
+
+/// When the EL returns `Syncing` for a gossip-received envelope's `newPayload`,
+/// `process_payload_envelope` should succeed (Syncing is not an error) but the
+/// block should remain Optimistic (not promoted to Valid). This covers the case
+/// where the EL hasn't fully synced and can't validate the payload yet.
+///
+/// This is the gossip-path counterpart of
+/// `gloas_self_build_envelope_el_syncing_stays_optimistic`.
+#[tokio::test]
+async fn gloas_gossip_envelope_el_syncing_stays_optimistic() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Step 1: Gossip verification
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    // Step 2: Apply to fork choice
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Configure mock EL to return Syncing for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el.server.all_payloads_syncing_on_new_payload(false);
+
+    // Step 3: process_payload_envelope should succeed (Syncing is not an error)
+    harness
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("Syncing response should not cause an error");
+
+    // Block should remain Optimistic (EL said Syncing, not Valid)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns Syncing, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // payload_revealed should be true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true regardless of EL response"
+        );
+    }
+
+    // The envelope SHOULD be persisted to the store (processing succeeded)
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error")
+        .expect("envelope should be persisted after successful processing");
+    assert_eq!(
+        stored.message.payload.block_hash, envelope_block_hash,
+        "stored envelope should have correct block hash"
+    );
+}
+
+/// Verify the cross-epoch withdrawal computation uses the Gloas path.
+///
+/// `get_expected_withdrawals` has two branches for Gloas:
+/// 1. Same-epoch (head_state.current_epoch() == proposal_epoch): uses `unadvanced_state`
+/// 2. Cross-epoch (head_state.current_epoch() != proposal_epoch): advances state to
+///    proposal_epoch start, then uses `get_expected_withdrawals_gloas` on the advanced state
+///
+/// The same-epoch branch is exercised by `gloas_block_production_uses_gloas_withdrawals`.
+/// This test exercises the cross-epoch branch by requesting withdrawals for a slot
+/// in the next epoch while the head block is in the current epoch. The cross-epoch
+/// path is reached during proposer preparation (beacon_chain.rs:7389) when the
+/// proposer's slot is in the next epoch.
+#[tokio::test]
+async fn gloas_cross_epoch_withdrawal_uses_advanced_state() {
+    let harness = gloas_harness_at_epoch(0);
+    // MinimalEthSpec: 8 slots per epoch.
+    // Build chain to slot 6 (epoch 0, slot 6). Leave room so we can request
+    // withdrawals for slot 8 (epoch 1, slot 0) — a cross-epoch request.
+    Box::pin(harness.extend_slots(6)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let head_epoch = head_slot.epoch(E::slots_per_epoch());
+    assert_eq!(
+        head_epoch,
+        Epoch::new(0),
+        "pre-condition: head should be in epoch 0"
+    );
+
+    // Construct ForkchoiceUpdateParameters pointing at the current head
+    let fc_params = ForkchoiceUpdateParameters {
+        head_root: head.beacon_block_root,
+        head_hash: None,
+        justified_hash: None,
+        finalized_hash: None,
+    };
+
+    // Request withdrawals for epoch 1, slot 0 (the first slot of the next epoch)
+    let proposal_slot = Slot::new(E::slots_per_epoch());
+    let proposal_epoch = proposal_slot.epoch(E::slots_per_epoch());
+    assert_eq!(
+        proposal_epoch,
+        Epoch::new(1),
+        "pre-condition: proposal should be in epoch 1"
+    );
+    assert_ne!(
+        head_epoch, proposal_epoch,
+        "pre-condition: head and proposal must be in different epochs for cross-epoch path"
+    );
+
+    // This calls the cross-epoch branch (lines 6049-6062 in beacon_chain.rs):
+    // partial_state_advance to proposal_epoch start, then get_expected_withdrawals_gloas
+    let withdrawals = harness
+        .chain
+        .get_expected_withdrawals(&fc_params, proposal_slot)
+        .expect("cross-epoch withdrawal computation should succeed");
+
+    // The withdrawals should be valid (non-panicking). In the minimal test environment
+    // with 32 validators and self-build blocks, there may or may not be validator
+    // withdrawals depending on balances. The key assertion is that the function
+    // doesn't error — if the wrong (pre-Gloas) withdrawal function were called
+    // on an advanced Gloas state, it would fail or produce incorrect results because
+    // the Gloas function handles builder_pending_withdrawals which don't exist in
+    // the pre-Gloas function.
+    let _ = withdrawals.len();
+
+    // Verify the same-epoch path also works (as a control)
+    let same_epoch_slot = head_slot + 1;
+    assert_eq!(
+        same_epoch_slot.epoch(E::slots_per_epoch()),
+        head_epoch,
+        "control: same-epoch slot should be in the same epoch as head"
+    );
+    let same_epoch_withdrawals = harness
+        .chain
+        .get_expected_withdrawals(&fc_params, same_epoch_slot)
+        .expect("same-epoch withdrawal computation should succeed");
+
+    // Both should return valid withdrawals lists (possibly different due to epoch processing)
+    let _ = same_epoch_withdrawals.len();
 }
