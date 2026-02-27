@@ -6022,3 +6022,305 @@ fn get_blocks(
 fn clone_block<E: EthSpec>(block: &AvailableBlock<E>) -> AvailableBlock<E> {
     block.__clone_without_recv().unwrap()
 }
+
+/// After pruning execution payloads, `get_advanced_hot_state` should fall back to
+/// the blinded envelope to re-apply envelope processing (updating `latest_block_hash`,
+/// builder payments, etc.) when loading a state from disk.
+///
+/// This exercises the blinded fallback branch in `get_advanced_hot_state` (hot_cold_store.rs)
+/// which is critical for correctness after payload pruning.
+#[tokio::test]
+async fn gloas_get_advanced_hot_state_blinded_fallback_after_pruning() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store_config = StoreConfig {
+        prune_payloads: false,
+        ..StoreConfig::default()
+    };
+    let store = get_store_generic(&db_path, store_config, spec.clone());
+
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: false,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build enough epochs to ensure finalization (7 epochs).
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let split = store.get_split_info();
+    assert!(
+        split.slot > Slot::new(0),
+        "chain should have finalized: split_slot={}",
+        split.slot
+    );
+
+    // Find a Gloas block whose state is still in the hot DB (above the split point).
+    // Use a block a few slots above the split to ensure it's in the hot DB.
+    let target_slot = split.slot + 2;
+    let head_state = &harness.chain.head_snapshot().beacon_state;
+    let block_root = *head_state.get_block_root(target_slot).unwrap();
+    let block = store.get_blinded_block(&block_root).unwrap().unwrap();
+    let pre_envelope_state_root = block.state_root();
+
+    assert!(
+        harness
+            .chain
+            .spec
+            .fork_name_at_slot::<E>(target_slot)
+            .gloas_enabled(),
+        "target block should be in Gloas fork"
+    );
+
+    // Record the expected block_hash from the envelope before pruning.
+    let envelope = store.get_payload_envelope(&block_root).unwrap().unwrap();
+    let expected_block_hash = envelope.message.payload.block_hash;
+    assert_ne!(
+        expected_block_hash,
+        ExecutionBlockHash::zero(),
+        "envelope should have a non-zero block_hash"
+    );
+
+    // Prune the execution payload for this block.
+    store
+        .do_atomically_with_block_and_blobs_cache(vec![StoreOp::DeleteExecutionPayload(block_root)])
+        .unwrap();
+
+    // Verify: full envelope gone, blinded envelope remains.
+    assert!(
+        store.get_payload_envelope(&block_root).unwrap().is_none(),
+        "full envelope should be None after payload pruning"
+    );
+    assert!(
+        store
+            .get_blinded_payload_envelope(&block_root)
+            .unwrap()
+            .is_some(),
+        "blinded envelope should survive payload pruning"
+    );
+
+    // Evict the state from the cache so get_advanced_hot_state loads from disk.
+    store.state_cache.lock().delete_block_states(&block_root);
+
+    // Verify cache miss: the cache-only path should return None.
+    assert!(
+        store
+            .get_advanced_hot_state_from_cache(block_root, target_slot)
+            .is_none(),
+        "state should not be in cache after eviction"
+    );
+
+    // Call get_advanced_hot_state — this should load from disk and use the
+    // blinded envelope fallback to re-apply envelope processing.
+    let (returned_root, returned_state) = store
+        .get_advanced_hot_state(block_root, target_slot, pre_envelope_state_root)
+        .expect("get_advanced_hot_state should not error")
+        .expect("get_advanced_hot_state should return a state");
+
+    // The returned state should have latest_block_hash matching the envelope's block_hash.
+    let state_lbh = returned_state.latest_block_hash().unwrap();
+    assert_eq!(
+        *state_lbh, expected_block_hash,
+        "get_advanced_hot_state with blinded fallback should produce correct latest_block_hash"
+    );
+
+    // The returned root should differ from the pre-envelope state root (envelope changes state).
+    assert_ne!(
+        returned_root, pre_envelope_state_root,
+        "post-envelope state root should differ from pre-envelope state root"
+    );
+}
+
+/// Calling `get_advanced_hot_state` twice for the same block should produce
+/// identical results. The first call loads from disk and applies the envelope
+/// (caching the result). The second call hits the cache and the `already_applied`
+/// guard prevents double-application. If the guard were missing, the second call
+/// would re-apply the envelope to the already-post-envelope cached state,
+/// corrupting it.
+///
+/// This exercises the `already_applied` guard branch in `get_advanced_hot_state`
+/// via the cache hit path.
+#[tokio::test]
+async fn gloas_get_advanced_hot_state_already_applied_guard() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store_config = StoreConfig {
+        prune_payloads: false,
+        ..StoreConfig::default()
+    };
+    let store = get_store_generic(&db_path, store_config, spec.clone());
+
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: false,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build enough epochs to ensure finalization.
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let split = store.get_split_info();
+    assert!(
+        split.slot > Slot::new(0),
+        "chain should have finalized: split_slot={}",
+        split.slot
+    );
+
+    // Pick a Gloas block above the split point.
+    let target_slot = split.slot + 2;
+    let head_state = &harness.chain.head_snapshot().beacon_state;
+    let block_root = *head_state.get_block_root(target_slot).unwrap();
+    let block = store.get_blinded_block(&block_root).unwrap().unwrap();
+    let pre_envelope_state_root = block.state_root();
+
+    // Get the expected block_hash from the envelope.
+    let envelope = store.get_payload_envelope(&block_root).unwrap().unwrap();
+    let expected_block_hash = envelope.message.payload.block_hash;
+
+    // Evict state from cache to force disk load on first call.
+    store.state_cache.lock().delete_block_states(&block_root);
+
+    // First call: loads from disk (pre-envelope state), applies envelope, caches result.
+    let (first_root, first_state) = store
+        .get_advanced_hot_state(block_root, target_slot, pre_envelope_state_root)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        *first_state.latest_block_hash().unwrap(),
+        expected_block_hash,
+        "first call should produce correct latest_block_hash"
+    );
+
+    // Second call: should hit cache with the post-envelope state. The
+    // already_applied guard ensures the envelope is not re-applied.
+    let (second_root, second_state) = store
+        .get_advanced_hot_state(block_root, target_slot, pre_envelope_state_root)
+        .unwrap()
+        .unwrap();
+
+    // Both calls should return identical results.
+    assert_eq!(
+        *second_state.latest_block_hash().unwrap(),
+        expected_block_hash,
+        "second call should return same correct latest_block_hash (no double-application)"
+    );
+    assert_eq!(
+        second_root, first_root,
+        "second call should return same state root as first"
+    );
+}
+
+/// When `get_advanced_hot_state` loads a pre-envelope state from disk and the full
+/// envelope is available, it should re-apply the envelope to produce a state with
+/// correct `latest_block_hash`.
+///
+/// This exercises the normal (non-blinded) envelope re-application path when the
+/// state cache misses.
+#[tokio::test]
+async fn gloas_get_advanced_hot_state_full_envelope_reapplication() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store_config = StoreConfig {
+        prune_payloads: false,
+        ..StoreConfig::default()
+    };
+    let store = get_store_generic(&db_path, store_config, spec.clone());
+
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: false,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build enough epochs to ensure finalization.
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let split = store.get_split_info();
+    assert!(
+        split.slot > Slot::new(0),
+        "chain should have finalized: split_slot={}",
+        split.slot
+    );
+
+    // Find a Gloas block above the split point with its full envelope intact.
+    let target_slot = split.slot + 2;
+    let head_state = &harness.chain.head_snapshot().beacon_state;
+    let block_root = *head_state.get_block_root(target_slot).unwrap();
+    let block = store.get_blinded_block(&block_root).unwrap().unwrap();
+    let pre_envelope_state_root = block.state_root();
+
+    // Record expected block_hash from the full envelope.
+    let envelope = store.get_payload_envelope(&block_root).unwrap().unwrap();
+    let expected_block_hash = envelope.message.payload.block_hash;
+
+    // Evict state from cache.
+    store.state_cache.lock().delete_block_states(&block_root);
+
+    // Call get_advanced_hot_state — should load pre-envelope state from disk
+    // and re-apply the full envelope.
+    let (_returned_root, returned_state) = store
+        .get_advanced_hot_state(block_root, target_slot, pre_envelope_state_root)
+        .expect("get_advanced_hot_state should not error")
+        .expect("get_advanced_hot_state should return a state");
+
+    // Verify correct latest_block_hash after envelope re-application.
+    let state_lbh = returned_state.latest_block_hash().unwrap();
+    assert_eq!(
+        *state_lbh, expected_block_hash,
+        "full envelope re-application should produce correct latest_block_hash"
+    );
+}

@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 get_advanced_hot_state envelope re-application tests (run 170)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 `get_advanced_hot_state` store tests** for previously untested envelope re-application paths:
+  1. `gloas_get_advanced_hot_state_blinded_fallback_after_pruning` — exercises the blinded envelope fallback: prunes a hot block's execution payload, evicts state from cache, calls `get_advanced_hot_state`. Verifies the function falls back to the blinded envelope + `payload_expected_withdrawals` to reconstruct a full envelope and re-apply it, producing correct `latest_block_hash`. This is critical for correctness after payload pruning.
+  2. `gloas_get_advanced_hot_state_already_applied_guard` — exercises the `already_applied` guard: first call loads from disk and applies the envelope (caches result); second call hits cache with post-envelope state. Verifies both calls return identical correct results, proving no double-application corruption.
+  3. `gloas_get_advanced_hot_state_full_envelope_reapplication` — exercises the normal full envelope re-application path: evicts state from cache, calls `get_advanced_hot_state` with full envelope available. Verifies the pre-envelope state loaded from disk has the envelope correctly re-applied.
+- These tests directly cover the `get_advanced_hot_state` function in `hot_cold_store.rs` lines 1133-1254, which is called by `load_parent`, `state_advance_timer`, `canonical_head`, `blob_verification`, and `data_column_verification`.
+- **Full test suite verification** — all passing:
+  - 79/79 store_tests (was 76, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — fix gossip envelope BLS bug + 3 integration tests (run 169)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
