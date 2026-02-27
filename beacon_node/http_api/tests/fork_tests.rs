@@ -10,7 +10,8 @@ use genesis::{InteropGenesisBuilder, bls_withdrawal_credentials};
 use http_api::test_utils::*;
 use std::collections::HashSet;
 use types::{
-    Address, ChainSpec, Epoch, EthSpec, FixedBytesExtended, Hash256, MinimalEthSpec, Slot,
+    Address, ChainSpec, Epoch, EthSpec, FixedBytesExtended, Hash256, MinimalEthSpec, Signature,
+    Slot,
     test_utils::{generate_deterministic_keypair, generate_deterministic_keypairs},
 };
 
@@ -772,7 +773,7 @@ async fn bid_submission_rejected_before_gloas() {
     // Create a minimal bid (will be rejected at the fork guard, not content validation)
     let bid = types::SignedExecutionPayloadBid::<E> {
         message: types::ExecutionPayloadBid::default(),
-        signature: types::Signature::empty(),
+        signature: Signature::empty(),
     };
 
     let result = client.post_builder_bids(&bid).await;
@@ -1933,5 +1934,274 @@ async fn ptc_duties_dependent_root_consistent() {
         response1.data.len(),
         response2.data.len(),
         "duty count should be consistent"
+    );
+}
+
+/// POST beacon/pool/proposer_preferences should accept a validly signed message.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_proposer_preferences_valid() {
+    use types::{Domain, ProposerPreferences, SignedProposerPreferences, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Advance a block so the chain has state
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let validator_index: u64 = 0;
+    let proposal_slot = Slot::new(2);
+    let proposal_epoch = proposal_slot.epoch(E::slots_per_epoch());
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    let domain = spec.get_domain(
+        proposal_epoch,
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+    let keypair = generate_deterministic_keypair(validator_index as usize);
+    let signature = keypair.sk.sign(signing_root);
+
+    let signed = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    let result = client.post_beacon_pool_proposer_preferences(&signed).await;
+    assert!(
+        result.is_ok(),
+        "should accept valid proposer preferences, got: {:?}",
+        result.err()
+    );
+}
+
+/// POST beacon/pool/proposer_preferences should reject when Gloas is not scheduled.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_proposer_preferences_rejected_before_gloas() {
+    use types::{ProposerPreferences, SignedProposerPreferences};
+
+    let validator_count = 32;
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    // gloas_fork_epoch = None
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let signed = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: 1,
+            validator_index: 0,
+            fee_recipient: Address::repeat_byte(0x42),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+
+    let result = client.post_beacon_pool_proposer_preferences(&signed).await;
+    assert!(result.is_err(), "should reject when Gloas is not scheduled");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Gloas is not scheduled"),
+            "expected 'Gloas is not scheduled', got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST beacon/pool/proposer_preferences should reject invalid signature.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_proposer_preferences_invalid_signature() {
+    use types::{Domain, ProposerPreferences, SignedProposerPreferences, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let validator_index: u64 = 0;
+    let proposal_slot = Slot::new(2);
+    let proposal_epoch = proposal_slot.epoch(E::slots_per_epoch());
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    // Sign with the WRONG key (validator 1's key instead of validator 0's)
+    let domain = spec.get_domain(
+        proposal_epoch,
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+    let wrong_keypair = generate_deterministic_keypair(1);
+    let signature = wrong_keypair.sk.sign(signing_root);
+
+    let signed = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    let result = client.post_beacon_pool_proposer_preferences(&signed).await;
+    assert!(
+        result.is_err(),
+        "should reject preferences with invalid signature"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message
+                .contains("Invalid proposer preferences signature"),
+            "expected signature error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST beacon/pool/proposer_preferences should reject unknown validator index.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_proposer_preferences_unknown_validator() {
+    use types::{ProposerPreferences, SignedProposerPreferences};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let signed = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: 1,
+            validator_index: 9999, // doesn't exist
+            fee_recipient: Address::repeat_byte(0x42),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+
+    let result = client.post_beacon_pool_proposer_preferences(&signed).await;
+    assert!(result.is_err(), "should reject unknown validator index");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("Unknown validator index"),
+            "expected unknown validator error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST beacon/pool/proposer_preferences should ignore duplicate for same slot.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_proposer_preferences_duplicate_ignored() {
+    use types::{Domain, ProposerPreferences, SignedProposerPreferences, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let validator_index: u64 = 0;
+    let proposal_slot = Slot::new(2);
+    let proposal_epoch = proposal_slot.epoch(E::slots_per_epoch());
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    let domain = spec.get_domain(
+        proposal_epoch,
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+    let keypair = generate_deterministic_keypair(validator_index as usize);
+    let signature = keypair.sk.sign(signing_root);
+
+    let signed = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    // First submission should succeed
+    let result1 = client.post_beacon_pool_proposer_preferences(&signed).await;
+    assert!(result1.is_ok(), "first submission should succeed");
+
+    // Second submission for same slot should also return 200 (silently ignored)
+    let result2 = client.post_beacon_pool_proposer_preferences(&signed).await;
+    assert!(
+        result2.is_ok(),
+        "duplicate submission should succeed (silently ignored), got: {:?}",
+        result2.err()
     );
 }
