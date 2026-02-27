@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — load_parent and range sync integration tests (run 168)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors
+- **Added 3 Gloas beacon_chain integration tests** for `load_parent` state patching and range sync:
+  1. `gloas_range_sync_import_with_envelopes` — builds 4-block chain on one harness, extracts blocks+envelopes, imports into a fresh harness with envelope processing (simulates range sync). Verifies parent hash chain continuity, all blocks in fork choice, correct head, and post-envelope latest_block_hash
+  2. `gloas_load_parent_no_patch_needed_when_envelope_processed` — verifies that when envelopes ARE processed (normal path), load_parent is a no-op: latest_block_hash already matches the head bid hash, and the next block imports without patching
+  3. `gloas_load_parent_skips_patch_for_genesis_zero_hash` — verifies that load_parent does NOT attempt to patch when the parent is genesis (bid.block_hash is zero), since zero hashes indicate genesis state not a missing envelope
+- **Analysis**: the `load_parent` latest_block_hash patching code (block_verification.rs:2005-2022) works in concert with `get_advanced_hot_state`'s envelope re-application from store (hot_cold_store.rs:1189-1229). The patching alone is insufficient for state root correctness — the full envelope re-application handles deposits, withdrawals, builder payments, and availability bits. The load_parent patch is a defensive safety net for the `latest_block_hash` field specifically.
+- **Full test suite verification** — all passing:
+  - 589/589 beacon_chain tests (FORK_NAME=gloas, was 586, +3 new)
+  - Clippy clean
+
 ### 2026-02-27 — sign_proposer_preferences validator store tests (run 167)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open, PR #4843 still approved but not merged
