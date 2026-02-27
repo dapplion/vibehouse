@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 deposit frontrunning edge case tests (run 206)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 205
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+  - Confirmed PR #4897 (is_pending_validator deposit frontrunning fix) already implemented
+  - Confirmed PR #4948 (payload status constant reorder) already implemented
+  - Confirmed PR #4918 (attestations only for known payload statuses) already implemented
+  - Confirmed PR #4923 (ignore block if parent payload unknown) already implemented
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering `process_deposit_request_gloas` deposit frontrunning scenarios from consensus-specs PR #4897 (`per_block_processing/process_operations.rs`):
+  1. `builder_frontrunts_all_invalid_sig_pending_deposits` — 5 pending deposits for pubkey P all with invalid BLS signatures. Builder deposit succeeds because `is_pending_validator` scans the entire list and finds no valid signature. Tests the "all invalid sigs, builder frontrunning" scenario explicitly called for in PR #4897.
+  2. `invalid_then_valid_pending_deposits_blocks_builder_creation` — 3 invalid-sig entries followed by 1 valid-sig entry in `pending_deposits`. Builder deposit goes to pending queue because `is_pending_validator` scans past the invalid entries and finds the valid one. Tests the "invalid first then valid after" scenario from PR #4897.
+  3. `pending_deposit_with_builder_creds_valid_sig_blocks_builder` — pending deposit with 0x03 (builder) credentials and a valid BLS signature blocks builder creation. Confirms `is_pending_validator` checks signature validity regardless of the withdrawal credentials prefix — a pending deposit with builder creds still counts as a "pending validator."
+  4. `sequential_builder_deposits_first_creates_second_topups` — two builder deposits for the same pubkey with a valid pending deposit present. First goes to pending queue. After manually creating the builder, the second deposit hits the `is_builder` short-circuit path and tops up the existing builder, bypassing `is_pending_validator` entirely. Tests the short-circuit ordering in the routing condition.
+  5. `pending_deposits_for_other_pubkeys_dont_affect_routing` — valid-sig pending deposits for pubkeys A and B don't prevent builder creation for pubkey C. Verifies `is_pending_validator` correctly filters by pubkey and doesn't false-positive on deposits for unrelated pubkeys.
+- **Why these tests matter**: PR #4897 (found by Lido researchers) fixed a deposit frontrunning attack where a builder could front-run a pending validator deposit and steal the validator's pubkey. The fix checks `is_pending_validator` which scans the full `pending_deposits` list and re-verifies BLS signatures. These edge case tests are the exact scenarios the PR author requested: multiple invalid sigs with frontrunning, mixed invalid-then-valid ordering, builder-credential pending deposits, sequential deposit interactions, and cross-pubkey isolation. The existing 4 `is_pending_validator` unit tests only covered single-entry cases; these 5 tests exercise the multi-entry, ordering-sensitive, and routing-context interactions.
+- **Full test suite verification** — all passing:
+  - 417/417 state_processing tests (was 412, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 builder pubkey cache correctness edge case tests (run 205)
 - **Added 5 tests** covering `builder_pubkey_cache` correctness in `apply_deposit_for_builder` and `process_deposit_request_gloas` (`per_block_processing/process_operations.rs`):
   1. `builder_slot_reuse_removes_old_pubkey_from_cache` — when a new builder reuses an exited builder's slot, verifies the old pubkey is removed from `builder_pubkey_cache` and the new pubkey maps to the reused index. A stale cache entry would silently misroute future deposits from the evicted builder to the new builder's slot.
