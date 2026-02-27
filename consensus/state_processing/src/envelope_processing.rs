@@ -310,10 +310,12 @@ mod tests {
     use types::test_utils::generate_deterministic_keypairs;
     use types::{
         Address, BeaconBlockHeader, BeaconStateGloas, Builder, BuilderPendingWithdrawal,
-        BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, Domain, Epoch,
-        ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas,
-        ExitCache, FixedVector, Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache,
-        Signature, SignedRoot, SlashingsCache, SyncCommittee, Unsigned, Vector,
+        BuilderPubkeyCache, CACHED_EPOCHS, Checkpoint, CommitteeCache, ConsolidationRequest,
+        DepositRequest, Domain, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionRequests, ExitCache, FixedVector,
+        Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, PublicKeyBytes, Signature,
+        SignatureBytes, SignedRoot, SlashingsCache, SyncCommittee, Unsigned, Vector,
+        WithdrawalRequest,
     };
 
     type E = MinimalEthSpec;
@@ -2132,6 +2134,293 @@ mod tests {
             state.latest_block_header().state_root,
             Hash256::default(),
             "header state_root should be filled"
+        );
+    }
+
+    // ── Execution requests tests ──────────────────────────────
+
+    /// Build a valid envelope with custom execution_requests.
+    fn make_valid_envelope_with_requests(
+        state: &BeaconState<E>,
+        execution_requests: ExecutionRequests<E>,
+    ) -> SignedExecutionPayloadEnvelope<E> {
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let latest_block_hash = *state.latest_block_hash().unwrap();
+
+        let mut header = state.latest_block_header().clone();
+        header.state_root = state.clone().canonical_root().unwrap();
+        let beacon_block_root = header.tree_hash_root();
+
+        let spec = E::default_spec();
+        let timestamp = compute_timestamp_at_slot(state, state.slot(), &spec).unwrap();
+
+        let payload = ExecutionPayloadGloas {
+            parent_hash: latest_block_hash,
+            block_hash: bid.block_hash,
+            prev_randao: bid.prev_randao,
+            gas_limit: bid.gas_limit,
+            timestamp,
+            withdrawals: VariableList::default(),
+            ..Default::default()
+        };
+
+        SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests,
+                builder_index: bid.builder_index,
+                beacon_block_root,
+                slot: state.slot(),
+                state_root: Hash256::zero(),
+            },
+            signature: Signature::empty(),
+        }
+    }
+
+    #[test]
+    fn envelope_with_deposit_request_adds_to_pending_deposits() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Build the pubkey cache so deposit processing can look up validators
+        state.update_pubkey_cache().unwrap();
+
+        // Create a deposit request with a new (unknown) pubkey and 0x01 withdrawal creds
+        // This should route to pending_deposits (not builder) since pubkey is unknown
+        // and credentials don't have builder prefix (0x03).
+        let deposit_pubkey =
+            PublicKeyBytes::deserialize(&[0xAB; 48]).unwrap_or_else(|_| PublicKeyBytes::empty());
+        let mut withdrawal_creds = [0u8; 32];
+        withdrawal_creds[0] = 0x01; // validator withdrawal prefix
+        let deposit_request = DepositRequest {
+            pubkey: deposit_pubkey,
+            withdrawal_credentials: Hash256::from_slice(&withdrawal_creds),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 0,
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.deposits.push(deposit_request.clone()).unwrap();
+
+        assert!(
+            state.pending_deposits().unwrap().is_empty(),
+            "sanity: no pending deposits before processing"
+        );
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // The deposit request should have been routed to pending_deposits
+        let pending = state.pending_deposits().unwrap();
+        assert_eq!(
+            pending.len(),
+            1,
+            "deposit request should be added to pending_deposits"
+        );
+        assert_eq!(pending.get(0).unwrap().pubkey, deposit_pubkey);
+        assert_eq!(pending.get(0).unwrap().amount, 32_000_000_000);
+    }
+
+    #[test]
+    fn envelope_with_deposit_request_tops_up_builder() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Build caches
+        state.update_pubkey_cache().unwrap();
+        state.update_builder_pubkey_cache().unwrap();
+
+        // Get the builder's pubkey (builder at index 0)
+        let builder_pubkey = state.builders().unwrap().get(0).unwrap().pubkey;
+        let initial_balance = state.builders().unwrap().get(0).unwrap().balance;
+
+        // Create a deposit with the builder's pubkey — should route to builder top-up
+        let mut withdrawal_creds = [0u8; 32];
+        withdrawal_creds[0] = 0x03; // builder prefix
+        let deposit_request = DepositRequest {
+            pubkey: builder_pubkey,
+            withdrawal_credentials: Hash256::from_slice(&withdrawal_creds),
+            amount: 5_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 0,
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.deposits.push(deposit_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Builder balance should increase by deposit amount
+        let new_balance = state.builders().unwrap().get(0).unwrap().balance;
+        assert_eq!(
+            new_balance,
+            initial_balance + 5_000_000_000,
+            "builder balance should increase by deposit amount"
+        );
+
+        // Pending deposits should remain empty (deposit went to builder)
+        assert!(
+            state.pending_deposits().unwrap().is_empty(),
+            "builder deposit should not go to pending_deposits"
+        );
+    }
+
+    #[test]
+    fn envelope_with_withdrawal_request_unknown_validator_succeeds() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Build pubkey cache for validator lookup
+        state.update_pubkey_cache().unwrap();
+
+        // Create a withdrawal request with an unknown validator pubkey
+        // This should be a no-op (silently skipped) but the envelope should still succeed
+        let withdrawal_request = WithdrawalRequest {
+            source_address: Address::repeat_byte(0x11),
+            validator_pubkey: PublicKeyBytes::deserialize(&[0xCD; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+            amount: 1_000_000_000,
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.withdrawals.push(withdrawal_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "envelope with withdrawal request for unknown validator should succeed: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn envelope_with_consolidation_request_unknown_source_succeeds() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Build caches (consolidation processing needs total active balance)
+        state.update_pubkey_cache().unwrap();
+        state.build_total_active_balance_cache(&spec).unwrap();
+
+        // Create a consolidation request with unknown source
+        // This should be a no-op but envelope processing should still succeed
+        let consolidation_request = ConsolidationRequest {
+            source_address: Address::repeat_byte(0x22),
+            source_pubkey: PublicKeyBytes::deserialize(&[0xEF; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+            target_pubkey: PublicKeyBytes::deserialize(&[0xFE; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.consolidations.push(consolidation_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "envelope with consolidation request for unknown source should succeed: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn envelope_with_all_three_request_types() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Build caches (consolidation processing needs total active balance)
+        state.update_pubkey_cache().unwrap();
+        state.update_builder_pubkey_cache().unwrap();
+        state.build_total_active_balance_cache(&spec).unwrap();
+
+        // Deposit: unknown pubkey → pending_deposits
+        let mut withdrawal_creds = [0u8; 32];
+        withdrawal_creds[0] = 0x01;
+        let deposit_request = DepositRequest {
+            pubkey: PublicKeyBytes::deserialize(&[0xAB; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+            withdrawal_credentials: Hash256::from_slice(&withdrawal_creds),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 0,
+        };
+
+        // Withdrawal: unknown validator → no-op
+        let withdrawal_request = WithdrawalRequest {
+            source_address: Address::repeat_byte(0x33),
+            validator_pubkey: PublicKeyBytes::deserialize(&[0xCD; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+            amount: 1_000_000_000,
+        };
+
+        // Consolidation: unknown source → no-op
+        let consolidation_request = ConsolidationRequest {
+            source_address: Address::repeat_byte(0x44),
+            source_pubkey: PublicKeyBytes::deserialize(&[0xEF; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+            target_pubkey: PublicKeyBytes::deserialize(&[0xFE; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.deposits.push(deposit_request).unwrap();
+        requests.withdrawals.push(withdrawal_request).unwrap();
+        requests.consolidations.push(consolidation_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "envelope with all three request types should succeed: {:?}",
+            result.unwrap_err()
+        );
+
+        // Only the deposit should have had a visible effect
+        assert_eq!(
+            state.pending_deposits().unwrap().len(),
+            1,
+            "deposit request should be added to pending_deposits"
         );
     }
 }
