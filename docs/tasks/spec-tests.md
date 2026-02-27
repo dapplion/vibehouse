@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 Gloas attestation gossip verification rejection tests (run 197)
+- Added 5 new integration tests in `beacon_node/beacon_chain/tests/gloas.rs` for `verify_unaggregated_attestation_for_gossip` Gloas-specific rejection paths:
+  - `gloas_gossip_unaggregated_index_two_rejected`: data.index=2 rejected (index bounds check, [REJECT] index < 2)
+  - `gloas_gossip_unaggregated_large_index_rejected`: data.index=255 rejected (boundary check)
+  - `gloas_gossip_unaggregated_same_slot_index_one_rejected`: same-slot attestation with index=1 rejected (must be 0 for same-slot)
+  - `gloas_gossip_unaggregated_same_slot_index_zero_accepted`: same-slot with index=0 accepted (valid case)
+  - `gloas_gossip_unaggregated_non_same_slot_index_one_accepted`: non-same-slot with index=1 accepted (re-signed attestation, valid case)
+- Previously zero integration tests for these gossip verification rejection paths; existing tests only covered attestation *production*
+- All 24 Gloas attestation/gossip tests pass, clippy clean
+
+### 2026-02-27 — 5 envelope processing execution request path tests (run 196)
+- Added 5 tests in `consensus/state_processing/src/envelope_processing.rs` for execution request processing paths
+- All state_processing tests pass, clippy clean
+
+### 2026-02-27 — 5 envelope processing error value, payment boundary, and mutation tests (run 195)
+- Added 5 tests in `consensus/state_processing/src/envelope_processing.rs` for error values, payment boundaries, and state mutation
+- All state_processing tests pass, clippy clean
+
+### 2026-02-27 — 5 external bid payload withholding (EMPTY path) chain continuation tests (run 194)
+- Added 5 tests in `beacon_node/beacon_chain/tests/gloas.rs` for external bid payload withholding (EMPTY path) chain continuation
+- All beacon_chain tests pass, clippy clean
+
 ### 2026-02-27 — 5 non-anchor block replayer envelope processing tests (run 193)
 - Added 5 new block_replayer unit tests targeting the **non-anchor block path** (i>0 in `apply_blocks`, lines 352-398):
   - `non_anchor_block_with_envelope_updates_latest_block_hash`: full envelope applied after per_block_processing → latest_block_hash updated
