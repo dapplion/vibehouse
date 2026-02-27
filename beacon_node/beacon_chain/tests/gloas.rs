@@ -10967,3 +10967,244 @@ async fn gloas_bid_gossip_rejects_invalid_parent_root() {
         other => panic!("expected InvalidParentRoot, got {:?}", other),
     }
 }
+
+// =============================================================================
+// Execution bid gossip: InvalidSignature
+// =============================================================================
+
+/// Helper: sign an ExecutionPayloadBid with the given keypair using
+/// DOMAIN_BEACON_BUILDER, matching the signing logic in
+/// `execution_payload_bid_signature_set` (signature_sets.rs:670-699).
+fn sign_bid_with_builder(
+    bid_msg: &ExecutionPayloadBid<E>,
+    keypair: &Keypair,
+    slot: Slot,
+    fork: &Fork,
+    genesis_validators_root: Hash256,
+    spec: &ChainSpec,
+) -> SignedExecutionPayloadBid<E> {
+    let epoch = slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(epoch, Domain::BeaconBuilder, fork, genesis_validators_root);
+    let signing_root = bid_msg.signing_root(domain);
+    let signature = keypair.sk.sign(signing_root);
+    SignedExecutionPayloadBid {
+        message: bid_msg.clone(),
+        signature,
+    }
+}
+
+/// A bid with an invalid BLS signature is rejected with `InvalidSignature`
+/// at check 5 (gloas_verification.rs:492-493). This is the last validation
+/// step — the bid must pass all prior checks (slot, payment, builder active,
+/// balance, equivocation, parent root, proposer preferences) before reaching
+/// signature verification.
+///
+/// This exercises the BLS verification path for builder bids. The builder's
+/// public key is looked up from the beacon state's builder registry. If the
+/// signature doesn't match, the bid is rejected. Without this check, any peer
+/// could forge bids on behalf of registered builders, allowing them to steal
+/// slots or manipulate the bid market. Unlike envelope signatures (which are
+/// skipped for self-build), bid signatures are ALWAYS verified because bids
+/// come from external builders by definition.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_invalid_signature() {
+    // Builder 0: deposit_epoch=0, balance=10 ETH
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Insert matching proposer preferences so the bid passes check 4b.
+    // fee_recipient=Address::zero() and gas_limit=30_000_000 match make_external_bid defaults.
+    let prefs = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: next_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::zero(),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+    harness.chain.insert_proposer_preferences(prefs);
+
+    // Create a bid with correct fields, then sign it with the WRONG key.
+    // Use a validator keypair instead of the builder keypair — the BLS
+    // signature will be structurally valid but computed over the wrong key,
+    // so signature_set.verify() returns false.
+    let bid_msg = make_external_bid(&state, head_root, next_slot, 0, 5000).message;
+    let validator_keypairs = types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT);
+    let wrong_keypair = &validator_keypairs[0]; // validator key, not builder key
+
+    let bid = sign_bid_with_builder(
+        &bid_msg,
+        wrong_keypair,
+        next_slot,
+        &state.fork(),
+        state.genesis_validators_root(),
+        &harness.spec,
+    );
+
+    let err = assert_bid_rejected(&harness, bid, "bid with invalid signature");
+    assert!(
+        matches!(err, ExecutionBidError::InvalidSignature),
+        "expected InvalidSignature, got {:?}",
+        err
+    );
+}
+
+// =============================================================================
+// Execution bid gossip: valid signature accepted
+// =============================================================================
+
+/// A correctly-signed bid from an external builder passes all gossip validation
+/// checks (1-5) and returns a `VerifiedExecutionBid`. This is the happy-path
+/// complement to `gloas_bid_gossip_rejects_invalid_signature` — it confirms
+/// that the full verification pipeline works end-to-end for external builders.
+///
+/// This is the first test that exercises the complete `verify_execution_bid_for_gossip`
+/// path through signature verification with a real BLS signature, whereas all
+/// prior bid gossip tests used `Signature::empty()` and relied on earlier checks
+/// to reject before reaching signature verification.
+#[tokio::test]
+async fn gloas_bid_gossip_valid_signature_accepted() {
+    // Builder 0: deposit_epoch=0, balance=10 ETH
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Insert matching proposer preferences.
+    let prefs = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: next_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::zero(),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+    harness.chain.insert_proposer_preferences(prefs);
+
+    // Create a bid and sign it with the CORRECT builder key.
+    let bid_msg = make_external_bid(&state, head_root, next_slot, 0, 5000).message;
+    let builder_keypair = &BUILDER_KEYPAIRS[0];
+
+    let bid = sign_bid_with_builder(
+        &bid_msg,
+        builder_keypair,
+        next_slot,
+        &state.fork(),
+        state.genesis_validators_root(),
+        &harness.spec,
+    );
+
+    // The bid should pass all checks including BLS signature verification.
+    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    assert!(
+        result.is_ok(),
+        "correctly-signed bid should pass all gossip verification, got: {:?}",
+        result.err()
+    );
+}
+
+// =============================================================================
+// Envelope gossip: PriorToFinalization (dedicated)
+// =============================================================================
+
+/// An envelope for a slot that has been finalized is rejected with
+/// `PriorToFinalization` (gloas_verification.rs:693-697). This is the gossip
+/// validation check 2 — it prevents stale envelopes for already-finalized
+/// blocks from consuming processing resources.
+///
+/// In production, this can happen when a node receives an envelope from a peer
+/// that is far behind (still gossipping messages for finalized epochs). Without
+/// this check, the node would load the full beacon block from disk, compute the
+/// bid, and attempt state transition — all wasted work for a block whose
+/// execution payload status is already irrelevant.
+///
+/// The existing test `gloas_envelope_gossip_rejects_not_gloas_block` *may* hit
+/// `PriorToFinalization` incidentally, but this test exercises the path directly
+/// with a properly-constructed Gloas envelope whose slot is behind finalization.
+#[tokio::test]
+async fn gloas_envelope_gossip_rejects_finalized_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend enough to finalize several epochs (minimal: 8 slots/epoch, ~5 epochs to finalize)
+    Box::pin(harness.extend_slots(64)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    let finalized_epoch = state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized beyond genesis (finalized_epoch={})",
+        finalized_epoch
+    );
+
+    let finalized_slot = finalized_epoch.start_slot(E::slots_per_epoch());
+
+    // Pick a finalized block root that is still in fork choice. The finalized
+    // checkpoint block itself should be in fork choice as the finalized node.
+    let finalized_root = state.finalized_checkpoint().root;
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc.get_block(&finalized_root);
+    drop(fc);
+
+    // The finalized block should still be in fork choice (it's the anchor).
+    assert!(
+        proto_block.is_some(),
+        "finalized block should be in fork choice"
+    );
+
+    // Create an envelope for a slot BEFORE finalization.
+    // Use slot 1 (the first Gloas slot when gloas_fork_epoch=0) which is
+    // definitely behind finalization after 64 slots.
+    let old_slot = Slot::new(1);
+    assert!(
+        old_slot < finalized_slot,
+        "old_slot {} should be before finalized_slot {}",
+        old_slot,
+        finalized_slot
+    );
+
+    // We need a block root that IS in fork choice so we pass check 1 (BlockRootUnknown).
+    // Use the finalized root — it's in FC but the envelope's slot will be old_slot.
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = finalized_root;
+    envelope_msg.slot = old_slot;
+    envelope_msg.builder_index = u64::MAX; // BUILDER_INDEX_SELF_BUILD
+    envelope_msg.payload.block_hash = ExecutionBlockHash::zero();
+
+    let signed_envelope = SignedExecutionPayloadEnvelope {
+        message: envelope_msg,
+        signature: Signature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
+
+    match result {
+        Err(PayloadEnvelopeError::PriorToFinalization {
+            envelope_slot,
+            finalized_slot: reported_finalized,
+        }) => {
+            assert_eq!(envelope_slot, old_slot);
+            assert_eq!(reported_finalized, finalized_slot);
+        }
+        Err(PayloadEnvelopeError::SlotMismatch { .. }) => {
+            // If the finalized block's slot != old_slot, the check 3 (SlotMismatch)
+            // fires instead of PriorToFinalization. This is also a valid rejection.
+            // But PriorToFinalization should fire first (check 2 before check 3).
+            panic!("got SlotMismatch instead of PriorToFinalization — check ordering may be wrong");
+        }
+        Ok(_) => panic!("finalized-slot envelope should be rejected"),
+        Err(e) => panic!("expected PriorToFinalization, got {:?}", e),
+    }
+}
