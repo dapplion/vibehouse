@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — withdrawal edge case coverage (run 160)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Open PRs unchanged: #4940 (fork choice tests), #4932 (sanity tests), #4892 (remove impossible branch), #4939 (request missing envelopes), #4840 (eip7843), #4630 (eip7688)
+- **Added 5 withdrawal edge case tests** to `get_expected_withdrawals_gloas`/`process_withdrawals_gloas`:
+  1. `withdrawals_reserved_limit_blocks_builder_sweep` — builder pending fills reserved_limit, blocking builder sweep
+  2. `withdrawals_partial_limit_respects_own_sub_limit` — verifies `max_pending_partials_per_withdrawals_sweep` sub-limit
+  3. `withdrawals_all_four_phases_interact` — all 4 phases produce withdrawals, fills max_withdrawals exactly, verifies `get_expected_withdrawals_gloas` matches
+  4. `withdrawals_builder_sweep_many_builders_mixed_states` — 6 builders with mixed active/exited/zero-balance states, nonzero start index, verifies sweep order and index advancement
+  5. `withdrawals_builder_pending_fills_partials_get_nothing` — builder pending + partial interaction, verifies partials_limit formula
+- **Full test suite verification** — all passing:
+  - 342/342 state_processing tests (was 337, +5 new)
+  - 1/1 EF operations_withdrawals spec test (fake crypto, minimal)
+
 ### 2026-02-27 — full verification, all merged PRs confirmed (run 159)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Nightly run #131 in progress (spec commit 14e6ce5a, same as #130) — no new code changes
