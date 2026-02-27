@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — EL response tests for self-build envelope (run 161)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+- **Added 3 EL response tests** for `process_self_build_envelope`:
+  1. `gloas_self_build_envelope_el_invalid_returns_error` — EL returns `Invalid` for newPayload, verifies error returned and block stays Optimistic (but payload_revealed=true since on_execution_payload runs first)
+  2. `gloas_self_build_envelope_el_invalid_block_hash_returns_error` — EL returns `InvalidBlockHash`, verifies error with "invalid block hash" message, block stays Optimistic
+  3. `gloas_self_build_envelope_el_syncing_stays_optimistic` — EL returns `Syncing`, verifies no error (Syncing is acceptable), but block correctly stays Optimistic (not promoted to Valid), payload_revealed=true
+- These tests cover a previously untested consensus-critical path: when the EL rejects a payload during envelope processing, the block should remain optimistic and not be marked as execution-valid
+- **Full test suite verification** — all passing:
+  - 579/579 beacon_chain tests (FORK_NAME=gloas, was 576, +3 new)
+  - Clippy clean
+
 ### 2026-02-27 — withdrawal edge case coverage (run 160)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Open PRs unchanged: #4940 (fork choice tests), #4932 (sanity tests), #4892 (remove impossible branch), #4939 (request missing envelopes), #4840 (eip7843), #4630 (eip7688)
