@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 block replayer availability/blinded envelope edge case tests (run 192)
+- Added 5 new block_replayer unit tests in `consensus/state_processing/src/block_replayer.rs`:
+  - `anchor_block_wrong_root_blinded_envelope_leaves_hash_unchanged`: blinded envelope keyed under wrong root → EMPTY path, hash unchanged
+  - `anchor_block_blinded_envelope_uses_state_withdrawals`: non-empty `payload_expected_withdrawals` in state → blinded reconstruction uses them correctly
+  - `anchor_block_envelope_error_does_not_set_availability_bit`: failed full envelope processing → availability bit stays cleared
+  - `anchor_block_blinded_envelope_error_does_not_set_availability_bit`: failed blinded envelope processing → availability bit stays cleared
+  - `anchor_block_empty_path_does_not_set_availability_bit`: no envelope (EMPTY path) → availability bit stays cleared
+- All 362 state_processing tests pass, clippy clean
+
 ### 2026-02-27 — 5 VC error path tests: broadcast_preferences + produce_payload_attestations (run 191)
 - Added 3 `broadcast_proposer_preferences` error path tests in `duties_service.rs`:
   - `broadcast_preferences_happy_path_signs_and_posts`: full pipeline — fetch duties → sign → POST → epoch marked

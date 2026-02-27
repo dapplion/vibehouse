@@ -467,7 +467,7 @@ mod tests {
         ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache, FixedVector, Fork,
         MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache,
         SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadBid, SlashingsCache,
-        SyncAggregate, SyncCommittee, Unsigned, Vector,
+        SyncAggregate, SyncCommittee, Unsigned, Vector, Withdrawal,
     };
 
     type E = MinimalEthSpec;
@@ -1407,6 +1407,277 @@ mod tests {
                 .get(slot_index)
                 .unwrap(),
             "envelope processing should set the availability bit"
+        );
+    }
+
+    // ── Blinded envelope: wrong root fallback ─────────────────────
+
+    #[test]
+    fn anchor_block_wrong_root_blinded_envelope_leaves_hash_unchanged() {
+        // When the blinded envelope map doesn't have the correct block root,
+        // the EMPTY path is taken and latest_block_hash stays unchanged.
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        let original_hash = ExecutionBlockHash::repeat_byte(0xEE);
+        let mut state = state;
+        *state.latest_block_hash_mut().unwrap() = original_hash;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+
+        // Key the blinded envelope under a WRONG root
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(Hash256::repeat_byte(0xFF), blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            original_hash,
+            "wrong-root blinded envelope should leave latest_block_hash unchanged (EMPTY path)"
+        );
+    }
+
+    // ── Blinded envelope: non-empty state withdrawals ─────────────
+
+    #[test]
+    fn anchor_block_blinded_envelope_uses_state_withdrawals() {
+        // When the state has non-empty payload_expected_withdrawals,
+        // the blinded envelope reconstruction should pass them through
+        // to the reconstructed envelope's payload.withdrawals field.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+        let bid_block_hash = bid.block_hash;
+
+        // Set non-empty expected withdrawals in state
+        let withdrawal = Withdrawal {
+            index: 0,
+            validator_index: 0,
+            address: Address::repeat_byte(0xAA),
+            amount: 1_000_000_000,
+        };
+        *state.payload_expected_withdrawals_mut().unwrap() = List::new(vec![withdrawal]).unwrap();
+
+        // Build envelope with matching withdrawals (so envelope processing succeeds)
+        let mut header = state.latest_block_header().clone();
+        header.state_root = state.clone().canonical_root().unwrap();
+        let beacon_block_root = header.tree_hash_root();
+        let timestamp = compute_timestamp_at_slot(&state, state.slot(), &spec).unwrap();
+
+        let payload = ExecutionPayloadGloas {
+            parent_hash: *state.latest_block_hash().unwrap(),
+            block_hash: bid.block_hash,
+            prev_randao: bid.prev_randao,
+            gas_limit: bid.gas_limit,
+            timestamp,
+            withdrawals: VariableList::new(vec![Withdrawal {
+                index: 0,
+                validator_index: 0,
+                address: Address::repeat_byte(0xAA),
+                amount: 1_000_000_000,
+            }])
+            .unwrap(),
+            ..Default::default()
+        };
+
+        let mut envelope = SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests: Default::default(),
+                builder_index: bid.builder_index,
+                beacon_block_root,
+                slot: state.slot(),
+                state_root: Hash256::zero(),
+            },
+            signature: BlsSignature::empty(),
+        };
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        // Create blinded envelope (strips payload, keeps header)
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            bid_block_hash,
+            "blinded envelope with state withdrawals should update latest_block_hash"
+        );
+    }
+
+    // ── Availability bit: error and empty paths ───────────────────
+
+    #[test]
+    fn anchor_block_envelope_error_does_not_set_availability_bit() {
+        // When envelope processing fails (e.g. wrong beacon_block_root),
+        // the availability bit should NOT be set.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        // Clear the availability bit
+        let slot_index =
+            state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(slot_index, false)
+            .unwrap();
+
+        // Create an envelope with wrong beacon_block_root to cause processing error
+        let mut bad_envelope = make_valid_envelope(&state);
+        bad_envelope.message.beacon_block_root = Hash256::repeat_byte(0xFF);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let mut envelopes = HashMap::new();
+        envelopes.insert(block_root, bad_envelope);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .envelopes(envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        // Envelope processing errors are dropped for anchor blocks, but a failed
+        // envelope should NOT set the availability bit.
+        assert!(
+            !result_state
+                .execution_payload_availability()
+                .unwrap()
+                .get(slot_index)
+                .unwrap(),
+            "failed envelope processing should not set the availability bit"
+        );
+    }
+
+    #[test]
+    fn anchor_block_blinded_envelope_error_does_not_set_availability_bit() {
+        // When blinded envelope reconstruction/processing fails,
+        // the availability bit should NOT be set.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        // Clear the availability bit
+        let slot_index =
+            state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(slot_index, false)
+            .unwrap();
+
+        // Create a blinded envelope with wrong beacon_block_root
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.beacon_block_root = Hash256::repeat_byte(0xFF);
+        let blinded = make_blinded_envelope(&envelope);
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+        let block_root = anchor_block.canonical_root();
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(block_root, blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert!(
+            !result_state
+                .execution_payload_availability()
+                .unwrap()
+                .get(slot_index)
+                .unwrap(),
+            "failed blinded envelope processing should not set the availability bit"
+        );
+    }
+
+    #[test]
+    fn anchor_block_empty_path_does_not_set_availability_bit() {
+        // When no envelope is provided (EMPTY path), the availability bit
+        // should remain cleared — the payload was never delivered.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        // Clear the availability bit
+        let slot_index =
+            state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(slot_index, false)
+            .unwrap();
+
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            bid,
+        );
+
+        // No envelopes at all — EMPTY path
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert!(
+            !result_state
+                .execution_payload_availability()
+                .unwrap()
+                .get(slot_index)
+                .unwrap(),
+            "EMPTY path (no envelope) should not set the availability bit"
         );
     }
 }
