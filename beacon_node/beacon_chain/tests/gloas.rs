@@ -10650,3 +10650,174 @@ async fn gloas_bid_gossip_rejects_gas_limit_mismatch() {
         other => panic!("expected GasLimitMismatch, got {:?}", other),
     }
 }
+
+// =============================================================================
+// Payload attestation gossip: EmptyAggregationBits, FutureSlot, PastSlot
+// =============================================================================
+
+/// A payload attestation with all-zero aggregation bits is rejected with
+/// `EmptyAggregationBits` at check 2 (gloas_verification.rs:544).
+///
+/// The `EmptyAggregationBits` check is the FIRST validation after slot checks
+/// (check 1). It runs before beacon block root lookup (check 3), PTC committee
+/// retrieval (check 4), equivocation detection (check 5), and signature
+/// verification (check 6). This guard prevents empty attestations from wasting
+/// PTC committee computation and equivocation tracker resources.
+///
+/// A payload attestation with no bits set carries zero information — accepting
+/// it would pollute the attestation pool with vacuous votes, potentially filling
+/// aggregate slots without contributing any PTC weight to fork choice.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_rejects_empty_aggregation_bits() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Create a payload attestation with all-zero aggregation bits.
+    // BitVector::default() is all zeros — no PTC members attesting.
+    let attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::default(),
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    match result {
+        Err(PayloadAttestationError::EmptyAggregationBits) => {}
+        Err(other) => panic!("expected EmptyAggregationBits, got {:?}", other),
+        Ok(_) => panic!("empty aggregation bits should be rejected"),
+    }
+}
+
+/// A payload attestation for a slot far in the future is rejected with
+/// `FutureSlot` at check 1 (gloas_verification.rs:536-540).
+///
+/// The slot validation is the FIRST check in `verify_payload_attestation_for_gossip`.
+/// It prevents attestations for future slots from being accepted before the
+/// chain has reached that point. Without this guard, an attacker could flood
+/// the network with attestations for arbitrary future slots, consuming memory
+/// in the equivocation tracker and attestation pool. The maximum permissible
+/// slot is `current_slot + gossip_clock_disparity / seconds_per_slot`.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_rejects_future_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Use a slot far in the future (head + 1000).
+    // The gossip clock disparity allows at most 1 extra slot on minimal preset
+    // (500ms disparity / 6s per slot = 0), so head+1000 is definitely rejected.
+    let head_slot = head.beacon_block.slot();
+    let future_slot = head_slot + 1000;
+
+    let mut aggregation_bits = BitVector::default();
+    aggregation_bits
+        .set(0, true)
+        .expect("PTC size >= 1, bit 0 should be settable");
+
+    let attestation = PayloadAttestation::<E> {
+        aggregation_bits,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: future_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    match result {
+        Err(PayloadAttestationError::FutureSlot {
+            attestation_slot,
+            latest_permissible_slot,
+        }) => {
+            assert_eq!(attestation_slot, future_slot);
+            assert!(
+                latest_permissible_slot < future_slot,
+                "latest permissible slot {} should be less than future slot {}",
+                latest_permissible_slot,
+                future_slot
+            );
+        }
+        Err(other) => panic!("expected FutureSlot, got {:?}", other),
+        Ok(_) => panic!("far-future attestation should be rejected"),
+    }
+}
+
+/// A payload attestation for a slot in the distant past is rejected with
+/// `PastSlot` at check 1 (gloas_verification.rs:529-533).
+///
+/// The past-slot check prevents stale attestations from being accepted.
+/// Without it, a peer could replay old attestations from finalized history,
+/// which would:
+/// 1. Pollute the equivocation tracker with irrelevant entries
+/// 2. Waste resources on PTC committee computation for old epochs
+/// 3. Potentially trigger false equivocation detections if the same validator
+///    attested differently in a previous epoch (different block root)
+///
+/// The earliest permissible slot is `current_slot - gossip_clock_disparity / seconds_per_slot`.
+/// On minimal preset (6s slots, 500ms disparity), this is effectively current_slot.
+/// Slot 0 is always in the past once the chain has advanced.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_rejects_past_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    // Advance enough slots so slot 0 is clearly in the past
+    Box::pin(harness.extend_slots(8)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Use slot 0 — the chain has advanced to slot 8+, so this is far in the past.
+    let past_slot = Slot::new(0);
+
+    let mut aggregation_bits = BitVector::default();
+    aggregation_bits
+        .set(0, true)
+        .expect("PTC size >= 1, bit 0 should be settable");
+
+    let attestation = PayloadAttestation::<E> {
+        aggregation_bits,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: past_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    match result {
+        Err(PayloadAttestationError::PastSlot {
+            attestation_slot,
+            earliest_permissible_slot,
+        }) => {
+            assert_eq!(attestation_slot, past_slot);
+            assert!(
+                earliest_permissible_slot > past_slot,
+                "earliest permissible slot {} should be greater than past slot {}",
+                earliest_permissible_slot,
+                past_slot
+            );
+        }
+        Err(other) => panic!("expected PastSlot, got {:?}", other),
+        Ok(_) => panic!("past-slot attestation should be rejected"),
+    }
+}
