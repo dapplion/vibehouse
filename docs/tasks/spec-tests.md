@@ -28,6 +28,34 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — full spec verification, doc comment fix (run 156)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630
+  - Reviewed #4940 (Add initial fork choice tests for Gloas): adds genesis + on_execution_payload test vectors. Our test infrastructure already supports `OnExecutionPayload` step and `head_payload_status` check — ready for when it merges
+  - #4898 (Remove pending from tiebreaker) and #4892 (Remove impossible branch) still open
+- Spec test version: v1.7.0-alpha.2, nightly vectors unchanged (same sha a21e27dd since Feb 26)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 337/337 state_processing tests
+  - 193/193 fork_choice + proto_array tests
+- **Verified all merged spec PRs are reflected in code**:
+  - #4948 (Reorder payload status constants): our `GloasPayloadStatus` enum already uses Empty=0, Full=1, Pending=2
+  - #4947 (proposer_preferences subscription note): documentation only
+  - #4923 (Ignore block if parent payload unknown): already implemented in block_verification.rs
+  - #4916 (Refactor builder deposit conditions): our `process_deposit_request_gloas` already matches refactored logic
+  - #4930, #4927, #4920: naming/doc changes, no impact
+- **Fix: GloasPayloadStatus doc comment** in proto_array_fork_choice.rs
+  - Was: "1 = EMPTY, 2 = FULL" (stale, from before PR #4948 reordering)
+  - Fixed: "0 = EMPTY, 1 = FULL, 2 = PENDING" (matches actual enum values)
+- **process_execution_payload_envelope audit**: verified all 17 steps match spec ordering exactly
+  - Signature verification, state root caching, beacon_block_root/slot/bid/prev_randao/withdrawals/gas_limit/block_hash/parent_hash/timestamp checks, execution requests, builder payment, availability update, latest_block_hash update, state root verification — all correct
+- **Fork choice test infrastructure readiness for PR #4940**:
+  - `OnExecutionPayload` step already implemented (loads `SignedExecutionPayloadEnvelope`, calls `on_execution_payload`)
+  - `head_payload_status` check already implemented (stores `GloasPayloadStatus as u8`)
+  - `latest_block_hash` patching in `load_parent` handles post-envelope state correctly for blocks built on revealed parents
+  - PayloadNotRevealed tolerance for v1.7.0-alpha.2 test vectors (pre-#4918) still in place — will need removal when new vectors ship
+
 ### 2026-02-27 — builder pubkey cache for O(1) deposit routing (run 155)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
 - Spec test version: v1.7.0-alpha.2, nightly vectors unchanged
