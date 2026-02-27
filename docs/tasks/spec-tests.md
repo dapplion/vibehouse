@@ -28,6 +28,34 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — withdrawal/PTC/helper function audit, all compliant (run 153)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630
+- Spec test version: v1.7.0-alpha.2, nightly vectors unchanged
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 337/337 state_processing tests
+- **Spec compliance audit: 7 additional functions** — all fully compliant, zero discrepancies:
+  1. `process_withdrawals_gloas` (9 steps): early return on empty parent ✓, 4-phase withdrawal computation ✓, apply_withdrawals ✓, all 5 state updates in correct order ✓
+  2. `get_expected_withdrawals_gloas` (read-only mirror): exact same 4-phase computation ✓, returns computed withdrawals without mutating state ✓
+  3. `is_parent_block_full`: exact match with spec (`latest_execution_payload_bid.block_hash == latest_block_hash`) ✓
+  4. `get_ptc_committee` (get_ptc): seed computation ✓, committee concatenation ✓, `compute_balance_weighted_selection` with `shuffle_indices=false` ✓, `compute_balance_weighted_acceptance` with 2-byte LE random value and `MAX_EFFECTIVE_BALANCE_ELECTRA` comparison ✓
+  5. `get_indexed_payload_attestation`: PTC lookup ✓, bitfield→indices extraction ✓, sorted output ✓
+  6. `get_pending_balance_to_withdraw_for_builder`: sums from both `builder_pending_withdrawals` and `builder_pending_payments` ✓
+  7. `initiate_builder_exit`: early return if already initiated ✓, `current_epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY` ✓
+- **Withdrawal phases verified against spec sub-functions**:
+  - Phase 1 (`get_builder_withdrawals`): iterates `builder_pending_withdrawals`, limit `MAX_WITHDRAWALS - 1`, converts via `BUILDER_INDEX_FLAG` ✓
+  - Phase 2 (`get_pending_partial_withdrawals`): limit `min(prior + MAX_PENDING_PARTIALS, MAX_WITHDRAWALS - 1)`, `is_eligible_for_partial_withdrawals` checks ✓, `get_balance_after_withdrawals` equivalent (filters prior withdrawals for same validator_index) ✓
+  - Phase 3 (`get_builders_sweep_withdrawals`): sweep from `next_withdrawal_builder_index`, `withdrawable_epoch <= epoch && balance > 0` ✓, wrap-around modulo ✓
+  - Phase 4 (`get_validators_sweep_withdrawals`): full `MAX_WITHDRAWALS` limit, `is_fully_withdrawable_validator`/`is_partially_withdrawable_validator` ✓, balance deduction for partial amount ✓
+  - State updates: `update_next_withdrawal_index`, `update_payload_expected_withdrawals`, `update_builder_pending_withdrawals`, `update_pending_partial_withdrawals`, `update_next_withdrawal_builder_index`, `update_next_withdrawal_validator_index` — all match spec ✓
+- **Cumulative audit coverage**: all Gloas-specific state transition functions now audited:
+  - Per-block: `process_execution_payload_bid` ✓, `process_payload_attestation` ✓, `process_withdrawals` ✓, `process_execution_payload_envelope` ✓
+  - Per-epoch: `process_builder_pending_payments` ✓
+  - Helpers: `get_ptc` ✓, `get_indexed_payload_attestation` ✓, `is_parent_block_full` ✓, `get_pending_balance_to_withdraw_for_builder` ✓, `initiate_builder_exit` ✓, `get_expected_withdrawals` ✓
+  - Fork choice: all 7 core functions ✓ (from run 151)
+
 ### 2026-02-27 — spec compliance fixes from bid/attestation/epoch audits (run 152)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
 - Spec test version: v1.7.0-alpha.2, nightly vectors unchanged (Feb 26 build)
