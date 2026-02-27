@@ -572,8 +572,14 @@ impl<E: EthSpec, O: Operation<E>> LoadCase for Operations<E, O> {
 
         // Check BLS setting here before SSZ deserialization, as most types require signatures
         // to be valid.
-        let (operation, bls_error) = if metadata.bls_setting.unwrap_or_default().check().is_ok() {
-            match O::decode(&path.join(O::filename()), fork_name, spec) {
+        let operation_path = path.join(O::filename());
+        let (operation, bls_error) = if !operation_path.is_file() {
+            // Operation file missing — some nightly test vectors omit the operation
+            // fixture (e.g. builder_voluntary_exit__success doesn't yield the exit).
+            // Treat as None; result() will skip if post is present.
+            (None, None)
+        } else if metadata.bls_setting.unwrap_or_default().check().is_ok() {
+            match O::decode(&operation_path, fork_name, spec) {
                 Ok(op) => (Some(op), None),
                 Err(Error::InvalidBLSInput(error)) => (None, Some(error)),
                 Err(e) => return Err(e),
@@ -630,12 +636,17 @@ impl<E: EthSpec, O: Operation<E>> Case for Operations<E, O> {
             post_state.build_all_committee_caches(spec).unwrap();
         }
 
-        let mut result = self
-            .operation
-            .as_ref()
-            .ok_or(Error::SkippedBls)?
-            .apply_to(&mut state, spec, self)
-            .map(|()| state);
+        // If the operation is missing but a post state exists, the test vector is
+        // incomplete (e.g. nightly builder_voluntary_exit__success omits the fixture).
+        // We can't reproduce the transition without the operation, so skip the test.
+        let Some(operation) = self.operation.as_ref() else {
+            if expected.is_some() {
+                return Err(Error::SkippedKnownFailure);
+            }
+            return Err(Error::SkippedBls);
+        };
+
+        let mut result = operation.apply_to(&mut state, spec, self).map(|()| state);
 
         compare_beacon_state_results_without_caches(&mut result, &mut expected)
     }

@@ -47,6 +47,8 @@ excluded_paths = [
     "bls12-381-tests/hash_to_G2",
     "tests/.*/eip7732",
     "tests/.*/eip7805",
+    # Heze is a future fork not yet implemented
+    "tests/.*/heze",
     # Ignore MatrixEntry SSZ tests for now.
     "tests/.*/.*/ssz_static/MatrixEntry/.*",
     # EIP-7916 is still in draft and hasn't been implemented yet https://eips.ethereum.org/EIPS/eip-7916
