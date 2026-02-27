@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 Gloas pool/fork-choice field behavior tests (run 172)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - PR #4950 (extend by_root serve range) updated today but still open, not merged
+  - All other tracked PRs still open: #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 Gloas beacon_chain integration tests** covering previously untested pool and fork choice field behaviors:
+  1. `gloas_proposer_preferences_pool_dedup_and_pruning` — exercises `insert_proposer_preferences` duplicate-slot guard (returns false for same slot) and old-entry pruning (entries older than 2 epochs removed). Also verifies `get_proposer_preferences` round-trip. The pool dedup and pruning logic in `beacon_chain.rs:3326-3346` was only tested indirectly through gossip handler tests.
+  2. `gloas_payload_absent_attestations_do_not_reveal_payload` — verifies the negative case of PTC quorum: all PTC members vote `payload_present=false`, and `payload_revealed` remains false with `ptc_weight=0`. This is the dual of the existing `gloas_import_attestation_quorum_triggers_payload_revealed` test which only tests the positive case. Critical because `on_payload_attestation` (fork_choice.rs:1469) only accumulates `ptc_weight` when `payload_present=true` — a bug here could cause the chain to mark payloads as revealed when builders haven't published them.
+  3. `gloas_on_execution_bid_resets_reveal_and_weight_fields` — verifies that `on_execution_bid` (fork_choice.rs:1361-1373) resets `payload_revealed=false`, `ptc_weight=0`, `ptc_blob_data_available_weight=0`, and `payload_data_available=false`. Pre-sets these fields to non-default values on a fork choice node, then applies a bid and checks all are reset. The existing `gloas_apply_bid_to_fork_choice_updates_node_fields` only verified `builder_index` was SET, not the RESET behavior.
+- **Full test suite verification** — all passing:
+  - 601/601 beacon_chain tests (FORK_NAME=gloas, was 598, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 external builder envelope gossip verification tests (run 171)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

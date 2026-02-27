@@ -8688,3 +8688,305 @@ async fn gloas_external_builder_envelope_buffered_then_processed() {
         );
     }
 }
+
+// =============================================================================
+// Proposer preferences pool behavior
+// =============================================================================
+
+/// Test that `insert_proposer_preferences` rejects a duplicate slot and that
+/// preferences older than 2 epochs are pruned from the pool.
+///
+/// The `insert_proposer_preferences` function has two important guards:
+/// 1. Returns `false` if a preference for the same slot already exists (dedup)
+/// 2. Prunes entries older than `2 * slots_per_epoch` from the current slot
+///
+/// Both guards are exercised via gossip handler tests, but the raw beacon_chain
+/// pool behavior has never been tested at the integration level.
+#[tokio::test]
+async fn gloas_proposer_preferences_pool_dedup_and_pruning() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let current_slot = harness.chain.slot().expect("should have slot");
+
+    // Create a signed preferences for the current slot
+    let prefs1 = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: current_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::repeat_byte(0xAA),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+
+    // First insertion should succeed
+    let inserted = harness.chain.insert_proposer_preferences(prefs1.clone());
+    assert!(
+        inserted,
+        "first insertion for slot {} should succeed",
+        current_slot
+    );
+
+    // Retrieval should return the preferences
+    let retrieved = harness.chain.get_proposer_preferences(current_slot);
+    assert!(
+        retrieved.is_some(),
+        "should retrieve preferences for slot {}",
+        current_slot
+    );
+    assert_eq!(
+        retrieved.unwrap().message.fee_recipient,
+        Address::repeat_byte(0xAA),
+        "retrieved fee_recipient should match"
+    );
+
+    // Duplicate insertion for the same slot should be rejected
+    let prefs_dup = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: current_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::repeat_byte(0xBB), // different content
+            gas_limit: 60_000_000,
+        },
+        signature: Signature::empty(),
+    };
+    let inserted_dup = harness.chain.insert_proposer_preferences(prefs_dup);
+    assert!(
+        !inserted_dup,
+        "duplicate insertion for same slot should be rejected"
+    );
+
+    // Original should be preserved (not overwritten)
+    let still_original = harness
+        .chain
+        .get_proposer_preferences(current_slot)
+        .unwrap();
+    assert_eq!(
+        still_original.message.fee_recipient,
+        Address::repeat_byte(0xAA),
+        "original preferences should be preserved after duplicate rejection"
+    );
+
+    // Now test pruning: advance beyond 2 epochs and insert a new preference.
+    // The old preference should be pruned.
+    let slots_per_epoch = E::slots_per_epoch();
+    let advance_by = slots_per_epoch * 2 + 1;
+    for _ in 0..advance_by {
+        harness.advance_slot();
+    }
+    // Extend to produce at least one block to update the chain's slot
+    Box::pin(harness.extend_slots(1)).await;
+
+    let new_slot = harness.chain.slot().expect("should have slot");
+    let prefs_new = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: new_slot.as_u64(),
+            validator_index: 1,
+            fee_recipient: Address::repeat_byte(0xCC),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+    let inserted_new = harness.chain.insert_proposer_preferences(prefs_new);
+    assert!(
+        inserted_new,
+        "insertion for new slot {} should succeed",
+        new_slot
+    );
+
+    // The old preference should have been pruned (current_slot < new_slot - 2*slots_per_epoch)
+    let old = harness.chain.get_proposer_preferences(current_slot);
+    assert!(
+        old.is_none(),
+        "old preferences at slot {} should be pruned after advancing to slot {} \
+         (prune_before = {} - {} = {})",
+        current_slot,
+        new_slot,
+        new_slot,
+        slots_per_epoch * 2,
+        new_slot.as_u64().saturating_sub(slots_per_epoch * 2),
+    );
+
+    // New preference should still be present
+    let new = harness.chain.get_proposer_preferences(new_slot);
+    assert!(
+        new.is_some(),
+        "new preferences at slot {} should still be present",
+        new_slot
+    );
+}
+
+// =============================================================================
+// PTC attestation payload_present=false does NOT trigger payload_revealed
+// =============================================================================
+
+/// Test that PTC members voting `payload_present=false` does NOT cause
+/// `payload_revealed` to become true, even if they reach quorum.
+///
+/// The `on_payload_attestation` code only accumulates `ptc_weight` when
+/// `attestation.data.payload_present == true`. This test verifies the negative
+/// case: all PTC members vote `payload_present=false`, and payload_revealed
+/// remains false despite reaching "quorum" in count.
+#[tokio::test]
+async fn gloas_payload_absent_attestations_do_not_reveal_payload() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Reset payload_revealed and ptc_weight to simulate an unrevealed state
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_revealed = false;
+        node.ptc_weight = 0;
+    }
+
+    // Get all PTC members
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+
+    // Import attestations from ALL PTC members with payload_present=false
+    for (i, &validator_index) in ptc.iter().enumerate() {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: false, // voting ABSENT
+            blob_data_available: false,
+        };
+
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+
+        let result = harness.chain.import_payload_attestation_message(message);
+        assert!(
+            result.is_ok(),
+            "should import payload_absent attestation from PTC member {}: {:?}",
+            i,
+            result.err()
+        );
+    }
+
+    // Verify: ptc_weight should remain 0 (payload_present=false doesn't accumulate weight)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should remain 0 when all votes are payload_present=false"
+    );
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should remain false when no payload_present=true votes"
+    );
+}
+
+// =============================================================================
+// on_execution_bid resets fork choice node fields
+// =============================================================================
+
+/// Test that `apply_execution_bid_to_fork_choice` resets `payload_revealed`,
+/// `ptc_weight`, `ptc_blob_data_available_weight`, and `payload_data_available`
+/// on the fork choice node.
+///
+/// In the ePBS flow, when a new bid arrives for a block, the previous bid's
+/// state should be reset. This is important because if a builder was previously
+/// tracking PTC weight from a prior bid, a new bid should start fresh.
+///
+/// The existing `gloas_apply_bid_to_fork_choice_updates_node_fields` test checks
+/// that builder_index is SET, but doesn't verify the RESET behavior of the
+/// reveal/weight/availability fields.
+#[tokio::test]
+async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Manually set some non-default values on the head's fork choice node
+    // to simulate a state where PTC weight has accumulated and payload was revealed
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        // Simulate previous bid state: payload was revealed, had PTC weight, etc.
+        node.payload_revealed = true;
+        node.ptc_weight = 42;
+        node.ptc_blob_data_available_weight = 17;
+        node.payload_data_available = true;
+    }
+
+    // Verify the non-default state before the bid
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert!(
+            node.payload_revealed,
+            "sanity: payload_revealed should be true before bid"
+        );
+        assert_eq!(node.ptc_weight, 42, "sanity: ptc_weight should be 42");
+    }
+
+    // Create and apply a new bid targeting the head block
+    // (on_execution_bid targets the beacon_block_root of the block the bid is for)
+    // We need to target `head_root` since that's the block in fork choice.
+    // However, on_execution_bid verifies bid.slot == node.slot, so use head_slot.
+    let bid = make_external_bid(&state, head_root, head_slot, 0, 5000);
+
+    // Apply directly via fork choice (bypassing gossip verification)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        fc.on_execution_bid(&bid, head_root)
+            .expect("on_execution_bid should succeed");
+    }
+
+    // Verify: all reveal/weight fields should be RESET
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert!(
+            !node.payload_revealed,
+            "payload_revealed should be reset to false after new bid"
+        );
+        assert_eq!(
+            node.ptc_weight, 0,
+            "ptc_weight should be reset to 0 after new bid"
+        );
+        assert_eq!(
+            node.ptc_blob_data_available_weight, 0,
+            "ptc_blob_data_available_weight should be reset to 0 after new bid"
+        );
+        assert!(
+            !node.payload_data_available,
+            "payload_data_available should be reset to false after new bid"
+        );
+        assert_eq!(
+            node.builder_index,
+            Some(0),
+            "builder_index should be set to the new bid's builder_index"
+        );
+    }
+}
