@@ -4303,4 +4303,268 @@ mod tests {
             assert_eq!(e.amount, a.amount, "amounts should match");
         }
     }
+
+    // ── Pending partial withdrawal BLS credential error path tests ──
+
+    #[test]
+    fn pending_partial_withdrawal_bls_credentials_rejected() {
+        // A validator with BLS (0x00) credentials that somehow has a pending partial
+        // withdrawal should trigger NonExecutionAddressWithdrawalCredential.
+        //
+        // The conditions at line 556-558 require:
+        //   validator.exit_epoch == far_future_epoch  (not exiting)
+        //   effective_balance >= min_activation_balance  (sufficient balance)
+        //   balance > min_activation_balance  (excess balance)
+        //
+        // If all pass, get_execution_withdrawal_address(spec) is called. For a
+        // validator with 0x00 prefix credentials, this returns None → error.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Change validator 0's credentials to BLS (0x00 prefix)
+        let mut bls_creds = [0u8; 32];
+        bls_creds[0] = 0x00; // BLS withdrawal credential prefix
+        bls_creds[1..].copy_from_slice(&[0xBB; 31]);
+        state.get_validator_mut(0).unwrap().withdrawal_credentials =
+            Hash256::from_slice(&bls_creds);
+
+        // Add a pending partial withdrawal for this BLS-credential validator
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 1_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::NonExecutionAddressWithdrawalCredential
+                ))
+            ),
+            "BLS-credential validator partial withdrawal should fail: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_bls_credentials_rejected() {
+        // Same scenario as above but through the read-only get_expected_withdrawals_gloas.
+        // Both mutable and read-only paths must reject identically, otherwise the EL
+        // receives a withdrawal list that the CL would later reject.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Change validator 0's credentials to BLS (0x00 prefix)
+        let mut bls_creds = [0u8; 32];
+        bls_creds[0] = 0x00;
+        bls_creds[1..].copy_from_slice(&[0xBB; 31]);
+        state.get_validator_mut(0).unwrap().withdrawal_credentials =
+            Hash256::from_slice(&bls_creds);
+
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 1_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        let result = get_expected_withdrawals_gloas::<E>(&state, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::BeaconStateError(
+                    BeaconStateError::NonExecutionAddressWithdrawalCredential
+                ))
+            ),
+            "read-only path should also reject BLS-credential partial withdrawal: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn validator_sweep_wraps_around_modular_index() {
+        // Verify the validator sweep wraps correctly when next_withdrawal_validator_index
+        // starts near the end of the validator list.
+        //
+        // With 8 validators and next_withdrawal_validator_index=6, the sweep processes
+        // validators 6, 7, 0, 1, 2, 3, 4, 5 (wrapping around).
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Fix effective_balance to min_activation_balance (32 ETH) — make_gloas_state
+        // sets it to the balance parameter (34 ETH), but is_partially_withdrawable
+        // requires effective_balance == max_effective_balance. For 0x01 credentials,
+        // max_effective_balance = min_activation_balance = 32 ETH.
+        for i in 0..8 {
+            state.get_validator_mut(i).unwrap().effective_balance = spec.min_activation_balance;
+        }
+
+        // Start near end of validator list
+        *state.next_withdrawal_validator_index_mut().unwrap() = 6;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Verify withdrawals were generated starting from validator 6
+        let withdrawals = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        assert!(
+            !withdrawals.is_empty(),
+            "should generate partial withdrawals for validators with excess balance"
+        );
+
+        // Verify the first withdrawal targets validator 6 (the starting point)
+        assert_eq!(
+            withdrawals.get(0).unwrap().validator_index,
+            6,
+            "first withdrawal should be for validator 6 (starting index)"
+        );
+
+        // Verify the sweep wrapped around: second withdrawal should be validator 7,
+        // third should be validator 0, etc. (up to max_withdrawals=4)
+        let max_withdrawals = E::max_withdrawals_per_payload();
+        assert_eq!(withdrawals.len(), max_withdrawals);
+        assert_eq!(withdrawals.get(1).unwrap().validator_index, 7);
+        assert_eq!(withdrawals.get(2).unwrap().validator_index, 0);
+        assert_eq!(withdrawals.get(3).unwrap().validator_index, 1);
+
+        // When withdrawals.len() == max_withdrawals, next index =
+        // (last.validator_index + 1) % validators_len
+        let new_index = state.next_withdrawal_validator_index().unwrap();
+        assert_eq!(
+            new_index, 2,
+            "next_withdrawal_validator_index should be 2 (after last withdrawn validator 1)"
+        );
+    }
+
+    #[test]
+    fn multiple_pending_partials_for_same_validator_account_for_prior_withdrawals() {
+        // When two pending partial withdrawals reference the same validator, the second
+        // must account for the balance already withdrawn by the first. The total_withdrawn
+        // accumulator (line 546-550) filters all prior withdrawals for the same validator.
+        //
+        // Validator 0: balance=36 ETH, effective_balance=34 ETH (from make_gloas_state).
+        // min_activation_balance = 32 ETH
+        // Excess: 36 - 32 = 4 ETH
+        //
+        // First partial withdrawal: amount=3 ETH → withdraws 3 ETH
+        // Second partial withdrawal: amount=3 ETH → excess after first = 1 ETH → withdraws 1 ETH
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set validator 0 balance to 36 ETH (4 ETH excess over min_activation_balance)
+        *state.get_balance_mut(0).unwrap() = 36_000_000_000;
+
+        // Two pending partial withdrawals for the same validator
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 3_000_000_000, // 3 ETH
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 3_000_000_000, // 3 ETH
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let validator_withdrawals: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| w.validator_index == 0 && (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+
+        assert_eq!(
+            validator_withdrawals.len(),
+            2,
+            "both pending partial withdrawals should be processed"
+        );
+        assert_eq!(
+            validator_withdrawals[0].amount, 3_000_000_000,
+            "first withdrawal gets full requested amount (excess=4 ETH, request=3 ETH)"
+        );
+        assert_eq!(
+            validator_withdrawals[1].amount, 1_000_000_000,
+            "second withdrawal capped to remaining excess (4-3=1 ETH, request=3 ETH)"
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_multiple_partials_matches_process() {
+        // Verify the read-only path (get_expected_withdrawals_gloas) produces identical
+        // results to the mutable path for multiple pending partials for the same validator.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        *state.get_balance_mut(0).unwrap() = 36_000_000_000;
+
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 3_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 3_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        // Get read-only result first (before mutation)
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Process mutating version
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+        let actual = &state.as_gloas().unwrap().payload_expected_withdrawals;
+
+        // Both paths must agree
+        assert_eq!(
+            expected.len(),
+            actual.len(),
+            "read-only and mutable paths should produce same number of withdrawals"
+        );
+        for (e, a) in expected.iter().zip(actual.iter()) {
+            assert_eq!(e.amount, a.amount, "withdrawal amounts should match");
+            assert_eq!(
+                e.validator_index, a.validator_index,
+                "validator indices should match"
+            );
+        }
+
+        // Verify the second partial was capped
+        let validator_0_expected: Vec<_> = expected
+            .iter()
+            .filter(|w| w.validator_index == 0 && (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+        assert_eq!(validator_0_expected.len(), 2);
+        assert_eq!(validator_0_expected[0].amount, 3_000_000_000);
+        assert_eq!(
+            validator_0_expected[1].amount, 1_000_000_000,
+            "read-only path must also cap second partial at remaining excess"
+        );
+    }
 }

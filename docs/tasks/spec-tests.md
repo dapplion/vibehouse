@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 withdrawal edge case tests (run 198)
+- Added 5 new unit tests in `consensus/state_processing/src/per_block_processing/gloas.rs` for `process_withdrawals_gloas` / `get_expected_withdrawals_gloas` edge cases:
+  - `pending_partial_withdrawal_bls_credentials_rejected`: BLS (0x00) credential validator in pending partial withdrawal triggers NonExecutionAddressWithdrawalCredential error
+  - `get_expected_withdrawals_bls_credentials_rejected`: same error path through read-only get_expected_withdrawals_gloas
+  - `validator_sweep_wraps_around_modular_index`: next_withdrawal_validator_index=6 with 8 validators wraps around correctly, first withdrawal is validator 6
+  - `multiple_pending_partials_for_same_validator_account_for_prior_withdrawals`: two 3 ETH partials for same validator (4 ETH excess) — second capped to 1 ETH via total_withdrawn accumulator
+  - `get_expected_withdrawals_multiple_partials_matches_process`: read-only/mutable path consistency for multiple partials same validator
+- All 382 state_processing tests pass, clippy clean
+
 ### 2026-02-27 — 5 Gloas attestation gossip verification rejection tests (run 197)
 - Added 5 new integration tests in `beacon_node/beacon_chain/tests/gloas.rs` for `verify_unaggregated_attestation_for_gossip` Gloas-specific rejection paths:
   - `gloas_gossip_unaggregated_index_two_rejected`: data.index=2 rejected (index bounds check, [REJECT] index < 2)
