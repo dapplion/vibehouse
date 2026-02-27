@@ -871,30 +871,6 @@ impl HttpJsonRpc {
         Ok(response.into())
     }
 
-    pub async fn new_payload_v4_gloas<E: EthSpec>(
-        &self,
-        new_payload_request_gloas: NewPayloadRequestGloas<'_, E>,
-    ) -> Result<PayloadStatusV1, Error> {
-        let params = json!([
-            JsonExecutionPayload::Gloas(new_payload_request_gloas.execution_payload.clone().into()),
-            new_payload_request_gloas.versioned_hashes,
-            new_payload_request_gloas.parent_beacon_block_root,
-            new_payload_request_gloas
-                .execution_requests
-                .get_execution_requests_list(),
-        ]);
-
-        let response: JsonPayloadStatusV1 = self
-            .rpc_request(
-                ENGINE_NEW_PAYLOAD_V4,
-                params,
-                ENGINE_NEW_PAYLOAD_TIMEOUT * self.execution_timeout_multiplier,
-            )
-            .await?;
-
-        Ok(response.into())
-    }
-
     pub async fn new_payload_v5_gloas<E: EthSpec>(
         &self,
         new_payload_request_gloas: NewPayloadRequestGloas<'_, E>,
