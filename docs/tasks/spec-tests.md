@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 process_payload_attestation edge case tests (run 201)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked open PRs unchanged: #4940, #4932, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering previously untested edge cases in `process_payload_attestation` (`per_block_processing/gloas.rs`):
+  1. `payload_attestation_slot_overflow_fails_gracefully` — exercises the `data.slot = u64::MAX` path where `safe_add(1)` must return an error (WrongSlot), not panic from overflow. This guard prevents a consensus crash if a malicious block includes an attestation with a max-value slot field.
+  2. `payload_attestation_two_attestations_same_block_both_succeed` — calls `process_payload_attestation` twice on the same state with different PTC members (bit[0] and bit[1]). Both succeed independently. This verifies that `process_payload_attestation` is stateless (no side-effects prevent a second attestation from validating). A block can include multiple payload attestations — if the second one failed after the first, PTC coverage would be capped at one attestation per block.
+  3. `payload_attestation_second_bit_only_maps_to_correct_ptc_member` — sets only bit[1] (not bit[0]) and verifies the indexed attestation contains only `ptc[1]`, not `ptc[0]`. All existing tests either set bit[0] or both bits. This test verifies the bit-to-validator-index mapping for non-first PTC members, catching off-by-one bugs in `get_indexed_payload_attestation`.
+  4. `payload_attestation_present_true_blob_false_valid` — `payload_present=true` with `blob_data_available=false` is a valid PTC vote (payload timely but blobs not yet available). Verifies `process_payload_attestation` does NOT enforce consistency between these flags — that's fork choice's responsibility. A false rejection here would prevent PTC members from voting accurately about split availability states.
+  5. `payload_attestation_present_false_blob_true_valid` — complementary: `payload_present=false` with `blob_data_available=true`. The PTC member asserts blobs are available even though the payload wasn't timely. Verifies both flags are independently valid, matching the spec's separate `payload_timeliness_vote` and `payload_data_availability_vote` bitvectors.
+- **Why these tests matter**: `process_payload_attestation` is called once per PTC attestation during block processing. The slot overflow test prevents a consensus-critical panic. The multi-attestation test proves block-level independence. The bit-mapping test catches indexing errors in the PTC→validator resolution. The split-flag tests verify the spec's intentional separation of payload timeliness and data availability voting — a false rejection would reduce PTC effectiveness and potentially delay payload reveals.
+- **Full test suite verification** — all passing:
+  - 392/392 state_processing tests (was 387, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-27 — 5 Gloas aggregate attestation gossip verification tests (run 200)
 - Added 5 new integration tests in `beacon_node/beacon_chain/tests/gloas.rs` for `verify_aggregated_attestation_for_gossip` Gloas-specific rejection/acceptance paths:
   - `gloas_gossip_aggregate_index_two_rejected`: aggregate with data.index=2 rejected by verify_committee_index ([REJECT] index < 2)
