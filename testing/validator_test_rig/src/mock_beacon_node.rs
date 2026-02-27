@@ -219,6 +219,18 @@ impl<E: EthSpec> MockBeaconNode<E> {
             .create()
     }
 
+    /// Mocks `POST /eth/v1/beacon/pool/payload_attestations` to return a 500 error.
+    pub fn mock_post_beacon_pool_payload_attestations_error(&mut self) -> Mock {
+        let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/payload_attestations$").unwrap();
+
+        self.server
+            .mock("POST", Matcher::Regex(path_pattern.to_string()))
+            .with_status(500)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"message":"Internal Server Error"}"#)
+            .create()
+    }
+
     /// Mocks `POST /eth/v1/beacon/pool/proposer_preferences` to return a 500 error.
     pub fn mock_post_beacon_pool_proposer_preferences_error(&mut self) -> Mock {
         let path_pattern = Regex::new(r"^/eth/v1/beacon/pool/proposer_preferences$").unwrap();

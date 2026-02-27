@@ -1946,13 +1946,11 @@ mod broadcast_preferences_tests {
             self
         }
 
-        #[allow(dead_code)]
         fn with_gas_limit(mut self, pubkey: PublicKeyBytes, gas_limit: u64) -> Self {
             self.gas_limits.insert(pubkey, gas_limit);
             self
         }
 
-        #[allow(dead_code)]
         fn with_sign_error(mut self, err: String) -> Self {
             self.sign_error = Some(err);
             self
@@ -2313,5 +2311,115 @@ mod broadcast_preferences_tests {
 
         // Epoch is still marked as broadcast
         assert!(ds.preferences_broadcast_epochs.lock().contains(&next_epoch));
+    }
+
+    /// Happy path: local proposer has duty, signs preferences, posts to BN.
+    ///
+    /// Tests the full pipeline: fetch proposer duties → filter to local validator →
+    /// sign_proposer_preferences → POST to BN pool → epoch marked as broadcast.
+    #[tokio::test]
+    async fn broadcast_preferences_happy_path_signs_and_posts() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let fee_recipient = Address::repeat_byte(0xDD);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, fee_recipient)
+            .with_gas_limit(pubkey, 40_000_000);
+        let current_slot = Slot::new(slots_per_epoch); // epoch 1
+        let next_epoch = Epoch::new(2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let proposer_duty = ProposerData {
+            pubkey,
+            validator_index: 100,
+            slot: Slot::new(slots_per_epoch * 2), // slot in epoch 2
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
+        let _m2 = mock.mock_post_beacon_pool_proposer_preferences();
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // Epoch should be marked as broadcast
+        assert!(
+            ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
+            "next_epoch should be marked as broadcast after successful sign+post"
+        );
+    }
+
+    /// Sign failure: sign_proposer_preferences returns error, validator skipped, epoch still marked.
+    ///
+    /// Tests the `Err(e)` branch in the `for duty in &local_duties` loop — the function
+    /// logs a warning and `continue`s to the next duty. With only one duty, it still
+    /// marks the epoch as broadcast.
+    #[tokio::test]
+    async fn broadcast_preferences_sign_failure_continues() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xEE))
+            .with_sign_error("mock sign failure".to_string());
+        let current_slot = Slot::new(slots_per_epoch);
+        let next_epoch = Epoch::new(2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let proposer_duty = ProposerData {
+            pubkey,
+            validator_index: 100,
+            slot: Slot::new(slots_per_epoch * 2),
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
+        // No POST mock — signing fails so POST should never be called
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // Epoch still marked as broadcast (sign failure doesn't prevent marking)
+        assert!(
+            ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
+            "epoch should be marked even when sign fails"
+        );
+    }
+
+    /// BN POST failure: signed ok but submission returns 500 error, epoch still marked.
+    ///
+    /// Tests the `Err(e)` branch of `first_success(post_beacon_pool_proposer_preferences)`.
+    /// The function logs a warning and continues — epoch is still marked as broadcast.
+    #[tokio::test]
+    async fn broadcast_preferences_bn_post_failure_still_marks_epoch() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xFF));
+        let current_slot = Slot::new(slots_per_epoch);
+        let next_epoch = Epoch::new(2);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let proposer_duty = ProposerData {
+            pubkey,
+            validator_index: 100,
+            slot: Slot::new(slots_per_epoch * 2),
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
+        let _m2 = mock.mock_post_beacon_pool_proposer_preferences_error();
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        // Function should still return Ok (POST failure is logged but not fatal)
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // Epoch is still marked as broadcast
+        assert!(
+            ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
+            "epoch should be marked even when BN POST fails"
+        );
     }
 }

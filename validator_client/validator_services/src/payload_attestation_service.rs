@@ -324,7 +324,7 @@ mod produce_tests {
     use super::*;
     use crate::duties_service::DutiesServiceBuilder;
     use crate::ptc::PtcDutiesMap;
-    use beacon_node_fallback::{BeaconNodeFallback, CandidateBeaconNode};
+    use beacon_node_fallback::{ApiTopic, BeaconNodeFallback, CandidateBeaconNode};
     use eth2::types::{PayloadAttestationData as ApiPayloadAttestationData, PtcDutyData};
     use slot_clock::TestingSlotClock;
     use std::collections::HashMap;
@@ -332,8 +332,8 @@ mod produce_tests {
     use std::time::Duration;
     use task_executor::test_utils::TestRuntime;
     use types::{
-        Hash256, MainnetEthSpec, PayloadAttestationData, PayloadAttestationMessage, PublicKeyBytes,
-        Slot,
+        Epoch, Hash256, MainnetEthSpec, PayloadAttestationData, PayloadAttestationMessage,
+        PublicKeyBytes, Slot,
     };
     use validator_store::{DoppelgangerStatus, Error as ValidatorStoreError, ValidatorStore};
     use validator_test_rig::mock_beacon_node::MockBeaconNode;
@@ -911,5 +911,332 @@ mod produce_tests {
 
         // Sign was called (payload_present=false is still a valid duty)
         assert_eq!(signed.lock().unwrap().clone(), vec![500u64]);
+    }
+
+    /// Partial sign failure: 3 duties, 1 fails to sign, remaining 2 are still submitted.
+    ///
+    /// Tests the error resilience of the signing loop — when one validator fails to sign,
+    /// the function logs a warning and continues with the next duty. The successfully
+    /// signed messages are submitted in a single POST.
+    #[tokio::test]
+    async fn produce_partial_sign_failure_still_submits_others() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let current_slot = Slot::new(slots_per_epoch);
+        let pk1 = SigningValidatorStore::pubkey(20);
+        let pk2 = SigningValidatorStore::pubkey(21); // this one will fail
+        let pk3 = SigningValidatorStore::pubkey(22);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let attestation_data = ApiPayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xee),
+            slot: current_slot,
+            payload_present: true,
+            blob_data_available: true,
+        };
+
+        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data.clone());
+        let _m_pool = mock.mock_post_beacon_pool_payload_attestations();
+
+        let epoch = current_slot.epoch(slots_per_epoch);
+        let duties = vec![(
+            epoch,
+            vec![
+                make_ptc_duty(pk1, 20, current_slot.as_u64()),
+                make_ptc_duty(pk2, 21, current_slot.as_u64()),
+                make_ptc_duty(pk3, 22, current_slot.as_u64()),
+            ],
+        )];
+
+        // Build manually to inject a store that fails for validator 21
+        let test_runtime = TestRuntime::default();
+        let client = mock.beacon_api_client.clone();
+        let candidate = CandidateBeaconNode::new(client, 0);
+        let spec_arc = Arc::new(spec.clone());
+        let mut fallback = BeaconNodeFallback::new(
+            vec![candidate],
+            Default::default(),
+            vec![ApiTopic::Attestations],
+            spec_arc.clone(),
+        );
+        let slot_clock = TestingSlotClock::new(
+            Slot::new(0),
+            Duration::from_secs(0),
+            Duration::from_secs(spec.seconds_per_slot),
+        );
+        slot_clock.set_slot(current_slot.as_u64());
+        fallback.set_slot_clock(slot_clock.clone());
+
+        // Custom store: validator 21 fails to sign
+        let store = Arc::new(PartialFailStore {
+            validators: vec![(pk1, 20), (pk2, 21), (pk3, 22)].into_iter().collect(),
+            fail_index: 21,
+            signed: Arc::new(Mutex::new(Vec::new())),
+        });
+        let signed = store.signed.clone();
+
+        let duties_service = Arc::new(
+            DutiesServiceBuilder::new()
+                .validator_store(store.clone())
+                .slot_clock(slot_clock.clone())
+                .beacon_nodes(Arc::new(fallback.clone()))
+                .executor(test_runtime.task_executor.clone())
+                .spec(spec_arc.clone())
+                .build()
+                .unwrap(),
+        );
+        for (ep, ep_duties) in duties {
+            inject_ptc_duties(&duties_service.ptc_duties, ep, ep_duties);
+        }
+
+        let service = PayloadAttestationServiceBuilder::new()
+            .duties_service(duties_service)
+            .validator_store(store)
+            .slot_clock(slot_clock)
+            .beacon_nodes(Arc::new(fallback))
+            .executor(test_runtime.task_executor.clone())
+            .spec(spec_arc)
+            .build()
+            .unwrap();
+
+        // Should succeed — partial failure is not fatal
+        service
+            .produce_payload_attestations_for_testing()
+            .await
+            .unwrap();
+
+        // Validators 20 and 22 signed successfully, 21 was attempted but failed
+        let mut signed_indices = signed.lock().unwrap().clone();
+        signed_indices.sort();
+        assert_eq!(
+            signed_indices,
+            vec![20u64, 21, 22],
+            "all 3 validators should have been attempted"
+        );
+    }
+
+    /// BN POST failure: all attestations signed ok, but submission returns 500 → Err(()).
+    ///
+    /// Tests the `Err(e)` return from `beacon_nodes.request(post_payload_attestations)`.
+    /// Unlike the broadcast_proposer_preferences path which warns and continues,
+    /// produce_payload_attestations treats POST failure as fatal (returns Err).
+    #[tokio::test]
+    async fn produce_bn_post_failure_returns_err() {
+        let spec = spec_with_gloas(Some(0));
+        let slots_per_epoch = E::slots_per_epoch();
+        let current_slot = Slot::new(slots_per_epoch);
+        let pubkey = SigningValidatorStore::pubkey(6);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let attestation_data = ApiPayloadAttestationData {
+            beacon_block_root: Hash256::repeat_byte(0xff),
+            slot: current_slot,
+            payload_present: true,
+            blob_data_available: true,
+        };
+
+        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data);
+        // POST returns 500 error
+        let _m_pool = mock.mock_post_beacon_pool_payload_attestations_error();
+
+        let epoch = current_slot.epoch(slots_per_epoch);
+        let duties = vec![(
+            epoch,
+            vec![make_ptc_duty(pubkey, 600, current_slot.as_u64())],
+        )];
+
+        let (service, signed, _rt) =
+            make_service(&mock, vec![(pubkey, 600)], spec, current_slot, duties).await;
+
+        // Should return Err because BN POST failed
+        let result = service.produce_payload_attestations_for_testing().await;
+        assert!(result.is_err(), "expected Err when BN POST returns 500");
+
+        // Signing still happened before the POST failure
+        assert_eq!(signed.lock().unwrap().clone(), vec![600u64]);
+    }
+
+    /// ValidatorStore that fails to sign for a specific validator_index.
+    ///
+    /// Used by produce_partial_sign_failure_still_submits_others to test
+    /// that the signing loop handles per-validator errors gracefully.
+    struct PartialFailStore {
+        validators: HashMap<PublicKeyBytes, u64>,
+        fail_index: u64,
+        signed: Arc<Mutex<Vec<u64>>>,
+    }
+
+    impl ValidatorStore for PartialFailStore {
+        type Error = String;
+        type E = E;
+
+        fn validator_index(&self, pubkey: &PublicKeyBytes) -> Option<u64> {
+            self.validators.get(pubkey).copied()
+        }
+
+        fn voting_pubkeys<I, F>(&self, filter_func: F) -> I
+        where
+            I: FromIterator<PublicKeyBytes>,
+            F: Fn(DoppelgangerStatus) -> Option<PublicKeyBytes>,
+        {
+            self.validators
+                .keys()
+                .filter_map(|pk| filter_func(DoppelgangerStatus::SigningEnabled(*pk)))
+                .collect()
+        }
+
+        fn doppelganger_protection_allows_signing(&self, _: PublicKeyBytes) -> bool {
+            true
+        }
+
+        fn num_voting_validators(&self) -> usize {
+            self.validators.len()
+        }
+
+        fn graffiti(&self, _: &PublicKeyBytes) -> Option<types::Graffiti> {
+            unimplemented!()
+        }
+
+        fn get_fee_recipient(&self, _: &PublicKeyBytes) -> Option<types::Address> {
+            unimplemented!()
+        }
+
+        fn determine_builder_boost_factor(&self, _: &PublicKeyBytes) -> Option<u64> {
+            unimplemented!()
+        }
+
+        async fn randao_reveal(
+            &self,
+            _: PublicKeyBytes,
+            _: Epoch,
+        ) -> Result<types::Signature, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        fn set_validator_index(&self, _: &PublicKeyBytes, _: u64) {
+            unimplemented!()
+        }
+
+        async fn sign_block(
+            &self,
+            _: PublicKeyBytes,
+            _: validator_store::UnsignedBlock<Self::E>,
+            _: Slot,
+        ) -> Result<validator_store::SignedBlock<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn sign_execution_payload_envelope(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::ExecutionPayloadEnvelope<Self::E>,
+        ) -> Result<types::SignedExecutionPayloadEnvelope<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn sign_payload_attestation(
+            &self,
+            _pubkey: PublicKeyBytes,
+            data: &PayloadAttestationData,
+            validator_index: u64,
+        ) -> Result<PayloadAttestationMessage, ValidatorStoreError<Self::Error>> {
+            self.signed.lock().unwrap().push(validator_index);
+            if validator_index == self.fail_index {
+                return Err(ValidatorStoreError::Middleware(format!(
+                    "mock sign error for validator {}",
+                    validator_index
+                )));
+            }
+            Ok(PayloadAttestationMessage {
+                validator_index,
+                data: data.clone(),
+                signature: bls::Signature::empty(),
+            })
+        }
+
+        async fn sign_proposer_preferences(
+            &self,
+            _: PublicKeyBytes,
+            _: &types::ProposerPreferences,
+        ) -> Result<types::SignedProposerPreferences, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn sign_attestation(
+            &self,
+            _: PublicKeyBytes,
+            _: usize,
+            _: &mut types::Attestation<Self::E>,
+            _: Epoch,
+        ) -> Result<(), ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn sign_validator_registration_data(
+            &self,
+            _: types::ValidatorRegistrationData,
+        ) -> Result<types::SignedValidatorRegistrationData, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn produce_signed_aggregate_and_proof(
+            &self,
+            _: PublicKeyBytes,
+            _: u64,
+            _: types::Attestation<Self::E>,
+            _: types::SelectionProof,
+        ) -> Result<types::SignedAggregateAndProof<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        async fn produce_selection_proof(
+            &self,
+            _: PublicKeyBytes,
+            _: Slot,
+        ) -> Result<types::SelectionProof, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_sync_selection_proof(
+            &self,
+            _: &PublicKeyBytes,
+            _: Slot,
+            _: types::SyncSubnetId,
+        ) -> Result<types::SyncSelectionProof, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_sync_committee_signature(
+            &self,
+            _: Slot,
+            _: types::Hash256,
+            _: u64,
+            _: &PublicKeyBytes,
+        ) -> Result<types::SyncCommitteeMessage, ValidatorStoreError<Self::Error>> {
+            unimplemented!()
+        }
+
+        async fn produce_signed_contribution_and_proof(
+            &self,
+            _: u64,
+            _: PublicKeyBytes,
+            _: types::SyncCommitteeContribution<Self::E>,
+            _: types::SyncSelectionProof,
+        ) -> Result<types::SignedContributionAndProof<Self::E>, ValidatorStoreError<Self::Error>>
+        {
+            unimplemented!()
+        }
+
+        fn prune_slashing_protection_db(&self, _: Epoch, _: bool) {}
+
+        fn proposal_data(&self, _: &PublicKeyBytes) -> Option<validator_store::ProposalData> {
+            unimplemented!()
+        }
     }
 }

@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 VC error path tests: broadcast_preferences + produce_payload_attestations (run 191)
+- Added 3 `broadcast_proposer_preferences` error path tests in `duties_service.rs`:
+  - `broadcast_preferences_happy_path_signs_and_posts`: full pipeline — fetch duties → sign → POST → epoch marked
+  - `broadcast_preferences_sign_failure_continues`: sign_proposer_preferences error → validator skipped, epoch still marked
+  - `broadcast_preferences_bn_post_failure_still_marks_epoch`: BN POST 500 → warning logged, epoch still marked
+- Added 2 `produce_payload_attestations` error path tests in `payload_attestation_service.rs`:
+  - `produce_partial_sign_failure_still_submits_others`: 3 duties, 1 sign fails → 2 still submitted (PartialFailStore)
+  - `produce_bn_post_failure_returns_err`: signs ok, BN POST 500 → returns Err
+- Added `mock_post_beacon_pool_payload_attestations_error` helper in MockBeaconNode
+- Removed `#[allow(dead_code)]` from `with_gas_limit` and `with_sign_error` (now used by tests)
+- All 45 validator_services tests pass, clippy clean
+
 ### 2026-02-27 — 5 broadcast_proposer_preferences VC tests + 2 MockBeaconNode helpers (run 190)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
