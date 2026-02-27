@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 bid/attestation equivocation and builder balance tests (run 178)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+  - Notable newly identified merged PRs since last check: #4941 (execution proof construction change), #4916 (builder deposit refactor), #4915 (proof verification dedup), #4930 (rename execution_payload_states to payload_states)
+- **Added 3 tests** covering previously untested gossip verification rejection paths in `gloas_verification.rs`:
+  1. `gloas_bid_gossip_rejects_insufficient_builder_balance` — exercises the `InsufficientBuilderBalance` error path (gloas_verification.rs:403-409). Creates a builder with balance=100 and submits a bid with value=200. Verifies the bid is rejected with the correct builder_index, balance, and bid_value fields. This guard prevents builders from offering more value than their deposit covers — accepting such a bid would let a builder commit to a payment they cannot fulfill, leaving the proposer unpaid after revealing the payload. Uses `gloas_harness_with_builders` with a low-balance builder, extended 64 slots for finalization.
+  2. `gloas_bid_gossip_rejects_builder_equivocation` — exercises the `BuilderEquivocation` error path (gloas_verification.rs:427-437). Submits two different bids from the same builder for the same slot (value=5000 then value=6000, producing different tree_hash_roots). The first bid is observed as `New` in the equivocation tracker (check 3), then may fail at later checks. The second bid triggers `Equivocation` because a different bid root was already observed for this builder+slot. This is the primary slashable-condition detection for builders — a builder that equivocates is trying to commit to multiple payloads for the same slot.
+  3. `gloas_payload_attestation_gossip_rejects_validator_equivocation` — exercises the `ValidatorEquivocation` error path (gloas_verification.rs:612-619). Submits two payload attestations from the same PTC validator for the same slot/block but with conflicting `payload_present` values (true then false). The first attestation is recorded as `New` (then fails at signature check — observation is already committed). The second attestation triggers `ValidatorEquivocation` before reaching signature check. Verifies the error contains the correct validator_index, slot, and beacon_block_root. This is the primary equivocation detection for payload attesters.
+- **Why these tests matter**: The `InsufficientBuilderBalance` check had zero test coverage — a regression could let underfunded builders submit bids, leading to unpaid proposers. The `BuilderEquivocation` detection is the core slashable-condition check for builders and was completely untested at the integration level. The `ValidatorEquivocation` detection for PTC members was also untested — a broken equivocation check would allow validators to vote both ways on payload presence without detection.
+- **Full test suite verification** — all passing:
+  - 619/619 beacon_chain tests (FORK_NAME=gloas, was 616, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 fork transition boundary and envelope error path tests (run 177)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630

@@ -18,7 +18,9 @@ use beacon_chain::execution_payload::{
     NotifyExecutionLayer, PayloadNotifier, validate_execution_payload_for_gossip,
 };
 use beacon_chain::execution_proof_verification::GossipExecutionProofError;
-use beacon_chain::gloas_verification::{ExecutionBidError, PayloadEnvelopeError};
+use beacon_chain::gloas_verification::{
+    ExecutionBidError, PayloadAttestationError, PayloadEnvelopeError,
+};
 use beacon_chain::test_utils::{
     BeaconChainHarness, DEFAULT_ETH1_BLOCK_HASH, EphemeralHarnessType, HARNESS_GENESIS_TIME,
     InteropGenesisBuilder,
@@ -10245,5 +10247,225 @@ async fn gloas_process_envelope_missing_block_returns_error() {
             proto_block.payload_revealed,
             "payload_revealed should be true (fork choice was updated before block deletion)"
         );
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: InsufficientBuilderBalance
+// =============================================================================
+
+/// A bid whose `value` exceeds the builder's registered balance is rejected
+/// with `InsufficientBuilderBalance`. This guard prevents builders from
+/// offering more value than their deposit covers — accepting such a bid would
+/// let a builder commit to a payment they cannot fulfill, leaving the proposer
+/// unpaid after revealing the payload.
+///
+/// The balance check (check 2b) runs after the builder-exists and is-active
+/// checks but before equivocation detection, parent root, proposer preferences,
+/// and signature verification — so we don't need valid signatures or preferences.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_insufficient_builder_balance() {
+    // Builder 0: deposit_epoch=0, balance=100 (very low)
+    let harness = gloas_harness_with_builders(&[(0, 100)]);
+    // Extend to finalize so the builder becomes active (deposit_epoch < finalized_epoch)
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // Verify builder is active (precondition)
+    let builder = state
+        .builders()
+        .unwrap()
+        .get(0)
+        .expect("builder 0 should exist");
+    assert_eq!(builder.balance, 100);
+    assert!(
+        builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, &harness.spec),
+        "builder should be active after finalization"
+    );
+
+    // Create a bid with value=200, exceeding the builder's balance of 100.
+    // make_external_bid sets execution_payment = value, which passes the
+    // zero-payment check. builder_index=0 passes the exists/active checks.
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 200);
+
+    let err = assert_bid_rejected(&harness, bid, "bid value exceeds builder balance");
+    match err {
+        ExecutionBidError::InsufficientBuilderBalance {
+            builder_index,
+            balance,
+            bid_value,
+        } => {
+            assert_eq!(builder_index, 0);
+            assert_eq!(balance, 100);
+            assert_eq!(bid_value, 200);
+        }
+        other => panic!("expected InsufficientBuilderBalance, got {:?}", other),
+    }
+}
+
+// =============================================================================
+// Execution bid gossip: BuilderEquivocation
+// =============================================================================
+
+/// When a builder submits two *different* bids for the same slot, the second
+/// bid is rejected with `BuilderEquivocation`. This is the ePBS slashable-
+/// condition detection for builders — a builder that equivocates is trying to
+/// commit to multiple payloads for the same slot.
+///
+/// The equivocation check (check 3) runs after the balance check but before
+/// parent root validation, proposer preferences, and signature verification.
+/// The first bid passes the equivocation check (recorded as `New`) and
+/// continues to later checks where it may fail (e.g. at signature). But the
+/// observation is already recorded, so the second bid (different tree_hash_root)
+/// triggers `Equivocation`.
+#[tokio::test]
+async fn gloas_bid_gossip_rejects_builder_equivocation() {
+    // Builder 0: deposit_epoch=0, balance=10 ETH
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+
+    // First bid: value=5000. This will pass checks 1-4 (slot, payment,
+    // builder exists/active, balance) and get observed as New in check 5.
+    // It will then fail at parent root, proposer preferences, or signature —
+    // but the observation is already recorded.
+    let bid_1 = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    // Submit the first bid — it will fail (likely at parent root or prefs)
+    // but the observation is recorded.
+    let _ = harness.chain.verify_execution_bid_for_gossip(bid_1);
+
+    // Second bid: value=6000 (different value → different tree_hash_root).
+    // Same builder (0), same slot (next_slot). This should trigger Equivocation
+    // at check 5 because we already observed a different bid root from
+    // builder 0 for this slot.
+    let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 6000);
+
+    let err = assert_bid_rejected(&harness, bid_2, "second bid should be equivocation");
+    match err {
+        ExecutionBidError::BuilderEquivocation {
+            builder_index,
+            slot,
+            ..
+        } => {
+            assert_eq!(builder_index, 0);
+            assert_eq!(slot, next_slot);
+        }
+        other => panic!("expected BuilderEquivocation, got {:?}", other),
+    }
+}
+
+// =============================================================================
+// Payload attestation gossip: ValidatorEquivocation
+// =============================================================================
+
+/// When a PTC validator submits a payload attestation with `payload_present=true`
+/// and then a second attestation for the same slot/block with `payload_present=false`,
+/// the second attestation is rejected with `ValidatorEquivocation`. This is the
+/// primary equivocation detection for payload attesters — a validator that votes
+/// both ways is misbehaving.
+///
+/// The equivocation check (check 5) runs before signature verification (check 6).
+/// The first attestation is recorded as `New` in the observation tracker even if
+/// it later fails at the signature check. The second attestation (different
+/// `payload_present`) then triggers equivocation before reaching signature check.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a PTC member for the head slot
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(!ptc.is_empty(), "PTC committee should not be empty");
+    let ptc_member_index = ptc[0];
+
+    // Find the position of this PTC member in the committee to set the correct bit
+    let ptc_position = ptc
+        .iter()
+        .position(|&idx| idx == ptc_member_index)
+        .expect("PTC member should be in PTC committee");
+
+    // First attestation: payload_present=true, invalid signature.
+    // The equivocation check records `New` before signature verification,
+    // so the observation is committed even though sig check will fail.
+    let mut aggregation_bits_1 = BitVector::default();
+    aggregation_bits_1
+        .set(ptc_position, true)
+        .expect("should set bit");
+
+    let attestation_1 = PayloadAttestation::<E> {
+        aggregation_bits: aggregation_bits_1,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    // Submit first attestation — it will get `New` at equivocation check,
+    // then fail at signature verification. That's expected.
+    let result_1 = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation_1);
+    // Verify it failed at signature, not at equivocation
+    match result_1 {
+        Err(PayloadAttestationError::InvalidSignature) => {}
+        Err(other) => panic!(
+            "first attestation should fail with InvalidSignature, got {:?}",
+            other
+        ),
+        Ok(_) => panic!("first attestation should fail at signature check"),
+    }
+
+    // Second attestation: same validator, same slot/block, but payload_present=false.
+    // This should trigger ValidatorEquivocation before reaching signature check.
+    let mut aggregation_bits_2 = BitVector::default();
+    aggregation_bits_2
+        .set(ptc_position, true)
+        .expect("should set bit");
+
+    let attestation_2 = PayloadAttestation::<E> {
+        aggregation_bits: aggregation_bits_2,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: false, // opposite of first attestation
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    let result_2 = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation_2);
+    match result_2 {
+        Err(PayloadAttestationError::ValidatorEquivocation {
+            validator_index,
+            slot,
+            beacon_block_root,
+        }) => {
+            assert_eq!(validator_index, ptc_member_index);
+            assert_eq!(slot, head_slot);
+            assert_eq!(beacon_block_root, head_root);
+        }
+        Err(other) => panic!("expected ValidatorEquivocation, got {:?}", other),
+        Ok(_) => panic!("second attestation should be rejected as equivocation"),
     }
 }
