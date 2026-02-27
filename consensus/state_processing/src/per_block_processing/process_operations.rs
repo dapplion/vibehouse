@@ -1805,6 +1805,268 @@ mod builder_deposit_tests {
         // Address is extracted from bytes [12..32] of withdrawal_credentials
         assert_eq!(builder.execution_address, Address::repeat_byte(0xDD));
     }
+
+    // ── builder pubkey cache correctness on slot reuse tests ──
+
+    #[test]
+    fn builder_slot_reuse_removes_old_pubkey_from_cache() {
+        // When a new builder reuses an exited builder's slot, the old pubkey
+        // must be removed from builder_pubkey_cache. A stale entry would
+        // cause future deposits from the evicted builder to incorrectly
+        // top-up the new builder's slot.
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+
+        // Record the original builder's pubkey
+        let original_pubkey = state.as_gloas().unwrap().builders.get(0).unwrap().pubkey;
+        assert!(
+            state.builder_pubkey_cache().get(&original_pubkey).is_some(),
+            "original builder should be in cache before reuse"
+        );
+
+        // Make the existing builder exited with zero balance so its slot is reusable
+        {
+            let builder = state.as_gloas_mut().unwrap().builders.get_mut(0).unwrap();
+            builder.withdrawable_epoch = Epoch::new(0);
+            builder.balance = 0;
+        }
+
+        // Create a new builder that reuses index 0
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+        let request = make_builder_deposit_request(new_builder_kp, 7_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        // Old pubkey must be gone from cache
+        assert!(
+            state.builder_pubkey_cache().get(&original_pubkey).is_none(),
+            "old builder pubkey should be removed from cache after slot reuse"
+        );
+        // New pubkey must map to index 0
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&new_builder_kp.pk.compress()),
+            Some(0),
+            "new builder pubkey should map to the reused index 0"
+        );
+    }
+
+    #[test]
+    fn builder_append_populates_cache_at_correct_index() {
+        // When a new builder is appended (no free slot), the cache must
+        // map the new pubkey to the correct appended index.
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+        let request = make_builder_deposit_request(new_builder_kp, 5_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        // Original builder still at index 0
+        let original_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let original_pubkey = original_kps[NUM_VALIDATORS].pk.compress();
+        assert_eq!(
+            state.builder_pubkey_cache().get(&original_pubkey),
+            Some(0),
+            "original builder should remain at index 0"
+        );
+
+        // New builder at index 1
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&new_builder_kp.pk.compress()),
+            Some(1),
+            "appended builder should be at index 1 in cache"
+        );
+    }
+
+    #[test]
+    fn two_consecutive_slot_reuses_keep_cache_consistent() {
+        // Reuse slot 0, then reuse slot 1 — cache must be fully consistent
+        // after both operations.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 4);
+
+        // Append two builders (indices 0 and 1)
+        let builder_a_kp = &extra_kps[NUM_VALIDATORS];
+        let builder_b_kp = &extra_kps[NUM_VALIDATORS + 1];
+        let req_a = make_builder_deposit_request(builder_a_kp, 10_000_000_000, &spec);
+        let req_b = make_builder_deposit_request(builder_b_kp, 10_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &req_a, slot, &spec).unwrap();
+        apply_deposit_for_builder(&mut state, &req_b, slot, &spec).unwrap();
+
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 2);
+
+        // Exit both builders
+        {
+            let gloas = state.as_gloas_mut().unwrap();
+            let b0 = gloas.builders.get_mut(0).unwrap();
+            b0.withdrawable_epoch = Epoch::new(0);
+            b0.balance = 0;
+            let b1 = gloas.builders.get_mut(1).unwrap();
+            b1.withdrawable_epoch = Epoch::new(0);
+            b1.balance = 0;
+        }
+
+        // Reuse slot 0 with builder C
+        let builder_c_kp = &extra_kps[NUM_VALIDATORS + 2];
+        let req_c = make_builder_deposit_request(builder_c_kp, 5_000_000_000, &spec);
+        apply_deposit_for_builder(&mut state, &req_c, slot, &spec).unwrap();
+
+        // Reuse slot 1 with builder D
+        let builder_d_kp = &extra_kps[NUM_VALIDATORS + 3];
+        let req_d = make_builder_deposit_request(builder_d_kp, 6_000_000_000, &spec);
+        apply_deposit_for_builder(&mut state, &req_d, slot, &spec).unwrap();
+
+        // Verify all old pubkeys are gone
+        assert!(
+            state
+                .builder_pubkey_cache()
+                .get(&builder_a_kp.pk.compress())
+                .is_none(),
+            "evicted builder A should not be in cache"
+        );
+        assert!(
+            state
+                .builder_pubkey_cache()
+                .get(&builder_b_kp.pk.compress())
+                .is_none(),
+            "evicted builder B should not be in cache"
+        );
+
+        // Verify new pubkeys map correctly
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&builder_c_kp.pk.compress()),
+            Some(0),
+            "builder C should be at reused index 0"
+        );
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&builder_d_kp.pk.compress()),
+            Some(1),
+            "builder D should be at reused index 1"
+        );
+    }
+
+    #[test]
+    fn topup_after_slot_reuse_routes_to_replacement_builder() {
+        // After slot reuse, a top-up deposit for the replacement builder
+        // must be routed correctly via cache (is_builder path, not new builder).
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+
+        // Exit the existing builder at index 0
+        {
+            let builder = state.as_gloas_mut().unwrap().builders.get_mut(0).unwrap();
+            builder.withdrawable_epoch = Epoch::new(0);
+            builder.balance = 0;
+        }
+
+        // Reuse slot 0 with a new builder
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+        let request = make_builder_deposit_request(new_builder_kp, 7_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        let balance_before = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+        assert_eq!(balance_before, 7_000_000_000);
+
+        // Now top up the replacement builder via process_deposit_request_gloas
+        // The cache must route this as an existing builder (is_builder = true)
+        let topup_request = make_builder_deposit_request(new_builder_kp, 3_000_000_000, &spec);
+        process_deposit_request_gloas(&mut state, &topup_request, &spec).unwrap();
+
+        // Balance should have increased, not created a new builder
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(
+            builders.len(),
+            1,
+            "should still be 1 builder (top-up, not new)"
+        );
+        assert_eq!(
+            builders.get(0).unwrap().balance,
+            10_000_000_000,
+            "balance should be 7G + 3G from top-up"
+        );
+    }
+
+    #[test]
+    fn deposit_for_evicted_builder_creates_new_entry() {
+        // After a builder is evicted via slot reuse, a subsequent deposit
+        // for the evicted builder's pubkey should create a NEW builder entry
+        // (not top up the replacement), because the evicted pubkey was
+        // removed from the cache.
+        let (mut state, spec) = make_gloas_state_for_deposits(true);
+
+        // Record the original builder's keypair
+        let original_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let original_kp = &original_kps[NUM_VALIDATORS];
+        let original_pubkey = original_kp.pk.compress();
+
+        // Exit the existing builder at index 0
+        {
+            let builder = state.as_gloas_mut().unwrap().builders.get_mut(0).unwrap();
+            builder.withdrawable_epoch = Epoch::new(0);
+            builder.balance = 0;
+        }
+
+        // Reuse slot 0 with a different builder
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+        let request = make_builder_deposit_request(new_builder_kp, 7_000_000_000, &spec);
+        let slot = state.slot();
+        apply_deposit_for_builder(&mut state, &request, slot, &spec).unwrap();
+
+        // Now deposit for the ORIGINAL builder's pubkey — it should not find
+        // the pubkey in the cache, so it goes through the new-builder path
+        let original_request = make_builder_deposit_request(original_kp, 5_000_000_000, &spec);
+        apply_deposit_for_builder(&mut state, &original_request, slot, &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        // Should be 2 builders: replacement at 0, original re-registered at 1
+        assert_eq!(
+            builders.len(),
+            2,
+            "evicted builder should be appended as new entry"
+        );
+        assert_eq!(
+            builders.get(0).unwrap().pubkey,
+            new_builder_kp.pk.compress(),
+            "index 0 should be the replacement builder"
+        );
+        assert_eq!(
+            builders.get(0).unwrap().balance,
+            7_000_000_000,
+            "replacement builder balance should be unchanged"
+        );
+        assert_eq!(
+            builders.get(1).unwrap().pubkey,
+            original_pubkey,
+            "index 1 should be the re-registered original builder"
+        );
+        assert_eq!(
+            builders.get(1).unwrap().balance,
+            5_000_000_000,
+            "original builder should have fresh deposit amount"
+        );
+
+        // Cache should map correctly
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&new_builder_kp.pk.compress()),
+            Some(0),
+        );
+        assert_eq!(state.builder_pubkey_cache().get(&original_pubkey), Some(1),);
+    }
 }
 
 /// Tests for Gloas-specific proposer slashing payment removal and same-slot attestation weight.
