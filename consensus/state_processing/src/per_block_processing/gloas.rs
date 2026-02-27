@@ -3803,4 +3803,148 @@ mod tests {
         let result = initiate_builder_exit::<E>(&mut state, 999, &spec);
         assert!(result.is_err(), "should fail for unknown builder index");
     }
+
+    // ── Error path tests ────────────────────────────────────────
+
+    #[test]
+    fn builder_bid_pubkey_decompression_failure_with_verify_signatures() {
+        // When VerifySignatures::True is used, a builder with a corrupted (all-zero) pubkey
+        // that cannot be decompressed should return PayloadBidInvalid with "failed to decompress".
+        // The default make_gloas_state creates a builder with PublicKeyBytes::empty() (all zeros),
+        // which is not a valid compressed BLS12-381 point.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::PayloadBidInvalid { reason })
+                    if reason.contains("failed to decompress")
+            ),
+            "expected decompression failure, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn withdrawal_rejects_invalid_builder_index_in_pending() {
+        // A builder_pending_withdrawal entry that references a builder_index beyond the
+        // builders list length should trigger WithdrawalBuilderIndexInvalid.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a pending withdrawal for builder_index=99, but only 1 builder exists (index 0)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 99,
+            })
+            .unwrap();
+
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: 99,
+                    builders_count: 1,
+                })
+            ),
+            "expected WithdrawalBuilderIndexInvalid, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn withdrawal_rejects_stale_builder_sweep_index() {
+        // When next_withdrawal_builder_index is beyond the current builders list length
+        // (e.g., builders were removed), the builder sweep should fail with
+        // WithdrawalBuilderIndexInvalid rather than panicking on an OOB access.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set next_withdrawal_builder_index to 5, but only 1 builder exists
+        state.as_gloas_mut().unwrap().next_withdrawal_builder_index = 5;
+
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: 5,
+                    builders_count: 1,
+                })
+            ),
+            "expected WithdrawalBuilderIndexInvalid for stale sweep index, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_rejects_invalid_builder_index() {
+        // The read-only get_expected_withdrawals_gloas should also catch invalid builder
+        // indices in pending withdrawals, mirroring process_withdrawals_gloas behavior.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 500_000_000,
+                builder_index: 42,
+            })
+            .unwrap();
+
+        let result = get_expected_withdrawals_gloas::<E>(&state, &spec);
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: 42,
+                    builders_count: 1,
+                })
+            ),
+            "expected WithdrawalBuilderIndexInvalid, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_rejects_stale_builder_sweep_index() {
+        // The read-only function should also reject a stale next_withdrawal_builder_index.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        state.as_gloas_mut().unwrap().next_withdrawal_builder_index = 10;
+
+        let result = get_expected_withdrawals_gloas::<E>(&state, &spec);
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::WithdrawalBuilderIndexInvalid {
+                    builder_index: 10,
+                    builders_count: 1,
+                })
+            ),
+            "expected WithdrawalBuilderIndexInvalid for stale sweep index, got: {:?}",
+            result
+        );
+    }
 }
