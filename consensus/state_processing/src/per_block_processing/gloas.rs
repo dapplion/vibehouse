@@ -3947,4 +3947,241 @@ mod tests {
             result
         );
     }
+
+    // ── EMPTY parent path with pending items ────────────────────
+
+    #[test]
+    fn withdrawals_skipped_when_parent_empty_despite_pending_items() {
+        // When the parent block is EMPTY (payload not delivered), ALL withdrawal processing
+        // must be skipped — even if the state has pending builder withdrawals, pending partial
+        // validator withdrawals, and exiting builders eligible for sweep. This is critical for
+        // consensus: the CL must not generate a withdrawal list for a block whose parent had
+        // no execution payload, because the EL state was not advanced.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 10_000_000_000);
+        // Default state has mismatched hashes → EMPTY parent
+        assert!(!is_parent_block_full::<E>(&state).unwrap());
+
+        // Add a pending builder withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 5_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Add a pending partial validator withdrawal (withdrawable immediately)
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 1_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        // Make builder 0 exiting with balance (sweep candidate)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        let initial_next_withdrawal_index = state.next_withdrawal_index().unwrap();
+        let initial_next_validator_index = state.next_withdrawal_validator_index().unwrap();
+        let initial_next_builder_index = state.as_gloas().unwrap().next_withdrawal_builder_index;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // No withdrawals should be generated
+        assert!(
+            state
+                .as_gloas()
+                .unwrap()
+                .payload_expected_withdrawals
+                .is_empty(),
+            "EMPTY parent should produce no withdrawals"
+        );
+
+        // All indices should be unchanged (the early return skips everything)
+        assert_eq!(
+            state.next_withdrawal_index().unwrap(),
+            initial_next_withdrawal_index,
+            "next_withdrawal_index should be unchanged for EMPTY parent"
+        );
+        assert_eq!(
+            state.next_withdrawal_validator_index().unwrap(),
+            initial_next_validator_index,
+            "next_withdrawal_validator_index should be unchanged for EMPTY parent"
+        );
+        assert_eq!(
+            state.as_gloas().unwrap().next_withdrawal_builder_index,
+            initial_next_builder_index,
+            "next_withdrawal_builder_index should be unchanged for EMPTY parent"
+        );
+
+        // Pending items should NOT be consumed (still in the lists)
+        assert_eq!(
+            state.as_gloas().unwrap().builder_pending_withdrawals.len(),
+            1,
+            "builder_pending_withdrawals should NOT be consumed for EMPTY parent"
+        );
+        assert_eq!(
+            state.pending_partial_withdrawals().unwrap().len(),
+            1,
+            "pending_partial_withdrawals should NOT be consumed for EMPTY parent"
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_empty_despite_pending_items() {
+        // The read-only function must mirror the mutable function's behavior: return an
+        // empty vec when the parent is EMPTY, regardless of pending items in the state.
+        // A mismatch would cause the EL to receive a non-empty withdrawal list that the
+        // CL's process_withdrawals_gloas would then reject as an early-return no-op.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 10_000_000_000);
+        assert!(!is_parent_block_full::<E>(&state).unwrap());
+
+        // Add pending builder withdrawal
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 5_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Add pending partial validator withdrawal
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 1_000_000_000,
+                withdrawable_epoch: Epoch::new(0),
+            })
+            .unwrap();
+
+        // Make builder exiting (sweep candidate)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+        assert!(
+            expected.is_empty(),
+            "read-only function must return empty vec for EMPTY parent, \
+             even with pending builder withdrawals, partial withdrawals, and exiting builders"
+        );
+    }
+
+    #[test]
+    fn is_parent_block_full_both_zero_hashes() {
+        // At Gloas fork activation (or genesis with Gloas), both latest_execution_payload_bid.block_hash
+        // and latest_block_hash start as zero. The parent is considered FULL when these match (0x00 == 0x00),
+        // which enables withdrawal processing from the first block. This is important because the upgrade
+        // function sets latest_block_hash from the Fulu execution payload header's block_hash, and the
+        // bid's block_hash from the same value — both are the same EL head hash.
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set both hashes to zero (simulating genesis/fork activation)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .block_hash = ExecutionBlockHash::zero();
+        state.as_gloas_mut().unwrap().latest_block_hash = ExecutionBlockHash::zero();
+
+        assert!(
+            is_parent_block_full::<E>(&state).unwrap(),
+            "both hashes zero should be considered FULL (0x00 == 0x00)"
+        );
+    }
+
+    #[test]
+    fn is_parent_block_full_only_bid_hash_zero() {
+        // When only the bid's block_hash is zero but latest_block_hash is non-zero,
+        // the parent is EMPTY (hashes don't match). This would occur if the bid was
+        // a default/unprocessed bid but an envelope was previously processed.
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .block_hash = ExecutionBlockHash::zero();
+        // latest_block_hash defaults to repeat_byte(0x02) in make_gloas_state
+
+        assert!(
+            !is_parent_block_full::<E>(&state).unwrap(),
+            "bid hash zero + latest_block_hash non-zero should be EMPTY"
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_capped_at_max_builder_pending() {
+        // When builder_pending_withdrawals exceeds max_withdrawals_per_payload,
+        // the returned list must be capped. For MinimalEthSpec: max_withdrawals=4,
+        // reserved_limit=3. If we add 5 builder pending withdrawals, only the first 3
+        // should appear (the 4th slot is reserved for the validator sweep).
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 100_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add 5 builder pending withdrawals (more than reserved_limit=3)
+        for i in 0..5 {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builder_pending_withdrawals
+                .push(BuilderPendingWithdrawal {
+                    fee_recipient: Address::repeat_byte((0xA0 + i) as u8),
+                    amount: (i as u64 + 1) * 1_000_000_000,
+                    builder_index: 0,
+                })
+                .unwrap();
+        }
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Builder withdrawals should be capped at reserved_limit = max_withdrawals - 1 = 3
+        // Plus at least 1 slot for validator sweep (but no validators have excess balance
+        // or pending partials, so the validator sweep contributes 0).
+        // Total expected: 3 builder withdrawals + 0 from other phases = 3
+        let builder_count = expected
+            .iter()
+            .filter(|w| {
+                use types::consts::gloas::BUILDER_INDEX_FLAG;
+                (w.validator_index & BUILDER_INDEX_FLAG) != 0
+            })
+            .count();
+        assert_eq!(
+            builder_count, 3,
+            "builder pending withdrawals should be capped at reserved_limit (max - 1)"
+        );
+        assert_eq!(
+            expected[0].amount, 1_000_000_000,
+            "first builder withdrawal should have amount 1 ETH"
+        );
+        assert_eq!(
+            expected[1].amount, 2_000_000_000,
+            "second builder withdrawal should have amount 2 ETH"
+        );
+        assert_eq!(
+            expected[2].amount, 3_000_000_000,
+            "third builder withdrawal should have amount 3 ETH"
+        );
+    }
 }

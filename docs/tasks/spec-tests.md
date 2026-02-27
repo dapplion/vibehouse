@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 EMPTY parent path and is_parent_block_full edge case tests (run 186)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4931 (Feb 20, FOCIL rebase)
+  - All tracked PRs still open: #4940, #4932, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 5 tests** covering previously untested edge cases in the EMPTY parent path and `is_parent_block_full` zero-hash behavior:
+  1. `withdrawals_skipped_when_parent_empty_despite_pending_items` — exercises the early-return path in `process_withdrawals_gloas` (gloas.rs:481-484) when the parent block is EMPTY but the state has pending builder withdrawals, pending partial validator withdrawals, AND an exiting builder eligible for sweep. Verifies that NO withdrawals are generated and ALL state indices (`next_withdrawal_index`, `next_withdrawal_validator_index`, `next_withdrawal_builder_index`) remain unchanged. Also verifies the pending items are NOT consumed from their lists. Prior tests only checked the EMPTY parent path with an empty state — this test proves the early return is unconditional regardless of pending items.
+  2. `get_expected_withdrawals_empty_despite_pending_items` — exercises the same early-return path in the read-only `get_expected_withdrawals_gloas` (gloas.rs:780-782) with identical pending items. The read-only function must return an empty vec. A mismatch between the read-only and mutable paths would cause the EL to receive a non-empty withdrawal list that the CL's block processing would then reject (the CL does an early return producing zero withdrawals, but the EL included withdrawals in the payload).
+  3. `is_parent_block_full_both_zero_hashes` — exercises `is_parent_block_full` (gloas.rs:463-470) when both `latest_execution_payload_bid.block_hash` and `latest_block_hash` are `0x00`. Returns true because `0x00 == 0x00`. This matters at Gloas fork activation: `upgrade_to_gloas` sets both values from the Fulu execution payload header's `block_hash`, and for genesis chains or test setups these may be zero. Without this check, the first Gloas block after fork activation would fail to process withdrawals.
+  4. `is_parent_block_full_only_bid_hash_zero` — exercises the asymmetric case where the bid's `block_hash` is zero but `latest_block_hash` is non-zero. Returns false (EMPTY parent). This would occur if a default/unprocessed bid exists but a previous envelope was processed, updating `latest_block_hash`. Confirms the comparison is strict equality, not "both non-zero".
+  5. `get_expected_withdrawals_capped_at_max_builder_pending` — exercises the `reserved_limit` cap (gloas.rs:798-800) in `get_expected_withdrawals_gloas`. Creates 5 builder pending withdrawals when `max_withdrawals_per_payload=4` (reserved_limit=3 for MinimalEthSpec). Verifies only the first 3 builder withdrawals appear in the result. The 4th slot is reserved for the validator sweep phase. This cap prevents builder withdrawals from monopolizing all withdrawal slots and starving validator withdrawals.
+- **Why these tests matter**: The EMPTY parent path had only been tested with an empty state (no pending items), which doesn't prove the early return actually prevents withdrawal generation when items exist. The zero-hash edge case is critical for Gloas fork activation correctness. The reserved_limit cap test is the first to verify the max_withdrawals boundary specifically for the read-only function's builder withdrawal phase.
+- **Full test suite verification** — all passing:
+  - 352/352 state_processing tests (was 347, +5 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 5 state processing error path tests (run 184)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
