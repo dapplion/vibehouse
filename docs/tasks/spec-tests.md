@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — duplicate proposer preferences gossip test (run 162)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+- **Added 1 gossip handler test** for proposer preferences deduplication:
+  - `test_gloas_gossip_proposer_preferences_duplicate_ignored` — submits a valid proposer preferences message (Accept), then resubmits the same message for the same slot. Second submission correctly returns Ignore (deduplication via `insert_proposer_preferences` pool check)
+- **Full test suite verification** — all passing:
+  - 8/8 proposer preferences gossip tests (was 7, +1 new)
+  - Clippy clean
+
 ### 2026-02-27 — EL response tests for self-build envelope (run 161)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
 - **Added 3 EL response tests** for `process_self_build_envelope`:
