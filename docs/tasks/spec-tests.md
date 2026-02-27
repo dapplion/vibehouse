@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 5 non-anchor block replayer envelope processing tests (run 193)
+- Added 5 new block_replayer unit tests targeting the **non-anchor block path** (i>0 in `apply_blocks`, lines 352-398):
+  - `non_anchor_block_with_envelope_updates_latest_block_hash`: full envelope applied after per_block_processing → latest_block_hash updated
+  - `non_anchor_block_with_blinded_envelope_updates_latest_block_hash`: blinded envelope reconstructed from state withdrawals → latest_block_hash updated
+  - `non_anchor_block_envelope_error_propagates`: bad envelope (wrong beacon_block_root) → error propagates as EnvelopeProcessingError (unlike anchor path which silently drops errors)
+  - `non_anchor_block_empty_path_leaves_hash_unchanged`: no envelope supplied → EMPTY path, latest_block_hash unchanged
+  - `non_anchor_block_blinded_envelope_error_propagates`: bad blinded envelope → error propagates (not silently dropped)
+- Added `make_two_block_sequence` helper: builds anchor + non-anchor blocks with valid self-build bid, correct parent_root/prev_randao/parent_block_hash, all fork epochs set, pubkey cache + sync committee populated
+- Added `make_non_anchor_envelope` helper: runs anchor-only replay to get post-block state, builds valid envelope from it
+- All 367 state_processing tests pass, clippy clean
+
 ### 2026-02-27 — 5 block replayer availability/blinded envelope edge case tests (run 192)
 - Added 5 new block_replayer unit tests in `consensus/state_processing/src/block_replayer.rs`:
   - `anchor_block_wrong_root_blinded_envelope_leaves_hash_unchanged`: blinded envelope keyed under wrong root → EMPTY path, hash unchanged

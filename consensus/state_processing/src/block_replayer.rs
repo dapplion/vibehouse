@@ -1680,4 +1680,339 @@ mod tests {
             "EMPTY path (no envelope) should not set the availability bit"
         );
     }
+
+    // ── Non-anchor block: envelope processing ─────────────────────
+    //
+    // The non-anchor path (i > 0 in apply_blocks, lines 352-398) differs from
+    // the anchor path: errors propagate instead of being silently dropped, and
+    // full per_block_processing runs before envelope processing.
+
+    /// Build a two-block sequence (anchor + non-anchor) where per_block_processing
+    /// succeeds for the non-anchor block using a self-build bid.
+    ///
+    /// Returns (state, spec, anchor_block, non_anchor_block, non_anchor_block_root).
+    type TwoBlockResult = (
+        BeaconState<E>,
+        ChainSpec,
+        SignedBeaconBlock<E, BlindedPayload<E>>,
+        SignedBeaconBlock<E, BlindedPayload<E>>,
+        Hash256,
+    );
+
+    fn make_two_block_sequence() -> TwoBlockResult {
+        let (mut state, mut spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set all fork epochs to 0 so per_slot_processing recognizes the Gloas state.
+        spec.altair_fork_epoch = Some(Epoch::new(0));
+        spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+        spec.capella_fork_epoch = Some(Epoch::new(0));
+        spec.deneb_fork_epoch = Some(Epoch::new(0));
+        spec.electra_fork_epoch = Some(Epoch::new(0));
+        spec.fulu_fork_epoch = Some(Epoch::new(0));
+        spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+        // Set epoch participation and inactivity scores (needed for epoch/committee cache)
+        let num_validators = state.validators().len();
+        let gloas = state.as_gloas_mut().unwrap();
+        gloas.previous_epoch_participation =
+            List::new(vec![types::ParticipationFlags::default(); num_validators]).unwrap();
+        gloas.current_epoch_participation =
+            List::new(vec![types::ParticipationFlags::default(); num_validators]).unwrap();
+        gloas.inactivity_scores = List::new(vec![0u64; num_validators]).unwrap();
+
+        // Build the pubkey cache (needed for proposer index computation during per_block_processing)
+        state.update_pubkey_cache().unwrap();
+
+        // Fix the sync committee to use real validator pubkeys (process_sync_aggregate
+        // looks up sync committee members in the pubkey cache, so empty pubkeys fail).
+        let first_validator_pk = state.validators().get(0).unwrap().pubkey;
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                first_validator_pk;
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: first_validator_pk,
+        });
+        let gloas = state.as_gloas_mut().unwrap();
+        gloas.current_sync_committee = sync_committee.clone();
+        gloas.next_sync_committee = sync_committee;
+
+        let anchor_bid = state.latest_execution_payload_bid().unwrap().clone();
+
+        // Build anchor block at state.slot() (slot 8). It just provides a state_root
+        // and gets `continue`d.
+        let anchor_block = make_gloas_block(
+            state.slot(),
+            Hash256::zero(),
+            Hash256::repeat_byte(0xDD),
+            anchor_bid,
+        );
+
+        // To get the correct parent_root for the non-anchor block, replay the anchor
+        // block with target_slot=9 to advance the state. This runs cache_state and
+        // per_slot_processing exactly as the real replayer would.
+        let non_anchor_slot = Slot::new(9);
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state.clone(), &spec)
+            .no_signature_verification()
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block.clone()], Some(non_anchor_slot))
+            .expect("anchor-only replay should succeed");
+        let advanced_state = replayer.into_state();
+
+        // The expected parent_root is what process_block_header will check against
+        let expected_parent_root = advanced_state.latest_block_header().tree_hash_root();
+
+        // Use a self-build bid (builder_index=u64::MAX) to avoid builder balance checks.
+        let non_anchor_bid = ExecutionPayloadBid {
+            parent_block_hash: *advanced_state.latest_block_hash().unwrap(),
+            parent_block_root: expected_parent_root,
+            block_hash: ExecutionBlockHash::repeat_byte(0xAA),
+            prev_randao: *advanced_state
+                .get_randao_mix(advanced_state.current_epoch())
+                .unwrap(),
+            slot: non_anchor_slot,
+            builder_index: spec.builder_index_self_build,
+            value: 0,
+            ..Default::default()
+        };
+
+        // Build the non-anchor block manually so the bid uses infinity signature
+        // (required for self-build bids by process_execution_payload_bid).
+        let non_anchor_block_inner = BeaconBlock::Gloas(BeaconBlockGloas {
+            slot: non_anchor_slot,
+            proposer_index: 0,
+            parent_root: expected_parent_root,
+            state_root: Hash256::repeat_byte(0xEE),
+            body: BeaconBlockBodyGloas {
+                randao_reveal: BlsSignature::empty(),
+                eth1_data: types::Eth1Data::default(),
+                graffiti: types::Graffiti::default(),
+                proposer_slashings: VariableList::empty(),
+                attester_slashings: VariableList::empty(),
+                attestations: VariableList::empty(),
+                deposits: VariableList::empty(),
+                voluntary_exits: VariableList::empty(),
+                sync_aggregate: SyncAggregate::empty(),
+                bls_to_execution_changes: VariableList::empty(),
+                signed_execution_payload_bid: SignedExecutionPayloadBid {
+                    message: non_anchor_bid,
+                    signature: BlsSignature::infinity().unwrap(),
+                },
+                payload_attestations: VariableList::empty(),
+                _phantom: PhantomData,
+            },
+        });
+        let non_anchor_block =
+            SignedBeaconBlock::from_block(non_anchor_block_inner, BlsSignature::empty());
+        let non_anchor_root = non_anchor_block.canonical_root();
+
+        (state, spec, anchor_block, non_anchor_block, non_anchor_root)
+    }
+
+    /// Build a valid envelope for the non-anchor block's post-processing state.
+    fn make_non_anchor_envelope(
+        state: &BeaconState<E>,
+        spec: &ChainSpec,
+        anchor_block: &SignedBeaconBlock<E, BlindedPayload<E>>,
+        non_anchor_block: &SignedBeaconBlock<E, BlindedPayload<E>>,
+    ) -> SignedExecutionPayloadEnvelope<E> {
+        // We need the post-block state to build a valid envelope. Run the
+        // replayer up to block processing without envelope, then build envelope
+        // from the resulting state.
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state.clone(), spec)
+            .no_signature_verification()
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block.clone(), non_anchor_block.clone()], None)
+            .expect("two-block replay without envelopes should succeed");
+        let post_block_state = replayer.into_state();
+
+        let bid = post_block_state
+            .latest_execution_payload_bid()
+            .unwrap()
+            .clone();
+        let latest_block_hash = *post_block_state.latest_block_hash().unwrap();
+
+        let mut header = post_block_state.latest_block_header().clone();
+        header.state_root = post_block_state.clone().canonical_root().unwrap();
+        let beacon_block_root = header.tree_hash_root();
+
+        let timestamp =
+            compute_timestamp_at_slot(&post_block_state, post_block_state.slot(), spec).unwrap();
+
+        let payload = ExecutionPayloadGloas {
+            parent_hash: latest_block_hash,
+            block_hash: bid.block_hash,
+            prev_randao: bid.prev_randao,
+            gas_limit: bid.gas_limit,
+            timestamp,
+            withdrawals: VariableList::default(),
+            ..Default::default()
+        };
+
+        let mut envelope = SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests: Default::default(),
+                builder_index: bid.builder_index,
+                beacon_block_root,
+                slot: post_block_state.slot(),
+                state_root: Hash256::zero(),
+            },
+            signature: BlsSignature::empty(),
+        };
+        fix_envelope_state_root(&post_block_state, &mut envelope, spec);
+        envelope
+    }
+
+    #[test]
+    fn non_anchor_block_with_envelope_updates_latest_block_hash() {
+        // Non-anchor blocks (i>0) should apply envelope processing after
+        // per_block_processing, updating latest_block_hash to the bid's block_hash.
+        let (state, spec, anchor_block, non_anchor_block, non_anchor_root) =
+            make_two_block_sequence();
+
+        let envelope = make_non_anchor_envelope(&state, &spec, &anchor_block, &non_anchor_block);
+        let bid_block_hash = ExecutionBlockHash::repeat_byte(0xAA);
+
+        let mut envelopes = HashMap::new();
+        envelopes.insert(non_anchor_root, envelope);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .envelopes(envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            bid_block_hash,
+            "non-anchor envelope processing should update latest_block_hash"
+        );
+    }
+
+    #[test]
+    fn non_anchor_block_with_blinded_envelope_updates_latest_block_hash() {
+        // Non-anchor blocks should also support blinded envelopes reconstructed
+        // from the state's expected withdrawals (cold storage replay path).
+        let (state, spec, anchor_block, non_anchor_block, non_anchor_root) =
+            make_two_block_sequence();
+
+        let envelope = make_non_anchor_envelope(&state, &spec, &anchor_block, &non_anchor_block);
+        let bid_block_hash = ExecutionBlockHash::repeat_byte(0xAA);
+
+        let blinded = make_blinded_envelope(&envelope);
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(non_anchor_root, blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            bid_block_hash,
+            "non-anchor blinded envelope should update latest_block_hash"
+        );
+    }
+
+    #[test]
+    fn non_anchor_block_envelope_error_propagates() {
+        // Unlike anchor blocks where errors are silently dropped, non-anchor blocks
+        // should propagate envelope processing errors as BlockReplayError.
+        let (state, spec, anchor_block, non_anchor_block, non_anchor_root) =
+            make_two_block_sequence();
+
+        // Create an envelope with wrong beacon_block_root to trigger an error
+        let mut bad_envelope =
+            make_non_anchor_envelope(&state, &spec, &anchor_block, &non_anchor_block);
+        bad_envelope.message.beacon_block_root = Hash256::repeat_byte(0xFF);
+
+        let mut envelopes = HashMap::new();
+        envelopes.insert(non_anchor_root, bad_envelope);
+
+        let result: Result<BlockReplayer<E>, _> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .envelopes(envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None);
+
+        match result {
+            Ok(_) => panic!("non-anchor block should propagate envelope processing errors"),
+            Err(err) => {
+                let err_str = format!("{:?}", err);
+                assert!(
+                    err_str.contains("EnvelopeProcessingError"),
+                    "error should be an EnvelopeProcessingError, got: {}",
+                    err_str
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn non_anchor_block_empty_path_leaves_hash_unchanged() {
+        // When no envelope is supplied for a non-anchor block, the EMPTY path is
+        // taken: latest_block_hash should NOT be updated to the bid's block_hash.
+        let (state, spec, anchor_block, non_anchor_block, _non_anchor_root) =
+            make_two_block_sequence();
+
+        let original_hash = ExecutionBlockHash::repeat_byte(0x02);
+
+        // No envelopes supplied — simulates EMPTY path (builder withheld payload)
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            *result_state.latest_block_hash().unwrap(),
+            original_hash,
+            "without envelope (EMPTY path), latest_block_hash should be unchanged"
+        );
+    }
+
+    #[test]
+    fn non_anchor_block_blinded_envelope_error_propagates() {
+        // Blinded envelope reconstruction errors should also propagate for
+        // non-anchor blocks (unlike anchor blocks where they're dropped).
+        let (state, spec, anchor_block, non_anchor_block, non_anchor_root) =
+            make_two_block_sequence();
+
+        // Create a blinded envelope with wrong beacon_block_root
+        let mut bad_envelope =
+            make_non_anchor_envelope(&state, &spec, &anchor_block, &non_anchor_block);
+        bad_envelope.message.beacon_block_root = Hash256::repeat_byte(0xFF);
+        let blinded = make_blinded_envelope(&bad_envelope);
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(non_anchor_root, blinded);
+
+        let result: Result<BlockReplayer<E>, _> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None);
+
+        match result {
+            Ok(_) => panic!("non-anchor block should propagate blinded envelope errors"),
+            Err(err) => {
+                let err_str = format!("{:?}", err);
+                assert!(
+                    err_str.contains("EnvelopeProcessingError"),
+                    "error should be an EnvelopeProcessingError, got: {}",
+                    err_str
+                );
+            }
+        }
+    }
 }
