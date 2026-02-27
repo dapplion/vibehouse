@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 bid signature and envelope finalization tests (run 182)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 tests** covering the last untested bid verification path and a dedicated envelope finalization guard:
+  1. `gloas_bid_gossip_rejects_invalid_signature` — exercises the `InvalidSignature` error path (gloas_verification.rs:492-493), the LAST remaining untested `ExecutionBidError` variant. Creates a builder with correct fields (passes all checks 1-4b: slot, payment, builder active, balance, equivocation, parent root, proposer preferences) then signs the bid with a validator key instead of the builder key. The BLS signature is structurally valid but doesn't match the builder's public key in the state registry. Introduces `sign_bid_with_builder` helper (parallel to `sign_envelope_with_builder`) using `DOMAIN_BEACON_BUILDER`. Without this check, any peer could forge bids on behalf of registered builders, stealing slots or manipulating the bid market.
+  2. `gloas_bid_gossip_valid_signature_accepted` — the happy-path complement: a bid signed with the CORRECT builder key passes all 5 gossip validation checks and returns `VerifiedExecutionBid`. This is the first test that exercises the complete `verify_execution_bid_for_gossip` pipeline through BLS signature verification with a real signature. All prior bid tests used `Signature::empty()` and relied on earlier checks to reject before reaching check 5. Confirms the full external builder bid acceptance path works end-to-end.
+  3. `gloas_envelope_gossip_rejects_finalized_slot` — exercises the `PriorToFinalization` error path (gloas_verification.rs:693-697) with a dedicated test. Creates an envelope with `slot=1` (a finalized slot) and `beacon_block_root` pointing to the finalized checkpoint root (which IS in fork choice, passing check 1). The envelope is rejected at check 2 because its slot is before the finalized slot. Previously, `PriorToFinalization` was only tested incidentally through the `NotGloasBlock` test which might or might not hit this path depending on chain state. This guard prevents stale envelopes for finalized blocks from consuming processing resources (loading blocks, computing bids, attempting state transitions for irrelevant blocks).
+- **Why these tests matter**: `InvalidSignature` was the ONLY untested `ExecutionBidError` variant — all 11 other variants had dedicated tests. Without bid signature verification, attackers could forge bids on behalf of any registered builder. The valid signature test is the first end-to-end bid acceptance test with real BLS, confirming the complete verification pipeline works. The `PriorToFinalization` test ensures the gossip guard ordering is correct (check 2 fires before check 3 for finalized-slot envelopes).
+- **Full test suite verification** — all passing:
+  - 631/631 beacon_chain tests (FORK_NAME=gloas, was 628, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 bid gossip validation tests (run 181)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
