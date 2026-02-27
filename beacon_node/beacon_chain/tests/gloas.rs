@@ -3343,6 +3343,190 @@ async fn gloas_self_build_envelope_stateless_mode_stays_optimistic() {
     );
 }
 
+/// When the EL returns Invalid for the envelope's newPayload, process_self_build_envelope
+/// should return an error. The block should remain Optimistic in fork choice (not marked Valid)
+/// because the payload was rejected. However, payload_revealed should still be true because
+/// on_execution_payload runs before the EL call in process_self_build_envelope.
+#[tokio::test]
+async fn gloas_self_build_envelope_el_invalid_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Invalid for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero());
+
+    // Process self-build envelope — should fail because EL says Invalid
+    let result = harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await;
+
+    assert!(result.is_err(), "should error when EL returns Invalid");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("invalid"),
+        "error should mention invalid payload, got: {}",
+        err_msg
+    );
+
+    // Block should still be Optimistic (not Valid) in fork choice
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns Invalid, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // payload_revealed should be true because on_execution_payload ran first
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true (on_execution_payload runs before EL call)"
+        );
+    }
+}
+
+/// When the EL returns InvalidBlockHash for the envelope's newPayload,
+/// process_self_build_envelope should return an error with a message about
+/// invalid block hash. The execution status should remain Optimistic.
+#[tokio::test]
+async fn gloas_self_build_envelope_el_invalid_block_hash_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return InvalidBlockHash for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_block_hash_on_new_payload();
+
+    // Process self-build envelope — should fail
+    let result = harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should error when EL returns InvalidBlockHash"
+    );
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("invalid block hash"),
+        "error should mention invalid block hash, got: {}",
+        err_msg
+    );
+
+    // Block should still be Optimistic
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns InvalidBlockHash, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
+/// When the EL returns Syncing/Accepted for the envelope's newPayload,
+/// process_self_build_envelope should succeed (not error), but the block
+/// should remain Optimistic (not promoted to Valid). This covers the EL
+/// still syncing or not yet aware of parent payload.
+#[tokio::test]
+async fn gloas_self_build_envelope_el_syncing_stays_optimistic() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Syncing for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el.server.all_payloads_syncing_on_new_payload(false);
+
+    // Process self-build envelope — should succeed (Syncing is not an error)
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("Syncing response should not cause an error");
+
+    // Block should still be Optimistic (not Valid since EL said Syncing, not Valid)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns Syncing, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // payload_revealed should still be true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true regardless of EL response"
+        );
+    }
+}
+
 /// process_self_build_envelope with a block_root not in the store should
 /// return an error (missing beacon block). This catches the case where the
 /// envelope arrives for a block that was never imported.
