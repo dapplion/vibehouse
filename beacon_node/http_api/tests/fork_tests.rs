@@ -2382,6 +2382,322 @@ async fn post_proposer_preferences_unknown_validator() {
     }
 }
 
+/// Build a Gloas InteractiveTester with builders injected into genesis.
+///
+/// `builders`: slice of `(deposit_epoch, balance)` tuples.
+/// Each builder gets a deterministic keypair starting at index `validator_count`.
+async fn gloas_tester_with_builders(
+    validator_count: usize,
+    builders: &[(u64, u64)],
+) -> (InteractiveTester<E>, Vec<types::Keypair>) {
+    use types::{Builder, Keypair};
+
+    let spec = gloas_spec(Epoch::new(0));
+    let validator_keypairs = generate_deterministic_keypairs(validator_count);
+
+    // Generate builder keypairs from indices after validators
+    let all_keys = generate_deterministic_keypairs(validator_count + builders.len());
+    let builder_keypairs: Vec<Keypair> = all_keys[validator_count..].to_vec();
+
+    let header = generate_genesis_header::<E>(&spec, false);
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &validator_keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject builders into the Gloas state
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    for (i, &(deposit_epoch, balance)) in builders.iter().enumerate() {
+        let builder = Builder {
+            pubkey: builder_keypairs[i].pk.clone().into(),
+            version: 0,
+            execution_address: Address::ZERO,
+            balance,
+            deposit_epoch: Epoch::new(deposit_epoch),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        gloas_state
+            .builders
+            .push(builder)
+            .expect("should push builder");
+    }
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let keypairs = validator_keypairs.clone();
+    let tester = InteractiveTester::<E>::new_with_initializer_and_mutator(
+        Some(spec),
+        validator_count,
+        Some(Box::new(move |harness_builder| {
+            harness_builder
+                .keypairs(keypairs)
+                .genesis_state_ephemeral_store(state)
+        })),
+        None,
+        Default::default(),
+        true,
+        NodeCustodyType::Fullnode,
+    )
+    .await;
+
+    (tester, builder_keypairs)
+}
+
+/// POST builder/bids with a valid signed bid should return 200.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_accepted_valid_builder() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    // Builder with deposit_epoch=0, large balance
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Build enough chain for finalization (MinimalEthSpec: 8 slots/epoch, need ~4 epochs)
+    harness.extend_slots(32).await;
+
+    let finalized_epoch = harness
+        .chain
+        .head_snapshot()
+        .beacon_state
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized, got epoch {finalized_epoch}"
+    );
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Insert proposer preferences for the current slot (required for bid validation)
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    // Create and sign a valid builder bid
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_ok(),
+        "valid bid should be accepted, got: {:?}",
+        result.err()
+    );
+}
+
+/// POST builder/bids with a duplicate bid should return 200 (idempotent).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_duplicate_returns_ok() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    // First submission
+    client
+        .post_builder_bids(&signed_bid)
+        .await
+        .expect("first bid should be accepted");
+
+    // Second (duplicate) submission should also return 200
+    let result2 = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result2.is_ok(),
+        "duplicate bid should be accepted (idempotent), got: {:?}",
+        result2.err()
+    );
+}
+
+/// POST builder/bids with unknown builder_index should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_unknown_builder() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    // Create a bid with a non-existent builder index (no builders in genesis state)
+    let bid = types::SignedExecutionPayloadBid::<E> {
+        message: types::ExecutionPayloadBid {
+            builder_index: 999,
+            execution_payment: 1,
+            slot: Slot::new(1),
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+
+    let result = client.post_builder_bids(&bid).await;
+    assert!(
+        result.is_err(),
+        "bid with unknown builder should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("invalid execution bid"),
+            "expected error about invalid bid, got: {}",
+            msg.message
+        );
+    }
+}
+
+/// POST builder/bids with zero execution_payment should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_zero_payment() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    let bid = types::SignedExecutionPayloadBid::<E> {
+        message: types::ExecutionPayloadBid {
+            execution_payment: 0,
+            slot: Slot::new(1),
+            ..Default::default()
+        },
+        signature: Signature::empty(),
+    };
+
+    let result = client.post_builder_bids(&bid).await;
+    assert!(result.is_err(), "bid with zero payment should be rejected");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("invalid execution bid"),
+            "expected error about invalid bid, got: {}",
+            msg.message
+        );
+    }
+}
+
 /// POST beacon/pool/proposer_preferences should ignore duplicate for same slot.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_proposer_preferences_duplicate_ignored() {

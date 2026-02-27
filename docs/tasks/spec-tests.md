@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — HTTP API builder bid submission tests (run 164)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All 10 tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+- **Added 4 HTTP API tests** for `POST /builder/bids` endpoint:
+  1. `bid_submission_accepted_valid_builder` — happy path: Gloas chain with builders finalized, proper BLS-signed bid with matching proposer preferences, returns 200
+  2. `bid_submission_duplicate_returns_ok` — submits valid bid twice, second returns 200 (idempotent via DuplicateBid path)
+  3. `bid_submission_rejected_unknown_builder` — bid with non-existent builder_index returns 400
+  4. `bid_submission_rejected_zero_payment` — bid with execution_payment=0 returns 400
+- **Helper added**: `gloas_tester_with_builders()` — creates InteractiveTester with builders injected into genesis state, used by happy-path tests that need active builders (requires 32-slot chain for finalization)
+- Previously only `bid_submission_rejected_before_gloas` existed (pre-Gloas guard test)
+- **Full test suite verification** — all passing:
+  - 50/50 fork_tests (was 46, +4 new)
+  - Clippy clean
+
 ### 2026-02-27 — multi-epoch chain health integration tests (run 163)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - New open PR: #4950 (Extend by_root reqresp serve range) — dapplion's, not yet merged, no code changes needed
