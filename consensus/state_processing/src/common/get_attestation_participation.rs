@@ -539,4 +539,239 @@ mod tests {
         assert!(!flags.contains(&TIMELY_TARGET_FLAG_INDEX));
         assert!(!flags.contains(&TIMELY_HEAD_FLAG_INDEX));
     }
+
+    // ── Gloas attestation participation edge case tests ─────────
+
+    /// Make a previous-epoch attestation with matching source/target/head.
+    ///
+    /// The state must be in epoch N (N >= 2). The attestation targets epoch N-1.
+    /// Both `current_justified_checkpoint` and `previous_justified_checkpoint`
+    /// are set to the same checkpoint (epoch N-1) by `make_gloas_state_for_attestation`.
+    fn make_prev_epoch_matching_attestation(
+        state: &BeaconState<E>,
+        att_slot: u64,
+        index: u64,
+    ) -> AttestationData {
+        let prev_epoch = state.previous_epoch();
+        let target_slot = prev_epoch.start_slot(E::slots_per_epoch());
+        let target_root = *state.get_block_root(target_slot).unwrap();
+        AttestationData {
+            slot: Slot::new(att_slot),
+            index,
+            beacon_block_root: *state.get_block_root(Slot::new(att_slot)).unwrap(),
+            source: state.previous_justified_checkpoint(),
+            target: Checkpoint {
+                epoch: prev_epoch,
+                root: target_root,
+            },
+        }
+    }
+
+    #[test]
+    fn gloas_previous_epoch_same_slot_attestation_gets_all_flags() {
+        // State at slot 17 (epoch 2). Attestation at slot 10 (epoch 1 = previous epoch).
+        // Slot 10 has a unique block root (different from slot 9), so is_same_slot = true.
+        // Previous epoch attestation uses previous_justified_checkpoint as source.
+        // With inclusion_delay=1 and same-slot+index=0: should get source + target + head flags.
+        let (state, spec) = make_gloas_state_for_attestation(17);
+        let data = make_prev_epoch_matching_attestation(&state, 10, 0);
+
+        let flags = get_attestation_participation_flag_indices(&state, &data, 1, &spec).unwrap();
+        assert!(
+            flags.contains(&TIMELY_SOURCE_FLAG_INDEX),
+            "previous-epoch same-slot attestation should get source flag"
+        );
+        assert!(
+            flags.contains(&TIMELY_TARGET_FLAG_INDEX),
+            "previous-epoch same-slot attestation should get target flag"
+        );
+        assert!(
+            flags.contains(&TIMELY_HEAD_FLAG_INDEX),
+            "previous-epoch same-slot attestation should get head flag"
+        );
+    }
+
+    #[test]
+    fn gloas_previous_epoch_historical_uses_availability() {
+        // State at slot 17 (epoch 2). Historical attestation at slot 10 (skipped, previous epoch).
+        // Make slot 10 a skipped slot, then check that availability bit determines head flag.
+        let (mut state, spec) = make_gloas_state_for_attestation(17);
+
+        // Simulate a skipped slot: block_roots[10] = block_roots[9]
+        let prev_root = block_root_at(&state, 9);
+        state.set_block_root(Slot::new(10), prev_root).unwrap();
+
+        // Clear availability bit at slot 10 → availability = 0
+        let slot_index = 10 % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .execution_payload_availability
+            .set(slot_index, false)
+            .unwrap();
+
+        // Previous-epoch attestation at slot 10 with index=0 (matches availability=0)
+        let prev_epoch = state.previous_epoch();
+        let target_slot = prev_epoch.start_slot(E::slots_per_epoch());
+        let target_root = *state.get_block_root(target_slot).unwrap();
+        let data = AttestationData {
+            slot: Slot::new(10),
+            index: 0,
+            beacon_block_root: prev_root,
+            source: state.previous_justified_checkpoint(),
+            target: Checkpoint {
+                epoch: prev_epoch,
+                root: target_root,
+            },
+        };
+
+        let flags = get_attestation_participation_flag_indices(&state, &data, 1, &spec).unwrap();
+        assert!(
+            flags.contains(&TIMELY_HEAD_FLAG_INDEX),
+            "previous-epoch historical attestation with index=0 matching availability=0 should get head flag"
+        );
+
+        // Now test with index=1 (mismatches availability=0) — no head flag
+        let data_mismatch = AttestationData { index: 1, ..data };
+        let flags2 =
+            get_attestation_participation_flag_indices(&state, &data_mismatch, 1, &spec).unwrap();
+        assert!(
+            !flags2.contains(&TIMELY_HEAD_FLAG_INDEX),
+            "previous-epoch historical attestation with index=1 mismatching availability=0 should NOT get head flag"
+        );
+    }
+
+    #[test]
+    fn gloas_availability_slot_wrapping_modular_index() {
+        // Test that the slot-to-availability-bit mapping wraps correctly at SLOTS_PER_HISTORICAL_ROOT.
+        // MinimalEthSpec: SlotsPerHistoricalRoot = 64, slots_per_epoch = 8.
+        //
+        // State at slot 65 (epoch 8), attestation at slot 64 (epoch 8, start of epoch).
+        // Slot 64 % 64 = 0, so the availability lookup is at index 0 in the bitvector.
+        // block_roots use the same circular buffer: block_roots[64 % 64] = block_roots[0].
+        let (mut state, spec) = make_gloas_state_for_attestation(65);
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+
+        // Simulate a skipped slot at slot 64: block_roots[0] = block_roots[63]
+        // (slot 64 wraps to index 0, slot 63 wraps to index 63)
+        let prev_root = *state.get_block_root(Slot::new(63)).unwrap();
+        state.set_block_root(Slot::new(64), prev_root).unwrap();
+
+        // Clear availability at index 0 (which is slot 64's index after wrapping)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .execution_payload_availability
+            .set(0, false)
+            .unwrap();
+
+        let epoch = state.current_epoch(); // epoch 8
+        let target_slot = epoch.start_slot(E::slots_per_epoch()); // slot 64
+        let target_root = *state.get_block_root(target_slot).unwrap();
+
+        // Attestation at slot 64 with index=0 (matches availability=false→0)
+        let data = AttestationData {
+            slot: Slot::new(64),
+            index: 0,
+            beacon_block_root: prev_root,
+            source: state.current_justified_checkpoint(),
+            target: Checkpoint {
+                epoch,
+                root: target_root,
+            },
+        };
+
+        let flags = get_attestation_participation_flag_indices(&state, &data, 1, &spec).unwrap();
+        assert!(
+            flags.contains(&TIMELY_HEAD_FLAG_INDEX),
+            "availability lookup should wrap correctly: slot 64 %% {} = 0, index=0 matches availability=false(0)",
+            slots_per_hist
+        );
+    }
+
+    #[test]
+    fn gloas_same_slot_at_epoch_boundary() {
+        // Test same-slot detection at the first slot of an epoch.
+        // State at slot 17 (epoch 2), attestation at slot 16 (first slot of epoch 2).
+        // block_roots[16] != block_roots[15] (unique roots), so slot 16 is same-slot.
+        let (state, spec) = make_gloas_state_for_attestation(17);
+
+        // Verify the roots ARE different (sanity check for same-slot)
+        let root_16 = block_root_at(&state, 16);
+        let root_15 = block_root_at(&state, 15);
+        assert_ne!(
+            root_16, root_15,
+            "block roots should differ for same-slot detection"
+        );
+
+        let data = make_matching_attestation(&state, 16, 0);
+        let flags = get_attestation_participation_flag_indices(&state, &data, 1, &spec).unwrap();
+        assert!(
+            flags.contains(&TIMELY_HEAD_FLAG_INDEX),
+            "same-slot attestation at epoch boundary (slot 16) should get head flag"
+        );
+
+        // Same-slot with index=1 should error even at epoch boundary
+        let data_idx1 = make_matching_attestation(&state, 16, 1);
+        let result = get_attestation_participation_flag_indices(&state, &data_idx1, 1, &spec);
+        assert_eq!(
+            result.unwrap_err(),
+            Error::IncorrectAttestationIndex,
+            "same-slot attestation at epoch boundary with index=1 should error"
+        );
+    }
+
+    #[test]
+    fn gloas_historical_index_one_with_availability_false_no_head() {
+        // Tests the EMPTY payload attestation scenario:
+        // Payload was NOT delivered (availability=false=0), attester votes index=1 (FULL),
+        // but the availability says EMPTY → no head flag.
+        // This is the critical ePBS case where a validator attests to payload presence
+        // but the payload was actually withheld.
+        let (mut state, spec) = make_gloas_state_for_attestation(17);
+
+        // Make slot 10 a skipped slot (historical attestation, not same-slot)
+        let prev_root = block_root_at(&state, 9);
+        state.set_block_root(Slot::new(10), prev_root).unwrap();
+
+        // Clear availability at slot 10 → payload was NOT delivered
+        let slot_index = 10 % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .execution_payload_availability
+            .set(slot_index, false)
+            .unwrap();
+
+        let epoch = state.current_epoch();
+        let target_slot = epoch.start_slot(E::slots_per_epoch());
+        let target_root = *state.get_block_root(target_slot).unwrap();
+
+        // Attestation with index=1 (claiming payload present) but availability=0 (payload absent)
+        let data = AttestationData {
+            slot: Slot::new(10),
+            index: 1,
+            beacon_block_root: prev_root,
+            source: state.current_justified_checkpoint(),
+            target: Checkpoint {
+                epoch,
+                root: target_root,
+            },
+        };
+
+        let flags = get_attestation_participation_flag_indices(&state, &data, 1, &spec).unwrap();
+        assert!(
+            !flags.contains(&TIMELY_HEAD_FLAG_INDEX),
+            "index=1 (FULL vote) should NOT get head flag when availability=0 (payload EMPTY)"
+        );
+        // Source and target should still be awarded even when head flag is denied
+        assert!(
+            flags.contains(&TIMELY_SOURCE_FLAG_INDEX),
+            "source flag should be independent of payload availability mismatch"
+        );
+        assert!(
+            flags.contains(&TIMELY_TARGET_FLAG_INDEX),
+            "target flag should be independent of payload availability mismatch"
+        );
+    }
 }
