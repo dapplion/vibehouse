@@ -28,6 +28,61 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — fork choice spec audit: 25 additional functions, 2 fixes (run 154)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630
+  - Reviewed #4940 (Add initial fork choice tests for Gloas): adds genesis + on_execution_payload test vectors — will need to integrate when merged
+  - #4898 (Remove pending from tiebreaker) and #4892 (Remove impossible branch) still open, no action needed
+- Spec test version: v1.7.0-alpha.2, nightly vectors unchanged (Feb 26 build, no Feb 27 nightly yet)
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 337/337 state_processing tests
+  - 193/193 fork_choice + proto_array tests
+- **Spec compliance audit: 25 additional fork choice functions** — audited against consensus-specs master:
+  1. `on_block` (13 steps): parent state selection via is_parent_node_full ✓, empty parent assertion enforced indirectly through `process_execution_payload_bid` (validates bid.parent_block_hash == state.latest_block_hash) ✓, payload_timeliness_vote/payload_data_availability_vote initialization ✓, notify_ptc_messages ✓, operation ordering ✓
+  2. `on_payload_attestation_message`: PTC weight accumulation ✓, quorum threshold (ptc_size/2, strictly greater) ✓, slot mismatch silent return ✓. Architecture: signature/slot validation in gossip layer (`verify_payload_attestation_for_gossip`), not in fork choice function — spec's `is_from_block` distinction handled by separate call paths
+  3. `notify_ptc_messages`: iterates payload_attestations from block ✓, calls on_payload_attestation for each ✓. Slot 0 guard not needed (pre-Gloas blocks have no payload_attestations)
+  4. `validate_on_attestation`: Gloas index checks (index in [0,1], same-slot→0, index 1→payload_revealed) all correct ✓, 7 unit tests covering all branches
+  5. `update_latest_messages`: payload_present = (index == 1) correctly derived ✓, stored in VoteTracker.next_payload_present ✓, flows through process_attestation correctly
+  6. `get_ancestor` / `get_ancestor_gloas`: returns (root, payload_status) struct ✓, PENDING when block.slot <= slot ✓, walk-up logic correct ✓, get_parent_payload_status_of correctly determines Full/Empty
+  7. `get_checkpoint_block`: wraps get_ancestor with epoch_first_slot ✓
+  8. `get_forkchoice_store` / anchor initialization: **2 fixes applied** (see below)
+  9. `is_payload_timely`: threshold = ptc_size/2, strictly greater ✓, requires envelope_received (maps to payload_states) ✓
+  10. `is_payload_data_available`: same threshold pattern ✓, blob_data_available_weight tracked separately ✓
+  11. `get_parent_payload_status`: compares bid.parent_block_hash with parent.bid.block_hash → Full/Empty ✓
+  12. `should_apply_proposer_boost`: zero root check ✓, skipped slots check ✓, is_head_weak calculation ✓, equivocation detection via ptc_timely ✓. Known documented deviation: adds ALL equivocating validators instead of filtering by committee (conservative)
+  13. `get_attestation_score`: logic inlined in should_apply_proposer_boost_gloas and get_gloas_weight ✓, correct balance summation
+  14. `is_supporting_vote` (Gloas): already audited run 151 ✓
+  15. `should_extend_payload`: already audited run 151 ✓
+  16. `get_payload_status_tiebreaker`: already audited run 151 ✓
+  17. `get_weight` (Gloas): already audited run 151 ✓
+  18. `get_head` (Gloas): already audited run 151 ✓
+  19. `get_node_children` (Gloas): already audited run 151 ✓
+  20. `on_execution_payload`: already audited run 151 ✓
+  21-25. Timing functions (`get_attestation_due_ms`, `get_aggregate_due_ms`, `get_sync_message_due_ms`, `get_contribution_due_ms`, `get_payload_attestation_due_ms`): implemented via SlotClock 4-interval system ✓
+- **Fix 1: anchor `payload_data_available` initialization**
+  - Spec: `get_forkchoice_store` initializes `payload_data_availability_vote={anchor_root: [True]*PTC_SIZE}` → anchor should be data-available
+  - Was: anchor node had `payload_data_available = false` (default)
+  - Fixed: set `anchor_node.payload_data_available = true` alongside `payload_revealed = true`
+  - Impact: affects `should_extend_payload` for children of anchor (tiebreaker). Low practical impact since anchor is typically finalized and distant from head
+  - File: `consensus/fork_choice/src/fork_choice.rs`
+- **Fix 2: anchor `ptc_timely` initialization**
+  - Spec: `get_forkchoice_store` initializes `block_timeliness={anchor_root: [True, True]}` → anchor should be PTC-timely
+  - Was: anchor node had `ptc_timely = false` (default)
+  - Fixed: set `anchor_node.ptc_timely = true`
+  - Impact: affects equivocation detection in `should_apply_proposer_boost_gloas`. Low practical impact since anchor is finalized
+  - File: `consensus/fork_choice/src/fork_choice.rs`
+- **Architecture note: PTC vote tracking**
+  - Spec uses per-PTC-member bitvectors (idempotent assignment), vibehouse uses counters (accumulation)
+  - Idempotency guaranteed by gossip deduplication layer (`observed_payload_attestations`) preventing duplicate processing
+  - FALSE votes are not explicitly tracked — only TRUE votes are accumulated. This is correct for quorum detection (only need to count affirmative votes vs threshold)
+- **Cumulative audit coverage**: ALL 32 Gloas fork choice spec functions now audited. Combined with runs 151-153, every Gloas-specific function in the consensus-specs is verified:
+  - Fork choice: all 32 functions ✓
+  - Per-block: all 4 operations ✓
+  - Per-epoch: builder_pending_payments ✓
+  - Helpers: all 6 functions ✓
+
 ### 2026-02-27 — withdrawal/PTC/helper function audit, all compliant (run 153)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Open PRs unchanged: #4950, #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630

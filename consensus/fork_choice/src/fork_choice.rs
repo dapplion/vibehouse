@@ -473,6 +473,8 @@ where
             anchor_node.builder_index = Some(bid.message.builder_index);
             anchor_node.envelope_received = true;
             anchor_node.payload_revealed = true;
+            anchor_node.payload_data_available = true;
+            anchor_node.ptc_timely = true;
         }
 
         let mut fork_choice = Self {
