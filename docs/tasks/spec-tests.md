@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — full verification, all merged PRs confirmed (run 159)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - Nightly run #131 in progress (spec commit 14e6ce5a, same as #130) — no new code changes
+  - Open PRs reviewed:
+    - #4892 (Remove impossible branch): 2 approvals, **already implemented** (debug_assert + == check in is_supporting_vote)
+    - #4940, #4932, #4906: test-only or still in review
+    - #4939: active discussion, unresolved
+- **Full verification of all merged spec PRs** — every change confirmed in code:
+  - #4897 (is_pending_validator): implemented at process_operations.rs:758 — `is_pending_validator` iterates pending_deposits, verifies BLS signature
+  - #4884 (payload_data_availability_vote): implemented — `ptc_blob_data_available_weight` in proto_array, `should_extend_payload` checks `is_payload_timely AND is_payload_data_available`
+  - #4918 (Only allow attestations for known payload statuses): implemented at fork_choice.rs:1213 — `PayloadNotRevealed` error for index=1 with unrevealed payload
+  - #4898 (Remove pending from tiebreaker): implemented in run 157
+  - #4948, #4947, #4923, #4916, #4930, #4927, #4920: all confirmed in previous runs
+- **Full test suite verification** — all passing:
+  - 78/78 EF spec tests (real crypto, minimal)
+  - 138/138 EF spec tests (fake crypto, minimal)
+  - 337/337 state_processing tests
+  - 193/193 fork_choice + proto_array tests
+- CI: check/clippy/fmt ✓, ef-tests ✓, unit tests ✓, fork-specific tests in progress
+
 ### 2026-02-27 — fix CI failure in beacon_chain tests (run 158)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - Open PRs unchanged: #4940, #4939, #4932, #4843, #4840, #4630
