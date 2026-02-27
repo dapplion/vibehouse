@@ -24,9 +24,12 @@ use beacon_chain::test_utils::{
     InteropGenesisBuilder,
 };
 use execution_layer::test_utils::generate_genesis_header;
-use fork_choice::{ExecutionStatus, ForkchoiceUpdateParameters, PayloadVerificationStatus};
+use fork_choice::{
+    ExecutionStatus, ForkchoiceUpdateParameters, InvalidationOperation, PayloadVerificationStatus,
+};
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
+use std::time::Duration;
 use types::*;
 
 const VALIDATOR_COUNT: usize = 32;
@@ -9475,4 +9478,284 @@ async fn gloas_head_hash_updated_after_envelope_processing() {
         envelope_payload_block_hash,
         "head_hash should match the envelope's payload block_hash after processing"
     );
+}
+
+// =============================================================================
+// Proposer boost timing — Gloas 4-interval boundary
+// =============================================================================
+
+/// Verify that Gloas blocks use 4 intervals per slot for the proposer boost deadline,
+/// not the pre-Gloas 3 intervals.
+///
+/// With minimal preset (6s slots):
+/// - Pre-Gloas: threshold = 6000ms / 3 = 2000ms
+/// - Gloas: threshold = 6000ms / 4 = 1500ms
+///
+/// A block arriving at 1499ms should get boost; at 1500ms it should NOT.
+/// If the intervals_per_slot were wrong (using 3 instead of 4), a block at 1500ms
+/// would get boost (since 1500 < 2000), creating an incorrect head selection.
+///
+/// This exercises `fork_choice.rs` lines 820-838 which have zero test coverage.
+#[tokio::test]
+async fn gloas_proposer_boost_four_interval_boundary() {
+    let harness = gloas_harness_at_epoch(0);
+    // Build some blocks to have a stable chain
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+
+    // Produce a block at the next slot (without importing it through the chain)
+    harness.advance_slot();
+    let (block_contents, new_state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let block = &block_contents.0;
+    let block_root = block.canonical_root();
+
+    // Test 1: block_delay = 1499ms — should get boost (under 1500ms threshold)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        // Advance time to the block's slot to reset proposer boost root
+        fc.update_time(next_slot).unwrap();
+        assert!(
+            fc.proposer_boost_root().is_zero(),
+            "pre-condition: proposer boost root should be zero after slot tick"
+        );
+
+        fc.on_block(
+            next_slot,
+            block.message(),
+            block_root,
+            Duration::from_millis(1499),
+            &new_state,
+            PayloadVerificationStatus::Optimistic,
+            None, // No canonical_head_proposer_index check
+            &harness.spec,
+        )
+        .expect("on_block should succeed");
+
+        assert_eq!(
+            fc.proposer_boost_root(),
+            block_root,
+            "proposer boost should be granted at 1499ms (under Gloas 1500ms threshold)"
+        );
+    }
+
+    // To test the 1500ms case, we need a fresh block that fork choice hasn't seen.
+    // Produce another block at a later slot.
+    harness.advance_slot();
+    let state2 = harness.chain.head_beacon_state_cloned();
+    let next_slot2 = next_slot + 1;
+    let (block_contents2, new_state2, _envelope2) =
+        harness.make_block_with_envelope(state2, next_slot2).await;
+
+    let block2 = &block_contents2.0;
+    let block2_root = block2.canonical_root();
+
+    // But first we need to import the first block so block2's parent exists in fc
+    // The first block was added to fc via on_block above, so parent is known.
+    // We need to advance fc time to next_slot2 to reset the boost.
+
+    // Test 2: block_delay = 1500ms — should NOT get boost (at the threshold)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        fc.update_time(next_slot2).unwrap();
+        assert!(
+            fc.proposer_boost_root().is_zero(),
+            "pre-condition: proposer boost root should be zero after new slot tick"
+        );
+
+        fc.on_block(
+            next_slot2,
+            block2.message(),
+            block2_root,
+            Duration::from_millis(1500),
+            &new_state2,
+            PayloadVerificationStatus::Optimistic,
+            None,
+            &harness.spec,
+        )
+        .expect("on_block should succeed");
+
+        assert!(
+            fc.proposer_boost_root().is_zero(),
+            "proposer boost should NOT be granted at 1500ms (at Gloas threshold)"
+        );
+    }
+}
+
+// =============================================================================
+// Payload invalidation — Gloas blocks
+// =============================================================================
+
+/// Verify that `InvalidateOne` correctly marks a Gloas block as Invalid.
+///
+/// After importing a Gloas block + processing its envelope, the mock EL marks it
+/// `Valid`. We set it back to `Optimistic` (simulating a scenario where the EL hasn't
+/// confirmed validity yet, e.g. during syncing) and then call `InvalidateOne`.
+/// This exercises the payload invalidation path for Gloas blocks, which has zero
+/// coverage in `payload_invalidation.rs`.
+#[tokio::test]
+async fn gloas_invalidate_one_marks_block_invalid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let parent_root = head.beacon_block.parent_root();
+
+    // The mock EL confirms payloads as Valid. Set the head back to Optimistic
+    // to simulate the common scenario where the EL is syncing (PayloadStatus::Syncing)
+    // and hasn't confirmed validity yet.
+    let head_block_hash = {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head should be in fork choice");
+        let hash = fc.proto_array().core_proto_array().nodes[block_index]
+            .execution_status
+            .block_hash()
+            .expect("head should have a block hash");
+        fc.proto_array_mut().core_proto_array_mut().nodes[block_index].execution_status =
+            ExecutionStatus::Optimistic(hash);
+        hash
+    };
+
+    // Verify the status was set correctly
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let block = fc.get_block(&head_root).unwrap();
+        assert!(
+            matches!(block.execution_status, ExecutionStatus::Optimistic(_)),
+            "pre-condition: head should be Optimistic, got {:?}",
+            block.execution_status
+        );
+    }
+
+    // Invalidate the head block
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        fc.on_invalid_execution_payload(&InvalidationOperation::InvalidateOne {
+            block_root: head_root,
+        })
+        .expect("invalidation should succeed");
+    }
+
+    // Verify the block is now Invalid
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let block = fc.get_block(&head_root).unwrap();
+        assert!(
+            matches!(block.execution_status, ExecutionStatus::Invalid(_)),
+            "head should be Invalid after InvalidateOne, got {:?}",
+            block.execution_status
+        );
+        assert_eq!(
+            block.execution_status.block_hash(),
+            Some(head_block_hash),
+            "Invalid status should preserve the original block hash"
+        );
+    }
+
+    // Recompute head — should move to the parent (since head is now Invalid)
+    harness.chain.recompute_head_at_current_slot().await;
+
+    let new_head = harness.chain.head_snapshot();
+    assert_ne!(
+        new_head.beacon_block_root, head_root,
+        "head should have changed after invalidation"
+    );
+    assert_eq!(
+        new_head.beacon_block_root, parent_root,
+        "new head should be the parent of the invalidated block"
+    );
+}
+
+/// Verify that `InvalidateMany` backward-walking stops at a Gloas block with
+/// `ExecutionStatus::Irrelevant` (a block whose bid had zero block_hash, simulating
+/// the pre-terminal-PoW or no-bid scenario).
+///
+/// The invalidation propagation in `proto_array.rs:563` breaks on Irrelevant nodes.
+/// This test manually sets a node to Irrelevant, then runs InvalidateMany from a
+/// descendant and verifies the Irrelevant node is NOT invalidated.
+#[tokio::test]
+async fn gloas_invalidation_stops_at_irrelevant_boundary() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let parent_root = head.beacon_block.parent_root();
+
+    // Set up the fork choice state:
+    // - Head: Optimistic (simulating EL syncing, hasn't confirmed yet)
+    // - Parent: Irrelevant (simulating a block with zero bid hash)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+
+        // Set head to Optimistic (mock EL marks it Valid; revert to Optimistic)
+        let head_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head should be in fork choice");
+        let head_hash = fc.proto_array().core_proto_array().nodes[head_index]
+            .execution_status
+            .block_hash()
+            .expect("head should have a block hash");
+        fc.proto_array_mut().core_proto_array_mut().nodes[head_index].execution_status =
+            ExecutionStatus::Optimistic(head_hash);
+
+        // Set parent to Irrelevant (simulating zero bid hash)
+        let parent_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&parent_root)
+            .expect("parent should be in fork choice");
+        fc.proto_array_mut().core_proto_array_mut().nodes[parent_index].execution_status =
+            ExecutionStatus::Irrelevant(false);
+    }
+
+    // Run InvalidateMany from the head, with latest_valid_ancestor = zero hash
+    // (meaning no valid ancestor known — walk all the way back).
+    // This should invalidate the head but stop at the parent (which is Irrelevant).
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        fc.on_invalid_execution_payload(&InvalidationOperation::InvalidateMany {
+            head_block_root: head_root,
+            always_invalidate_head: true,
+            latest_valid_ancestor: ExecutionBlockHash::zero(),
+        })
+        .expect("invalidation should succeed");
+    }
+
+    // Verify: head should be Invalid
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let head_block = fc.get_block(&head_root).unwrap();
+        assert!(
+            matches!(head_block.execution_status, ExecutionStatus::Invalid(_)),
+            "head should be Invalid after InvalidateMany, got {:?}",
+            head_block.execution_status
+        );
+
+        // Verify: parent should still be Irrelevant (NOT Invalid)
+        // The backward walk in proto_array.rs breaks at Irrelevant nodes (line 563).
+        let parent_block = fc.get_block(&parent_root).unwrap();
+        assert!(
+            matches!(
+                parent_block.execution_status,
+                ExecutionStatus::Irrelevant(_)
+            ),
+            "parent should remain Irrelevant (invalidation should stop here), got {:?}",
+            parent_block.execution_status
+        );
+    }
 }
