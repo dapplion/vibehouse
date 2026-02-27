@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-27 — 3 canonical head head_hash fallback tests (run 174)
+- Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
+  - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
+  - No new nightly spec test vectors (v1.7.0-alpha.2 still latest)
+- **Added 3 canonical head `head_hash` fallback integration tests** covering the previously untested Gloas-specific `head_hash` derivation in `canonical_head.rs`. Gloas blocks have `ExecutionStatus::Irrelevant` in fork choice, so `get_forkchoice_update_parameters()` returns `head_hash=None`. Four fallback sites in `canonical_head.rs` (lines 282, 343, 748, 784) correct this by reading `state.latest_block_hash()`. If any fallback is broken, `forkchoiceUpdated` sends `headBlockHash=None` to the EL, which is consensus-breaking.
+  1. `gloas_cached_head_hash_from_latest_block_hash` — verifies `cached_head().forkchoice_update_parameters().head_hash` is `Some(block_hash)` after building a Gloas chain with envelope processing. Checks the value equals `state.latest_block_hash()`. This is the first test that verifies `head_hash` on the cached head for any Gloas block.
+  2. `gloas_persist_load_fork_choice_preserves_head_hash` — exercises the node restart path: calls `persist_fork_choice()`, then `load_fork_choice()` + `CanonicalHead::new()` with the loaded fork choice and existing snapshot. Verifies the reconstructed `head_hash` matches the pre-persist value. This covers the same Gloas fallback used by `restore_from_store` (line 343), which runs on node crash recovery. A bug here would cause a restarted node to send wrong `headBlockHash` to the EL.
+  3. `gloas_head_hash_updated_after_envelope_processing` — tests the lifecycle: imports a Gloas block WITHOUT processing its envelope, verifies `head_hash` is still `Some` (fallback from parent's `latest_block_hash`), then processes the envelope and verifies `head_hash` updates to match the new payload's `block_hash`. This proves the fallback provides correct values in both pre-envelope and post-envelope phases.
+- **Why these tests matter**: No previous test verified `head_hash` (the value sent as `headBlockHash` to the EL via `forkchoiceUpdated`) for any Gloas block. The `forkchoice_update_parameters()` method was only tested in `payload_invalidation.rs` for pre-Gloas forks. If any of the four Gloas fallback sites in `canonical_head.rs` were broken, the EL would receive `None` as `headBlockHash`, causing it to either reject the request or build on the wrong parent — either way, consensus-breaking.
+- **Full test suite verification** — all passing:
+  - 607/607 beacon_chain tests (FORK_NAME=gloas, was 604, +3 new)
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-27 — 3 gossip envelope EL error path + cross-epoch withdrawal tests (run 173)
 - Checked consensus-specs PRs: no new Gloas spec changes merged since #4947/#4948 (Feb 26)
   - All tracked PRs still open: #4950, #4940, #4939, #4932, #4906, #4898, #4892, #4843, #4840, #4630
