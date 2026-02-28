@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix nightly CI + CI http_api fork coverage (run 235)
+- Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last, master at 14e6ce5a)
+  - Open Gloas PRs: #4950 (by_root serve range, 4 approvals), #4892 (remove impossible branch, 2 approvals — already aligned), #4898 (remove pending from tiebreaker, 1 approval — already aligned), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4843 (variable PTC deadline), #4939 (request missing envelopes), #4630 (SSZ types), #4840 (eip7843)
+- No new spec test release (v1.7.0-alpha.2 still latest)
+- **Discovered**: the "nightly-tests" workflow running in CI was from the upstream `stable` branch — it tested old Lighthouse code (phase0-deneb forks), not vibehouse. vibehouse's `main` branch had no nightly workflow.
+- **Fixed CI coverage gap**:
+  - Created `nightly-tests.yml` on `main`: covers all prior forks (phase0-fulu) for beacon_chain, network, operation_pool, plus electra+fulu for http_api
+  - Changed `ci.yml` http_api tests from fulu → gloas: the latest fork (with new ePBS endpoints) should be tested on every push, not the second-latest
+  - **Result**: every fork now has at least one scheduled test run (gloas on every push, phase0-fulu nightly)
+- **Files changed**: 2 (.github/workflows/ci.yml, .github/workflows/nightly-tests.yml)
+- Clippy clean, all lint passes
+
 ### 2026-02-28 — nightly spec test verification, all green (run 234)
 - Downloaded nightly spec test vectors (run 22470858121, consensus-specs sha 14e6ce5a — same as v1.7.0-alpha.2 release)
 - **78/78 real crypto pass** on nightly vectors — matches previous result
