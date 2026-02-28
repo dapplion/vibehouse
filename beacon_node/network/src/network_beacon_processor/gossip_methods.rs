@@ -3788,42 +3788,65 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             .beacon_state
             .clone();
 
-        let lookahead_valid = match head_state.proposer_lookahead() {
+        // The proposer_lookahead covers [current_epoch, next_epoch] relative to the
+        // head state's epoch. If the head state is behind the wall clock (e.g. at
+        // epoch 0 while wall clock is epoch 1), the lookahead doesn't cover the
+        // proposal epoch and we must ignore rather than reject.
+        let head_epoch = head_state.current_epoch();
+        if current_epoch != head_epoch {
+            debug!(
+                %proposal_slot,
+                %validator_index,
+                %head_epoch,
+                %current_epoch,
+                "Ignoring proposer preferences: head state epoch behind wall clock"
+            );
+            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+            return;
+        }
+
+        match head_state.proposer_lookahead() {
             Ok(proposer_lookahead) => {
                 // Index into the next epoch's portion of the lookahead
                 let slots_per_epoch = T::EthSpec::slots_per_epoch() as usize;
                 let index =
                     slots_per_epoch.saturating_add(proposal_slot.as_usize() % slots_per_epoch);
-                match proposer_lookahead.get(index) {
-                    Some(&expected_proposer) => expected_proposer == validator_index,
-                    None => false,
+                let is_proposer = matches!(
+                    proposer_lookahead.get(index),
+                    Some(&expected_proposer) if expected_proposer == validator_index
+                );
+                if !is_proposer {
+                    debug!(
+                        %proposal_slot,
+                        %validator_index,
+                        "Rejecting proposer preferences: validator is not the proposer for this slot"
+                    );
+                    self.propagate_validation_result(
+                        message_id,
+                        peer_id,
+                        MessageAcceptance::Reject,
+                    );
+                    self.gossip_penalize_peer(
+                        peer_id,
+                        PeerAction::LowToleranceError,
+                        "proposer_preferences_wrong_proposer",
+                    );
+                    return;
                 }
             }
             Err(_) => {
-                // Pre-Fulu state — proposer_lookahead not available
+                // Head state is pre-Fulu — proposer_lookahead not available yet.
+                // Ignore rather than reject: this is a timing race at the fork boundary,
+                // not a malicious message. The signature check below still prevents spam.
                 debug!(
                     %proposal_slot,
                     %validator_index,
-                    "Rejecting proposer preferences: proposer_lookahead not available"
+                    "Ignoring proposer preferences: head state is pre-Fulu, no proposer_lookahead"
                 );
-                false
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
             }
         };
-
-        if !lookahead_valid {
-            debug!(
-                %proposal_slot,
-                %validator_index,
-                "Rejecting proposer preferences: validator is not the proposer for this slot"
-            );
-            self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
-            self.gossip_penalize_peer(
-                peer_id,
-                PeerAction::LowToleranceError,
-                "proposer_preferences_wrong_proposer",
-            );
-            return;
-        }
 
         // [IGNORE] first valid message for this validator+slot
         if self.chain.get_proposer_preferences(proposal_slot).is_some() {
@@ -3857,10 +3880,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             return;
         };
 
+        // Use spec.fork_at_epoch to compute the domain rather than head_state.fork().
+        // At the fork boundary the head state may still be pre-Gloas while the
+        // proposal_epoch is post-Gloas, causing a fork version mismatch.
         let domain = self.chain.spec.get_domain(
             proposal_epoch,
             types::Domain::ProposerPreferences,
-            &head_snapshot.beacon_state.fork(),
+            &self.chain.spec.fork_at_epoch(proposal_epoch),
             head_snapshot.beacon_state.genesis_validators_root(),
         );
         let signing_root = preferences.signing_root(domain);

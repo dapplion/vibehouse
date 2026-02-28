@@ -2670,12 +2670,15 @@ pub fn serve<T: BeaconChainTypes>(
                             )
                         })?;
 
-                    // Verify the signature
+                    // Verify the signature.
+                    // Use spec.fork_at_epoch rather than head_state.fork() so that
+                    // the domain is correct even when the head hasn't upgraded to
+                    // Gloas yet at the fork boundary.
                     let proposal_epoch = proposal_slot.epoch(T::EthSpec::slots_per_epoch());
                     let domain = chain.spec.get_domain(
                         proposal_epoch,
                         Domain::ProposerPreferences,
-                        &head_state.fork(),
+                        &chain.spec.fork_at_epoch(proposal_epoch),
                         head_state.genesis_validators_root(),
                     );
                     let signing_root = preferences.signing_root(domain);
