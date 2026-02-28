@@ -11,7 +11,7 @@ use tree_hash_derive::TreeHash;
 /// Validators sign their preferences to prove authenticity. The signature is
 /// verified against the validator's public key using DOMAIN_PROPOSER_PREFERENCES.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md>
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
 )]

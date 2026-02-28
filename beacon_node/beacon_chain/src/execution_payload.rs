@@ -137,7 +137,7 @@ impl<T: BeaconChainTypes> PayloadNotifier<T> {
 /// Equivalent to the `notify_new_payload` function in the merge Beacon Chain Changes, although it
 /// contains a few extra checks by running `partially_verify_execution_payload` first:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#notify_new_payload
+/// <https://github.com/ethereum/consensus-specs/blob/v1.1.9/specs/bellatrix/beacon-chain.md#notify_new_payload>
 async fn notify_new_payload<T: BeaconChainTypes>(
     chain: &Arc<BeaconChain<T>>,
     block: BeaconBlockRef<'_, T::EthSpec>,
@@ -238,7 +238,7 @@ async fn notify_new_payload<T: BeaconChainTypes>(
 ///
 /// Equivalent to the `validate_merge_block` function in the merge Fork Choice Changes:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/fork-choice.md#validate_merge_block
+/// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/fork-choice.md#validate_merge_block>
 pub async fn validate_merge_block<T: BeaconChainTypes>(
     chain: &Arc<BeaconChain<T>>,
     block: BeaconBlockRef<'_, T::EthSpec>,
@@ -300,7 +300,7 @@ pub async fn validate_merge_block<T: BeaconChainTypes>(
 }
 
 /// Validate the gossip block's execution_payload according to the checks described here:
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/merge/p2p-interface.md#beacon_block
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/merge/p2p-interface.md#beacon_block>
 pub fn validate_execution_payload_for_gossip<T: BeaconChainTypes>(
     parent_block: &ProtoBlock,
     block: BeaconBlockRef<'_, T::EthSpec>,
@@ -367,7 +367,7 @@ pub fn validate_execution_payload_for_gossip<T: BeaconChainTypes>(
 ///
 /// Equivalent to the `get_execution_payload` function in the Validator Guide:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md#block-proposal
+/// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md#block-proposal>
 pub fn get_execution_payload<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     state: &BeaconState<T::EthSpec>,
@@ -463,7 +463,7 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
 ///
 /// Equivalent to the `prepare_execution_payload` function in the Validator Guide:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md#block-proposal
+/// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md#block-proposal>
 #[allow(clippy::too_many_arguments)]
 pub async fn prepare_execution_payload<T>(
     chain: &Arc<BeaconChain<T>>,

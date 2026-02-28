@@ -30,7 +30,7 @@ pub type WithdrawalCredentialsFn =
 /// Builds a genesis state as defined by the Eth2 interop procedure (see below).
 ///
 /// Reference:
-/// https://github.com/ethereum/eth2.0-pm/tree/6e41fcf383ebeb5125938850d8e9b4e9888389b4/interop/mocked_start
+/// <https://github.com/ethereum/eth2.0-pm/tree/6e41fcf383ebeb5125938850d8e9b4e9888389b4/interop/mocked_start>
 #[derive(Default)]
 pub struct InteropGenesisBuilder<E: EthSpec> {
     /// Mapping from validator index to initial balance for each validator.

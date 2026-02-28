@@ -145,7 +145,7 @@ impl Auth {
     }
 }
 
-/// Claims struct as defined in https://github.com/ethereum/execution-apis/blob/main/src/engine/authentication.md#jwt-claims
+/// Claims struct as defined in <https://github.com/ethereum/execution-apis/blob/main/src/engine/authentication.md#jwt-claims>
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Claims {
     /// issued-at claim. Represented as seconds passed since UNIX_EPOCH.

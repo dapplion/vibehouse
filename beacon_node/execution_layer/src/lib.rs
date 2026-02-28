@@ -1587,7 +1587,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
     ///
     /// `get_terminal_pow_block_hash`
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md
+    /// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md>
     pub async fn get_terminal_pow_block_hash(
         &self,
         spec: &ChainSpec,
@@ -1652,7 +1652,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
     ///
     /// `get_pow_block_at_terminal_total_difficulty`
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md
+    /// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/validator.md>
     async fn get_pow_block_at_total_difficulty(
         &self,
         engine: &Engine,
@@ -1716,7 +1716,7 @@ impl<E: EthSpec> ExecutionLayer<E> {
     ///
     /// `is_valid_terminal_pow_block`
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/v1.1.0/specs/merge/fork-choice.md
+    /// <https://github.com/ethereum/consensus-specs/blob/v1.1.0/specs/merge/fork-choice.md>
     pub async fn is_valid_terminal_pow_block_hash(
         &self,
         block_hash: ExecutionBlockHash,

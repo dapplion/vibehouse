@@ -180,7 +180,7 @@ impl ValidatorRegistrations {
 /// For e.g. a validator with eb 32 eth is 1 unit.
 /// a validator with eb 65 eth is 65 // 32 = 2 units.
 ///
-/// See https://github.com/ethereum/consensus-specs/blob/dev/specs/fulu/validator.md#validator-custody
+/// See <https://github.com/ethereum/consensus-specs/blob/dev/specs/fulu/validator.md#validator-custody>
 fn get_validators_custody_requirement(validator_custody_units: u64, spec: &ChainSpec) -> u64 {
     std::cmp::min(
         std::cmp::max(validator_custody_units, spec.validator_custody_requirement),
@@ -478,7 +478,7 @@ impl<E: EthSpec> CustodyContext<E> {
     /// (and advertised to peers) at the given epoch. If epoch is `None`, this function
     /// computes the custody columns at head.
     ///
-    /// This method differs from [`self::sampling_columns_for_epoch`] which returns all sampling columns.
+    /// This method differs from `sampling_columns_for_epoch` which returns all sampling columns.
     /// The columns returned by this method are either identical to or a subset of the sampling columns,
     /// representing only those columns that this node is responsible for maintaining custody of.
     ///

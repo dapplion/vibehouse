@@ -7,7 +7,7 @@ use types::{BeaconState, BuilderPendingPayment, ChainSpec, EthSpec};
 /// Checks accumulated weights against the quorum threshold. Payments meeting the
 /// threshold are moved to the withdrawal queue. The payment window then rotates forward.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_builder_pending_payments
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_builder_pending_payments>
 pub fn process_builder_pending_payments<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,

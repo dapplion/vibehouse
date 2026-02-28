@@ -192,7 +192,7 @@ impl Debug for RateLimiterConfig {
 /// Parse configurations for the outbound rate limiter. Protocols that are not specified use
 /// the default values. Protocol specified more than once use only the first given Quota.
 ///
-/// The expected format is a ';' separated list of [`ProtocolQuota`].
+/// The expected format is a ';' separated list of `ProtocolQuota`.
 impl FromStr for RateLimiterConfig {
     type Err = &'static str;
 

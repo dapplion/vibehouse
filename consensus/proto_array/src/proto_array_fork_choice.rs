@@ -1069,7 +1069,7 @@ impl ProtoArrayForkChoice {
     /// Instead of proto_array's bottom-up weight propagation, this uses top-down traversal
     /// where each block has 3 virtual nodes: PENDING, EMPTY, FULL.
     ///
-    /// Spec: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#get_head
+    /// Spec: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#get_head>
     #[allow(clippy::too_many_arguments)]
     fn find_head_gloas<E: EthSpec>(
         &mut self,
@@ -1824,7 +1824,7 @@ mod test_compute_deltas {
     ///
     /// Consider this block tree which has three blocks (`A`, `B` and `C`):
     ///
-    /// ```ignore
+    /// ```text
     /// [A] <--- [-] <--- [B]
     ///       |
     ///       |--[C]

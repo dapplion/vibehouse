@@ -2,7 +2,7 @@ use serde_json::{Value, json};
 
 /// Sourced from:
 ///
-/// https://notes.ethereum.org/rmVErCfCRPKGqGkUe89-Kg
+/// <https://notes.ethereum.org/rmVErCfCRPKGqGkUe89-Kg>
 pub fn geth_genesis_json() -> Value {
     json!({
         "config": {

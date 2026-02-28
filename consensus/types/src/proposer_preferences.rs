@@ -10,7 +10,7 @@ use tree_hash_derive::TreeHash;
 /// Allows validators to communicate their preferred fee_recipient and gas_limit
 /// to builders for a specific proposal slot.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/p2p-interface.md>
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
 )]

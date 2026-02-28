@@ -84,7 +84,7 @@ pub enum Error {
     ServerIndexedMessage(IndexedErrorMessage),
     /// The server returned an error message where the body was unable to be parsed.
     StatusCode(StatusCode),
-    /// The supplied URL is badly formatted. It should look something like `http://127.0.0.1:5052`.
+    /// The supplied URL is badly formatted. It should look something like `<http://127.0.0.1:5052`>.
     InvalidUrl(SensitiveUrl),
     /// The supplied validator client secret is invalid.
     InvalidSecret(String),

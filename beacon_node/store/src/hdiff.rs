@@ -35,7 +35,7 @@ pub struct HierarchyConfig {
     /// exponents increases the number of diff layers. This value allows to customize the trade-off
     /// between reconstruction speed and disk space.
     ///
-    /// Consider an example `exponents value of `[5,13,21]`. This means we have 3 layers:
+    /// Consider an example exponents value of `[5,13,21]`. This means we have 3 layers:
     /// - Full state stored every 2^21 slots (2097152 slots or 291 days)
     /// - First diff layer stored every 2^13 slots (8192 slots or 2.3 hours)
     /// - Second diff layer stored every 2^5 slots (32 slots or 1 epoch)
@@ -649,7 +649,7 @@ impl HierarchyModuli {
     /// * `slot` - Slot of the storage strategy
     /// * `start_slot` - Slot before which states are not available. Initial snapshot point, which
     ///   may not be aligned to the hierarchy moduli values. Given an example of
-    ///   exponents [5,13,21], to reconstruct state at slot 3,000,003: if start = 3,000,002
+    ///   exponents `[5,13,21]`, to reconstruct state at slot 3,000,003: if start = 3,000,002
     ///   layer 2 diff will point to the start snapshot instead of the layer 1 diff at
     ///   2998272.
     pub fn storage_strategy(&self, slot: Slot, start_slot: Slot) -> Result<StorageStrategy, Error> {

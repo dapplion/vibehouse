@@ -13,9 +13,9 @@
 //! Download a state from a HTTP endpoint and skip forward an epoch, twice (the initial state is
 //! advanced 32 slots twice, rather than it being advanced 64 slots):
 //!
-//! ```ignore
+//! ```text
 //! lcli skip-slots \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --state-id 0x3cdc33cd02713d8d6cc33a6dbe2d3a5bf9af1d357de0d175a403496486ff845e \\
 //!     --slots 32 \
 //!     --runs 2
@@ -25,9 +25,9 @@
 //!
 //! Download a state to a SSZ file (without modifying it):
 //!
-//! ```ignore
+//! ```text
 //! lcli skip-slots \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --state-id 0x3cdc33cd02713d8d6cc33a6dbe2d3a5bf9af1d357de0d175a403496486ff845e \
 //!     --slots 0 \
 //!     --runs 0 \
@@ -38,7 +38,7 @@
 //!
 //! Do two runs over the state that was downloaded in the previous example:
 //!
-//! ```ignore
+//! ```text
 //! lcli skip-slots \
 //!     --pre-state-path /tmp/state-0x3cdc.ssz \
 //!     --slots 32 \

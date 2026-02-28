@@ -44,8 +44,8 @@ pub const DKLEN: u32 = 32;
 ///
 /// NOTE: the EIP-2335 test vectors use a 16-byte IV whilst RFC3868 uses an 8-byte IV. Reference:
 ///
-/// - https://tools.ietf.org/html/rfc3686
-/// - https://github.com/ethereum/EIPs/issues/2339#issuecomment-623865023
+/// - <https://tools.ietf.org/html/rfc3686>
+/// - <https://github.com/ethereum/EIPs/issues/2339#issuecomment-623865023>
 ///
 /// Comment from Carl B, author of EIP-2335:
 ///
@@ -53,7 +53,7 @@ pub const DKLEN: u32 = 32;
 /// the first block input.)
 ///
 /// As far as I know, AES-128-CTR is not defined by the IETF, but by NIST in SP800-38A.
-/// (https://csrc.nist.gov/publications/detail/sp/800-38a/final) The test vectors in this standard
+/// (<https://csrc.nist.gov/publications/detail/sp/800-38a/final>) The test vectors in this standard
 /// are 16 bytes.
 pub const IV_SIZE: usize = 16;
 /// The byte size of a SHA256 hash.

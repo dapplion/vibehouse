@@ -11,10 +11,10 @@
 //! Creates two conflicting block headers at the same slot signed by `validator_index`.
 //! Uses the current head slot as the slashable slot.
 //!
-//! ```ignore
+//! ```text
 //! lcli inject-slashing \
 //!     --spec minimal \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --type proposer \
 //!     --validator-index 0
 //! ```
@@ -24,10 +24,10 @@
 //! Creates two attestations from `validator_index` with the same target epoch
 //! but different attestation data.
 //!
-//! ```ignore
+//! ```text
 //! lcli inject-slashing \
 //!     --spec minimal \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --type attester \
 //!     --validator-index 0
 //! ```

@@ -11,7 +11,7 @@
 //!
 //! Reference implementation:
 //!
-//! https://github.com/ethereum/eth2.0-pm/blob/6e41fcf383ebeb5125938850d8e9b4e9888389b4/interop/mocked_start/keygen.py
+//! <https://github.com/ethereum/eth2.0-pm/blob/6e41fcf383ebeb5125938850d8e9b4e9888389b4/interop/mocked_start/keygen.py>
 //!
 //!
 //! This implementation passes the [reference implementation
@@ -114,7 +114,7 @@ fn string_to_bytes(string: &str) -> Result<Vec<u8>, String> {
 /// Loads keypairs from a YAML encoded file.
 ///
 /// Uses this as reference:
-/// https://github.com/ethereum/eth2.0-pm/blob/9a9dbcd95e2b8e10287797bd768014ab3d842e99/interop/mocked_start/keygen_10_validators.yaml
+/// <https://github.com/ethereum/eth2.0-pm/blob/9a9dbcd95e2b8e10287797bd768014ab3d842e99/interop/mocked_start/keygen_10_validators.yaml>
 pub fn keypairs_from_yaml_file(path: PathBuf) -> Result<Vec<Keypair>, String> {
     let file = File::open(path).map_err(|e| format!("Unable to open YAML key file: {}", e))?;
 

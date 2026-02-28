@@ -15,7 +15,7 @@ use tree_hash_derive::TreeHash;
 /// This aggregated attestation combines multiple individual PTC member
 /// attestations using a bitvector and aggregate signature.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestation
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestation>
 #[derive(
     Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative, TestRandom,
 )]

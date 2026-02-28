@@ -25,7 +25,7 @@ pub struct AttestationBatch<E: EthSpec> {
     ///
     /// This mapping is used for de-duplication, see:
     ///
-    /// https://github.com/sigp/lighthouse/issues/2112
+    /// <https://github.com/sigp/lighthouse/issues/2112>
     pub attesters: BTreeMap<(u64, Hash256), Arc<IndexedAttesterRecord<E>>>,
 
     /// Vec of all unique indexed attester records.

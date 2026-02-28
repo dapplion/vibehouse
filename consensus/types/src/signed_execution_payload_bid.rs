@@ -17,7 +17,7 @@ use tree_hash_derive::TreeHash;
 /// For self-builds (builder_index == BUILDER_INDEX_SELF_BUILD), the signature
 /// must be the infinity point (empty signature) and value must be 0.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadbid
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadbid>
 #[derive(
     TestRandom, TreeHash, Debug, Clone, Encode, Decode, Serialize, Deserialize, Derivative,
 )]

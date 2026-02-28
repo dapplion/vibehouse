@@ -37,7 +37,7 @@ pub fn set_builder_origins(
 /// We need this function since `warp` will panic if provided an invalid origin. The verification
 /// code is taken from here:
 ///
-/// https://github.com/seanmonstar/warp/blob/3d1760c6ca35ce2d03dee0562259d0320e9face3/src/filters/cors.rs#L616
+/// <https://github.com/seanmonstar/warp/blob/3d1760c6ca35ce2d03dee0562259d0320e9face3/src/filters/cors.rs#L616>
 ///
 /// Ideally we should make a PR to `warp` to expose this behaviour, however we defer this for a
 /// later time. The impact of a false-positive on this function is fairly limited, since only

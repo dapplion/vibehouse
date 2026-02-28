@@ -1942,7 +1942,7 @@ mod test {
 
     /// Test vectors provided by Geth:
     ///
-    /// https://notes.ethereum.org/@9AeMAlpyQYaAAyuj47BzRw/rkwW3ceVY
+    /// <https://notes.ethereum.org/@9AeMAlpyQYaAAyuj47BzRw/rkwW3ceVY>
     ///
     /// The `id` field has been modified on these vectors to match the one we use.
     #[tokio::test]

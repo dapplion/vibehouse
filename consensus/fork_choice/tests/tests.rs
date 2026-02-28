@@ -687,7 +687,7 @@ async fn invalid_block_finalized_slot() {
 ///
 /// Note: we technically don't do this exact check, but an equivalent check. Reference:
 ///
-/// https://github.com/ethereum/eth2.0-specs/pull/1884
+/// <https://github.com/ethereum/eth2.0-specs/pull/1884>
 #[tokio::test]
 async fn invalid_block_finalized_descendant() {
     let invalid_ancestor = Mutex::new(Hash256::zero());

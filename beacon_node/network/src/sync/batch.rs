@@ -50,7 +50,7 @@ pub trait BatchConfig {
     /// incomplete) or that a previous one is wrong. For this reason we need to re-download and
     /// re-process the batches awaiting validation and the current one. Consider this scenario:
     ///
-    /// ```ignore
+    /// ```text
     /// BatchA BatchB BatchC BatchD
     /// -----X Empty  Empty  Y-----
     /// ```

@@ -168,7 +168,7 @@ pub struct CreateSpec {
 ///
 /// We assume this code as the canonical definition:
 ///
-/// https://github.com/eth-educators/ethstaker-deposit-cli/blob/80d536374de838ccae142974ed0e747b46beb030/ethstaker_deposit/credentials.py#L164-L177
+/// <https://github.com/eth-educators/ethstaker-deposit-cli/blob/80d536374de838ccae142974ed0e747b46beb030/ethstaker_deposit/credentials.py#L164-L177>
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct StandardDepositDataJson {
     #[serde(with = "public_key_bytes_without_0x_prefix")]

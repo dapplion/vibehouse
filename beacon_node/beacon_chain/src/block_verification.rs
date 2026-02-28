@@ -18,7 +18,7 @@
 //! types, starting at a `SignedBeaconBlock` and finishing with a `Fully VerifiedBlock` (see
 //! diagram below).
 //!
-//! ```ignore
+//! ```text
 //!           START
 //!             |
 //!             ▼
@@ -309,7 +309,7 @@ pub enum BlockError {
     /// For all these cases, we cannot penalize the peer that gave us the block.
     ///
     /// TODO: We may need to penalize the peer that gave us a potentially invalid rpc blob.
-    /// https://github.com/sigp/lighthouse/issues/4546
+    /// <https://github.com/sigp/lighthouse/issues/4546>
     AvailabilityCheck(AvailabilityCheckError),
     /// A Blob with a slot after PeerDAS is received and is not required to be imported.
     /// This can happen because we stay subscribed to the blob subnet after 2 epochs, as we could

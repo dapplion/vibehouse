@@ -22,7 +22,7 @@ pub const CONFIG_FILENAME: &str = "validator_definitions.yml";
 /// The temporary file name for the serialized `ValidatorDefinitions` struct.
 ///
 /// This is used to achieve an atomic update of the contents on disk, without truncation.
-/// See: https://github.com/sigp/lighthouse/issues/2159
+/// See: <https://github.com/sigp/lighthouse/issues/2159>
 pub const CONFIG_TEMP_FILENAME: &str = ".validator_definitions.yml.tmp";
 
 #[derive(Debug)]
@@ -95,7 +95,7 @@ pub enum SigningDefinition {
     },
     /// A validator that defers to a Web3Signer HTTP server for signing.
     ///
-    /// https://github.com/ConsenSys/web3signer
+    /// <https://github.com/ConsenSys/web3signer>
     #[serde(rename = "web3signer")]
     Web3Signer(Web3SignerDefinition),
 }

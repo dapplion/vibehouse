@@ -34,7 +34,7 @@ use types::{
 /// Used for Prometheus labels.
 ///
 /// We've used `total` for this value to align with Nimbus, as per:
-/// https://github.com/sigp/lighthouse/pull/3728#issuecomment-1375173063
+/// <https://github.com/sigp/lighthouse/pull/3728#issuecomment-1375173063>
 const TOTAL_LABEL: &str = "total";
 
 /// The validator monitor collects per-epoch data about each monitored validator. Historical data

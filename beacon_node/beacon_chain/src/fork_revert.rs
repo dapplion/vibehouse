@@ -84,7 +84,7 @@ pub fn revert_to_fork_boundary<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>
 /// This function avoids quirks of fork choice initialization by replaying all of the blocks from
 /// the checkpoint to the head.
 ///
-/// See this issue for details: https://github.com/ethereum/consensus-specs/issues/2566
+/// See this issue for details: <https://github.com/ethereum/consensus-specs/issues/2566>
 ///
 /// It will fail if the finalized state or any of the blocks to replay are unavailable.
 ///

@@ -246,7 +246,7 @@ impl From<BeaconStateHash> for Hash256 {
 /// updates to the underlying persistent data structures. This is the safest option for now until
 /// we add internal mutability to `milhouse::{List, Vector}`. See:
 ///
-/// https://github.com/sigp/milhouse/issues/43
+/// <https://github.com/sigp/milhouse/issues/43>
 #[superstruct(
     variants(Base, Altair, Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
     variant_attributes(

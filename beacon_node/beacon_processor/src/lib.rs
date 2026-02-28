@@ -1788,7 +1788,7 @@ impl TaskSpawner {
 ///
 /// The Rust docs for `Drop` state that `Drop` is called during an unwind in a panic:
 ///
-/// https://doc.rust-lang.org/std/ops/trait.Drop.html#panics
+/// <https://doc.rust-lang.org/std/ops/trait.Drop.html#panics>
 pub struct SendOnDrop {
     tx: mpsc::Sender<WorkType>,
     work_type: WorkType,

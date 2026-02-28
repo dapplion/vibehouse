@@ -8,13 +8,13 @@
 //!
 //! ```bash
 //! # CPU proving (slow, testing only)
-//! SP1_PROVER=cpu vibehouse-sp1-host --rpc-url http://localhost:8545 --block-number 100
+//! SP1_PROVER=cpu vibehouse-sp1-host --rpc-url <http://localhost:8545> --block-number 100
 //!
 //! # GPU proving (fast, production)
-//! SP1_PROVER=cuda vibehouse-sp1-host --rpc-url http://localhost:8545 --block-number 100
+//! SP1_PROVER=cuda vibehouse-sp1-host --rpc-url <http://localhost:8545> --block-number 100
 //!
 //! # Succinct Network (remote proving)
-//! SP1_PROVER=network SP1_PRIVATE_KEY=<key> vibehouse-sp1-host --rpc-url http://localhost:8545 --block-number 100
+//! SP1_PROVER=network SP1_PRIVATE_KEY=<key> vibehouse-sp1-host --rpc-url <http://localhost:8545> --block-number 100
 //! ```
 //!
 //! The output is a binary file containing the proof_data field for an

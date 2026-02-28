@@ -61,7 +61,7 @@ impl<const N: usize> FixedBytesExtended for FixedBytes<N> {
         Self::ZERO
     }
 
-    /// Trims FixedBytes<N> to its first 8 bytes and converts to u64
+    /// Trims `FixedBytes<N>` to its first 8 bytes and converts to u64
     fn to_low_u64_le(&self) -> u64 {
         let mut result = [0u8; 8];
         let bytes = self.as_slice();

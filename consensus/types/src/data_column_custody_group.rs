@@ -18,7 +18,7 @@ pub enum DataColumnCustodyGroupError {
 ///
 /// Note: `get_custody_groups(node_id, x)` is a subset of `get_custody_groups(node_id, y)` if `x < y`.
 ///
-/// spec: https://github.com/ethereum/consensus-specs/blob/8e0d0d48e81d6c7c5a8253ab61340f5ea5bac66a/specs/fulu/das-core.md#get_custody_groups
+/// spec: <https://github.com/ethereum/consensus-specs/blob/8e0d0d48e81d6c7c5a8253ab61340f5ea5bac66a/specs/fulu/das-core.md#get_custody_groups>
 pub fn get_custody_groups(
     raw_node_id: [u8; 32],
     custody_group_count: u64,
@@ -99,7 +99,7 @@ pub fn compute_ordered_custody_column_indices<E: EthSpec>(
 
 /// Returns the columns that are associated with a given custody group.
 ///
-/// spec: https://github.com/ethereum/consensus-specs/blob/8e0d0d48e81d6c7c5a8253ab61340f5ea5bac66a/specs/fulu/das-core.md#compute_columns_for_custody_group
+/// spec: <https://github.com/ethereum/consensus-specs/blob/8e0d0d48e81d6c7c5a8253ab61340f5ea5bac66a/specs/fulu/das-core.md#compute_columns_for_custody_group>
 pub fn compute_columns_for_custody_group<E: EthSpec>(
     custody_group: CustodyIndex,
     spec: &ChainSpec,

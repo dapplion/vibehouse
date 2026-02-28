@@ -6,19 +6,19 @@ use std::path::Path;
 use winapi::um::winnt::{FILE_GENERIC_READ, FILE_GENERIC_WRITE, STANDARD_RIGHTS_ALL};
 
 /// This is the security identifier in Windows for the owner of a file. See:
-/// - https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/security-identifiers-in-windows#well-known-sids-all-versions-of-windows
+/// - <https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/security-identifiers-in-windows#well-known-sids-all-versions-of-windows>
 #[cfg(windows)]
 const OWNER_SID_STR: &str = "S-1-3-4";
 /// We don't need any of the `AceFlags` listed here:
-/// - https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-ace_header
+/// - <https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-ace_header>
 #[cfg(windows)]
 const OWNER_ACL_ENTRY_FLAGS: u8 = 0;
 /// Generic Rights:
-///  - https://docs.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights
+///  - <https://docs.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights>
 /// Individual Read/Write/Execute Permissions (referenced in generic rights link):
-///  - https://docs.microsoft.com/en-us/windows/win32/wmisdk/file-and-directory-access-rights-constants
+///  - <https://docs.microsoft.com/en-us/windows/win32/wmisdk/file-and-directory-access-rights-constants>
 /// STANDARD_RIGHTS_ALL
-///  - https://docs.microsoft.com/en-us/windows/win32/secauthz/access-mask
+///  - <https://docs.microsoft.com/en-us/windows/win32/secauthz/access-mask>
 #[cfg(windows)]
 const OWNER_ACL_ENTRY_MASK: u32 = FILE_GENERIC_READ | FILE_GENERIC_WRITE | STANDARD_RIGHTS_ALL;
 

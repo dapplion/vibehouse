@@ -95,7 +95,7 @@ pub enum SigningMethod {
     },
     /// A validator that defers to a Web3Signer server for signing.
     ///
-    /// See: https://docs.web3signer.consensys.net/en/latest/
+    /// See: <https://docs.web3signer.consensys.net/en/latest/>
     Web3Signer {
         signing_url: Url,
         http_client: Client,

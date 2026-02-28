@@ -12,7 +12,7 @@ use tree_hash_derive::TreeHash;
 /// authorizing the reveal of the payload. This signature is verified
 /// using the DOMAIN_BEACON_BUILDER domain.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadenvelope>
 #[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative)]
 #[cfg_attr(
     feature = "arbitrary",

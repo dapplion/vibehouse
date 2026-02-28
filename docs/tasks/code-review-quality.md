@@ -6,8 +6,8 @@ The loop has shipped a massive amount of code autonomously (100+ runs). Review t
 ## Strategy
 
 ### Phase 1: Audit & Inventory
-- [ ] Run `cargo clippy --workspace -- -W clippy::all` and fix all warnings
-- [ ] Run `cargo doc --workspace --no-deps` — fix any doc warnings
+- [x] Run `cargo clippy --workspace -- -W clippy::all` and fix all warnings
+- [x] Run `cargo doc --workspace --no-deps` — fix any doc warnings
 - [ ] Identify dead code, unused imports, unreachable paths
 - [x] Check for `unwrap()`/`expect()` in non-test code — replace with proper error handling
 - [x] Look for `todo!()`, `unimplemented!()`, `fixme`, `hack` comments
@@ -76,3 +76,23 @@ Each loop iteration should:
 - `beacon_chain.rs:8511-8616` — `dump_as_dot`/`dump_dot_file` debug utilities. Dead code, acceptable for diagnostics.
 
 **Decision**: Fixed the one production unwrap in our Gloas code. All other findings are pre-existing Lighthouse patterns that are either safe by invariant or intentional. No action needed on those.
+
+### Run 218: clippy audit + cargo doc warnings fix
+
+**Scope**: Full `cargo clippy --workspace --all-targets` audit and `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps`.
+
+**Clippy results**: Zero warnings. Codebase is fully clippy-clean.
+
+**Cargo doc results** — fixed all warnings across 79 files:
+- **127 bare URLs** in doc comments wrapped in angle brackets (`<https://...>`) across 74 files
+- **3 `[Gloas]` references** escaped as `\[Gloas\]` to prevent broken intra-doc links (fork_choice.rs)
+- **21 `\`\`\`ignore` code blocks** changed to `\`\`\`text` for non-Rust content (ASCII diagrams, shell commands, directory trees) across 13 files
+- **1 unclosed HTML tag** — `FixedBytes<N>` wrapped in backticks (fixed_bytes/src/lib.rs)
+- **1 broken intra-doc link** — `[ChainSpec::compute_fork_digest]` changed to backtick-quoted (enr_fork_id.rs)
+- **1 broken self-reference** — `[self::sampling_columns_for_epoch]` simplified (custody_context.rs)
+- **1 broken link to private item** — `[ProtocolQuota]` changed to backtick-quoted (rpc/config.rs)
+- **1 broken link to `Rpc`** — backtick-quoted (rpc/mod.rs)
+- **2 broken bracket patterns** — `[5,13,21]` in hdiff.rs wrapped in backticks
+- **2 bracket patterns** — `[tcp,udp,quic]` and `[tcp6,udp6,quic6]` escaped (enr_ext.rs)
+
+**Result**: `cargo doc --workspace --no-deps` passes with `-D warnings`. `cargo clippy` clean. 2417/2425 tests pass (8 web3signer timeouts are pre-existing infrastructure-dependent failures).

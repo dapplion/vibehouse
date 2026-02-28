@@ -5,7 +5,7 @@ use std::cmp::max;
 /// Return `p(index)` in a pseudorandom permutation `p` of `0...list_size-1` with ``seed`` as entropy.
 ///
 /// Utilizes 'swap or not' shuffling found in
-/// https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf
+/// <https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf>
 /// See the 'generalized domain' algorithm on page 3.
 ///
 /// Note: this function is significantly slower than the `shuffle_list` function in this crate.

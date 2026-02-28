@@ -69,7 +69,7 @@ pub enum WalletType {
 ///
 /// Example:
 ///
-/// ```ignore
+/// ```text
 /// wallets
 /// ├── 35c07717-c6f3-45e8-976f-ef5d267e86c9
 /// │   └── 35c07717-c6f3-45e8-976f-ef5d267e86c9

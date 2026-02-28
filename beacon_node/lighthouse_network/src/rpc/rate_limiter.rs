@@ -36,7 +36,7 @@ type Nanosecs = u64;
 /// In this scenario using the same rate as above, the sender is always maxing out their tokens,
 /// except at seconds 1.5, 3, 3.5 and 4
 ///
-/// ```ignore
+/// ```text
 ///            x
 ///      used  x
 ///    tokens  x           x           x

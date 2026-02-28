@@ -36,7 +36,7 @@ pub struct Config {
     pub secrets_dir: PathBuf,
     /// The http endpoints of the beacon node APIs.
     ///
-    /// Should be similar to `["http://localhost:8080"]`
+    /// Should be similar to `["<http://localhost:8080"]`>
     pub beacon_nodes: Vec<SensitiveUrl>,
     /// An optional beacon node used for block proposals only.
     pub proposer_nodes: Vec<SensitiveUrl>,

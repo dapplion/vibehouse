@@ -238,7 +238,7 @@ mod test {
 
     /// "Test Vector with Intermediate values" from:
     ///
-    /// https://eips.ethereum.org/EIPS/eip-2333
+    /// <https://eips.ethereum.org/EIPS/eip-2333>
     #[test]
     fn eip2333_intermediate_vector() {
         let vectors = TestVector::from(get_raw_vector());

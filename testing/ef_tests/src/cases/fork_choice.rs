@@ -1098,7 +1098,7 @@ impl<E: EthSpec> Tester<E> {
 ///
 /// This function is necessary due to a quirk documented in this issue:
 ///
-/// https://github.com/ethereum/consensus-specs/issues/2566
+/// <https://github.com/ethereum/consensus-specs/issues/2566>
 fn assert_checkpoints_eq(name: &str, head: Checkpoint, fc: Checkpoint) {
     assert_eq!(head, fc, "{}", name)
 }

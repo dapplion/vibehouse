@@ -108,7 +108,7 @@ impl From<ArithError> for EnvelopeProcessingError {
 /// This function does all the state modifications inside `process_execution_payload()`.
 /// It is the second half of the two-phase Gloas state transition (first is block processing).
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_execution_payload
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_execution_payload>
 pub fn process_execution_payload_envelope<E: EthSpec>(
     state: &mut BeaconState<E>,
     parent_state_root: Option<Hash256>,

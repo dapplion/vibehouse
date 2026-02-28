@@ -107,7 +107,7 @@ struct ActiveInboundRequest<E: EthSpec> {
 impl InboundRequestId {
     /// Creates an _unchecked_ [`InboundRequestId`].
     ///
-    /// [`Rpc`] enforces that [`InboundRequestId`]s are unique and not reused.
+    /// `Rpc` enforces that [`InboundRequestId`]s are unique and not reused.
     /// This constructor does not, hence the _unchecked_.
     ///
     /// It is primarily meant for allowing manual tests.

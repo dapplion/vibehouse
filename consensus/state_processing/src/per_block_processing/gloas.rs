@@ -17,7 +17,7 @@ use types::{
 /// This validates the builder's bid and updates the state with the chosen bid.
 /// The proposer may choose the highest valid bid or self-build (value = 0).
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_execution_payload_bid
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_execution_payload_bid>
 pub fn process_execution_payload_bid<E: EthSpec>(
     state: &mut BeaconState<E>,
     signed_bid: &SignedExecutionPayloadBid<E>,
@@ -233,7 +233,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
 /// Validates that the attestation targets the parent block at the previous slot
 /// and verifies the aggregate BLS signature.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_payload_attestation
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-process_payload_attestation>
 pub fn process_payload_attestation<E: EthSpec>(
     state: &mut BeaconState<E>,
     attestation: &PayloadAttestation<E>,
@@ -371,7 +371,7 @@ pub fn get_indexed_payload_attestation<E: EthSpec>(
 /// 1. Concatenate all beacon committees for the slot
 /// 2. Use compute_balance_weighted_selection to pick PTC_SIZE validators
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc>
 pub fn get_ptc_committee<E: EthSpec>(
     state: &BeaconState<E>,
     slot: Slot,

@@ -1,6 +1,6 @@
 //! Test cases taken from:
 //!
-//! https://eips.ethereum.org/EIPS/eip-2335
+//! <https://eips.ethereum.org/EIPS/eip-2335>
 
 #![cfg(test)]
 #![cfg(not(debug_assertions))]

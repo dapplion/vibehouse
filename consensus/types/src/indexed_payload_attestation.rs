@@ -16,7 +16,7 @@ use tree_hash_derive::TreeHash;
 ///
 /// The attesting_indices list must be sorted for efficient verification.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#indexedpayloadattestation
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#indexedpayloadattestation>
 #[derive(
     Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative, TestRandom,
 )]

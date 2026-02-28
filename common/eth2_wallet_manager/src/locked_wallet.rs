@@ -12,7 +12,7 @@ pub const LOCK_FILE: &str = ".lock";
 ///
 /// For example:
 ///
-/// ```ignore
+/// ```text
 /// <wallet_dir>
 /// └── .lock
 /// └── <wallet-json>
@@ -32,7 +32,7 @@ pub struct LockedWallet {
 impl LockedWallet {
     /// Opens a wallet with the `uuid` from a `base_dir`.
     ///
-    /// ```ignore
+    /// ```text
     /// <base-dir>
     /// ├── <uuid (directory)>
     ///     └── <uuid (json file)>

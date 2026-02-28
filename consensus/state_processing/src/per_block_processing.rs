@@ -378,7 +378,7 @@ pub fn get_new_eth1_data<E: EthSpec>(
 ///
 /// Contains a partial set of checks from the `process_execution_payload` function:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/beacon-chain.md#process_execution_payload
+/// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/beacon-chain.md#process_execution_payload>
 pub fn partially_verify_execution_payload<E: EthSpec, Payload: AbstractExecPayload<E>>(
     state: &BeaconState<E>,
     block_slot: Slot,
@@ -434,7 +434,7 @@ pub fn partially_verify_execution_payload<E: EthSpec, Payload: AbstractExecPaylo
 ///
 /// Partially equivalent to the `process_execution_payload` function:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/beacon-chain.md#process_execution_payload
+/// <https://github.com/ethereum/consensus-specs/blob/v1.1.5/specs/merge/beacon-chain.md#process_execution_payload>
 pub fn process_execution_payload<E: EthSpec, Payload: AbstractExecPayload<E>>(
     state: &mut BeaconState<E>,
     body: BeaconBlockBodyRef<E, Payload>,
@@ -488,7 +488,7 @@ pub fn process_execution_payload<E: EthSpec, Payload: AbstractExecPayload<E>>(
 /// the merge has happened or if we're on the transition block. Thus we don't want to propagate
 /// errors from the `BeaconState` being an earlier variant than `BeaconStateBellatrix` as we'd have to
 /// repeatedly write code to treat these errors as false.
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#is_merge_transition_complete
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#is_merge_transition_complete>
 pub fn is_merge_transition_complete<E: EthSpec>(state: &BeaconState<E>) -> bool {
     if state.fork_name_unchecked().capella_enabled() {
         true
@@ -503,7 +503,7 @@ pub fn is_merge_transition_complete<E: EthSpec>(state: &BeaconState<E>) -> bool 
         false
     }
 }
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#is_merge_transition_block
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#is_merge_transition_block>
 pub fn is_merge_transition_block<E: EthSpec, Payload: AbstractExecPayload<E>>(
     state: &BeaconState<E>,
     body: BeaconBlockBodyRef<E, Payload>,
@@ -516,7 +516,7 @@ pub fn is_merge_transition_block<E: EthSpec, Payload: AbstractExecPayload<E>>(
         })
         .unwrap_or(false)
 }
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#is_execution_enabled
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#is_execution_enabled>
 pub fn is_execution_enabled<E: EthSpec, Payload: AbstractExecPayload<E>>(
     state: &BeaconState<E>,
     body: BeaconBlockBodyRef<E, Payload>,
@@ -529,7 +529,7 @@ pub fn is_execution_enabled<E: EthSpec, Payload: AbstractExecPayload<E>>(
     is_merge_transition_block(state, body) || is_merge_transition_complete(state)
 }
 
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#compute_timestamp_at_slot
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/bellatrix/beacon-chain.md#compute_timestamp_at_slot>
 pub fn compute_timestamp_at_slot<E: EthSpec>(
     state: &BeaconState<E>,
     block_slot: Slot,
@@ -543,7 +543,7 @@ pub fn compute_timestamp_at_slot<E: EthSpec>(
 
 /// Compute the next batch of withdrawals which should be included in a block.
 ///
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-get_expected_withdrawals
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#new-get_expected_withdrawals>
 pub fn get_expected_withdrawals<E: EthSpec>(
     state: &BeaconState<E>,
     spec: &ChainSpec,

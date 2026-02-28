@@ -16,7 +16,7 @@
 //!
 //! If the above conditions are fulfilled but `glibc` still isn't present at runtime then a panic
 //! may be triggered. It is understood that there's no way to be certain that a compatible `glibc`
-//! is present: https://github.com/rust-lang/rust/issues/33244.
+//! is present: <https://github.com/rust-lang/rust/issues/33244>.
 //!
 //! ## Notes
 //!

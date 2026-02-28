@@ -919,7 +919,7 @@ impl ProtoArray {
 
     /// This is the equivalent to the `filter_block_tree` function in the eth2 spec:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/fork-choice.md#filter_block_tree
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/fork-choice.md#filter_block_tree>
     ///
     /// Any node that has a different finalized or justified epoch should not be viable for the
     /// head.
@@ -1115,7 +1115,7 @@ impl ProtoArray {
 
 /// A helper method to calculate the proposer boost based on the given `justified_balances`.
 ///
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#get_latest_attesting_balance
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#get_latest_attesting_balance>
 pub fn calculate_committee_fraction<E: EthSpec>(
     justified_balances: &JustifiedBalances,
     proposer_score_boost: u64,

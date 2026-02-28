@@ -233,7 +233,7 @@ pub async fn handle_rejection(err: warp::Rejection) -> Result<impl warp::Reply, 
 /// Convert a warp `Rejection` into a `Response`.
 ///
 /// This function should *always* be used to convert rejections into responses. This prevents warp
-/// from trying to backtrack in strange ways. See: https://github.com/sigp/lighthouse/issues/3404
+/// from trying to backtrack in strange ways. See: <https://github.com/sigp/lighthouse/issues/3404>
 pub async fn convert_rejection<T: Reply>(res: Result<T, warp::Rejection>) -> Response {
     match res {
         Ok(response) => response.into_response(),

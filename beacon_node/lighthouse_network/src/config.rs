@@ -545,7 +545,7 @@ fn is_global_ipv4(addr: &Ipv4Addr) -> bool {
             && addr.octets()[0] != 0
 }
 
-/// NOTE: Docs taken from https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_global
+/// NOTE: Docs taken from <https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_global>
 ///
 /// Returns true if the address appears to be globally reachable as specified by the IANA IPv6
 /// Special-Purpose Address Registry. Whether or not an address is practically reachable will

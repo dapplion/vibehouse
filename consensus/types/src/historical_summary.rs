@@ -12,7 +12,7 @@ use tree_hash_derive::TreeHash;
 /// making the two hash_tree_root-compatible. This struct is introduced into the beacon state
 /// in the Capella hard fork.
 ///
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/capella/beacon-chain.md#historicalsummary
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/capella/beacon-chain.md#historicalsummary>
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[derive(
     Debug,

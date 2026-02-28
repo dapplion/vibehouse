@@ -1,7 +1,7 @@
 //! Contains functions for tuning and controlling "The GNU Allocator", included in the `glibc`
 //! library.
 //!
-//! https://www.gnu.org/software/libc/manual/html_node/The-GNU-Allocator.html
+//! <https://www.gnu.org/software/libc/manual/html_node/The-GNU-Allocator.html>
 //!
 //! These functions are generally only suitable for Linux systems.
 use metrics::*;
@@ -23,14 +23,14 @@ const OPTIMAL_MMAP_THRESHOLD: c_int = 128 * 1_024;
 ///
 /// Source:
 ///
-/// https://github.com/lattera/glibc/blob/895ef79e04a953cac1493863bcae29ad85657ee1/malloc/malloc.h#L115-L123
+/// <https://github.com/lattera/glibc/blob/895ef79e04a953cac1493863bcae29ad85657ee1/malloc/malloc.h#L115-L123>
 const M_MMAP_THRESHOLD: c_int = -3;
 
 /// Environment variables used to configure malloc.
 ///
 /// Source:
 ///
-/// https://man7.org/linux/man-pages/man3/mallopt.3.html
+/// <https://man7.org/linux/man-pages/man3/mallopt.3.html>
 const ENV_VAR_MMAP_THRESHOLD: &str = "MALLOC_MMAP_THRESHOLD_";
 
 pub static GLOBAL_LOCK: LazyLock<Mutex<()>> = LazyLock::new(Default::default);
@@ -143,7 +143,7 @@ fn env_var_present(name: &str) -> bool {
 ///
 /// ## Resources
 ///
-/// - https://man7.org/linux/man-pages/man3/mallopt.3.html
+/// - <https://man7.org/linux/man-pages/man3/mallopt.3.html>
 fn malloc_mmap_threshold(threshold: c_int) -> Result<(), c_int> {
     into_result(mallopt(M_MMAP_THRESHOLD, threshold))
 }
@@ -156,7 +156,7 @@ fn mallopt(param: c_int, val: c_int) -> c_int {
 
 /// By default we use `mallinfo`, but it overflows, so `mallinfo2` should be enabled if available.
 ///
-/// https://man7.org/linux/man-pages/man3/mallinfo.3.html
+/// <https://man7.org/linux/man-pages/man3/mallinfo.3.html>
 #[cfg(not(feature = "mallinfo2"))]
 fn mallinfo() -> libc::mallinfo {
     // Prevent this function from being called in parallel with any other non-thread-safe function.

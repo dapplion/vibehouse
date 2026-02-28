@@ -15,10 +15,10 @@
 //!
 //! ## Example
 //!
-//! ```ignore
+//! ```text
 //! lcli submit-builder-bid \
 //!     --spec minimal \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --builder-index 0 \
 //!     --validator-count 64 \
 //!     --bid-value 1000000000

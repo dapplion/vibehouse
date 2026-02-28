@@ -173,11 +173,11 @@ pub enum InvalidAttestation {
     /// The attestation is attesting to a state that is later than itself. (Viz., attesting to the
     /// future).
     AttestsToFutureBlock { block: Slot, attestation: Slot },
-    /// [Gloas] The attestation committee index is not 0 or 1.
+    /// \[Gloas\] The attestation committee index is not 0 or 1.
     InvalidCommitteeIndex { index: u64 },
-    /// [Gloas] A same-slot attestation must have index 0.
+    /// \[Gloas\] A same-slot attestation must have index 0.
     SameSlotNonZeroIndex { slot: Slot, index: u64 },
-    /// [Gloas] Attestation with index=1 (payload present) for a block whose payload has not been
+    /// \[Gloas\] Attestation with index=1 (payload present) for a block whose payload has not been
     /// revealed.
     PayloadNotRevealed { beacon_block_root: Hash256 },
 }
@@ -263,7 +263,7 @@ impl PayloadVerificationStatus {
 ///
 /// Equivalent to:
 ///
-/// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#compute_slots_since_epoch_start
+/// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#compute_slots_since_epoch_start>
 pub fn compute_slots_since_epoch_start<E: EthSpec>(slot: Slot) -> Slot {
     slot - slot
         .epoch(E::slots_per_epoch())
@@ -276,7 +276,7 @@ pub fn compute_slots_since_epoch_start<E: EthSpec>(slot: Slot) -> Slot {
 ///
 /// Equivalent to:
 ///
-/// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/beacon-chain.md#compute_start_slot_at_epoch
+/// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/beacon-chain.md#compute_start_slot_at_epoch>
 fn compute_start_slot_at_epoch<E: EthSpec>(epoch: Epoch) -> Slot {
     epoch.start_slot(E::slots_per_epoch())
 }
@@ -329,7 +329,7 @@ fn dequeue_attestations(
 /// Denotes whether an attestation we are processing was received from a block or from gossip.
 /// Equivalent to the `is_from_block` `bool` in:
 ///
-/// https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#validate_on_attestation
+/// <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#validate_on_attestation>
 #[derive(Clone, Copy)]
 pub enum AttestationFromBlock {
     True,
@@ -355,7 +355,7 @@ pub struct ForkChoiceView {
 
 /// Provides an implementation of "Ethereum 2.0 Phase 0 -- Beacon Chain Fork Choice":
 ///
-/// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#ethereum-20-phase-0----beacon-chain-fork-choice
+/// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#ethereum-20-phase-0----beacon-chain-fork-choice>
 ///
 /// ## Detail
 ///
@@ -517,7 +517,7 @@ where
     ///
     /// Equivalent to:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#get_ancestor
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#get_ancestor>
     fn get_ancestor(
         &self,
         block_root: Hash256,
@@ -554,7 +554,7 @@ where
     ///
     /// Is equivalent to:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#get_head
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#get_head>
     #[instrument(skip_all, level = "debug")]
     pub fn get_head(
         &mut self,
@@ -721,7 +721,7 @@ where
     ///
     /// Approximates:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#on_block
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#on_block>
     ///
     /// It only approximates the specification since it does not run the `state_transition` check.
     /// That should have already been called upstream and it's too expensive to call again.
@@ -1079,7 +1079,7 @@ where
     ///
     /// Equivalent to:
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#validate_target_epoch_against_current_time
+    /// <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/fork-choice.md#validate_target_epoch_against_current_time>
     fn validate_target_epoch_against_current_time(
         &self,
         target_epoch: Epoch,
@@ -1108,7 +1108,7 @@ where
     ///
     /// Equivalent to:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#validate_on_attestation
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#validate_on_attestation>
     fn validate_on_attestation(
         &self,
         indexed_attestation: IndexedAttestationRef<E>,
@@ -1227,7 +1227,7 @@ where
     ///
     /// Approximates:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#on_attestation
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#on_attestation>
     ///
     /// It only approximates the specification since it does not perform
     /// `is_valid_indexed_attestation` since that should already have been called upstream and it's
@@ -1321,7 +1321,7 @@ where
     ///
     /// ## Spec Reference
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#on_execution_bid
+    /// <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#on_execution_bid>
     pub fn on_execution_bid(
         &mut self,
         bid: &SignedExecutionPayloadBid<E>,
@@ -1396,7 +1396,7 @@ where
     ///
     /// ## Spec Reference
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#on_payload_attestation
+    /// <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/fork-choice.md#on_payload_attestation>
     pub fn on_payload_attestation(
         &mut self,
         attestation: &PayloadAttestation<E>,
@@ -1582,7 +1582,7 @@ where
     ///
     /// Equivalent to:
     ///
-    /// https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#on_tick
+    /// <https://github.com/ethereum/eth2.0-specs/blob/v0.12.1/specs/phase0/fork-choice.md#on_tick>
     fn on_tick(&mut self, time: Slot) -> Result<(), Error<T::Error>> {
         let store = &mut self.fc_store;
         let previous_slot = store.get_current_slot();

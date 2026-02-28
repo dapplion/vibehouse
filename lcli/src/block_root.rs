@@ -12,16 +12,16 @@
 //!
 //! Download a block and re-compute the canonical root 5,000 times.
 //!
-//! ```ignore
+//! ```text
 //! lcli block-root \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --block-id 0x3d887d30ee25c9c1ce7621ec30a7b49b07d6a03200df9c7206faca52a533f432 \
 //!     --runs 5000
 //! ```
 //!
 //! Load a block from SSZ and compute the canonical root once.
 //!
-//! ```ignore
+//! ```text
 //! lcli block-root \
 //!     --block-path /tmp/block.ssz \
 //!     --runs 1

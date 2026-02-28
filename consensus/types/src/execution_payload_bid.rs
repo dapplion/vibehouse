@@ -14,7 +14,7 @@ use tree_hash_derive::TreeHash;
 /// The bid commits to the execution payload content via `block_hash` and
 /// blob commitments. The actual payload is revealed later by the builder.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadbid
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadbid>
 #[derive(
     Default, Debug, Clone, Serialize, Encode, Decode, Deserialize, TreeHash, Derivative, TestRandom,
 )]

@@ -12,7 +12,7 @@ use tree_hash_derive::TreeHash;
 /// as a PayloadAttestationMessage. These are aggregated into PayloadAttestation
 /// for inclusion in beacon blocks.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestationmessage
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestationmessage>
 #[derive(
     Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
 )]

@@ -25,7 +25,7 @@ pub const TIMEOUT_DURATION: u64 = 5;
 pub enum Error {
     /// The `reqwest` client raised an error.
     Reqwest(reqwest::Error),
-    /// The supplied URL is badly formatted. It should look something like `http://127.0.0.1:5052`.
+    /// The supplied URL is badly formatted. It should look something like `<http://127.0.0.1:5052`>.
     InvalidUrl(SensitiveUrl),
     SystemMetricsFailed(String),
     BeaconMetricsFailed(String),

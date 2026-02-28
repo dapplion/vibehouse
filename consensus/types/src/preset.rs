@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 /// the constants on `EthSpec` or the fields on `ChainSpec` to constructing and using
 /// one of these structs.
 ///
-/// https://github.com/ethereum/eth2.0-specs/blob/dev/presets/mainnet/phase0.yaml
+/// <https://github.com/ethereum/eth2.0-specs/blob/dev/presets/mainnet/phase0.yaml>
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct BasePreset {

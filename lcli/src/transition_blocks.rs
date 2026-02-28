@@ -17,9 +17,9 @@
 //! beaconAPI. Advance the pre-state to the slot of the 0x6c69 block and apply that block to the
 //! pre-state.
 //!
-//! ```ignore
+//! ```text
 //! lcli transition-blocks \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --block-id 0x6c69cf50a451f1ec905e954bf1fa22970f371a72a5aa9f8e3a43a18fdd980bec \
 //!     --runs 10
 //! ```
@@ -28,9 +28,9 @@
 //!
 //! Download a block and pre-state to the filesystem, without performing any transitions:
 //!
-//! ```ignore
+//! ```text
 //! lcli transition-blocks \
-//!     --beacon-url http://localhost:5052 \
+//!     --beacon-url <http://localhost:5052> \
 //!     --block-id 0x6c69cf50a451f1ec905e954bf1fa22970f371a72a5aa9f8e3a43a18fdd980bec \
 //!     --runs 0 \
 //!     --block-output-path /tmp/block-0x6c69.ssz \
@@ -42,7 +42,7 @@
 //! Do one run over the block and pre-state downloaded in the previous example and save the post
 //! state to file:
 //!
-//! ```ignore
+//! ```text
 //! lcli transition-blocks \
 //!     --block-path /tmp/block-0x6c69.ssz \
 //!     --pre-state-path /tmp/pre-state-0x6c69.ssz
@@ -53,7 +53,7 @@
 //!
 //! Try to isolate block processing as much as possible for benchmarking:
 //!
-//! ```ignore
+//! ```text
 //! lcli transition-blocks \
 //!     --block-path /tmp/block-0x6c69.ssz \
 //!     --pre-state-path /tmp/pre-state-0x6c69.ssz \

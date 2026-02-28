@@ -780,7 +780,7 @@ impl ChainSpec {
 
     /// Compute the epoch used for activations prior to Deneb, and for exits under all forks.
     ///
-    /// Spec: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_activation_exit_epoch
+    /// Spec: <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#compute_activation_exit_epoch>
     pub fn compute_activation_exit_epoch(&self, epoch: Epoch) -> Result<Epoch, ArithError> {
         epoch.safe_add(1)?.safe_add(self.max_seed_lookahead)
     }
@@ -954,8 +954,8 @@ impl ChainSpec {
 
     /// Worst-case compressed length for a given payload of size n when using snappy.
     ///
-    /// https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47
-    /// https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#max_compressed_len
+    /// <https://github.com/google/snappy/blob/32ded457c0b1fe78ceb8397632c416568d6714a0/snappy.cc#L218C1-L218C47>
+    /// <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#max_compressed_len>
     fn max_compressed_len_snappy(n: usize) -> Option<usize> {
         32_usize.checked_add(n)?.checked_add(n / 6)
     }
@@ -968,7 +968,7 @@ impl ChainSpec {
 
     /// Max allowed size of a raw, compressed message received over the network.
     ///
-    /// https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#max_compressed_len
+    /// <https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/p2p-interface.md#max_compressed_len>
     pub fn max_message_size(&self) -> usize {
         std::cmp::max(
             // 1024 to account for framing + encoding overhead
@@ -2113,7 +2113,7 @@ fn default_gloas_fork_version() -> [u8; 4] {
 
 /// Placeholder value: 2^256-2^10 (115792089237316195423570985008687907853269984665640564039457584007913129638912).
 ///
-/// Taken from https://github.com/ethereum/consensus-specs/blob/d5e4828aecafaf1c57ef67a5f23c4ae7b08c5137/configs/mainnet.yaml#L15-L16
+/// Taken from <https://github.com/ethereum/consensus-specs/blob/d5e4828aecafaf1c57ef67a5f23c4ae7b08c5137/configs/mainnet.yaml#L15-L16>
 const fn default_terminal_total_difficulty() -> Uint256 {
     Uint256::from_limbs([
         18446744073709550592,

@@ -16,7 +16,7 @@ use tree_hash_derive::TreeHash;
 ///
 /// The envelope is signed by the builder to prove they authorized the reveal.
 ///
-/// Reference: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadenvelope
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#executionpayloadenvelope>
 #[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative)]
 #[cfg_attr(
     feature = "arbitrary",

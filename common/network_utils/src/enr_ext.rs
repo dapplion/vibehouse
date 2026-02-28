@@ -15,7 +15,7 @@ pub trait EnrExt {
     /// The libp2p `PeerId` for the record.
     fn peer_id(&self) -> PeerId;
 
-    /// Returns a list of multiaddrs if the ENR has an `ip` and one of [`tcp`,`udp`,`quic`] key **or** an `ip6` and one of [`tcp6`,`udp6`,`quic6`].
+    /// Returns a list of multiaddrs if the ENR has an `ip` and one of \[`tcp`,`udp`,`quic`\] key **or** an `ip6` and one of \[`tcp6`,`udp6`,`quic6`\].
     /// The vector remains empty if these fields are not defined.
     fn multiaddr(&self) -> Vec<Multiaddr>;
 

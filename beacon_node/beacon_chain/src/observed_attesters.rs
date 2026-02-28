@@ -27,7 +27,7 @@ use types::{Epoch, EthSpec, Hash256, Slot, Unsigned};
 /// If the current epoch is N, this fits epoch N + 1, N, N - 1, and N - 2. We require the next epoch due
 /// to the `MAXIMUM_GOSSIP_CLOCK_DISPARITY`. We require the N - 2 epoch since the specification declares:
 ///
-/// ```ignore
+/// ```text
 /// the epoch of `aggregate.data.slot` is either the current or previous epoch
 /// ```
 ///

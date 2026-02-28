@@ -14,7 +14,7 @@
 //! different stages of verification with wrapper types. These wrapper-types flow in a particular
 //! pattern:
 //!
-//! ```ignore
+//! ```text
 //!      types::Attestation              types::SignedAggregateAndProof
 //!              |                                    |
 //!              ▼                                    ▼
