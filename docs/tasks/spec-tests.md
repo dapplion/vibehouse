@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking and CI verification (run 242)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
+- Audited all recently merged Gloas spec PRs since run 241:
+  - No new Gloas-relevant PRs merged since Feb 26 (#4947, #4948 were the last)
+  - All previously tracked merges (#4947, #4948, #4918, #4923) confirmed already implemented
+- Open Gloas spec PRs: #4950 (by_root serve range, 4 approvals), #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- **CI verification**: latest CI run (075a77710) has check+clippy, ef-tests both green. Unit tests and fork-specific tests still running. Last full green CI: 3a8fc0bb (all 5 jobs passed including ci-success gate)
+- **Nightly CI analysis**: all 6 beacon-chain-tests failures (phase0-electra) were the same test `attestation_blob_data_available_true_passes`, already fixed in c29b9d389. Nightly ran on pre-fix SHA (7aeeed76). Next nightly run will use the fix.
+- **Nightly non-beacon-chain jobs**: all passed — http-api (electra, fulu), op-pool (all 7 forks), network (all 7 forks), slasher, state_transition_vectors
+- **CI coverage audit**: validator_client sub-crates (124 tests across 10 packages) ARE covered by the `unit-tests` CI job (workspace-level nextest, VC not excluded). No gap here.
+- **No code changes this run** — everything is spec-compliant and green
+
 ### 2026-02-28 — add slasher + state_transition_vectors to nightly CI (run 241)
 - No new consensus-specs releases or merged Gloas PRs (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
 - Open Gloas spec PRs tracked: #4950 (by_root serve range, 4 approvals), #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
