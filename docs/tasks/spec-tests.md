@@ -28,6 +28,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — test coverage audit, spec tracking (run 269)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 268
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- **Exhaustive test coverage audit** — searched all Gloas modules for untested code paths:
+  - `per_block_processing/gloas.rs`: 460+ tests, all spec functions covered
+  - `envelope_processing.rs`: 38 tests covering all validation checks and state mutations
+  - `upgrade/gloas.rs`: 21+ tests including builder deposit edge cases
+  - `per_epoch_processing/gloas.rs`: quorum threshold and payment rotation tests
+  - `proto_array_fork_choice.rs`: 121 tests including all Gloas fork choice functions
+  - `gloas_verification.rs`: 57+ integration tests for gossip verification
+  - `execution_bid_pool.rs`: 15+ tests for bid selection and filtering
+  - `block_replayer.rs`: 30 tests for Gloas envelope replay during sync
+  - `per_slot_processing.rs`: Gloas availability bit clearing tested
+  - `observed_payload_attestations.rs`: 15 tests for equivocation detection
+  - SlotClock Gloas timing (4 intervals/slot): tested
+  - Validator client PTC duties: 25 tests
+  - HTTP API Gloas endpoints: comprehensive tests
+  - Operation pool Gloas: tested
+- **Spec conformance spot-check**: verified `process_execution_payload_bid` and `process_execution_payload` match spec exactly
+- **Result**: no significant test coverage gaps found. 600+ Gloas-specific tests across all modules
+- **CI**: green (nightly tests passing after 90-minute timeout fix)
+- **Clippy**: clean across state_processing and fork_choice
+
 ### 2026-02-28 — can_builder_cover_bid unit tests, spec tracking (run 268)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 267
