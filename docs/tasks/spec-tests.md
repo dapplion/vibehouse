@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — add envelope gossip deduplication, spec audit (run 262)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- No new merged Gloas PRs since run 261
+- Open Gloas spec PRs tracked: #4940, #4939, #4932 (1 approval), #4843 (1 approval), #4840, #4630 — all still open/unmerged. #4950 (4 approvals) still open but likely to merge soon. #4892 (2 approvals) still open — vibehouse already matches its behavior (assert + == check in is_supporting_vote_gloas).
+- **Comprehensive gossip validation audit**: used an exploration agent to audit all Gloas gossip verification code against the spec's REJECT/IGNORE conditions. Found 3 spec compliance gaps:
+  - **Gap #3 (FIXED): Missing envelope deduplication** — Spec: `[IGNORE] The node has not seen another valid SignedExecutionPayloadEnvelope for this block root`. Without this, duplicate valid envelopes trigger repeated `newPayload` EL calls (mild DoS). Fix: new `ObservedPayloadEnvelopes` cache tracks block roots for which valid envelopes have been accepted. Root recorded only after full validation passes. FIFO pruning keeps max 256 entries. Gossip handler returns IGNORE for duplicates. 7 unit tests + all 68 envelope integration tests + all 41 network Gloas tests pass.
+  - **Gap #1 (documented): Missing `bid.parent_block_hash` IGNORE check** — Spec requires checking bid's execution parent hash exists in fork choice. Implementation would require a new ExecutionBlockHash→exists reverse index in fork choice (O(n) scan otherwise). Low practical impact: EL validates parent hash chain at `newPayload` time, so incorrect hashes are caught at block processing. Bandwidth-only optimization, deferred.
+  - **Gap #2 (documented): Missing highest-value bid filtering** — Spec: `[IGNORE] this bid is the highest value bid seen for the corresponding slot and the given parent block hash`. Currently all valid bids from different builders are propagated. Low practical impact in current single-client devnet. Would become important in competitive multi-builder environment. Deferred.
+- **Additional audit findings (all correct)**:
+  - All REJECT conditions for execution_bid, execution_payload, and payload_attestation_message are fully implemented
+  - Zero unwrap()/expect() calls in gossip verification code
+  - All arithmetic uses saturating operations
+  - Self-build bid signature path is unreachable (blocked by ZeroExecutionPayment check earlier)
+- **Test results**: 7/7 observed_payload_envelopes unit tests, 68/68 envelope integration tests, 41/41 network Gloas tests, 23/23 gossip beacon_chain tests — all passing. Full clippy lint clean.
+- **Files changed**: new `observed_payload_envelopes.rs`, `gloas_verification.rs` (dedup check + recording), `beacon_chain.rs` (field + pruning), `builder.rs` (field init), `lib.rs` (module registration), `gossip_methods.rs` (IGNORE handler)
+
 ### 2026-02-28 — fix gossip bid validation spec compliance (run 261)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - No new merged Gloas PRs since run 260
