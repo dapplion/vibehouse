@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — epoch cache optimization, spec tracking (run 260)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- No new merged Gloas PRs since run 259
+- **Implemented EIP-7917 balances cache optimization**: `compute_proposer_index` now reads effective balances from the `EpochCache` (flat `Vec<u64>`, O(1) lookup) when available, falling back to the tree-backed validator list (`milhouse::List`, O(log n)) when the cache is not initialized. This benefits `process_proposer_lookahead` during epoch processing where the epoch cache has just been rebuilt with updated effective balances. Removed the `TODO(EIP-7917): use balances cache` comment.
+- **Test results**: 711/711 types, 452/452 state_processing, 78/78 EF real crypto, 138/138 EF fake crypto, 8/8 fork choice — all passing. Full clippy lint clean.
+- **Files changed**: `consensus/types/src/beacon_state.rs` (use epoch cache in compute_proposer_index), `consensus/state_processing/src/per_epoch_processing/single_pass.rs` (remove TODO comment)
+
 ### 2026-02-28 — spec tracking, fix nightly timeout (run 259)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (3 approvals), #4843, #4840, #4747 (87 reviews, merge conflicts), #4630, #4558 — all still open/unmerged
