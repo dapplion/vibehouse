@@ -384,28 +384,62 @@ async fn chain_segment_full_segment() {
 
 #[tokio::test]
 async fn chain_segment_varying_chunk_size() {
-    for _chunk_size in &[1, 2, 3, 5, 31, 32, 33, 42] {
+    // Build the chain segment once and reuse it across all chunk sizes.
+    let (chain_segment, chain_segment_blobs, chain_segment_envelopes) = get_chain_segment().await;
+    let blocks: Vec<RpcBlock<E>> = chain_segment_blocks(&chain_segment, &chain_segment_blobs)
+        .into_iter()
+        .collect();
+
+    for chunk_size in &[1_usize, 2, 3, 5, 31, 32, 33, 42] {
         let harness = get_harness(VALIDATOR_COUNT, NodeCustodyType::Fullnode);
-        let (chain_segment, chain_segment_blobs, chain_segment_envelopes) =
-            get_chain_segment().await;
-        let blocks: Vec<RpcBlock<E>> = chain_segment_blocks(&chain_segment, &chain_segment_blobs)
-            .into_iter()
-            .collect();
 
         harness
             .chain
             .slot_clock
             .set_slot(blocks.last().unwrap().slot().as_u64());
 
-        // Import blocks one by one with Gloas envelope processing between blocks.
-        import_chain_segment_with_envelopes(&harness, &blocks, &chain_segment_envelopes).await;
+        // Import blocks in chunks, processing Gloas envelopes after each block.
+        // Gloas blocks require one-at-a-time import because envelope processing
+        // updates state (latest_block_hash) that subsequent blocks depend on.
+        // Pre-Gloas blocks can be batched in process_chain_segment.
+        for chunk_start in (0..blocks.len()).step_by(*chunk_size) {
+            let chunk_end = std::cmp::min(chunk_start + chunk_size, blocks.len());
+
+            // Check if any blocks in this chunk have envelopes (Gloas blocks).
+            let has_envelopes = chain_segment_envelopes[chunk_start..chunk_end]
+                .iter()
+                .any(|e| e.is_some());
+
+            if has_envelopes {
+                // Import one at a time with envelope processing between blocks.
+                for i in chunk_start..chunk_end {
+                    harness
+                        .chain
+                        .process_chain_segment(vec![blocks[i].clone()], NotifyExecutionLayer::Yes)
+                        .await
+                        .into_block_error()
+                        .expect("should import block");
+                    process_envelope_if_present(&harness.chain, &chain_segment_envelopes[i]).await;
+                }
+            } else {
+                // Batch import pre-Gloas blocks — the actual varying-chunk-size test.
+                let chunk: Vec<RpcBlock<E>> = blocks[chunk_start..chunk_end].to_vec();
+                harness
+                    .chain
+                    .process_chain_segment(chunk, NotifyExecutionLayer::Yes)
+                    .await
+                    .into_block_error()
+                    .expect("should import chain segment chunk");
+            }
+        }
 
         harness.chain.recompute_head_at_current_slot().await;
 
         assert_eq!(
             harness.head_block_root(),
             blocks.last().unwrap().canonical_root(),
-            "harness should have last block as head"
+            "harness should have last block as head (chunk_size={})",
+            chunk_size
         );
     }
 }
