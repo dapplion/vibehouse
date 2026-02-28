@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 find_head_gloas multi-block chain selection tests (run 211)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 210
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- Analyzed test coverage across all Gloas crates. state_processing extremely well-covered (430+ tests). Identified `find_head_gloas` in proto_array as having only single-block test scenarios — the multi-block chain traversal (PENDING→EMPTY→PENDING→EMPTY across multiple slots) was untested.
+- **Added 5 tests** covering `find_head_gloas` multi-block chain selection edge cases in `proto_array_fork_choice.rs`:
+  1. `find_head_gloas_two_deep_chain_empty_path` — chain of 3 blocks (genesis→slot1→slot2), all on the EMPTY path (no payloads revealed). Verifies `find_head_gloas` traverses PENDING→EMPTY→PENDING→EMPTY correctly across multiple blocks and selects the deepest leaf (root(2)). Exercises the iterative loop in `find_head_gloas` that alternates between `get_gloas_children` for PENDING nodes (which produce EMPTY/FULL virtual children) and EMPTY/FULL nodes (which produce child PENDING blocks).
+  2. `find_head_gloas_competing_forks_full_vs_empty` — two competing forks at the same slot: fork A with no payload (EMPTY only), fork B with payload revealed (FULL path available). 2 EMPTY-supporting votes for fork A, 3 FULL-supporting votes for fork B. Verifies that `get_gloas_weight` correctly counts FULL-supporting votes for the FULL virtual child and selects the higher-weight fork. Tests the case where FULL and EMPTY paths compete across different block roots.
+  3. `find_head_gloas_full_chain_two_blocks` — chain with FULL→PENDING→FULL transitions. root(1) at slot 1 has payload revealed, root(2) at slot 2 declares parent FULL (bid_parent_block_hash matches root(1)'s bid_block_hash) and also has payload revealed. With 3 FULL-supporting votes, verifies the traversal: genesis PENDING → genesis FULL (because root(1)'s parent is EMPTY for genesis, so it appears under EMPTY child) → wait, actually: genesis PENDING → {genesis EMPTY → root(1) PENDING on EMPTY side, genesis FULL (if revealed) → root(1) PENDING on FULL side}. The test verifies the correct FULL path is selected through `get_parent_payload_status_of`.
+  4. `find_head_gloas_vote_redistribution_changes_head` — two forks at slot 1. First call: 3 votes for fork A, 2 for fork B → A wins. Then all 5 voters switch to fork B (at a higher epoch, since `process_attestation` only accepts strictly greater epochs). Second `find_head` call: B wins. Exercises the `compute_deltas` vote tracking and verifies that `is_supporting_vote_gloas` correctly reflects updated votes. Key insight: `process_attestation` requires `target_epoch > vote.next_epoch` — same-epoch vote updates are silently rejected.
+  5. `find_head_gloas_invalid_execution_filtered_out` — two blocks at slot 1: root(1) valid, root(2) marked `ExecutionStatus::Invalid`. Despite root(2) having 4 votes vs root(1)'s 1 vote, root(2) is filtered out by `compute_filtered_roots` (which calls `node_is_viable_for_head` → returns false for invalid execution). Verifies that the Gloas fork choice respects execution validity filtering even when the invalid block has overwhelming attestation weight.
+- **Key insights discovered during testing**:
+  - `process_attestation` only accepts vote updates when the new `target_epoch` is strictly greater than the previous `next_epoch`. Same-epoch re-votes are silently ignored. This is important for tests that simulate vote redistribution.
+  - `node_is_viable_for_head` finalized checkpoint check always passes when the store's finalized checkpoint is at genesis epoch (epoch 0), regardless of the node's finalized checkpoint. The check is `self.finalized_checkpoint.epoch == genesis_epoch` which short-circuits to true. To test filtering, use `ExecutionStatus::Invalid` or advance past genesis.
+- **Full test suite verification** — all passing:
+  - 127/127 proto_array tests (was 122, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-28 — 5 get_ptc_committee edge case tests (run 210)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 209
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)

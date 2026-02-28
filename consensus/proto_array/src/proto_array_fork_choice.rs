@@ -6218,4 +6218,362 @@ mod test_gloas_fork_choice {
             "EMPTY should NOT be supported: ancestor at slot 1 is FULL, not EMPTY"
         );
     }
+
+    // ── find_head_gloas multi-block chain selection tests (run 211) ──
+
+    /// Two-deep chain: genesis → slot 1 → slot 2. Votes at slot 3.
+    /// Verifies that find_head_gloas traverses PENDING → EMPTY → PENDING
+    /// across multiple blocks and correctly selects the deepest viable leaf.
+    ///
+    /// Chain: root(0) [slot 0] → root(1) [slot 1] → root(2) [slot 2]
+    /// All blocks EMPTY path (no payloads revealed).
+    /// 1 voter votes for root(2) at slot 3.
+    /// Expected head: root(2) via the path:
+    ///   root(0) PENDING → root(0) EMPTY → root(1) PENDING → root(1) EMPTY
+    ///   → root(2) PENDING → root(2) EMPTY (leaf)
+    #[test]
+    fn find_head_gloas_two_deep_chain_empty_path() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // root(1) at slot 1, parent EMPTY (bid_parent_hash mismatches parent's bid_block_hash)
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(99)), // mismatches genesis's exec_hash → parent EMPTY
+            false,
+        );
+
+        // root(2) at slot 2, parent EMPTY
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // mismatches root(1)'s exec_hash(1) → parent EMPTY
+            false,
+        );
+
+        let balances = balances(1);
+
+        // Vote for root(2) at slot 3 (payload_present=false → EMPTY supporting)
+        fc.process_attestation(0, root(2), Epoch::new(0), Slot::new(3), false)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(2), "head should be root(2) — deepest block");
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Empty as u8),
+            "head should be EMPTY — no payloads revealed in the chain"
+        );
+    }
+
+    /// Two competing forks at the same slot. One fork has its payload revealed (FULL
+    /// path available), the other doesn't. Votes split between them, but the FULL fork
+    /// has slightly more weight.
+    ///
+    /// Fork A: root(0) → root(1) at slot 1 (payload NOT revealed, EMPTY only)
+    /// Fork B: root(0) → root(2) at slot 1 (payload revealed, FULL path available)
+    ///
+    /// 2 voters for root(1) EMPTY, 3 voters for root(2) FULL.
+    /// Expected: root(2) FULL wins (more weight on the FULL path).
+    #[test]
+    fn find_head_gloas_competing_forks_full_vs_empty() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Fork A: root(1) at slot 1, NO payload revealed
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(99)), // parent EMPTY
+            false,               // no payload revealed
+        );
+
+        // Fork B: root(2) at slot 1, payload revealed → FULL child exists
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(2),
+            root(0),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // parent EMPTY
+            true,                // payload revealed
+        );
+
+        let balances = balances(5);
+
+        // 2 votes for root(1) with payload_present=false (EMPTY supporting)
+        for i in 0..2 {
+            fc.process_attestation(i, root(1), Epoch::new(0), Slot::new(2), false)
+                .unwrap();
+        }
+        // 3 votes for root(2) with payload_present=true (FULL supporting)
+        for i in 2..5 {
+            fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(2), true)
+                .unwrap();
+        }
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(
+            head,
+            root(2),
+            "root(2) FULL fork should win with 3 votes vs 2"
+        );
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Full as u8),
+            "winning fork has payload revealed → FULL"
+        );
+    }
+
+    /// Chain with FULL→PENDING→FULL transition. A block at slot 1 has its payload
+    /// revealed, and a child block at slot 2 declares the parent as FULL (bid_parent_hash
+    /// matches). The child also has its payload revealed. Votes support the FULL path
+    /// throughout.
+    ///
+    /// Chain: root(0) → root(1) [FULL] → root(2) [parent FULL, payload revealed]
+    /// Expected head traversal:
+    ///   root(0) PENDING → root(0) EMPTY → root(1) PENDING (parent EMPTY)
+    ///   root(0) PENDING → root(0) FULL → root(1) PENDING (parent FULL) → root(1) FULL
+    ///   → root(2) PENDING → root(2) FULL (leaf)
+    ///
+    /// With FULL-supporting votes at slot 3, the FULL path should win.
+    #[test]
+    fn find_head_gloas_full_chain_two_blocks() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // root(1) at slot 1: parent EMPTY (genesis has no matching exec hash)
+        // but payload revealed → FULL child available
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(99)), // parent EMPTY
+            true,                // payload revealed
+        );
+
+        // root(2) at slot 2: bid_parent_block_hash matches root(1)'s bid_block_hash
+        // → parent FULL. Also payload revealed.
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // matches root(1)'s exec_hash(1) → parent FULL
+            true,               // payload revealed
+        );
+
+        let balances = balances(3);
+
+        // All 3 voters vote for root(2) with payload_present=true
+        for i in 0..3 {
+            fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(3), true)
+                .unwrap();
+        }
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(
+            head,
+            root(2),
+            "head should be root(2) — deepest block on FULL chain"
+        );
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Full as u8),
+            "FULL path should win with FULL-supporting votes"
+        );
+    }
+
+    /// Vote redistribution: initially one fork leads, then votes shift.
+    /// Verifies that find_head_gloas correctly recomputes the winner when
+    /// votes change between calls.
+    ///
+    /// Two forks: root(1) and root(2) at slot 1.
+    /// First call: 3 votes for root(1), 2 for root(2) → root(1) wins.
+    /// Then votes shift: everyone votes for root(2).
+    /// Second call: 5 votes for root(2) → root(2) wins.
+    #[test]
+    fn find_head_gloas_vote_redistribution_changes_head() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(99)), // parent EMPTY
+            false,
+        );
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(2),
+            root(0),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // parent EMPTY
+            false,
+        );
+
+        let balances = balances(5);
+
+        // Initial votes: 3 for root(1), 2 for root(2)
+        for i in 0..3 {
+            fc.process_attestation(i, root(1), Epoch::new(0), Slot::new(2), false)
+                .unwrap();
+        }
+        for i in 3..5 {
+            fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(2), false)
+                .unwrap();
+        }
+
+        let head1 = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+        assert_eq!(head1, root(1), "root(1) should win with 3 votes vs 2");
+
+        // Shift all votes to root(2). process_attestation only accepts updates when
+        // the new epoch is strictly greater than the previous next_epoch — same-epoch
+        // re-votes are silently ignored. Use epoch 1 for the second round.
+        for i in 0..5 {
+            fc.process_attestation(i, root(2), Epoch::new(1), Slot::new(8), false)
+                .unwrap();
+        }
+
+        let head2 = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(8),
+                &spec,
+            )
+            .unwrap();
+        assert_eq!(
+            head2,
+            root(2),
+            "root(2) should win after all votes shift to it"
+        );
+    }
+
+    /// Verify that blocks with invalid execution status are filtered out
+    /// (not viable for head) by `compute_filtered_roots`, which `find_head_gloas`
+    /// uses to restrict the traversal.
+    ///
+    /// Two blocks at slot 1: root(1) valid, root(2) marked with
+    /// `ExecutionStatus::Invalid`. Even though root(2) has more votes,
+    /// it should be filtered out and root(1) should win.
+    #[test]
+    fn find_head_gloas_invalid_execution_filtered_out() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // root(1): valid execution status
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(99)), // parent EMPTY
+            false,
+        );
+
+        // root(2): starts valid, will be marked invalid below
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(2),
+            root(0),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // parent EMPTY
+            false,
+        );
+
+        // Mark root(2) as invalid execution — node_is_viable_for_head returns false
+        if let Some(&idx) = fc.proto_array.indices.get(&root(2)) {
+            fc.proto_array.nodes[idx].execution_status =
+                ExecutionStatus::Invalid(ExecutionBlockHash::zero());
+        }
+
+        let balances = balances(5);
+
+        // 1 vote for root(1), 4 votes for root(2) — root(2) has overwhelming weight
+        fc.process_attestation(0, root(1), Epoch::new(0), Slot::new(2), false)
+            .unwrap();
+        for i in 1..5 {
+            fc.process_attestation(i, root(2), Epoch::new(0), Slot::new(2), false)
+                .unwrap();
+        }
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(
+            head,
+            root(1),
+            "root(1) should win — root(2) is filtered out due to invalid execution status"
+        );
+    }
 }
