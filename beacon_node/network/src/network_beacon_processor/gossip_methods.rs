@@ -3350,6 +3350,16 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            // Spec: [IGNORE] parent_block_hash is a known execution payload
+            Err(ExecutionBidError::UnknownParentBlockHash { .. }) => {
+                debug!(
+                    builder_index,
+                    %peer_id,
+                    "Ignoring execution bid with unknown parent execution block hash"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
             // Spec: [IGNORE] this bid is the highest value bid seen for
             // the corresponding slot and the given parent block hash.
             Err(ExecutionBidError::NotHighestValue { bid_value, .. }) => {

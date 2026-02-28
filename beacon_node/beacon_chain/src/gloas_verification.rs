@@ -126,6 +126,16 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer may be on a different fork or sending stale bids.
     InvalidParentRoot { received: Hash256 },
+    /// The parent execution block hash is not known in fork choice.
+    ///
+    /// Spec: `[IGNORE] bid.parent_block_hash is the block hash of a known
+    /// execution payload in fork choice.`
+    ///
+    /// ## Peer scoring
+    /// The peer may be on a different fork or referencing an unknown payload.
+    UnknownParentBlockHash {
+        parent_block_hash: ExecutionBlockHash,
+    },
     /// A higher-value bid has already been seen for this slot and parent
     /// block hash.
     ///
@@ -469,14 +479,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Check 4: Parent root validation
         // Spec: [IGNORE] bid.parent_block_root is the hash tree root of a known beacon
         // block in fork choice.
-        if !self
-            .canonical_head
-            .fork_choice_read_lock()
-            .contains_block(&bid.message.parent_block_root)
         {
-            return Err(ExecutionBidError::InvalidParentRoot {
-                received: bid.message.parent_block_root,
-            });
+            let fc = self.canonical_head.fork_choice_read_lock();
+            if !fc.contains_block(&bid.message.parent_block_root) {
+                return Err(ExecutionBidError::InvalidParentRoot {
+                    received: bid.message.parent_block_root,
+                });
+            }
+
+            // Check 4a: Parent execution block hash validation
+            // Spec: [IGNORE] bid.parent_block_hash is the block hash of a known
+            // execution payload in fork choice.
+            if !fc.contains_execution_block_hash(&bid.message.parent_block_hash) {
+                return Err(ExecutionBidError::UnknownParentBlockHash {
+                    parent_block_hash: bid.message.parent_block_hash,
+                });
+            }
         }
 
         // Check 4b: Proposer preferences validation

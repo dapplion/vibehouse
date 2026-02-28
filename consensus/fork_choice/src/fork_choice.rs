@@ -1666,6 +1666,12 @@ where
             && self.is_finalized_checkpoint_or_descendant(*block_root)
     }
 
+    /// Returns `true` if any node in fork choice has an execution block hash
+    /// matching the given hash.
+    pub fn contains_execution_block_hash(&self, block_hash: &ExecutionBlockHash) -> bool {
+        self.proto_array.contains_execution_block_hash(block_hash)
+    }
+
     /// Returns the Gloas head payload status from the last `get_head` call.
     /// 0 = EMPTY, 1 = FULL, 2 = PENDING. `None` for pre-Gloas heads.
     pub fn gloas_head_payload_status(&self) -> Option<u8> {

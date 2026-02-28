@@ -3797,6 +3797,42 @@ async fn test_gloas_gossip_bid_invalid_parent_root_ignored() {
     assert_ignore(result);
 }
 
+/// Gloas gossip: execution bid with unknown parent_block_hash is IGNORED.
+///
+/// Per spec: [IGNORE] bid.parent_block_hash is the block hash of a known
+/// execution payload in fork choice.
+/// A bid referencing an unknown execution block hash should be ignored.
+#[tokio::test]
+async fn test_gloas_gossip_bid_unknown_parent_block_hash_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
+    let current_slot = rig.chain.slot().unwrap();
+    let head = rig.chain.head_snapshot();
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root, // valid root
+        parent_block_hash: ExecutionBlockHash::repeat_byte(0xba), // unknown hash
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
 /// Gloas gossip: execution bid from builder with insufficient balance is IGNORED.
 ///
 /// Per spec: [IGNORE] builder.balance >= bid.value

@@ -527,6 +527,36 @@ async fn bid_invalid_parent_root() {
 }
 
 #[tokio::test]
+async fn bid_unknown_parent_block_hash() {
+    // Active builder, valid parent root, but parent_block_hash is not known in fork choice
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let mut bid = SignedExecutionPayloadBid::<E>::empty();
+    bid.message.slot = current_slot;
+    bid.message.execution_payment = 1;
+    bid.message.builder_index = 0;
+    bid.message.value = 100;
+    bid.message.parent_block_root = head_root;
+    // Use a non-zero hash that is not known in fork choice
+    bid.message.parent_block_hash =
+        ExecutionBlockHash::from_root(Hash256::from_low_u64_be(0xbad_cafe));
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid),
+        "should reject unknown parent block hash",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::UnknownParentBlockHash { .. }),
+        "expected UnknownParentBlockHash, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
 async fn bid_invalid_signature() {
     // Active builder, correct parent root, but invalid signature
     let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;

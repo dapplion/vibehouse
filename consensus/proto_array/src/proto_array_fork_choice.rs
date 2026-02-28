@@ -925,6 +925,26 @@ impl ProtoArrayForkChoice {
         self.proto_array.indices.contains_key(block_root)
     }
 
+    /// Returns `true` if any node in fork choice has an execution block hash
+    /// matching the given `block_hash`. Checks both `bid_block_hash` (from bids)
+    /// and `execution_status` block hash (from payloads).
+    ///
+    /// Spec: `[IGNORE] bid.parent_block_hash is the block hash of a known
+    /// execution payload in fork choice.`
+    pub fn contains_execution_block_hash(&self, block_hash: &ExecutionBlockHash) -> bool {
+        // Skip zero/default hashes (e.g. genesis blocks with default bids).
+        if block_hash.into_root().is_zero() {
+            return true;
+        }
+        self.proto_array.nodes.iter().any(|node| {
+            node.bid_block_hash == Some(*block_hash)
+                || node
+                    .execution_status
+                    .block_hash()
+                    .is_some_and(|h| h == *block_hash)
+        })
+    }
+
     fn get_proto_node(&self, block_root: &Hash256) -> Option<&ProtoNode> {
         let block_index = self.proto_array.indices.get(block_root)?;
         self.proto_array.nodes.get(*block_index)
@@ -6956,6 +6976,88 @@ mod test_gloas_fork_choice {
             fc.gloas_head_payload_status(),
             Some(GloasPayloadStatus::Empty as u8),
             "head block root(2) is a leaf with no revealed payload → status is EMPTY"
+        );
+    }
+
+    // ───────── contains_execution_block_hash ─────────
+
+    #[test]
+    fn contains_execution_block_hash_found_via_bid_block_hash() {
+        let (mut fc, _spec) = new_gloas_fc();
+        let hash = exec_hash(1);
+        insert_gloas_block(&mut fc, 1, root(1), root(0), Some(hash), None, false);
+        assert!(
+            fc.contains_execution_block_hash(&hash),
+            "should find hash stored as bid_block_hash"
+        );
+    }
+
+    #[test]
+    fn contains_execution_block_hash_found_via_execution_status() {
+        let (mut fc, _spec) = new_gloas_fc();
+        let hash = exec_hash(2);
+        // Insert block with valid execution status instead of bid_block_hash
+        fc.proto_array
+            .on_block::<MinimalEthSpec>(
+                Block {
+                    slot: Slot::new(1),
+                    root: root(1),
+                    parent_root: Some(root(0)),
+                    state_root: Hash256::zero(),
+                    target_root: root(0),
+                    current_epoch_shuffling_id: junk_shuffling_id(),
+                    next_epoch_shuffling_id: junk_shuffling_id(),
+                    justified_checkpoint: genesis_checkpoint(),
+                    finalized_checkpoint: genesis_checkpoint(),
+                    execution_status: ExecutionStatus::Valid(hash),
+                    unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                    unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                    builder_index: Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD),
+                    payload_revealed: false,
+                    ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
+                    bid_block_hash: None,
+                    bid_parent_block_hash: None,
+                    proposer_index: 0,
+                    ptc_timely: false,
+                    envelope_received: false,
+                },
+                Slot::new(1),
+            )
+            .unwrap();
+        assert!(
+            fc.contains_execution_block_hash(&hash),
+            "should find hash via execution_status"
+        );
+    }
+
+    #[test]
+    fn contains_execution_block_hash_not_found() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            None,
+            false,
+        );
+        let unknown = exec_hash(99);
+        assert!(
+            !fc.contains_execution_block_hash(&unknown),
+            "should not find unknown hash"
+        );
+    }
+
+    #[test]
+    fn contains_execution_block_hash_zero_always_true() {
+        let (fc, _spec) = new_gloas_fc();
+        let zero = ExecutionBlockHash::zero();
+        assert!(
+            fc.contains_execution_block_hash(&zero),
+            "zero hash should always return true"
         );
     }
 }
