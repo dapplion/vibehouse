@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — parallelize CI, spec tracking (run 248)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898, #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Nightly analysis**: fulu timeout and altair infrastructure failure both from SHA `d7b59ab98` (pre-fix). Next nightly will use current HEAD with the exclusion filter fix from runs 246/247. No action needed.
+- **CI parallelization**: split the single `fork-specific-tests` job (which ran beacon_chain → http_api → network → op_pool sequentially, ~72 min total) into 3 parallel jobs: `beacon-chain-tests` (~32 min), `http-api-tests` (~27 min), `network-and-op-pool-tests` (~13 min). CI critical path drops from ~75 min (fork-specific) to ~47 min (unit tests now the bottleneck).
+- **Files changed**: 1 (`.github/workflows/ci.yml`)
+
 ### 2026-02-28 — fix nightly fulu exclusion filter, spec tracking (run 247)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged since run 245)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898, #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
