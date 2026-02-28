@@ -698,28 +698,26 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
         *state.next_withdrawal_index_mut()? = latest_withdrawal.index.safe_add(1)?;
     }
 
-    // Store payload_expected_withdrawals
+    // Capture withdrawal metadata before moving into List
+    let withdrawals_len = withdrawals.len();
+    let last_validator_index = withdrawals.last().map(|w| w.validator_index);
+
+    // Store payload_expected_withdrawals (consume withdrawals by value, no clone)
     {
         let state_gloas = state
             .as_gloas_mut()
             .map_err(BlockProcessingError::BeaconStateError)?;
         state_gloas.payload_expected_withdrawals =
-            List::new(withdrawals.clone()).map_err(BlockProcessingError::MilhouseError)?;
+            List::new(withdrawals).map_err(BlockProcessingError::MilhouseError)?;
     }
 
-    // Update builder_pending_withdrawals (remove processed)
-    {
-        let state_gloas = state
+    // Update builder_pending_withdrawals (remove processed via in-place pop_front)
+    if processed_builder_withdrawals_count > 0 {
+        state
             .as_gloas_mut()
-            .map_err(BlockProcessingError::BeaconStateError)?;
-        let remaining: Vec<_> = state_gloas
+            .map_err(BlockProcessingError::BeaconStateError)?
             .builder_pending_withdrawals
-            .iter()
-            .skip(processed_builder_withdrawals_count)
-            .cloned()
-            .collect();
-        state_gloas.builder_pending_withdrawals =
-            List::new(remaining).map_err(BlockProcessingError::MilhouseError)?;
+            .pop_front(processed_builder_withdrawals_count)?;
     }
 
     // Update pending_partial_withdrawals (remove processed)
@@ -750,10 +748,11 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     {
         let validators_len = state.validators().len() as u64;
         if validators_len > 0 {
-            let next_validator_index = if withdrawals.len() == max_withdrawals {
-                let last_validator_index =
-                    withdrawals.last().map(|w| w.validator_index).unwrap_or(0);
-                last_validator_index.safe_add(1)?.safe_rem(validators_len)?
+            let next_validator_index = if withdrawals_len == max_withdrawals {
+                last_validator_index
+                    .unwrap_or(0)
+                    .safe_add(1)?
+                    .safe_rem(validators_len)?
             } else {
                 state
                     .next_withdrawal_validator_index()?
