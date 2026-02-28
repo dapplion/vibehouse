@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec sync check, all up to date (run 227)
+- Checked all consensus-specs PRs merged since Feb 24 (last comprehensive check):
+  - **#4948** (merged Feb 26): reorder PayloadStatus constants (EMPTY=0, FULL=1, PENDING=2) — already aligned, `GloasPayloadStatus` enum already uses this ordering
+  - **#4947** (merged Feb 26): pre-fork subscription note for proposer_preferences — already compliant, `PRE_FORK_SUBSCRIBE_EPOCHS=1` subscribes all Gloas topics one epoch before activation
+  - **#4931** (merged Feb 20): rebase FOCIL onto Gloas — under `_features/eip7805/`, not core Gloas spec, no impact
+  - **#4920** (merged Feb 19): editorial "Constructing the XYZ" sections consistency — no code changes
+  - **#4921** (merged Feb 19): use ckzg by default for tests — test infra change, no spec impact
+  - **#4941** (merged Feb 19): execution proof construction uses BeaconBlock — already uses `block.parent_root()` for `parent_beacon_block_root`
+- Open Gloas PRs: #4940 (fork choice tests), #4932 (sanity/blocks tests, 6 reviews), #4840 (eip7843), #4939 (request missing envelopes, 5 reviews), #4906 (deposit tests), #4630 (SSZ types), #4892 (remove impossible branch), #4747 (fast confirmation), #4709 (pytest plugin), #4484 (6s slots)
+- No new spec test release (v1.7.0-alpha.2 still latest)
+- All CI jobs passing: ef-tests, check+clippy+fmt, unit tests, fork-specific tests (confirmed 4/4)
+- **Conclusion**: codebase fully up to date with all merged Gloas spec changes. No implementation gaps.
+
 ### 2026-02-28 — BlockProcessingError envelope error wrapping (run 225)
 - Checked consensus-specs: no new Gloas spec changes since Feb 26 (PRs #4947, #4948 were the last).
   All recent changes (PayloadStatus reorder, pre-fork subscription note, attestation payload status check, payload_states rename, parent payload unknown IGNORE rule, payload_data_availability_vote) already implemented in vibehouse.

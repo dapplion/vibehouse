@@ -31,6 +31,19 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 227)
+- Checked all consensus-specs PRs merged since run 68 (2026-02-24):
+  - #4947 (pre-fork subscription note for proposer_preferences) merged 2026-02-26 — documentation-only, no code changes needed
+  - #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2) merged 2026-02-26 — **ASSESSED**: vibehouse already uses this ordering (`GloasPayloadStatus` enum in proto_array: Empty=0, Full=1, Pending=2)
+  - #4931 (rebase FOCIL onto Gloas) merged 2026-02-20 — under `_features/eip7805/`, not core Gloas spec. No impact.
+  - #4920 (consistent "Constructing the XYZ" sections) merged 2026-02-19 — editorial, no code changes
+  - #4921 (use ckzg by default for tests) merged 2026-02-19 — test infra, no spec changes
+  - #4941 (execution proof construction uses BeaconBlock) merged 2026-02-19 — vibehouse already uses `block.parent_root()` for `parent_beacon_block_root`
+  - Open Gloas PRs: #4940, #4932, #4840, #4939, #4906, #4630, #4892, #4747 — all still open/unmerged
+- No new GitHub issues — existing 3 open issues are all RFCs/feature requests
+- All 4 CI jobs passing (3/4 confirmed, fork-specific still running at time of check)
+- Codebase fully up to date with latest merged Gloas spec changes
+
 ### 2026-02-24 (run 68)
 - Checked consensus-specs PRs since run 67: no new Gloas spec changes merged
   - #4941 (execution proof construction, EIP-8025) merged 2026-02-19 — not Gloas ePBS, no code changes needed
