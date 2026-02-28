@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix nightly fulu beacon-chain timeout, spec tracking (run 246)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master unchanged since run 245)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898, #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Fixed nightly fulu beacon-chain timeout**: `beacon-chain-tests (fulu)` timed out at 60 min (488/663 tests completed). Root cause: 288 Gloas integration tests (~25-30s each in CI) were running redundantly under `FORK_NAME=fulu` — they create their own Gloas spec and are already fully tested on every push via ci.yml. Fix: exclude `gloas::*` and `gloas_verification::*` integration tests from nightly prior-fork runs using nextest filter `-E 'not test(/^gloas::|^gloas_verification::/)'`. Local verification: 375/375 pass in ~11 min.
+- **Nightly altair failure**: same infrastructure issue as previous runs (moonrepo/setup-rust HTTP 502 downloading cargo-binstall). Not a test failure.
+- **Files changed**: 1 (`.github/workflows/nightly-tests.yml`)
+
 ### 2026-02-28 — fix nightly fulu timeout, spec tracking (run 245)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master unchanged since run 244)
 - Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
