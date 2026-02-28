@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, compliance verification (run 257)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747 (merge conflicts), #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 256
+- **Verified recently merged spec PRs**:
+  - #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2) — merged Feb 26. vibehouse's `GloasPayloadStatus` enum already uses these values (commit cffb4a699). No change needed.
+  - #4918 (only allow attestations for known payload statuses) — merged Feb 23. vibehouse's `validate_on_attestation` already checks `if index == 1 && !block.payload_revealed` (returns `PayloadNotRevealed` error). No change needed.
+  - #4947 (pre-fork subscription note for proposer_preferences topic) — merged Feb 26. Documentation-only. vibehouse already subscribes to all fork topics 1 epoch before fork via `PRE_FORK_SUBSCRIBE_EPOCHS = 1`. No change needed.
+- **Spec compliance deep-dive on `get_payload_status_tiebreaker`**: Verified vibehouse's implementation against current spec. The spec still includes a `PAYLOAD_STATUS_PENDING` short-circuit (removed by unmerged PR #4898). vibehouse omits this check, but it's unreachable in practice (PENDING tiebreaker only matters when two different blocks have the same root, which is impossible). PR #4898 is removing this dead code from the spec. No action needed.
+- **EF test vector compatibility**: Confirmed current test vectors (v1.7.0-alpha.2) don't include `head_payload_status` checks — those will arrive with PR #4940 test vectors. No conflict with constant reordering.
+- **Clippy audit**: zero warnings across entire workspace
+- **CI status**: all recent runs green, transient moonrepo/setup-rust 502 on one prior run (not code issue)
+- **No code changes this run** — codebase fully spec-compliant, all recently merged PRs already implemented
+
 ### 2026-02-28 — fix bid parent root validation, spec audit (run 256)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals, ready to merge), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843 (push to branch Feb 27), #4840, #4747 (merge conflicts, 0 approvals), #4630, #4558 — all still open/unmerged
