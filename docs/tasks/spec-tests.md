@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — EL transport error tests, spec tracking (run 266)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- No new merged Gloas PRs since run 265
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932 (1 approval), #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4630 — all still open/unmerged
+- **Reviewed recently merged PRs**: #4941 (update execution proof construction to use beacon block — merged Feb 19) changes prover.md to use `block.parent_root` instead of `state.latest_block_header.parent_root` for `parent_beacon_block_root`. Our implementation uses block directly through the envelope processing path — no code change needed.
+- **Added 2 EL transport error tests**: Previously, only EL payload status errors (Invalid, InvalidBlockHash, Syncing) were tested. Now also testing the case where `notify_new_payload` itself fails due to an EL transport error (connection refused, RPC error):
+  - `gloas_self_build_envelope_el_transport_error_returns_error` — tests self-build path: EL transport error returns `EnvelopeError("newPayload failed: ...")`, payload_revealed=true (set before EL call), block stays Optimistic, envelope NOT persisted
+  - `gloas_gossip_envelope_el_transport_error_returns_error` — tests gossip path: same behavior through `process_payload_envelope` instead of `process_self_build_envelope`
+  - Both verify critical invariant: `on_execution_payload` runs before the EL call, so even on EL failure, `payload_revealed` is correctly set in fork choice
+- **Test results**: 682/682 beacon_chain tests pass (gloas). Full clippy lint clean.
+- **Files changed**: `beacon_node/beacon_chain/tests/gloas.rs` (+173 lines, 2 new tests)
+
 ### 2026-02-28 — bid parent_block_hash IGNORE validation (run 265)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Recently merged: #4947 (proposer_preferences pre-fork subscription note — documentation only, no code change needed) and #4948 (reorder payload status constants — already implemented)
