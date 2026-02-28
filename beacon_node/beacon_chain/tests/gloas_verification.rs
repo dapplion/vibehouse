@@ -13,7 +13,7 @@ use beacon_chain::gloas_verification::{
 };
 use beacon_chain::test_utils::{
     AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_ETH1_BLOCK_HASH,
-    EphemeralHarnessType, HARNESS_GENESIS_TIME, InteropGenesisBuilder, test_spec,
+    DEFAULT_TARGET_AGGREGATORS, EphemeralHarnessType, HARNESS_GENESIS_TIME, InteropGenesisBuilder,
 };
 use execution_layer::test_utils::generate_genesis_header;
 use std::sync::{Arc, LazyLock};
@@ -57,11 +57,8 @@ static KEYPAIRS: LazyLock<Vec<Keypair>> =
 
 /// Build a Gloas harness and extend the chain by `num_blocks`.
 async fn gloas_harness(num_blocks: usize) -> BeaconChainHarness<EphemeralHarnessType<E>> {
-    let spec = test_spec::<E>();
-    assert!(
-        spec.gloas_fork_epoch == Some(Epoch::new(0)),
-        "tests require FORK_NAME=gloas"
-    );
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
 
     let harness = BeaconChainHarness::builder(MainnetEthSpec)
         .spec(Arc::new(spec))
@@ -105,11 +102,8 @@ async fn gloas_harness_with_builders(
     num_blocks: usize,
     builders: &[(u64, u64)],
 ) -> BeaconChainHarness<EphemeralHarnessType<E>> {
-    let spec = test_spec::<E>();
-    assert!(
-        spec.gloas_fork_epoch == Some(Epoch::new(0)),
-        "tests require FORK_NAME=gloas"
-    );
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
     let spec_arc = Arc::new(spec.clone());
 
     // Build genesis state from the interop builder
