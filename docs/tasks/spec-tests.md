@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, PR readiness audit (run 258)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747 (merge conflicts), #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 257
+- **Proactive readiness audit for imminent spec PRs**:
+  - #4950 (extend by_root serve range): vibehouse by_root handlers serve all stored blocks/envelopes without range filtering — already compliant. No code changes needed when it merges.
+  - #4940 (initial Gloas fork choice tests): vibehouse EF test runner already has `OnExecutionPayload` step, `head_payload_status` check, `SignedExecutionPayloadEnvelope` SSZ deserialization. When PR merges and test vectors are released, only a fixture version bump and possibly a new handler registration (`ForkChoiceHandler::new("on_execution_payload")`) are needed. Zero test runner code changes.
+  - #4939 (request missing envelopes for index-1 attestations): adds REJECT/IGNORE rules for index-1 attestations without seen payloads, plus outbound `ExecutionPayloadEnvelopesByRoot` requests. Implementation deferred until merge — fork choice already enforces `index == 1` requires `payload_revealed` (from #4918).
+- **Codebase quality audit**: Gloas production code has zero unwrap()/expect() calls. Only genuinely unsafe unwraps are in inherited `dump_as_dot()`/`dump_dot_file()` debug functions (dead code, never called). One vibehouse-added TODO exists: `TODO(EIP-7917): use balances cache` in proposer lookahead (performance optimization, not correctness).
+- **CI status**: latest CI run (22525142381) has check+clippy+fmt and ef-tests green; beacon_chain/http_api/unit/network+op_pool still running. Latest nightly (22522736397) fully green (26/26).
+- **No code changes this run** — codebase fully spec-compliant, proactively ready for imminent spec PR merges
+
 ### 2026-02-28 — spec tracking, compliance verification (run 257)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747 (merge conflicts), #4630, #4558 — all still open/unmerged

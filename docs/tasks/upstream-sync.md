@@ -31,6 +31,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 258)
+- Checked consensus-specs: no new Gloas PRs merged since run 257 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747 (merge conflicts), #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Readiness audit for upcoming merges**: reviewed #4950, #4940, #4939 in detail. vibehouse already handles #4950 (by_root serve without range filtering). EF test infrastructure ready for #4940 (OnExecutionPayload step, head_payload_status check already implemented). #4939 implementation correctly deferred until merge.
+- **Heze fork awareness**: consensus-specs PRs #4931/#4942 created a new "Heze" fork (post-Gloas) for FOCIL (EIP-7805). This is informational only — does not affect Gloas spec or vibehouse implementation.
+- **CI status**: all fast jobs green, nightly fully green (26/26)
+- **No code changes this run** — spec stable, no actionable items
+
 ### 2026-02-28 (run 256)
 - Checked consensus-specs: no new Gloas PRs merged since run 255 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals, ready to merge), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843 (push to branch Feb 27), #4840, #4747 (merge conflicts, 0 approvals), #4630, #4558 — all still open/unmerged
