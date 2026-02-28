@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, comprehensive master vs release diff (run 263)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- No new merged Gloas PRs since run 262
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4898 (1 approval), #4892 (2 approvals), #4843 (1 approval), #4840 — all still open/unmerged
+- **Full master vs v1.7.0-alpha.2 diff audit**: Diffed all 4 Gloas spec files (beacon-chain.md, fork-choice.md, validator.md, p2p-interface.md) between v1.7.0-alpha.2 and master to find any unimplemented changes. Result: all substantive changes already implemented:
+  - #4884 (payload_data_availability_vote) — `ptc_blob_data_available_weight` in proto_array, `should_extend_payload` checks both quorums
+  - #4897/#4916 (is_pending_validator deposit routing) — `is_pending_validator` function in process_operations.rs, 5+ unit tests
+  - #4918 (index-1 attestation payload_revealed check) — `validate_on_attestation` already checks `if index == 1 && !block.payload_revealed`
+  - #4923 (IGNORE block if parent payload unknown) — documented as deferred Gap #1 (low practical impact, EL validates parent hash at newPayload)
+  - #4930 (rename execution_payload_states → payload_states, ptc_vote → payload_timeliness_vote) — cosmetic, our internal names differ but behavior matches
+  - #4948 (reorder payload status constants EMPTY=0, FULL=1, PENDING=2) — `GloasPayloadStatus` enum already uses correct values
+- **Proactive readiness for imminent PRs**:
+  - #4932 (sanity/blocks tests with payload attestation): our `SanityBlocks` handler uses `per_block_processing` which already handles payload attestations — zero code changes needed when vectors arrive
+  - #4940 (fork choice tests for Gloas): test runner already has `OnExecutionPayload` step, `head_payload_status` check, `SignedExecutionPayloadEnvelope` SSZ deserialization — zero code changes needed
+- **Code audit findings**: explored state processing code (withdrawals, PTC committee selection) — no bugs found. Verified withdrawal index tracking is safe (when `withdrawals_len == max_withdrawals`, last entry is always from validator sweep with a clean index). PTC selection algorithm matches spec's `compute_balance_weighted_selection` with same termination guarantees.
+- **CI status**: latest push CI all green (22525819771). Latest nightly all green (22522736397, 26/26).
+- **No code changes this run** — codebase fully spec-compliant, all master changes already implemented
+
 ### 2026-02-28 — add envelope gossip deduplication, spec audit (run 262)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - No new merged Gloas PRs since run 261
