@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — bid parent_block_hash IGNORE validation (run 265)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Recently merged: #4947 (proposer_preferences pre-fork subscription note — documentation only, no code change needed) and #4948 (reorder payload status constants — already implemented)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932 (1 approval), #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4630 — all still open/unmerged
+- **Verified PRs #4898 and #4892 already match our implementation**: #4898 removes PENDING from tiebreaker condition (our `get_payload_tiebreaker` already doesn't special-case PENDING); #4892 changes `<=` to `assert + ==` in `is_supporting_vote` (our `is_supporting_vote_gloas` already uses `debug_assert!(>=)` + `==`)
+- **Implemented spec IGNORE condition: bid.parent_block_hash validation** — Previously documented as Gap #1 (deferred due to needing EL block hash reverse index). Now implemented with O(n) linear scan over fork choice nodes:
+  - New `contains_execution_block_hash` method in `ProtoArrayForkChoice` checks both `bid_block_hash` (from bids) and `execution_status.block_hash()` (from payloads)
+  - Zero/default hashes return true (genesis blocks with default bids)
+  - Check placed AFTER parent_block_root validation, BEFORE signature verification — leverages same fork choice read lock
+  - `UnknownParentBlockHash` error variant with IGNORE handling in gossip_methods.rs (no peer penalty)
+  - ForkChoice wrapper delegates to proto_array method
+  - 4 unit tests: found via bid_block_hash, found via execution_status, not found, zero always true
+  - 1 integration test in gloas_verification.rs: bid with unknown non-zero parent_block_hash is rejected
+  - 1 network handler test: gossip bid with unknown parent_block_hash returns IGNORE
+- **All spec gossip IGNORE conditions now implemented**: no remaining gaps in execution_bid gossip validation
+- **Test results**: 217/217 proto_array+fork_choice, 54/54 gloas_verification, 13/13 network gossip bid — all passing. Full clippy lint clean.
+- **Files changed**: `proto_array_fork_choice.rs` (new method + 4 tests), `fork_choice.rs` (wrapper method), `gloas_verification.rs` (error variant + check), `gossip_methods.rs` (IGNORE handler), `gloas_verification.rs` tests (+1), `network/tests.rs` (+1)
+
 ### 2026-02-28 — highest-value bid filtering, DuplicateEnvelope test (run 264)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - No new merged Gloas PRs since run 263
