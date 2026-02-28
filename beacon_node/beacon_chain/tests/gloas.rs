@@ -3567,6 +3567,86 @@ async fn gloas_self_build_envelope_el_syncing_stays_optimistic() {
     }
 }
 
+/// When the EL has a transport-level error (connection dropped, RPC error) for
+/// the envelope's newPayload, process_self_build_envelope should return an error.
+/// Unlike payload status errors (Invalid/InvalidBlockHash), this simulates the
+/// EL being unreachable. The payload_revealed flag should still be set in fork
+/// choice (on_execution_payload runs before the EL call), and the block should
+/// remain Optimistic. The post-envelope state transition should NOT run.
+#[tokio::test]
+async fn gloas_self_build_envelope_el_transport_error_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+    let block_hash = signed_envelope.message.payload.block_hash;
+
+    // Import block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return an RPC/transport error for this block_hash
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .set_new_payload_error(block_hash, "connection refused".to_string());
+
+    // Process self-build envelope — should fail with transport error
+    let result = harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should error when EL has transport failure"
+    );
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("newPayload failed"),
+        "error should mention newPayload failure, got: {}",
+        err_msg
+    );
+
+    // payload_revealed should be true (on_execution_payload ran before EL call)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true even after EL transport failure"
+        );
+    }
+
+    // Block should remain Optimistic
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic after EL transport failure, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // The envelope should NOT be persisted to disk (state transition didn't run)
+    let stored_envelope = harness.chain.store.get_payload_envelope(&block_root);
+    assert!(
+        stored_envelope.is_err() || stored_envelope.unwrap().is_none(),
+        "envelope should not be persisted when EL transport fails"
+    );
+}
+
 /// process_self_build_envelope with a block_root not in the store should
 /// return an error (missing beacon block). This catches the case where the
 /// envelope arrives for a block that was never imported.
@@ -10447,6 +10527,99 @@ async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
     assert!(
         stored.is_none(),
         "envelope should not be stored when process_payload_envelope fails"
+    );
+}
+
+/// When the EL has a transport-level error (connection dropped, RPC error) for a
+/// gossip-received envelope's newPayload, process_payload_envelope should return an
+/// error. This is the gossip-path counterpart of
+/// `gloas_self_build_envelope_el_transport_error_returns_error`. Unlike payload status
+/// errors (Invalid/InvalidBlockHash), this simulates the EL being unreachable.
+/// payload_revealed should remain true (set by apply_payload_envelope_to_fork_choice).
+#[tokio::test]
+async fn gloas_gossip_envelope_el_transport_error_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+    let block_hash = signed_envelope.message.payload.block_hash;
+
+    // Import the block (simulating gossip block arriving first)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Gossip verification
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    // Apply to fork choice (marks payload_revealed = true)
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Configure mock EL to return a transport error for this block hash
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .set_new_payload_error(block_hash, "connection refused".to_string());
+
+    // process_payload_envelope should fail with transport error
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    assert!(
+        result.is_err(),
+        "process_payload_envelope should error when EL has transport failure"
+    );
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("newPayload failed"),
+        "error should mention newPayload failure, got: {}",
+        err_msg
+    );
+
+    // payload_revealed should still be true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should remain true after EL transport failure"
+        );
+    }
+
+    // Block should remain Optimistic
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic after EL transport failure, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // The envelope should NOT be persisted to the store
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error");
+    assert!(
+        stored.is_none(),
+        "envelope should not be stored when EL transport fails"
     );
 }
 
