@@ -31,6 +31,13 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 259)
+- Checked consensus-specs: no new Gloas PRs merged since run 258 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932 (6 reviews), #4926, #4898 (1 approval), #4892 (3 approvals), #4843, #4840, #4747 (87 reviews, merge conflicts), #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Fixed nightly CI flaky timeout**: fulu beacon-chain tests timed out at 60 minutes (run 22520311458). Tests take 55-61 minutes depending on CI runner speed. Increased timeout to 90 minutes.
+- **CI status**: all push CI runs green, nightly fixed
+
 ### 2026-02-28 (run 258)
 - Checked consensus-specs: no new Gloas PRs merged since run 257 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747 (merge conflicts), #4630, #4558 — all still open/unmerged

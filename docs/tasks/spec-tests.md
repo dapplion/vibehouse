@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, fix nightly timeout (run 259)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (3 approvals), #4843, #4840, #4747 (87 reviews, merge conflicts), #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 258
+- **Fixed nightly fulu beacon-chain timeout**: run 22520311458 failed because fulu beacon-chain tests took 61 minutes against 60-minute timeout. Successful runs take 55 minutes — too close to the limit with CI runner variability. Increased timeout from 60 to 90 minutes in nightly-tests.yml.
+- **Nightly failure analysis**: 2 failures in run 22520311458 — (1) altair: transient `moonrepo/setup-rust` infrastructure failure (not our code), (2) fulu: timeout at 60 minutes. Latest nightly (22522736397) fully green (26/26).
+- **CI status**: all push CI runs green. Nightly timeout fix committed and pushed.
+
 ### 2026-02-28 — spec tracking, PR readiness audit (run 258)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747 (merge conflicts), #4630, #4558 — all still open/unmerged
