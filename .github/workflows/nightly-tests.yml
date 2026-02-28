@@ -52,12 +52,14 @@ jobs:
         # Gloas-specific integration tests (gloas::*, gloas_verification::*) are
         # already tested on every push via ci.yml with FORK_NAME=gloas. Exclude
         # them from nightly prior-fork runs to avoid timeout (they take ~25-30s
-        # each and there are 250+).
+        # each and there are 280+). The pattern matches "gloas::" anywhere in
+        # the test name, catching both integration tests (beacon_chain_tests
+        # gloas::*) and Gloas-specific unit tests (test_verify_committee_index_gloas::*).
         run: >
           env FORK_NAME=${{ matrix.fork }} cargo nextest run --release
           --features "fork_from_env,slasher/lmdb"
           -p beacon_chain
-          -E 'not test(/^gloas::|^gloas_verification::/)'
+          -E 'not test(/gloas::|gloas_verification::/)'
         timeout-minutes: 60
 
   op-pool-tests:
