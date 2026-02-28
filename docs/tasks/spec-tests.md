@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, open PR analysis, no code changes (run 272)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 271
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- **Detailed analysis of upcoming spec PRs**:
+  - **#4940 (fork choice tests)**: Adds `on_execution_payload` step + `head_payload_status` check to EF fork choice test format. Vibehouse's EF test runner already has both handlers implemented (`Step::OnExecutionPayload`, `check_head_payload_status`). No code changes needed when test vectors land.
+  - **#4932 (sanity/blocks with payload attestations)**: Standard `sanity/blocks` tests exercising `process_payload_attestation` during full block processing. No new handler needed — existing `SanityBlocks` case handles the format.
+  - **#4950 (by_root serve range)**: Extends mandatory serve window for `BlocksByRoot` and `ExecutionPayloadEnvelopesByRoot` to `MIN_EPOCHS_FOR_BLOCK_REQUESTS`. Vibehouse's handlers already serve anything in the store without range filtering — no code change needed.
+  - **#4843 (variable PTC deadline)**: Major change: renames `payload_present` → `payload_timely`, adds size-dependent PTC deadline, stores `payload_envelopes` in fork choice. Not merged — will require significant work when it lands (~24 files affected).
+  - **#4939 (request missing envelopes for index-1 attestation)**: P2P gossip enhancement: REJECT/IGNORE index-1 attestations without payload, trigger `ExecutionPayloadEnvelopesByRoot` request. Not merged.
+- **CI status**: all green. Nightly tests pass across all forks (phase0 through fulu). Previous fulu timeout resolved by 90-minute timeout bump (commit 432e451ed).
+- **Clippy**: clean across entire workspace (no warnings).
+- **No code changes this run** — spec stable, codebase fully conformant, test runner already prepared for upcoming vectors
+
 ### 2026-02-28 — spec conformance audit, no code changes (run 271)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 270
