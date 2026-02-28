@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — can_builder_cover_bid unit tests, spec tracking (run 268)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 267
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932 (1 approval), #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4630 — all still open/unmerged
+- **Added 8 unit tests for `can_builder_cover_bid`** — previously this consensus-critical function had no dedicated unit tests (only tested indirectly through bid processing). New tests cover:
+  - Basic sufficient/exact/exceeding available balance
+  - Balance below `MIN_DEPOSIT_AMOUNT` (0.5 ETH < 1 ETH minimum)
+  - Pending withdrawals reducing available balance
+  - Pending payments reducing available balance
+  - **Combined pending withdrawals + payments** — the key gap: both queues contribute to pending obligations, reducing available balance below what either queue alone would indicate
+  - Unknown builder index error path
+- **Test results**: 460/460 state_processing tests pass. Full clippy lint clean.
+- **Files changed**: `consensus/state_processing/src/per_block_processing/gloas.rs` (+113 lines, 8 new tests)
+
 ### 2026-02-28 — NotHighestValue bid + PriorToFinalization envelope integration tests, spec tracking (run 267)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Recently merged PRs verified: #4918 (attestations for known payload statuses — our `validate_on_attestation` already checks `index == 1 && !payload_revealed`), #4948 (PayloadStatus constant reorder — our `GloasPayloadStatus` already uses Empty=0, Full=1, Pending=2), #4947 (pre-fork subscription note — documentation only)
