@@ -3688,5 +3688,387 @@ mod tests {
                  resulting in EMPTY head payload status"
             );
         }
+
+        // ── on_execution_bid / on_payload_attestation / on_execution_payload
+        //    integration edge case tests ──────────────────────────────────────
+
+        /// A second bid from a different builder overwrites the first builder's
+        /// index and resets all PTC state. This tests the "re-bid" scenario where
+        /// a new builder wins the slot auction after the first bid was already
+        /// processed and had accumulated some PTC weight.
+        ///
+        /// Without the reset, stale PTC votes from the first builder's period
+        /// would carry over, potentially reaching quorum for the wrong builder.
+        #[test]
+        fn bid_from_different_builder_overwrites_and_resets_ptc() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // First bid: builder 42
+            let bid1 = make_bid(1, 42);
+            fc.on_execution_bid(&bid1, block_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Simulate some PTC weight accumulated for builder 42's bid
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 50;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 30;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_data_available = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            // Second bid: different builder 99 arrives
+            let bid2 = make_bid(1, 99);
+            fc.on_execution_bid(&bid2, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.builder_index,
+                Some(99),
+                "builder_index should be overwritten to new builder"
+            );
+            assert!(!node.payload_revealed, "payload_revealed should be reset");
+            assert_eq!(
+                node.ptc_weight, 0,
+                "ptc_weight should be reset to 0 (stale votes cleared)"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "blob weight should be reset to 0"
+            );
+            assert!(
+                !node.payload_data_available,
+                "payload_data_available should be reset"
+            );
+            // bid_block_hash is NOT reset by on_execution_bid (it's set during block processing)
+            assert_eq!(
+                node.bid_block_hash,
+                Some(ExecutionBlockHash::repeat_byte(0xAA)),
+                "bid_block_hash is managed by block processing, not on_execution_bid"
+            );
+        }
+
+        /// Envelope arrives before any bid was processed. This tests the
+        /// out-of-order message path where the execution payload envelope
+        /// is gossiped before (or without) an execution bid.
+        ///
+        /// In this case, `on_execution_payload` should still set
+        /// `payload_revealed=true`, `envelope_received=true`, and
+        /// `payload_data_available=true` — the envelope reveal is
+        /// unconditional. The block becomes viable for head selection
+        /// regardless of whether a bid was seen.
+        #[test]
+        fn envelope_before_bid_still_reveals_payload() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(1);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            // Insert a Gloas block at slot 1 with NO payload revealed (self-build, unrevealed)
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                false, // not revealed yet
+            );
+
+            // No bid has been processed — go directly to envelope
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xEE);
+            fc.on_execution_payload(root(1), envelope_hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&root(1))
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed, "envelope should reveal payload");
+            assert!(node.envelope_received, "envelope_received should be set");
+            assert!(
+                node.payload_data_available,
+                "payload_data_available should be set"
+            );
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should be set from envelope hash"
+            );
+
+            // The block should now be selectable as head with a FULL vote
+            fc.proto_array
+                .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+                .unwrap();
+            fc.fc_store.current_slot = Slot::new(2);
+
+            let head = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(1), // FULL
+                "envelope without prior bid should still enable FULL head"
+            );
+        }
+
+        /// PTC attestation for a skip-slot block — the attestation's data.slot
+        /// doesn't match the block's slot (attestation is for a later slot that
+        /// was skipped). The spec says `if data.slot != state.slot: return`,
+        /// meaning the attestation is silently ignored.
+        ///
+        /// This is distinct from `payload_attestation_slot_mismatch_silent_ok`
+        /// which tests attestation.slot > block.slot. Here we test a realistic
+        /// skip-slot scenario: block at slot 1, no block at slot 2, PTC
+        /// attestation references the block at slot 1 but with data.slot=2
+        /// (the attester's assigned slot). The weight must NOT be applied.
+        #[test]
+        fn payload_attestation_skip_slot_ignored_no_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            // Attestation has data.slot=2 but block is at slot 1 (skip slot scenario).
+            // Send enough attesters to exceed quorum — but none should count.
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(2, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(2, block_root, true, true, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(2), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 0,
+                "skip-slot attestation should add zero weight"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "skip-slot attestation should add zero blob weight"
+            );
+            assert!(
+                !node.payload_revealed,
+                "payload should NOT be revealed by skip-slot attestation"
+            );
+            assert!(
+                !node.payload_data_available,
+                "blob data should NOT be available from skip-slot attestation"
+            );
+        }
+
+        /// PTC quorum alone does NOT make the FULL child available in head selection.
+        /// The FULL child in `find_head_gloas` requires `envelope_received=true`
+        /// (matching the spec's `root in store.payload_states`). PTC quorum only
+        /// sets `payload_revealed=true` and `payload_data_available=true`, but
+        /// `envelope_received` stays false.
+        ///
+        /// This test verifies: PTC quorum reached → `payload_revealed=true` on the
+        /// node, but head stays EMPTY because the FULL virtual child is not created
+        /// without the actual envelope. Then, when the envelope arrives, the FULL
+        /// path becomes available and FULL votes cause the head to switch.
+        ///
+        /// This exercises the critical distinction between PTC quorum (attestation-
+        /// based) and envelope receipt (data availability), and validates that
+        /// `get_head` integrates correctly with both `on_payload_attestation` and
+        /// `on_execution_payload`.
+        #[test]
+        fn ptc_quorum_then_envelope_enables_full_head() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(3);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            // Insert a Gloas block at slot 1 with payload NOT revealed
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                false, // not revealed — starts on EMPTY path
+            );
+
+            // Vote FULL (payload_present=true)
+            fc.proto_array
+                .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+                .unwrap();
+            fc.fc_store.current_slot = Slot::new(2);
+
+            // Before anything: head is EMPTY (no envelope, no PTC quorum)
+            let head = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(0), // EMPTY
+                "before PTC or envelope, head should be EMPTY"
+            );
+
+            // Process PTC attestations to reach quorum
+            let quorum_threshold = spec.ptc_size / 2;
+            let ptc_indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, root(1), true, true);
+            let indexed = make_indexed_payload_attestation(1, root(1), true, true, ptc_indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(2), &spec)
+                .unwrap();
+
+            // Verify PTC quorum set the node fields
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&root(1))
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(
+                node.payload_revealed,
+                "PTC quorum should set payload_revealed"
+            );
+            assert!(
+                !node.envelope_received,
+                "PTC quorum should NOT set envelope_received"
+            );
+
+            // Re-vote FULL at higher epoch so vote is consumed by get_head
+            for i in 0..3u64 {
+                fc.proto_array
+                    .process_attestation(i as usize, root(1), Epoch::new(1), Slot::new(2), true)
+                    .unwrap();
+            }
+
+            // Head is STILL EMPTY: PTC quorum set payload_revealed but the FULL
+            // virtual child requires envelope_received=true
+            let head2 = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head2, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(0), // EMPTY
+                "PTC quorum alone should NOT create FULL child — head stays EMPTY"
+            );
+
+            // NOW the envelope arrives — sets envelope_received=true
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(root(1), envelope_hash).unwrap();
+
+            // Re-vote FULL at higher epoch again
+            for i in 0..3u64 {
+                fc.proto_array
+                    .process_attestation(i as usize, root(1), Epoch::new(2), Slot::new(2), true)
+                    .unwrap();
+            }
+
+            // NOW head should be FULL: envelope_received=true creates FULL child,
+            // and the 3 FULL votes give it the highest weight
+            let head3 = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head3, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(1), // FULL
+                "after envelope arrival + FULL votes, head should be FULL"
+            );
+        }
+
+        /// Bid → envelope (direct reveal, no PTC). The builder submits a bid,
+        /// then immediately reveals the execution payload via envelope. No PTC
+        /// votes are needed because the envelope itself sets `payload_revealed`.
+        ///
+        /// This tests the fast-path where the builder is timely and the envelope
+        /// arrives before any PTC attestation. The block should become FULL-viable
+        /// immediately and `get_head` should select the FULL path when voted for.
+        #[test]
+        fn bid_then_envelope_direct_reveal_no_ptc() {
+            let (mut fc, spec) = new_gloas_fc_with_balances(1);
+            let eh = |i: u64| ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i + 100));
+
+            // Insert Gloas block at slot 1, not yet revealed
+            insert_gloas_block_for_head(
+                &mut fc,
+                1,
+                root(1),
+                root(0),
+                Some(eh(1)),
+                Some(eh(0)),
+                false,
+            );
+
+            // Process bid for this block
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, root(1)).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&root(1))
+                .unwrap();
+
+            // Verify bid state
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(42));
+            assert!(!node.payload_revealed);
+            assert_eq!(node.ptc_weight, 0);
+
+            // Builder directly reveals envelope — no PTC needed
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(root(1), envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.envelope_received);
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash)
+            );
+            // PTC weight is still 0 — no PTC votes were processed
+            assert_eq!(node.ptc_weight, 0);
+
+            // Vote FULL and verify head selection
+            fc.proto_array
+                .process_attestation(0, root(1), Epoch::new(0), Slot::new(2), true)
+                .unwrap();
+            fc.fc_store.current_slot = Slot::new(2);
+
+            let head = fc.get_head(Slot::new(2), &spec).unwrap();
+            assert_eq!(head, root(1));
+            assert_eq!(
+                fc.gloas_head_payload_status(),
+                Some(1), // FULL
+                "bid + envelope (no PTC) should enable FULL head"
+            );
+
+            // Verify that late-arriving PTC votes still accumulate weight
+            // (even though quorum is irrelevant since envelope already revealed)
+            let att = make_payload_attestation(1, root(1), true, false);
+            let indexed = make_indexed_payload_attestation(1, root(1), true, false, vec![0]);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(2), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 1,
+                "late PTC votes should still accumulate weight"
+            );
+            // execution_status should remain from envelope (not overwritten by PTC)
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should not change from late PTC votes"
+            );
+        }
     }
 }

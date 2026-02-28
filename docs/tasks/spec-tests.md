@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 fork choice on_execution_bid/on_payload_attestation/on_execution_payload integration tests (run 213)
+- Checked consensus-specs PRs: no new Gloas spec changes requiring code since run 212
+  - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
+  - PR #4918 (only allow attestations for known payload statuses) — **already implemented** at fork_choice.rs:1209-1214
+  - PR #4948 (reorder payload status constants) — **not applicable** to vibehouse (Python-level constant reordering; vibehouse uses Rust enums)
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- Analyzed test coverage gaps across fork_choice crate. Identified `on_execution_bid`, `on_payload_attestation`, and `on_execution_payload` in `fork_choice.rs` as having thorough unit tests for individual operations but lacking integration tests that combine multiple operations with `get_head` to verify end-to-end behavior. The existing 34 tests cover each function's happy/error paths in isolation but don't exercise cross-function interactions or head selection outcomes.
+- **Added 5 tests** covering fork choice ePBS operation integration edge cases in `fork_choice.rs`:
+  1. `bid_from_different_builder_overwrites_and_resets_ptc` — second bid from a different builder (99 replacing 42) overwrites `builder_index` and resets all PTC state (`ptc_weight=0`, `ptc_blob_data_available_weight=0`, `payload_data_available=false`). Verifies that stale PTC votes accumulated for the first builder's bid are cleared. Also verifies that `bid_block_hash` is NOT reset (managed by block processing, not `on_execution_bid`). Catches bugs where a re-bid leaves stale PTC state that could reach quorum for the wrong builder.
+  2. `envelope_before_bid_still_reveals_payload` — envelope arrives via `on_execution_payload` before any bid was processed. Verifies `payload_revealed=true`, `envelope_received=true`, `payload_data_available=true`, and `execution_status=Optimistic(hash)` are all set unconditionally. Then verifies the block is selectable as head with a FULL vote via `get_head`. Tests the out-of-order message path where the envelope is gossiped before (or without) an execution bid.
+  3. `payload_attestation_skip_slot_ignored_no_weight` — PTC attestation with `data.slot=2` referencing a block at slot 1 (skip slot scenario). Sends enough attesters to exceed quorum, but the `data.slot != node.slot` check means all are silently ignored. Verifies zero weight and no state changes. This is distinct from the existing `slot_mismatch_silent_ok` test — it specifically tests the realistic skip-slot scenario where sufficient attesters could have reached quorum if counted.
+  4. `ptc_quorum_then_envelope_enables_full_head` — three-phase integration test: (a) head starts EMPTY, (b) PTC quorum reached via `on_payload_attestation` — sets `payload_revealed=true` but NOT `envelope_received` — head stays EMPTY because `find_head_gloas` only creates FULL children when `envelope_received=true`, (c) envelope arrives via `on_execution_payload` — now FULL child is available, FULL votes switch head to FULL. Key insight discovered: PTC quorum alone does NOT make the FULL virtual child available in `get_gloas_children` — the spec's `root in store.payload_states` maps to `envelope_received`, not just `payload_revealed`.
+  5. `bid_then_envelope_direct_reveal_no_ptc` — fast-path where builder submits bid then immediately reveals envelope with zero PTC votes. Verifies the block becomes FULL-viable immediately and `get_head` selects FULL. Also verifies that late-arriving PTC votes still accumulate weight but don't overwrite the envelope's `execution_status`. Tests the realistic scenario where a timely builder reveals before any PTC attestation.
+- **Key insight discovered during testing**: The FULL virtual child in `find_head_gloas` requires `envelope_received=true` (line 1182), not just `payload_revealed=true`. This means PTC quorum alone (which sets `payload_revealed` and `payload_data_available`) does NOT create the FULL path — the actual execution payload envelope must arrive. This is correct per spec: `root in store.payload_states` requires the payload state to be stored, which only happens when the envelope is processed. This subtle distinction is now tested explicitly.
+- **Full test suite verification** — all passing:
+  - 81/81 fork_choice tests (was 76, +5 new)
+  - 132/132 proto_array tests (unchanged)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-28 — 5 find_head_gloas multi-block chain selection tests (run 211)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 210
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
