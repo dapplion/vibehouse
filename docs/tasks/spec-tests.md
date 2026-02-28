@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — NotHighestValue bid + PriorToFinalization envelope integration tests, spec tracking (run 267)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Recently merged PRs verified: #4918 (attestations for known payload statuses — our `validate_on_attestation` already checks `index == 1 && !payload_revealed`), #4948 (PayloadStatus constant reorder — our `GloasPayloadStatus` already uses Empty=0, Full=1, Pending=2), #4947 (pre-fork subscription note — documentation only)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932 (1 approval), #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4630 — all still open/unmerged
+- **Added 3 integration tests for previously untested gossip verification error paths**:
+  - `bid_not_highest_value_rejected`: builder 0 submits bid (value=500), builder 1 submits lower bid (value=100) for same slot/parent_block_hash → `NotHighestValue` error
+  - `bid_higher_value_replaces_lower`: builder 0 submits bid (value=100), builder 1 submits higher bid (value=500) → accepted (highest value tracking updates)
+  - `bid_equal_value_rejected`: builder 0 submits bid (value=200), builder 1 submits equal bid (value=200) → `NotHighestValue` error (must be strictly greater)
+- **Strengthened `envelope_prior_to_finalization_direct` assertion**: previously used `matches!(err, PriorToFinalization { .. } | SlotMismatch { .. })` (either variant accepted). Now asserts `PriorToFinalization` specifically with `envelope_slot == 0`. Confirmed check 2 (PriorToFinalization) runs before check 3 (SlotMismatch) in the code.
+- **Coverage gap audit**: identified remaining untested error variants as unreachable-by-construction (`InvalidAggregationBits` — BitVector<PtcSize> has type-level fixed size), state-corruption-only (`PtcCommitteeError`), or requiring artificial DB inconsistency (`MissingBeaconBlock`, `NotGloasBlock`). All practically testable paths now covered.
+- **Test results**: 57/57 gloas_verification tests pass (was 54). Full clippy lint clean.
+- **Files changed**: `beacon_node/beacon_chain/tests/gloas_verification.rs` (+245 lines, 3 new tests, 1 assertion strengthened)
+
 ### 2026-02-28 — EL transport error tests, spec tracking (run 266)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - No new merged Gloas PRs since run 265
