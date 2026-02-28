@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — network-layer gossip bid tests, spec tracking (run 270)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 269
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- **Added 2 network-layer gossip bid tests** — covering previously untested error paths at the network processor level:
+  - `test_gloas_gossip_bid_not_highest_value_ignored`: builder 0 submits bid (value=500, accepted), builder 1 submits lower bid (value=100) → `NotHighestValue` → `MessageAcceptance::Ignore` (no peer penalization). Tests the most recently added bid validation check (highest-value filtering per spec IGNORE condition).
+  - `test_gloas_gossip_bid_inactive_builder_rejected`: builder with `deposit_epoch=100` (>> finalized_epoch ~3) submits bid → `InactiveBuilder` → `MessageAcceptance::Reject` + `LowToleranceError` peer penalization. Previously only `UnknownBuilder` (nonexistent builder_index) was tested at network layer; `InactiveBuilder` (exists but not active) was only tested at beacon_chain level.
+- **Test results**: 44/44 Gloas network tests pass (was 42). Full clippy lint clean.
+- **Files changed**: `beacon_node/network/src/network_beacon_processor/tests.rs` (+107 lines, 2 new tests)
+
 ### 2026-02-28 — test coverage audit, spec tracking (run 269)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 268
