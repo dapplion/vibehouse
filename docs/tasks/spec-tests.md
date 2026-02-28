@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — eliminate redundant block fetch in process_payload_envelope (run 232)
+- Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
+  - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+  - Open Gloas PRs: #4940 (fork choice tests, 0 approvals), #4932 (sanity/blocks tests, comments from jtraglia), #4630 (SSZ types), #4840 (eip7843) — all testing or non-core-spec, no code changes needed
+- Conducted deep test coverage analysis via subagent: examined 5 areas (beacon_chain methods, gossip handlers, block verification, fork choice, builder code). Found existing test coverage is very thorough — most paths flagged as "untested" by initial analysis actually had tests (e.g., EL Invalid/InvalidBlockHash paths, blob commitment overflow, pending envelope processing).
+- **Found and fixed redundant block DB fetch** in `process_payload_envelope` (`beacon_chain.rs`): the method was fetching the beacon block from the store **twice** — once for the newPayload EL call (blob commitments, parent_root) and again for the state transition (state_root). Hoisted the single fetch to the top of the function, capturing `block_state_root` immediately. Saves one `get_blinded_block` DB read per gossip-received envelope.
+- **Files changed**: 1 file (`beacon_node/beacon_chain/src/beacon_chain.rs`), net -22 lines
+- **Tests**: 663/663 beacon_chain, 452/452 state_processing, 35/35 EF spec tests (operations/epoch/sanity), clippy clean, cargo fmt clean
+
 ### 2026-02-28 — 3 GET payload attestation pool endpoint tests (run 231)
 - Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
   - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check
