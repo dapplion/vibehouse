@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — comprehensive audit: clippy, unwrap safety, spec tracking (run 244)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Spec audit**: no new Gloas PRs merged since run 243. Open PRs tracked: #4950 (by_root serve range, 4 approvals), #4892 (remove impossible branch, 2 approvals), #4898 (remove pending from tiebreaker), #4926, #4939, #4843, #4747 — all still open/unmerged
+- **PR readiness check**: #4892 and #4898 already implemented in vibehouse (is_supporting_vote_gloas uses debug_assert + equality check; tiebreaker handles PENDING at child selection level)
+- **PR #4950 impact**: extends by_root serve range — our handlers serve everything from the store without range checks, so we already comply with the extended range
+- **Clippy audit**: full workspace clippy with -D warnings passes clean (0 warnings)
+- **Runtime unwrap() audit**: all Gloas/ePBS code paths clean — no unwrap() violations in state_processing, fork_choice, beacon_chain Gloas methods, gloas_verification, execution_payload, or execution_bid_pool. Only unwrap()s found were in debug-only `dump_as_dot()` (dead code, not Gloas-related)
+- **Fork choice test coverage**: 50 unit tests in fork_choice.rs including 5 on_execution_bid tests, 11 on_payload_attestation tests, 4 on_execution_payload tests, and lifecycle interaction tests
+- **Nightly CI**: altair failure was infrastructure (moonrepo/setup-rust 502 downloading cargo-binstall), not a test failure. All other 25/26 jobs passed
+- **check_all_files_accessed exclusions reviewed**: ForkChoiceNode (internal proto_array type), MatrixEntry (DAS cell type), eip7805 (FOCIL), eip7732 (raw EIP for Gloas), heze (future fork) — all correctly excluded
+- **No code changes this run** — everything is spec-compliant, clean, and well-tested
+
 ### 2026-02-28 — nightly CI verification, spec audit, stale TODO cleanup (run 243)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
 - **Spec audit**: reviewed all recently merged Gloas PRs — no new merges since run 242
