@@ -1996,4 +1996,254 @@ mod tests {
             "Fulu state should not be a Gloas variant"
         );
     }
+
+    #[test]
+    fn gloas_epoch_processing_mixed_quorum_payments() {
+        // First half has a mix of payments: some above quorum, some below, some empty.
+        // Only the above-quorum ones should be promoted to withdrawals.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payments = vec![
+            make_payment(quorum + 1, 1_000_000_000, 0), // above → promoted
+            make_payment(quorum - 1, 2_000_000_000, 0), // below → not promoted
+            BuilderPendingPayment::default(),           // empty → not promoted
+            make_payment(quorum, 3_000_000_000, 0),     // exact → promoted
+            make_payment(0, 4_000_000_000, 0),          // zero weight → not promoted
+            make_payment(quorum + 1000, 5_000_000_000, 0), // well above → promoted
+            BuilderPendingPayment::default(),           // empty
+            make_payment(quorum - 1000, 6_000_000_000, 0), // below → not promoted
+        ];
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(payments);
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            3,
+            "exactly 3 payments should be promoted (above or at quorum)"
+        );
+        // Verify amounts match the promoted payments in order
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            1_000_000_000
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(1).unwrap().amount,
+            3_000_000_000
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(2).unwrap().amount,
+            5_000_000_000
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_exact_quorum_boundary() {
+        // Payment with weight exactly equal to the quorum threshold should be promoted.
+        // This tests the >= comparison in process_builder_pending_payments.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let at_quorum = make_payment(quorum, 7_000_000_000, 0);
+        let below_by_one = make_payment(quorum - 1, 8_000_000_000, 0);
+        let (mut state, spec) =
+            make_gloas_state_for_epoch_processing(vec![at_quorum, below_by_one]);
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "exactly-at-quorum should be promoted, one-below should not"
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            7_000_000_000
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_proposer_lookahead_updated() {
+        // Verify that Gloas epoch processing updates the proposer lookahead
+        // (inherited from Fulu) with valid proposer indices.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payment = make_payment(quorum, 1_000_000_000, 0);
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![payment]);
+
+        let before = state
+            .proposer_lookahead()
+            .unwrap()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+        let second_epoch_before: Vec<u64> = before[slots_per_epoch..].to_vec();
+
+        let conf = SinglePassConfig::enable_all();
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let after = state
+            .proposer_lookahead()
+            .unwrap()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+
+        // Length should be preserved
+        assert_eq!(
+            after.len(),
+            <E as EthSpec>::ProposerLookaheadSlots::to_usize(),
+            "lookahead length should be preserved"
+        );
+
+        // First epoch after should be the second epoch from before (shifted)
+        assert_eq!(
+            &after[..slots_per_epoch],
+            &second_epoch_before,
+            "lookahead should shift: first epoch after = second epoch before"
+        );
+
+        // All entries should be valid validator indices
+        let num_validators = state.validators().len();
+        for &proposer in &after {
+            assert!(
+                (proposer as usize) < num_validators,
+                "proposer index {} should be a valid validator index (< {})",
+                proposer,
+                num_validators
+            );
+        }
+    }
+
+    #[test]
+    fn gloas_epoch_processing_multi_builder_payments() {
+        // Payments targeting different builder indices should all be promoted
+        // independently when above quorum. Verify the withdrawal builder_index
+        // matches each payment's builder_index.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payments = vec![
+            make_payment(quorum, 1_000_000_000, 0),
+            make_payment(quorum + 500, 2_000_000_000, 1),
+            make_payment(quorum - 1, 3_000_000_000, 2), // below quorum
+            make_payment(quorum + 1, 4_000_000_000, 3),
+        ];
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(payments);
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            3,
+            "three of four payments should be promoted"
+        );
+        // Verify builder indices are preserved in the withdrawals
+        assert_eq!(
+            gloas
+                .builder_pending_withdrawals
+                .get(0)
+                .unwrap()
+                .builder_index,
+            0
+        );
+        assert_eq!(
+            gloas
+                .builder_pending_withdrawals
+                .get(1)
+                .unwrap()
+                .builder_index,
+            1
+        );
+        assert_eq!(
+            gloas
+                .builder_pending_withdrawals
+                .get(2)
+                .unwrap()
+                .builder_index,
+            3
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_double_epoch_rotation_chain() {
+        // Run epoch processing twice to verify that the rotation chain works:
+        // payments placed in the second half become first-half, then get evaluated
+        // on the second epoch transition.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+
+        // Put payments only in the second half (indices 8..15).
+        let mut payments = vec![BuilderPendingPayment::default(); 8];
+        payments.push(make_payment(quorum + 1, 10_000_000_000, 0));
+        for _ in 0..7 {
+            payments.push(BuilderPendingPayment::default());
+        }
+
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(payments);
+
+        // First epoch: no first-half payments to evaluate, second-half rotates forward
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            0,
+            "first epoch: no first-half payments, nothing promoted"
+        );
+        // The payment should now be in position 0 (rotated from position 8)
+        assert_eq!(
+            gloas.builder_pending_payments.get(0).unwrap().weight,
+            quorum + 1,
+            "payment should have rotated to first-half slot 0"
+        );
+
+        // Advance slot by one epoch for second processing
+        let new_slot = state.slot().safe_add(E::slots_per_epoch()).unwrap();
+        *state.slot_mut() = new_slot;
+        // Re-initialize total active balance for the new epoch
+        let epoch = new_slot.epoch(E::slots_per_epoch());
+        let total_active = NUM_VALIDATORS as u64 * BALANCE;
+        state.set_total_active_balance(epoch, total_active, &spec);
+
+        // Second epoch: now the rotated payment is in first half and meets quorum
+        let conf2 = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+        process_epoch_single_pass(&mut state, &spec, conf2).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "second epoch: rotated payment should be promoted"
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            10_000_000_000,
+            "promoted withdrawal should have the correct amount"
+        );
+    }
 }

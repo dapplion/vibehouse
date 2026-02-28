@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 process_epoch_single_pass Gloas builder payment/lookahead integration tests (run 214)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 213
+  - PR #4950 (extend by_root reqresp serve range) — informational, no vibehouse impact
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- Analyzed test coverage across all crates. Identified `process_epoch_single_pass` in single_pass.rs as having 6 existing Gloas tests covering basic dispatch/disable/rotation/full-config/below-quorum/fork-gate, but lacking edge cases for mixed quorum outcomes, exact boundary behavior, multi-builder payments, proposer lookahead interaction, and multi-epoch rotation chains.
+- **Added 5 tests** covering epoch processing Gloas integration edge cases in `single_pass.rs`:
+  1. `gloas_epoch_processing_mixed_quorum_payments` — 8-slot first half with mix of above-quorum, below-quorum, zero-weight, and empty payments. Verifies exactly 3 of 8 are promoted to withdrawals (above and at-quorum), in correct order with correct amounts. Tests the iteration over all SLOTS_PER_EPOCH entries with selective promotion.
+  2. `gloas_epoch_processing_exact_quorum_boundary` — two payments: one at exactly the quorum threshold, one at quorum-1. Verifies the >= comparison: exact-quorum is promoted, one-below is not. Tests the boundary condition in `payment.weight >= quorum`.
+  3. `gloas_epoch_processing_proposer_lookahead_updated` — runs full SinglePassConfig::enable_all() on a Gloas state and verifies that the proposer lookahead is shifted (second epoch becomes first) and all new entries are valid validator indices. Tests the Fulu-inherited proposer lookahead logic working correctly within the Gloas epoch processing pipeline.
+  4. `gloas_epoch_processing_multi_builder_payments` — 4 payments targeting different builder_index values (0, 1, 2, 3), 3 above quorum, 1 below. Verifies all 3 promoted withdrawals preserve their original builder_index. Tests that builder_index routing is independent and payments are evaluated per-slot, not per-builder.
+  5. `gloas_epoch_processing_double_epoch_rotation_chain` — places a single payment in position 8 (second half), runs epoch processing twice. First epoch: no promotions, payment rotates to position 0. Second epoch: rotated payment meets quorum and is promoted. Verifies the two-epoch lifecycle of a payment: enqueue → rotate → evaluate → promote. Exercises the state mutation across multiple epoch boundaries.
+- **All 11/11 Gloas single_pass tests pass** (6 existing + 5 new)
+- Clippy clean, cargo fmt clean
+
 ### 2026-02-28 — 5 fork choice on_execution_bid/on_payload_attestation/on_execution_payload integration tests (run 213)
 - Checked consensus-specs PRs: no new Gloas spec changes requiring code since run 212
   - Open PRs tracked: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (missing envelopes for index-1)
