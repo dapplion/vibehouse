@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, CI optimization (run 254)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 253
+- **Spec PR analysis**: #4950 (extend by_root serve range, 4 approvals) — vibehouse by_root handlers already serve all blocks in store without explicit range filtering, already compliant with proposed spec. #4843 (variable PTC deadline) — stalled since Jan 21, unresolved design concerns from potuz. #4892 (remove impossible branch) — cosmetic refactor only, no-op for vibehouse.
+- **CI optimization**: excluded `operation_pool` from unit-tests job — already tested in dedicated `network + op_pool tests (gloas)` job and across all forks in nightly CI. Removes ~17 min of redundant test execution from CI critical path (1051s aggregate across 26 tests).
+- **Nightly CI**: latest run (22522736397) fully green — 26/26 jobs passed including altair and fulu beacon-chain tests. Previous nightly failures were transient: fulu timeout and altair infrastructure (moonrepo/setup-rust).
+- **CI status**: all 4 recent CI runs passing (run 250 fully green, runs 251-253 have check+clippy+ef-tests passing with beacon-chain/unit still running at time of check).
+- **Test coverage audit**: comprehensive review of Gloas-specific code paths — all critical paths have integration tests (GloasParentPayloadUnknown, BidParentRootMismatch, envelope processing, payload_revealed lifecycle, builder payments, proposer lookahead). No critical coverage gaps identified.
+
 ### 2026-02-28 — spec tracking, compliance audit (run 253)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged

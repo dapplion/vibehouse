@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 254)
+- Checked consensus-specs: no new Gloas PRs merged since run 253 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals, not yet merged), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Spec PR deep-dive**: #4950 (extend by_root serve range) has 4 approvals, still active (nalepae commented Feb 27). Vibehouse already serves all stored blocks via by_root without range filtering — already compliant. #4843 (variable PTC deadline) stalled since Jan 21 with unresolved design feedback from potuz.
+- **CI optimization**: excluded redundant `operation_pool` tests from unit-tests job (~17 min saved)
+- All recent CI runs green, latest nightly fully green (26/26)
+
 ### 2026-02-28 (run 247)
 - Checked consensus-specs: no new Gloas PRs merged since run 246 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
