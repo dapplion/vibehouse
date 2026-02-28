@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, compliance audit (run 253)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 252
+- **Spec compliance audit**: verified `should_extend_payload` implementation against spec — all 4 conditions match (`is_payload_timely && is_payload_data_available`, `proposer_root == Root()`, `parent_root != root`, `is_parent_node_full`). Threshold constants `PAYLOAD_TIMELY_THRESHOLD` and `DATA_AVAILABILITY_TIMELY_THRESHOLD` both correctly set to `PTC_SIZE / 2` with strict-greater comparison.
+- **Clippy audit**: full workspace clippy with -D warnings passes clean (0 warnings)
+- **Nightly CI**: 25/26 jobs passed, beacon-chain-tests (fulu) still running (~32 min expected). All other forks green.
+- **CI status**: latest push (d90ed822) has check+clippy passing, other jobs running. Previous commits all green (e1aa1637 fully green, 4e654bbc 4/6 passing with 2 still running).
+- **Infrastructure note**: one intermittent `moonrepo/setup-rust@v1` failure on ed8ac922 CI run (network+op_pool job) — not a test failure, same infrastructure issue seen in previous nightly runs.
+- **No code changes this run** — everything is spec-compliant, clean, and well-tested
+
 ### 2026-02-28 — spec tracking, fix unbounded Gloas cache growth (run 252)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
