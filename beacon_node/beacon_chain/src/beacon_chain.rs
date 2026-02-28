@@ -4898,8 +4898,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             );
         }
 
-        // TODO(das) record custody column available timestamp
-
         let block_root = {
             // Capture the current span before moving into the blocking task
             let current_span = tracing::Span::current();

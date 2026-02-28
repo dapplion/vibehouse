@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — nightly CI verification, spec audit, stale TODO cleanup (run 243)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
+- **Spec audit**: reviewed all recently merged Gloas PRs — no new merges since run 242
+  - #4947 (proposer_preferences pre-fork subscription): already implemented
+  - #4948 (PayloadStatus constant reorder Empty=0, Full=1, Pending=2): already aligned
+  - #4918 (attestations require known payload status for index=1): already implemented in fork_choice.rs:1209-1217
+  - #4941 (execution proof uses beacon block not body): stub proofs, no change needed
+- Open Gloas spec PRs: #4950 (by_root serve range, 4 approvals), #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- **Nightly CI re-run**: triggered new nightly after fix c29b9d389. Results: 25/26 passed, 1 failure (altair — GitHub 502 infrastructure error, not a test failure). All beacon-chain tests for phase0, bellatrix, capella, deneb, electra, fulu passed. Fix confirmed working.
+- **Regular CI**: fix commit c29b9d389 fully green (all 5 jobs: check+clippy, ef-tests, unit tests, fork-specific tests, ci-success)
+- **Stale TODO removed**: `TODO(das) record custody column available timestamp` in beacon_chain.rs — already resolved by commit 0619cf6e4 which sets `blobs_available_timestamp` for data column blocks via `SystemTime::now()` in overflow_lru_cache.rs
+- **Files changed**: 1 (`beacon_node/beacon_chain/src/beacon_chain.rs`), removed 2 lines
+
 ### 2026-02-28 — spec tracking and CI verification (run 242)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
 - Audited all recently merged Gloas spec PRs since run 241:
