@@ -2578,14 +2578,23 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let beacon_block_root = verified_envelope.beacon_block_root();
         let signed_envelope = verified_envelope.envelope();
 
-        // Fetch the beacon block to extract the state_root, blob commitments, and
-        // parent_root. Load the state by block.state_root() rather than the cached head
-        // state — the envelope may arrive before fork choice updates the head (race
-        // condition), and using the head state would be wrong for a non-head block.
-        // Removing the old "not for current head" guard fixes the race condition where
-        // an envelope arriving milliseconds before the fork choice update was silently
-        // dropped, leaving the block permanently optimistic.
-        //
+        // Fetch the beacon block once — needed for both the newPayload EL call
+        // (blob commitments, parent_root) and the state transition (state_root).
+        // Load by block root rather than using the cached head state — the envelope
+        // may arrive before fork choice updates the head (race condition), and using
+        // the head state would be wrong for a non-head block.
+        let block = self
+            .store
+            .get_blinded_block(&beacon_block_root)
+            .map_err(Error::DBError)?
+            .ok_or_else(|| {
+                Error::EnvelopeError(format!(
+                    "Missing beacon block {:?} for envelope processing",
+                    beacon_block_root
+                ))
+            })?;
+        let block_state_root = block.message().state_root();
+
         // In stateless validation mode, skip the EL call entirely. The block remains
         // optimistic until sufficient execution proofs arrive via gossip subnets.
         if self.config.stateless_validation {
@@ -2600,18 +2609,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
 
             let envelope = &signed_envelope.message;
-
-            // Get the beacon block to extract blob_kzg_commitments and parent_root
-            let block = self
-                .store
-                .get_blinded_block(&beacon_block_root)
-                .map_err(Error::DBError)?
-                .ok_or_else(|| {
-                    Error::EnvelopeError(format!(
-                        "Missing beacon block {:?} for newPayload",
-                        beacon_block_root
-                    ))
-                })?;
 
             let bid = block
                 .message()
@@ -2712,25 +2709,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 signed_envelope.message.payload.block_hash,
             );
         }
-
-        // Apply the envelope state transition.
-        // Load the post-block state from the store using the block's state_root. This
-        // is correct regardless of whether the block is the current head — the envelope
-        // may arrive before fork choice updates the head (race condition), so using the
-        // cached head state could be wrong.
-        let block_state_root = {
-            let block = self
-                .store
-                .get_blinded_block(&beacon_block_root)
-                .map_err(Error::DBError)?
-                .ok_or_else(|| {
-                    Error::EnvelopeError(format!(
-                        "Missing beacon block {:?} for state transition",
-                        beacon_block_root
-                    ))
-                })?;
-            block.message().state_root()
-        };
 
         let mut state = self
             .store
