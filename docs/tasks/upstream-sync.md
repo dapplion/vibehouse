@@ -31,6 +31,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 238)
+- Checked consensus-specs: no new Gloas PRs merged since run 237 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (by_root serve range, 4 approvals), #4892 (fork choice cleanup, 2 approvals), #4898 (tiebreaker cleanup, 1 approval), #4926 (SLOT_DURATION_MS), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4747 (fast confirmation rule) — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- Reviewed upstream Lighthouse issues for Gloas relevance: #8912 (payload_lookahead), #8893 (state storage), #8888 (blinded envelopes), #8869 (block replayer), #8817 (SSE attributes) — all already addressed in vibehouse
+- **Safety audit**: all `.unwrap()` calls in consensus/state_processing and beacon_chain production code are in test code only; production paths clean since run 237 kzg_utils fix
+- **Fixed CI concurrency**: push-to-main CI runs were cancelling each other due to `cancel-in-progress: true` on shared `ci-refs/heads/main` group. Changed concurrency to use commit SHA for push events so each push gets independent CI run; PRs still cancel-in-progress
+- All tests green: 213/213 fork_choice + proto_array, 35/35 EF operations/epoch/sanity, zero clippy warnings
+
 ### 2026-02-28 (run 237)
 - Checked consensus-specs: no new Gloas PRs merged since run 236 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged

@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec compliance check, CI concurrency fix (run 238)
+- No new consensus-specs releases or merged Gloas PRs since run 237 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest)
+- Open Gloas spec PRs tracked: #4950 (by_root serve range, 4 approvals), #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- Safety audit: all `.unwrap()` in consensus/state_processing and beacon_chain production paths are test-only; production code clean
+- All tests green: 213/213 fork_choice + proto_array, 35/35 EF spec tests (operations/epoch/sanity), zero clippy warnings
+- **Fixed CI concurrency**: push-to-main runs were cancelling each other due to shared concurrency group. Each push now gets unique group (SHA-based) so runs complete independently; PR cancel-in-progress preserved
+- Reviewed upstream Lighthouse Gloas issues (#8912, #8893, #8888, #8869, #8817) — all already addressed in vibehouse
+
 ### 2026-02-28 — fix Gloas data column sidecar panics in kzg_utils (run 237)
 - No new consensus-specs releases or merged Gloas PRs since run 236 (latest master: 14e6ce5a, #4947/#4948 still latest merges)
 - Open Gloas spec PRs tracked: #4950 (by_root serve range), #4892 (fork choice cleanup), #4898 (tiebreaker cleanup), #4926 (SLOT_DURATION_MS), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4747 (fast confirmation rule)
