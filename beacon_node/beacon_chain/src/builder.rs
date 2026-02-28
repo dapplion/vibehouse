@@ -1056,6 +1056,7 @@ where
             observed_execution_bids: <_>::default(),
             execution_bid_pool: <_>::default(),
             observed_payload_attestations: <_>::default(),
+            observed_payload_envelopes: <_>::default(),
             execution_layer: self.execution_layer.clone(),
             genesis_validators_root,
             genesis_time,

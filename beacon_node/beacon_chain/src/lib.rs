@@ -48,6 +48,7 @@ pub mod observed_data_sidecars;
 mod observed_execution_bids;
 pub mod observed_operations;
 mod observed_payload_attestations;
+mod observed_payload_envelopes;
 mod observed_slashable;
 pub mod persisted_beacon_chain;
 pub mod persisted_custody;

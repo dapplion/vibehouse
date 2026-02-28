@@ -441,6 +441,10 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     /// Maintains a record of which payload attestations we've seen (for equivocation detection).
     pub observed_payload_attestations:
         Mutex<crate::observed_payload_attestations::ObservedPayloadAttestations<T::EthSpec>>,
+    /// Tracks block roots for which a valid payload envelope has already been accepted via gossip.
+    /// Spec: `[IGNORE] The node has not seen another valid SignedExecutionPayloadEnvelope for this block root`
+    pub observed_payload_envelopes:
+        Mutex<crate::observed_payload_envelopes::ObservedPayloadEnvelopes<T::EthSpec>>,
     /// Interfaces with the execution client.
     pub execution_layer: Option<ExecutionLayer<T::EthSpec>>,
     /// Stores information about the canonical head and finalized/justified checkpoints of the
@@ -7944,6 +7948,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             self.observed_payload_attestations
                 .lock()
                 .prune_old_slots(slot);
+            self.observed_payload_envelopes.lock().prune();
             self.prune_gloas_pools(slot);
 
             // Don't run heavy-weight tasks during sync.

@@ -305,6 +305,14 @@ pub enum PayloadEnvelopeError {
         envelope_slot: Slot,
         finalized_slot: Slot,
     },
+    /// We have already accepted a valid envelope for this block root.
+    ///
+    /// Spec: `[IGNORE] The node has not seen another valid
+    /// SignedExecutionPayloadEnvelope for this block root`
+    ///
+    /// ## Peer scoring
+    /// Duplicate message, ignore but don't penalize.
+    DuplicateEnvelope { block_root: Hash256 },
     /// Beacon chain error occurred during validation.
     BeaconChainError(BeaconChainError),
     /// State error occurred during validation.
@@ -695,6 +703,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
         drop(fork_choice);
 
+        // Check 1b: Deduplication — ignore if we already accepted a valid envelope
+        // for this block root.
+        // Spec: [IGNORE] The node has not seen another valid
+        // SignedExecutionPayloadEnvelope for this block root.
+        //
+        // Check early to avoid expensive block retrieval + signature verification
+        // for known duplicates. The root is only permanently recorded after all
+        // validation passes (see end of this function).
+        if self
+            .observed_payload_envelopes
+            .lock()
+            .is_known(&beacon_block_root)
+        {
+            return Err(PayloadEnvelopeError::DuplicateEnvelope {
+                block_root: beacon_block_root,
+            });
+        }
+
         // Check 2: Not prior to finalization
         let finalized_slot = self
             .canonical_head
@@ -782,6 +808,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 return Err(PayloadEnvelopeError::InvalidSignature);
             }
         }
+
+        // All validation passed — record this block root so future duplicate
+        // envelopes are ignored (spec IGNORE condition).
+        self.observed_payload_envelopes
+            .lock()
+            .observe_envelope(beacon_block_root);
 
         Ok(VerifiedPayloadEnvelope {
             envelope: signed_envelope,

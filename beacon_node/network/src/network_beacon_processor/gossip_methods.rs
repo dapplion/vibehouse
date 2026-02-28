@@ -3463,6 +3463,16 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            Err(PayloadEnvelopeError::DuplicateEnvelope { .. }) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    peer = %peer_id,
+                    "Ignoring duplicate payload envelope for block root"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
             Err(PayloadEnvelopeError::PriorToFinalization { .. }) => {
                 debug!(
                     ?beacon_block_root,
