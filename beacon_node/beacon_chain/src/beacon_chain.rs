@@ -2607,7 +2607,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .get_blinded_block(&beacon_block_root)
                 .map_err(Error::DBError)?
                 .ok_or_else(|| {
-                    Error::EnvelopeProcessingError(format!(
+                    Error::EnvelopeError(format!(
                         "Missing beacon block {:?} for newPayload",
                         beacon_block_root
                     ))
@@ -2618,9 +2618,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .body()
                 .signed_execution_payload_bid()
                 .map_err(|_| {
-                    Error::EnvelopeProcessingError(
-                        "Block is not a Gloas block (no bid)".to_string(),
-                    )
+                    Error::EnvelopeError("Block is not a Gloas block (no bid)".to_string())
                 })?;
 
             let versioned_hashes = bid
@@ -2642,9 +2640,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let payload_status = execution_layer
                 .notify_new_payload(new_payload_request)
                 .await
-                .map_err(|e| {
-                    Error::EnvelopeProcessingError(format!("newPayload failed: {:?}", e))
-                })?;
+                .map_err(|e| Error::EnvelopeError(format!("newPayload failed: {:?}", e)))?;
 
             match payload_status {
                 PayloadStatus::Valid => {
@@ -2689,7 +2685,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         ?validation_error,
                         "Execution payload deemed INVALID by EL"
                     );
-                    return Err(Error::EnvelopeProcessingError(
+                    return Err(Error::EnvelopeError(
                         "Execution payload invalid".to_string(),
                     ));
                 }
@@ -2702,7 +2698,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         ?validation_error,
                         "Execution payload has invalid block hash"
                     );
-                    return Err(Error::EnvelopeProcessingError(
+                    return Err(Error::EnvelopeError(
                         "Execution payload invalid block hash".to_string(),
                     ));
                 }
@@ -2728,7 +2724,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .get_blinded_block(&beacon_block_root)
                 .map_err(Error::DBError)?
                 .ok_or_else(|| {
-                    Error::EnvelopeProcessingError(format!(
+                    Error::EnvelopeError(format!(
                         "Missing beacon block {:?} for state transition",
                         beacon_block_root
                     ))
@@ -2741,7 +2737,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .get_state(&block_state_root, Some(signed_envelope.message.slot), false)
             .map_err(Error::DBError)?
             .ok_or_else(|| {
-                Error::EnvelopeProcessingError(format!(
+                Error::EnvelopeError(format!(
                     "Missing state {:?} for block {:?}",
                     block_state_root, beacon_block_root
                 ))
@@ -2758,7 +2754,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state_processing::VerifySignatures::False,
             &self.spec,
         )
-        .map_err(|e| Error::EnvelopeProcessingError(format!("{:?}", e)))?;
+        .map_err(Error::EnvelopeProcessingError)?;
 
         // Cache the post-envelope state in memory so that block verification (gossip
         // import) and block production load a state with the correct `latest_block_hash`.
@@ -2924,7 +2920,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .get_blinded_block(&beacon_block_root)
             .map_err(Error::DBError)?
             .ok_or_else(|| {
-                Error::EnvelopeProcessingError(format!(
+                Error::EnvelopeError(format!(
                     "Missing beacon block {:?} for self-build envelope processing",
                     beacon_block_root
                 ))
@@ -2955,9 +2951,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 .body()
                 .signed_execution_payload_bid()
                 .map_err(|_| {
-                    Error::EnvelopeProcessingError(
-                        "Block is not a Gloas block (no bid)".to_string(),
-                    )
+                    Error::EnvelopeError("Block is not a Gloas block (no bid)".to_string())
                 })?;
 
             let versioned_hashes = bid
@@ -2979,9 +2973,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let payload_status = execution_layer
                 .notify_new_payload(new_payload_request)
                 .await
-                .map_err(|e| {
-                    Error::EnvelopeProcessingError(format!("newPayload failed: {:?}", e))
-                })?;
+                .map_err(|e| Error::EnvelopeError(format!("newPayload failed: {:?}", e)))?;
 
             match payload_status {
                 PayloadStatus::Valid => {
@@ -3025,7 +3017,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         ?validation_error,
                         "Self-build execution payload deemed INVALID by EL"
                     );
-                    return Err(Error::EnvelopeProcessingError(
+                    return Err(Error::EnvelopeError(
                         "Self-build execution payload invalid".to_string(),
                     ));
                 }
@@ -3038,7 +3030,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         ?validation_error,
                         "Self-build execution payload has invalid block hash"
                     );
-                    return Err(Error::EnvelopeProcessingError(
+                    return Err(Error::EnvelopeError(
                         "Self-build execution payload invalid block hash".to_string(),
                     ));
                 }
@@ -3059,7 +3051,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let mut state = self
             .get_state(&state_root, Some(signed_envelope.message.slot), false)?
             .ok_or_else(|| {
-                Error::EnvelopeProcessingError(format!(
+                Error::EnvelopeError(format!(
                     "Missing post-block state {:?} for envelope state transition",
                     state_root
                 ))
@@ -3072,7 +3064,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state_processing::VerifySignatures::False,
             &self.spec,
         )
-        .map_err(|e| Error::EnvelopeProcessingError(format!("{:?}", e)))?;
+        .map_err(Error::EnvelopeProcessingError)?;
 
         // Cache the post-envelope state in memory. See process_payload_envelope for
         // the full explanation — cached under block's state_root to keep the

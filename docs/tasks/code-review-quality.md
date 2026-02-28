@@ -15,9 +15,9 @@ The loop has shipped a massive amount of code autonomously (100+ runs). Review t
 ### Phase 2: Architecture Review
 - [ ] Review public API surface — are things `pub` that shouldn't be?
 - [ ] Check module organization — any god-files that should be split?
-- [ ] Review error types — consistent error hierarchy? Good error messages?
-- [ ] Check for code duplication across Gloas fork variants
-- [ ] Review superstruct variant handling — any missing arms, fallthrough bugs?
+- [x] Review error types — consistent error hierarchy? Good error messages?
+- [x] Check for code duplication across Gloas fork variants
+- [x] Review superstruct variant handling — any missing arms, fallthrough bugs?
 
 ### Phase 3: Correctness Deep-Dive
 - [x] Cross-reference Gloas implementation against consensus-specs v1.7.0-alpha.2
@@ -152,3 +152,37 @@ Each loop iteration should:
 
 **Bug found and fixed**:
 - `GnosisEthSpec::MaxPayloadAttestations` was `U2` but the gnosis preset yaml and ChainSpec both say 4. This would have limited Gnosis Gloas blocks to 2 payload attestations instead of 4. **Fixed**: changed to `U4` in `eth_spec.rs:662`. All 711 types tests + 69 SSZ static EF tests pass.
+
+### Run 221: architecture review — superstruct variants, code duplication, error types
+
+**Scope**: Phase 2 sub-tasks: superstruct variant handling, code duplication across Gloas fork variants, error type consistency.
+
+**Superstruct variant handling audit**:
+- All primary superstruct types include Gloas variants (BeaconBlock, BeaconBlockBody, BeaconState, ExecutionPayload, ExecutionPayloadHeader, BuilderBid, SignedBeaconBlock, LightClientUpdate, LightClientHeader, LightClientBootstrap, DataColumnSidecar)
+- All `ForkName` match expressions explicitly handle Gloas — no missing arms
+- Intentional field omissions documented: `blob_kzg_commitments` removed from Gloas body (moved to bid), `execution_requests` removed (moved to envelope)
+- Wildcard `_ =>` patterns audited — none silently catching Gloas in consensus-critical paths
+- **No issues found.**
+
+**Code duplication audit**:
+- Superstruct deserialization arms (Fulu vs Gloas): identical logic but framework requires separate arms. Cannot consolidate — superstruct limitation.
+- Test helpers (`make_gloas_state`/`make_fulu_state`): intentionally different (ePBS-specific fields).
+- RPC protocol limits already correctly grouped: `Electra | Fulu | Gloas`.
+- **No actionable duplication found.**
+
+**Error type consistency audit**:
+- `BeaconChainError::EnvelopeProcessingError(String)` was wrapping `state_processing::EnvelopeProcessingError` via `format!("{:?}", e)`, losing structured error information.
+- **Fixed**: Split into two variants:
+  - `EnvelopeProcessingError(EnvelopeProcessingError)` — wraps the structured state_processing error type directly
+  - `EnvelopeError(String)` — for ad-hoc beacon_chain-level envelope errors (missing blocks, newPayload failures, etc.)
+- The two `process_execution_payload_envelope` call sites now use `.map_err(Error::EnvelopeProcessingError)?` instead of `format!("{:?}", e)`
+- Ad-hoc string errors (13 call sites) migrated to `EnvelopeError`
+- `BlockProductionError::EnvelopeConstructionFailed(String)` kept as-is — mixed usage prevents clean migration
+- All 285 Gloas beacon_chain tests pass, clippy clean, fmt clean
+
+**Phase 2 checklist update**:
+- [x] Review superstruct variant handling — any missing arms, fallthrough bugs?
+- [x] Check for code duplication across Gloas fork variants
+- [x] Review error types — consistent error hierarchy? Good error messages?
+- [ ] Review public API surface — are things `pub` that shouldn't be?
+- [ ] Check module organization — any god-files that should be split?

@@ -18,6 +18,7 @@ use ssz_types::Error as SszTypesError;
 use state_processing::{
     BlockProcessingError, BlockReplayError, EpochProcessingError, SlotProcessingError,
     block_signature_verifier::Error as BlockSignatureVerifierError,
+    envelope_processing::EnvelopeProcessingError,
     per_block_processing::errors::{
         AttestationValidationError, AttesterSlashingValidationError,
         BlsExecutionChangeValidationError, ExitValidationError, ProposerSlashingValidationError,
@@ -248,7 +249,8 @@ pub enum BeaconChainError {
     },
     SkipProposerPreparation,
     FailedColumnCustodyInfoUpdate,
-    EnvelopeProcessingError(String),
+    EnvelopeProcessingError(EnvelopeProcessingError),
+    EnvelopeError(String),
     PayloadAttestationValidatorNotInPtc {
         validator_index: u64,
         slot: Slot,
