@@ -87,8 +87,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: beacon_chain tests (gloas)
         run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env,slasher/lmdb" -p beacon_chain
-      - name: http_api tests (fulu)
-        run: env FORK_NAME=fulu cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
+      - name: http_api tests (gloas)
+        run: env FORK_NAME=gloas cargo nextest run --release --features "beacon_chain/fork_from_env" -p http_api
       - name: network tests (gloas)
         run: env FORK_NAME=gloas cargo nextest run --release --features "fork_from_env" -p network
       - name: operation_pool tests (gloas)

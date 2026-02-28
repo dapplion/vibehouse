@@ -1,0 +1,122 @@
+# CI tests the latest fork (gloas) on every push. This nightly workflow
+# covers all prior forks to catch regressions introduced by fork-specific changes.
+name: nightly-tests
+
+on:
+  schedule:
+    # Run at 8:30 AM UTC every day
+    - cron: '30 8 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: "-D warnings -C debuginfo=0"
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  setup-matrix:
+    name: setup-matrix
+    runs-on: ubuntu-latest
+    outputs:
+      forks: ${{ steps.set-matrix.outputs.forks }}
+    steps:
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # All forks except gloas (which is tested on every push via ci.yml).
+          echo 'forks=["phase0", "altair", "bellatrix", "capella", "deneb", "electra", "fulu"]' >> $GITHUB_OUTPUT
+
+  beacon-chain-tests:
+    name: beacon-chain-tests (${{ matrix.fork }})
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        fork: ${{ fromJson(needs.setup-matrix.outputs.forks) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run beacon_chain tests for ${{ matrix.fork }}
+        run: make test-beacon-chain-${{ matrix.fork }}
+        timeout-minutes: 60
+
+  op-pool-tests:
+    name: op-pool-tests (${{ matrix.fork }})
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        fork: ${{ fromJson(needs.setup-matrix.outputs.forks) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run operation_pool tests for ${{ matrix.fork }}
+        run: make test-op-pool-${{ matrix.fork }}
+        timeout-minutes: 60
+
+  network-tests:
+    name: network-tests (${{ matrix.fork }})
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        fork: ${{ fromJson(needs.setup-matrix.outputs.forks) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run network tests for ${{ matrix.fork }}
+        run: make test-network-${{ matrix.fork }}
+        timeout-minutes: 60
+
+  http-api-tests:
+    name: http-api-tests (${{ matrix.fork }})
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        # CI tests gloas on every push. Cover the other recent forks here.
+        fork: ["electra", "fulu"]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run http_api tests for ${{ matrix.fork }}
+        run: make test-http-api-${{ matrix.fork }}
+        timeout-minutes: 60
