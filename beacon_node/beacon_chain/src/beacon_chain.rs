@@ -7045,7 +7045,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                         let signed_bid = SignedExecutionPayloadBid {
                             message: execution_payload_bid,
-                            signature: Signature::infinity().expect("infinity signature is valid"),
+                            signature: Signature::infinity().map_err(|e| {
+                                BlockProductionError::InvalidBlockVariant(format!(
+                                    "failed to create infinity signature: {e:?}"
+                                ))
+                            })?,
                         };
 
                         (signed_bid, maybe_blobs_and_proofs, execution_payload_value)
