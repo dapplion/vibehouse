@@ -1062,7 +1062,13 @@ impl<E: EthSpec> BeaconState<E> {
                 .get(shuffled_index)
                 .ok_or(Error::ShuffleIndexOutOfBounds(shuffled_index))?;
             let random_value = self.shuffling_random_value(i, seed)?;
-            let effective_balance = self.get_effective_balance(candidate_index)?;
+            // Use the epoch cache for O(1) balance lookups when available,
+            // falling back to the tree-backed validator list.
+            let effective_balance = match self.epoch_cache().get_effective_balance(candidate_index)
+            {
+                Ok(balance) => balance,
+                Err(_) => self.get_effective_balance(candidate_index)?,
+            };
             if effective_balance.safe_mul(max_random_value)?
                 >= max_effective_balance.safe_mul(random_value)?
             {

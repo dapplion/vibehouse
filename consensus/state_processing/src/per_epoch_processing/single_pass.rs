@@ -480,7 +480,6 @@ pub fn process_epoch_single_pass<E: EthSpec>(
     Ok(summary)
 }
 
-// TODO(EIP-7917): use balances cache
 pub fn process_proposer_lookahead<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
