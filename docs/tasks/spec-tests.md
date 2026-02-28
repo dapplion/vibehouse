@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec compliance validation (run 236)
+- Full local test validation: 81/81 fork_choice, 132/132 proto_array, 8/8 EF fork choice, 35/35 EF operations/epoch/sanity
+- No new consensus-specs releases or merged Gloas PRs since run 235
+- Tracked open spec PRs: #4950 (4 approvals, by_root serve range), #4892 (2 approvals, fork choice cleanup), #4898 (1 approval, tiebreaker cleanup)
+- Clippy: zero warnings across entire workspace
+- Nightly CI: will include electra/fulu from tomorrow (workflow update from run 235 wasn't picked up by today's cron trigger — it ran before the commit was pushed)
+
 ### 2026-02-28 — fix nightly CI + CI http_api fork coverage (run 235)
 - Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last, master at 14e6ce5a)
   - Open Gloas PRs: #4950 (by_root serve range, 4 approvals), #4892 (remove impossible branch, 2 approvals — already aligned), #4898 (remove pending from tiebreaker, 1 approval — already aligned), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4843 (variable PTC deadline), #4939 (request missing envelopes), #4630 (SSZ types), #4840 (eip7843)

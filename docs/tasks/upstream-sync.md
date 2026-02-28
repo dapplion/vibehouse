@@ -31,6 +31,16 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 236)
+- Checked consensus-specs commits since run 227: no new Gloas-impacting PRs merged
+  - Latest commit `14e6ce5a` (#4947, pre-fork subscription note) — already assessed in run 227
+  - No new consensus-specs releases since v1.7.0-alpha.2 (2026-02-03)
+- Open Gloas spec PRs tracked: #4950 (extend by_root serve range, 4 approvals), #4898 (remove pending from tiebreaker, 1 approval), #4892 (remove impossible branch, 2 approvals), #4926 (SLOT_DURATION_MS, 1 approval), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4747 (fast confirmation rule)
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- All tests validated locally: 81/81 fork_choice, 132/132 proto_array, 8/8 EF fork choice, 35/35 EF operations/epoch/sanity
+- Nightly CI: all 16 jobs passing (tomorrow's run will include electra/fulu coverage from run 235 workflow update)
+- Codebase fully up to date with all merged Gloas spec changes
+
 ### 2026-02-28 (run 227)
 - Checked all consensus-specs PRs merged since run 68 (2026-02-24):
   - #4947 (pre-fork subscription note for proposer_preferences) merged 2026-02-26 — documentation-only, no code changes needed
