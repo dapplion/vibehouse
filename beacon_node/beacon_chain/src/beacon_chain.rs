@@ -3284,6 +3284,21 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         pool.retain(|&s, _| s >= prune_before);
     }
 
+    /// Retrieves all payload attestations from the pool, optionally filtering by slot.
+    ///
+    /// Used by the `GET /eth/v1/beacon/pool/payload_attestations` REST API endpoint.
+    pub fn get_all_payload_attestations(
+        &self,
+        slot_filter: Option<Slot>,
+    ) -> Vec<PayloadAttestation<T::EthSpec>> {
+        let pool = self.payload_attestation_pool.lock();
+        if let Some(slot) = slot_filter {
+            pool.get(&slot).cloned().unwrap_or_default()
+        } else {
+            pool.values().flatten().cloned().collect()
+        }
+    }
+
     /// Retrieves payload attestations from the pool for block inclusion at the given slot.
     ///
     /// Returns attestations targeting `slot - 1` (the previous slot) with the correct

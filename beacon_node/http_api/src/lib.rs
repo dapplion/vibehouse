@@ -2624,6 +2624,23 @@ pub fn serve<T: BeaconChainTypes>(
             },
         );
 
+    // GET beacon/pool/payload_attestations?slot
+    let get_beacon_pool_payload_attestations = beacon_pool_path
+        .clone()
+        .and(warp::path("payload_attestations"))
+        .and(warp::path::end())
+        .and(warp::query::<api_types::PayloadAttestationPoolQuery>())
+        .then(
+            |task_spawner: TaskSpawner<T::EthSpec>,
+             chain: Arc<BeaconChain<T>>,
+             query: api_types::PayloadAttestationPoolQuery| {
+                task_spawner.blocking_json_task(Priority::P1, move || {
+                    let attestations = chain.get_all_payload_attestations(query.slot);
+                    Ok(api_types::GenericResponse::from(attestations))
+                })
+            },
+        );
+
     // POST beacon/pool/proposer_preferences
     //
     // Accepts a signed proposer preferences message (Gloas ePBS).
@@ -5568,6 +5585,7 @@ pub fn serve<T: BeaconChainTypes>(
                 .uor(get_blobs)
                 .uor(get_beacon_execution_payload_envelope)
                 .uor(get_beacon_pool_attestations)
+                .uor(get_beacon_pool_payload_attestations)
                 .uor(get_beacon_pool_attester_slashings)
                 .uor(get_beacon_pool_proposer_slashings)
                 .uor(get_beacon_pool_voluntary_exits)

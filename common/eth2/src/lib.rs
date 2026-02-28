@@ -18,8 +18,8 @@ use self::mixin::{RequestAccept, ResponseOptional};
 use self::types::{Error as ResponseError, *};
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
 use ::types::{
-    PayloadAttestationData, PayloadAttestationMessage, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
+    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
 };
 use derivative::Derivative;
 use futures::Stream;
@@ -2773,6 +2773,27 @@ impl BeaconNodeHttpClient {
             .await?;
 
         Ok(())
+    }
+
+    /// `GET v1/beacon/pool/payload_attestations?slot`
+    pub async fn get_beacon_pool_payload_attestations<E: EthSpec>(
+        &self,
+        slot: Option<Slot>,
+    ) -> Result<GenericResponse<Vec<PayloadAttestation<E>>>, Error> {
+        let mut path = self.eth_path(V1)?;
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("beacon")
+            .push("pool")
+            .push("payload_attestations");
+
+        if let Some(slot) = slot {
+            path.query_pairs_mut()
+                .append_pair("slot", &slot.to_string());
+        }
+
+        self.get(path).await
     }
 
     /// `GET v1/validator/aggregate_attestation?slot,attestation_data_root`
