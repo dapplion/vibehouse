@@ -3559,6 +3559,78 @@ async fn gloas_self_build_envelope_missing_block_root_errors() {
     );
 }
 
+/// When the post-block state has been evicted from the store/cache,
+/// process_self_build_envelope should return a clear "Missing post-block state" error.
+/// This mirrors the gloas_process_envelope_missing_state_returns_error test
+/// but covers the self-build path which uses get_state (keyed by state_root)
+/// rather than the gossip path.
+#[tokio::test]
+async fn gloas_self_build_envelope_missing_state_errors() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block (state gets stored)
+    harness
+        .process_block(next_slot, block_root, block_contents.clone())
+        .await
+        .expect("block import should succeed");
+
+    // Get the block's state root before evicting
+    let block_state_root = block_contents.0.message().state_root();
+
+    // Evict the post-block state from the store
+    harness
+        .chain
+        .store
+        .delete_state(&block_state_root, next_slot)
+        .expect("should delete state");
+
+    // Verify state is gone
+    assert!(
+        harness
+            .chain
+            .get_state(&block_state_root, Some(next_slot), false)
+            .expect("should not error")
+            .is_none(),
+        "state should be gone after deletion"
+    );
+
+    // process_self_build_envelope should fail with "Missing post-block state"
+    let result = harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await;
+
+    let err = result.expect_err("should fail with missing state");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("Missing post-block state"),
+        "error should mention 'Missing post-block state', got: {}",
+        err_msg
+    );
+
+    // Fork choice should have payload_revealed = true (set before state lookup fails)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true (fork choice was updated before state transition failed)"
+        );
+    }
+}
+
 /// After process_self_build_envelope, producing the next block should work
 /// correctly — verifying that the state transition and cache updates leave
 /// the chain in a valid state for continued block production.
