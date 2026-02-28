@@ -14,6 +14,7 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
 - [x] Envelope DB persistence: `DBColumn::BeaconEnvelope` + `StoreOp::PutPayloadEnvelope` / `DeletePayloadEnvelope` + pruning on finalization
 - [x] `GET /eth/v1/beacon/execution_payload_envelope/{block_id}` — returns stored `SignedExecutionPayloadEnvelope` for any block
 - [x] Blinded blocks endpoint: verified working for Gloas — `try_into_full_block(None)` is correct because Gloas blocks have no execution payload in the body (the Blinded/Full distinction is purely a phantom type marker)
+- [x] `GET /eth/v1/beacon/pool/payload_attestations?slot` — returns all payload attestations from pool, optional slot filter
 
 ## Progress log
 
@@ -109,3 +110,16 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
   - `beacon_node/http_api/src/aggregate_attestation.rs`: Accept header + SSZ branch
   - `common/eth2/src/types.rs`: SSZ derives on `ValidatorIdentityData`
 - 212/212 http_api tests pass, 34/34 eth2 tests pass, full workspace clippy clean
+
+### 2026-02-28 — GET payload attestations pool endpoint
+- **Endpoint**: `GET /eth/v1/beacon/pool/payload_attestations?slot`
+- **What it does**: Returns all payload attestations currently in the pool, optionally filtered by slot. This complements the existing `POST /eth/v1/beacon/pool/payload_attestations` endpoint which accepts `PayloadAttestationMessage` submissions.
+- **Why**: Part of beacon-APIs spec (PR #552). Allows external tools, validators, and monitoring systems to query the current payload attestation pool state — useful for debugging PTC behavior and payload timeliness.
+- **Response**: `{ "data": [PayloadAttestation, ...] }` — returns aggregated `PayloadAttestation` objects (with aggregation_bits, data, and signature).
+- **Query parameters**: `slot` (optional) — when provided, only returns attestations targeting that slot.
+- **Files changed**: 4 files
+  - `beacon_node/beacon_chain/src/beacon_chain.rs`: Added `get_all_payload_attestations(slot_filter)` method
+  - `beacon_node/http_api/src/lib.rs`: Added GET handler + route wiring
+  - `common/eth2/src/lib.rs`: Added `get_beacon_pool_payload_attestations` client method + `PayloadAttestation` import
+  - `common/eth2/src/types.rs`: Added `PayloadAttestationPoolQuery` struct
+- 226/226 http_api tests pass
