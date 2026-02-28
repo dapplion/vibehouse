@@ -400,8 +400,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(ExecutionBidError::InactiveBuilder { builder_index });
         }
 
-        // Check 2b: Builder has sufficient balance
-        if builder.balance < bid.message.value {
+        // Check 2b: Builder has sufficient balance (can_builder_cover_bid)
+        // Spec: [IGNORE] bid.value <= builder's excess balance
+        if !state_processing::per_block_processing::gloas::can_builder_cover_bid(
+            state,
+            builder_index,
+            bid.message.value,
+            &self.spec,
+        )
+        .map_err(BeaconChainError::BeaconStateError)?
+        {
             return Err(ExecutionBidError::InsufficientBuilderBalance {
                 builder_index,
                 balance: builder.balance,

@@ -70,29 +70,15 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         }
 
         // Verify that the builder has funds to cover the bid (can_builder_cover_bid)
-        // Spec: get_pending_balance_to_withdraw_for_builder
-        let mut pending_withdrawals_amount = 0u64;
-        for withdrawal in state_gloas.builder_pending_withdrawals.iter() {
-            if withdrawal.builder_index == builder_index {
-                pending_withdrawals_amount =
-                    pending_withdrawals_amount.saturating_add(withdrawal.amount);
+        if !can_builder_cover_bid(state, builder_index, amount, spec).map_err(|_| {
+            BlockProcessingError::PayloadBidInvalid {
+                reason: "failed to check builder balance".into(),
             }
-        }
-        for payment in state_gloas.builder_pending_payments.iter() {
-            if payment.withdrawal.builder_index == builder_index {
-                pending_withdrawals_amount =
-                    pending_withdrawals_amount.saturating_add(payment.withdrawal.amount);
-            }
-        }
-        // Spec: min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
-        let min_balance = spec
-            .min_deposit_amount
-            .saturating_add(pending_withdrawals_amount);
-        if builder.balance < min_balance || builder.balance.saturating_sub(min_balance) < amount {
+        })? {
             return Err(BlockProcessingError::PayloadBidInvalid {
                 reason: format!(
-                    "builder balance {} insufficient for bid value {} (min_balance {})",
-                    builder.balance, amount, min_balance
+                    "builder balance {} insufficient for bid value {}",
+                    builder.balance, amount
                 ),
             });
         }
@@ -225,6 +211,34 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     state_gloas.latest_execution_payload_bid = bid.clone();
 
     Ok(())
+}
+
+/// Checks whether a builder has sufficient balance to cover a bid.
+///
+/// Returns true if the builder's balance minus the minimum required balance
+/// (MIN_DEPOSIT_AMOUNT + pending withdrawals) is >= the bid amount.
+///
+/// Spec: `can_builder_cover_bid(state, builder_index, amount)`
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md>
+pub fn can_builder_cover_bid<E: EthSpec>(
+    state: &BeaconState<E>,
+    builder_index: u64,
+    bid_amount: u64,
+    spec: &ChainSpec,
+) -> Result<bool, BeaconStateError> {
+    let builder = state
+        .builders()?
+        .get(builder_index as usize)
+        .ok_or(BeaconStateError::UnknownBuilder(builder_index))?;
+    let pending_withdrawals_amount =
+        get_pending_balance_to_withdraw_for_builder(state, builder_index)?;
+    let min_balance = spec
+        .min_deposit_amount
+        .saturating_add(pending_withdrawals_amount);
+    if builder.balance < min_balance {
+        return Ok(false);
+    }
+    Ok(builder.balance.saturating_sub(min_balance) >= bid_amount)
 }
 
 /// Processes a payload attestation from the PTC (Payload Timeliness Committee).
@@ -963,7 +977,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
 /// for the given `builder_index`.
 ///
 /// Spec: `get_pending_balance_to_withdraw_for_builder`
-pub(crate) fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
+pub fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
     state: &BeaconState<E>,
     builder_index: u64,
 ) -> Result<u64, BeaconStateError> {

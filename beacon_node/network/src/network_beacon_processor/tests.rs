@@ -3665,7 +3665,7 @@ async fn test_gloas_gossip_bid_duplicate_ignored() {
     }
 
     // Builder 0: deposit_epoch=0, balance=1M. Need finalization (deposit_epoch < finalized_epoch).
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -3713,7 +3713,7 @@ async fn test_gloas_gossip_bid_equivocation_rejected() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -3774,7 +3774,7 @@ async fn test_gloas_gossip_bid_invalid_parent_root_ignored() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = rig.chain.slot().unwrap();
 
     let bid_msg = ExecutionPayloadBid {
@@ -3808,8 +3808,8 @@ async fn test_gloas_gossip_bid_insufficient_balance_ignored() {
         return;
     }
 
-    // Builder 0 with very low balance (10 gwei)
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 10)]).await;
+    // Builder 0 with balance = MIN_DEPOSIT_AMOUNT (excess = 0)
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -3817,7 +3817,7 @@ async fn test_gloas_gossip_bid_insufficient_balance_ignored() {
         slot: current_slot,
         execution_payment: 1,
         builder_index: 0,
-        value: 1_000_000, // far exceeds builder balance of 10
+        value: 1_000_000, // exceeds builder excess balance of 0
         parent_block_root: head.beacon_block_root,
         ..Default::default()
     };
@@ -3843,7 +3843,7 @@ async fn test_gloas_gossip_bid_invalid_signature_rejected() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -3897,7 +3897,7 @@ async fn test_gloas_gossip_bid_valid_accepted() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -3935,7 +3935,7 @@ async fn test_gloas_gossip_bid_no_preferences_ignored() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -3972,7 +3972,7 @@ async fn test_gloas_gossip_bid_fee_recipient_mismatch_rejected() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
@@ -4013,7 +4013,7 @@ async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
         return;
     }
 
-    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 

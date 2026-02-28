@@ -10858,19 +10858,21 @@ async fn gloas_process_envelope_missing_block_returns_error() {
 // Execution bid gossip: InsufficientBuilderBalance
 // =============================================================================
 
-/// A bid whose `value` exceeds the builder's registered balance is rejected
-/// with `InsufficientBuilderBalance`. This guard prevents builders from
-/// offering more value than their deposit covers — accepting such a bid would
-/// let a builder commit to a payment they cannot fulfill, leaving the proposer
-/// unpaid after revealing the payload.
+/// A bid whose `value` exceeds the builder's excess balance (balance - MIN_DEPOSIT_AMOUNT
+/// - pending_withdrawals) is rejected with `InsufficientBuilderBalance`.
+///
+/// The gossip check uses `can_builder_cover_bid` which accounts for the minimum deposit
+/// floor and pending withdrawal obligations: excess = balance - MIN_DEPOSIT_AMOUNT - pending.
+/// A builder at exactly MIN_DEPOSIT_AMOUNT has excess = 0, so any bid > 0 is rejected.
 ///
 /// The balance check (check 2b) runs after the builder-exists and is-active
 /// checks but before equivocation detection, parent root, proposer preferences,
 /// and signature verification — so we don't need valid signatures or preferences.
 #[tokio::test]
 async fn gloas_bid_gossip_rejects_insufficient_builder_balance() {
-    // Builder 0: deposit_epoch=0, balance=100 (very low)
-    let harness = gloas_harness_with_builders(&[(0, 100)]);
+    // Builder 0: deposit_epoch=0, balance=MIN_DEPOSIT_AMOUNT (excess = 0)
+    let balance = 1_000_000_000; // MIN_DEPOSIT_AMOUNT
+    let harness = gloas_harness_with_builders(&[(0, balance)]);
     // Extend to finalize so the builder becomes active (deposit_epoch < finalized_epoch)
     Box::pin(harness.extend_slots(64)).await;
 
@@ -10886,26 +10888,25 @@ async fn gloas_bid_gossip_rejects_insufficient_builder_balance() {
         .unwrap()
         .get(0)
         .expect("builder 0 should exist");
-    assert_eq!(builder.balance, 100);
+    assert_eq!(builder.balance, balance);
     assert!(
         builder.is_active_at_finalized_epoch(state.finalized_checkpoint().epoch, &harness.spec),
         "builder should be active after finalization"
     );
 
-    // Create a bid with value=200, exceeding the builder's balance of 100.
-    // make_external_bid sets execution_payment = value, which passes the
-    // zero-payment check. builder_index=0 passes the exists/active checks.
+    // Create a bid with value=200. The builder's excess balance is 0
+    // (balance = MIN_DEPOSIT_AMOUNT, no pending withdrawals), so this should fail.
     let bid = make_external_bid(&state, head_root, next_slot, 0, 200);
 
-    let err = assert_bid_rejected(&harness, bid, "bid value exceeds builder balance");
+    let err = assert_bid_rejected(&harness, bid, "bid value exceeds builder excess balance");
     match err {
         ExecutionBidError::InsufficientBuilderBalance {
             builder_index,
-            balance,
+            balance: reported_balance,
             bid_value,
         } => {
             assert_eq!(builder_index, 0);
-            assert_eq!(balance, 100);
+            assert_eq!(reported_balance, balance);
             assert_eq!(bid_value, 200);
         }
         other => panic!("expected InsufficientBuilderBalance, got {:?}", other),

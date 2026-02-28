@@ -364,7 +364,7 @@ async fn bid_slot_one_behind_rejected() {
 async fn bid_inactive_builder() {
     // Builder with deposit_epoch=5, finalized_epoch=0 at genesis → 5 < 0 is false → inactive
     // No need for finalization since the builder's deposit_epoch is in the future
-    let harness = gloas_harness_with_builders(1, &[(5, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(1, &[(5, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let mut bid = SignedExecutionPayloadBid::<E>::empty();
@@ -391,8 +391,11 @@ const BLOCKS_TO_FINALIZE: usize = 128;
 #[tokio::test]
 async fn bid_insufficient_builder_balance() {
     // Active builder (deposit_epoch=0) needs finalized_epoch > 0 to be active.
-    // Builder[0] has balance=50, Builder[1] has balance=1_000_000 (for other tests to reuse)
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 50), (0, 1_000_000)]).await;
+    // Builder[0] has balance = MIN_DEPOSIT_AMOUNT (1_000_000_000), so excess = 0.
+    // Any bid value > 0 should fail the can_builder_cover_bid check.
+    let balance = 1_000_000_000; // exactly MIN_DEPOSIT_AMOUNT, excess = 0
+    let harness =
+        gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, balance), (0, 2_000_000_000)]).await;
 
     let finalized_epoch = harness
         .chain
@@ -411,7 +414,7 @@ async fn bid_insufficient_builder_balance() {
     bid.message.slot = current_slot;
     bid.message.execution_payment = 1;
     bid.message.builder_index = 0;
-    bid.message.value = 100; // exceeds balance of 50
+    bid.message.value = 100; // exceeds excess balance of 0
 
     let err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
@@ -422,8 +425,8 @@ async fn bid_insufficient_builder_balance() {
             err,
             ExecutionBidError::InsufficientBuilderBalance {
                 builder_index: 0,
-                balance: 50,
                 bid_value: 100,
+                ..
             }
         ),
         "expected InsufficientBuilderBalance, got {:?}",
@@ -434,7 +437,7 @@ async fn bid_insufficient_builder_balance() {
 #[tokio::test]
 async fn bid_duplicate_via_gossip_path() {
     // Active builder with sufficient balance (needs finalization for active)
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let mut bid = SignedExecutionPayloadBid::<E>::empty();
@@ -465,7 +468,7 @@ async fn bid_duplicate_via_gossip_path() {
 #[tokio::test]
 async fn bid_equivocation_via_gossip_path() {
     // Active builder with sufficient balance
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     // Pre-seed the observation tracker with a different bid root for same builder/slot
@@ -502,7 +505,7 @@ async fn bid_equivocation_via_gossip_path() {
 #[tokio::test]
 async fn bid_invalid_parent_root() {
     // Active builder with sufficient balance, bid passes all checks except parent root
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let mut bid = SignedExecutionPayloadBid::<E>::empty();
@@ -526,7 +529,7 @@ async fn bid_invalid_parent_root() {
 #[tokio::test]
 async fn bid_invalid_signature() {
     // Active builder, correct parent root, but invalid signature
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let head = harness.chain.head_snapshot();
@@ -562,7 +565,7 @@ async fn bid_invalid_signature() {
 #[tokio::test]
 async fn bid_valid_signature_passes() {
     // Active builder, correct parent root, valid signature → should pass all checks
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
     let spec = &harness.chain.spec;
 
@@ -1475,8 +1478,10 @@ async fn attestation_payload_not_present_passes() {
 
 #[tokio::test]
 async fn bid_balance_exactly_sufficient_passes() {
-    // Builder has balance=100, bid value=100 — should pass (not insufficient)
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 100)]).await;
+    // Builder has balance = MIN_DEPOSIT_AMOUNT + 100, bid value = 100.
+    // Excess balance = balance - MIN_DEPOSIT_AMOUNT = 100, which exactly covers the bid.
+    let balance = 1_000_000_100; // MIN_DEPOSIT_AMOUNT (1_000_000_000) + 100
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, balance)]).await;
     let current_slot = harness.chain.slot().unwrap();
     let spec = &harness.chain.spec;
 
@@ -1525,8 +1530,10 @@ async fn bid_balance_exactly_sufficient_passes() {
 
 #[tokio::test]
 async fn bid_balance_one_over_rejected() {
-    // Builder has balance=100, bid value=101 — should be rejected
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 100)]).await;
+    // Builder has balance = MIN_DEPOSIT_AMOUNT + 100 (excess = 100), bid value = 101 — should be rejected.
+    // The excess balance (100) is 1 less than the bid value (101).
+    let balance = 1_000_000_100; // MIN_DEPOSIT_AMOUNT (1_000_000_000) + 100
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, balance)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let head = harness.chain.head_snapshot();
@@ -1541,16 +1548,16 @@ async fn bid_balance_one_over_rejected() {
 
     let err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
-        "should reject bid exceeding balance by 1",
+        "should reject bid exceeding excess balance by 1",
     );
     assert!(
         matches!(
             err,
             ExecutionBidError::InsufficientBuilderBalance {
                 builder_index: 0,
-                balance: 100,
+                balance,
                 bid_value: 101,
-            }
+            } if balance == 1_000_000_100
         ),
         "expected InsufficientBuilderBalance, got {:?}",
         err
@@ -1565,7 +1572,7 @@ async fn bid_balance_one_over_rejected() {
 async fn envelope_external_builder_valid_signature_passes() {
     // Build a chain with an external builder in the state, then construct
     // a matching envelope with a valid builder signature.
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let spec = &harness.chain.spec;
 
     let head = harness.chain.head_snapshot();
@@ -1631,7 +1638,7 @@ async fn envelope_external_builder_valid_signature_passes() {
 
 #[tokio::test]
 async fn envelope_external_builder_invalid_signature_rejected() {
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
 
     let head = harness.chain.head_snapshot();
     let head_root = head.beacon_block_root;
@@ -1941,7 +1948,7 @@ async fn envelope_prior_to_finalization_direct() {
 /// Without it, the bid cannot be validated for fee_recipient/gas_limit compliance.
 #[tokio::test]
 async fn bid_no_proposer_preferences_ignored() {
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let head = harness.chain.head_snapshot();
@@ -1973,7 +1980,7 @@ async fn bid_no_proposer_preferences_ignored() {
 /// A builder cannot override that address in their bid.
 #[tokio::test]
 async fn bid_fee_recipient_mismatch_rejected() {
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let head = harness.chain.head_snapshot();
@@ -2022,7 +2029,7 @@ async fn bid_fee_recipient_mismatch_rejected() {
 /// The builder's bid must match exactly.
 #[tokio::test]
 async fn bid_gas_limit_mismatch_rejected() {
-    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000)]).await;
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
 
     let head = harness.chain.head_snapshot();
@@ -2073,8 +2080,11 @@ async fn bid_gas_limit_mismatch_rejected() {
 #[tokio::test]
 async fn bid_second_builder_valid_signature_passes() {
     // Test that a second builder (index=1) can also submit a valid bid.
-    let harness =
-        gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 1_000_000), (0, 2_000_000)]).await;
+    let harness = gloas_harness_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 3_000_000_000)],
+    )
+    .await;
     let current_slot = harness.chain.slot().unwrap();
     let spec = &harness.chain.spec;
 
