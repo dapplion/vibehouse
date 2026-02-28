@@ -10,8 +10,8 @@ use genesis::{InteropGenesisBuilder, bls_withdrawal_credentials};
 use http_api::test_utils::*;
 use std::collections::HashSet;
 use types::{
-    Address, ChainSpec, Epoch, EthSpec, FixedBytesExtended, Hash256, MinimalEthSpec, Signature,
-    Slot,
+    Address, BitVector, ChainSpec, Epoch, EthSpec, FixedBytesExtended, Hash256, MinimalEthSpec,
+    Signature, Slot,
     test_utils::{generate_deterministic_keypair, generate_deterministic_keypairs},
 };
 
@@ -2759,5 +2759,229 @@ async fn post_proposer_preferences_duplicate_ignored() {
         result2.is_ok(),
         "duplicate submission should succeed (silently ignored), got: {:?}",
         result2.err()
+    );
+}
+
+// ── GET beacon/pool/payload_attestations tests ──────────────────────
+
+/// GET beacon/pool/payload_attestations should return empty list when pool is empty.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_payload_attestation_pool_empty() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let client = &tester.client;
+
+    // No slot filter
+    let result = client
+        .get_beacon_pool_payload_attestations::<E>(None)
+        .await
+        .expect("should succeed");
+    assert!(result.data.is_empty(), "pool should be empty");
+
+    // With slot filter
+    let result = client
+        .get_beacon_pool_payload_attestations::<E>(Some(Slot::new(1)))
+        .await
+        .expect("should succeed");
+    assert!(result.data.is_empty(), "pool should be empty for slot 1");
+}
+
+/// GET beacon/pool/payload_attestations should return attestations after POST submits one.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_payload_attestation_pool_after_post() {
+    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a PTC member and submit an attestation
+    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let validator_index = ptc[0];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let message_root = data.signing_root(domain);
+    let keypair = generate_deterministic_keypair(validator_index as usize);
+    let signature = keypair.sk.sign(message_root);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data: data.clone(),
+        signature,
+    };
+
+    client
+        .post_beacon_pool_payload_attestations(&[message])
+        .await
+        .expect("should accept valid attestation");
+
+    // GET without slot filter should return the attestation
+    let result = client
+        .get_beacon_pool_payload_attestations::<E>(None)
+        .await
+        .expect("should succeed");
+    assert_eq!(result.data.len(), 1, "should have 1 attestation in pool");
+    assert_eq!(result.data[0].data, data, "attestation data should match");
+
+    // GET with matching slot filter should return the attestation
+    let result = client
+        .get_beacon_pool_payload_attestations::<E>(Some(head_slot))
+        .await
+        .expect("should succeed");
+    assert_eq!(
+        result.data.len(),
+        1,
+        "should have 1 attestation for matching slot"
+    );
+    assert_eq!(result.data[0].data, data, "attestation data should match");
+
+    // GET with non-matching slot filter should return empty
+    let result = client
+        .get_beacon_pool_payload_attestations::<E>(Some(head_slot + 1))
+        .await
+        .expect("should succeed");
+    assert!(
+        result.data.is_empty(),
+        "should have no attestations for non-matching slot"
+    );
+}
+
+/// GET beacon/pool/payload_attestations with slot filter returns only that slot's attestations.
+///
+/// Submits attestations at two different slots by inserting directly into the pool
+/// (bypassing POST validation which rejects "past slot" attestations), then verifies
+/// that the GET endpoint correctly filters by slot.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_payload_attestation_pool_slot_filter() {
+    use types::{AggregateSignature, PayloadAttestation, PayloadAttestationData};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block at slot 1 so we have a valid block root
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Insert attestations directly into the pool for two different slots.
+    // We bypass POST to avoid "past slot" rejection — the GET endpoint just
+    // reads from the pool regardless of how attestations got there.
+    let att1 = PayloadAttestation {
+        aggregation_bits: BitVector::new(),
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: Slot::new(1),
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(att1.clone());
+
+    let att2 = PayloadAttestation {
+        aggregation_bits: BitVector::new(),
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: Slot::new(2),
+            payload_present: false,
+            blob_data_available: false,
+        },
+        signature: AggregateSignature::empty(),
+    };
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(att2.clone());
+
+    // GET all — should return 2 attestations
+    let all = client
+        .get_beacon_pool_payload_attestations::<E>(None)
+        .await
+        .expect("should succeed");
+    assert_eq!(all.data.len(), 2, "should have 2 attestations total");
+
+    // GET with slot=1 filter — should return only slot 1 attestation
+    let slot1_result = client
+        .get_beacon_pool_payload_attestations::<E>(Some(Slot::new(1)))
+        .await
+        .expect("should succeed");
+    assert_eq!(
+        slot1_result.data.len(),
+        1,
+        "should have 1 attestation for slot 1"
+    );
+    assert_eq!(slot1_result.data[0].data.slot, Slot::new(1));
+    assert!(slot1_result.data[0].data.payload_present);
+
+    // GET with slot=2 filter — should return only slot 2 attestation
+    let slot2_result = client
+        .get_beacon_pool_payload_attestations::<E>(Some(Slot::new(2)))
+        .await
+        .expect("should succeed");
+    assert_eq!(
+        slot2_result.data.len(),
+        1,
+        "should have 1 attestation for slot 2"
+    );
+    assert_eq!(slot2_result.data[0].data.slot, Slot::new(2));
+    assert!(!slot2_result.data[0].data.payload_present);
+
+    // GET with slot=99 filter — should return empty
+    let empty_result = client
+        .get_beacon_pool_payload_attestations::<E>(Some(Slot::new(99)))
+        .await
+        .expect("should succeed");
+    assert!(
+        empty_result.data.is_empty(),
+        "should have no attestations for non-existent slot"
     );
 }
