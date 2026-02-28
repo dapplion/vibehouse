@@ -5575,4 +5575,362 @@ mod tests {
             .collect();
         assert_eq!(builder_sweep.len(), 2, "2 exited builders should be swept");
     }
+
+    // ── initiate_builder_exit lifecycle interaction tests ────────────────
+
+    /// Exit a builder then attempt to submit a bid with that builder.
+    /// The bid must be rejected because is_active_at_finalized_epoch returns false
+    /// once withdrawable_epoch != FAR_FUTURE_EPOCH.
+    #[test]
+    fn builder_exit_then_bid_rejected_as_inactive() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Pre-condition: builder 0 is active, bid succeeds
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(result.is_ok(), "bid should succeed before exit");
+
+        // Initiate exit for builder 0
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+
+        // Verify builder 0's withdrawable_epoch is no longer FAR_FUTURE_EPOCH
+        let builder = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_ne!(
+            builder.withdrawable_epoch, spec.far_future_epoch,
+            "builder should have a concrete withdrawable_epoch after exit"
+        );
+
+        // Re-create bid (state's latest_execution_payload_bid was updated by first bid)
+        let bid2 = make_builder_bid(&state, &spec, 500_000_000);
+        let result2 = process_execution_payload_bid(
+            &mut state,
+            &bid2,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result2.is_err(),
+            "bid from exited builder should be rejected"
+        );
+        let err_msg = format!("{:?}", result2.unwrap_err());
+        assert!(
+            err_msg.contains("not active"),
+            "error should mention builder is not active: {err_msg}"
+        );
+    }
+
+    /// Exit a builder, set state epoch to withdrawable_epoch.
+    /// The builder sweep should include the exited builder's balance.
+    #[test]
+    fn builder_exit_sweep_includes_after_withdrawable_epoch() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Initiate exit for builder 0
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+        let withdrawable = state
+            .as_gloas()
+            .unwrap()
+            .builders
+            .get(0)
+            .unwrap()
+            .withdrawable_epoch;
+        assert_eq!(
+            withdrawable,
+            Epoch::new(1)
+                .safe_add(spec.min_builder_withdrawability_delay)
+                .unwrap(),
+            "withdrawable_epoch should be current_epoch + delay"
+        );
+
+        // Set state epoch to exactly the withdrawable epoch by adjusting the slot
+        let target_slot = Slot::new(withdrawable.as_u64().saturating_mul(E::slots_per_epoch()));
+        state.as_gloas_mut().unwrap().slot = target_slot;
+
+        // Fix up the epoch-dependent fields so total_active_balance resolves
+        let target_epoch = target_slot.epoch(E::slots_per_epoch());
+        state.set_total_active_balance(target_epoch, 8 * 32_000_000_000, &spec);
+
+        // Process withdrawals — builder sweep should include builder 0
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_withdrawals: Vec<_> = expected
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(
+            builder_withdrawals.len(),
+            1,
+            "exited builder at withdrawable_epoch should be swept"
+        );
+        assert_eq!(
+            builder_withdrawals[0].amount, 64_000_000_000,
+            "full builder balance should be withdrawn"
+        );
+
+        // Verify builder balance was decreased to 0
+        let builder_after = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(
+            builder_after.balance, 0,
+            "builder balance should be drained by sweep"
+        );
+    }
+
+    /// Exit a builder but state epoch is before withdrawable_epoch.
+    /// The builder sweep should skip the exiting (not yet withdrawable) builder.
+    #[test]
+    fn builder_exit_sweep_skips_before_withdrawable_epoch() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Initiate exit
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+        let withdrawable = state
+            .as_gloas()
+            .unwrap()
+            .builders
+            .get(0)
+            .unwrap()
+            .withdrawable_epoch;
+
+        // State epoch is 1, withdrawable_epoch is 1 + 64 = 65 — way in the future
+        assert!(
+            state.current_epoch() < withdrawable,
+            "current epoch should be before withdrawable"
+        );
+
+        // Process withdrawals — sweep should NOT include builder 0
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_sweep: Vec<_> = expected
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(
+            builder_sweep.len(),
+            0,
+            "exiting builder before withdrawable_epoch should not be swept"
+        );
+
+        // Builder balance should be unchanged
+        let builder_after = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(
+            builder_after.balance, 64_000_000_000,
+            "builder balance should be unchanged"
+        );
+    }
+
+    /// Three builders with different exit states:
+    /// - Builder 0: active (far_future_epoch) with balance 10B
+    /// - Builder 1: exited and withdrawable (withdrawable_epoch <= epoch) with balance 20B
+    /// - Builder 2: exiting but not yet withdrawable (withdrawable_epoch > epoch) with balance 30B
+    ///
+    /// Builder sweep from index 0 should:
+    /// - Skip builder 0 (active, not withdrawable)
+    /// - Include builder 1 (exited, withdrawable, has balance)
+    /// - Skip builder 2 (exiting, not yet withdrawable)
+    #[test]
+    fn builder_sweep_mixed_exit_states_three_builders() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Advance state to epoch 100 so we have room for different withdrawable_epochs
+        let target_epoch = Epoch::new(100);
+        let target_slot = Slot::new(target_epoch.as_u64().saturating_mul(E::slots_per_epoch()));
+        state.as_gloas_mut().unwrap().slot = target_slot;
+        state.set_total_active_balance(target_epoch, 8 * 32_000_000_000, &spec);
+
+        // Add two more builders
+        let builder_1 = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xC1),
+            balance: 20_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: Epoch::new(50), // already passed (epoch 100 > 50)
+        };
+        let builder_2 = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xC2),
+            balance: 30_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: Epoch::new(200), // not yet (epoch 100 < 200)
+        };
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(builder_1)
+            .unwrap();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(builder_2)
+            .unwrap();
+
+        // Start sweep from index 0
+        state.as_gloas_mut().unwrap().next_withdrawal_builder_index = 0;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_sweep: Vec<_> = expected
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+
+        // Only builder 1 should be swept
+        assert_eq!(
+            builder_sweep.len(),
+            1,
+            "only the withdrawable exited builder should be swept"
+        );
+        let builder_1_flag = 1u64 | BUILDER_INDEX_FLAG;
+        assert_eq!(
+            builder_sweep[0].validator_index, builder_1_flag,
+            "swept builder should be builder 1"
+        );
+        assert_eq!(
+            builder_sweep[0].amount, 20_000_000_000,
+            "swept amount should be builder 1's full balance"
+        );
+        assert_eq!(
+            builder_sweep[0].address,
+            Address::repeat_byte(0xC1),
+            "swept address should be builder 1's execution_address"
+        );
+
+        // Verify individual builder balances
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(
+            builders.get(0).unwrap().balance,
+            10_000_000_000,
+            "active builder 0 balance should be unchanged"
+        );
+        assert_eq!(
+            builders.get(1).unwrap().balance,
+            0,
+            "exited builder 1 balance should be drained"
+        );
+        assert_eq!(
+            builders.get(2).unwrap().balance,
+            30_000_000_000,
+            "exiting builder 2 balance should be unchanged"
+        );
+
+        // Verify next_withdrawal_builder_index advanced past all 3 builders
+        // sweep processed min(3, max_builders_per_sweep) = 3 builders
+        // next = (0 + 3) % 3 = 0 (wraps around)
+        assert_eq!(
+            state.as_gloas().unwrap().next_withdrawal_builder_index,
+            0,
+            "next_withdrawal_builder_index should wrap around"
+        );
+    }
+
+    /// Exit a builder that has a pending payment from a previous bid.
+    /// The pending payment should still be processed normally (the payment was
+    /// committed before the exit), and the builder's balance should cover both
+    /// the payment withdrawal (when promoted) and the exit sweep withdrawal.
+    #[test]
+    fn builder_exit_with_pending_payment_both_processed() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 100_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Advance to epoch 100 so we can work with builder exit timing
+        let target_epoch = Epoch::new(100);
+        let target_slot = Slot::new(target_epoch.as_u64().saturating_mul(E::slots_per_epoch()));
+        state.as_gloas_mut().unwrap().slot = target_slot;
+        state.set_total_active_balance(target_epoch, 8 * 32_000_000_000, &spec);
+
+        // Set builder 0 as exited and withdrawable (withdrawable_epoch in the past)
+        {
+            let builder = state.as_gloas_mut().unwrap().builders.get_mut(0).unwrap();
+            builder.withdrawable_epoch = Epoch::new(50); // past
+        }
+
+        // Add a pending builder withdrawal (simulating a previously promoted payment)
+        let pending_withdrawal = BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0xDD),
+            amount: 5_000_000_000,
+            builder_index: 0,
+        };
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(pending_withdrawal)
+            .unwrap();
+
+        // Process withdrawals
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_withdrawals: Vec<_> = expected
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+
+        // Should have 2 builder withdrawals:
+        // 1. The pending withdrawal (5B to fee_recipient 0xDD)
+        // 2. The sweep withdrawal (full remaining balance to execution_address 0xBB)
+        assert_eq!(
+            builder_withdrawals.len(),
+            2,
+            "should have both pending payment withdrawal and sweep withdrawal"
+        );
+
+        // First: pending withdrawal
+        assert_eq!(
+            builder_withdrawals[0].amount, 5_000_000_000,
+            "pending withdrawal amount should be 5B"
+        );
+        assert_eq!(
+            builder_withdrawals[0].address,
+            Address::repeat_byte(0xDD),
+            "pending withdrawal address should be fee_recipient"
+        );
+
+        // Second: builder sweep withdrawal
+        assert_eq!(
+            builder_withdrawals[1].amount, 100_000_000_000,
+            "sweep should withdraw full builder balance"
+        );
+        assert_eq!(
+            builder_withdrawals[1].address,
+            Address::repeat_byte(0xBB),
+            "sweep withdrawal address should be builder's execution_address"
+        );
+
+        // Builder balance after both withdrawals: 100B - 5B - 100B = 0 (clamped)
+        // The pending withdrawal decreases by min(5B, 100B) = 5B → 95B
+        // The sweep decreases by min(100B, 95B) = 95B → 0
+        let builder_after = state.as_gloas().unwrap().builders.get(0).unwrap().clone();
+        assert_eq!(
+            builder_after.balance, 0,
+            "builder balance should be fully drained"
+        );
+
+        // Verify pending withdrawals list was drained
+        assert_eq!(
+            state.as_gloas().unwrap().builder_pending_withdrawals.len(),
+            0,
+            "processed pending withdrawal should be removed from list"
+        );
+    }
 }
