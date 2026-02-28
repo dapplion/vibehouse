@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — highest-value bid filtering, DuplicateEnvelope test (run 264)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- No new merged Gloas PRs since run 263
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4898 (approved), #4892 (approved), #4843 (1 approval), #4840 — all still open/unmerged
+- **Implemented spec IGNORE condition: highest-value bid filtering** — Spec: `[IGNORE] this bid is the highest value bid seen for the corresponding slot and the given parent block hash.` Previously documented as Gap #2 (deferred). Now implemented:
+  - New `is_highest_value_bid` method in `ObservedExecutionBids` tracks highest value per `(Slot, ExecutionBlockHash)` key
+  - Check placed AFTER signature verification in `verify_execution_bid_for_gossip` — invalid-signature bids cannot block legitimate higher-value ones
+  - `NotHighestValue` error variant with IGNORE handling in gossip_methods.rs (no peer penalty)
+  - 7 unit tests covering: first bid accepted, higher replaces, lower/equal rejected, independent slots/parent_hashes, pruning
+  - Pruning integrated with existing `prune_old_slots`
+- **Added DuplicateEnvelope integration test** — Tests the full gossip verification deduplication path: first verification of a self-build envelope succeeds, second returns `DuplicateEnvelope` (block root was recorded by the first successful call)
+- **Remaining spec gossip gaps**: only Gap #1 remains (missing `bid.parent_block_hash` IGNORE check requiring EL block hash reverse index — low practical impact, EL validates parent hash at newPayload time)
+- **Test results**: 53/53 gloas_verification, 41/41 network Gloas, 18/18 observed_execution_bids — all passing. Full clippy lint clean.
+
 ### 2026-02-28 — spec tracking, comprehensive master vs release diff (run 263)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - No new merged Gloas PRs since run 262
