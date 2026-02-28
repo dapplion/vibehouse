@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix Gloas data column sidecar panics in kzg_utils (run 237)
+- No new consensus-specs releases or merged Gloas PRs since run 236 (latest master: 14e6ce5a, #4947/#4948 still latest merges)
+- Open Gloas spec PRs tracked: #4950 (by_root serve range), #4892 (fork choice cleanup), #4898 (tiebreaker cleanup), #4926 (SLOT_DURATION_MS), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4747 (fast confirmation rule)
+- **Found and fixed 7 unwrap() panics** in `kzg_utils.rs` that would crash on Gloas `DataColumnSidecar` variants:
+  - Gloas removes `kzg_commitments`, `signed_block_header`, and `kzg_commitments_inclusion_proof` from `DataColumnSidecar` (moved to ePBS bid). The superstruct getters return `Err(IncorrectStateVariant)` for Gloas.
+  - `validate_data_columns` (line 77): `.kzg_commitments().unwrap()` → panic when verifying Gloas data columns (e.g., historical sync via `historical_data_columns.rs` or `data_availability_checker.rs`)
+  - `reconstruct_blobs` (3 unwraps): `.kzg_commitments().unwrap()`, `.signed_block_header().unwrap()`, `.kzg_commitments_inclusion_proof().unwrap()` → panic when reconstructing blobs for Gloas blocks (via `get_or_reconstruct_blobs` HTTP API path)
+  - `reconstruct_data_columns` (3 unwraps): same 3 fields → panic when reconstructing columns for Gloas data
+  - **Fix**: replaced all 7 `.unwrap()` calls with `.map_err()` returning proper typed errors instead of panicking
+  - **Additional guard**: added `num_expected_blobs() == 0` early-return in `get_or_reconstruct_blobs` to skip blob reconstruction for Gloas blocks entirely (blob sidecars don't exist in ePBS)
+- **Files changed**: 2 (`beacon_node/beacon_chain/src/kzg_utils.rs`, `beacon_node/beacon_chain/src/beacon_chain.rs`), net +51/-11 lines
+- **Tests**: 663/663 beacon_chain (FORK_NAME=gloas), 35/35 EF spec tests (operations/epoch/sanity), 1/1 kzg_utils, clippy clean, cargo fmt clean
+- **Note**: full Gloas data column KZG verification (passing commitments from the bid as an external parameter per spec) is a future enhancement — this fix prevents crashes and returns proper errors
+
 ### 2026-02-28 — spec compliance validation (run 236)
 - Full local test validation: 81/81 fork_choice, 132/132 proto_array, 8/8 EF fork choice, 35/35 EF operations/epoch/sanity
 - No new consensus-specs releases or merged Gloas PRs since run 235

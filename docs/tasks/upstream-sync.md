@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 237)
+- Checked consensus-specs: no new Gloas PRs merged since run 236 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Fixed 7 unwrap() panics** in kzg_utils.rs where Gloas DataColumnSidecar (missing kzg_commitments/signed_block_header/inclusion_proof) would crash validate_data_columns, reconstruct_blobs, reconstruct_data_columns
+- Added Gloas guard in get_or_reconstruct_blobs (blob reconstruction doesn't apply to ePBS blocks)
+- 663/663 beacon_chain, 35/35 EF spec tests, clippy clean
+
 ### 2026-02-28 (run 236)
 - Checked consensus-specs commits since run 227: no new Gloas-impacting PRs merged
   - Latest commit `14e6ce5a` (#4947, pre-fork subscription note) — already assessed in run 227
