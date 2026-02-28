@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix should_extend_payload to use PTC weight thresholds per spec (run 233)
+- Checked consensus-specs: no new Gloas PRs merged since Feb 26 (latest master: 14e6ce5a)
+- **Found and fixed spec discrepancy** in `should_extend_payload` (`proto_array_fork_choice.rs`):
+  - Spec's `is_payload_timely(store, root)` checks: `root in store.payload_states AND sum(state.payload_attestations[i].timeliness_vote for i in ptc(state, slot)) > PAYLOAD_TIMELY_THRESHOLD`
+  - Spec's `is_payload_data_available(store, root)` checks: `root in store.payload_states AND sum(state.payload_attestations[i].data_availability_vote for i in ptc(state, slot)) > DATA_AVAILABILITY_TIMELY_THRESHOLD`
+  - Our code was checking: `n.envelope_received && n.payload_revealed && n.payload_data_available` — boolean flags set when envelope is processed, ignoring PTC vote counts entirely
+  - **Fix**: replaced boolean flag checks with PTC weight threshold comparisons: `n.envelope_received && n.ptc_weight > ptc_quorum_threshold && n.ptc_blob_data_available_weight > ptc_quorum_threshold`
+  - Threaded `ptc_quorum_threshold: u64` (= `spec.ptc_size / 2`) through `find_head_gloas` → `get_payload_tiebreaker` → `should_extend_payload`
+  - Updated all ~18 test calls with new parameter, replaced `payload_revealed`/`payload_data_available` flag setup with `ptc_weight`/`ptc_blob_data_available_weight` values
+- **Impact**: Previously, any envelope receipt immediately made `should_extend_payload` timely+available, regardless of PTC votes. Now correctly requires PTC quorum above threshold, matching the spec's intended design where PTC committee votes determine payload timeliness.
+- **Files changed**: 1 file (`consensus/proto_array/src/proto_array_fork_choice.rs`)
+- **Tests**: 132/132 proto_array, 81/81 fork_choice, 8/8 EF fork_choice spec tests — all pass
+
 ### 2026-02-28 — eliminate redundant block fetch in process_payload_envelope (run 232)
 - Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
   - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check
