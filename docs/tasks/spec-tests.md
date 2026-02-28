@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 initiate_builder_exit lifecycle interaction tests (run 215)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 214
+  - PR #4947 (pre-fork subscription note) — documentation only, already noted
+  - PR #4918 (only allow attestations for known payload statuses) — already implemented in vibehouse
+  - PR #4948 (Python constant reordering) — not applicable to vibehouse
+  - PR #4892 (remove impossible branch in forkchoice) — already implemented in vibehouse's `is_supporting_vote_gloas`
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- Analyzed test coverage across all Gloas crates. Identified `initiate_builder_exit` lifecycle interactions as the most impactful under-tested area — only 3 basic unit tests existed for the exit function itself, but no tests exercised the downstream effects (bid rejection for exited builders, sweep eligibility timing, mixed exit states, interaction with pending payments).
+- **Added 5 tests** covering `initiate_builder_exit` lifecycle interaction edge cases in `per_block_processing/gloas.rs`:
+  1. `builder_exit_then_bid_rejected_as_inactive` — exits builder 0, then attempts to submit a bid with that builder. Pre-condition: bid succeeds before exit. After exit, `withdrawable_epoch != FAR_FUTURE_EPOCH` → `is_active_at_finalized_epoch` returns false → bid rejected. Verifies the exit→bid interaction path.
+  2. `builder_exit_sweep_includes_after_withdrawable_epoch` — exits builder, advances state to `withdrawable_epoch`. Process withdrawals produces a builder sweep entry with the full 64B balance. Verifies builder balance drained to 0. Tests the timing gate in phase 3: `builder.withdrawable_epoch <= epoch`.
+  3. `builder_exit_sweep_skips_before_withdrawable_epoch` — exits builder but state stays at epoch 1 (withdrawable_epoch=65 with min_builder_withdrawability_delay=64). Process withdrawals produces no builder sweep entries. Verifies builder balance unchanged at 64B. Tests the timing guard that prevents premature sweeps.
+  4. `builder_sweep_mixed_exit_states_three_builders` — 3 builders at epoch 100: builder 0 active (far_future, 10B), builder 1 exited (withdrawable_epoch=50, 20B), builder 2 exiting (withdrawable_epoch=200, 30B). Sweep produces exactly 1 entry for builder 1. Verifies correct filtering across active/exited/exiting states and that `next_withdrawal_builder_index` wraps correctly.
+  5. `builder_exit_with_pending_payment_both_processed` — builder 0 exited with 100B balance and a pending withdrawal of 5B. Process withdrawals produces 2 builder entries: pending (5B, phase 1) + sweep (100B, phase 3). Verifies both phases interact correctly — pending payment processed first, then sweep drains remaining balance.
+- **Full test suite verification** — all passing:
+  - 447/447 state_processing tests (was 442, +5 new)
+  - Clippy clean (including --tests), cargo fmt clean
+
 ### 2026-02-28 — 5 process_epoch_single_pass Gloas builder payment/lookahead integration tests (run 214)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 213
   - PR #4950 (extend by_root reqresp serve range) — informational, no vibehouse impact
