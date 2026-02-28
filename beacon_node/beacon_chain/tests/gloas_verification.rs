@@ -1999,15 +1999,17 @@ async fn envelope_prior_to_finalization_direct() {
             .verify_payload_envelope_for_gossip(Arc::new(envelope)),
         "should reject pre-finalization envelope",
     );
-    // The head block is at a high slot, so envelope.slot=0 != head.slot → SlotMismatch
-    // OR if the code checks finalization before slot match, it would be PriorToFinalization
+    // Check 2 (PriorToFinalization) runs before check 3 (SlotMismatch) in the code,
+    // so for slot=0 < finalized_slot, we should get PriorToFinalization specifically.
     assert!(
         matches!(
             err,
-            PayloadEnvelopeError::PriorToFinalization { .. }
-                | PayloadEnvelopeError::SlotMismatch { .. }
+            PayloadEnvelopeError::PriorToFinalization {
+                envelope_slot,
+                ..
+            } if envelope_slot == Slot::new(0)
         ),
-        "expected PriorToFinalization or SlotMismatch, got {:?}",
+        "expected PriorToFinalization with envelope_slot=0, got {:?}",
         err
     );
 }
@@ -2314,5 +2316,243 @@ async fn attestation_payload_absent_blob_available_passes() {
         result.is_ok(),
         "payload_present=false, blob_data_available=true should pass, got {:?}",
         result.err()
+    );
+}
+
+// =============================================================================
+// Bid: highest-value filtering (NotHighestValue error path)
+// =============================================================================
+
+#[tokio::test]
+async fn bid_not_highest_value_rejected() {
+    // Two builders submit bids for the same slot + parent_block_hash.
+    // The first bid (value=500) is accepted; the second bid (value=100) should be
+    // rejected with NotHighestValue because 100 < 500.
+    let harness = gloas_harness_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 3_000_000_000)],
+    )
+    .await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // Builder 0 submits first bid with value=500
+    let bid_msg_1 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 500,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg_1.fee_recipient,
+        bid_msg_1.gas_limit,
+    );
+    let sig_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
+    let bid_1 = SignedExecutionPayloadBid {
+        message: bid_msg_1,
+        signature: sig_1,
+    };
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    assert!(
+        result_1.is_ok(),
+        "first bid (value=500) should pass, got {:?}",
+        result_1.err()
+    );
+
+    // Builder 1 submits second bid with lower value=100, same slot + parent_block_hash
+    let bid_msg_2 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let sig_2 = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_2.signing_root(domain));
+    let bid_2 = SignedExecutionPayloadBid {
+        message: bid_msg_2,
+        signature: sig_2,
+    };
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid_2),
+        "lower-value bid should be rejected",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::NotHighestValue { bid_value: 100, .. }
+        ),
+        "expected NotHighestValue with bid_value=100, got {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn bid_higher_value_replaces_lower() {
+    // First bid (value=100) is accepted. Second bid (value=500) from a different builder
+    // should also be accepted because it's higher value.
+    let harness = gloas_harness_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 3_000_000_000)],
+    )
+    .await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // Builder 0 submits first bid with value=100
+    let bid_msg_1 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg_1.fee_recipient,
+        bid_msg_1.gas_limit,
+    );
+    let sig_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
+    let bid_1 = SignedExecutionPayloadBid {
+        message: bid_msg_1,
+        signature: sig_1,
+    };
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    assert!(
+        result_1.is_ok(),
+        "first bid (value=100) should pass, got {:?}",
+        result_1.err()
+    );
+
+    // Builder 1 submits second bid with higher value=500
+    let bid_msg_2 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 500,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let sig_2 = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_2.signing_root(domain));
+    let bid_2 = SignedExecutionPayloadBid {
+        message: bid_msg_2,
+        signature: sig_2,
+    };
+    let result_2 = harness.chain.verify_execution_bid_for_gossip(bid_2);
+    assert!(
+        result_2.is_ok(),
+        "higher-value bid (value=500) should pass, got {:?}",
+        result_2.err()
+    );
+}
+
+// =============================================================================
+// Bid: equal-value bid rejected (value must be strictly greater)
+// =============================================================================
+
+#[tokio::test]
+async fn bid_equal_value_rejected() {
+    // Two builders submit bids with the same value=200.
+    // The first passes; the second is rejected because 200 is NOT strictly greater
+    // than the existing highest value of 200.
+    let harness = gloas_harness_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 3_000_000_000)],
+    )
+    .await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // Builder 0 submits first bid with value=200
+    let bid_msg_1 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 200,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg_1.fee_recipient,
+        bid_msg_1.gas_limit,
+    );
+    let sig_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
+    let bid_1 = SignedExecutionPayloadBid {
+        message: bid_msg_1,
+        signature: sig_1,
+    };
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    assert!(
+        result_1.is_ok(),
+        "first bid (value=200) should pass, got {:?}",
+        result_1.err()
+    );
+
+    // Builder 1 submits bid with equal value=200 → rejected (must be strictly greater)
+    let bid_msg_2 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 200,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let sig_2 = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_2.signing_root(domain));
+    let bid_2 = SignedExecutionPayloadBid {
+        message: bid_msg_2,
+        signature: sig_2,
+    };
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid_2),
+        "equal-value bid should be rejected",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::NotHighestValue { bid_value: 200, .. }
+        ),
+        "expected NotHighestValue with bid_value=200, got {:?}",
+        err
     );
 }
