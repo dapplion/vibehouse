@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec audit, fix nightly CI test failure (run 240)
+- No new consensus-specs releases since run 239 (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
+- Audited all recently merged Gloas spec PRs (since last check):
+  - **#4948** (PayloadStatus constant reordering): Empty=0, Full=1, Pending=2 — **already aligned** in vibehouse (proto_array_fork_choice.rs:41-44)
+  - **#4918** (attestation validation requires known payload status): **already implemented** in fork_choice.rs:1209-1217 (checks `payload_revealed` for index==1 attestations)
+  - **#4923** (ignore blocks with unknown parent payload): **already implemented** in block_verification.rs:971-984 (IGNORE + sync queue for unknown parent payload)
+  - **#4947** (pre-fork proposer_preferences subscription): **already implemented** via `PRE_FORK_SUBSCRIBE_EPOCHS = 1` in network/src/service.rs:49
+- **Fixed nightly CI failure**: `beacon-chain-tests (bellatrix)` failing because `gloas_verification.rs` tests panicked when `FORK_NAME≠gloas`. The harness used `test_spec::<E>()` which reads the env var. Replaced with explicit `ForkName::Gloas.make_genesis_spec(E::default_spec())` so tests are self-contained and fork-independent.
+- Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- **Files changed**: 1 (`beacon_node/beacon_chain/tests/gloas_verification.rs`), +5/-11 lines
+- **Tests**: 52/52 gloas_verification (FORK_NAME=bellatrix), clippy clean, cargo fmt clean
+
 ### 2026-02-28 — data column availability timestamp, fork choice test readiness (run 239)
 - No new consensus-specs releases or merged Gloas PRs since run 238 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest)
 - Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
