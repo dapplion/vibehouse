@@ -118,14 +118,14 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer has sent an invalid message.
     GasLimitMismatch { expected: u64, received: u64 },
-    /// The parent block root does not match the head.
+    /// The parent block root is not a known block in fork choice.
+    ///
+    /// Spec: `[IGNORE] bid.parent_block_root is the hash tree root of a known beacon
+    /// block in fork choice.`
     ///
     /// ## Peer scoring
     /// The peer may be on a different fork or sending stale bids.
-    InvalidParentRoot {
-        expected: Hash256,
-        received: Hash256,
-    },
+    InvalidParentRoot { received: Hash256 },
     /// Beacon chain error occurred during validation.
     BeaconChainError(BeaconChainError),
     /// State error occurred during validation.
@@ -355,7 +355,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// 2. Builder exists and is active
     /// 3. Builder has sufficient balance for the bid
     /// 4. No conflicting bid from this builder for this slot (equivocation check)
-    /// 5. Parent root matches head (fork choice)
+    /// 5. Parent root is a known block in fork choice
     /// 6. Signature is valid
     #[allow(clippy::result_large_err)]
     pub fn verify_execution_bid_for_gossip(
@@ -438,10 +438,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Check 4: Parent root validation
-        let head_block_root = head.snapshot.beacon_block_root;
-        if bid.message.parent_block_root != head_block_root {
+        // Spec: [IGNORE] bid.parent_block_root is the hash tree root of a known beacon
+        // block in fork choice.
+        if !self
+            .canonical_head
+            .fork_choice_read_lock()
+            .contains_block(&bid.message.parent_block_root)
+        {
             return Err(ExecutionBidError::InvalidParentRoot {
-                expected: head_block_root,
                 received: bid.message.parent_block_root,
             });
         }

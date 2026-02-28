@@ -11535,16 +11535,12 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
 // Execution bid gossip: InvalidParentRoot
 // =============================================================================
 
-/// A bid with a parent_block_root that doesn't match the fork choice head is
-/// rejected with `InvalidParentRoot` at check 4 (gloas_verification.rs:442-446).
+/// A bid with a parent_block_root that is not a known block in fork choice is
+/// rejected with `InvalidParentRoot` at check 4.
 ///
-/// The parent root check ensures bids are anchored to the current chain head.
-/// Without this check, a builder could submit bids referencing stale or
-/// non-existent parent blocks, which would be impossible to build upon. The
-/// proposer would select a bid that references a parent the rest of the network
-/// doesn't recognize, leading to an orphaned block. This is particularly
-/// important during reorgs — bids for the old head must be rejected once the
-/// chain switches to a new head.
+/// The parent root check ensures bids reference a block the node knows about.
+/// Per spec: `[IGNORE] bid.parent_block_root is the hash tree root of a known
+/// beacon block in fork choice.`
 #[tokio::test]
 async fn gloas_bid_gossip_rejects_invalid_parent_root() {
     let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
@@ -11556,16 +11552,16 @@ async fn gloas_bid_gossip_rejects_invalid_parent_root() {
     let next_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
 
-    // Create a bid with the correct fields, then tamper with parent_block_root.
+    // Create a bid with the correct fields, then tamper with parent_block_root
+    // to a root that doesn't exist in fork choice.
     let mut bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    let wrong_root = Hash256::from_low_u64_be(0xdead);
-    bid.message.parent_block_root = wrong_root;
+    let unknown_root = Hash256::from_low_u64_be(0xdead);
+    bid.message.parent_block_root = unknown_root;
 
     let err = assert_bid_rejected(&harness, bid, "invalid parent root");
     match err {
-        ExecutionBidError::InvalidParentRoot { expected, received } => {
-            assert_eq!(expected, head_root);
-            assert_eq!(received, wrong_root);
+        ExecutionBidError::InvalidParentRoot { received } => {
+            assert_eq!(received, unknown_root);
         }
         other => panic!("expected InvalidParentRoot, got {:?}", other),
     }
