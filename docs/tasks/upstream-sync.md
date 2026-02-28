@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 275)
+- Checked consensus-specs: no new Gloas PRs merged since run 274 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Spec conformance audit**: verified `process_execution_payload_envelope` implementation against spec — all checks correct, no deviations
+- **Fixed abandoned fork envelope leak**: blinded envelopes from abandoned fork blocks were not pruned during hot DB cleanup (block, payload, blobs, sync branches were pruned but envelope was missed)
+- **CI status**: all green, nightly green
+
 ### 2026-02-28 (run 274)
 - Checked consensus-specs: two new Gloas PRs merged since run 273 (#4947, #4948)
   - **#4947** (pre-fork subscription note for proposer_preferences): doc-only change, nodes SHOULD subscribe 1 epoch before fork — we already do this via `PRE_FORK_SUBSCRIBE_EPOCHS = 1`

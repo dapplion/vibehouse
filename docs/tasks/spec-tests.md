@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — store audit, abandoned envelope leak fix, spec tracking (run 275)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 274
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged. #4843 has 11 reviews, #4932 has 6, #4939 has 5.
+- **Spec conformance audit of `process_execution_payload_envelope`**: cross-referenced implementation (envelope_processing.rs) against spec — all 20+ checks verified correct with proper ordering. 5 minor deviations all intentional: unconditional state root check (enables self-build), element-wise withdrawal comparison (optimization), builder payment clearing reorder (Rust borrow checker), EL validation in beacon chain layer (architectural separation), split verify parameter.
+- **Store/DB audit for Gloas envelope persistence**: audited hot_cold_store.rs, reconstruct.rs, migrate.rs for envelope handling during finalization and cold migration
+- **Fixed abandoned fork envelope leak**: `prune_hot_db` deleted blocks, payloads, blobs, and sync committee branches for abandoned fork blocks, but NOT blinded envelopes (BeaconEnvelope). Added `StoreOp::DeletePayloadEnvelope` to the pruning batch. Canonical finalized envelopes are correctly retained (needed for block replay).
+- **Test results**: 24/24 store tests, 49/49 pruning/migration/finalization beacon_chain tests pass. Clippy clean.
+- **CI status**: all green, latest nightly green (22522736397). Prior nightly failure (22520311458) was on pre-fix SHA — altair/fulu beacon-chain timeouts resolved by chain_segment_varying_chunk_size exclusion.
+
 ### 2026-02-28 — spec tracking, gossip validation audit (run 274)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Two new merged Gloas PRs since run 273: #4947 (pre-fork subscription note for proposer_preferences topic — doc only, no code needed), #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2 — already compliant, our GloasPayloadStatus enum already used these values)
