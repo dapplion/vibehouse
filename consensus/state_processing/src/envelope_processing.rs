@@ -22,7 +22,7 @@ macro_rules! envelope_verify {
     };
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum EnvelopeProcessingError {
     /// Bad Signature
     BadSignature,

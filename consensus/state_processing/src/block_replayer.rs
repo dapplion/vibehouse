@@ -368,7 +368,7 @@ where
                     )
                     .map_err(|e| {
                         BlockReplayError::BlockProcessing(
-                            BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
+                            BlockProcessingError::EnvelopeProcessingError(Box::new(e)),
                         )
                     })?;
                 } else if let Some(blinded) = self.blinded_envelopes.remove(&block_root) {
@@ -389,7 +389,7 @@ where
                     )
                     .map_err(|e| {
                         BlockReplayError::BlockProcessing(
-                            BlockProcessingError::EnvelopeProcessingError(format!("{:?}", e)),
+                            BlockProcessingError::EnvelopeProcessingError(Box::new(e)),
                         )
                     })?;
                 }

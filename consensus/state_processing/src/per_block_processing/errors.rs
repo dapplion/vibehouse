@@ -1,5 +1,6 @@
 use super::signature_sets::Error as SignatureSetError;
 use crate::ContextError;
+use crate::envelope_processing::EnvelopeProcessingError;
 use merkle_proof::MerkleTreeError;
 use safe_arith::ArithError;
 use ssz::DecodeError;
@@ -100,7 +101,7 @@ pub enum BlockProcessingError {
         reason: String,
     },
     PayloadAttestationInvalid(PayloadAttestationInvalid),
-    EnvelopeProcessingError(String),
+    EnvelopeProcessingError(Box<EnvelopeProcessingError>),
     InvalidSlot(u64),
     InvalidSlotIndex(usize),
 }

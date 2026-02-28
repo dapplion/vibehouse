@@ -785,6 +785,6 @@ impl<E: EthSpec> Operation<E> for ExecutionPayloadEnvelopeOp<E> {
             VerifySignatures::True,
             spec,
         )
-        .map_err(|e| BlockProcessingError::EnvelopeProcessingError(format!("{e:?}")))
+        .map_err(|e| BlockProcessingError::EnvelopeProcessingError(Box::new(e)))
     }
 }
