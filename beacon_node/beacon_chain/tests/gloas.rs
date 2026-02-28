@@ -984,6 +984,75 @@ fn make_external_bid(
     }
 }
 
+/// Build an external bid with a valid signature, matching the current state.
+///
+/// Unlike `make_external_bid`, this signs the bid with the builder's keypair
+/// so it passes signature verification in gossip validation.
+fn make_signed_external_bid(
+    state: &BeaconState<E>,
+    head_root: Hash256,
+    slot: Slot,
+    builder_index: u64,
+    value: u64,
+    spec: &ChainSpec,
+) -> SignedExecutionPayloadBid<E> {
+    let gloas_state = state.as_gloas().expect("state should be Gloas");
+    let current_epoch = state.current_epoch();
+    let randao_mix = *state
+        .get_randao_mix(current_epoch)
+        .expect("should get randao mix");
+
+    let bid = ExecutionPayloadBid {
+        slot,
+        builder_index,
+        value,
+        parent_block_hash: gloas_state.latest_block_hash,
+        parent_block_root: head_root,
+        prev_randao: randao_mix,
+        block_hash: ExecutionBlockHash::zero(),
+        fee_recipient: Address::zero(),
+        gas_limit: 30_000_000,
+        execution_payment: value,
+        blob_kzg_commitments: Default::default(),
+    };
+
+    let epoch = slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = bid.signing_root(domain);
+    let signature = BUILDER_KEYPAIRS[builder_index as usize]
+        .sk
+        .sign(signing_root);
+
+    SignedExecutionPayloadBid::<E> {
+        message: bid,
+        signature,
+    }
+}
+
+/// Insert proposer preferences for a slot so that bid gossip validation can pass
+/// the proposer preferences check. Uses fee_recipient=zero and gas_limit=30M
+/// (matching `make_external_bid` / `make_signed_external_bid` defaults).
+fn insert_bid_proposer_preferences(
+    harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
+    slot: Slot,
+) {
+    let preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::zero(),
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+    harness.chain.insert_proposer_preferences(preferences);
+}
+
 /// Test that when an external bid is in the pool, `make_block` produces a block
 /// containing the external bid instead of a self-build bid.
 #[tokio::test]
@@ -11095,11 +11164,9 @@ async fn gloas_bid_gossip_rejects_insufficient_builder_balance() {
 /// condition detection for builders — a builder that equivocates is trying to
 /// commit to multiple payloads for the same slot.
 ///
-/// The equivocation check (check 3) runs after the balance check but before
-/// parent root validation, proposer preferences, and signature verification.
-/// The first bid passes the equivocation check (recorded as `New`) and
-/// continues to later checks where it may fail (e.g. at signature). But the
-/// observation is already recorded, so the second bid (different tree_hash_root)
+/// Per spec, equivocation detection applies to "the first signed bid seen with
+/// a valid signature" — so both bids must have valid signatures. The first bid
+/// passes all checks and is recorded. The second bid (different tree_hash_root)
 /// triggers `Equivocation`.
 #[tokio::test]
 async fn gloas_bid_gossip_rejects_builder_equivocation() {
@@ -11113,20 +11180,23 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
     let next_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
 
-    // First bid: value=5000. This will pass checks 1-4 (slot, payment,
-    // builder exists/active, balance) and get observed as New in check 5.
-    // It will then fail at parent root, proposer preferences, or signature —
-    // but the observation is already recorded.
-    let bid_1 = make_external_bid(&state, head_root, next_slot, 0, 5000);
-    // Submit the first bid — it will fail (likely at parent root or prefs)
-    // but the observation is recorded.
-    let _ = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    // Set up proposer preferences so bids can pass that check.
+    insert_bid_proposer_preferences(&harness, next_slot);
+
+    // First bid: value=5000. Properly signed, passes all checks including
+    // signature verification and equivocation detection (recorded as New).
+    let bid_1 = make_signed_external_bid(&state, head_root, next_slot, 0, 5000, &harness.spec);
+    let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    assert!(
+        result_1.is_ok(),
+        "first bid should pass: {:?}",
+        result_1.err()
+    );
 
     // Second bid: value=6000 (different value → different tree_hash_root).
     // Same builder (0), same slot (next_slot). This should trigger Equivocation
-    // at check 5 because we already observed a different bid root from
-    // builder 0 for this slot.
-    let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 6000);
+    // because we already recorded a different bid root from builder 0.
+    let bid_2 = make_signed_external_bid(&state, head_root, next_slot, 0, 6000, &harness.spec);
 
     let err = assert_bid_rejected(&harness, bid_2, "second bid should be equivocation");
     match err {
@@ -11658,14 +11728,14 @@ async fn gloas_bid_gossip_rejects_inactive_builder() {
 // =============================================================================
 
 /// Submitting the exact same bid twice (same tree_hash_root) is rejected with
-/// `DuplicateBid` at check 3 (gloas_verification.rs:424-425).
+/// `DuplicateBid`.
 ///
 /// This is distinct from `BuilderEquivocation` which fires when two *different*
 /// bids (different roots) are submitted for the same builder+slot. A duplicate
 /// bid (same root) is simply ignored — the network has already seen it, so
-/// re-propagating it would be wasteful. The equivocation tracker records the
-/// bid root on the first observation (even if later checks fail), so the second
-/// identical bid hits the `Duplicate` branch immediately.
+/// re-propagating it would be wasteful. Per spec, only bids with valid
+/// signatures are recorded in the equivocation tracker, so the first bid must
+/// pass all checks before being tracked.
 #[tokio::test]
 async fn gloas_bid_gossip_rejects_duplicate_bid() {
     let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
@@ -11677,17 +11747,19 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
     let next_slot = head_slot + 1;
     let state = harness.chain.head_beacon_state_cloned();
 
-    // Create a bid — both submissions use the exact same bid (same tree_hash_root).
-    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    // Set up proposer preferences so bids can pass that check.
+    insert_bid_proposer_preferences(&harness, next_slot);
+
+    // Create a properly signed bid.
+    let bid = make_signed_external_bid(&state, head_root, next_slot, 0, 5000, &harness.spec);
     let bid_root = bid.tree_hash_root();
 
-    // First submission: passes checks 1-3 (slot, payment, builder, balance,
-    // equivocation=New). May fail at later checks (parent root, prefs, signature)
-    // but the observation is recorded.
-    let _ = harness.chain.verify_execution_bid_for_gossip(bid);
+    // First submission: passes all checks (signature, equivocation=New, highest value).
+    let result = harness.chain.verify_execution_bid_for_gossip(bid);
+    assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
 
-    // Second submission: same bid, same root → Duplicate at check 3.
-    let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 5000);
+    // Second submission: same bid, same root → Duplicate.
+    let bid_2 = make_signed_external_bid(&state, head_root, next_slot, 0, 5000, &harness.spec);
     assert_eq!(
         bid_2.tree_hash_root(),
         bid_root,

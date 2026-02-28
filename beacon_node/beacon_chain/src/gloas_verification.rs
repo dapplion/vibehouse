@@ -383,11 +383,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// This performs the following checks:
     /// 1. Slot is not in the future or too far in the past
-    /// 2. Builder exists and is active
-    /// 3. Builder has sufficient balance for the bid
-    /// 4. No conflicting bid from this builder for this slot (equivocation check)
-    /// 5. Parent root is a known block in fork choice
-    /// 6. Signature is valid
+    /// 2. Builder exists and is active, has sufficient balance
+    /// 3. Parent root and block hash known in fork choice
+    /// 4. Proposer preferences match (fee_recipient, gas_limit)
+    /// 5. Signature is valid
+    /// 6. Equivocation detection (after sig verify per spec: "first bid with valid signature")
+    /// 7. Highest-value bid filtering
     #[allow(clippy::result_large_err)]
     pub fn verify_execution_bid_for_gossip(
         &self,
@@ -448,35 +449,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             });
         }
 
-        // Check 3: Equivocation detection
-        let bid_root = bid.tree_hash_root();
-
-        let observation_outcome =
-            self.observed_execution_bids
-                .lock()
-                .observe_bid(bid_slot, builder_index, bid_root);
-
-        match observation_outcome {
-            crate::observed_execution_bids::BidObservationOutcome::New => {
-                // Continue with validation
-            }
-            crate::observed_execution_bids::BidObservationOutcome::Duplicate => {
-                return Err(ExecutionBidError::DuplicateBid { bid_root });
-            }
-            crate::observed_execution_bids::BidObservationOutcome::Equivocation {
-                existing_bid_root,
-                new_bid_root,
-            } => {
-                return Err(ExecutionBidError::BuilderEquivocation {
-                    builder_index,
-                    slot: bid_slot,
-                    previous_bid_root: existing_bid_root,
-                    new_bid_root,
-                });
-            }
-        }
-
-        // Check 4: Parent root validation
+        // Check 3: Parent root validation
         // Spec: [IGNORE] bid.parent_block_root is the hash tree root of a known beacon
         // block in fork choice.
         {
@@ -542,6 +515,37 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         if !signature_set.verify() {
             return Err(ExecutionBidError::InvalidSignature);
+        }
+
+        // Check 5b: Equivocation detection (after signature verification so that
+        // invalid-signature bids don't block later valid bids from the same builder).
+        // Spec: [IGNORE] this is the first signed bid seen with a valid signature
+        // from the given builder for this slot.
+        let bid_root = bid.tree_hash_root();
+
+        let observation_outcome =
+            self.observed_execution_bids
+                .lock()
+                .observe_bid(bid_slot, builder_index, bid_root);
+
+        match observation_outcome {
+            crate::observed_execution_bids::BidObservationOutcome::New => {
+                // Continue with validation
+            }
+            crate::observed_execution_bids::BidObservationOutcome::Duplicate => {
+                return Err(ExecutionBidError::DuplicateBid { bid_root });
+            }
+            crate::observed_execution_bids::BidObservationOutcome::Equivocation {
+                existing_bid_root,
+                new_bid_root,
+            } => {
+                return Err(ExecutionBidError::BuilderEquivocation {
+                    builder_index,
+                    slot: bid_slot,
+                    previous_bid_root: existing_bid_root,
+                    new_bid_root,
+                });
+            }
         }
 
         // Check 6: Highest-value bid filtering (after signature verification

@@ -17,7 +17,6 @@ use beacon_chain::test_utils::{
 };
 use execution_layer::test_utils::generate_genesis_header;
 use std::sync::{Arc, LazyLock};
-use tree_hash::TreeHash;
 use types::*;
 
 type E = MainnetEthSpec;
@@ -439,21 +438,45 @@ async fn bid_duplicate_via_gossip_path() {
     // Active builder with sufficient balance (needs finalization for active)
     let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
-    bid.message.slot = current_slot;
-    bid.message.execution_payment = 1;
-    bid.message.builder_index = 0;
-    bid.message.value = 100;
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
 
-    // Pre-seed the observation tracker with this bid's tree hash root
-    let bid_root = bid.tree_hash_root();
-    harness
-        .chain
-        .observed_execution_bids
-        .lock()
-        .observe_bid(current_slot, 0, bid_root);
+    let bid_msg = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
 
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg.fee_recipient,
+        bid_msg.gas_limit,
+    );
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signature = BUILDER_KEYPAIRS[0].sk.sign(bid_msg.signing_root(domain));
+    let bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature,
+    };
+
+    // First submission: passes all checks, recorded as New.
+    let result = harness.chain.verify_execution_bid_for_gossip(bid.clone());
+    assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
+
+    // Second submission: same bid, same root → Duplicate.
     let err = unwrap_err(
         harness.chain.verify_execution_bid_for_gossip(bid),
         "should reject duplicate bid",
@@ -470,23 +493,63 @@ async fn bid_equivocation_via_gossip_path() {
     // Active builder with sufficient balance
     let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
     let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
 
-    // Pre-seed the observation tracker with a different bid root for same builder/slot
-    let existing_root = Hash256::from_low_u64_be(0x1111);
-    harness
-        .chain
-        .observed_execution_bids
-        .lock()
-        .observe_bid(current_slot, 0, existing_root);
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
 
-    let mut bid = SignedExecutionPayloadBid::<E>::empty();
-    bid.message.slot = current_slot;
-    bid.message.execution_payment = 1;
-    bid.message.builder_index = 0;
-    bid.message.value = 100;
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // First bid: value=100, properly signed.
+    let bid_msg_1 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+
+    insert_preferences_for_bid(
+        &harness.chain,
+        current_slot,
+        bid_msg_1.fee_recipient,
+        bid_msg_1.gas_limit,
+    );
+
+    let signature_1 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_1.signing_root(domain));
+    let bid_1 = SignedExecutionPayloadBid {
+        message: bid_msg_1,
+        signature: signature_1,
+    };
+
+    // Submit first bid — passes all checks, recorded as New.
+    let result = harness.chain.verify_execution_bid_for_gossip(bid_1);
+    assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
+
+    // Second bid: different value → different tree_hash_root. Same builder/slot.
+    let bid_msg_2 = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 2,
+        builder_index: 0,
+        value: 200,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let signature_2 = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_2.signing_root(domain));
+    let bid_2 = SignedExecutionPayloadBid {
+        message: bid_msg_2,
+        signature: signature_2,
+    };
 
     let err = unwrap_err(
-        harness.chain.verify_execution_bid_for_gossip(bid),
+        harness.chain.verify_execution_bid_for_gossip(bid_2),
         "should reject equivocating bid",
     );
     assert!(
