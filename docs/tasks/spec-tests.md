@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, gossip validation audit (run 274)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Two new merged Gloas PRs since run 273: #4947 (pre-fork subscription note for proposer_preferences topic — doc only, no code needed), #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2 — already compliant, our GloasPayloadStatus enum already used these values)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- **Full gossip validation audit**: cross-checked all 4 Gloas gossip topics (execution_bid, execution_payload, proposer_preferences, payload_attestation_message) against current spec — all REJECT/IGNORE conditions match, no gaps found
+- **Pre-fork subscription**: spec note from #4947 says nodes SHOULD subscribe to proposer_preferences 1 epoch before fork — we already do this via `PRE_FORK_SUBSCRIBE_EPOCHS = 1`
+- **CI status**: all green, nightly green (latest nightly 22522736397 success; prior nightly failure was transient moonrepo infra + stale SHA)
+- **No code changes this run** — spec stable, fully compliant
+
 ### 2026-02-28 — bid equivocation ordering fix, spec tracking (run 273)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 272
