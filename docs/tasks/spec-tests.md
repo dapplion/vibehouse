@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — nightly spec test verification, all green (run 234)
+- Downloaded nightly spec test vectors (run 22470858121, consensus-specs sha 14e6ce5a — same as v1.7.0-alpha.2 release)
+- **78/78 real crypto pass** on nightly vectors — matches previous result
+- **138/138 fake_crypto pass** on nightly vectors — matches previous result
+- Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
+  - Open Gloas PRs: #4950 (extend by_root serve range, 0 approvals — networking change, no code impact), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4892 (remove impossible branch, already aligned), #4898 (remove pending from tiebreaker, already aligned), #4843 (variable PTC deadline), #4939 (request missing envelopes), #4630 (SSZ types), #4840 (eip7843)
+- No new spec test release (v1.7.0-alpha.2 still latest, nightly uses same sha)
+- Spec conformance deep audit of `should_extend_payload` and `on_payload_attestation`: verified our PTC weight tracking (counters vs spec bitvectors) is functionally equivalent; `envelope_received` correctly maps to spec's `root in store.payload_states`; `payload_revealed` flag set by PTC quorum is separate from envelope receipt; `get_payload_tiebreaker` ordinal values match spec (Empty=0, Full=1, Pending=2)
+- Noted 2 SSZ static types in test vectors without handlers (`ForkChoiceNode`, `MatrixEntry`) — both are spec-internal types (not wire formats), correctly excluded from test suite
+- Restored v1.7.0-alpha.2 vectors after nightly verification
+- **Conclusion**: codebase fully up to date with all merged Gloas spec changes, nightly vectors produce identical results to pinned release
+
 ### 2026-02-28 — fix should_extend_payload to use PTC weight thresholds per spec (run 233)
 - Checked consensus-specs: no new Gloas PRs merged since Feb 26 (latest master: 14e6ce5a)
 - **Found and fixed spec discrepancy** in `should_extend_payload` (`proto_array_fork_choice.rs`):
