@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix nightly fulu timeout, spec tracking (run 245)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master unchanged since run 244)
+- Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- **Fixed nightly CI timeout**: `beacon-chain-tests (fulu)` was timing out at 60 min because `chain_segment_varying_chunk_size` called `get_chain_segment()` 8 times (once per chunk size), each building a 320-block chain from scratch. Fix: build chain once and reuse across all chunk sizes. Also restored actual varying-chunk `process_chain_segment` behavior that was lost during Gloas ePBS refactor (chunk_size was unused). Pre-Gloas blocks use chunked import; Gloas blocks import one-at-a-time with envelope processing.
+- **Performance**: test time under fulu dropped from >50 min (timeout) to ~96s. Under gloas: ~56s.
+- **Nightly CI analysis**: altair failure was infrastructure (moonrepo/setup-rust HTTP 502, same as run 244). fulu failure was this timeout. No actual test assertion failures.
+- **All chain_segment tests pass**: full_segment, varying_chunk_size, non_linear_parent_roots, non_linear_slots — all green under both fulu and gloas
+- **Files changed**: 1 (`beacon_node/beacon_chain/tests/block_verification.rs`)
+
 ### 2026-02-28 — comprehensive audit: clippy, unwrap safety, spec tracking (run 244)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Spec audit**: no new Gloas PRs merged since run 243. Open PRs tracked: #4950 (by_root serve range, 4 approvals), #4892 (remove impossible branch, 2 approvals), #4898 (remove pending from tiebreaker), #4926, #4939, #4843, #4747 — all still open/unmerged
