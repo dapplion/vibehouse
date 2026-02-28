@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — data column availability timestamp, fork choice test readiness (run 239)
+- No new consensus-specs releases or merged Gloas PRs since run 238 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest)
+- Open Gloas spec PRs tracked: #4950, #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- **Verified fork choice test handler** ready for spec PR #4940: `OnExecutionPayload` step (fork_choice.rs:133-137, 368-371) and `head_payload_status` check (fork_choice.rs:76, 433-435, 872-890) already implemented. No code changes needed when #4940 merges.
+- **Fixed TODO(das)**: added data column availability timestamp tracking in `overflow_lru_cache.rs`. Previously, `PendingComponents::make_available()` returned `None` for data column timestamps (with a TODO referencing upstream Lighthouse PR #6850). Now records `SystemTime::now()` at the point of availability, enabling validator monitoring metrics (`blobs_available_timestamp`) for PeerDAS blocks.
+- Verified DataColumnSidecar Gloas variant construction is correct: `build_data_column_sidecars()` creates Fulu variants, but Gloas blocks never reach this path (blobs handled through ePBS envelopes, `spawn_build_data_sidecar_task` returns empty for Gloas)
+- Triggered nightly CI workflow manually (run 22519395324) since yesterday's cron ran before the workflow was committed
+- **Files changed**: 1 (`beacon_node/beacon_chain/src/data_availability_checker/overflow_lru_cache.rs`), +4/-2 lines
+- **Tests**: 663/663 beacon_chain (FORK_NAME=gloas), clippy clean, cargo fmt clean
+
 ### 2026-02-28 — spec compliance check, CI concurrency fix (run 238)
 - No new consensus-specs releases or merged Gloas PRs since run 237 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest)
 - Open Gloas spec PRs tracked: #4950 (by_root serve range, 4 approvals), #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
