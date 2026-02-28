@@ -223,3 +223,22 @@ Fixed all remaining issues blocking devnet finalization (commit `6351db47d`):
 
 **Devnet result**: 4 vibehouse CL + geth EL nodes, gloas fork at epoch 1, spamoor tx load.
 Chain reached slot 80, epoch 10, finalized_epoch=8, justified_epoch=9. No stalls.
+
+### Run 226: proposer_preferences fork boundary fix (2026-02-28)
+
+**Bug**: Devnet stalled at slot 14-16 due to proposer_preferences gossip validation causing peer disconnection cascade at the Gloas fork boundary.
+
+**Root cause chain**:
+1. VCs broadcast proposer_preferences for next-epoch (epoch 2) at the Gloas fork boundary (epoch 1)
+2. **Signature domain mismatch**: HTTP API & gossip validation used `head_state.fork()` to compute the signing domain, but at the fork boundary the head state was still Fulu. The VC correctly signs with `spec.fork_at_epoch(proposal_epoch)` which returns the Gloas fork version, while the BN verified with Fulu fork version → signature failures
+3. **Proposer lookahead epoch mismatch**: Even after fixing signatures, the gossip handler checked `proposer_lookahead` from the head state (epoch 0), but the preferences were for epoch 2. The lookahead covers `[head_epoch, head_epoch+1]`, so epoch 2 proposers weren't in the lookup table → false REJECT + peer penalties
+4. **Peer score cascade**: Multiple `proposer_preferences_wrong_proposer` penalties (-10 each) accumulated to -30+, triggering forced peer disconnection
+5. **Network partition**: All 3 peers disconnected → 0 peers → no block propagation → chain stall
+
+**Fixes** (3 changes):
+1. **Domain computation** (HTTP API `lib.rs:2678` + gossip `gossip_methods.rs:3871`): Use `spec.fork_at_epoch(proposal_epoch)` instead of `head_state.fork()` so the domain is correct regardless of head state epoch
+2. **Head epoch guard** (gossip `gossip_methods.rs:3791`): Before checking `proposer_lookahead`, verify `head_epoch == current_epoch` (wall clock). If behind, IGNORE (not REJECT) — the lookahead data doesn't cover the proposal epoch
+3. **Pre-Fulu fallback** (gossip `gossip_methods.rs:3832`): When `proposer_lookahead()` returns Err (pre-Fulu state), IGNORE instead of REJECT — timing race at fork boundary, not malicious
+
+**Test results**: 137/137 network tests pass, 5/5 HTTP API proposer_preferences tests pass.
+**Devnet result**: Chain reaches finalized_epoch=8 (slot 80, epoch 10). No stalls.
