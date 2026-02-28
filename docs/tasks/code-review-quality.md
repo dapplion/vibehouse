@@ -12,17 +12,17 @@ The loop has shipped a massive amount of code autonomously (100+ runs). Review t
 - [x] Check for `unwrap()`/`expect()` in non-test code — replace with proper error handling
 - [x] Look for `todo!()`, `unimplemented!()`, `fixme`, `hack` comments
 
-### Phase 2: Architecture Review
-- [ ] Review public API surface — are things `pub` that shouldn't be?
-- [ ] Check module organization — any god-files that should be split?
+### Phase 2: Architecture Review — DONE
+- [x] Review public API surface — are things `pub` that shouldn't be?
+- [x] Check module organization — any god-files that should be split?
 - [x] Review error types — consistent error hierarchy? Good error messages?
 - [x] Check for code duplication across Gloas fork variants
 - [x] Review superstruct variant handling — any missing arms, fallthrough bugs?
 
-### Phase 3: Correctness Deep-Dive
+### Phase 3: Correctness Deep-Dive — DONE
 - [x] Cross-reference Gloas implementation against consensus-specs v1.7.0-alpha.2
 - [x] Verify all spec constants match (domain types, config values, timing)
-- [ ] Review edge cases in state transitions — overflow, underflow, empty collections
+- [x] Review edge cases in state transitions — overflow, underflow, empty collections
 - [x] Audit builder payment/withdrawal logic for economic bugs
 - [x] Review fork choice weight calculations against spec
 
@@ -184,5 +184,49 @@ Each loop iteration should:
 - [x] Review superstruct variant handling — any missing arms, fallthrough bugs?
 - [x] Check for code duplication across Gloas fork variants
 - [x] Review error types — consistent error hierarchy? Good error messages?
-- [ ] Review public API surface — are things `pub` that shouldn't be?
-- [ ] Check module organization — any god-files that should be split?
+- [x] Review public API surface — are things `pub` that shouldn't be?
+- [x] Check module organization — any god-files that should be split?
+
+### Run 222: module organization audit, public API surface, state transition edge cases
+
+**Scope**: Phase 2 (module organization, public API surface) + Phase 3 (state transition edge cases). Completes both phases.
+
+**Module organization audit — god-file analysis**:
+
+Top files by line count:
+| File | Lines | Notes |
+|------|-------|-------|
+| `tests/gloas.rs` | 12,588 | Test file — large but splitting tests has limited benefit |
+| `beacon_chain.rs` | 8,805 | Classic god-file, pre-existing. Hard to split (tightly coupled `self` methods) |
+| `proto_array_fork_choice.rs` | 6,934 | Fork choice with ePBS additions. Pre-existing structure |
+| `per_block_processing/gloas.rs` | 5,936 | ~1010 prod + ~4926 tests. Production code is well-organized into bid/attestation/withdrawal/utility groups |
+
+**Decision**: No splits needed. The largest Gloas file (`per_block_processing/gloas.rs`) has only ~1010 lines of production code — the bulk is tests. The production functions group naturally (bid processing, payload attestations, withdrawals, builder utils). Splitting would create unnecessary indirection without improving readability. The pre-existing god-files (`beacon_chain.rs`, `proto_array_fork_choice.rs`) are inherited and not Gloas-specific.
+
+**Public API surface audit**:
+
+Audited all `pub` items in 5 Gloas files. Most are correctly `pub` — used by external crates (ef_tests, beacon_chain, http_api, network).
+
+**Fixed — 2 functions downgraded to `pub(crate)`**:
+- `get_pending_balance_to_withdraw_for_builder` in `per_block_processing/gloas.rs` — only used within `state_processing` crate (by `verify_exit.rs` and internal tests)
+- `upgrade_state_to_gloas` in `upgrade/gloas.rs` — only called by `upgrade_to_gloas` in the same file
+
+All other `pub` items verified as legitimately needed by external crates.
+
+**State transition edge cases audit**:
+
+Comprehensive audit of all Gloas code in `consensus/state_processing/src/` for:
+
+| Category | Status | Details |
+|----------|--------|---------|
+| Arithmetic overflow/underflow | SAFE | All `+`, `-`, `*`, `/` use `safe_arith` (`safe_add`, `saturating_add`, `safe_div`, `safe_rem`, `safe_mul`) |
+| Division by zero | SAFE | All divisors explicitly checked before use (`builders_count > 0`, `validators_len > 0`, `indices.is_empty()` guards) |
+| Array indexing | SAFE | Uses `.get()` consistently instead of `[]` — never direct indexing |
+| Empty collections | SAFE | Proper `.is_empty()` and `.last().map().unwrap_or()` patterns |
+| Builder/validator index bounds | SAFE | Proactive validation with `.get()` + `.ok_or()` before access |
+| Withdrawal index wrapping | SAFE | Uses `safe_rem()` for circular sweeps |
+| Envelope payload/state consistency | SAFE | Verifies alignment before processing |
+
+**No issues found.** The Gloas state transition code demonstrates consistently defensive programming — safe arithmetic, bounds checking, zero-divisor guards, and proper error propagation throughout.
+
+**Phase 2 and Phase 3 are now complete.**

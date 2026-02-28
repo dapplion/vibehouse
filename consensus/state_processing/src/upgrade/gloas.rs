@@ -23,7 +23,7 @@ pub fn upgrade_to_gloas<E: EthSpec>(
     Ok(())
 }
 
-pub fn upgrade_state_to_gloas<E: EthSpec>(
+pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
     pre_state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<BeaconState<E>, Error> {
