@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 process_deposit_requests batch behavior tests + dead code removal (run 216)
+- Checked consensus-specs PRs: no new Gloas spec changes since run 215
+  - PR #4941 (execution proof construction uses beacon block) — EIP-8025 only (`_features/eip8025/prover.md`), not applicable to Gloas
+  - PR #4944 (ExecutionProofsByRoot multiple roots) — EIP-8025 only, OPEN, not applicable
+  - No new spec test release (v1.7.0-alpha.2 still latest)
+- **Removed dead `pending_self_build_envelope` field** from `beacon_chain.rs` and `builder.rs`. The field was declared, initialized, but never read anywhere in the codebase. Identified during coverage analysis as dead code from an earlier implementation approach where the self-build envelope was cached on the BeaconChain struct; the actual implementation passes the envelope through the `PublishBlockRequest` type instead.
+- Analyzed test coverage across all Gloas crates. Found that the top-level `process_deposit_requests` function (batch entry point) was never tested directly — all 18 existing tests called `process_deposit_request_gloas` (single request) or `apply_deposit_for_builder` directly, bypassing the batch initialization of the builder pubkey cache. The batch behavior is important because the cache is initialized once, then updated live as builders are created within the iteration.
+- **Added 5 tests** covering `process_deposit_requests` batch behavior in `process_operations.rs`:
+  1. `batch_two_builder_deposits_same_pubkey_first_creates_second_topups` — two builder deposits for the same pubkey in one `process_deposit_requests` call. First creates builder (valid sig verified), second hits the `is_builder` cache path and tops up (no sig check). Verifies 1 builder with combined balance 8G. Tests that the cache is updated live within the batch loop, not just initialized at start.
+  2. `batch_two_different_builders_created_in_one_call` — two builder deposits for different pubkeys in one batch. Both should create separate builders at indices 0 and 1. Verifies that the second request doesn't confuse the first builder's cache entry as relevant. Tests independent builder creation within a single batch.
+  3. `batch_builder_then_validator_deposits_correctly_routed` — batch containing a builder deposit (pubkey A) then a validator deposit (pubkey B). The builder deposit creates a builder; the validator deposit goes to `pending_deposits`. Verifies that updating the builder cache doesn't interfere with validator deposit routing for a different pubkey.
+  4. `batch_deposit_requests_start_index_not_set_in_gloas` — in Gloas mode, `process_deposit_requests` skips the `deposit_requests_start_index` logic (Electra-only). Verifies the start index remains at `u64::MAX` sentinel after processing. Tests the fork-specific branching in the top-level function.
+  5. `batch_existing_builder_topup_then_new_builder_in_same_batch` — batch with a top-up for an existing builder (index 0) then a new builder deposit. Top-up uses invalid signature (which is fine for existing builder top-ups). New builder is appended at index 1. Verifies both cache entries are correct (0 and 1) and balances are independently correct. Tests the interaction between the `is_builder` short-circuit path and the new-builder append path within a single batch.
+- **Full test suite verification** — all passing:
+  - 452/452 state_processing tests (was 447, +5 new)
+  - Clippy clean (including --tests, full workspace lint), cargo fmt clean
+
 ### 2026-02-28 — 5 initiate_builder_exit lifecycle interaction tests (run 215)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 214
   - PR #4947 (pre-fork subscription note) — documentation only, already noted
