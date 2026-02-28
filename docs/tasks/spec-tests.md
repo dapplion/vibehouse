@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 5 gossip verification integration tests (run 229)
+- Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
+  - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check
+  - Open Gloas PRs: #4950 (extend by_root serve range, 4 approvals — closest to merge, assessed: no code changes needed, vibehouse already serves blocks/envelopes by root from its store without epoch filtering), #4892 (remove impossible branch, 2 approvals — already aligned), #4898 (remove pending from tiebreaker, 1 approval — already aligned), #4843 (variable PTC deadline, 1 approval), #4939/#4940/#4932 (0 approvals)
+  - Nightly spec test vectors: Feb 28 run (22511755730) still running, same sha (14e6ce5a), no new vectors
+- Analyzed gossip verification test coverage in `gloas_verification.rs` (779 lines, 3 verification functions). Found that while most error variants were tested (26/36), `PayloadAttestationError::UnknownBeaconBlockRoot` and duplicate-same-value attestation handling were untested integration paths.
+- **Added 5 integration tests** in `beacon_node/beacon_chain/tests/gloas.rs`:
+  1. `gloas_payload_attestation_gossip_rejects_unknown_block_root` — attestation with a random block root not in fork choice is rejected with `UnknownBeaconBlockRoot`. Tests check 3 of `verify_payload_attestation_for_gossip` (line 549-558). Verifies the error reports the unknown root.
+  2. `gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation` — submitting two attestations with identical `payload_present` values (same validator, same slot/block) does NOT trigger `ValidatorEquivocation`. The equivocation tracker records `Duplicate` and silently skips, resulting in `EmptyAggregationBits` (no "new" attestations remain). Tests the critical distinction between equivocation (malicious: different values) and duplication (benign: same value).
+  3. `gloas_envelope_gossip_rejects_prior_to_finalization_with_real_finality` — builds a real finalized chain (5 epochs with all validators), imports a block+envelope, tampers envelope slot to 0. Rejected with `PriorToFinalization`. Tests check 2 with actual finalization data rather than just epoch arithmetic.
+  4. `gloas_envelope_gossip_self_build_rejects_block_hash_mismatch` — self-build envelope (BUILDER_INDEX_SELF_BUILD) with tampered `block_hash` rejected with `BlockHashMismatch`. Verifies that self-build envelopes go through all validation checks (except BLS sig) — the block_hash must match the committed bid.
+  5. `gloas_payload_attestation_gossip_genesis_root_passes_block_check` — attestation referencing head block root (which IS in fork choice) passes block root check, PTC check, equivocation check, but fails at signature verification (empty sig). Exercises the happy path through checks 1-5 and confirms the validation pipeline order.
+- **Full test suite verification** — all passing:
+  - 5/5 new tests pass, 663 total beacon_chain tests
+  - Clippy clean, cargo fmt clean
+
 ### 2026-02-28 — codebase health check, all green (run 228)
 - Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
   - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check

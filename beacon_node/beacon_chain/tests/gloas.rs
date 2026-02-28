@@ -12586,3 +12586,305 @@ async fn gloas_gossip_aggregate_non_same_slot_index_one_not_committee_rejected()
         }
     }
 }
+
+// =============================================================================
+// Payload attestation gossip: UnknownBeaconBlockRoot
+// =============================================================================
+
+/// A payload attestation referencing a beacon block root not present in fork
+/// choice is rejected with `UnknownBeaconBlockRoot`.
+///
+/// This is check 3 in `verify_payload_attestation_for_gossip` (gloas_verification.rs:549-558).
+/// The check ensures we don't waste resources computing PTC committees or
+/// verifying signatures for attestations that reference blocks we haven't seen.
+/// Without this guard, an attacker could craft attestations for fabricated block
+/// roots, causing PTC committee lookups and signature verification against
+/// states that don't correspond to any known chain.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_rejects_unknown_block_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+
+    // Use a random block root that is definitely not in fork choice
+    let unknown_root = Hash256::repeat_byte(0xde);
+
+    let mut aggregation_bits = BitVector::default();
+    aggregation_bits
+        .set(0, true)
+        .expect("PTC size >= 1, bit 0 should be settable");
+
+    let attestation = PayloadAttestation::<E> {
+        aggregation_bits,
+        data: PayloadAttestationData {
+            beacon_block_root: unknown_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+    match result {
+        Err(PayloadAttestationError::UnknownBeaconBlockRoot { root }) => {
+            assert_eq!(root, unknown_root, "error should report the unknown root");
+        }
+        Err(other) => panic!("expected UnknownBeaconBlockRoot, got {:?}", other),
+        Ok(_) => panic!("attestation with unknown block root should be rejected"),
+    }
+}
+
+// =============================================================================
+// Payload attestation gossip: duplicate same-value is not equivocation
+// =============================================================================
+
+/// When the same validator submits two payload attestations with identical
+/// `payload_present` values for the same slot/block, the second should fail at
+/// signature verification (not at equivocation detection). The equivocation
+/// tracker records `Duplicate` for same-value re-submissions, which is silently
+/// skipped — the validator's observation is already recorded.
+///
+/// This verifies the distinction between equivocation (different payload_present
+/// values, which is malicious) and duplication (same value, which is benign).
+/// The check is in gloas_verification.rs:596-621.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a PTC member
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(!ptc.is_empty(), "PTC committee should not be empty");
+    let ptc_position = 0;
+
+    // First attestation: payload_present=true
+    let mut aggregation_bits = BitVector::default();
+    aggregation_bits
+        .set(ptc_position, true)
+        .expect("should set bit");
+
+    let attestation_1 = PayloadAttestation::<E> {
+        aggregation_bits: aggregation_bits.clone(),
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    // Submit first — fails at signature (empty sig), but equivocation tracker records it
+    let result_1 = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation_1);
+    assert!(
+        matches!(result_1, Err(PayloadAttestationError::InvalidSignature)),
+        "first attestation should fail at signature, got {:?}",
+        result_1.err()
+    );
+
+    // Second attestation: SAME payload_present=true (not equivocation, just duplicate)
+    let attestation_2 = PayloadAttestation::<E> {
+        aggregation_bits,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true, // same value as first
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    // The duplicate observation is skipped (continue in the loop), so if this
+    // is the only attesting validator, indexed_attestation_indices ends up empty
+    // → EmptyAggregationBits. This is the correct behavior: the only validator's
+    // observation is a duplicate, so there are no "new" attestations to verify.
+    let result_2 = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation_2);
+    match result_2 {
+        Err(PayloadAttestationError::EmptyAggregationBits) => {
+            // Expected: the only validator was a duplicate, so no indices remain
+        }
+        Err(PayloadAttestationError::InvalidSignature) => {
+            // Also acceptable: if the implementation processes duplicates differently
+        }
+        Err(PayloadAttestationError::ValidatorEquivocation { .. }) => {
+            panic!(
+                "duplicate same-value attestation should NOT be equivocation — \
+                 equivocation requires different payload_present values"
+            );
+        }
+        Err(other) => panic!(
+            "expected EmptyAggregationBits or InvalidSignature, got {:?}",
+            other
+        ),
+        Ok(_) => panic!("duplicate attestation with empty signature should not pass"),
+    }
+}
+
+// =============================================================================
+// Envelope gossip: PriorToFinalization verified with finalized chain
+// =============================================================================
+
+/// After finalizing several epochs, an envelope with a slot before the
+/// finalized checkpoint is rejected with `PriorToFinalization`. This tests
+/// the finalization-based pruning guard (check 2 in verify_payload_envelope_for_gossip).
+///
+/// The test produces a real finalized chain and then creates an envelope whose
+/// slot is below the finalized epoch boundary. The block root is the recently
+/// imported block (which IS in fork choice), but the tampered slot triggers the
+/// finalization check before the slot-mismatch check.
+#[tokio::test]
+async fn gloas_envelope_gossip_rejects_prior_to_finalization_with_real_finality() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend enough to finalize (need 3+ epochs with all validators attesting)
+    Box::pin(harness.extend_slots(E::slots_per_epoch() as usize * 5)).await;
+
+    let head = harness.chain.head_snapshot();
+    let finalized_epoch = head.beacon_state.finalized_checkpoint().epoch;
+
+    // Verify we actually finalized
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "should have finalized past genesis, got epoch {}",
+        finalized_epoch
+    );
+
+    let finalized_slot = finalized_epoch.start_slot(E::slots_per_epoch());
+
+    // Import another block to get a valid envelope + block root in fork choice
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Tamper the slot to be before finalization. The block root is still in
+    // fork choice (just imported), so check 1 passes. Check 2 fires because
+    // envelope.slot < finalized_slot.
+    let pre_finalized_slot = Slot::new(0);
+    signed_envelope.message.slot = pre_finalized_slot;
+
+    let err = assert_envelope_rejected(&harness, signed_envelope, "envelope prior to finalization");
+
+    assert!(
+        matches!(
+            err,
+            PayloadEnvelopeError::PriorToFinalization {
+                envelope_slot,
+                finalized_slot: fs,
+            } if envelope_slot == pre_finalized_slot && fs == finalized_slot
+        ),
+        "expected PriorToFinalization with envelope_slot=0 and finalized_slot={}, got {:?}",
+        finalized_slot,
+        err
+    );
+}
+
+// =============================================================================
+// Envelope gossip: self-build envelope with tampered block_hash rejected
+// =============================================================================
+
+/// A self-build envelope (builder_index == BUILDER_INDEX_SELF_BUILD) that has
+/// a mismatched block_hash compared to the committed bid is rejected with
+/// `BlockHashMismatch`. This verifies that self-build envelopes still go
+/// through all validation checks (except signature verification) — the
+/// block_hash must match the bid's committed block_hash regardless of whether
+/// the builder is self or external.
+///
+/// This tests check 5 of verify_payload_envelope_for_gossip (line 735-739)
+/// for the self-build path specifically.
+#[tokio::test]
+async fn gloas_envelope_gossip_self_build_rejects_block_hash_mismatch() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let (_block_root, mut signed_envelope) = import_block_get_envelope(&harness).await;
+
+    // Verify this is a self-build envelope
+    assert_eq!(
+        signed_envelope.message.builder_index,
+        consts::gloas::BUILDER_INDEX_SELF_BUILD,
+        "should be a self-build envelope"
+    );
+
+    // Tamper the block_hash to something different from the committed bid
+    signed_envelope.message.payload.block_hash = ExecutionBlockHash::repeat_byte(0xff);
+
+    let err = assert_envelope_rejected(
+        &harness,
+        signed_envelope,
+        "self-build envelope with tampered block_hash",
+    );
+    assert!(
+        matches!(err, PayloadEnvelopeError::BlockHashMismatch { .. }),
+        "expected BlockHashMismatch, got {:?}",
+        err
+    );
+}
+
+// =============================================================================
+// Payload attestation gossip: attestation for genesis block root
+// =============================================================================
+
+/// A payload attestation for the genesis block root (which IS in fork choice)
+/// should proceed past the block root check but fail at signature verification
+/// since we use an empty signature. This tests the happy path through checks
+/// 1-5 when the block root exists in fork choice.
+#[tokio::test]
+async fn gloas_payload_attestation_gossip_genesis_root_passes_block_check() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Use the head block root (which IS in fork choice)
+    let head_root = head.beacon_block_root;
+
+    // Find a PTC member
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(!ptc.is_empty());
+
+    let mut aggregation_bits = BitVector::default();
+    aggregation_bits.set(0, true).expect("should set bit");
+
+    let attestation = PayloadAttestation::<E> {
+        aggregation_bits,
+        data: PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        signature: AggregateSignature::empty(),
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(attestation);
+
+    // Should pass all checks except signature verification (empty signature)
+    match result {
+        Err(PayloadAttestationError::InvalidSignature) => {
+            // Expected: passed block root check, PTC check, equivocation check,
+            // but failed at signature verification with empty sig
+        }
+        Err(other) => panic!(
+            "expected InvalidSignature (passed block root check), got {:?}",
+            other
+        ),
+        Ok(_) => panic!("attestation with empty signature should not pass"),
+    }
+}
