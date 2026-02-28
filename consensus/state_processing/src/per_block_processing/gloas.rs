@@ -4066,6 +4066,119 @@ mod tests {
         assert_eq!(pending, 0, "should ignore other builder's pending balance");
     }
 
+    // ── can_builder_cover_bid tests ────────────
+
+    #[test]
+    fn can_builder_cover_bid_sufficient_balance() {
+        // Builder has 3 ETH, min_deposit is 1 ETH, no pending obligations.
+        // Available = 3 ETH - 1 ETH = 2 ETH. Bid of 1 ETH should succeed.
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 3_000_000_000);
+        assert!(can_builder_cover_bid::<E>(&state, 0, 1_000_000_000, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_exact_available_balance() {
+        // Builder has 3 ETH, min_deposit is 1 ETH, no pending.
+        // Available = 2 ETH. Bid of exactly 2 ETH should succeed.
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 3_000_000_000);
+        assert!(can_builder_cover_bid::<E>(&state, 0, 2_000_000_000, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_exceeds_available_balance() {
+        // Builder has 3 ETH, min_deposit is 1 ETH, no pending.
+        // Available = 2 ETH. Bid of 2 ETH + 1 Gwei should fail.
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 3_000_000_000);
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 2_000_000_001, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_balance_below_min_deposit() {
+        // Builder has 500_000_000 Gwei (0.5 ETH), which is below min_deposit (1 ETH).
+        // Should reject any bid, even zero-value.
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 500_000_000);
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 0, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_pending_withdrawals_reduce_available() {
+        // Builder has 5 ETH. Pending withdrawal of 2 ETH.
+        // Available = 5 ETH - 1 ETH (min_deposit) - 2 ETH (pending) = 2 ETH.
+        // Bid of 2 ETH should succeed, 2 ETH + 1 should fail.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 2_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+        assert!(can_builder_cover_bid::<E>(&state, 0, 2_000_000_000, &spec).unwrap());
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 2_000_000_001, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_pending_payments_reduce_available() {
+        // Builder has 5 ETH. Pending payment of 1.5 ETH.
+        // Available = 5 ETH - 1 ETH (min_deposit) - 1.5 ETH (pending payment) = 2.5 ETH.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        *state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(0)
+            .unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 1_500_000_000,
+                builder_index: 0,
+            },
+        };
+        assert!(can_builder_cover_bid::<E>(&state, 0, 2_500_000_000, &spec).unwrap());
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 2_500_000_001, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_combined_pending_withdrawals_and_payments() {
+        // Builder has 6 ETH. Pending withdrawal of 1 ETH + pending payment of 2 ETH.
+        // Available = 6 ETH - 1 ETH (min_deposit) - 1 ETH (withdrawal) - 2 ETH (payment) = 2 ETH.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 6_000_000_000);
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+        *state_gloas.builder_pending_payments.get_mut(0).unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 2_000_000_000,
+                builder_index: 0,
+            },
+        };
+        assert!(can_builder_cover_bid::<E>(&state, 0, 2_000_000_000, &spec).unwrap());
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 2_000_000_001, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_unknown_builder_returns_error() {
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, 3_000_000_000);
+        let result = can_builder_cover_bid::<E>(&state, 99, 1_000_000_000, &spec);
+        assert!(
+            matches!(result, Err(BeaconStateError::UnknownBuilder(99))),
+            "unknown builder index should return error: {:?}",
+            result,
+        );
+    }
+
     // ── initiate_builder_exit tests ────────────
 
     #[test]
