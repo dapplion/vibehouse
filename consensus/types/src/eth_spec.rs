@@ -659,7 +659,7 @@ impl EthSpec for GnosisEthSpec {
     type NumberOfColumns = U128;
     type ProposerLookaheadSlots = U32; // Derived from (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH
     type PtcSize = U512;
-    type MaxPayloadAttestations = U2;
+    type MaxPayloadAttestations = U4;
     type BuilderRegistryLimit = U1099511627776;
     type BuilderPendingPaymentsLimit = U32; // 2 * SLOTS_PER_EPOCH = 2 * 16 = 32
     type BuilderPendingWithdrawalsLimit = U1048576;

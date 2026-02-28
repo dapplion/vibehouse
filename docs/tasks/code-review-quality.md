@@ -21,7 +21,7 @@ The loop has shipped a massive amount of code autonomously (100+ runs). Review t
 
 ### Phase 3: Correctness Deep-Dive
 - [x] Cross-reference Gloas implementation against consensus-specs v1.7.0-alpha.2
-- [ ] Verify all spec constants match (domain types, config values, timing)
+- [x] Verify all spec constants match (domain types, config values, timing)
 - [ ] Review edge cases in state transitions — overflow, underflow, empty collections
 - [x] Audit builder payment/withdrawal logic for economic bugs
 - [x] Review fork choice weight calculations against spec
@@ -128,3 +128,27 @@ Each loop iteration should:
 9. **`process_withdrawals_gloas`** ✓ — matches spec order: (1) builder pending withdrawals capped at MAX-1, (2) partial validator withdrawals capped at MAX-1, (3) builder sweep capped at MAX-1, (4) validator sweep capped at MAX. All state updates (apply_withdrawals, update indices, store expected_withdrawals) verified correct.
 
 **No spec divergences found.** All checked functions match the consensus-specs faithfully.
+
+### Run 220: spec constants verification
+
+**Scope**: Phase 3 sub-task — verify all Gloas spec constants match consensus-specs v1.7.0-alpha.2 (domain types, preset values, config values, timing parameters, fork versions).
+
+**Method**: Fetched spec from `ethereum/consensus-specs/master` (beacon-chain.md, fork-choice.md, validator.md, presets/mainnet/gloas.yaml, presets/minimal/gloas.yaml, configs/mainnet.yaml) and cross-referenced against vibehouse codebase.
+
+**Results — all constants verified correct**:
+
+| Category | Constants Checked | Status |
+|----------|------------------|--------|
+| Domain types | DOMAIN_BEACON_BUILDER (0x0B), DOMAIN_PTC_ATTESTER (0x0C), DOMAIN_PROPOSER_PREFERENCES (0x0D) | ✓ |
+| Index flags | BUILDER_INDEX_FLAG (2^40), BUILDER_INDEX_SELF_BUILD (UINT64_MAX) | ✓ |
+| Builder params | payment threshold 6/10, withdrawal prefix 0x03, min withdrawability delay 64 epochs | ✓ |
+| Preset (mainnet) | PTC_SIZE=512, MAX_PAYLOAD_ATTESTATIONS=4, BUILDER_REGISTRY_LIMIT=2^40, BUILDER_PENDING_WITHDRAWALS_LIMIT=2^20, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=2^14 | ✓ |
+| Preset (minimal) | PTC_SIZE=2, MAX_PAYLOAD_ATTESTATIONS=4, MAX_BUILDERS_PER_WITHDRAWALS_SWEEP=16 | ✓ |
+| Fork choice | PAYLOAD_TIMELY_THRESHOLD=PTC_SIZE//2 (>), DATA_AVAILABILITY_TIMELY_THRESHOLD=PTC_SIZE//2 (>), PayloadStatus enum (0/1/2) | ✓ |
+| Timing BPS | attestation=2500, aggregate=5000, sync=2500, contribution=5000, payload_attestation=7500 | ✓ |
+| Fork versions | mainnet [0x07,0,0,0], minimal [0x07,0,0,1], gnosis [0x07,0,0,0x64] | ✓ |
+| Networking | MAX_REQUEST_PAYLOADS=128 | ✓ |
+| Derived types | BuilderPendingPaymentsLimit (2*SLOTS_PER_EPOCH per spec), ProposerLookaheadSlots | ✓ |
+
+**Bug found and fixed**:
+- `GnosisEthSpec::MaxPayloadAttestations` was `U2` but the gnosis preset yaml and ChainSpec both say 4. This would have limited Gnosis Gloas blocks to 2 payload attestations instead of 4. **Fixed**: changed to `U4` in `eth_spec.rs:662`. All 711 types tests + 69 SSZ static EF tests pass.
