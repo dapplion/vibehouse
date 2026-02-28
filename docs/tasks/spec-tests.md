@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — bid equivocation ordering fix, spec tracking (run 273)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 272
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- **Fixed spec conformance bug in bid equivocation detection**: `observe_bid()` was called BEFORE signature verification, but the spec says equivocation detection applies to "the first signed bid seen with a valid signature." An attacker could send an invalid-signature bid to block later valid bids from the same builder. Moved equivocation detection to after signature verification.
+- Updated 4 integration tests (2 in gloas.rs, 2 in gloas_verification.rs) to use properly signed bids with builder keypairs and proposer preferences, matching the new correct ordering
+- Added `make_signed_external_bid` and `insert_bid_proposer_preferences` test helpers
+- **Test results**: 322/322 Gloas beacon_chain tests pass, 44/44 Gloas network tests pass, 8/8 EF fork choice tests pass
+- **Clippy**: clean across entire workspace (lint-full passes)
+- **#4843 (variable PTC deadline) analysis**: 1 approval (jtraglia), potuz raised architectural concerns about coupling PTC attester logic to the store. Stalled since Jan 21. Not likely to merge soon.
+
 ### 2026-02-28 — spec tracking, open PR analysis, no code changes (run 272)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 271

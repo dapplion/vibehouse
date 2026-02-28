@@ -31,6 +31,13 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 273)
+- Checked consensus-specs: no new Gloas PRs merged since run 261 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Fixed bid equivocation detection ordering**: moved `observe_bid()` after signature verification per spec ("first bid with valid signature"). Previously, invalid-signature bids could block valid bids from the same builder. This was found via gossip validation audit against the spec.
+- **CI status**: all green, nightly passes
+
 ### 2026-02-28 (run 261)
 - Checked consensus-specs: no new Gloas PRs merged since run 260 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals, APPROVED), #4940, #4939, #4932, #4926, #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4840, #4747, #4630, #4558 — all still open/unmerged
