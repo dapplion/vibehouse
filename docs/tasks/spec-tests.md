@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix gossip bid validation spec compliance (run 261)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- No new merged Gloas PRs since run 260
+- Open Gloas spec PRs tracked: #4950 (4 approvals, APPROVED), #4940, #4939, #4932, #4926, #4898 (APPROVED), #4892 (APPROVED, 2 formal approvals), #4843 (APPROVED, 1 formal approval), #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Fixed spec compliance gap in gossip bid validation**: the `verify_execution_bid_for_gossip` function was using a simple `builder.balance >= bid.value` check, but the spec requires `can_builder_cover_bid(state, builder_index, amount)` which accounts for `MIN_DEPOSIT_AMOUNT` and pending withdrawal/payment obligations.
+  - **Root cause**: gossip validation didn't compute `get_pending_balance_to_withdraw_for_builder` (sum of `builder_pending_withdrawals` + `builder_pending_payments`), nor subtract `MIN_DEPOSIT_AMOUNT` from the available balance.
+  - **Impact**: a builder with pending withdrawals consuming most of their balance could have bids accepted at gossip but rejected at block processing, wasting network bandwidth and potentially causing confusion in a multi-client testnet.
+  - **Fix**: extracted `can_builder_cover_bid` and `get_pending_balance_to_withdraw_for_builder` as public helpers in `state_processing::per_block_processing::gloas`. Gossip verification now calls `can_builder_cover_bid`. Block processing refactored to use the same shared helper (eliminating code duplication).
+  - **Test updates**: all test builder balances increased from unrealistic values (100, 1_000_000 Gwei) to values above `MIN_DEPOSIT_AMOUNT` (1-3 ETH = 1-3 billion Gwei). Balance-edge-case tests updated to exercise the proper `can_builder_cover_bid` boundary.
+- **Test results**: 452/452 state_processing, 24/24 bid verification, 14/14 gloas bid gossip, 12/12 network bid gossip, 15/15 EF operations, 1/1 EF execution_payload_bid — all passing. Full clippy lint clean.
+- **Files changed**: `gloas_verification.rs` (gossip check), `per_block_processing/gloas.rs` (helpers + refactor), `gloas.rs` tests, `gloas_verification.rs` tests, `network/tests.rs` (balance values)
+
 ### 2026-02-28 — epoch cache optimization, spec tracking (run 260)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - No new merged Gloas PRs since run 259
