@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — test coverage audit, spec tracking (run 276)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 275
+- Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge — extends by_root serve range, already compliant), #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **Comprehensive test coverage audit**: searched for untested Gloas code paths across gossip verification, block verification, state processing, and beacon chain integration
+  - `verify_payload_attestation_for_gossip` PtcCommitteeError/InvalidAggregationBits paths: practically unreachable (PTC size always matches BitVector), not worth testing
+  - `load_parent` latest_block_hash patch: defense-in-depth for cache timing edge cases. Attempted integration test but StateRootMismatch prevents testing without mocking cache internals — blocks built on post-envelope states can't validate on pre-envelope states. Reverted test.
+  - `process_payload_envelope` EL Invalid path: already tested (`gloas_gossip_envelope_el_invalid_returns_error`)
+  - `process_pending_envelope` failure paths: already tested
+  - `process_builder_pending_payments`: thoroughly tested (20 unit tests)
+  - `upgrade_to_gloas`: thoroughly tested (21 unit tests)
+  - `per_slot_processing` Gloas availability: thoroughly tested
+  - `get_expected_withdrawals_gloas`: cross-referenced against spec, 4-phase withdrawal computation correct
+- **EF spec tests**: 43/43 pass (fake_crypto, minimal)
+- **CI status**: all green, nightly green
+- **No code changes this run** — test coverage found to be comprehensive, no actionable gaps
+
 ### 2026-03-01 — store audit, abandoned envelope leak fix, spec tracking (run 275)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 274

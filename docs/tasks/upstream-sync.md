@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 276)
+- Checked consensus-specs: no new Gloas PRs merged since run 275 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge), #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **Comprehensive test coverage audit**: searched for untested Gloas code paths — found coverage to be thorough. Analyzed load_parent latest_block_hash patch (defense-in-depth, not independently testable), gossip verification error paths (practically unreachable), withdrawal computation (spec-correct). No actionable gaps found.
+- **EF spec tests**: 43/43 pass (operations, epoch_processing, sanity, fork_choice — fake_crypto, minimal)
+- **CI status**: all green, nightly green
+- **No code changes this run**
+
 ### 2026-03-01 (run 275)
 - Checked consensus-specs: no new Gloas PRs merged since run 274 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
