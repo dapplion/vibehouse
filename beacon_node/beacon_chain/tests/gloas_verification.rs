@@ -1176,6 +1176,50 @@ async fn envelope_self_build_passes_all_checks() {
 }
 
 // =============================================================================
+// Duplicate envelope deduplication test
+// =============================================================================
+
+#[tokio::test]
+async fn envelope_duplicate_returns_ignore() {
+    let harness = gloas_harness(2).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let stored_envelope = harness
+        .chain
+        .store
+        .get_payload_envelope(&head_root)
+        .unwrap()
+        .expect("self-build envelope should exist for head block");
+
+    // First verification should succeed — self-build envelopes are not observed
+    // during process_self_build_envelope, only through gossip verification.
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(stored_envelope.clone()));
+    assert!(
+        result.is_ok(),
+        "first gossip verification should succeed, got: {:?}",
+        result.err()
+    );
+
+    // Second verification of the same block root should return DuplicateEnvelope
+    // (the root was recorded by the first successful verification).
+    let err = unwrap_err(
+        harness
+            .chain
+            .verify_payload_envelope_for_gossip(Arc::new(stored_envelope)),
+        "should reject duplicate envelope",
+    );
+    assert!(
+        matches!(err, PayloadEnvelopeError::DuplicateEnvelope { block_root } if block_root == head_root),
+        "expected DuplicateEnvelope with head root, got {:?}",
+        err
+    );
+}
+
+// =============================================================================
 // Prior to finalization test
 // =============================================================================
 
