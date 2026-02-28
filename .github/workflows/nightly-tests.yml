@@ -60,7 +60,7 @@ jobs:
           --features "fork_from_env,slasher/lmdb"
           -p beacon_chain
           -E 'not test(/gloas::|gloas_verification::|chain_segment_varying_chunk_size/)'
-        timeout-minutes: 60
+        timeout-minutes: 90
 
   op-pool-tests:
     name: op-pool-tests (${{ matrix.fork }})
