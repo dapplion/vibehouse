@@ -16,6 +16,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tracing::{Span, debug, debug_span};
 use types::beacon_block_body::KzgCommitments;
 use types::blob_sidecar::BlobIdentifier;
@@ -326,8 +327,9 @@ impl<E: EthSpec> PendingComponents<E> {
                 .flatten()
                 .map(|blob| blob.seen_timestamp())
                 .max(),
-            // TODO(das): To be fixed with https://github.com/sigp/lighthouse/pull/6850
-            AvailableBlockData::DataColumns(_) => None,
+            AvailableBlockData::DataColumns(_) => SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .ok(),
         };
 
         let AvailabilityPendingExecutedBlock {
