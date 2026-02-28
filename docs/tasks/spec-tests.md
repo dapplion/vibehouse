@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix nightly fulu timeout (round 3), spec tracking (run 249)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Fixed nightly fulu beacon-chain timeout (again)**: `chain_segment_varying_chunk_size` still timing out at 60 min under fulu despite the run 244 fix (build chain once). Root cause: 320 blocks × 8 chunk sizes with PeerDAS processing is inherently slow on CI runners (~50+ min). The test exercises fork-agnostic batching logic already fully covered by gloas runs in main CI. Fix: exclude `chain_segment_varying_chunk_size` from all nightly prior-fork runs alongside the existing gloas integration test exclusion.
+- **Nightly altair failure**: infrastructure issue again (moonrepo/setup-rust step failure). Not a test failure.
+- **Files changed**: 1 (`.github/workflows/nightly-tests.yml`)
+
 ### 2026-02-28 — parallelize CI, spec tracking (run 248)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898, #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
