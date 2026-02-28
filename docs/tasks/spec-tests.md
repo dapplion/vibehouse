@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, test coverage improvement (run 250)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Spec PR verification**: re-verified all 5 merged Gloas PRs since v1.7.0-alpha.2 (#4948 PayloadStatus reorder, #4947 pre-fork proposer_preferences subscription, #4918 attestation payload status check, #4923 ignore block if parent payload unknown, #4914 SignedExecutionProof pubkey→validator_index) — all already implemented or not applicable (vibehouse uses custom execution proof types for #4914)
+- **Test coverage**: added `gloas_self_build_envelope_missing_state_errors` test covering the error path in `process_self_build_envelope` when the post-block state has been evicted from the store. Previously only the gossip envelope path (`process_payload_envelope`) had this coverage.
+- **CI status**: all recent pushes running, previous completed run (run 243) green. Nightly re-triggered with latest fixes.
+- **Files changed**: 1 (`beacon_node/beacon_chain/tests/gloas.rs`)
+
 ### 2026-02-28 — fix nightly fulu timeout (round 3), spec tracking (run 249)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
