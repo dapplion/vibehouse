@@ -122,4 +122,4 @@ Add ePBS-specific REST API endpoints for block submission, bid submission, paylo
   - `beacon_node/http_api/src/lib.rs`: Added GET handler + route wiring
   - `common/eth2/src/lib.rs`: Added `get_beacon_pool_payload_attestations` client method + `PayloadAttestation` import
   - `common/eth2/src/types.rs`: Added `PayloadAttestationPoolQuery` struct
-- 226/226 http_api tests pass
+- 229/229 http_api tests pass (3 GET pool endpoint tests added in run 231)

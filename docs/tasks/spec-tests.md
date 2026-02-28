@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — 3 GET payload attestation pool endpoint tests (run 231)
+- Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
+  - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check
+  - Nightly spec test vectors: Feb 28 run (22511755730) using same sha (14e6ce5a), no new vectors
+- Reviewed open issues: #8869 (block replayer Gloas envelope processing) already fixed — extensive envelope support in replayer + all callers provide envelopes. #8892 (SSZ response) already complete including proposer_lookahead. #8858 (events feature gating) not applicable to vibehouse.
+- Found test coverage gap: GET `/eth/v1/beacon/pool/payload_attestations` endpoint (added in run 230) had zero integration test coverage.
+- **Added 3 integration tests** in `beacon_node/http_api/tests/fork_tests.rs`:
+  1. `get_payload_attestation_pool_empty` — GET with no attestations in pool returns empty `data: []`, both with and without slot filter. Validates the empty-pool base case.
+  2. `get_payload_attestation_pool_after_post` — POST a valid PTC member attestation, then GET returns it. Tests the full round-trip: submit via POST → verify in pool → retrieve via GET. Also tests slot filter: matching slot returns the attestation, non-matching slot returns empty.
+  3. `get_payload_attestation_pool_slot_filter` — Inserts attestations for two different slots directly into the pool (bypassing POST to avoid "past slot" rejection). GET without filter returns both. GET with slot=1 returns only slot 1 attestation (payload_present=true). GET with slot=2 returns only slot 2 attestation (payload_present=false). GET with slot=99 returns empty.
+- **Full test suite verification**: 229/229 http_api tests pass (was 226, +3 new), clippy clean, cargo fmt clean.
+
 ### 2026-02-28 — 5 gossip verification integration tests (run 229)
 - Checked consensus-specs: no new Gloas PRs merged since Feb 26 (#4947, #4948 were the last)
   - Latest master commit: 14e6ce5a (#4947, Feb 26) — same as last check
