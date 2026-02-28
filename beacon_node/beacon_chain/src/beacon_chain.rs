@@ -2783,6 +2783,55 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(())
     }
 
+    /// Prune Gloas ePBS pools and pending buffers to prevent unbounded memory growth.
+    ///
+    /// Called once per slot from `per_slot_task`. Removes stale entries from:
+    /// - `payload_attestation_pool` — slot-keyed, only useful for current/recent slots
+    /// - `proposer_preferences_pool` — slot-keyed, only useful for current/recent slots
+    /// - `pending_gossip_envelopes` — root-keyed, bounded by capacity
+    /// - `execution_proof_tracker` — root-keyed, bounded by capacity
+    /// - `pending_execution_proofs` — root-keyed, bounded by capacity
+    fn prune_gloas_pools(&self, current_slot: Slot) {
+        /// Maximum number of slots to retain for slot-keyed Gloas pools.
+        const MAX_GLOAS_POOL_SLOTS: u64 = 4;
+        /// Maximum number of entries in root-keyed pending buffers.
+        /// In normal operation these hold 0-2 entries; this cap prevents
+        /// unbounded growth from orphan branches or malicious gossip.
+        const MAX_PENDING_BUFFER_ENTRIES: usize = 16;
+
+        let earliest_slot = Slot::new(current_slot.as_u64().saturating_sub(MAX_GLOAS_POOL_SLOTS));
+
+        self.payload_attestation_pool
+            .lock()
+            .retain(|&slot, _| slot >= earliest_slot);
+        self.proposer_preferences_pool
+            .lock()
+            .retain(|&slot, _| slot >= earliest_slot);
+
+        // Bound root-keyed pending buffers. These are self-draining (entries are
+        // consumed on block import), but if blocks never arrive the entries become
+        // stale. Clear the buffer entirely if it exceeds the cap — any entry that
+        // has been pending for many slots will never be consumed.
+        {
+            let mut pending = self.pending_gossip_envelopes.lock();
+            if pending.len() > MAX_PENDING_BUFFER_ENTRIES {
+                pending.clear();
+            }
+        }
+        {
+            let mut tracker = self.execution_proof_tracker.lock();
+            if tracker.len() > MAX_PENDING_BUFFER_ENTRIES {
+                tracker.clear();
+            }
+        }
+        {
+            let mut pending = self.pending_execution_proofs.lock();
+            if pending.len() > MAX_PENDING_BUFFER_ENTRIES {
+                pending.clear();
+            }
+        }
+    }
+
     /// Process a buffered gossip envelope for a block that has just been imported.
     ///
     /// When a gossip envelope arrives before its block (`BlockRootUnknown`), it is stored
@@ -7889,6 +7938,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // sync anyway).
             self.naive_aggregation_pool.write().prune(slot);
             self.block_times_cache.write().prune(slot);
+
+            // Prune Gloas ePBS caches to prevent unbounded growth.
+            self.observed_execution_bids.lock().prune_old_slots(slot);
+            self.observed_payload_attestations
+                .lock()
+                .prune_old_slots(slot);
+            self.prune_gloas_pools(slot);
 
             // Don't run heavy-weight tasks during sync.
             if self.best_slot() + MAX_PER_SLOT_FORK_CHOICE_DISTANCE < slot {
