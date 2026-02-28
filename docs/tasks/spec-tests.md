@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec conformance audit, no code changes (run 271)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 270
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- **Audited recently merged spec commits** (since last release):
+  - `#4948` (Reorder payload status constants: Empty=0, Full=1, Pending=2) — vibehouse already uses these values. Our `GloasPayloadStatus` enum was ahead of the spec. No changes needed.
+  - `#4947` (Pre-fork subscription for proposer_preferences) — documentation-only SHOULD recommendation. Not critical for current devnet.
+  - `#4918` (Attestations for known payload statuses only) — already implemented in `validate_on_attestation` (fork_choice.rs line 1213).
+- **Audited fork choice vs open PRs**:
+  - `#4892` (Remove impossible branch in is_supporting_vote) — vibehouse already uses `==` with debug_assert, matching the PR's intent
+  - `#4898` (Remove pending status from tiebreaker) — vibehouse already omits the PENDING check with a comment explaining why it's unreachable
+- **Audited process_builder_pending_payments**: all edge cases covered including minimum balance (quorum=75M even at minimum, never 0 due to effective_balance_increment clamping). No spec deviations found.
+- **CI status**: green. Previous nightly fulu timeout resolved by 90-minute timeout bump (run 259). Nightly now passes consistently.
+- **No code changes this run** — spec stable, codebase fully conformant
+
 ### 2026-02-28 — network-layer gossip bid tests, spec tracking (run 270)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 269
