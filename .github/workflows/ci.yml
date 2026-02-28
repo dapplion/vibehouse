@@ -71,6 +71,7 @@ jobs:
           --exclude slasher
           --exclude network
           --exclude http_api
+          --exclude operation_pool
           --exclude web3signer_tests
 
   beacon-chain-tests:
