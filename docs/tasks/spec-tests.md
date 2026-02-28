@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, fix stale test (run 251)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Spec PR review**: reviewed all 5 open Gloas PRs in detail:
+  - #4898 (remove PENDING from tiebreaker): vibehouse already omits PENDING branch — no change needed
+  - #4892 (remove impossible branch in is_supporting_vote): vibehouse already uses debug_assert + separate == check — already matches
+  - #4940 (fork choice tests): test vectors only, vibehouse's ef_tests infrastructure already supports OnExecutionPayload + head_payload_status checks — download vectors when released
+  - #4932 (sanity/blocks tests): test vectors only, sanity runner is fork-agnostic — download vectors when released
+  - #4939 (request missing envelopes for index-1 attestations): networking-layer change, partially implemented (fork choice validation done, gossip-layer queuing + by-root request not yet), 0 approvals + active review with known bugs
+- **Fixed stale test**: `gloas_process_pending_envelope_self_build_drains_buffer` → renamed to `gloas_process_pending_envelope_self_build_succeeds`. The test documented that self-build envelopes fail `process_payload_envelope` due to `VerifySignatures::True`, but `process_payload_envelope` now uses `VerifySignatures::False` — the entire gossip pipeline succeeds for self-build envelopes. Added store persistence and state cache assertions to verify the full behavior.
+- **CI status**: parallelized CI from run 248 working correctly, nightly in progress
+- **Files changed**: 1 (`beacon_node/beacon_chain/tests/gloas.rs`)
+
 ### 2026-02-28 — spec tracking, test coverage improvement (run 250)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
