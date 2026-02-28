@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — spec tracking, fix unbounded Gloas cache growth (run 252)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 251
+- **Spec PR re-review**: #4843 (Variable PTC deadline) adds `PAYLOAD_ATTESTATION_DUE_BPS`/`MIN_PAYLOAD_DUE_BPS` constants, `get_payload_due_ms` helper, renames `payload_present` → `payload_timely` — still under active review (10 comments), not ready to implement. #4939 (request missing envelopes) still has 0 approvals and known bugs.
+- **Fixed unbounded Gloas cache growth**: 7 Gloas ePBS caches/buffers had no pruning and would grow indefinitely:
+  - `observed_execution_bids`, `observed_payload_attestations` — already had `prune_old_slots()` methods but they were never called from production code
+  - `payload_attestation_pool`, `proposer_preferences_pool` — slot-keyed HashMaps with no cleanup
+  - `pending_gossip_envelopes`, `execution_proof_tracker`, `pending_execution_proofs` — root-keyed pending buffers that are self-draining on block import, but entries for orphan/malicious blocks accumulate forever
+  - Fix: added pruning to `per_slot_task` — slot-keyed caches pruned to 4-slot window, root-keyed buffers capped at 16 entries
+- **Nightly CI**: 25/26 jobs passed (fulu beacon-chain still running at time of push, expected ~40 min). All other forks green.
+- **CI status**: previous commit green on check+clippy+ef-tests+network+op-pool
+- **Files changed**: 1 (`beacon_node/beacon_chain/src/beacon_chain.rs`), +56 lines
+
 ### 2026-02-28 — spec tracking, fix stale test (run 251)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
