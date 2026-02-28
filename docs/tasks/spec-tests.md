@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix nightly fulu exclusion filter, spec tracking (run 247)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged since run 245)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898, #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Fixed nightly fulu beacon-chain timeout (again)**: run 246's fix used `^gloas::` anchor which doesn't match nextest's full test identifiers (e.g., `beacon_chain::beacon_chain_tests gloas::fc_bid_then_payload_lifecycle` doesn't start with `gloas::`). Also, the nightly that ran between runs 246 and 247 used commit `d7b59ab98` (pre-fix), which still had `make test-beacon-chain-fulu` with no filter at all. Fix: remove `^` anchors — pattern now `/gloas::|gloas_verification::/` matches anywhere in test name. Local verification: 361/361 pass in ~11 min (down from 663 total). 12 fast Gloas-related unit tests (early_attester_cache, store_tests, beacon_block_streamer) remain included since they don't match `gloas::` (they use `gloas_` with underscore).
+- **Nightly altair failure**: same infrastructure issue (moonrepo/setup-rust `Run moonrepo/setup-rust@v1 -> failure`). Not a test failure.
+- **Files changed**: 1 (`.github/workflows/nightly-tests.yml`)
+
 ### 2026-02-28 — fix nightly fulu beacon-chain timeout, spec tracking (run 246)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master unchanged since run 245)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898, #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged

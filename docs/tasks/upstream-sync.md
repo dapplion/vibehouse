@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 247)
+- Checked consensus-specs: no new Gloas PRs merged since run 246 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Fixed nightly fulu beacon-chain timeout**: exclusion filter from run 246 had wrong `^` anchor; removed anchors so pattern matches anywhere in nextest test identifier
+- **Nightly altair failure**: infrastructure (`moonrepo/setup-rust` step failure), not a test failure
+- All tests green: 361/361 fulu beacon_chain (filtered), zero clippy warnings
+
 ### 2026-02-28 (run 238)
 - Checked consensus-specs: no new Gloas PRs merged since run 237 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (by_root serve range, 4 approvals), #4892 (fork choice cleanup, 2 approvals), #4898 (tiebreaker cleanup, 1 approval), #4926 (SLOT_DURATION_MS), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4747 (fast confirmation rule) — all still open/unmerged
