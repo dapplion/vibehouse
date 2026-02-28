@@ -325,4 +325,16 @@ The Gloas integration tests in `beacon_chain/tests/gloas.rs` cover realistic mul
 
 These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 
+### Run 225: complete BlockProcessingError envelope error wrapping
+
+**Scope**: Finish the error type improvement started in run 221. Run 221 fixed `BeaconChainError::EnvelopeProcessingError(String)` to wrap the structured type. This run fixes the same pattern in `BlockProcessingError::EnvelopeProcessingError(String)`.
+
+**Changes**:
+- `BlockProcessingError::EnvelopeProcessingError(String)` → `EnvelopeProcessingError(Box<EnvelopeProcessingError>)` — preserves structured error information for debugging
+- Added `PartialEq` derive to `EnvelopeProcessingError` (required by `BlockProcessingError`'s existing `PartialEq` derive)
+- Used `Box` to avoid infinite type recursion (`EnvelopeProcessingError` already contains `BlockProcessingError`)
+- Updated 3 call sites: block_replayer (2) + ef_tests operations (1)
+
+**Verification**: 452/452 state_processing tests, 138/138 EF spec tests (fake_crypto), 4/4 EF operations_execution_payload tests (real crypto), clippy clean (full workspace including tests).
+
 **Conclusion**: Phase 5 complete. Gloas test quality is strong — comprehensive coverage, specific assertions, deterministic execution. No actionable gaps found that justify new tests. The codebase has ~600+ Gloas-specific tests across all layers.

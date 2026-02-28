@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — BlockProcessingError envelope error wrapping (run 225)
+- Checked consensus-specs: no new Gloas spec changes since Feb 26 (PRs #4947, #4948 were the last).
+  All recent changes (PayloadStatus reorder, pre-fork subscription note, attestation payload status check, payload_states rename, parent payload unknown IGNORE rule, payload_data_availability_vote) already implemented in vibehouse.
+- No new spec test release (v1.7.0-alpha.2 still latest)
+- Completed `BlockProcessingError::EnvelopeProcessingError` improvement: changed from `String` to `Box<EnvelopeProcessingError>`, preserving structured error information. Added `PartialEq` derive to `EnvelopeProcessingError`. Updated 3 call sites.
+- All tests pass: 452/452 state_processing, 138/138 EF spec tests, clippy clean
+
 ### 2026-02-28 — 5 process_deposit_requests batch behavior tests + dead code removal (run 216)
 - Checked consensus-specs PRs: no new Gloas spec changes since run 215
   - PR #4941 (execution proof construction uses beacon block) — EIP-8025 only (`_features/eip8025/prover.md`), not applicable to Gloas
