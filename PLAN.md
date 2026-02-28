@@ -72,10 +72,10 @@ Current devnet only tests the happy path (4 homogeneous nodes, self-build, minim
 - **Stateless + ZK** — DONE: proof-generators + stateless node (from priority 4)
 - **Slashing scenarios** — DONE (script): `scripts/kurtosis-run.sh --slashings` — inject double-proposal and double-vote via lcli, verify slashed=true in state
 
-### 6. Code review & quality improvement — IN PROGRESS
+### 6. Code review & quality improvement — DONE
 [docs/tasks/code-review-quality.md](docs/tasks/code-review-quality.md)
 
-100+ autonomous loop runs have shipped a huge amount of code. Time to review for quality: clippy warnings, dead code, unwrap-in-prod, error handling, spec conformance, architecture debt, performance, and test quality. See task doc for full checklist.
+All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture review (superstruct, duplication, error types, pub visibility, module organization), (3) correctness deep-dive (spec conformance, constants, edge cases), (4) performance (clone/allocation audit, DB patterns, serialization), (5) test quality (~600+ Gloas tests, strong assertions, no flakiness). Fixes shipped: GnosisEthSpec MaxPayloadAttestations U2→U4, envelope error type wrapping, 2 pub→pub(crate) downgrades, withdrawal processing optimization, cargo doc warnings.
 
 ### 7. ROCQ formal proofs for consensus-critical invariants — LOWEST PRIORITY
 [GitHub #29](https://github.com/dapplion/vibehouse/issues/29) — Dead last. Only after everything else is done.

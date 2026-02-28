@@ -32,11 +32,11 @@ The loop has shipped a massive amount of code autonomously (100+ runs). Review t
 - [x] Review database access patterns — any N+1 queries?
 - [x] Check serialization/deserialization efficiency
 
-### Phase 5: Test Quality
-- [ ] Review test coverage gaps — which critical paths lack tests?
-- [ ] Check test assertions — are they testing the right things?
-- [ ] Look for flaky/non-deterministic tests
-- [ ] Ensure integration tests cover realistic scenarios
+### Phase 5: Test Quality — DONE
+- [x] Review test coverage gaps — which critical paths lack tests?
+- [x] Check test assertions — are they testing the right things?
+- [x] Look for flaky/non-deterministic tests
+- [x] Ensure integration tests cover realistic scenarios
 
 ## Process
 Each loop iteration should:
@@ -262,3 +262,67 @@ Comprehensive audit of all Gloas code in `consensus/state_processing/src/` for:
 **Serialization efficiency**: Gloas types use SSZ (via `ssz_derive`) throughout. No custom serialization. `tree_hash_root()` is called only where needed (signing roots, state roots). No unnecessary re-serialization.
 
 **Test results**: 272/272 Gloas state_processing tests pass, 309/309 beacon_chain Gloas integration tests pass, EF spec withdrawal + sanity tests pass. Clippy clean.
+
+### Run 224: test quality review — coverage, assertions, flakiness
+
+**Scope**: Phase 5 — audit test coverage gaps, assertion quality, non-deterministic patterns, and integration test realism across all Gloas code.
+
+**Method**: Three parallel agent searches across state_processing (175+ tests), beacon_chain integration (309+ tests), fork choice (51+ tests), HTTP API (39+ tests), and network processor (41+ Gloas tests).
+
+**Coverage assessment — no gaps in Gloas-specific code**:
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| `per_block_processing/gloas.rs` | ~91 | All 9 public functions tested with edge cases |
+| `envelope_processing.rs` | ~28 | All validation paths + state mutations tested |
+| `per_epoch_processing/gloas.rs` | ~21 | Quorum threshold boundaries, rotation mechanics |
+| `upgrade/gloas.rs` | ~26 | Complete Fulu→Gloas migration coverage |
+| `per_slot_processing.rs` (Gloas) | ~8 | Availability bit clearing + integration |
+| `beacon_chain/tests/gloas.rs` | ~231 | Chain finalization, block production, envelope lifecycle |
+| `gloas_verification.rs` tests | ~52 | Gossip validation for bids, attestations, envelopes |
+| `proto_array` (Gloas) | ~51 | Head selection, weight, tiebreaker, payload status |
+| `fork_choice` (Gloas) | ~18 | Attestation index validation, head payload status |
+| HTTP API (Gloas) | ~39 | All Gloas endpoints: PTC duties, envelopes, bids, prefs |
+| Network gossip (Gloas) | ~41 | Bid/envelope/attestation/preferences validation |
+
+**Reported "gaps" assessed as non-issues**:
+
+- `PayloadAttestationError::InvalidAggregationBits` — unreachable by construction (`BitVector<PtcSize>` is type-level fixed size, `get(i)` can't OOB when `i < PtcSize`)
+- `PayloadAttestationError::PtcCommitteeError` — requires `get_ptc_committee()` internal failure, which would indicate a corrupted beacon state (not a gossip validation concern)
+- Event subscription functions (`subscribe_execution_bid/payload_attestation`) — not consensus-critical, SSE event delivery infrastructure
+- `get_parent_payload_status_of()`, `get_gloas_children()` — internal helpers thoroughly exercised by 14 head-selection integration tests
+
+**Assertion quality assessment**:
+
+| Module | Quality | Details |
+|--------|---------|---------|
+| `envelope_processing.rs` tests | EXCELLENT | All tests assert specific state mutations (latest_block_hash, availability bits, balance changes, withdrawal queue contents) |
+| `per_block_processing/gloas.rs` tests | GOOD | 239 `assert_eq!` for specific values, 31 `matches!` for error variants, only 1 bare `.is_ok()` |
+| `beacon_chain/tests/gloas.rs` | ADEQUATE | Integration tests appropriately rely on chain success/failure; some could assert specific finalized epoch values but this is a style preference, not a bug |
+
+**Flaky test assessment — no Gloas-specific flakiness**:
+
+All timing-sensitive patterns found are in pre-existing inherited code:
+- Network processor tests use `STANDARD_TIMEOUT = 10s` and `assert_event_journal_with_timeout()` — inherited from Lighthouse, not Gloas-specific
+- `import_gossip_block_acceptably_early()` has a known race condition documented by original author — inherited
+- `test_rpc_block_reprocessing()` uses fixed 4s delay + 30ms retry window — inherited
+
+Gloas-specific tests are fully deterministic:
+- State processing tests use direct function calls with constructed inputs, no timing
+- Fork choice tests use mock slot clocks with explicit slot advancement
+- Beacon chain integration tests use test harness with controlled slot progression
+- The one Gloas timing test (`gloas_proposer_boost_four_interval_boundary`) uses the mock slot clock's `set_current_time()` — deterministic
+
+**Integration test realism**:
+
+The Gloas integration tests in `beacon_chain/tests/gloas.rs` cover realistic multi-block scenarios:
+- Chain finalization through Gloas fork boundary (tests full lifecycle)
+- Self-build block production with envelope processing
+- External builder path with bid selection and envelope import
+- Payload withholding (EMPTY path) and recovery
+- Multi-epoch chains with attestation aggregation
+- Fork choice head selection with PTC votes and proposer boost
+
+These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
+
+**Conclusion**: Phase 5 complete. Gloas test quality is strong — comprehensive coverage, specific assertions, deterministic execution. No actionable gaps found that justify new tests. The codebase has ~600+ Gloas-specific tests across all layers.
