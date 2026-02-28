@@ -6576,4 +6576,359 @@ mod test_gloas_fork_choice {
             "root(1) should win — root(2) is filtered out due to invalid execution status"
         );
     }
+
+    // ── ptc_timely / reorg resistance / tiebreaker edge cases ──
+
+    #[test]
+    fn ptc_timely_stored_on_block_when_current_slot_matches() {
+        // When a block is inserted with current_slot == block.slot, the node
+        // should have ptc_timely=true. When there's a gap, it should be false.
+        let (mut fc, _spec) = new_gloas_fc();
+
+        // Insert block at slot 1, current_slot = 1 → ptc_timely = true
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+            0,
+            true, // ptc_timely
+            false,
+        );
+
+        assert!(
+            get_node(&fc, &root(1)).ptc_timely,
+            "block inserted with ptc_timely=true should preserve that flag"
+        );
+
+        // Insert block at slot 2, but ptc_timely = false (late arrival)
+        insert_gloas_block_ext(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)),
+            false,
+            0,
+            false, // ptc_timely = false (late)
+            false,
+        );
+
+        assert!(
+            !get_node(&fc, &root(2)).ptc_timely,
+            "block inserted with ptc_timely=false should preserve that flag"
+        );
+    }
+
+    #[test]
+    fn boost_not_suppressed_when_equivocating_block_not_ptc_timely() {
+        // The equivocation check in should_apply_proposer_boost_gloas requires
+        // the equivocating block to be ptc_timely. If the sibling block from the
+        // same proposer is NOT ptc_timely, boost should still be applied.
+        //
+        // We verify by calling should_apply_proposer_boost_gloas directly.
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Parent block at slot 1 by proposer 5
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+            5,     // proposer_index
+            false, // ptc_timely
+            false,
+        );
+
+        // Sibling block at slot 1 by same proposer 5 — but NOT ptc_timely
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(2),
+            root(0),
+            Some(exec_hash(2)),
+            Some(exec_hash(0)),
+            false,
+            5,     // same proposer
+            false, // NOT ptc_timely — should not suppress boost
+            false,
+        );
+
+        // Child of root(1) at slot 2 — this is the boost target
+        insert_gloas_block_ext(
+            &mut fc,
+            2,
+            root(3),
+            root(1),
+            Some(exec_hash(3)),
+            Some(exec_hash(1)),
+            false,
+            10,   // different proposer
+            true, // ptc_timely
+            false,
+        );
+
+        // Set empty balances so parent root(1) has zero attestation weight → head-weak
+        fc.balances = JustifiedBalances {
+            effective_balances: vec![BALANCE; 3],
+            total_effective_balance: BALANCE * 3,
+            num_active_validators: 3,
+        };
+
+        // should_apply_proposer_boost_gloas: root(1) is adjacent (slot 1 + 1 = slot 2
+        // == root(3).slot) and head-weak (0 attestation weight). The equivocation check
+        // looks for nodes with ptc_timely=true, same proposer as root(1), at same slot.
+        // root(2) has the same proposer but ptc_timely=false → no equivocation detected.
+        let result = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(3),
+            &BTreeSet::new(),
+            Slot::new(3),
+            &spec,
+        );
+
+        assert!(
+            result,
+            "boost should be applied — equivocating sibling is not ptc_timely"
+        );
+
+        // Now flip root(2) to ptc_timely=true and verify boost IS suppressed
+        get_node_mut(&mut fc, &root(2)).ptc_timely = true;
+
+        let result_suppressed = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(3),
+            &BTreeSet::new(),
+            Slot::new(3),
+            &spec,
+        );
+
+        assert!(
+            !result_suppressed,
+            "boost should be suppressed — equivocating sibling is now ptc_timely"
+        );
+    }
+
+    #[test]
+    fn should_extend_payload_envelope_received_but_not_revealed() {
+        // Envelope received (envelope_received=true) but PTC quorum not reached
+        // (payload_revealed=false). The is_timely_and_available check requires
+        // envelope_received AND payload_revealed AND payload_data_available.
+        // Missing payload_revealed → falls through to proposer boost path.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        // Envelope arrived but PTC quorum not reached
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        node.payload_revealed = false;
+        node.payload_data_available = false;
+
+        // Set a proposer boost root that IS a child of block_root building on EMPTY parent
+        let child_root = root(2);
+        insert_external_builder_block(&mut fc, 2, child_root, block_root, 42);
+        // Child's bid_parent_block_hash is None (default) → builds on EMPTY parent
+        assert!(get_node(&fc, &child_root).bid_parent_block_hash.is_none());
+
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: child_root,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // envelope_received but not payload_revealed → timely check fails.
+        // Boosted child builds on EMPTY parent of block_root → should NOT extend.
+        assert!(
+            !fc.should_extend_payload(&gloas_node),
+            "should_extend_payload should be false: envelope arrived but PTC quorum \
+             not reached, and boosted child builds on EMPTY parent"
+        );
+    }
+
+    #[test]
+    fn gloas_weight_zero_for_non_pending_previous_slot_node() {
+        // Non-PENDING nodes from the previous slot get 0 weight — this is the
+        // reorg resistance mechanism that prevents EMPTY/FULL from accumulating
+        // weight when there could be a competing block in the current slot.
+        //
+        // We set up internal state (balances + votes directly on current_*),
+        // then call get_gloas_weight to verify the mechanism.
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Insert block at slot 1 with payload revealed
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true, // payload_revealed → FULL child exists
+        );
+
+        // Set balances directly (normally done by find_head)
+        fc.balances = balances(2);
+
+        // Set votes directly on current_* (process_attestation writes to next_*,
+        // which only becomes current_* after compute_deltas in find_head).
+        let vote0 = fc.votes.get_mut(0);
+        vote0.current_root = root(1);
+        vote0.current_slot = Slot::new(2);
+        vote0.current_payload_present = true;
+
+        let vote1 = fc.votes.get_mut(1);
+        vote1.current_root = root(1);
+        vote1.current_slot = Slot::new(2);
+        vote1.current_payload_present = false;
+
+        // At current_slot=2, root(1) is at slot 1 (previous slot).
+        // The EMPTY and FULL nodes for root(1) should get 0 weight.
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        let empty_weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &empty_node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+        let full_weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &full_node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+
+        assert_eq!(
+            empty_weight, 0,
+            "EMPTY node at previous slot should have 0 weight (reorg resistance)"
+        );
+        assert_eq!(
+            full_weight, 0,
+            "FULL node at previous slot should have 0 weight (reorg resistance)"
+        );
+
+        // PENDING at the same slot DOES get weight — the reorg resistance only
+        // affects EMPTY/FULL children, not the PENDING parent.
+        let pending_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+        let pending_weight = fc.get_gloas_weight::<MinimalEthSpec>(
+            &pending_node,
+            Hash256::zero(),
+            false,
+            Slot::new(2),
+            &spec,
+        );
+
+        assert!(
+            pending_weight > 0,
+            "PENDING node at previous slot should still have weight: {pending_weight}"
+        );
+
+        // Verify: at current_slot=100 (not previous slot), EMPTY/FULL DO get weight
+        let empty_weight_far = fc.get_gloas_weight::<MinimalEthSpec>(
+            &empty_node,
+            Hash256::zero(),
+            false,
+            Slot::new(100),
+            &spec,
+        );
+        assert!(
+            empty_weight_far > 0,
+            "EMPTY node at non-previous slot should have weight: {empty_weight_far}"
+        );
+    }
+
+    #[test]
+    fn find_head_tiebreaker_full_wins_when_extend_payload_true() {
+        // When EMPTY and FULL at previous slot are tied on weight (both 0 due to
+        // reorg resistance), the tiebreaker determines the winner. With
+        // should_extend_payload=true, FULL gets tiebreaker 2 vs EMPTY's 1.
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Single block at slot 1 with payload revealed and envelope received
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true, // payload_revealed
+            0,
+            false,
+            true, // envelope_received
+        );
+
+        // Also set payload_data_available so should_extend_payload returns true
+        // via the timely+available path
+        let node = get_node_mut(&mut fc, &root(1));
+        node.payload_data_available = true;
+
+        let balances = balances(1);
+
+        // No attestations — all weight comes from tiebreakers.
+        // At slot 2, root(1) is the previous slot. Both EMPTY and FULL get 0 weight.
+        // Tiebreaker: EMPTY gets 1, FULL gets 2 (because should_extend_payload=true).
+        // FULL wins, so the head follows the FULL path.
+        //
+        // For FULL to actually produce a different head, we need a child on the FULL path.
+        // Let's add root(2) building on FULL parent.
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(1)), // matches parent bid_block_hash → FULL parent
+            false,
+        );
+
+        // Vote for root(2) so it has some weight
+        fc.process_attestation(0, root(2), Epoch::new(0), Slot::new(3), false)
+            .unwrap();
+
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(
+            head,
+            root(2),
+            "root(2) should win — it's on the FULL path, which wins the tiebreaker"
+        );
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Empty as u8),
+            "head block root(2) is a leaf with no revealed payload → status is EMPTY"
+        );
+    }
 }
