@@ -74,7 +74,15 @@ where
             proofs.push(Bytes48::from(proof));
         }
 
-        for &commitment in data_column.kzg_commitments().unwrap() {
+        let kzg_comms = data_column.kzg_commitments().map_err(|_| {
+            (
+                Some(col_index),
+                KzgError::InconsistentArrayLength(
+                    "Gloas data columns do not embed kzg_commitments".to_string(),
+                ),
+            )
+        })?;
+        for &commitment in kzg_comms {
             commitments.push(Bytes48::from(commitment));
         }
 
@@ -313,10 +321,15 @@ pub fn reconstruct_blobs<E: EthSpec>(
         .first()
         .ok_or("data_columns should have at least one element".to_string())?;
 
+    let kzg_commitments = first_data_column.kzg_commitments().map_err(|_| {
+        "Gloas data columns do not embed kzg_commitments; blob reconstruction is not supported"
+            .to_string()
+    })?;
+
     let blob_indices: Vec<usize> = match blob_indices_opt {
         Some(indices) => indices.into_iter().map(|i| i as usize).collect(),
         None => {
-            let num_of_blobs = first_data_column.kzg_commitments().unwrap().len();
+            let num_of_blobs = kzg_commitments.len();
             (0..num_of_blobs).collect()
         }
     };
@@ -363,12 +376,19 @@ pub fn reconstruct_blobs<E: EthSpec>(
             let blob = Blob::<E>::new(blob_bytes).map_err(|e| format!("{e:?}"))?;
             let kzg_proof = KzgProof::empty();
 
+            let signed_block_header = first_data_column
+                .signed_block_header()
+                .map_err(|_| "Gloas data columns do not embed signed_block_header; blob reconstruction is not supported".to_string())?
+                .clone();
+            let inclusion_proof = first_data_column
+                .kzg_commitments_inclusion_proof()
+                .map_err(|_| "Gloas data columns do not embed kzg_commitments_inclusion_proof; blob reconstruction is not supported".to_string())?;
             BlobSidecar::<E>::new_with_existing_proof(
                 row_index,
                 blob,
                 signed_block,
-                first_data_column.signed_block_header().unwrap().clone(),
-                first_data_column.kzg_commitments_inclusion_proof().unwrap(),
+                signed_block_header,
+                inclusion_proof,
                 kzg_proof,
             )
             .map(Arc::new)
@@ -396,7 +416,25 @@ pub fn reconstruct_data_columns<E: EthSpec>(
             "data_columns should have at least one element".to_string(),
         ))?;
 
-    let num_of_blobs = first_data_column.kzg_commitments().unwrap().len();
+    let kzg_commitments = first_data_column.kzg_commitments().map_err(|_| {
+        KzgError::InconsistentArrayLength(
+            "Gloas data columns do not embed kzg_commitments; column reconstruction is not supported".to_string(),
+        )
+    })?;
+    let kzg_commitments_inclusion_proof = first_data_column
+        .kzg_commitments_inclusion_proof()
+        .map_err(|_| {
+            KzgError::InconsistentArrayLength(
+                "Gloas data columns do not embed kzg_commitments_inclusion_proof".to_string(),
+            )
+        })?;
+    let signed_block_header = first_data_column.signed_block_header().map_err(|_| {
+        KzgError::InconsistentArrayLength(
+            "Gloas data columns do not embed signed_block_header".to_string(),
+        )
+    })?;
+
+    let num_of_blobs = kzg_commitments.len();
 
     let blob_cells_and_proofs_vec = (0..num_of_blobs)
         .into_par_iter()
@@ -419,12 +457,9 @@ pub fn reconstruct_data_columns<E: EthSpec>(
 
     // Clone sidecar elements from existing data column, no need to re-compute
     build_data_column_sidecars(
-        first_data_column.kzg_commitments().unwrap().clone(),
-        first_data_column
-            .kzg_commitments_inclusion_proof()
-            .unwrap()
-            .clone(),
-        first_data_column.signed_block_header().unwrap().clone(),
+        kzg_commitments.clone(),
+        kzg_commitments_inclusion_proof.clone(),
+        signed_block_header.clone(),
         blob_cells_and_proofs_vec,
         spec,
     )

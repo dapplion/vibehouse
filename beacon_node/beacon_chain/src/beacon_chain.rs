@@ -1343,6 +1343,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         if self.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
+            // Gloas blocks don't have blob_kzg_commitments in the block body (they're in
+            // the bid), so blob sidecar reconstruction from data columns isn't supported.
+            if block.num_expected_blobs() == 0 {
+                return Ok(None);
+            }
             if let Some(columns) = self.store.get_data_columns(block_root)? {
                 let num_required_columns = T::EthSpec::number_of_columns() / 2;
                 let reconstruction_possible = columns.len() >= num_required_columns;
