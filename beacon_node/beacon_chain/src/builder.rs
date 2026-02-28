@@ -1102,7 +1102,6 @@ where
             ),
             kzg: self.kzg.clone(),
             rng: Arc::new(Mutex::new(rng)),
-            pending_self_build_envelope: Mutex::new(None),
             payload_attestation_pool: Mutex::new(HashMap::new()),
             proposer_preferences_pool: Mutex::new(HashMap::new()),
             pending_gossip_envelopes: Mutex::new(HashMap::new()),

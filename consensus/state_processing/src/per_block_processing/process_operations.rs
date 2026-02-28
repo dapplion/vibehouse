@@ -2339,6 +2339,184 @@ mod builder_deposit_tests {
         // Original 2 pending deposits remain, no new one added
         assert_eq!(state.pending_deposits().unwrap().len(), 2);
     }
+
+    // ── process_deposit_requests batch behavior tests ────────────
+    //
+    // These test the top-level `process_deposit_requests` function which
+    // initializes the builder pubkey cache once, then processes multiple
+    // deposit requests in sequence. The batch behavior is important
+    // because a builder created by one request must be visible to
+    // subsequent requests in the same batch (via the live cache).
+
+    #[test]
+    fn batch_two_builder_deposits_same_pubkey_first_creates_second_topups() {
+        // In a single batch of deposit requests, the first builder deposit
+        // creates a new builder. The second deposit for the same pubkey
+        // should see the builder in the cache and top it up (not create
+        // a second builder). This tests that the cache is updated live
+        // within the batch iteration, not just initialized once at start.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        let req1 = make_builder_deposit_request(builder_kp, 5_000_000_000, &spec);
+        let mut req2 = make_builder_deposit_request(builder_kp, 3_000_000_000, &spec);
+        req2.index = 1; // different deposit index
+
+        process_deposit_requests(&mut state, &[req1, req2], &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(
+            builders.len(),
+            1,
+            "should be exactly 1 builder (second deposit tops up, not creates)"
+        );
+        assert_eq!(
+            builders.get(0).unwrap().balance,
+            8_000_000_000,
+            "balance should be 5G + 3G from both deposits"
+        );
+    }
+
+    #[test]
+    fn batch_two_different_builders_created_in_one_call() {
+        // Two deposit requests for different builder pubkeys in one batch.
+        // Both should create separate builders. The second request must
+        // see the first builder's pubkey in the cache (not confuse it
+        // as an existing builder for the second pubkey).
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let builder_a_kp = &extra_kps[NUM_VALIDATORS];
+        let builder_b_kp = &extra_kps[NUM_VALIDATORS + 1];
+
+        let req_a = make_builder_deposit_request(builder_a_kp, 10_000_000_000, &spec);
+        let mut req_b = make_builder_deposit_request(builder_b_kp, 7_000_000_000, &spec);
+        req_b.index = 1;
+
+        process_deposit_requests(&mut state, &[req_a, req_b], &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(builders.len(), 2, "should have 2 separate builders");
+        assert_eq!(builders.get(0).unwrap().balance, 10_000_000_000);
+        assert_eq!(builders.get(0).unwrap().pubkey, builder_a_kp.pk.compress());
+        assert_eq!(builders.get(1).unwrap().balance, 7_000_000_000);
+        assert_eq!(builders.get(1).unwrap().pubkey, builder_b_kp.pk.compress());
+    }
+
+    #[test]
+    fn batch_builder_then_validator_deposits_correctly_routed() {
+        // A batch containing: (1) builder deposit for pubkey A, then
+        // (2) validator deposit for pubkey B. The validator deposit must
+        // go to pending_deposits (not be confused as a builder deposit
+        // just because the cache was updated by the first request).
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+        let validator_kp = &extra_kps[NUM_VALIDATORS + 1];
+
+        let builder_req = make_builder_deposit_request(builder_kp, 5_000_000_000, &spec);
+        let mut val_req = make_validator_deposit_request(validator_kp, 32_000_000_000, &spec);
+        val_req.index = 1;
+
+        process_deposit_requests(&mut state, &[builder_req, val_req], &spec).unwrap();
+
+        // Builder created for pubkey A
+        assert_eq!(state.as_gloas().unwrap().builders.len(), 1);
+        assert_eq!(
+            state.as_gloas().unwrap().builders.get(0).unwrap().pubkey,
+            builder_kp.pk.compress()
+        );
+
+        // Validator deposit for pubkey B in pending_deposits
+        assert_eq!(state.pending_deposits().unwrap().len(), 1);
+        assert_eq!(
+            state.pending_deposits().unwrap().get(0).unwrap().pubkey,
+            validator_kp.pk.compress()
+        );
+    }
+
+    #[test]
+    fn batch_deposit_requests_start_index_not_set_in_gloas() {
+        // In Gloas mode, process_deposit_requests does NOT set
+        // deposit_requests_start_index (that's an Electra-only behavior).
+        // The start index should remain at the unset sentinel value.
+        let (mut state, spec) = make_gloas_state_for_deposits(false);
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+
+        assert_eq!(
+            state.deposit_requests_start_index().unwrap(),
+            u64::MAX,
+            "start index should be unset before processing"
+        );
+
+        let req = make_builder_deposit_request(builder_kp, 5_000_000_000, &spec);
+
+        process_deposit_requests(&mut state, &[req], &spec).unwrap();
+
+        // In Gloas, the deposit_requests_start_index path is skipped
+        // (that code is in the else branch for non-Gloas forks).
+        assert_eq!(
+            state.deposit_requests_start_index().unwrap(),
+            u64::MAX,
+            "start index should remain unset in Gloas mode"
+        );
+    }
+
+    #[test]
+    fn batch_existing_builder_topup_then_new_builder_in_same_batch() {
+        // Batch: (1) top-up deposit for an EXISTING builder, then
+        // (2) new builder deposit for a different pubkey. The top-up must
+        // use the pre-existing cache entry. The new builder must be appended
+        // and its cache entry must be correct.
+        let (mut state, spec) = make_gloas_state_for_deposits(true); // creates 1 builder
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let existing_builder_kp = &extra_kps[NUM_VALIDATORS]; // matches the pre-existing builder
+        let new_builder_kp = &extra_kps[NUM_VALIDATORS + 1];
+
+        let initial_balance = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+
+        // Top-up for existing builder (bad sig is fine for topups)
+        let mut topup_req = make_builder_deposit_request(existing_builder_kp, 2_000_000_000, &spec);
+        topup_req.signature = SignatureBytes::empty(); // invalid sig — OK for topup
+
+        // New builder deposit
+        let mut new_req = make_builder_deposit_request(new_builder_kp, 8_000_000_000, &spec);
+        new_req.index = 1;
+
+        process_deposit_requests(&mut state, &[topup_req, new_req], &spec).unwrap();
+
+        let builders = &state.as_gloas().unwrap().builders;
+        assert_eq!(builders.len(), 2, "should have 2 builders total");
+
+        // Existing builder topped up
+        assert_eq!(
+            builders.get(0).unwrap().balance,
+            initial_balance + 2_000_000_000,
+            "existing builder balance should include top-up"
+        );
+
+        // New builder created at index 1
+        assert_eq!(
+            builders.get(1).unwrap().pubkey,
+            new_builder_kp.pk.compress()
+        );
+        assert_eq!(builders.get(1).unwrap().balance, 8_000_000_000);
+
+        // Cache should have both entries
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&existing_builder_kp.pk.compress()),
+            Some(0)
+        );
+        assert_eq!(
+            state
+                .builder_pubkey_cache()
+                .get(&new_builder_kp.pk.compress()),
+            Some(1)
+        );
+    }
 }
 
 /// Tests for Gloas-specific proposer slashing payment removal and same-slot attestation weight.

@@ -497,9 +497,6 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub kzg: Arc<Kzg>,
     /// RNG instance used by the chain. Currently used for shuffling column sidecars in block publishing.
     pub rng: Arc<Mutex<Box<dyn RngCore + Send>>>,
-    /// Gloas ePBS: pending self-build envelope to broadcast alongside the next block.
-    /// Set during block production, consumed during block publishing.
-    pub pending_self_build_envelope: Mutex<Option<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
     /// Gloas ePBS: pool of verified payload attestations for block inclusion.
     /// Keyed by the slot the attestation targets (i.e., data.slot).
     pub payload_attestation_pool: Mutex<HashMap<Slot, Vec<PayloadAttestation<T::EthSpec>>>>,
