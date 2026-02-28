@@ -4079,6 +4079,113 @@ async fn test_gloas_gossip_bid_gas_limit_mismatch_rejected() {
     assert_reject(result);
 }
 
+/// Gloas gossip: a lower-value bid is IGNORED when a higher-value bid for the
+/// same slot/parent_block_hash has already been seen.
+///
+/// Per spec: [IGNORE] this bid is the highest value bid seen for the
+/// corresponding slot and the given parent block hash.
+/// A bid that doesn't beat the current highest value is silently ignored.
+#[tokio::test]
+async fn test_gloas_gossip_bid_not_highest_value_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Two builders with sufficient balance
+    let mut rig = gloas_rig_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 2_000_000_000)],
+    )
+    .await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
+    // Builder 0 submits a high-value bid → Accept
+    let bid_msg_high = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 500,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid_high = sign_bid(&rig, 0, bid_msg_high);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid_high,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Builder 1 submits a lower-value bid for same slot → Ignore (NotHighestValue)
+    let bid_msg_low = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid_low = sign_bid(&rig, 1, bid_msg_low);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid_low,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
+/// Gloas gossip: a bid from an inactive builder (deposit_epoch >= finalized_epoch)
+/// is REJECTED with peer penalization.
+///
+/// Per spec: [REJECT] bid.builder_index is a valid and active builder index.
+/// A builder whose deposit hasn't been finalized yet is not considered active.
+#[tokio::test]
+async fn test_gloas_gossip_bid_inactive_builder_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Builder 0: active (deposit_epoch=0 < finalized_epoch)
+    // Builder 1: inactive (deposit_epoch=100 >> finalized_epoch ~3)
+    let mut rig = gloas_rig_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (100, 2_000_000_000)],
+    )
+    .await;
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
+    // Builder 1 (inactive) submits a bid → Reject (InactiveBuilder)
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 1, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
 // ======== ExecutionPayloadEnvelopesByRoot RPC handler tests ========
 //
 // These tests verify the handle_execution_payload_envelopes_by_root_request handler
