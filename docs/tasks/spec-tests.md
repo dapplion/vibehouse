@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — add slasher + state_transition_vectors to nightly CI (run 241)
+- No new consensus-specs releases or merged Gloas PRs (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
+- Open Gloas spec PRs tracked: #4950 (by_root serve range, 4 approvals), #4892, #4898, #4926, #4939, #4843, #4747 — all still open/unmerged
+- **CI coverage audit**: identified slasher (3 backends, 27 tests), state_transition_vectors (15 tests) as previously untested in CI/nightly
+  - execution_engine_integration: needs Go/.NET toolchains — not CI-suitable
+  - web3signer_tests: needs Java runtime — not CI-suitable
+- **Added slasher tests to nightly CI**: runs `make test-slasher` (LMDB + REDB + MDBX backends, ~40s total)
+- **Added state_transition_vectors to nightly CI**: runs `cargo nextest run -p state_transition_vectors` (~35s)
+- **Local verification**: 27/27 slasher (LMDB), 26/26 (MDBX), 26/26 (REDB), 15/15 state_transition_vectors — all pass
+- **Files changed**: 1 (`.github/workflows/nightly-tests.yml`), +36 lines
+- Confirmed nightly CI failure from run 240 was on pre-fix SHA (7aeeed76); fix committed in c29b9d389 — latest CI runs still in progress
+
 ### 2026-02-28 — spec audit, fix nightly CI test failure (run 240)
 - No new consensus-specs releases since run 239 (v1.7.0-alpha.2 still latest, master at 14e6ce5a)
 - Audited all recently merged Gloas spec PRs (since last check):

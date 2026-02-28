@@ -120,3 +120,39 @@ jobs:
       - name: Run http_api tests for ${{ matrix.fork }}
         run: make test-http-api-${{ matrix.fork }}
         timeout-minutes: 60
+
+  slasher-tests:
+    name: slasher-tests
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run slasher tests (all backends)
+        run: make test-slasher
+        timeout-minutes: 30
+
+  state-transition-vectors:
+    name: state-transition-vectors
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: moonrepo/setup-rust@v1
+        with:
+          channel: stable
+          cache-target: release
+          bins: cargo-nextest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run state transition vector tests
+        run: cargo nextest run --release -p state_transition_vectors
+        timeout-minutes: 30
