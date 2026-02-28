@@ -3350,6 +3350,18 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
+            // Spec: [IGNORE] this bid is the highest value bid seen for
+            // the corresponding slot and the given parent block hash.
+            Err(ExecutionBidError::NotHighestValue { bid_value, .. }) => {
+                debug!(
+                    builder_index,
+                    bid_value,
+                    %peer_id,
+                    "Ignoring execution bid: not the highest value for this slot/parent"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
             // Spec: [IGNORE] SignedProposerPreferences for bid.slot has been seen
             Err(ExecutionBidError::ProposerPreferencesNotSeen { .. }) => {
                 debug!(

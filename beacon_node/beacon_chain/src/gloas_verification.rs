@@ -126,6 +126,19 @@ pub enum ExecutionBidError {
     /// ## Peer scoring
     /// The peer may be on a different fork or sending stale bids.
     InvalidParentRoot { received: Hash256 },
+    /// A higher-value bid has already been seen for this slot and parent
+    /// block hash.
+    ///
+    /// Spec: `[IGNORE] this bid is the highest value bid seen for the
+    /// corresponding slot and the given parent block hash.`
+    ///
+    /// ## Peer scoring
+    /// Not malicious — the builder was outbid.
+    NotHighestValue {
+        slot: Slot,
+        parent_block_hash: ExecutionBlockHash,
+        bid_value: u64,
+    },
     /// Beacon chain error occurred during validation.
     BeaconChainError(BeaconChainError),
     /// State error occurred during validation.
@@ -511,6 +524,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         if !signature_set.verify() {
             return Err(ExecutionBidError::InvalidSignature);
+        }
+
+        // Check 6: Highest-value bid filtering (after signature verification
+        // to prevent invalid bids from blocking legitimate higher-value ones).
+        // Spec: [IGNORE] this bid is the highest value bid seen for the
+        // corresponding slot and the given parent block hash.
+        if !self.observed_execution_bids.lock().is_highest_value_bid(
+            bid_slot,
+            bid.message.parent_block_hash,
+            bid.message.value,
+        ) {
+            return Err(ExecutionBidError::NotHighestValue {
+                slot: bid_slot,
+                parent_block_hash: bid.message.parent_block_hash,
+                bid_value: bid.message.value,
+            });
         }
 
         Ok(VerifiedExecutionBid { bid })
