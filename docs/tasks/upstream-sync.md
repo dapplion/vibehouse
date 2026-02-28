@@ -31,6 +31,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-02-28 (run 256)
+- Checked consensus-specs: no new Gloas PRs merged since run 255 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals, ready to merge), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843 (push to branch Feb 27), #4840, #4747 (merge conflicts, 0 approvals), #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Fixed spec deviation**: bid parent root validation was checking `== head_block_root` but spec says `[IGNORE] known beacon block in fork choice`. Changed to `fork_choice.contains_block()`. This would have caused spurious bid rejections during reorgs in a multi-client testnet.
+- **Deep audit**: ran automated audit of production code for unwrap, unimplemented, allow(clippy), await_holding_lock patterns. Key findings: `await_holding_lock` FIXME in validator_store's `add_validator` is pre-existing from Lighthouse, requires async lock refactor. All other findings are pre-existing patterns from Lighthouse codebase (pre-existing TODOs in store, network, execution_layer).
+- **CI status**: all 5 recent CI runs green (runs 252-255). Nightly fully green (26/26).
+- **Spec PR deep-dive**: #4950 (extend by_root serve range) has 4 approvals, clean mergeable — vibehouse already compliant. #4843 (variable PTC deadline) has author pushing to branch Feb 27 but still only 1 approval. #4747 (fast confirmation rule) at 0 approvals with merge conflicts after 3+ months of iteration.
+
 ### 2026-02-28 (run 255)
 - Checked consensus-specs: no new Gloas PRs merged since run 254 (latest master: 14e6ce5a, v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals, not yet merged), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged

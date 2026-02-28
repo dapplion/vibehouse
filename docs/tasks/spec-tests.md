@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-02-28 — fix bid parent root validation, spec audit (run 256)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
+- Open Gloas spec PRs tracked: #4950 (4 approvals, ready to merge), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843 (push to branch Feb 27), #4840, #4747 (merge conflicts, 0 approvals), #4630, #4558 — all still open/unmerged
+- No new merged Gloas PRs since run 255
+- **Fixed spec deviation in bid parent root validation**: the code was checking `bid.parent_block_root == head_block_root` but the spec says `[IGNORE] bid.parent_block_root is the hash tree root of a known beacon block in fork choice`. Changed to `fork_choice.contains_block(&bid.parent_block_root)` — this accepts valid bids referencing any block in fork choice, not just the head. This matters during reorgs or when nodes temporarily disagree on head. All 79 bid tests + 12 network gossip bid tests + 8 EF fork choice tests pass.
+- **Audit findings investigated**:
+  - Builder activation `deposit_epoch < finalized_epoch` — confirmed correct per spec (`is_active_builder` requires deposit to be finalized)
+  - PTC committee from head state — confirmed correct per spec ("The state is the head state corresponding to processing the block up to the current slot as determined by the fork choice")
+  - Pending envelope overwrite — theoretical edge case, gracefully handled with warning log + self-build fallback
+- **Spec PR status**: #4950 has 4 approvals, clean mergeable, likely imminent. #4843 (variable PTC deadline) still 1 approval, active iteration. #4747 (fast confirmation rule) 0 approvals, merge conflicts, large WIP.
+- **CI status**: all recent runs green, nightly fully green (26/26)
+- **Files changed**: 2 (`beacon_node/beacon_chain/src/gloas_verification.rs`, `beacon_node/beacon_chain/tests/gloas.rs`)
+
 ### 2026-02-28 — spec tracking, code quality audit (run 255)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest, master at 14e6ce5a unchanged)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
