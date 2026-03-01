@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — state reconstruction fix, spec tracking (run 339)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 338
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+  - No movement since run 338
+- **Critical bug fix shipped**: state reconstruction envelope processing error handling
+  - Previously, envelope processing failures during cold DB reconstruction were silently logged as warnings and swallowed — storing a broken state with missing `latest_block_hash`, execution requests, and builder payments
+  - Now returns `BlockReplayEnvelopeError` on envelope processing failures and `MissingEnvelopeForReconstruction` when a Gloas block has no stored envelope
+  - Added two new error variants to `HotColdDBError`
+  - Pre-Gloas blocks with no envelope continue to work correctly (expected case)
+  - All 24 store tests pass, all 686 beacon_chain tests pass (FORK_NAME=gloas)
+- **Codebase audit**: systematic scan for TODO/FIXME, unwrap() in production code, error swallowing (`let _ =`), and dead code
+  - Found and fixed the reconstruction issue (above)
+  - Identified but left `get_advanced_hot_state` warn-and-continue as acceptable (hot path, clone, not persisted)
+  - Other findings: 3 blinded block TODOs (architectural, not actionable), engine API network/chain ID validation skip (inherited, low risk), operation pool aggregation hack (cosmetic)
+- **CI status**: all runs green; pre-push hook `make lint-full` passes with zero warnings
+
 ### 2026-03-01 — spec tracking, logging improvements (run 338)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
