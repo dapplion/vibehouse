@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 280)
+- Checked consensus-specs: no new Gloas PRs merged since run 279 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Detailed review of 4 open PRs**: #4939 (request missing payload envelopes for index-1 attestation — HIGH impact, would add envelope request logic), #4843 (variable PTC deadline — HIGH impact, adjusts payload timing), #4747 (fast confirmation rule — HIGH impact, core fork choice change), #4558 (cell dissemination via partial messages — MEDIUM, still draft). None merged, no code changes needed.
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Added abandoned fork envelope pruning test** — covers the ebee625d0 fix
+- **CI status**: all green, nightly green
+
 ### 2026-03-01 (run 279)
 - Checked consensus-specs: no new Gloas PRs merged since run 278 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906 (1 approval), #4898 (1 approval), #4892 (2 approvals), #4843 (1 approval), #4840, #4747, #4630, #4558 — all still open/unmerged

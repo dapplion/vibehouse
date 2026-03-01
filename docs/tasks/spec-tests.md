@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — abandoned fork envelope pruning test, spec tracking (run 280)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 279
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898 (1 approval), #4892 (2 approvals), #4843 (1 approval), #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Added `gloas_prunes_abandoned_fork_envelopes` integration test**: creates a Gloas-genesis chain with a fork, finalizes the canonical chain, and verifies that abandoned fork blocks' blinded envelopes (BeaconEnvelope) are pruned alongside blocks, blobs, and payloads. This covers the fix from commit ebee625d0 (run 275) where `DeletePayloadEnvelope` was added to the `prune_hot_db` batch.
+- **Open PR review**: reviewed #4939 (request missing payload envelopes for index-1 attestation), #4843 (variable PTC deadline), #4747 (fast confirmation rule), #4558 (cell dissemination via partial messages) — all still unmerged, no vibehouse changes needed until merged
+- **Test results**: 1/1 new test passes (5.5s). Clippy clean.
+- **CI status**: all green, nightly green
+
 ### 2026-03-01 — spec tracking, compliance review, correctness audit (run 279)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 278
