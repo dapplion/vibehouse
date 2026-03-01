@@ -13582,3 +13582,336 @@ async fn gloas_fork_transition_with_skipped_last_fulu_slot() {
     assert_eq!(next_head.beacon_block.slot(), gloas_fork_slot + 1);
     assert!(next_head.beacon_block.as_gloas().is_ok());
 }
+
+// =============================================================================
+// End-to-end builder payment accounting tests
+// =============================================================================
+//
+// These tests exercise the full builder payment lifecycle at the integration level:
+// bid recording → pending payment → weight accumulation → epoch rotation →
+// quorum promotion → withdrawal in block production.
+//
+// The unit tests in state_processing cover each component in isolation.
+// These integration tests verify the components compose correctly through
+// the actual beacon chain harness with real block production and import.
+
+/// Create a Gloas harness with builders AND pre-seeded builder pending withdrawals.
+///
+/// This simulates the state after envelope processing has dequeued payments
+/// to `builder_pending_withdrawals`, ready to be processed as withdrawals
+/// in the next block with a FULL parent.
+fn gloas_harness_with_pending_withdrawals(
+    builders: &[(u64, u64)],
+    pending_withdrawals: &[BuilderPendingWithdrawal],
+) -> BeaconChainHarness<EphemeralHarnessType<E>> {
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+    let spec_arc = Arc::new(spec.clone());
+    let keypairs = types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT);
+
+    let header = generate_genesis_header::<E>(&spec, false);
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+
+    // Inject builders
+    for (i, &(deposit_epoch, balance)) in builders.iter().enumerate() {
+        let builder = Builder {
+            pubkey: BUILDER_KEYPAIRS[i].pk.clone().into(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance,
+            deposit_epoch: Epoch::new(deposit_epoch),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        gloas_state
+            .builders
+            .push(builder)
+            .expect("should push builder");
+    }
+
+    // Inject pending withdrawals
+    for withdrawal in pending_withdrawals {
+        gloas_state
+            .builder_pending_withdrawals
+            .push(*withdrawal)
+            .expect("should push pending withdrawal");
+    }
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let harness = BeaconChainHarness::builder(E::default())
+        .spec(spec_arc)
+        .keypairs(keypairs)
+        .genesis_state_ephemeral_store(state)
+        .mock_execution_layer()
+        .build();
+
+    harness.advance_slot();
+    harness
+}
+
+/// End-to-end test: builder pending withdrawals appear as actual withdrawals
+/// in block production.
+///
+/// This verifies the final step of the builder payment lifecycle: when
+/// `builder_pending_withdrawals` has entries (from envelope processing or
+/// epoch quorum promotion), those entries must appear as `Withdrawal` records
+/// in the next block's execution payload envelope with:
+/// - `validator_index` = `builder_index | BUILDER_INDEX_FLAG`
+/// - `address` = builder's fee_recipient
+/// - `amount` = payment amount
+#[tokio::test]
+async fn gloas_builder_pending_withdrawal_appears_in_envelope() {
+    let fee_recipient = Address::repeat_byte(0xBB);
+    let payment_amount = 5_000_000_000u64; // 5 ETH in Gwei
+    let builder_index = 0u64;
+
+    let pending_withdrawal = BuilderPendingWithdrawal {
+        fee_recipient,
+        amount: payment_amount,
+        builder_index,
+    };
+
+    let harness = gloas_harness_with_pending_withdrawals(
+        &[(0, 10_000_000_000)], // builder 0: deposit_epoch=0, balance=10 ETH
+        &[pending_withdrawal],
+    );
+
+    // Produce 2 blocks. The first block processes withdrawals and includes them
+    // in the state's payload_expected_withdrawals. The envelope carries the actual
+    // execution payload whose withdrawals field must match.
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Check the first block's envelope for the builder withdrawal
+    let head = harness.chain.head_snapshot();
+
+    // Get the envelope for the first slot (slot 1) where the withdrawal should appear
+    let slot_1_root = *head
+        .beacon_state
+        .get_block_root(Slot::new(1))
+        .expect("should have block root for slot 1");
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&slot_1_root)
+        .expect("should read store")
+        .expect("should have envelope for slot 1");
+
+    let withdrawals = &envelope.message.payload.withdrawals;
+
+    // Find the builder withdrawal (identified by BUILDER_INDEX_FLAG in validator_index)
+    let builder_withdrawal = withdrawals
+        .iter()
+        .find(|w| w.validator_index & consts::gloas::BUILDER_INDEX_FLAG != 0)
+        .expect("envelope withdrawals should contain a builder withdrawal");
+
+    assert_eq!(
+        builder_withdrawal.validator_index,
+        builder_index | consts::gloas::BUILDER_INDEX_FLAG,
+        "withdrawal validator_index should be builder_index with BUILDER_INDEX_FLAG set"
+    );
+    assert_eq!(
+        builder_withdrawal.address, fee_recipient,
+        "withdrawal address should match the builder's fee_recipient"
+    );
+    assert_eq!(
+        builder_withdrawal.amount, payment_amount,
+        "withdrawal amount should match the pending payment amount"
+    );
+
+    // After processing, builder_pending_withdrawals should be drained
+    let state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = state.as_gloas().expect("should be Gloas");
+    assert_eq!(
+        gloas_state.builder_pending_withdrawals.len(),
+        0,
+        "builder_pending_withdrawals should be empty after withdrawal processing"
+    );
+}
+
+/// End-to-end test: external bid records a pending payment in state.
+///
+/// When a block includes an external builder bid with value > 0, the bid
+/// processing records a `BuilderPendingPayment` in the second half of the
+/// `builder_pending_payments` array (at index SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH).
+///
+/// This test verifies that payment recording works through the full beacon chain
+/// block production and import path (not just the isolated state_processing function).
+#[tokio::test]
+async fn gloas_external_bid_records_pending_payment_in_state() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Need finalization for builder to be active (deposit_epoch=0, need finalized_epoch >= 1)
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let next_slot = head_slot + 1;
+
+    // Verify builder is active
+    let state = harness.chain.head_beacon_state_cloned();
+    let finalized_epoch = state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch >= Epoch::new(1),
+        "should be finalized past epoch 0 for builder activation, got epoch {}",
+        finalized_epoch
+    );
+
+    // Create external bid with non-zero value
+    let bid_value = 5000u64;
+    let bid = make_external_bid(&state, head_root, next_slot, 0, bid_value);
+    harness.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    // Produce and import the block (picks external bid from pool)
+    harness.advance_slot();
+    let (block_contents, block_state, _envelope) =
+        harness.make_block_with_envelope(state, next_slot).await;
+
+    let block = block_contents.0.message();
+    let block_bid = block
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, 0,
+        "block should use external builder bid"
+    );
+    assert_eq!(
+        block_bid.message.value, bid_value,
+        "block bid value should match"
+    );
+
+    // Import the block
+    let block_root = block_contents.0.canonical_root();
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Verify the pending payment was recorded in the post-block state.
+    // The payment is at index SLOTS_PER_EPOCH + (slot % SLOTS_PER_EPOCH).
+    let slots_per_epoch = E::slots_per_epoch();
+    let slot_mod = next_slot.as_u64() % slots_per_epoch;
+    let payment_index = (slots_per_epoch + slot_mod) as usize;
+
+    let payment = block_state
+        .as_gloas()
+        .expect("should be Gloas")
+        .builder_pending_payments
+        .get(payment_index)
+        .expect("payment index should be valid");
+
+    assert_eq!(
+        payment.withdrawal.amount, bid_value,
+        "pending payment amount should match bid value"
+    );
+    assert_eq!(
+        payment.withdrawal.builder_index, 0,
+        "pending payment builder_index should match"
+    );
+    assert_eq!(
+        payment.weight, 0,
+        "pending payment weight should start at 0 (no attestations yet)"
+    );
+}
+
+/// End-to-end test: multiple builder pending withdrawals are processed in order.
+///
+/// When multiple builders have pending withdrawals, they should all appear in the
+/// block's envelope withdrawals (up to MAX_WITHDRAWALS_PER_PAYLOAD - 1), each with
+/// the correct builder_index, fee_recipient, and amount.
+#[tokio::test]
+async fn gloas_multiple_builder_withdrawals_in_envelope() {
+    let withdrawals = vec![
+        BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0xAA),
+            amount: 1_000_000_000,
+            builder_index: 0,
+        },
+        BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0xBB),
+            amount: 2_000_000_000,
+            builder_index: 1,
+        },
+    ];
+
+    let harness = gloas_harness_with_pending_withdrawals(
+        &[
+            (0, 10_000_000_000), // builder 0
+            (0, 10_000_000_000), // builder 1
+        ],
+        &withdrawals,
+    );
+
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Get the first block's envelope
+    let head = harness.chain.head_snapshot();
+    let slot_1_root = *head
+        .beacon_state
+        .get_block_root(Slot::new(1))
+        .expect("should have block root for slot 1");
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&slot_1_root)
+        .expect("should read store")
+        .expect("should have envelope for slot 1");
+
+    let payload_withdrawals = &envelope.message.payload.withdrawals;
+
+    // Find builder withdrawals (identified by BUILDER_INDEX_FLAG)
+    let builder_withdrawals: Vec<_> = payload_withdrawals
+        .iter()
+        .filter(|w| w.validator_index & consts::gloas::BUILDER_INDEX_FLAG != 0)
+        .collect();
+
+    assert_eq!(
+        builder_withdrawals.len(),
+        2,
+        "should have exactly 2 builder withdrawals"
+    );
+
+    // Verify first builder withdrawal
+    assert_eq!(
+        builder_withdrawals[0].validator_index,
+        consts::gloas::BUILDER_INDEX_FLAG
+    );
+    assert_eq!(builder_withdrawals[0].address, Address::repeat_byte(0xAA));
+    assert_eq!(builder_withdrawals[0].amount, 1_000_000_000);
+
+    // Verify second builder withdrawal
+    assert_eq!(
+        builder_withdrawals[1].validator_index,
+        1 | consts::gloas::BUILDER_INDEX_FLAG
+    );
+    assert_eq!(builder_withdrawals[1].address, Address::repeat_byte(0xBB));
+    assert_eq!(builder_withdrawals[1].amount, 2_000_000_000);
+
+    // Withdrawal indices should be sequential
+    assert_eq!(
+        builder_withdrawals[1].index,
+        builder_withdrawals[0].index + 1,
+        "withdrawal indices should be sequential"
+    );
+
+    // Pending withdrawals should be drained after processing
+    let state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = state.as_gloas().expect("should be Gloas");
+    assert_eq!(gloas_state.builder_pending_withdrawals.len(), 0);
+}
