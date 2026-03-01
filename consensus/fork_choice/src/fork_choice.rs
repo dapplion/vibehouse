@@ -4616,12 +4616,14 @@ mod tests {
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(node.ptc_weight, 1, "batch 1: weight should be 1");
-            // With minimal spec, quorum_threshold=1, so weight=1 is NOT > 1 (strict)
-            // payload_revealed depends on whether ptc_size/2 = 1 and weight > 1
-            // For minimal: ptc_size=2, quorum=1, weight=1 is NOT > 1 => not revealed
+            // weight=1 == quorum_threshold=1 — NOT strictly greater, so not revealed
+            assert_eq!(
+                node.ptc_weight, quorum_threshold,
+                "sanity: weight should equal threshold (boundary)"
+            );
             assert!(
                 !node.payload_revealed,
-                "weight exactly at threshold should NOT reveal"
+                "weight exactly at threshold should NOT reveal (strict > required)"
             );
 
             // Batch 2: 1 more attester, payload_present=true (total: 2)
@@ -4632,6 +4634,10 @@ mod tests {
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(node.ptc_weight, 2, "batch 2: cumulative weight should be 2");
+            assert!(
+                node.ptc_weight > quorum_threshold,
+                "cumulative weight should exceed quorum threshold"
+            );
             assert!(
                 node.payload_revealed,
                 "weight exceeding threshold should reveal payload"

@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — envelope processing and fork choice edge case tests, spec tracking (run 319)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Reviewed recently merged Gloas spec PRs:
+  - #4923 (ignore beacon block if parent payload unknown) — already implemented with 3 gossip validation tests
+  - #4914 (replace pubkey with validator_index in SignedExecutionProof) — not applicable, vibehouse uses custom ZK proof type
+  - #4947, #4948, #4918 — already confirmed in runs 315-318
+- Open Gloas spec PRs status: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- **5 new envelope processing tests**:
+  - `zero_amount_payment_not_queued_as_withdrawal` — verifies the `amount > 0` guard prevents zero-amount payments from being queued
+  - `self_build_envelope_valid_signature_succeeds` — exercises the BUILDER_INDEX_SELF_BUILD path using proposer's pubkey
+  - `self_build_envelope_wrong_signer_rejected` — proves self-build path uses correct (proposer) pubkey, not arbitrary validator
+  - `latest_block_hash_updated_to_envelope_block_hash` — explicitly verifies latest_block_hash state mutation
+  - `envelope_at_mid_epoch_slot_uses_correct_payment_index` — mid-epoch slot (slot 12) payment index calculation
+- **5 new fork choice tests**:
+  - `envelope_after_ptc_quorum_preserves_all_weights` — envelope arrival after PTC quorum doesn't reset accumulated weights
+  - `envelope_unknown_block_root` — error path: MissingProtoArrayBlock for unknown root
+  - `bid_slot_mismatch_rejected` — error value verification: SlotMismatch with correct slot values
+  - `payload_attestation_future_slot_rejected` — error value verification: FutureSlot with correct values
+  - `ptc_weight_accumulates_across_batches` — multi-batch attestation weight accumulation to quorum threshold
+- **Tests**: 77 envelope_processing (up from 72), 94 fork_choice (up from 89), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — fork choice bid/envelope/PTC interaction edge case tests, spec tracking (run 318)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 317
