@@ -15,7 +15,7 @@ use tracing::instrument;
 use types::{
     ActivationQueue, BeaconState, BeaconStateError, ChainSpec, Checkpoint, DepositData, Epoch,
     EthSpec, ExitCache, ForkName, List, ParticipationFlags, PendingDeposit,
-    ProgressiveBalancesCache, RelativeEpoch, Unsigned, Validator, Vector,
+    ProgressiveBalancesCache, RelativeEpoch, Unsigned, Validator,
     consts::altair::{
         NUM_FLAG_INDICES, PARTICIPATION_FLAG_WEIGHTS, TIMELY_HEAD_FLAG_INDEX,
         TIMELY_TARGET_FLAG_INDEX, WEIGHT_DENOMINATOR,
@@ -484,10 +484,21 @@ pub fn process_proposer_lookahead<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let mut lookahead = state.proposer_lookahead()?.to_vec();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let total_slots = E::proposer_lookahead_slots();
 
-    // Shift out proposers in the first epoch
-    lookahead.copy_within((E::slots_per_epoch() as usize).., 0);
+    // Read old values for the elements that will be shifted left.
+    // We need a snapshot because milhouse get_mut invalidates cached hashes,
+    // so reading and writing must not interleave on overlapping indices.
+    let shifted: Vec<u64> = (slots_per_epoch..total_slots)
+        .map(|i| {
+            state
+                .proposer_lookahead()?
+                .get(i)
+                .copied()
+                .ok_or(Error::ProposerLookaheadOutOfBounds(i))
+        })
+        .collect::<Result<_, _>>()?;
 
     let next_epoch = state
         .current_epoch()
@@ -495,16 +506,22 @@ pub fn process_proposer_lookahead<E: EthSpec>(
         .safe_add(1)?;
     let last_epoch_proposers = state.get_beacon_proposer_indices(next_epoch, spec)?;
 
+    // Write shifted values into the first (total_slots - slots_per_epoch) positions
+    let lookahead = state.proposer_lookahead_mut()?;
+    for (dst, &val) in shifted.iter().enumerate() {
+        *lookahead
+            .get_mut(dst)
+            .ok_or(Error::ProposerLookaheadOutOfBounds(dst))? = val;
+    }
+
     // Fill in the last epoch with new proposer indices
-    let last_epoch_start = E::proposer_lookahead_slots().safe_sub(E::slots_per_epoch() as usize)?;
+    let last_epoch_start = total_slots.safe_sub(slots_per_epoch)?;
     for (i, proposer) in last_epoch_proposers.into_iter().enumerate() {
         let index = last_epoch_start.safe_add(i)?;
         *lookahead
             .get_mut(index)
             .ok_or(Error::ProposerLookaheadOutOfBounds(index))? = proposer as u64;
     }
-
-    *state.proposer_lookahead_mut()? = Vector::new(lookahead)?;
 
     Ok(())
 }
@@ -1297,7 +1314,7 @@ mod tests {
         BuilderPendingPayment, BuilderPendingWithdrawal, BuilderPubkeyCache, CACHED_EPOCHS,
         CommitteeCache, ExecutionBlockHash, ExecutionPayloadBid, ExecutionPayloadHeaderFulu,
         FixedBytesExtended, FixedVector, Fork, Hash256, MinimalEthSpec, PubkeyCache,
-        PublicKeyBytes, SlashingsCache, Slot, SyncCommittee,
+        PublicKeyBytes, SlashingsCache, Slot, SyncCommittee, Vector,
     };
 
     type E = MinimalEthSpec;
