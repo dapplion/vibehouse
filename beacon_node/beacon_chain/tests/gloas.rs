@@ -13235,3 +13235,177 @@ async fn gloas_payload_attestation_gossip_genesis_root_passes_block_check() {
         Ok(_) => panic!("attestation with empty signature should not pass"),
     }
 }
+
+/// Test that the Fulu→Gloas fork transition works correctly when the first
+/// Gloas slot is skipped (no block produced at the fork epoch start slot).
+/// The state upgrade happens during per_slot_processing for the skipped slot,
+/// and the first Gloas block is produced at fork_slot + 1.
+#[tokio::test]
+async fn gloas_fork_transition_with_skipped_fork_slot() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to the last Fulu slot (slot 15).
+    let last_fulu_slot = gloas_fork_slot - 1;
+    Box::pin(harness.extend_to_slot(last_fulu_slot)).await;
+
+    // Capture the Fulu EL header's block_hash before the fork.
+    let fulu_state = harness.chain.head_beacon_state_cloned();
+    let fulu_el_block_hash = fulu_state
+        .latest_execution_payload_header()
+        .expect("Fulu state should have EL header")
+        .block_hash();
+
+    // Skip the first Gloas slot (slot 16) — advance the clock without producing a block.
+    // advance_slot() moves past the head slot, then extend_slots will advance once more
+    // before producing a block.
+    harness.advance_slot();
+    harness.advance_slot();
+
+    // Produce the first Gloas block at slot 17 (fork_slot + 1).
+    Box::pin(harness.extend_slots(1)).await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block.slot(),
+        gloas_fork_slot + 1,
+        "head should be at fork_slot + 1 (skipped fork_slot)"
+    );
+    assert!(
+        head.beacon_block.as_gloas().is_ok(),
+        "first block after skip should be Gloas"
+    );
+
+    // The bid's parent_block_hash should still reference the Fulu header's block_hash.
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        bid.message.parent_block_hash, fulu_el_block_hash,
+        "first Gloas bid parent_block_hash should match Fulu header even with skipped fork slot"
+    );
+}
+
+/// Test that the chain continues correctly after skipping multiple slots
+/// across the Fulu→Gloas fork boundary.
+#[tokio::test]
+async fn gloas_fork_transition_with_multiple_skipped_slots() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to the last Fulu slot.
+    let last_fulu_slot = gloas_fork_slot - 1;
+    Box::pin(harness.extend_to_slot(last_fulu_slot)).await;
+
+    let fulu_el_block_hash = harness
+        .chain
+        .head_beacon_state_cloned()
+        .latest_execution_payload_header()
+        .expect("Fulu state should have EL header")
+        .block_hash();
+
+    // Skip 3 slots across the fork boundary (slots 16, 17, 18).
+    // We need 4 advance_slot() calls: one to move past the head slot, then 3 to skip.
+    for _ in 0..4 {
+        harness.advance_slot();
+    }
+
+    // Produce the first Gloas block at slot 19 (fork_slot + 3).
+    Box::pin(harness.extend_slots(1)).await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block.slot(),
+        gloas_fork_slot + 3,
+        "head should be at fork_slot + 3 after skipping 3 slots"
+    );
+    assert!(
+        head.beacon_block.as_gloas().is_ok(),
+        "block should be Gloas variant"
+    );
+
+    // The bid should still reference the Fulu header even after multiple skips.
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        bid.message.parent_block_hash, fulu_el_block_hash,
+        "parent_block_hash should match Fulu header after multiple skipped slots"
+    );
+
+    // Verify the chain can continue — produce another block.
+    Box::pin(harness.extend_slots(1)).await;
+
+    let next_head = harness.chain.head_snapshot();
+    assert_eq!(
+        next_head.beacon_block.slot(),
+        gloas_fork_slot + 4,
+        "chain should continue after skipped-slot fork transition"
+    );
+    assert!(next_head.beacon_block.as_gloas().is_ok());
+}
+
+/// Test that skipping the last Fulu slot before the fork boundary works correctly.
+/// The last block is at fork_slot - 2, fork_slot - 1 is skipped, and the first
+/// Gloas block is at fork_slot.
+#[tokio::test]
+async fn gloas_fork_transition_with_skipped_last_fulu_slot() {
+    let gloas_fork_epoch = Epoch::new(2);
+    let gloas_fork_slot = gloas_fork_epoch.start_slot(E::slots_per_epoch());
+    let harness = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    // Extend to two slots before the fork (slot 14).
+    let pre_skip_slot = gloas_fork_slot - 2;
+    Box::pin(harness.extend_to_slot(pre_skip_slot)).await;
+
+    let fulu_el_block_hash = harness
+        .chain
+        .head_beacon_state_cloned()
+        .latest_execution_payload_header()
+        .expect("Fulu state should have EL header")
+        .block_hash();
+
+    // Skip the last Fulu slot (slot 15) — advance past head slot, then skip one.
+    harness.advance_slot();
+    harness.advance_slot();
+
+    // Produce the first Gloas block at fork_slot (slot 16).
+    Box::pin(harness.extend_slots(1)).await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block.slot(),
+        gloas_fork_slot,
+        "head should be at the fork slot"
+    );
+    assert!(
+        head.beacon_block.as_gloas().is_ok(),
+        "block at fork slot should be Gloas"
+    );
+
+    // The bid should reference the EL block_hash from slot 14 (the last produced Fulu block).
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+    assert_eq!(
+        bid.message.parent_block_hash, fulu_el_block_hash,
+        "parent_block_hash should match the last produced Fulu block's header"
+    );
+
+    // Chain should continue.
+    Box::pin(harness.extend_slots(1)).await;
+    let next_head = harness.chain.head_snapshot();
+    assert_eq!(next_head.beacon_block.slot(), gloas_fork_slot + 1);
+    assert!(next_head.beacon_block.as_gloas().is_ok());
+}
