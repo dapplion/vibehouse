@@ -8662,13 +8662,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.shutdown_sender.clone()
     }
 
-    // Used for debugging
-    #[allow(dead_code)]
-    pub fn dump_dot_file(&self, file_name: &str) {
-        let mut file = std::fs::File::create(file_name).unwrap();
-        self.dump_as_dot(&mut file);
-    }
-
     /// Checks if attestations have been seen from the given `validator_index` at the
     /// given `epoch`.
     pub fn validator_seen_at_epoch(&self, validator_index: usize, epoch: Epoch) -> bool {

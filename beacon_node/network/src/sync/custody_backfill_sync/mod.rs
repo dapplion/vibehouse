@@ -699,9 +699,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
         );
 
         match result {
-            CustodyBatchProcessResult::Success {
-                imported_columns, ..
-            } => {
+            CustodyBatchProcessResult::Success { imported_columns } => {
                 if let Err(e) = batch.processing_completed(BatchProcessingResult::Success) {
                     self.fail_sync(CustodyBackfillError::BatchInvalidState(batch_id, e.0))?;
                 }

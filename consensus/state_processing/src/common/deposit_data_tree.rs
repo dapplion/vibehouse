@@ -93,10 +93,4 @@ impl DepositDataTree {
             depth,
         })
     }
-
-    #[allow(dead_code)]
-    pub fn print_tree(&self) {
-        self.tree.print_node(0);
-        println!("========================================================");
-    }
 }

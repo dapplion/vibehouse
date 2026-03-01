@@ -222,12 +222,8 @@ pub enum BatchProcessResult {
 /// The result of processing multiple data columns.
 #[derive(Debug)]
 pub enum CustodyBatchProcessResult {
-    /// The custody batch was completed successfully. It carries whether the sent batch contained data columns.
-    Success {
-        #[allow(dead_code)]
-        sent_columns: usize,
-        imported_columns: usize,
-    },
+    /// The custody batch was completed successfully.
+    Success { imported_columns: usize },
     /// The custody batch processing failed.
     Error { peer_action: Option<PeerAction> },
 }

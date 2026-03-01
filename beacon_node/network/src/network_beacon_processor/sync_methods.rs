@@ -438,7 +438,6 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         )
         .entered();
 
-        let sent_columns = downloaded_columns.len();
         let result = match self.chain.import_historical_data_column_batch(
             batch_id.epoch,
             downloaded_columns,
@@ -449,10 +448,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     &metrics::BEACON_PROCESSOR_CUSTODY_BACKFILL_COLUMN_IMPORT_SUCCESS_TOTAL,
                     imported_columns as u64,
                 );
-                CustodyBatchProcessResult::Success {
-                    sent_columns,
-                    imported_columns,
-                }
+                CustodyBatchProcessResult::Success { imported_columns }
             }
             Err(e) => {
                 metrics::inc_counter(
