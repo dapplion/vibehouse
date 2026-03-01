@@ -6324,3 +6324,105 @@ async fn gloas_get_advanced_hot_state_full_envelope_reapplication() {
         "full envelope re-application should produce correct latest_block_hash"
     );
 }
+
+/// Verify that blinded envelopes of abandoned fork blocks are pruned during finalization.
+///
+/// Before commit ebee625d0, `prune_hot_db` deleted blocks, payloads, blobs, and sync committee
+/// branches for abandoned fork blocks, but NOT the blinded envelope (BeaconEnvelope). This test
+/// ensures the fix holds: abandoned fork envelopes are cleaned up along with everything else.
+#[tokio::test]
+async fn gloas_prunes_abandoned_fork_envelopes() {
+    const HONEST_VALIDATOR_COUNT: usize = 32;
+    const ADVERSARIAL_VALIDATOR_COUNT: usize = 16;
+    const VALIDATOR_COUNT: usize = HONEST_VALIDATOR_COUNT + ADVERSARIAL_VALIDATOR_COUNT;
+    let honest_validators: Vec<usize> = (0..HONEST_VALIDATOR_COUNT).collect();
+    let adversarial_validators: Vec<usize> = (HONEST_VALIDATOR_COUNT..VALIDATOR_COUNT).collect();
+
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store = get_store_generic(&db_path, StoreConfig::default(), spec);
+    let rig = get_harness(store.clone(), VALIDATOR_COUNT);
+    let slots_per_epoch = rig.slots_per_epoch();
+    let (mut state, state_root) = rig.get_current_state_and_root();
+
+    // Build canonical chain through epoch 1
+    let canonical_chain_slots: Vec<Slot> = (1..=rig.epoch_start_slot(1)).map(Slot::new).collect();
+    let (canonical_chain_blocks_pre_finalization, _, _, new_state) = rig
+        .add_attested_blocks_at_slots(
+            state,
+            state_root,
+            &canonical_chain_slots,
+            &honest_validators,
+        )
+        .await;
+    state = new_state;
+    let canonical_chain_slot: u64 = rig.get_current_slot().into();
+
+    // Create a fork with adversarial validators
+    let stray_slots: Vec<Slot> = (canonical_chain_slot + 1..rig.epoch_start_slot(2))
+        .map(Slot::new)
+        .collect();
+    let (current_state, current_state_root) = rig.get_current_state_and_root();
+    let (stray_blocks, _, _, _) = rig
+        .add_attested_blocks_at_slots(
+            current_state,
+            current_state_root,
+            &stray_slots,
+            &adversarial_validators,
+        )
+        .await;
+
+    // Precondition: stray blocks and their envelopes exist
+    for &block_hash in stray_blocks.values() {
+        assert!(
+            rig.block_exists(block_hash),
+            "stray block {:?} should exist before finalization",
+            block_hash
+        );
+        assert!(
+            store.payload_envelope_exists(&block_hash.into()).unwrap(),
+            "stray block {:?} should have a blinded envelope before finalization",
+            block_hash
+        );
+    }
+
+    // Trigger finalization on the canonical chain
+    let finalization_slots: Vec<Slot> = ((canonical_chain_slot + 1)
+        ..=(canonical_chain_slot + slots_per_epoch * 5))
+        .map(Slot::new)
+        .collect();
+    let state_root = state.update_tree_hash_cache().unwrap();
+    let (canonical_chain_blocks_post_finalization, _, _, _) = rig
+        .add_attested_blocks_at_slots(state, state_root, &finalization_slots, &honest_validators)
+        .await;
+
+    // Postcondition: finalization occurred
+    assert_eq!(
+        rig.get_finalized_checkpoints(),
+        hashset! {
+            canonical_chain_blocks_pre_finalization[&rig.epoch_start_slot(1).into()],
+            canonical_chain_blocks_post_finalization[&rig.epoch_start_slot(2).into()],
+        },
+    );
+
+    // Postcondition: stray blocks, blobs, and envelopes are all pruned
+    for &block_hash in stray_blocks.values() {
+        assert!(
+            !rig.block_exists(block_hash),
+            "abandoned block {:?} should have been pruned",
+            block_hash
+        );
+        assert!(
+            !store.blobs_exist(&block_hash.into()).unwrap(),
+            "blobs for abandoned block {:?} should have been pruned",
+            block_hash
+        );
+        assert!(
+            !store.payload_envelope_exists(&block_hash.into()).unwrap(),
+            "blinded envelope for abandoned block {:?} should have been pruned",
+            block_hash
+        );
+    }
+}
