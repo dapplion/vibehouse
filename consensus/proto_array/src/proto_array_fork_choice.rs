@@ -1527,14 +1527,9 @@ impl ProtoArrayForkChoice {
 
     /// Tiebreaker between EMPTY and FULL payload statuses.
     ///
-    /// For non-previous-slot nodes: use payload_status ordinal.
+    /// For PENDING nodes or non-previous-slot nodes: use payload_status ordinal.
     /// For previous-slot EMPTY: 1 (favored).
     /// For previous-slot FULL: 2 if should extend payload, else 0.
-    ///
-    /// Note: PENDING nodes at the previous slot are unreachable here because
-    /// `get_node_children` only returns nodes that are uniformly PENDING or
-    /// uniformly non-PENDING, and PENDING nodes are unique per root so the
-    /// tiebreaker is never invoked for them.
     fn get_payload_tiebreaker(
         &self,
         node: &GloasForkChoiceNode,
@@ -1543,13 +1538,17 @@ impl ProtoArrayForkChoice {
     ) -> u8 {
         let pa = &self.proto_array;
 
+        // Spec: if PENDING or not from the previous slot, return the ordinal status value.
+        if node.payload_status == GloasPayloadStatus::Pending {
+            return node.payload_status as u8;
+        }
+
         let is_previous_slot = pa
             .indices
             .get(&node.root)
             .and_then(|&idx| pa.nodes.get(idx))
             .is_some_and(|n| n.slot + 1 == current_slot);
 
-        // Spec: if not from the previous slot, return the ordinal status value.
         if !is_previous_slot {
             node.payload_status as u8
         } else if node.payload_status == GloasPayloadStatus::Empty {
@@ -4192,23 +4191,14 @@ mod test_gloas_fork_choice {
     }
 
     #[test]
-    fn tiebreaker_pending_at_previous_slot_unreachable_but_safe() {
-        // Per spec PR #4898: PENDING nodes at the previous slot are unreachable
-        // because get_node_children returns uniformly PENDING or non-PENDING
-        // children, and PENDING nodes are unique per root. This test documents
-        // what would happen if a PENDING node somehow reached the tiebreaker at
-        // the previous slot — it falls through to the FULL branch since it's
-        // not EMPTY.
+    fn tiebreaker_pending_at_previous_slot_returns_ordinal() {
+        // Per spec: PENDING nodes always return their ordinal value regardless
+        // of slot. This is unreachable in practice (PENDING nodes are unique per
+        // root so the root comparison breaks the tie first), but matches the spec
+        // condition: `if payload_status == PENDING or slot+1 != current_slot`.
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
-
-        // Make envelope received + PTC quorum above threshold so that
-        // should_extend_payload returns true.
-        let node = get_node_mut(&mut fc, &block_root);
-        node.envelope_received = true;
-        node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
-        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
 
         let gloas_node = GloasForkChoiceNode {
             root: block_root,
@@ -4216,11 +4206,10 @@ mod test_gloas_fork_choice {
         };
 
         // Block at slot 1, current_slot = 2 (previous slot).
-        // PENDING falls through to FULL branch → should_extend_payload=true → 2.
-        // This is unreachable in practice but harmless.
+        // PENDING always returns ordinal (2) per spec, regardless of slot.
         assert_eq!(
             fc.get_payload_tiebreaker(&gloas_node, Slot::new(2), MINIMAL_PTC_THRESHOLD),
-            2
+            GloasPayloadStatus::Pending as u8
         );
     }
 
