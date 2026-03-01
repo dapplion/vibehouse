@@ -7137,4 +7137,104 @@ mod test_gloas_fork_choice {
             "zero hash should always return true"
         );
     }
+
+    // ── should_extend_payload PTC threshold boundary tests ──
+    //
+    // These tests verify the strict inequality (>) vs (>=) boundary for PTC
+    // quorum checks. The function has two paths: timely+available (PTC quorum)
+    // and proposer boost. To test the PTC boundary, we set up a proposer boost
+    // child building on EMPTY parent, so the boost path returns false, making
+    // the overall result depend solely on the PTC quorum check.
+
+    /// Helper: set up block_root with a child building on EMPTY parent as proposer boost.
+    /// This makes should_extend_payload return false unless the PTC quorum path passes.
+    fn setup_extend_payload_with_empty_boost(fc: &mut ProtoArrayForkChoice, block_root: Hash256) {
+        let child_root = root(99);
+        insert_external_builder_block(fc, 2, child_root, block_root, 42);
+        // Child's bid_parent_block_hash is None (default) → builds on EMPTY parent
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: child_root,
+            score: 100,
+        };
+    }
+
+    #[test]
+    fn should_extend_payload_ptc_weight_at_exact_threshold_returns_false() {
+        // The spec uses strict inequality (ptc_weight > threshold), so ptc_weight
+        // exactly equal to the threshold must NOT trigger should_extend_payload.
+        // This is a consensus-critical off-by-one boundary.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        // Set ptc_weight exactly at threshold, not above
+        node.ptc_weight = MINIMAL_PTC_THRESHOLD;
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
+
+        setup_extend_payload_with_empty_boost(&mut fc, block_root);
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        assert!(
+            !fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            "ptc_weight == threshold (not strictly above) must NOT extend payload"
+        );
+    }
+
+    #[test]
+    fn should_extend_payload_blob_weight_at_exact_threshold_returns_false() {
+        // Even if ptc_weight is above threshold, blob_data_available_weight must
+        // also be strictly above threshold. Both quorum checks use strict >.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
+        // Set blob weight exactly at threshold
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD;
+
+        setup_extend_payload_with_empty_boost(&mut fc, block_root);
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        assert!(
+            !fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            "blob_data_available_weight == threshold (not strictly above) must NOT extend payload"
+        );
+    }
+
+    #[test]
+    fn should_extend_payload_both_weights_one_above_threshold_returns_true() {
+        // Both ptc_weight and blob_data_available_weight at threshold+1 (minimum
+        // to pass strict >) with envelope_received should extend payload.
+        // No proposer boost setup needed — timely+available path returns true directly.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        assert!(
+            fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            "both weights at threshold+1 with envelope_received should extend payload"
+        );
+    }
 }

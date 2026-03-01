@@ -6872,6 +6872,81 @@ mod tests {
     // ── bid with exactly blob limit at boundary between accepted/rejected ──
 
     #[test]
+    fn withdrawal_index_overflow_at_u64_max_returns_arith_error() {
+        // When next_withdrawal_index is u64::MAX and there's a withdrawal to process,
+        // safe_add_assign(1) should return ArithError (not panic or silently wrap).
+        // This is a consensus-critical arithmetic boundary.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set next_withdrawal_index to u64::MAX
+        *state.next_withdrawal_index_mut().unwrap() = u64::MAX;
+
+        // Add a builder pending withdrawal that will trigger the overflow
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            matches!(&result, Err(BlockProcessingError::ArithError(_))),
+            "withdrawal index overflow at u64::MAX should return ArithError, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn withdrawal_index_near_max_succeeds_for_single_withdrawal() {
+        // When next_withdrawal_index is u64::MAX - 1 and there's exactly one
+        // withdrawal, it should succeed: the withdrawal gets index u64::MAX - 1,
+        // and next_withdrawal_index is set to u64::MAX.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        *state.next_withdrawal_index_mut().unwrap() = u64::MAX - 1;
+
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Should succeed — index u64::MAX - 1 is used, safe_add(1) to reach
+        // u64::MAX for the next withdrawal index update still fits.
+        // But wait: line 528 does safe_add_assign(1) AFTER assigning index,
+        // and line 701 does latest_withdrawal.index.safe_add(1).
+        // With index = u64::MAX - 1:
+        //   - line 528: withdrawal_index becomes u64::MAX (OK)
+        //   - line 701: (u64::MAX - 1).safe_add(1) = u64::MAX (OK)
+        // Actually line 701 uses latest_withdrawal.index which is u64::MAX - 1, not withdrawal_index.
+        // So: latest_withdrawal.index.safe_add(1) = u64::MAX. That's fine.
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            result.is_ok(),
+            "near-max withdrawal index should succeed: {:?}",
+            result
+        );
+
+        assert_eq!(
+            state.next_withdrawal_index().unwrap(),
+            u64::MAX,
+            "next_withdrawal_index should be u64::MAX after processing"
+        );
+    }
+
+    #[test]
     fn builder_bid_blob_commitments_one_over_max_rejected() {
         // max+1 blob commitments should be rejected. This complements the
         // "exactly max" and "too many" tests by verifying the off-by-one boundary.
