@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, test coverage audit, EF test validation (run 287)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 286
+- Open Gloas spec PRs tracked: #4950 (4 approvals, most likely next to merge — already compliant), #4940 (fork choice tests — 0 reviews, handler ready), #4932 (sanity/blocks tests — handler ready), #4939 (missing envelope request — 0 reviews, adds attestation→payload validation rules), #4926 (SLOT_DURATION_MS — 1 approval), #4898 (remove pending tiebreaker — 1 approval, already compliant), #4892 (remove impossible branch — 2 approvals, stalled), #4843 (SLOTNUM — not merged), #4840 (variable PTC deadline — not merged), #4747 (fast confirmation — 0 reviews), #4630 (EIP-7688 SSZ — 0 reviews), #4558 (cell dissemination — 0 reviews)
+- **EF spec tests**: 78/78 real crypto + 138/138 fake crypto pass (minimal preset, pinned v1.7.0-alpha.2 vectors)
+- **Clippy**: zero warnings across entire workspace (excluding ef_tests)
+- **Build**: zero warnings across workspace
+- **CI status**: all green, nightly latest run passed
+- **Deep test coverage audit** across all Gloas-specific state processing modules:
+  - `envelope_processing.rs`: 38 tests — covers all 14 validation error paths (beacon_block_root, slot, builder_index, prev_randao, withdrawals, gas_limit, block_hash, parent_hash, timestamp, state_root), 6 state mutation tests (latest_block_hash, availability bit, builder payment, header state_root, parent_state_root override, nonzero header preservation), 7 signature verification tests (valid builder, invalid builder, self-build proposer, self-build wrong key, self-build builder key, empty sig, OOB builder index), 5 execution request tests (deposit→pending, deposit→builder topup, withdrawal, consolidation, all three combined), 7 edge cases (zero payment, payment appends, slot-0 index, last-slot-of-epoch, combined mutations, nonzero weight, payment index boundary)
+  - `per_block_processing/gloas.rs`: 138 tests — comprehensive bid processing, withdrawal processing, builder deposits, PTC committee
+  - `per_epoch_processing/gloas.rs`: 22 tests — builder pending payments quorum, rotation, edge cases
+  - `common/get_attestation_participation.rs`: 20 tests — is_attestation_same_slot, payload_matches logic, availability bit indexing
+  - `verify_attestation.rs`: 10 tests — Gloas index<2 validation, Fulu index==0 validation, inclusion timing
+  - `per_epoch_processing/single_pass.rs`: 19 tests — proposer_lookahead processing
+  - `upgrade/gloas.rs`: 26 tests — state upgrade path
+  - **Assessment**: Gloas test coverage is comprehensive across all major consensus subsystems. No actionable gaps found.
+- **PR #4940 readiness confirmed**: `OnExecutionPayload` step handler, `check_head_payload_status` assertion, and `run_on_execution_payload` infrastructure all wired and ready
+- **PR #4932 readiness confirmed**: sanity/blocks handler is generic and already supports Gloas block bodies with payload attestations
+- **PR #4939 analysis**: adds new gossip validation rules for index=1 attestations requiring payload visibility — not yet implemented (0 approvals, not merged)
+- **No code changes this run** — spec fully compliant, test coverage comprehensive, infrastructure ready for upcoming test vectors
+
 ### 2026-03-01 — deep spec conformance audit (run 286)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 285
