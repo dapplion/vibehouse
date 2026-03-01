@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — Vec pre-sizing and bid accessor deduplication, spec tracking (run 293)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 292
+- Open Gloas spec PRs tracked: #4950, #4940, #4932, #4630, #4840, #4843, #4926, #4939, #4898, #4892, #4747, #4558 — all still open/unmerged
+- **EF spec tests**: 35/35 pass (operations + epoch_processing + sanity, minimal preset, fake crypto)
+- **State processing tests**: 463/463 pass
+- **Beacon chain tests**: 57/57 gloas_verification tests pass
+- **Performance optimizations shipped**:
+  - `get_indexed_payload_attestation`: `Vec::with_capacity(ptc_indices.len())` instead of `Vec::new()`. Called per payload attestation during block processing — avoids reallocations for up to 512 PTC attesters.
+  - `gloas_verification` gossip path: same `Vec::with_capacity(ptc_indices.len())` fix for `indexed_attestation_indices`. This is the hot gossip path — up to PTC_SIZE (512) messages per slot.
+  - `process_withdrawals_gloas` + `get_expected_withdrawals_gloas`: `Vec::with_capacity(max_withdrawals)` instead of `Vec::new()`. Called per slot (withdrawal processing) and during block production (expected withdrawals).
+  - `process_execution_payload_bid`: single `as_gloas()` call shared between `latest_block_hash` extraction (line 37) and builder validation (else branch). Was calling `as_gloas()` twice — once at the top for `latest_block_hash`, once in the else branch for builder access. Each call does a pattern-match on the `BeaconState` enum.
+- **Clippy**: zero warnings across entire workspace (lint-full passed)
+- **CI**: all green
+
 ### 2026-03-01 — PTC committee allocation optimization, envelope accessor deduplication, spec tracking (run 292)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 291
