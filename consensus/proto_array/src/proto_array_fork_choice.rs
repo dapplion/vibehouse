@@ -1306,6 +1306,7 @@ impl ProtoArrayForkChoice {
         };
 
         // Compute attestation-only weight for the parent (no proposer boost)
+        let parent_slot = parent_block.slot;
         let mut parent_att_weight: u64 = 0;
         for (val_index, vote) in self.votes.0.iter().enumerate() {
             if vote.current_root.is_zero() {
@@ -1320,7 +1321,7 @@ impl ProtoArrayForkChoice {
             if balance == 0 {
                 continue;
             }
-            if self.is_supporting_vote_gloas(&parent_node, vote) {
+            if self.is_supporting_vote_gloas_at_slot(&parent_node, vote, parent_slot) {
                 parent_att_weight = parent_att_weight.saturating_add(balance);
             }
         }
@@ -1378,12 +1379,17 @@ impl ProtoArrayForkChoice {
     ) -> u64 {
         let pa = &self.proto_array;
 
+        // Resolve the node's slot once, avoiding a HashMap lookup per validator
+        let Some(&node_idx) = pa.indices.get(&node.root) else {
+            return 0;
+        };
+        let Some(proto_node) = pa.nodes.get(node_idx) else {
+            return 0;
+        };
+        let node_slot = proto_node.slot;
+
         // Non-PENDING nodes from previous slot get 0 weight
-        if node.payload_status != GloasPayloadStatus::Pending
-            && let Some(&idx) = pa.indices.get(&node.root)
-            && let Some(proto_node) = pa.nodes.get(idx)
-            && proto_node.slot + 1 == current_slot
-        {
+        if node.payload_status != GloasPayloadStatus::Pending && node_slot + 1 == current_slot {
             return 0;
         }
 
@@ -1402,7 +1408,7 @@ impl ProtoArrayForkChoice {
             if balance == 0 {
                 continue;
             }
-            if self.is_supporting_vote_gloas(node, vote) {
+            if self.is_supporting_vote_gloas_at_slot(node, vote, node_slot) {
                 weight = weight.saturating_add(balance);
             }
         }
@@ -1417,7 +1423,7 @@ impl ProtoArrayForkChoice {
                 current_slot,
                 ..VoteTracker::default()
             };
-            if self.is_supporting_vote_gloas(node, &boost_vote)
+            if self.is_supporting_vote_gloas_at_slot(node, &boost_vote, node_slot)
                 && let Some(score) = calculate_committee_fraction::<E>(&self.balances, boost_pct)
             {
                 weight = weight.saturating_add(score);
@@ -1429,24 +1435,38 @@ impl ProtoArrayForkChoice {
 
     /// Check if a vote supports a Gloas fork choice node.
     ///
-    /// Implements the spec's `is_supporting_vote` with payload_present awareness.
+    /// Resolves the node's slot via HashMap lookup. Used by tests; production
+    /// callers use `is_supporting_vote_gloas_at_slot` with a pre-resolved slot.
+    #[cfg(test)]
     fn is_supporting_vote_gloas(&self, node: &GloasForkChoiceNode, vote: &VoteTracker) -> bool {
         let pa = &self.proto_array;
-
         let Some(&node_idx) = pa.indices.get(&node.root) else {
             return false;
         };
         let Some(block) = pa.nodes.get(node_idx) else {
             return false;
         };
+        self.is_supporting_vote_gloas_at_slot(node, vote, block.slot)
+    }
 
+    /// Check if a vote supports a node at a known slot.
+    ///
+    /// Avoids the HashMap lookup on `node.root` when the caller has already
+    /// resolved the node's slot (e.g. in `get_gloas_weight` which calls this
+    /// once per validator with the same node).
+    fn is_supporting_vote_gloas_at_slot(
+        &self,
+        node: &GloasForkChoiceNode,
+        vote: &VoteTracker,
+        node_slot: Slot,
+    ) -> bool {
         if node.root == vote.current_root {
             match node.payload_status {
                 GloasPayloadStatus::Pending => true,
                 GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
                     // Spec: assert message.slot >= block.slot
-                    debug_assert!(vote.current_slot >= block.slot);
-                    if vote.current_slot == block.slot {
+                    debug_assert!(vote.current_slot >= node_slot);
+                    if vote.current_slot == node_slot {
                         return false;
                     }
                     if vote.current_payload_present {
@@ -1458,7 +1478,7 @@ impl ProtoArrayForkChoice {
             }
         } else {
             // Ancestor check: does the vote's chain pass through this node?
-            match self.get_ancestor_gloas(vote.current_root, block.slot) {
+            match self.get_ancestor_gloas(vote.current_root, node_slot) {
                 Some(ancestor) => {
                     node.root == ancestor.root
                         && (node.payload_status == GloasPayloadStatus::Pending
