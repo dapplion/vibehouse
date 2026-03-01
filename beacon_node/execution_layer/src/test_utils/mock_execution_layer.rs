@@ -79,8 +79,8 @@ impl<E: EthSpec> MockExecutionLayer<E> {
             suggested_fee_recipient: Some(Address::repeat_byte(42)),
             // Use a higher timeout multiplier for tests to avoid flaky failures
             // on CI runners under resource contention. The default getPayload
-            // timeout is 2s — multiplier of 3 gives 6s.
-            execution_timeout_multiplier: Some(3),
+            // timeout is 2s — multiplier of 5 gives 10s.
+            execution_timeout_multiplier: Some(5),
             ..Default::default()
         };
         let el = ExecutionLayer::from_config(config, executor.clone()).unwrap();
