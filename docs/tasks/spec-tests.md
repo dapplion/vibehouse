@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — add gossip verification timing histograms, spec tracking (run 300)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 299
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898 (1 approval), #4892 (3 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Reviewed open PRs for alignment**:
+  - #4940 (initial fork choice tests for Gloas) — vibehouse's EF test infrastructure already has `OnExecutionPayload` step, `head_payload_status` check, and SSZ decode for `SignedExecutionPayloadEnvelope`. Only needs `"base"` handler registration when vectors ship.
+  - #4932 (Gloas sanity/blocks tests with payload attestation coverage) — vibehouse's `SanityBlocksHandler` is fork-agnostic and `process_payload_attestation` validates all three rejection conditions (wrong root, wrong slot, bad signature). No changes needed.
+  - #4843 (Variable PTC deadline) — significant spec change: `payload_present` → `payload_timely`, size-dependent deadline, event-driven PTC attestation. Still open, not merged. Will require multi-file rename + behavioral change in VC. Deferred until merge.
+- **Observability improvement shipped**:
+  - Added 4 timing histograms for Gloas ePBS gossip verification and processing — previously only counters existed, no latency metrics
+  - `beacon_execution_bid_gossip_verification_seconds` — full runtime of execution bid gossip verification
+  - `beacon_payload_attestation_gossip_verification_seconds` — full runtime of payload attestation gossip verification
+  - `beacon_payload_envelope_gossip_verification_seconds` — full runtime of payload envelope gossip verification
+  - `beacon_payload_envelope_processing_seconds` — full runtime of envelope processing (EL newPayload + state transition)
+  - Matches the pattern used by standard items (unaggregated/aggregated attestation, sync message, blob sidecar, data column sidecar)
+- **Tests**: 44/44 Gloas network tests, 323/323 beacon_chain tests, 35/35 EF operations+epoch+sanity tests all pass
+- **Clippy**: zero warnings across entire workspace (lint-full passed)
+- **CI**: push succeeded
+
 ### 2026-03-01 — add execution payload envelope metrics, spec tracking (run 299)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 298
