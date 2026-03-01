@@ -277,7 +277,19 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
                 }
 
                 // Retry at most once, we could recurse but that would risk overflowing the stack.
-                let _ = tx.send(tx_err.0);
+                if let Err(retry_err) = tx.send(tx_err.0) {
+                    let notif_kind = match &retry_err.0 {
+                        Notification::Finalization(_) => "finalization",
+                        Notification::Reconstruction => "reconstruction",
+                        Notification::PruneBlobs(_) => "prune_blobs",
+                        Notification::ManualFinalization(_) => "manual_finalization",
+                        Notification::ManualCompaction => "manual_compaction",
+                    };
+                    warn!(
+                        notification = notif_kind,
+                        "Migration thread retry failed, notification dropped"
+                    );
+                }
             }
             None
         // Synchronous path, on the current thread.
