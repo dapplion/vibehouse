@@ -4811,5 +4811,209 @@ mod tests {
                 "execution_status should be set from envelope even without prior bid"
             );
         }
+
+        /// PTC false-votes arriving after envelope receipt should NOT un-reveal
+        /// the payload. The `payload_revealed` flag is a latch: once true, PTC
+        /// attestations with `payload_present=false` cannot flip it back.
+        #[test]
+        fn false_ptc_vote_after_envelope_does_not_unreveal() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            // Envelope arrives first → payload_revealed=true
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xAA);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            assert!(
+                fc.proto_array.core_proto_array().nodes[idx].payload_revealed,
+                "sanity: payload should be revealed after envelope"
+            );
+
+            // Now PTC false-votes arrive (payload_present=false, blob_data_available=false)
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let many_false_voters: Vec<u64> = (0..=quorum_threshold + 10).collect();
+            let att = make_payload_attestation(1, block_root, false, false);
+            let indexed =
+                make_indexed_payload_attestation(1, block_root, false, false, many_false_voters);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(
+                node.payload_revealed,
+                "payload_revealed must stay true after false PTC votes"
+            );
+            assert!(
+                node.envelope_received,
+                "envelope_received must stay true after false PTC votes"
+            );
+            assert_eq!(
+                node.ptc_weight, 0,
+                "false votes should not increment ptc_weight"
+            );
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status must not change from false PTC votes"
+            );
+        }
+
+        /// PTC true-votes arriving after envelope receipt should still accumulate
+        /// weight but should NOT re-trigger the quorum reveal path (since
+        /// payload_revealed is already true). Weight accumulates for attestation
+        /// accounting purposes.
+        #[test]
+        fn true_ptc_vote_after_envelope_accumulates_weight_no_double_reveal() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            // Envelope reveals payload
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            assert!(
+                fc.proto_array.core_proto_array().nodes[idx].payload_revealed,
+                "sanity: revealed by envelope"
+            );
+            assert_eq!(
+                fc.proto_array.core_proto_array().nodes[idx].ptc_weight,
+                0,
+                "sanity: no PTC votes yet"
+            );
+
+            // Now PTC true-votes arrive (MinimalEthSpec PtcSize=2, max 2 indices per call)
+            let spec = ChainSpec::minimal();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, vec![0, 1]);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 2,
+                "PTC weight should accumulate even after envelope"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 2,
+                "blob weight should accumulate even after envelope"
+            );
+            assert!(node.payload_revealed, "payload_revealed should remain true");
+            // execution_status should remain from envelope, not get overwritten by PTC
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should remain from envelope"
+            );
+        }
+
+        /// Mixed PTC votes: some attesters vote payload_present=true, others
+        /// vote false. Only true-voters contribute to ptc_weight. The false
+        /// voters are a no-op for weight but should not cause errors.
+        #[test]
+        fn mixed_ptc_votes_only_true_adds_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let spec = ChainSpec::minimal();
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // 2 attesters vote payload_present=true (MinimalEthSpec PtcSize=2)
+            let att_true = make_payload_attestation(1, block_root, true, false);
+            let indexed_true =
+                make_indexed_payload_attestation(1, block_root, true, false, vec![0, 1]);
+            fc.on_payload_attestation(&att_true, &indexed_true, Slot::new(1), &spec)
+                .unwrap();
+
+            // 2 attesters vote payload_present=false (different attester indices)
+            let att_false = make_payload_attestation(1, block_root, false, false);
+            let indexed_false =
+                make_indexed_payload_attestation(1, block_root, false, false, vec![2, 3]);
+            fc.on_payload_attestation(&att_false, &indexed_false, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 2,
+                "only true-voters should contribute to ptc_weight"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "no blob_data_available votes were cast"
+            );
+        }
+
+        /// Split vote: payload_present=false but blob_data_available=true.
+        /// Only blob weight should accumulate, not payload weight.
+        /// Then the reverse: payload_present=true but blob_data_available=false.
+        /// Verifies the two weight counters are truly independent.
+        #[test]
+        fn split_payload_and_blob_votes_independent_counters() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let spec = ChainSpec::minimal();
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Batch 1: blob-only votes (payload_present=false, blob_data_available=true)
+            let att1 = make_payload_attestation(1, block_root, false, true);
+            let indexed1 = make_indexed_payload_attestation(1, block_root, false, true, vec![0, 1]);
+            fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
+                .unwrap();
+
+            // Batch 2: payload-only votes (payload_present=true, blob_data_available=false)
+            let att2 = make_payload_attestation(1, block_root, true, false);
+            let indexed2 = make_indexed_payload_attestation(1, block_root, true, false, vec![2, 3]);
+            fc.on_payload_attestation(&att2, &indexed2, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 2,
+                "only payload-true voters add to ptc_weight"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 2,
+                "only blob-true voters add to blob weight"
+            );
+        }
     }
 }

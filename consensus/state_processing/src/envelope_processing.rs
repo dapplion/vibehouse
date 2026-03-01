@@ -2830,4 +2830,274 @@ mod tests {
         assert_eq!(withdrawals.len(), 1);
         assert_eq!(withdrawals.get(0).unwrap().amount, 7_000_000_000);
     }
+
+    #[test]
+    fn payment_blanking_preserves_adjacent_slots() {
+        // Verify that envelope processing blanks only the target payment_index
+        // and does not modify adjacent payment slots.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let slot = state.slot();
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        // Set up payments at target index AND both adjacent indices
+        let target_payment = BuilderPendingPayment {
+            weight: 50,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 3_000_000_000,
+                builder_index: 0,
+            },
+        };
+        let adjacent_payment = BuilderPendingPayment {
+            weight: 99,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 7_000_000_000,
+                builder_index: 0,
+            },
+        };
+
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = target_payment;
+
+        // Set adjacent slots (before and after)
+        if payment_index > 0 {
+            *state
+                .builder_pending_payments_mut()
+                .unwrap()
+                .get_mut(payment_index - 1)
+                .unwrap() = adjacent_payment;
+        }
+        let max_index = E::builder_pending_payments_limit() - 1;
+        if payment_index < max_index {
+            *state
+                .builder_pending_payments_mut()
+                .unwrap()
+                .get_mut(payment_index + 1)
+                .unwrap() = adjacent_payment;
+        }
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Target index should be blanked
+        assert_eq!(
+            *state
+                .builder_pending_payments()
+                .unwrap()
+                .get(payment_index)
+                .unwrap(),
+            BuilderPendingPayment::default(),
+            "target payment should be blanked"
+        );
+
+        // Adjacent indices should be untouched
+        if payment_index > 0 {
+            assert_eq!(
+                *state
+                    .builder_pending_payments()
+                    .unwrap()
+                    .get(payment_index - 1)
+                    .unwrap(),
+                adjacent_payment,
+                "payment at index-1 should be untouched"
+            );
+        }
+        if payment_index < max_index {
+            assert_eq!(
+                *state
+                    .builder_pending_payments()
+                    .unwrap()
+                    .get(payment_index + 1)
+                    .unwrap(),
+                adjacent_payment,
+                "payment at index+1 should be untouched"
+            );
+        }
+    }
+
+    #[test]
+    fn self_build_envelope_blanks_payment_but_no_withdrawal() {
+        // A self-build envelope (amount=0 by definition for self-build bids) should
+        // blank the payment slot but NOT queue any withdrawal.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set the bid to self-build
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let slot = state.slot();
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        // Self-build bids have amount=0, but set some non-default weight to prove blanking
+        let payment = BuilderPendingPayment {
+            weight: 42,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::zero(),
+                amount: 0,
+                builder_index: BUILDER_INDEX_SELF_BUILD,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.builder_index = BUILDER_INDEX_SELF_BUILD;
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should be blanked
+        assert_eq!(
+            *state
+                .builder_pending_payments()
+                .unwrap()
+                .get(payment_index)
+                .unwrap(),
+            BuilderPendingPayment::default(),
+            "self-build payment slot should be blanked"
+        );
+
+        // No withdrawal should be queued (amount was 0)
+        assert!(
+            state.builder_pending_withdrawals().unwrap().is_empty(),
+            "self-build envelope should not queue any withdrawal"
+        );
+    }
+
+    #[test]
+    fn availability_bit_idempotent_when_already_set() {
+        // Re-processing an envelope for the same slot should not panic or error
+        // when the availability bit is already set.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let avail_index =
+            state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+
+        // Pre-set the availability bit
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(avail_index, true)
+            .unwrap();
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        // Processing should still succeed (idempotent set)
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "re-setting availability bit should be idempotent: {:?}",
+            result.unwrap_err()
+        );
+        assert!(
+            state
+                .execution_payload_availability()
+                .unwrap()
+                .get(avail_index)
+                .unwrap(),
+            "availability bit should still be set"
+        );
+    }
+
+    #[test]
+    fn payment_appends_preserve_existing_withdrawals() {
+        // If builder_pending_withdrawals already has entries, the new payment
+        // should be appended (not replace them).
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Pre-populate with an existing withdrawal
+        let existing = BuilderPendingWithdrawal {
+            fee_recipient: Address::repeat_byte(0x11),
+            amount: 1_000_000_000,
+            builder_index: 0,
+        };
+        state
+            .builder_pending_withdrawals_mut()
+            .unwrap()
+            .push(existing)
+            .unwrap();
+
+        let slot = state.slot();
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        let payment = BuilderPendingPayment {
+            weight: 30,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0x22),
+                amount: 2_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(
+            withdrawals.len(),
+            2,
+            "should have original + new withdrawal"
+        );
+        assert_eq!(
+            withdrawals.get(0).unwrap().amount,
+            1_000_000_000,
+            "original withdrawal preserved"
+        );
+        assert_eq!(
+            withdrawals.get(1).unwrap().amount,
+            2_000_000_000,
+            "new withdrawal appended"
+        );
+    }
 }
