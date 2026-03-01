@@ -1123,30 +1123,33 @@ impl ProtoArrayForkChoice {
                 return Ok(head.root);
             }
 
-            head = children
+            // Pre-compute weights once per child to avoid redundant O(validators)
+            // scans. max_by would re-compute weights on each comparison.
+            let weighted: Vec<_> = children
                 .into_iter()
-                .max_by(|a, b| {
-                    let wa = self.get_gloas_weight::<E>(
-                        a,
+                .map(|child| {
+                    let w = self.get_gloas_weight::<E>(
+                        &child,
                         proposer_boost_root,
                         apply_boost,
                         current_slot,
                         spec,
                     );
-                    let wb = self.get_gloas_weight::<E>(
-                        b,
-                        proposer_boost_root,
-                        apply_boost,
-                        current_slot,
-                        spec,
-                    );
-                    wa.cmp(&wb).then_with(|| a.root.cmp(&b.root)).then_with(|| {
+                    (child, w)
+                })
+                .collect();
+
+            head = weighted
+                .into_iter()
+                .max_by(|(a, wa), (b, wb)| {
+                    wa.cmp(wb).then_with(|| a.root.cmp(&b.root)).then_with(|| {
                         let ta = self.get_payload_tiebreaker(a, current_slot, ptc_quorum_threshold);
                         let tb = self.get_payload_tiebreaker(b, current_slot, ptc_quorum_threshold);
                         ta.cmp(&tb)
                     })
                 })
-                .unwrap(); // safe: children is non-empty
+                .unwrap() // safe: children is non-empty
+                .0;
         }
     }
 
@@ -1166,7 +1169,8 @@ impl ProtoArrayForkChoice {
         // Pass 2 (reverse): propagate upward and collect roots in one pass.
         // Nodes are ordered parent-before-child, so reverse iteration ensures parents
         // are marked before we reach them. We collect each filtered node's root as we go.
-        let mut roots = HashSet::new();
+        let initial_count = filtered.iter().filter(|&&b| b).count();
+        let mut roots = HashSet::with_capacity(initial_count);
         for i in (0..pa.nodes.len()).rev() {
             if filtered[i] {
                 roots.insert(pa.nodes[i].root);
@@ -1211,7 +1215,7 @@ impl ProtoArrayForkChoice {
                 children
             }
             GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
-                let mut children = Vec::new();
+                let mut children = Vec::with_capacity(2);
 
                 if let Some(&parent_idx) = pa.indices.get(&node.root) {
                     let parent_node = &pa.nodes[parent_idx];
