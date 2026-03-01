@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — withdrawal processing and payload attestation edge case tests (run 324)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 323
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **9 new state_processing tests** (withdrawal/builder edge cases):
+  - `withdrawals_builder_pending_oob_index_rejected` — OOB builder_index in pending withdrawals returns WithdrawalBuilderIndexInvalid
+  - `withdrawals_builder_sweep_oob_index_rejected` — OOB next_withdrawal_builder_index in sweep returns WithdrawalBuilderIndexInvalid
+  - `get_expected_withdrawals_oob_builder_index_rejected` — read-only path also rejects OOB builder_index
+  - `withdrawals_builder_sweep_zero_balance_exited_skipped` — zero-balance exited builder produces no sweep withdrawal
+  - `get_expected_matches_process_all_four_phases` — get_expected_withdrawals_gloas matches process_withdrawals_gloas across all 4 phases
+  - `initiate_builder_exit_oob_index` — OOB builder_index returns UnknownBuilder
+  - `initiate_builder_exit_idempotent` — second exit call is no-op
+  - `get_pending_balance_no_pending_returns_zero` — no pending items returns 0
+  - `get_pending_balance_accumulates_both_sources` — accumulates from both pending withdrawals and pending payments
+- **4 new fork_choice tests** (payload attestation edge cases):
+  - `payload_attestation_incremental_quorum` — quorum reached across two separate calls (1+1 > threshold=1)
+  - `payload_attestation_after_quorum_no_double_reveal` — additional attestation after quorum doesn't overwrite execution_status
+  - `blob_quorum_without_payload_quorum` — blob-only quorum (payload_data_available=true) without payload quorum
+  - `payload_attestation_quorum_skips_execution_status_when_already_set` — existing execution_status preserved when already execution-enabled
+- **Tests**: 157 proto_array, 529 state_processing (up from 520), 106 fork_choice (up from 102), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — envelope processing and fork choice PTC interaction edge case tests (run 323)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 322
