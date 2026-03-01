@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — deep code audit, all findings false positives (run 340)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 339
+- No new nightly test vector runs since run 334 (same commit 14e6ce5a)
+- **Open Gloas spec PRs reduced from 10 to 4**: only #4940, #4932, #4840, #4630 remain open
+  - Previously tracked #4950, #4898, #4892, #4843, #4939, #4926 — all still open, confirmed via direct API query
+  - They don't appear in search results for `gloas|epbs|7732` title filter (may have been relabeled)
+- **Deep error handling audit** — systematic review of error-swallowing patterns in consensus-critical code:
+  - **`.builders().ok()?` in signature closures** (envelope_processing.rs:132, gloas_verification.rs:512,853): analyzed and confirmed safe — these are pubkey extraction closures where returning `None` correctly causes signature verification to fail with `BadSignature`, resulting in rejection
+  - **`signed_execution_payload_bid().ok()` in fork_choice.rs:950**: confirmed safe — `.ok()` converts superstruct error to `None` for pre-Gloas blocks where bids don't exist. This is the standard pattern for optional fork-specific fields
+  - **State mutations before state_root verification** in `process_execution_payload_envelope`: confirmed correct per spec — `envelope.state_root` is a *post-state* root that commits to the state AFTER all mutations. Verifying before mutations would check the wrong thing
+  - **Header state_root mutation at line 160** before beacon_block_root check: confirmed correct per spec — the header's state_root must be filled in (from default) before computing `latest_block_header_root` for the consistency check
+  - **Credential parsing in `apply_deposit_for_builder`**: confirmed safe — the 0x03 builder prefix is validated by `is_builder_withdrawal_credential()` in the calling function before the new-builder path is reached
+  - **All findings from automated audit were false positives** — the code correctly handles all identified patterns
+- **`process_execution_payload_bid` order-of-operations verified**: all validations (builder exists, active, sufficient balance, signature, commitments limit, slot, parent hashes, randao) complete BEFORE any state mutations. Correct pattern.
+- **`process_execution_payload_envelope` order-of-operations verified**: signature check → consistency checks → mutations → post-state root verification. Correct per spec.
+- **`try_update_head_state` verified**: correctly checks block_root match under write lock before updating, safe for concurrent head changes
+- **PR #4843 (Variable PTC deadline) deep assessment update**:
+  - Changes: rename `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload_quorum`, add `payload_envelopes` store, add `MIN_PAYLOAD_DUE_BPS` config, add `get_payload_due_ms`/`get_payload_size`/`is_payload_timely` (validator-side) helpers
+  - Impact: types (1 field rename), fork choice (rename + new store field + store in `on_execution_payload`), validator client (new payload timeliness logic with arrival time + size-based deadline)
+  - Status: 1 approval, last updated Feb 19 — not close to merging
+- **PR #4939 (Request missing payload envelopes) assessment**: adds REJECT/IGNORE for index-1 attestations when payload not seen, plus queueing mechanism. Will need queue + `ExecutionPayloadEnvelopesByRoot` request logic when merged
+- **CI status**: all completed runs green; 4 runs currently in progress; nightly (Mar 1 08:51 UTC) all green
+- **Clippy**: zero warnings (verified via `cargo clippy -p state_processing`)
+
 ### 2026-03-01 — state reconstruction fix, spec tracking (run 339)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
