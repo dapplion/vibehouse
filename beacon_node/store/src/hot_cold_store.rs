@@ -27,7 +27,7 @@ use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
 use state_processing::{
     AllCaches, BlockProcessingError, BlockReplayer, SlotProcessingError,
-    block_replayer::PreSlotHook,
+    block_replayer::PreSlotHook, envelope_processing::EnvelopeProcessingError,
 };
 use std::cmp::{Ordering, min};
 use std::collections::{HashMap, HashSet};
@@ -195,6 +195,11 @@ pub enum HotColdDBError {
     BlockReplayBeaconError(BeaconStateError),
     BlockReplaySlotError(SlotProcessingError),
     BlockReplayBlockError(BlockProcessingError),
+    BlockReplayEnvelopeError(EnvelopeProcessingError),
+    MissingEnvelopeForReconstruction {
+        block_root: Hash256,
+        slot: Slot,
+    },
     InvalidSlotsPerRestorePoint {
         slots_per_restore_point: u64,
         slots_per_historical_root: u64,

@@ -8,7 +8,7 @@ use state_processing::{
     per_slot_processing,
 };
 use std::sync::Arc;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use types::EthSpec;
 
 impl<E, Hot, Cold> HotColdDB<E, Hot, Cold>
@@ -147,13 +147,18 @@ where
                     } else {
                         None
                     };
-                    if let Some(Err(e)) = envelope_result {
-                        warn!(
-                            ?e,
-                            ?block_root,
-                            slot = %block.slot(),
-                            "Failed to apply envelope during state reconstruction"
-                        );
+                    match envelope_result {
+                        Some(Err(e)) => {
+                            return Err(HotColdDBError::BlockReplayEnvelopeError(e).into());
+                        }
+                        None if block.fork_name_unchecked().gloas_enabled() => {
+                            return Err(HotColdDBError::MissingEnvelopeForReconstruction {
+                                block_root,
+                                slot: block.slot(),
+                            }
+                            .into());
+                        }
+                        _ => {}
                     }
                 }
 
