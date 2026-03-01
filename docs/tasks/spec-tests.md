@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice hot path optimizations, spec tracking (run 289)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 288
+- Open Gloas spec PRs tracked: #4950, #4940, #4932, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **EF spec tests**: 8/8 fork choice tests pass (minimal preset, real crypto)
+- **Proto_array tests**: 136/136 pass
+- **Fork_choice tests**: 81/81 pass
+- **Performance optimizations shipped**:
+  - Eliminated per-validator HashMap lookup in `is_supporting_vote_gloas` — extracted slot resolution from inner function into callers (`get_gloas_weight` and `should_apply_proposer_boost_gloas`), which resolve `node.root → node_idx → node_slot` once and pass it to the new `is_supporting_vote_gloas_at_slot` helper. Previously, `pa.indices.get(&node.root)` was called O(validators) times per node per `find_head` call. Now called once per node.
+  - Removed duplicate `block_epoch` computation in `fork_choice::on_block` — was computed at line 820 for proposer boost timing, then again at line 852 for unrealized checkpoint optimization. Single binding now serves both uses.
+  - Deduplicated `signed_execution_payload_bid()` accessor in `fork_choice::on_block` — hoisted `bid_opt` computation before the execution_status match, so the Gloas bid branch uses `&bid_opt` instead of calling the accessor a second time.
+- **Codebase audit**: reviewed 59 TODO/FIXME/HACK comments across production code. Most are inherited Lighthouse items (DAS, operation pool persistence, schema migration). Three `TODO(EIP-7732)` items about post-Gloas blinded block removal are not actionable — the conversions are required by superstruct generics even though Gloas uses phantom payload types.
+- **Clippy**: zero warnings on both packages
+- **Nightly CI**: latest nightly (22522736397) still green
+- **CI**: all green
+
 ### 2026-03-01 — spec tracking, performance optimizations (run 288)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 287
