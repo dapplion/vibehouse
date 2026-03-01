@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — builder exit overflow test, spec tracking (run 314)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 313
+- Open Gloas spec PRs status unchanged: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- Open Gloas PRs reduced: #4747, #4630, #4558 still open (unchanged)
+- **1 new edge case test**:
+  - `initiate_builder_exit_overflows_at_max_epoch` — verifies safe_add returns ArithError when epoch + min_builder_withdrawability_delay overflows u64, confirming the safe arithmetic error propagation is correctly wired
+- **Coverage gap analysis**: systematic review of all Gloas state_processing and beacon_chain code found most error paths already have thorough test coverage; several structurally unreachable defensive error paths identified (NoActiveValidators in get_ptc_committee, BuilderPaymentIndexOutOfBounds, WithdrawalCredentialsInvalid) — these can't be triggered due to upstream constraints
+- **Tests**: 492 state_processing (up from 491), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — blob/exit/withdrawal boundary tests, spec tracking (run 313)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 312
