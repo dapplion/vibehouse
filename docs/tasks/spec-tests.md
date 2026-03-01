@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — CI health verification, codebase stability audit (run 346)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new nightly test vector runs — spec-tests repo archived since Oct 2025
+- **All 12 open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - #4892 (remove impossible branch): 2 approvals (ensi321, jtraglia) — closest to merge, but semantically no-op for our implementation (we use `<=` which is already equivalent to `==` given `validate_on_attestation`)
+  - #4898 (remove pending tiebreaker): 1 approval — behavioral change to `get_payload_status_tiebreaker`, not imminent
+- **CI status**: all green. One transient failure (502 downloading spec test vectors, GitHub infra issue, auto-retried). Nightly (Mar 1 08:51 UTC) green.
+- **Feb 28 nightly timeout investigation**: `chain_segment_varying_chunk_size` timed out in fulu/altair nightly jobs, but was already mitigated in run 241 (excluded from nightly via `-E 'not test(...)'`). The failed run predated the fix commit.
+- **Attempted `OnceCell` caching for `get_chain_segment()`**: reverted after discovering nextest runs each test in a separate process, making static caches ineffective across tests.
+- **devnet-0 (March 4th) readiness**: fully compatible. Engine API V5 (`newPayloadV5`, `getPayloadV5`, `forkchoiceUpdatedV3`) verified. Kurtosis config (`kurtosis/epbs-devnet-0.yaml`) exists with correct parameters (minimal preset, gloas_fork_epoch=1, geth:epbs-devnet-0).
+- **Clippy**: zero warnings (full workspace)
+- **Test verification**: build compiles clean
+
 ### 2026-03-01 — full post-alpha.2 spec audit, open PR impact analysis (run 345)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
