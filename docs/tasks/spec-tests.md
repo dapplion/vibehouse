@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — SSE event integration tests, spec tracking (run 354)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **SSE event integration tests shipped** — 3 new tests in `network/tests.rs`:
+  - `test_gloas_sse_event_execution_bid`: processes valid gossip bid, verifies ExecutionBid SSE event emitted with correct slot, block, builder_index, block_hash, value
+  - `test_gloas_sse_event_payload_attestation`: processes valid PTC attestation, verifies PayloadAttestation SSE event emitted with correct slot, beacon_block_root, payload_present, blob_data_available
+  - `test_gloas_sse_event_execution_proof_received`: processes valid execution proof, verifies ExecutionProofReceived SSE event emitted with correct block_root, block_hash, subnet_id, version
+  - Key insight: ExecutionBid SSE event requires fork choice import success (`on_execution_bid`), which needs `bid.slot == node.slot`. Test extends chain so head is at current_slot before bidding.
+  - Closes the "SSE events for ExecutionBid, PayloadAttestation, ExecutionProofReceived" coverage gap from run 351
+- **All 145 network tests pass** (143 + 2 skipped non-Gloas)
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+- **All identified high-priority coverage gaps from run 351 now closed**
+
 ### 2026-03-01 — end-to-end builder payment tests, spec tracking (run 353)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
