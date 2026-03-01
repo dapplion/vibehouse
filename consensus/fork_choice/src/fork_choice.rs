@@ -4643,5 +4643,173 @@ mod tests {
                 "weight exceeding threshold should reveal payload"
             );
         }
+
+        /// Attestation with both payload_present=false and blob_data_available=false
+        /// should not increment any weight counters on the node, even with multiple
+        /// attesters. This tests the "absent vote" path: PTC members vote that the
+        /// payload was NOT timely and blobs were NOT available.
+        #[test]
+        fn payload_attestation_both_false_no_weight_change() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            let spec = ChainSpec::minimal();
+
+            // Send attestation with both flags false and multiple attesters
+            let att = make_payload_attestation(1, block_root, false, false);
+            let indexed =
+                make_indexed_payload_attestation(1, block_root, false, false, vec![0, 1, 2]);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 0,
+                "payload_present=false must not increment ptc_weight"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "blob_data_available=false must not increment blob weight"
+            );
+            assert!(!node.payload_revealed, "no votes should not reveal payload");
+            assert!(
+                !node.payload_data_available,
+                "no votes should not set payload_data_available"
+            );
+        }
+
+        /// After PTC quorum sets execution_status = Optimistic(bid_hash), the
+        /// envelope arrival via on_execution_payload overwrites it with
+        /// Optimistic(payload_block_hash). Both hashes come from the same builder
+        /// envelope, but they may differ in corner cases (e.g. if the bid node was
+        /// populated with one hash but the envelope carries the actual block hash).
+        /// This test verifies the overwrite behavior is correct.
+        #[test]
+        fn envelope_overwrites_ptc_quorum_execution_status() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            let bid_hash = ExecutionBlockHash::repeat_byte(0xAA);
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash = Some(bid_hash);
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+
+            // PTC quorum sets execution_status = Optimistic(bid_hash)
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(bid_hash),
+                "PTC quorum should set execution_status from bid_block_hash"
+            );
+
+            // Envelope arrives with a different payload_block_hash
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "on_execution_payload must overwrite execution_status with envelope hash"
+            );
+            assert!(
+                node.envelope_received,
+                "envelope_received must be set after on_execution_payload"
+            );
+        }
+
+        /// on_execution_bid for a block at the same slot as the genesis root (slot 0)
+        /// should succeed. This tests that bid application works even for the first
+        /// post-genesis block, which shares the genesis parent root.
+        #[test]
+        fn execution_bid_for_slot_one_block() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.builder_index,
+                Some(42),
+                "builder_index should be set from bid"
+            );
+            assert!(
+                !node.payload_revealed,
+                "bid alone should not reveal payload"
+            );
+            assert_eq!(node.ptc_weight, 0, "bid should reset ptc_weight to 0");
+        }
+
+        /// on_execution_payload for a node that was never given a bid: the node
+        /// has bid_block_hash=None. The envelope should still succeed and set
+        /// execution_status using the provided payload_block_hash.
+        #[test]
+        fn envelope_without_prior_bid_sets_execution_status() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            // No bid_block_hash set (remains None)
+            assert!(
+                fc.proto_array.core_proto_array().nodes[idx]
+                    .bid_block_hash
+                    .is_none(),
+                "sanity: no bid should have been set"
+            );
+
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xDD);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed, "envelope should reveal payload");
+            assert!(node.envelope_received, "envelope_received should be true");
+            assert!(
+                node.payload_data_available,
+                "envelope implies data available"
+            );
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should be set from envelope even without prior bid"
+            );
+        }
     }
 }

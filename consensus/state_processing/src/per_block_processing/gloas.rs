@@ -7344,4 +7344,251 @@ mod tests {
             other => panic!("expected WrongSlot error, got {:?}", other),
         }
     }
+
+    // ── Builder bid value boundary: payment index wraps at epoch boundary ──
+
+    #[test]
+    fn builder_bid_at_epoch_start_payment_recorded_at_correct_index() {
+        // Bid at slot 8 (first slot of epoch 1 in minimal preset with 8 slots/epoch).
+        // payment_index = slots_per_epoch + (slot % slots_per_epoch) = 8 + 0 = 8
+        // This verifies the payment is placed in the second half of the payments vector
+        // at exactly the epoch boundary.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 5_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let expected_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+        assert_eq!(expected_index, 8, "sanity: epoch boundary index");
+
+        let payment = state
+            .builder_pending_payments()
+            .unwrap()
+            .get(expected_index)
+            .copied()
+            .unwrap();
+        assert_eq!(
+            payment.withdrawal.amount, 5_000_000_000,
+            "payment should be recorded at index 8"
+        );
+        assert_eq!(
+            payment.withdrawal.builder_index, 0,
+            "builder_index should match bid"
+        );
+
+        // Indices before the expected one should be untouched (still default)
+        for i in 0..expected_index {
+            let p = state
+                .builder_pending_payments()
+                .unwrap()
+                .get(i)
+                .copied()
+                .unwrap();
+            assert_eq!(
+                p,
+                BuilderPendingPayment::default(),
+                "index {} should be default",
+                i
+            );
+        }
+    }
+
+    // ── Bid cached after processing regardless of value ──
+
+    #[test]
+    fn builder_bid_cached_even_with_zero_value_external_builder() {
+        // An external builder bid with value=0 should be rejected by can_builder_cover_bid
+        // (balance < min_deposit means available balance is negative).
+        // But if balance is high enough, the bid with value=0 is valid and should be cached.
+        // This tests that the bid caching happens AFTER all validation.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        // External builder 0, value=0 — should succeed because builder has enough balance
+        // to cover min_deposit + pending (64B balance, 32B min_deposit = 32B available >= 0)
+        let bid = make_builder_bid(&state, &spec, 0);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let cached = &state.as_gloas().unwrap().latest_execution_payload_bid;
+        assert_eq!(cached.builder_index, 0, "bid should be cached");
+        assert_eq!(cached.value, 0, "cached bid value should be 0");
+        assert_eq!(cached.slot, slot, "cached bid slot should match");
+
+        // No pending payment should be recorded (amount > 0 check prevents it)
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+        let payment = state
+            .builder_pending_payments()
+            .unwrap()
+            .get(payment_index)
+            .copied()
+            .unwrap();
+        assert_eq!(
+            payment,
+            BuilderPendingPayment::default(),
+            "zero-value external bid should NOT record a pending payment"
+        );
+    }
+
+    // ── Self-build bid followed by builder bid replaces cached bid ──
+
+    #[test]
+    fn builder_bid_replaces_previously_cached_self_build() {
+        // Processing a self-build bid then an external builder bid should replace the
+        // cached bid. This verifies there's no latch or once-only semantics on the cache.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        // First: self-build
+        let self_bid = make_self_build_bid(&state, &spec);
+        process_execution_payload_bid(
+            &mut state,
+            &self_bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .latest_execution_payload_bid
+                .builder_index,
+            spec.builder_index_self_build,
+            "first: self-build cached"
+        );
+
+        // Second: external builder bid replaces it
+        let builder_bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        process_execution_payload_bid(
+            &mut state,
+            &builder_bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+        let cached = &state.as_gloas().unwrap().latest_execution_payload_bid;
+        assert_eq!(
+            cached.builder_index, 0,
+            "second bid should overwrite self-build"
+        );
+        assert_eq!(
+            cached.value, 1_000_000_000,
+            "cached value should be from second bid"
+        );
+    }
+
+    // ── process_payload_attestation with correct slot passes validation ──
+
+    #[test]
+    fn payload_attestation_correct_slot_passes() {
+        // A payload attestation with data.slot == state.slot - 1 should pass the
+        // slot check. This verifies the expected_slot = state.slot computation.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let correct_slot = state.slot().saturating_sub(1u64);
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Build a valid attestation with correct slot and block root
+        let ptc = get_ptc_committee(&state, correct_slot, &spec).unwrap();
+        assert!(!ptc.is_empty(), "PTC should have members");
+
+        // Set bit for first PTC member
+        let mut bits: BitVector<<E as EthSpec>::PtcSize> = BitVector::new();
+        bits.set(0, true).unwrap();
+
+        let attestation = PayloadAttestation {
+            data: types::PayloadAttestationData {
+                beacon_block_root: parent_root,
+                slot: correct_slot,
+                payload_present: true,
+                blob_data_available: true,
+            },
+            aggregation_bits: bits,
+            signature: bls::AggregateSignature::empty(),
+        };
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "attestation with correct slot should pass: {:?}",
+            result
+        );
+    }
+
+    // ── Withdrawal processing: builder pending withdrawal amount decreases builder balance ──
+
+    #[test]
+    fn builder_pending_withdrawal_decreases_balance() {
+        // After processing withdrawals with builder pending withdrawals,
+        // the builder's balance should be reduced by the withdrawal amount.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a pending builder withdrawal
+        let withdrawal_amount = 10_000_000_000u64;
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: withdrawal_amount,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        let balance_before = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+        assert_eq!(
+            balance_before, 64_000_000_000,
+            "sanity: initial builder balance"
+        );
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let balance_after = state.as_gloas().unwrap().builders.get(0).unwrap().balance;
+        assert_eq!(
+            balance_after,
+            balance_before - withdrawal_amount,
+            "builder balance should decrease by withdrawal amount"
+        );
+
+        // The withdrawal should appear in payload_expected_withdrawals
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let builder_withdrawals: Vec<_> = expected
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(
+            builder_withdrawals.len(),
+            1,
+            "one builder withdrawal expected"
+        );
+        assert_eq!(builder_withdrawals[0].amount, withdrawal_amount);
+    }
 }
