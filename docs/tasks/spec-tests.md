@@ -28,6 +28,35 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, fork choice test readiness audit (run 337)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 336
+- No new nightly test vector runs since run 334 (last: Mar 1 03:04 UTC, commit 14e6ce5a)
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+  - No movement since run 336
+- **Fork choice test readiness audit** (PR #4940 — "Add initial fork choice tests for Gloas"):
+  - Reviewed the PR diff: adds `test_on_execution_payload` test and `test_genesis` Gloas checks
+  - Uses `execution_payload` step (maps to `on_execution_payload` FC handler) and `head_payload_status` check
+  - Our test runner already fully supports both: `Step::OnExecutionPayload` (fork_choice.rs:133), `check_head_payload_status` (fork_choice.rs:872)
+  - `SignedExecutionPayloadEnvelope` is already the deserialization target for execution_payload steps
+  - `head_payload_status` check calls `gloas_head_payload_status()` which returns the `GloasPayloadStatus` enum ordinal
+  - **Conclusion**: zero changes needed — PR #4940 tests will pass out of the box when merged and test vectors regenerated
+- **Sanity blocks test readiness** (PR #4932 — "Add Gloas sanity/blocks tests"):
+  - `SanityBlocks` handler is fork-generic — processes blocks through `per_block_processing`
+  - Gloas blocks handle withdrawals and bids in `per_block_processing` (not in envelope), so handler works correctly
+  - **Conclusion**: zero changes needed when PR #4932 merges
+- **PR #4843 assessment** (Variable PTC deadline — most impactful upcoming change):
+  - Renames `payload_present` → `payload_timely` in `PayloadAttestationData`
+  - Renames `is_payload_timely` → `has_payload_quorum` in fork choice
+  - Adds `MIN_PAYLOAD_DUE_BPS` config, `get_payload_due_ms`/`get_payload_size` helpers
+  - Adds `payload_envelopes` store to fork choice
+  - Adds validator-side `is_payload_timely` function (different from old FC function)
+  - Impact: significant refactor needed across types, fork choice, and validator client when merged
+  - Status: 1 approval, still under active review — not ready to implement preemptively
+- **CI status**: all completed runs green; 3 runs in progress; nightly (Mar 1 08:51 UTC) all green
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — deep spec compliance audit, all verified (run 336)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
