@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec PR tracking, all merged PRs already implemented (run 333)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Newly merged Gloas spec PRs found** (merged since run 332, all already implemented):
+  - **#4948** (reorder payload status constants, merged Feb 26) — already implemented in commit `cffb4a699`
+  - **#4918** (only allow attestations for known payload statuses, merged Feb 23) — already implemented in `validate_on_attestation` (fork_choice.rs:1194-1202)
+  - **#4947** (pre-fork proposer_preferences subscription note, merged Feb 26) — documentation only, already compliant via `PRE_FORK_SUBSCRIBE_EPOCHS = 1`
+- **Open Gloas spec PRs status update**: 4 approved and close to merging, 6 awaiting review
+  - **Approved/mergeable**: #4950 (extend by_root serve range, 4 approvals), #4898 (remove pending from tiebreaker, 1 approval), #4892 (remove impossible branch, 2 approvals), #4843 (variable PTC deadline, 1 approval)
+  - **Awaiting review**: #4940, #4939, #4932, #4926, #4840, #4630 (has merge conflicts)
+- **Pre-assessment of approved PRs**:
+  - #4950: documentation change about epoch ranges for by_root RPC serving — no code change needed
+  - #4898: removes unreachable PENDING check from tiebreaker — our `get_payload_tiebreaker` has this check (line 1542), will remove when merged
+  - #4892: changes `message.slot <= block.slot` to assert + `== block.slot` — our `is_supporting_vote_gloas_at_slot` already uses `debug_assert` + `==` (line 1469-1470), fully compliant
+  - #4843: major change — renames `payload_present` → `payload_timely`, adds `MIN_PAYLOAD_DUE_BPS`, `payload_envelopes` store, `get_payload_due_ms`/`get_payload_size` helpers, renames `is_payload_timely` → `has_payload_quorum`. Will require significant refactor when merged
+- **CI status**: all completed runs green, 4 runs in progress (all passing so far), nightly passing
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — deep coverage audit, no actionable gaps found (run 332)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 331
