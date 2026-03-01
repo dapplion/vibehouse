@@ -393,10 +393,11 @@ impl ProtoArray {
             }
         }
 
+        let parent = node.parent;
         self.indices.insert(node.root, node_index);
-        self.nodes.push(node.clone());
+        self.nodes.push(node);
 
-        if let Some(parent_index) = node.parent {
+        if let Some(parent_index) = parent {
             self.maybe_update_best_child_and_descendant::<E>(
                 parent_index,
                 node_index,
