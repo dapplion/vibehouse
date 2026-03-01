@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — increase mock EL timeout for CI stability (run 329)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 328
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Fixed CI flakiness**: `gloas_mixed_full_and_blinded_envelopes_after_partial_prune` failed again in CI run 22544911674 with getPayload timeout despite the 3x multiplier from run 326
+  - Root cause: 686 beacon_chain tests running in parallel on CI runners create extreme resource contention; 6s (3×2s) is still too tight
+  - Fix: increased `execution_timeout_multiplier` from 3 to 5 in MockExecutionLayer (10s effective timeout)
+  - This was the last remaining CI failure — all other runs passing
+- **Spec PR tracking**: checked all 10 open Gloas PRs — no changes. PRs #4892 (remove impossible branch) and #4898 (remove pending from tiebreaker) are small fork-choice cleanups that would simplify our code when they merge
+- **Tests**: flaky test passes locally with new timeout
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — fix get_payload_tiebreaker spec compliance (run 328)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 327
