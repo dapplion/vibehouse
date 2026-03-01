@@ -484,7 +484,7 @@ pub fn process_proposer_lookahead<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let mut lookahead = state.proposer_lookahead()?.clone().to_vec();
+    let mut lookahead = state.proposer_lookahead()?.to_vec();
 
     // Shift out proposers in the first epoch
     lookahead.copy_within((E::slots_per_epoch() as usize).., 0);
