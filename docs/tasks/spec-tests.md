@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — PTC threshold boundary and withdrawal overflow tests, spec tracking (run 315)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **3 newly merged Gloas spec PRs reviewed** — all already implemented or no action needed:
+  - #4947 (add pre-fork subscription note for proposer_preferences topic) — documentation note recommending pre-fork subscription. No code change needed.
+  - #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2) — vibehouse already uses this ordering in `GloasPayloadStatus` enum. No code change needed.
+  - #4918 (only allow attestations for known payload statuses) — already implemented at fork_choice.rs:1194-1202 (`PayloadNotRevealed` check). No code change needed.
+- Open Gloas spec PRs status unchanged: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- **5 new edge case tests**:
+  - `should_extend_payload_ptc_weight_at_exact_threshold_returns_false` — verifies strict `>` inequality: ptc_weight exactly at threshold must NOT extend payload (consensus-critical off-by-one boundary)
+  - `should_extend_payload_blob_weight_at_exact_threshold_returns_false` — verifies blob_data_available_weight at exact threshold also must NOT extend (both quorum checks use strict `>`)
+  - `should_extend_payload_both_weights_one_above_threshold_returns_true` — confirms minimum passing case: both weights at threshold+1 with envelope_received
+  - `withdrawal_index_overflow_at_u64_max_returns_arith_error` — next_withdrawal_index at u64::MAX with a pending withdrawal returns ArithError (safe arithmetic prevents overflow)
+  - `withdrawal_index_near_max_succeeds_for_single_withdrawal` — next_withdrawal_index at u64::MAX-1 processes one withdrawal successfully, sets next index to u64::MAX
+- **Tests**: 494 state_processing (up from 492), 142 proto_array (up from 139), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — builder exit overflow test, spec tracking (run 314)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 313
