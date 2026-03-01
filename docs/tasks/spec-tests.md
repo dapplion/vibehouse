@@ -28,6 +28,33 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — full post-alpha.2 spec audit, open PR impact analysis (run 345)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new nightly test vector runs — same commit 14e6ce5a since Feb 27
+- No new consensus-spec-tests releases (latest: v1.6.0-beta.0 from Sep 2025)
+- **Full post-v1.7.0-alpha.2 merged commit audit** — all 10 Gloas-relevant merged PRs verified:
+  - #4948 (payload status reorder): already implemented (Empty=0, Full=1, Pending=2)
+  - #4918 (attestation payload validation): already implemented with comment citing PR number
+  - #4884 (payload data availability vote): already implemented (ptc_blob_data_available_weight)
+  - #4923 (ignore block if parent payload unknown): already implemented
+  - #4916 (builder deposit short-circuit): already implemented
+  - #4897 (pending deposit check before builder): already implemented with is_pending_validator
+  - #4930, #4947: documentation/naming only, no code change needed
+  - #4914, #4915: eip8025 scope, not adopted by vibehouse
+  - **Result: 0 code changes needed. vibehouse is fully spec-compliant.**
+- **Open Gloas spec PR impact analysis** — 11 tracked PRs:
+  - #4892 (2 approvals): remove impossible fork choice branch — tiny change, most likely to merge
+  - #4898 (1 approval): remove pending tiebreaker — small change
+  - #4843 (1 approval): variable PTC deadline — moderate, NOT devnet-0 blocker
+  - #4926 (1 approval): SLOT_DURATION_MS rename — moderate, cross-fork cleanup
+  - #4950 (4 approvals): by_root serve range — documentation, already noted
+  - #4939, #4940, #4932, #4840, #4747, #4630, #4558: 0 approvals, not imminent
+  - **No PRs are imminent merges requiring action before devnet-0**
+- **Test verification**: 798/798 state_processing+proto_array+fork_choice pass, 138/138 EF spec tests pass (fake_crypto, minimal)
+- **CI status**: all completed runs green; nightly (Mar 1 08:51 UTC) green; Feb 28 nightly timeout on chain_segment_varying_chunk_size (not a test failure)
+- **devnet-0 readiness**: vibehouse fully compatible — engine API V5, forkchoiceUpdatedV3, self-build payloads, correct Kurtosis config
+
 ### 2026-03-01 — devnet-0 readiness verification, spec tracking (run 344)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
