@@ -1342,6 +1342,7 @@ impl ChainSpec {
             shard_committee_period: 64,
             genesis_delay: 300,
             seconds_per_slot: 6,
+            slot_duration_ms: 6000,
             inactivity_penalty_quotient: u64::checked_pow(2, 25).expect("pow does not overflow"),
             min_slashing_penalty_quotient: 64,
             proportional_slashing_multiplier: 2,
@@ -2991,6 +2992,25 @@ mod tests {
             spec.get_attestation_due_ms(Epoch::new(0)),
             slot_ms * 2500 / 10000
         );
+    }
+
+    #[test]
+    fn slot_duration_ms_consistent_with_seconds_per_slot() {
+        // All presets must have slot_duration_ms == seconds_per_slot * 1000.
+        // A mismatch causes BPS-based timing helpers to produce wrong values.
+        for (name, spec) in [
+            ("mainnet", ChainSpec::mainnet()),
+            ("minimal", ChainSpec::minimal()),
+            ("gnosis", ChainSpec::gnosis()),
+        ] {
+            assert_eq!(
+                spec.slot_duration_ms,
+                spec.seconds_per_slot * 1000,
+                "{name}: slot_duration_ms ({}) != seconds_per_slot ({}) * 1000",
+                spec.slot_duration_ms,
+                spec.seconds_per_slot,
+            );
+        }
     }
 
     // ── Gloas ePBS domain values ──────────────────────────────────────
