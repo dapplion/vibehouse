@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — clone elimination in envelope and attestation paths, spec tracking (run 291)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 290
+- Open Gloas spec PRs tracked: #4950, #4940, #4932, #4630, #4840, #4843, #4926, #4939, #4898, #4892, #4747, #4558 — all still open/unmerged
+- **EF spec tests**: 345/345 beacon_chain Gloas tests pass, 26/26 HTTP API tests pass, 6/6 network payload attestation tests pass
+- **Clone elimination optimizations shipped**:
+  - `process_payload_envelope`: replaced `Arc::new(signed_envelope.clone())` with `envelope_arc()` (cheap Arc pointer increment via `Arc::clone`). Previously deep-copied the entire `SignedExecutionPayloadEnvelope` to persist to the store; now reuses the Arc already held by `VerifiedPayloadEnvelope`.
+  - `import_payload_attestation_message`: removed unnecessary `.clone()` before `verify_payload_attestation_for_gossip` — attestation is moved since it's not used afterward. Used `verified.into_inner()` to consume the wrapper instead of cloning twice (was: clone for pool + clone for return; now: into_inner + clone for pool, move for return). Net: 2 clones eliminated per REST API attestation import.
+  - Gossip payload attestation handler: reordered fork choice import before pool insertion, then consumed `verified_attestation.into_inner()` instead of `verified_attestation.attestation().clone()`. Eliminates one `PayloadAttestation` clone per gossip attestation.
+- **Clippy**: zero warnings across entire workspace
+- **CI**: all green
+
 ### 2026-03-01 — state processing deduplication, spec tracking (run 290)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 289
