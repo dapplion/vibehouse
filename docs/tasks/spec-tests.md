@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice and state processing edge case tests, spec tracking (run 320)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 319
+- Open Gloas spec PRs status unchanged: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- **5 new find_head_gloas fork choice tests**:
+  - `find_head_gloas_three_way_fork_tiebreaker` — 3 competing blocks at same slot, equal votes, root ordering breaks tie
+  - `find_head_gloas_proposer_boost_flips_full_vs_empty` — proposer boost flips winner from FULL to EMPTY path (boost > 1-validator weight difference)
+  - `find_head_gloas_depth_three_alternating_payload_status` — chain root(0)→root(1)[FULL]→root(2)[parent FULL, no payload], verifies EMPTY leaf status
+  - `find_head_gloas_shorter_fork_with_more_votes_wins` — weight-based selection beats depth (3 votes on shallow fork vs 1 on deep fork)
+  - `find_head_gloas_complete_vote_shift_changes_winner` — all votes move from fork A to fork B (epoch increment required for override)
+- **5 new state processing tests**:
+  - `self_build_bid_nonzero_value_checked_before_signature` — self-build with both invalid value AND non-infinity signature rejects on value first
+  - `builder_bid_pending_payment_at_last_slot_of_epoch` — slot 15 (last in epoch), payment index = 2*SPE-1 = 15 boundary
+  - `withdrawals_builder_sweep_wraps_with_multiple_builders` — 3 builders, sweep starts at index 2, wraps to index 0, skips active builder 1
+  - `payload_attestation_wrong_block_root_rejected` — WrongBeaconBlockRoot error when block root doesn't match parent header
+  - `payload_attestation_wrong_slot_reports_values` — WrongSlot error contains correct expected (state.slot) and actual (data.slot) values
+- **Tests**: 157 proto_array (up from 152), 511 state_processing (up from 506), 94 fork_choice, all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — envelope processing and fork choice edge case tests, spec tracking (run 319)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Reviewed recently merged Gloas spec PRs:
