@@ -1701,6 +1701,165 @@ mod tests {
         assert_eq!(cached.block_hash, ExecutionBlockHash::repeat_byte(0x20));
     }
 
+    // ── Bid payment slot_index boundary tests ───────────────────
+
+    #[test]
+    fn bid_payment_slot_index_first_slot_of_epoch() {
+        // Slot 8 is the first slot of epoch 1 (for minimal preset: 8 slots/epoch).
+        // slot_index = SLOTS_PER_EPOCH + (slot % SLOTS_PER_EPOCH) = 8 + (8 % 8) = 8 + 0 = 8
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        assert_eq!(state.slot(), Slot::new(8), "test assumes slot 8");
+
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should be at index 8 (= 8 + 0)
+        let payment = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(8)
+            .unwrap();
+        assert_eq!(payment.withdrawal.amount, 1_000_000_000);
+        assert_eq!(payment.withdrawal.builder_index, 0);
+    }
+
+    #[test]
+    fn bid_payment_slot_index_last_slot_of_epoch() {
+        // Move state to slot 15 (last slot of epoch 1 for minimal: 8 + 7 = 15).
+        // slot_index = 8 + (15 % 8) = 8 + 7 = 15 (last valid index in 16-element vector)
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Advance to slot 15
+        *state.slot_mut() = Slot::new(15);
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .slot = Slot::new(15);
+
+        let mut bid = make_builder_bid(&state, &spec, 2_000_000_000);
+        bid.message.slot = Slot::new(15);
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            Slot::new(15),
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should be at index 15 (= 8 + 7), the last element
+        let payment = state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(15)
+            .unwrap();
+        assert_eq!(payment.withdrawal.amount, 2_000_000_000);
+        assert_eq!(payment.withdrawal.builder_index, 0);
+    }
+
+    #[test]
+    fn self_build_bid_records_no_pending_payment() {
+        // Self-build bids have value=0, so no pending payment should be recorded.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Save a snapshot of all payments before
+        let payments_before: Vec<_> = (0..E::builder_pending_payments_limit())
+            .map(|i| {
+                *state
+                    .as_gloas()
+                    .unwrap()
+                    .builder_pending_payments
+                    .get(i)
+                    .unwrap()
+            })
+            .collect();
+
+        let bid = make_self_build_bid(&state, &spec);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // All payment slots should be unchanged
+        for (i, expected) in payments_before.iter().enumerate() {
+            let payment = state
+                .as_gloas()
+                .unwrap()
+                .builder_pending_payments
+                .get(i)
+                .unwrap();
+            assert_eq!(
+                *payment, *expected,
+                "self-build bid should not modify payment slot {}",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn bid_deposit_epoch_equals_finalized_epoch_rejected() {
+        // Spec: is_active_builder requires deposit_epoch < finalized_epoch (strict less-than).
+        // Builder with deposit_epoch == finalized_epoch is NOT active.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set builder deposit_epoch = finalized_epoch = 1
+        let finalized_epoch = state.finalized_checkpoint().epoch;
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .deposit_epoch = finalized_epoch;
+
+        let bid = make_builder_bid(&state, &spec, 100);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::PayloadBidInvalid { reason })
+                    if reason.contains("not active")
+            ),
+            "builder with deposit_epoch == finalized_epoch should be rejected: {:?}",
+            result
+        );
+    }
+
     // ── Withdrawal tests ──────────────────────────────────────────
 
     /// Make the parent block "full" so withdrawals execute.
@@ -4162,6 +4321,124 @@ mod tests {
             "unknown builder index should return error: {:?}",
             result,
         );
+    }
+
+    #[test]
+    fn can_builder_cover_bid_balance_equals_min_deposit_allows_zero_bid() {
+        // Builder balance == min_deposit_amount exactly. Available = 0.
+        // Zero-value bid should pass (0 >= 0), any positive bid should fail.
+        let min_deposit = E::default_spec().min_deposit_amount;
+        let (state, spec) = make_gloas_state(8, 32_000_000_000, min_deposit);
+        assert!(can_builder_cover_bid::<E>(&state, 0, 0, &spec).unwrap());
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 1, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_pending_for_other_builder_ignored() {
+        // Add pending withdrawals and payments for builder_index=1, not builder_index=0.
+        // Builder 0's available balance should be unaffected.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 3_000_000_000);
+
+        // Add a second builder
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(Builder {
+                pubkey: types::PublicKeyBytes::empty(),
+                version: 0x03,
+                execution_address: Address::repeat_byte(0xCC),
+                balance: 5_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: spec.far_future_epoch,
+            })
+            .unwrap();
+
+        // Add pending withdrawal for builder 1 (not builder 0)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 2_000_000_000,
+                builder_index: 1,
+            })
+            .unwrap();
+
+        // Add pending payment for builder 1 (not builder 0)
+        *state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_payments
+            .get_mut(0)
+            .unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 1_000_000_000,
+                builder_index: 1,
+            },
+        };
+
+        // Builder 0: balance=3 ETH, min=1 ETH, no pending → available=2 ETH
+        assert!(can_builder_cover_bid::<E>(&state, 0, 2_000_000_000, &spec).unwrap());
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 2_000_000_001, &spec).unwrap());
+    }
+
+    #[test]
+    fn can_builder_cover_bid_multiple_pending_withdrawals_accumulate() {
+        // Multiple pending withdrawals for the same builder should all be summed.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+
+        // Add 3 pending withdrawals for builder 0: 500M + 700M + 300M = 1.5B Gwei
+        for amount in [500_000_000u64, 700_000_000, 300_000_000] {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builder_pending_withdrawals
+                .push(BuilderPendingWithdrawal {
+                    fee_recipient: Address::repeat_byte(0xBB),
+                    amount,
+                    builder_index: 0,
+                })
+                .unwrap();
+        }
+
+        // Available = 5B - 1B (min) - 1.5B (pending) = 2.5B
+        assert!(can_builder_cover_bid::<E>(&state, 0, 2_500_000_000, &spec).unwrap());
+        assert!(!can_builder_cover_bid::<E>(&state, 0, 2_500_000_001, &spec).unwrap());
+    }
+
+    #[test]
+    fn get_pending_balance_saturates_at_u64_max() {
+        // If pending amounts are enormous, saturating_add should cap at u64::MAX.
+        let (mut state, _spec) = make_gloas_state(8, 32_000_000_000, u64::MAX);
+
+        // Add two withdrawals each near u64::MAX
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: u64::MAX,
+                builder_index: 0,
+            })
+            .unwrap();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: u64::MAX,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        let total = get_pending_balance_to_withdraw_for_builder::<E>(&state, 0).unwrap();
+        assert_eq!(total, u64::MAX, "saturating_add should cap at u64::MAX");
     }
 
     // ── initiate_builder_exit tests ────────────
