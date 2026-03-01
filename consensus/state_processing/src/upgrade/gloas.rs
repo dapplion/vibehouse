@@ -1020,4 +1020,206 @@ mod tests {
             new_val_kp2.pk.compress()
         );
     }
+
+    // ========================================================================
+    // Edge cases: validator/builder routing boundaries
+    // ========================================================================
+
+    /// An existing validator's pubkey with 0x03 (builder) credentials should still
+    /// be routed as a validator deposit — the `is_validator` check comes before
+    /// the credentials check. Without this priority order, a validator could
+    /// accidentally become a builder during upgrade.
+    #[test]
+    fn upgrade_existing_validator_with_builder_credentials_stays_pending() {
+        let (mut state, spec) = make_fulu_state();
+        let keypairs = generate_deterministic_keypairs(NUM_VALIDATORS);
+        let val_kp = &keypairs[0]; // existing validator
+        let slot = state.slot();
+
+        // Deposit with validator's pubkey but builder (0x03) credentials
+        let mut creds = [0u8; 32];
+        creds[0] = 0x03; // BUILDER_WITHDRAWAL_PREFIX
+        creds[12..].copy_from_slice(&[0xDD; 20]);
+        let deposit = PendingDeposit {
+            pubkey: val_kp.pk.compress(),
+            withdrawal_credentials: Hash256::from_slice(&creds),
+            amount: 5_000_000_000,
+            signature: SignatureBytes::empty(),
+            slot,
+        };
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // Must NOT create a builder — this pubkey belongs to a validator
+        assert_eq!(gloas.builders.len(), 0);
+        // Deposit kept in pending as validator deposit
+        assert_eq!(gloas.pending_deposits.len(), 1);
+    }
+
+    /// A new validator deposit (0x01 credentials, valid sig) followed by a builder
+    /// deposit (0x03 credentials) with the SAME pubkey: the second deposit should
+    /// be treated as a validator deposit because the pubkey was tracked in
+    /// `new_validator_pubkeys` by the first deposit.
+    #[test]
+    fn upgrade_new_validator_then_builder_deposit_same_pubkey_both_pending() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // First: valid validator deposit → adds pubkey to new_validator_pubkeys
+        let val_d = make_validator_deposit(kp, 32_000_000_000, slot, &spec);
+
+        // Second: same pubkey but with 0x03 credentials → should be routed as
+        // validator because is_validator check (via new_validator_pubkeys) wins
+        let mut creds = [0u8; 32];
+        creds[0] = 0x03;
+        creds[12..].copy_from_slice(&[0xDD; 20]);
+        let builder_d = PendingDeposit {
+            pubkey: kp.pk.compress(),
+            withdrawal_credentials: Hash256::from_slice(&creds),
+            amount: 5_000_000_000,
+            signature: SignatureBytes::empty(),
+            slot,
+        };
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![val_d, builder_d]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // No builders created — both deposits route as validator
+        assert_eq!(gloas.builders.len(), 0);
+        // Both deposits kept in pending
+        assert_eq!(gloas.pending_deposits.len(), 2);
+    }
+
+    // ========================================================================
+    // Edge cases: builder balance and slot reuse
+    // ========================================================================
+
+    /// Top-up balance should saturate at u64::MAX instead of wrapping.
+    #[test]
+    fn upgrade_builder_topup_balance_saturates_at_max() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        // First deposit: near-max balance
+        let d1 = make_builder_deposit(builder_kp, u64::MAX - 1_000, slot, &spec);
+        // Second deposit: would overflow without saturation
+        let d2 = make_builder_deposit(builder_kp, 5_000, slot, &spec);
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![d1, d2]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builders.len(), 1);
+        assert_eq!(gloas.builders.get(0).unwrap().balance, u64::MAX);
+    }
+
+    /// Top-up for a builder created earlier in the same upgrade batch with
+    /// multiple builders present — ensures the pubkey cache lookup returns
+    /// the correct index, not index 0 by default.
+    #[test]
+    fn upgrade_topup_targets_correct_builder_among_multiple() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 3);
+        let builder_kp1 = &extra_kps[NUM_VALIDATORS];
+        let builder_kp2 = &extra_kps[NUM_VALIDATORS + 1];
+        let builder_kp3 = &extra_kps[NUM_VALIDATORS + 2];
+        let slot = state.slot();
+
+        // Create 3 builders, then top up the middle one
+        let d1 = make_builder_deposit(builder_kp1, 5_000_000_000, slot, &spec);
+        let d2 = make_builder_deposit(builder_kp2, 6_000_000_000, slot, &spec);
+        let d3 = make_builder_deposit(builder_kp3, 7_000_000_000, slot, &spec);
+        let topup = make_builder_deposit(builder_kp2, 1_000_000_000, slot, &spec);
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![d1, d2, d3, topup]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builders.len(), 3);
+        // Builder 0 and 2 unchanged
+        assert_eq!(gloas.builders.get(0).unwrap().balance, 5_000_000_000);
+        assert_eq!(gloas.builders.get(2).unwrap().balance, 7_000_000_000);
+        // Builder 1 got the top-up
+        assert_eq!(
+            gloas.builders.get(1).unwrap().balance,
+            7_000_000_000, // 6B + 1B
+        );
+    }
+
+    /// A zero-amount builder deposit with valid signature should still create
+    /// a builder with zero balance. The spec does not require a minimum deposit
+    /// for builder creation during upgrade.
+    #[test]
+    fn upgrade_zero_amount_builder_deposit_creates_builder() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 1);
+        let builder_kp = &extra_kps[NUM_VALIDATORS];
+        let slot = state.slot();
+
+        let deposit = make_builder_deposit(builder_kp, 0, slot, &spec);
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![deposit]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builders.len(), 1);
+        assert_eq!(gloas.builders.get(0).unwrap().balance, 0);
+        assert_eq!(
+            gloas.builders.get(0).unwrap().pubkey,
+            builder_kp.pk.compress()
+        );
+    }
+
+    /// When only invalid deposits exist (bad signatures, no builder/validator
+    /// match), all are dropped and both builders list and pending_deposits are
+    /// empty after upgrade.
+    #[test]
+    fn upgrade_all_invalid_deposits_dropped() {
+        let (mut state, spec) = make_fulu_state();
+        let extra_kps = generate_deterministic_keypairs(NUM_VALIDATORS + 2);
+        let kp1 = &extra_kps[NUM_VALIDATORS];
+        let kp2 = &extra_kps[NUM_VALIDATORS + 1];
+        let slot = state.slot();
+
+        // Two deposits: both have 0x01 credentials (not builder) and invalid sigs
+        let d1 = PendingDeposit {
+            pubkey: kp1.pk.compress(),
+            withdrawal_credentials: Hash256::repeat_byte(0x01),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(), // invalid
+            slot,
+        };
+        let d2 = PendingDeposit {
+            pubkey: kp2.pk.compress(),
+            withdrawal_credentials: Hash256::repeat_byte(0x01),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(), // invalid
+            slot,
+        };
+
+        let fulu = state.as_fulu_mut().unwrap();
+        fulu.pending_deposits = List::new(vec![d1, d2]).unwrap();
+
+        upgrade_to_gloas(&mut state, &spec).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(gloas.builders.len(), 0);
+        assert_eq!(gloas.pending_deposits.len(), 0);
+    }
 }
