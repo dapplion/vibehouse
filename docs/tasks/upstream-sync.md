@@ -31,6 +31,17 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 281)
+- Checked consensus-specs: no new Gloas PRs merged since run 280 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Full gossip validation spec audit**: compared all 3 Gloas gossip verification functions (bid, envelope, payload attestation) against current consensus-specs master. All 12 bid conditions, 6 envelope conditions, and 6 payload attestation conditions match spec exactly. No discrepancies found.
+- **Envelope processing spec conformance audit**: compared `process_execution_payload_envelope` against spec's `process_execution_payload`. All 14 steps match (signature, state root caching, beacon block consistency, committed bid checks, withdrawals, gas limit, block hash, parent hash, timestamp, EL call, execution requests, builder payment, availability cache, state root). Noted intentional deviation: state root check always runs (even with verify=false) to support `build_self_build_envelope` pattern.
+- **Safety audit**: no unwraps in production code, no unsafe arithmetic in consensus/, no FIXME/HACK comments. Clippy clean.
+- **Nightly CI**: latest nightly green. One prior failure was transient (moonrepo infra + timeout, both resolved in rerun).
+- **CI status**: all green (5 runs in progress from recent pushes, all passing so far)
+- **No code changes this run** — spec stable, fully compliant, codebase clean
+
 ### 2026-03-01 (run 280)
 - Checked consensus-specs: no new Gloas PRs merged since run 279 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged

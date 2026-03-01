@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec conformance audits, gossip validation review (run 281)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 280
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Full gossip validation spec audit**: verified all 3 Gloas gossip topics against consensus-specs master:
+  - `execution_payload_bid`: all 12 conditions (7 IGNORE, 5 REJECT) match exactly — slot, preferences, builder active, zero payment, fee_recipient, gas_limit, equivocation, highest value, can_builder_cover_bid, parent_block_hash, parent_block_root, signature
+  - `execution_payload` (envelope): all 6 conditions match — block root known, dedup, finalization, slot/builder/blockhash vs committed bid, signature
+  - `payload_attestation_message`: all 6 conditions match — slot disparity, empty bits, block root known, PTC committee, equivocation, signature
+- **Envelope processing spec conformance**: compared `process_execution_payload_envelope` step-by-step against spec's `process_execution_payload`. All 14 steps verified correct. Intentional design: state root check always runs (supports `build_self_build_envelope` pattern).
+- **Safety audit**: zero unwraps in production Gloas code, safe_arith throughout consensus/, no FIXME/HACK/TODO-fixme markers. Clippy clean (zero warnings).
+- **Nightly CI**: latest nightly green
+- **CI status**: all green
+- **No code changes this run** — spec fully compliant
+
 ### 2026-03-01 — abandoned fork envelope pruning test, spec tracking (run 280)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 279
