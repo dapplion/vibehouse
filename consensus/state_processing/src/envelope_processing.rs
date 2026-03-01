@@ -2428,4 +2428,174 @@ mod tests {
             "deposit request should be added to pending_deposits"
         );
     }
+
+    // ── Payment index at first slot of epoch ──────────────────
+
+    #[test]
+    fn envelope_at_first_slot_of_epoch_uses_correct_payment_index() {
+        // At the first slot of epoch 1 (slot 8 for minimal), the payment index should be:
+        // slots_per_epoch + (slot % slots_per_epoch) = 8 + 0 = 8
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // State is already at slot 8 (first slot of epoch 1), verify
+        assert_eq!(
+            state.slot(),
+            Slot::new(E::slots_per_epoch()),
+            "sanity: state should be at first slot of epoch 1"
+        );
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let expected_index = (slots_per_epoch + state.slot().as_u64() % slots_per_epoch) as usize;
+        assert_eq!(
+            expected_index, slots_per_epoch as usize,
+            "sanity: payment index for first slot of epoch should be slots_per_epoch"
+        );
+
+        // Set up a pending payment at the expected index
+        let payment = BuilderPendingPayment {
+            weight: 42,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 4_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(expected_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should be cleared at the correct index
+        let cleared = *state
+            .builder_pending_payments()
+            .unwrap()
+            .get(expected_index)
+            .unwrap();
+        assert_eq!(
+            cleared,
+            BuilderPendingPayment::default(),
+            "payment at first-slot-of-epoch index should be cleared"
+        );
+
+        // Withdrawal should be queued
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(withdrawals.len(), 1);
+        assert_eq!(withdrawals.get(0).unwrap().amount, 4_000_000_000);
+    }
+
+    // ── InvalidStateRoot error values ─────────────────────────
+
+    #[test]
+    fn invalid_state_root_reports_correct_values() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+        let builder_kp = &keypairs[8];
+
+        let bad_state_root = Hash256::repeat_byte(0x99);
+        let mut envelope = make_valid_envelope(&state);
+        envelope.message.state_root = bad_state_root;
+        sign_envelope(&state, &mut envelope, &builder_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        match result {
+            Err(EnvelopeProcessingError::InvalidStateRoot {
+                state: actual_state_root,
+                envelope: actual_envelope_root,
+            }) => {
+                assert_eq!(
+                    actual_envelope_root, bad_state_root,
+                    "error should report the envelope's bad state_root"
+                );
+                assert_ne!(
+                    actual_state_root, bad_state_root,
+                    "computed state root should differ from the bad one"
+                );
+                assert_ne!(
+                    actual_state_root,
+                    Hash256::zero(),
+                    "computed state root should be non-zero"
+                );
+            }
+            other => panic!(
+                "expected InvalidStateRoot with correct values, got: {:?}",
+                other
+            ),
+        }
+    }
+
+    // ── Availability bit at last valid index ──────────────────
+
+    #[test]
+    fn availability_bit_set_at_last_valid_index() {
+        // Test that the availability bit at the last valid index
+        // (slots_per_historical_root - 1) can be set correctly
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let last_index = slots_per_hist - 1;
+
+        // Move state to a slot that maps to the last index
+        let target_slot = Slot::new(last_index as u64);
+        state.as_gloas_mut().unwrap().slot = target_slot;
+        state.as_gloas_mut().unwrap().latest_block_header.slot = target_slot.saturating_sub(1u64);
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .slot = target_slot;
+
+        // Clear the availability bit at last_index
+        state
+            .execution_payload_availability_mut()
+            .unwrap()
+            .set(last_index, false)
+            .unwrap();
+        assert!(
+            !state
+                .execution_payload_availability()
+                .unwrap()
+                .get(last_index)
+                .unwrap(),
+            "sanity: availability bit at last index should be cleared"
+        );
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert!(
+            state
+                .execution_payload_availability()
+                .unwrap()
+                .get(last_index)
+                .unwrap(),
+            "availability bit at last valid index should be set after processing"
+        );
+    }
 }

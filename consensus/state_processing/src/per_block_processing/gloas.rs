@@ -6980,4 +6980,158 @@ mod tests {
             result
         );
     }
+
+    // ── Builder sweep single builder wraps correctly ──────────
+
+    #[test]
+    fn withdrawals_builder_sweep_single_builder_wraps() {
+        // With exactly 1 builder (builders_count=1), the modular arithmetic
+        // builder_index = builder_index.safe_add(1)?.safe_rem(1)? should
+        // always wrap back to 0. Verify no arithmetic issues.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make the single builder eligible for sweep (withdrawable_epoch <= epoch)
+        let epoch = state.current_epoch();
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = epoch;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // The builder should be swept (exiting with balance)
+        let builder_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(
+            builder_w.len(),
+            1,
+            "single eligible builder should be swept"
+        );
+        assert_eq!(builder_w[0].amount, 10_000_000_000);
+
+        // next_withdrawal_builder_index should wrap: (0 + 1) % 1 = 0
+        assert_eq!(
+            state_gloas.next_withdrawal_builder_index, 0,
+            "single builder sweep should wrap index back to 0"
+        );
+    }
+
+    // ── Validator sweep max withdrawals advances index ────────
+
+    #[test]
+    fn withdrawals_validator_sweep_at_max_advances_to_last_plus_one() {
+        // When withdrawals hit MAX_WITHDRAWALS_PER_PAYLOAD, the next_withdrawal_validator_index
+        // should be set to (last_withdrawal.validator_index + 1) % validators_len
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make all validators fully withdrawable to generate max withdrawals
+        let epoch = state.current_epoch();
+        for i in 0..8 {
+            let validator = state.get_validator_mut(i).unwrap();
+            validator.exit_epoch = Epoch::new(0);
+            validator.withdrawable_epoch = epoch;
+        }
+
+        // Start from validator 0
+        *state.next_withdrawal_validator_index_mut().unwrap() = 0;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let max_withdrawals = E::max_withdrawals_per_payload();
+        let state_gloas = state.as_gloas().unwrap();
+        let expected_w = &state_gloas.payload_expected_withdrawals;
+
+        // Should have max_withdrawals entries (or all 8 validators if max is larger)
+        let expected_count = std::cmp::min(max_withdrawals, 8);
+        assert_eq!(expected_w.len(), expected_count);
+
+        if expected_w.len() == max_withdrawals {
+            // next index = (last.validator_index + 1) % validators_len
+            let last = expected_w.get(expected_w.len() - 1).unwrap();
+            let expected_next = (last.validator_index + 1) % 8;
+            assert_eq!(
+                state.next_withdrawal_validator_index().unwrap(),
+                expected_next,
+                "at max withdrawals, next index should be (last + 1) % len"
+            );
+        }
+    }
+
+    // ── Bid payment at slot 0 of an epoch ─────────────────────
+
+    #[test]
+    fn bid_payment_slot_zero_of_epoch_computes_correct_index() {
+        // When slot % slots_per_epoch == 0, payment index = slots_per_epoch + 0 = slots_per_epoch
+        // This is the boundary between "current epoch" and "next epoch" payment slots
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // State is at slot 8 (first slot of epoch 1), slot 8 % 8 = 0
+        let slot = state.slot();
+        assert_eq!(
+            slot.as_u64() % E::slots_per_epoch(),
+            0,
+            "sanity: slot should be at epoch boundary"
+        );
+
+        let bid = make_builder_bid(&state, &spec, 5_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Verify payment was recorded at the correct index
+        let slots_per_epoch = E::slots_per_epoch();
+        let expected_index = slots_per_epoch as usize; // slots_per_epoch + 0
+        let payment = *state
+            .builder_pending_payments()
+            .unwrap()
+            .get(expected_index)
+            .unwrap();
+
+        assert_eq!(
+            payment.withdrawal.amount, 5_000_000_000,
+            "payment should be at index slots_per_epoch when slot % slots_per_epoch == 0"
+        );
+        assert_eq!(payment.withdrawal.builder_index, 0);
+    }
+
+    // ── Withdrawal next_withdrawal_index not updated when no withdrawals ──
+
+    #[test]
+    fn withdrawals_no_withdrawals_preserves_next_withdrawal_index() {
+        // When process_withdrawals_gloas produces zero withdrawals,
+        // next_withdrawal_index should remain unchanged
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Set a non-zero starting withdrawal index
+        *state.next_withdrawal_index_mut().unwrap() = 42;
+
+        // No builders are eligible for sweep (all active), no pending withdrawals,
+        // no validator withdrawals (validators are active, not exiting)
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        assert_eq!(
+            state.next_withdrawal_index().unwrap(),
+            42,
+            "next_withdrawal_index should be preserved when no withdrawals occur"
+        );
+    }
 }

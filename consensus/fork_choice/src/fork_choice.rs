@@ -4061,5 +4061,160 @@ mod tests {
                 "execution_status should not change from late PTC votes"
             );
         }
+
+        #[test]
+        fn consecutive_bids_overwrite_previous_state() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // First bid sets builder 10
+            let bid1 = make_bid(1, 10);
+            fc.on_execution_bid(&bid1, block_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Simulate some PTC weight accumulated for the first bid
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 5;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 3;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_data_available = true;
+
+            // Second bid overwrites with builder 20
+            let bid2 = make_bid(1, 20);
+            fc.on_execution_bid(&bid2, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.builder_index,
+                Some(20),
+                "builder_index should be overwritten by second bid"
+            );
+            assert_eq!(node.ptc_weight, 0, "ptc_weight should be reset to 0");
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "blob weight should be reset to 0"
+            );
+            assert!(
+                !node.payload_revealed,
+                "payload_revealed should be reset to false"
+            );
+            assert!(
+                !node.payload_data_available,
+                "payload_data_available should be reset to false"
+            );
+        }
+
+        #[test]
+        fn payload_revealed_transition_happens_once() {
+            // After quorum is reached, additional attestations should accumulate
+            // weight but not re-trigger the payload_revealed transition
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            // First attestation reaches quorum
+            let indices1: Vec<u64> = (0..=quorum_threshold).collect();
+            let att1 = make_payload_attestation(1, block_root, true, true);
+            let indexed1 = make_indexed_payload_attestation(1, block_root, true, true, indices1);
+            fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed, "quorum should reveal payload");
+            let weight_after_quorum = node.ptc_weight;
+
+            // Manually set execution_status to Valid to verify it doesn't get overwritten
+            fc.proto_array.core_proto_array_mut().nodes[idx].execution_status =
+                ExecutionStatus::Valid(ExecutionBlockHash::repeat_byte(0xBB));
+
+            // Second attestation after quorum — weight increases but no re-trigger
+            let att2 = make_payload_attestation(1, block_root, true, false);
+            let indexed2 = make_indexed_payload_attestation(
+                1,
+                block_root,
+                true,
+                false,
+                vec![quorum_threshold + 1],
+            );
+            fc.on_payload_attestation(&att2, &indexed2, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed, "still revealed after second att");
+            assert_eq!(
+                node.ptc_weight,
+                weight_after_quorum + 1,
+                "weight should increase by 1"
+            );
+            // execution_status should NOT be overwritten (the if-guard checks !payload_revealed)
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Valid(ExecutionBlockHash::repeat_byte(0xBB)),
+                "execution_status should not be overwritten after initial reveal"
+            );
+        }
+
+        #[test]
+        fn ptc_quorum_without_bid_block_hash_skips_execution_status() {
+            // When bid_block_hash is None, quorum should set payload_revealed
+            // but NOT change execution_status
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            // bid_block_hash defaults to None from insert_block
+            assert!(
+                fc.proto_array.core_proto_array().nodes[idx]
+                    .bid_block_hash
+                    .is_none(),
+                "sanity: bid_block_hash should be None"
+            );
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(
+                node.payload_revealed,
+                "payload should be revealed even without bid_block_hash"
+            );
+            assert!(node.payload_data_available, "blob data should be available");
+            // execution_status should remain irrelevant (not updated to Optimistic)
+            assert!(
+                !node.execution_status.is_execution_enabled(),
+                "execution_status should not be set when bid_block_hash is None"
+            );
+        }
     }
 }
