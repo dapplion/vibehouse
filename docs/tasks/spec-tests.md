@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — bid processing edge case tests, spec tracking (run 309)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 308
+- Open Gloas spec PRs unchanged: #4950, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- **8 new bid processing and builder balance edge case tests**:
+  - `can_builder_cover_bid_balance_equals_min_deposit_allows_zero_bid` — boundary: balance == min_deposit, zero bid passes, any positive bid fails
+  - `can_builder_cover_bid_pending_for_other_builder_ignored` — pending withdrawals/payments for builder 1 don't affect builder 0's available balance
+  - `can_builder_cover_bid_multiple_pending_withdrawals_accumulate` — 3 pending withdrawals for same builder correctly summed (500M + 700M + 300M = 1.5B)
+  - `get_pending_balance_saturates_at_u64_max` — two u64::MAX pending withdrawals saturate to u64::MAX (not overflow)
+  - `bid_payment_slot_index_first_slot_of_epoch` — slot 8 (first in epoch 1) writes payment to index 8
+  - `bid_payment_slot_index_last_slot_of_epoch` — slot 15 (last in epoch 1) writes payment to index 15 (last valid element)
+  - `self_build_bid_records_no_pending_payment` — self-build bid (value=0) leaves all payment slots unchanged
+  - `bid_deposit_epoch_equals_finalized_epoch_rejected` — builder with deposit_epoch == finalized_epoch is not active (strict less-than check)
+- **Tests**: 472 state_processing (up from 464), all pass
+- **Clippy**: zero warnings (lint-full passed via pre-push hook)
+
 ### 2026-03-01 — envelope payment ordering fix, spec tracking (run 308)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 307
