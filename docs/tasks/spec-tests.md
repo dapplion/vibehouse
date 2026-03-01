@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — Engine API V5 audit, devnet smoke test (run 347)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **All 12 open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558. None merged.
+- **Engine API V5 deep audit** for devnet-0 readiness:
+  - `newPayloadV5`: sends 4 params (execution_payload, versioned_hashes, parent_beacon_block_root, execution_requests) — correct per spec
+  - `getPayloadV5`: response includes `blobsBundle` — confirmed present in geth `epbs-devnet-0` (always populated, even for ePBS). Our `JsonGetPayloadResponseGloas` correctly requires it as non-optional
+  - `forkchoiceUpdatedV3`: used for Gloas via `PayloadAttributes::V3` — correct
+  - versioned_hashes sourced from bid's `blob_kzg_commitments` (not block body) — correct for ePBS
+  - No hardcoded version checks — all driven by capability negotiation
+  - **No issues found. Engine API implementation fully compatible with devnet-0 geth.**
+- **Codebase quality scan**: zero `#[allow(clippy::)]` on Gloas code, zero `unsafe` in consensus code, zero `.unwrap()`/`.expect()` in Gloas production paths, no missing Gloas match arms in beacon_chain.rs
+- **Devnet smoke test passed**: 4-node devnet, finalized_epoch=8 at slot 80, chain healthy through Gloas fork (run ID: 20260301-214507)
+- **CI status**: all green. One transient 502 failure (spec test vector download, auto-resolved). Nightly green.
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — CI health verification, codebase stability audit (run 346)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
