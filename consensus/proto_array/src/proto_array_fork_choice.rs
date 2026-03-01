@@ -1156,28 +1156,23 @@ impl ProtoArrayForkChoice {
         let pa = &self.proto_array;
         let mut filtered = vec![false; pa.nodes.len()];
 
-        // Mark nodes that are viable for head
+        // Pass 1 (forward): mark nodes that are viable for head
         for (i, node) in pa.nodes.iter().enumerate() {
             if pa.node_is_viable_for_head::<E>(node, current_slot) {
                 filtered[i] = true;
             }
         }
 
-        // Propagate upward: mark parents of any filtered node.
-        // Nodes are ordered parent-before-child, so reverse iteration propagates correctly.
+        // Pass 2 (reverse): propagate upward and collect roots in one pass.
+        // Nodes are ordered parent-before-child, so reverse iteration ensures parents
+        // are marked before we reach them. We collect each filtered node's root as we go.
+        let mut roots = HashSet::new();
         for i in (0..pa.nodes.len()).rev() {
-            if filtered[i]
-                && let Some(parent_idx) = pa.nodes[i].parent
-            {
-                filtered[parent_idx] = true;
-            }
-        }
-
-        let count = filtered.iter().filter(|&&b| b).count();
-        let mut roots = HashSet::with_capacity(count);
-        for (i, node) in pa.nodes.iter().enumerate() {
             if filtered[i] {
-                roots.insert(node.root);
+                roots.insert(pa.nodes[i].root);
+                if let Some(parent_idx) = pa.nodes[i].parent {
+                    filtered[parent_idx] = true;
+                }
             }
         }
         roots
