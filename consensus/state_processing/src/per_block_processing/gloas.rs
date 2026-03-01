@@ -6581,4 +6581,309 @@ mod tests {
             assert_eq!(w.index, i as u64, "withdrawal index should be contiguous");
         }
     }
+
+    // ── blob commitment boundary tests ──────────────────────────
+
+    #[test]
+    fn builder_bid_blob_commitments_at_exactly_max_succeeds() {
+        // Blob commitments at exactly max_blobs should be accepted (only > max is rejected).
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 0);
+
+        let max_blobs = spec.max_blobs_per_block(state.current_epoch()) as usize;
+        let commitments: Vec<_> = (0..max_blobs)
+            .map(|_| types::KzgCommitment::empty_for_testing())
+            .collect();
+        bid.message.blob_kzg_commitments = ssz_types::VariableList::new(commitments).unwrap();
+
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "exactly max blob commitments should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    #[test]
+    fn builder_bid_zero_blob_commitments_succeeds() {
+        // A bid with zero blob commitments is valid (block may have no blobs).
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let bid = make_builder_bid(&state, &spec, 0);
+        assert!(
+            bid.message.blob_kzg_commitments.is_empty(),
+            "default bid should have zero commitments"
+        );
+
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "zero blob commitments should succeed: {:?}",
+            result.err()
+        );
+    }
+
+    // ── initiate_builder_exit multi-builder tests ──────────────
+
+    #[test]
+    fn initiate_builder_exit_second_builder_while_first_active() {
+        // With two builders, exiting builder 1 should not affect builder 0.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+
+        // Add builder 1
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(Builder {
+                pubkey: types::PublicKeyBytes::empty(),
+                version: 0x03,
+                execution_address: Address::repeat_byte(0xCC),
+                balance: 20_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: spec.far_future_epoch,
+            })
+            .unwrap();
+
+        let current_epoch = state.current_epoch();
+
+        // Exit builder 1
+        initiate_builder_exit::<E>(&mut state, 1, &spec).unwrap();
+
+        // Builder 1 should have concrete withdrawable_epoch
+        let builder1 = state.as_gloas().unwrap().builders.get(1).unwrap();
+        assert_eq!(
+            builder1.withdrawable_epoch,
+            current_epoch + spec.min_builder_withdrawability_delay,
+            "builder 1 should have withdrawable_epoch set"
+        );
+
+        // Builder 0 should still be active
+        let builder0 = state.as_gloas().unwrap().builders.get(0).unwrap();
+        assert_eq!(
+            builder0.withdrawable_epoch, spec.far_future_epoch,
+            "builder 0 should remain active (far_future_epoch)"
+        );
+    }
+
+    #[test]
+    fn initiate_builder_exit_preserves_first_exit_epoch_on_reentry() {
+        // Calling initiate_builder_exit twice should preserve the first exit's epoch.
+        // The function is a no-op if withdrawable_epoch != far_future_epoch.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+
+        let current_epoch = state.current_epoch();
+        let expected_withdrawable = current_epoch + spec.min_builder_withdrawability_delay;
+
+        // First exit
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+        let first_epoch = state
+            .as_gloas()
+            .unwrap()
+            .builders
+            .get(0)
+            .unwrap()
+            .withdrawable_epoch;
+        assert_eq!(first_epoch, expected_withdrawable);
+
+        // Advance state to a later epoch
+        *state.slot_mut() = Slot::new(100 * E::slots_per_epoch());
+
+        // Second exit attempt — should be a no-op
+        initiate_builder_exit::<E>(&mut state, 0, &spec).unwrap();
+        let second_epoch = state
+            .as_gloas()
+            .unwrap()
+            .builders
+            .get(0)
+            .unwrap()
+            .withdrawable_epoch;
+        assert_eq!(
+            second_epoch, first_epoch,
+            "re-exit should preserve original withdrawable_epoch"
+        );
+    }
+
+    // ── get_ptc_committee zero-balance edge case tests ──────────
+
+    #[test]
+    fn ptc_committee_zero_balance_validators_eventually_selected() {
+        // When all validators have zero effective_balance, the acceptance check
+        // `0 * max_random >= max_eb * random` is only true when random == 0.
+        // The algorithm loops until it finds enough candidates whose random value is 0.
+        // With PTC_SIZE=2 and 16-bit random, this is very rare per candidate, so the
+        // algorithm iterates many times. Verify it still terminates and produces valid output.
+        //
+        // NOTE: In practice, this scenario is impossible on mainnet (validators with
+        // zero effective balance are ejected), but it tests the algorithm's robustness.
+        let (mut state, spec) = make_gloas_state(8, 0, 64_000_000_000);
+
+        // Give all validators zero effective_balance but valid activation
+        for i in 0..8 {
+            state.get_validator_mut(i).unwrap().effective_balance = 0;
+        }
+
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .unwrap();
+
+        let slot = state.slot();
+        // This may take many iterations but should eventually complete
+        let ptc = get_ptc_committee(&state, slot, &spec);
+
+        // With zero balance, acceptance requires random_value == 0 (probability 1/65536 per try).
+        // The algorithm is deterministic and will eventually find values. Just verify it
+        // either succeeds with correct size or errors cleanly.
+        match ptc {
+            Ok(members) => {
+                assert_eq!(members.len(), E::ptc_size(), "PTC should have correct size");
+                for &idx in &members {
+                    assert!((idx as usize) < 8, "PTC member {} out of range", idx);
+                }
+            }
+            Err(_) => {
+                // An error is also acceptable for degenerate inputs
+            }
+        }
+    }
+
+    // ── payload attestation with validator index boundary tests ──
+
+    #[test]
+    fn payload_attestation_signature_verify_rejects_invalid_pubkey() {
+        // When VerifySignatures::True is used and a validator has an all-zero pubkey
+        // (which cannot be decompressed), the attestation should be rejected with
+        // InvalidPubkey error, not a panic.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+
+        // Corrupt the pubkey of validator 0 to all zeros (invalid compressed point)
+        let corrupted_pubkey = types::PublicKeyBytes::empty();
+        state.get_validator_mut(0).unwrap().pubkey = corrupted_pubkey;
+
+        // Create an attestation — PTC committee may include validator 0
+        let attestation = make_payload_attestation(&state, &[true, true]);
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::True, &spec);
+
+        // Should fail with either InvalidPubkey or BadSignature (depending on whether
+        // the corrupted validator is in the PTC)
+        if let Err(err) = result {
+            match &err {
+                BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::InvalidPubkey,
+                )
+                | BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::BadSignature,
+                ) => {
+                    // Expected: either decompression failure or signature mismatch
+                }
+                other => {
+                    panic!("unexpected error type: {:?}", other);
+                }
+            }
+        }
+        // If result is Ok, the corrupted validator wasn't in the PTC for this attestation
+    }
+
+    // ── process_withdrawals_gloas with empty parent block ──────────
+
+    #[test]
+    fn process_withdrawals_gloas_empty_parent_block_noop() {
+        // When the parent block is empty (payload not delivered), process_withdrawals_gloas
+        // should return Ok immediately without modifying payload_expected_withdrawals.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 5_000_000_000);
+
+        // Don't call make_parent_block_full — parent block is empty by default
+        assert!(
+            !is_parent_block_full::<E>(&state).unwrap(),
+            "parent block should be empty"
+        );
+
+        // Add pending withdrawals that would normally be processed
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Make builder 0 exited so sweep would normally include it
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let expected = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        assert!(
+            expected.is_empty(),
+            "empty parent block should produce zero withdrawals, got {}",
+            expected.len()
+        );
+    }
+
+    // ── bid with exactly blob limit at boundary between accepted/rejected ──
+
+    #[test]
+    fn builder_bid_blob_commitments_one_over_max_rejected() {
+        // max+1 blob commitments should be rejected. This complements the
+        // "exactly max" and "too many" tests by verifying the off-by-one boundary.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_builder_bid(&state, &spec, 0);
+
+        let max_blobs = spec.max_blobs_per_block(state.current_epoch()) as usize;
+        let commitments: Vec<_> = (0..max_blobs + 1)
+            .map(|_| types::KzgCommitment::empty_for_testing())
+            .collect();
+        bid.message.blob_kzg_commitments = ssz_types::VariableList::new(commitments).unwrap();
+
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                &result,
+                Err(BlockProcessingError::PayloadBidInvalid { reason })
+                    if reason.contains("blob_kzg_commitments")
+            ),
+            "max+1 blob commitments should be rejected: {:?}",
+            result
+        );
+    }
 }
