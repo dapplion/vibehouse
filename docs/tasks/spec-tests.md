@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fix get_payload_tiebreaker spec compliance (run 328)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 327
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Spec compliance fix**: `get_payload_tiebreaker` was missing a PENDING status check
+  - The spec says: `if payload_status == PENDING or slot+1 != current_slot: return ordinal`
+  - Our implementation only checked `slot+1 != current_slot`, missing the PENDING condition
+  - While unreachable in practice (PENDING nodes have unique roots so root comparison breaks ties first), the fix makes the code match the spec exactly
+  - Updated the test `tiebreaker_pending_at_previous_slot_returns_ordinal` to verify the new behavior
+- **Full spec audit of fork choice functions**: verified `get_weight`, `is_supporting_vote`, `should_extend_payload`, `should_apply_proposer_boost`, `get_node_children`, and `compute_filtered_roots` all match the consensus-specs
+- **Tests**: 157 proto_array, 106 fork_choice, 8 EF fork_choice tests — all pass
+- **Clippy**: zero warnings (full workspace lint)
+
 ### 2026-03-01 — fix chain_segment_varying_chunk_size CI timeout (run 327)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 326
