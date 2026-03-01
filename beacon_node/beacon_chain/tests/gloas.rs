@@ -8377,6 +8377,179 @@ async fn gloas_skip_slot_latest_block_hash_continuity() {
     );
 }
 
+/// Test the FULL/EMPTY payload state reorg scenario:
+/// 1. Build a shared chain, then fork into two competing chains
+/// 2. Fork A: 1 block with envelope processed (FULL), attested by minority
+/// 3. Fork B: 1 block WITHOUT envelope (EMPTY/PENDING), attested by majority
+/// 4. Head should be fork B (more weight) in EMPTY state
+/// 5. Process fork B's late envelope → transitions to FULL
+/// 6. Head should remain fork B, now in FULL state
+///
+/// This tests the critical path where a block's payload status transitions from
+/// EMPTY to FULL via a late envelope arrival, and that fork choice correctly
+/// resolves head across FULL/EMPTY payload states.
+#[tokio::test]
+async fn gloas_reorg_full_vs_empty_with_late_envelope() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build 2-block shared chain (FULL via extend_slots, which processes envelopes)
+    Box::pin(harness.extend_slots(2)).await;
+
+    let shared_head = harness.chain.head_snapshot();
+    let shared_slot = shared_head.beacon_block.slot();
+    assert_eq!(shared_slot, Slot::new(2));
+
+    // Get post-envelope state for producing fork blocks
+    let (shared_state, _shared_state_root) = harness.get_current_state_and_root();
+
+    // Split validators: 25% for fork A (minority), 75% for fork B (majority)
+    let fork_a_validators: Vec<usize> = (0..8).collect();
+    let fork_b_validators: Vec<usize> = (8..VALIDATOR_COUNT).collect();
+
+    // --- Fork A: block at slot 3, WITH envelope (FULL) ---
+    harness.advance_slot(); // slot 3
+    let fork_a_slot = Slot::new(3);
+    let (fork_a_contents, fork_a_state, fork_a_envelope) = harness
+        .make_block_with_envelope(shared_state.clone(), fork_a_slot)
+        .await;
+    let fork_a_envelope = fork_a_envelope.expect("fork A should have envelope");
+    let fork_a_root = fork_a_contents.0.canonical_root();
+
+    // Import fork A block
+    harness
+        .process_block(fork_a_slot, fork_a_root, fork_a_contents)
+        .await
+        .expect("fork A block import should succeed");
+
+    // Process fork A envelope (makes it FULL)
+    harness
+        .chain
+        .process_self_build_envelope(&fork_a_envelope)
+        .await
+        .expect("fork A envelope should succeed");
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // Verify fork A is FULL in fork choice
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let fork_a_block = fc
+            .get_block(&fork_a_root)
+            .expect("fork A should be in fork choice");
+        assert!(
+            fork_a_block.payload_revealed,
+            "fork A should have payload_revealed=true (envelope processed)"
+        );
+    }
+
+    // Attest fork A with minority validators
+    let mut fork_a_state_for_attest = fork_a_state.clone();
+    let fork_a_state_root = fork_a_state_for_attest.update_tree_hash_cache().unwrap();
+    let fork_a_attestations = harness.make_attestations(
+        &fork_a_validators,
+        &fork_a_state_for_attest,
+        fork_a_state_root,
+        fork_a_root.into(),
+        fork_a_slot,
+    );
+    harness.process_attestations(fork_a_attestations, &fork_a_state_for_attest);
+
+    // --- Fork B: block at slot 4 (from shared state, skipping slot 3), WITHOUT envelope ---
+    harness.advance_slot(); // slot 4
+    let fork_b_slot = Slot::new(4);
+    let (fork_b_contents, fork_b_state, fork_b_envelope) = harness
+        .make_block_with_envelope(shared_state, fork_b_slot)
+        .await;
+    let fork_b_envelope = fork_b_envelope.expect("fork B should have envelope");
+    let fork_b_root = fork_b_contents.0.canonical_root();
+
+    // Import fork B block only — do NOT process envelope (stays EMPTY/PENDING)
+    harness
+        .process_block(fork_b_slot, fork_b_root, fork_b_contents)
+        .await
+        .expect("fork B block import should succeed");
+
+    // Verify fork B is NOT FULL in fork choice (no envelope)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let fork_b_block = fc
+            .get_block(&fork_b_root)
+            .expect("fork B should be in fork choice");
+        assert!(
+            !fork_b_block.payload_revealed,
+            "fork B should have payload_revealed=false (no envelope processed yet)"
+        );
+    }
+
+    // Attest fork B with majority validators
+    let mut fork_b_state_for_attest = fork_b_state.clone();
+    let fork_b_state_root = fork_b_state_for_attest.update_tree_hash_cache().unwrap();
+    let fork_b_attestations = harness.make_attestations(
+        &fork_b_validators,
+        &fork_b_state_for_attest,
+        fork_b_state_root,
+        fork_b_root.into(),
+        fork_b_slot,
+    );
+    harness.process_attestations(fork_b_attestations, &fork_b_state_for_attest);
+
+    // --- Verify head resolution: fork B should win (more attestation weight) ---
+    harness.advance_slot(); // slot 5
+    harness.chain.recompute_head_at_current_slot().await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block_root, fork_b_root,
+        "head should be fork B (majority weight), not fork A"
+    );
+
+    // Fork B's payload is not revealed yet → head payload status should be Empty
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let fork_b_block = fc.get_block(&fork_b_root).unwrap();
+        assert!(
+            !fork_b_block.payload_revealed,
+            "fork B should still have payload_revealed=false before late envelope"
+        );
+    }
+
+    // --- Late envelope arrives for fork B ---
+    harness
+        .chain
+        .process_self_build_envelope(&fork_b_envelope)
+        .await
+        .expect("late envelope for fork B should succeed");
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // Head should still be fork B, now FULL
+    let head_after = harness.chain.head_snapshot();
+    assert_eq!(
+        head_after.beacon_block_root, fork_b_root,
+        "head should remain fork B after late envelope"
+    );
+
+    // Fork B is now FULL
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let fork_b_block = fc.get_block(&fork_b_root).unwrap();
+        assert!(
+            fork_b_block.payload_revealed,
+            "fork B should have payload_revealed=true after late envelope"
+        );
+    }
+
+    // The head state's latest_block_hash should now match fork B's bid block_hash
+    // (envelope processing updates latest_block_hash)
+    let fork_b_bid_hash = fork_b_envelope.message.payload.block_hash;
+    let head_latest = *head_after
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        head_latest, fork_b_bid_hash,
+        "head state latest_block_hash should match fork B's envelope payload block_hash"
+    );
+}
+
 /// After a fork with two competing chains, verify the head is correctly resolved.
 /// Both chains produce Gloas blocks with envelopes; the one with more attestation
 /// weight should win.
