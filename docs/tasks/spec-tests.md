@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice defensive edge case tests (run 302)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4898 (1 approval), #4892 (multiple approvals) — all already implemented in vibehouse
+- **3 new proto_array tests** covering untested defensive code paths:
+  - `children_empty_unknown_root_returns_empty_vec`: EMPTY node with root not in indices → empty Vec (line 1220 fallthrough)
+  - `children_full_unknown_root_returns_empty_vec`: FULL node with root not in indices → empty Vec (same path)
+  - `proposer_boost_parent_node_missing_returns_true`: corrupted parent index (OOB) → returns true as defensive fallback (line 1294-1296)
+- These complete the get_gloas_children test matrix (PENDING unknown root was tested, EMPTY/FULL were not) and cover a should_apply_proposer_boost_gloas defensive branch distinct from the "no parent" genesis case
+- **Tests**: 139 proto_array all pass, 81 fork_choice all pass
+
 ### 2026-03-01 — fix ptc_timely spec deviation, spec tracking (run 301)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **5 merged spec PRs verified** (all since alpha.2):

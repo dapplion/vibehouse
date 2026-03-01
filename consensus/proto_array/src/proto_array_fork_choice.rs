@@ -5408,6 +5408,62 @@ mod test_gloas_fork_choice {
         assert_eq!(empty_children[0].root, root(3));
     }
 
+    #[test]
+    fn children_empty_unknown_root_returns_empty_vec() {
+        // EMPTY node whose root is not in proto_array → returns empty Vec
+        let (fc, _spec) = new_gloas_fc();
+        let filtered: HashSet<Hash256> = HashSet::new();
+        let empty = GloasForkChoiceNode {
+            root: Hash256::repeat_byte(0xFF),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+
+        let children = fc.get_gloas_children(&empty, &filtered);
+        assert!(children.is_empty());
+    }
+
+    #[test]
+    fn children_full_unknown_root_returns_empty_vec() {
+        // FULL node whose root is not in proto_array → returns empty Vec
+        let (fc, _spec) = new_gloas_fc();
+        let filtered: HashSet<Hash256> = HashSet::new();
+        let full = GloasForkChoiceNode {
+            root: Hash256::repeat_byte(0xFF),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        let children = fc.get_gloas_children(&full, &filtered);
+        assert!(children.is_empty());
+    }
+
+    #[test]
+    fn proposer_boost_parent_node_missing_returns_true() {
+        // When boost_block.parent index exists but the node at that index is gone
+        // (corrupted state), should return true (always boost as defensive fallback).
+        // This tests line 1294-1296: `let Some(parent_block) = pa.nodes.get(parent_idx)`
+        let (mut fc, spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            false,
+        );
+        // Corrupt the parent index to point beyond the nodes array
+        let boost_idx = *fc.proto_array.indices.get(&root(1)).unwrap();
+        let boost_node = &mut fc.proto_array.nodes[boost_idx];
+        boost_node.parent = Some(usize::MAX);
+
+        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+            root(1),
+            &BTreeSet::new(),
+            Slot::new(2),
+            &spec,
+        ));
+    }
+
     // ── find_head_gloas: proposer boost & gloas_head_payload_status ──
 
     /// Insert a Gloas block with custom proposer_index and ptc_timely.
