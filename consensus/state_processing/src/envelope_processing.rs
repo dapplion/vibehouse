@@ -251,28 +251,27 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     process_withdrawal_requests(state, &execution_requests.withdrawals, spec)?;
     process_consolidation_requests(state, &execution_requests.consolidations, spec)?;
 
-    // Process builder payment: move from pending to withdrawal queue
+    // Queue the builder payment: read, conditionally append, then blank
     let payment_index = E::slots_per_epoch()
         .safe_add(state.slot().as_u64().safe_rem(E::slots_per_epoch())?)?
         as usize;
-    let payment_mut = state
+    let payment = *state.builder_pending_payments()?.get(payment_index).ok_or(
+        EnvelopeProcessingError::BuilderPaymentIndexOutOfBounds(payment_index),
+    )?;
+
+    let amount = payment.withdrawal.amount;
+    if amount > 0 {
+        state
+            .builder_pending_withdrawals_mut()?
+            .push(payment.withdrawal)
+            .map_err(|e| EnvelopeProcessingError::BeaconStateError(e.into()))?;
+    }
+    *state
         .builder_pending_payments_mut()?
         .get_mut(payment_index)
         .ok_or(EnvelopeProcessingError::BuilderPaymentIndexOutOfBounds(
             payment_index,
-        ))?;
-
-    // Copy the payment withdrawal before blanking it out
-    let payment_withdrawal = payment_mut.withdrawal;
-    *payment_mut = BuilderPendingPayment::default();
-
-    let amount = payment_withdrawal.amount;
-    if amount > 0 {
-        state
-            .builder_pending_withdrawals_mut()?
-            .push(payment_withdrawal)
-            .map_err(|e| EnvelopeProcessingError::BeaconStateError(e.into()))?;
-    }
+        ))? = BuilderPendingPayment::default();
 
     // Cache the execution payload hash and set availability
     let availability_index = state
