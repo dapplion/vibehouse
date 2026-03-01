@@ -3816,6 +3816,35 @@ mod gloas_operations_tests {
         );
     }
 
+    #[test]
+    fn verify_exit_builder_with_both_pending_withdrawal_and_payment_rejected() {
+        let (mut state, spec) = make_state_with_builders();
+        // Set both a pending withdrawal AND a pending payment for builder 0
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(types::BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 200,
+                builder_index: 0,
+            })
+            .unwrap();
+        *state_gloas.builder_pending_payments.get_mut(0).unwrap() = BuilderPendingPayment {
+            weight: 0,
+            withdrawal: types::BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 300,
+                builder_index: 0,
+            },
+        };
+        let exit = make_builder_exit(0, state.current_epoch());
+        let result = verify_exit(&state, None, &exit, VerifySignatures::False, &spec);
+        assert!(
+            result.is_err(),
+            "builder with both pending withdrawal and payment should be rejected"
+        );
+    }
+
     // ── builder exit signature verification tests ────────────
 
     /// Create a state with a builder that has a real keypair for signature tests.
