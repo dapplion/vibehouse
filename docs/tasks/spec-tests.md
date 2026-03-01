@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec compliance audit of untracked merged PRs (run 330)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 329
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Spec compliance audit**: found 4 merged PRs modifying `specs/gloas/` that were not previously tracked in progress log. Verified all compliant:
+  - #4874 (simplify data column sidecar gossip checks, merged Jan 28) — vibehouse's data_column_verification.rs implements all 6 validation categories (block availability, slot matching, sidecar validity, subnet correctness, KZG proof, uniqueness). No Gloas-specific changes needed since data column gossip is fork-agnostic.
+  - #4853 (remove blob sidecars section in Gloas, merged Jan 21) — documentation cleanup. Vibehouse correctly does not publish individual blob sidecars for Gloas (data columns only). No code change needed.
+  - #4841 (update prepare_execution_payload for Gloas, merged Jan 16) — vibehouse correctly handles this in `get_execution_payload()` (execution_payload.rs:388-402): pre-Gloas uses `latest_execution_payload_header()`, Gloas uses `latest_block_hash()` and `latest_execution_payload_bid().gas_limit`. No code change needed.
+  - #4890 (clarify when builders become active, merged Feb 2) — vibehouse uses strict less-than (`deposit_epoch < finalized_epoch`) in `Builder::is_active_at_finalized_epoch()` (builder.rs:39-41). Comprehensive boundary tests verify this behavior. No code change needed.
+- **Additional merged PRs verified**: #4930 (rename execution_payload_states), #4922 (add missing fork comment to Store) — both previously tracked and confirmed compliant
+- **New open PRs found**: #4906 (more deposit_request tests), #4747 (fast confirmation rule) — neither affects Gloas spec; #4942 promoted FOCIL to Heze fork (separate from Gloas)
+- **Consensus-critical audit**: audited `process_execution_payload_envelope`, `should_extend_payload`, and `get_payload_tiebreaker` — all spec-correct
+- **CI status**: all recent completed runs green, 6 runs in progress
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — increase mock EL timeout for CI stability (run 329)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 328
