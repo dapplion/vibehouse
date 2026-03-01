@@ -632,10 +632,8 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     // 4. Validator sweep (limit: MAX_WITHDRAWALS_PER_PAYLOAD — the full limit)
     {
         let mut validator_index = state.next_withdrawal_validator_index()?;
-        let bound = std::cmp::min(
-            state.validators().len() as u64,
-            spec.max_validators_per_withdrawals_sweep,
-        );
+        let validators_len = state.validators().len() as u64;
+        let bound = std::cmp::min(validators_len, spec.max_validators_per_withdrawals_sweep);
         for _ in 0..bound {
             if withdrawals.len() >= max_withdrawals {
                 break;
@@ -673,9 +671,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 withdrawal_index.safe_add_assign(1)?;
             }
 
-            validator_index = validator_index
-                .safe_add(1)?
-                .safe_rem(state.validators().len() as u64)?;
+            validator_index = validator_index.safe_add(1)?.safe_rem(validators_len)?;
         }
     }
 
@@ -688,9 +684,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
                 .as_gloas_mut()
                 .map_err(BlockProcessingError::BeaconStateError)?;
             if let Some(builder) = state_gloas.builders.get_mut(builder_index) {
-                builder.balance = builder
-                    .balance
-                    .saturating_sub(std::cmp::min(withdrawal.amount, builder.balance));
+                builder.balance = builder.balance.saturating_sub(withdrawal.amount);
             }
         } else {
             // Validator withdrawal
@@ -916,10 +910,8 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     // 4. Validator sweep
     {
         let mut validator_index = state.next_withdrawal_validator_index()?;
-        let bound = std::cmp::min(
-            state.validators().len() as u64,
-            spec.max_validators_per_withdrawals_sweep,
-        );
+        let validators_len = state.validators().len() as u64;
+        let bound = std::cmp::min(validators_len, spec.max_validators_per_withdrawals_sweep);
         for _ in 0..bound {
             if withdrawals.len() >= max_withdrawals {
                 break;
@@ -957,9 +949,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
                 withdrawal_index.safe_add_assign(1)?;
             }
 
-            validator_index = validator_index
-                .safe_add(1)?
-                .safe_rem(state.validators().len() as u64)?;
+            validator_index = validator_index.safe_add(1)?.safe_rem(validators_len)?;
         }
     }
 

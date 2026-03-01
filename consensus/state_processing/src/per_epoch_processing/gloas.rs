@@ -30,8 +30,9 @@ pub fn process_builder_pending_payments<E: EthSpec>(
         if let Some(payment) = state_gloas.builder_pending_payments.get(i)
             && payment.weight >= quorum
         {
-            let withdrawal = payment.withdrawal.clone();
-            state_gloas.builder_pending_withdrawals.push(withdrawal)?;
+            state_gloas
+                .builder_pending_withdrawals
+                .push(payment.withdrawal)?;
         }
     }
 
@@ -46,7 +47,7 @@ pub fn process_builder_pending_payments<E: EthSpec>(
             state_gloas
                 .builder_pending_payments
                 .get(src_idx)
-                .cloned()
+                .copied()
                 .unwrap_or_default()
         } else {
             BuilderPendingPayment::default()
@@ -638,13 +639,12 @@ mod tests {
         );
 
         // The payment that was at slot 8 is now at slot 0
-        let rotated = state
+        let rotated = *state
             .as_gloas()
             .unwrap()
             .builder_pending_payments
             .get(0)
-            .unwrap()
-            .clone();
+            .unwrap();
         assert_eq!(rotated.weight, quorum);
         assert_eq!(rotated.withdrawal.amount, 2_000_000_000);
 

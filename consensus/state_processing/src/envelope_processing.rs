@@ -262,8 +262,8 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
             payment_index,
         ))?;
 
-    // Clone the payment withdrawal before blanking it out
-    let payment_withdrawal = payment_mut.withdrawal.clone();
+    // Copy the payment withdrawal before blanking it out
+    let payment_withdrawal = payment_mut.withdrawal;
     *payment_mut = BuilderPendingPayment::default();
 
     let amount = payment_withdrawal.amount;
@@ -929,12 +929,11 @@ mod tests {
         .unwrap();
 
         // Payment slot should be cleared
-        let cleared_payment = state
+        let cleared_payment = *state
             .builder_pending_payments()
             .unwrap()
             .get(payment_index)
-            .unwrap()
-            .clone();
+            .unwrap();
         assert_eq!(
             cleared_payment,
             BuilderPendingPayment::default(),
@@ -2003,12 +2002,11 @@ mod tests {
         .unwrap();
 
         // Payment at index 15 should be cleared
-        let cleared = state
+        let cleared = *state
             .builder_pending_payments()
             .unwrap()
             .get(expected_index)
-            .unwrap()
-            .clone();
+            .unwrap();
         assert_eq!(
             cleared,
             BuilderPendingPayment::default(),
@@ -2113,12 +2111,11 @@ mod tests {
         );
 
         // 3. pending payment cleared and withdrawal queued
-        let cleared = state
+        let cleared = *state
             .builder_pending_payments()
             .unwrap()
             .get(payment_index)
-            .unwrap()
-            .clone();
+            .unwrap();
         assert_eq!(cleared, BuilderPendingPayment::default());
         let withdrawals = state.builder_pending_withdrawals().unwrap();
         assert_eq!(withdrawals.len(), 1);

@@ -20,6 +20,7 @@ use tree_hash_derive::TreeHash;
     Eq,
     Hash,
     Clone,
+    Copy,
     Default,
     Serialize,
     Deserialize,
@@ -134,7 +135,7 @@ mod tests {
         use std::collections::HashSet;
         let payment = make_payment(100, 1000, 7);
         let mut set = HashSet::new();
-        set.insert(payment.clone());
+        set.insert(payment);
         assert!(set.contains(&make_payment(100, 1000, 7)));
         assert!(!set.contains(&make_payment(200, 1000, 7)));
     }

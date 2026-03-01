@@ -16,6 +16,7 @@ use tree_hash_derive::TreeHash;
     Eq,
     Hash,
     Clone,
+    Copy,
     Default,
     Serialize,
     Deserialize,
@@ -133,7 +134,7 @@ mod tests {
         use std::collections::HashSet;
         let w = make_withdrawal(1000, 7);
         let mut set = HashSet::new();
-        set.insert(w.clone());
+        set.insert(w);
         assert!(set.contains(&make_withdrawal(1000, 7)));
         assert!(!set.contains(&make_withdrawal(2000, 7)));
     }
