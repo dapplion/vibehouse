@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — upgrade_to_gloas edge case tests, spec tracking (run 312)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 311
+- Open Gloas spec PRs unchanged: #4950 (4 approvals, clean), #4898 (1 approval), #4892 (2 approvals), #4843 (1 approval), #4940 (blocked), #4932 (blocked), #4939 (blocked), #4926 (1 approval, blocked)
+- **6 new upgrade_to_gloas edge case tests**:
+  - `upgrade_existing_validator_with_builder_credentials_stays_pending` — existing validator pubkey with 0x03 credentials correctly routes to validator pending (is_validator check has priority over credentials check)
+  - `upgrade_new_validator_then_builder_deposit_same_pubkey_both_pending` — new validator deposit tracked in `new_validator_pubkeys` prevents subsequent 0x03 deposit from creating a builder
+  - `upgrade_builder_topup_balance_saturates_at_max` — near-max balance + top-up saturates at u64::MAX (no overflow)
+  - `upgrade_topup_targets_correct_builder_among_multiple` — top-up for builder at index 1 with 3 builders present correctly targets the right builder via cache lookup
+  - `upgrade_zero_amount_builder_deposit_creates_builder` — zero-amount deposit with valid sig creates a builder (no minimum deposit for builder creation)
+  - `upgrade_all_invalid_deposits_dropped` — multiple deposits with invalid signatures and non-builder credentials are all silently dropped
+- **Tests**: 483 state_processing (up from 477), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — spec PR review, deposit routing tests (run 311)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **10 newly merged Gloas spec PRs reviewed** — all already implemented or no action needed:
