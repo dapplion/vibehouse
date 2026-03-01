@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — in-place proposer lookahead update, spec tracking (run 296)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 295
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Verified open PR alignment**:
+  - #4892 (remove impossible branch in forkchoice) — vibehouse already uses `debug_assert!(vote.current_slot >= node_slot)` + `if vote.current_slot == node_slot` in `is_supporting_vote_gloas_at_slot`. Exact match. No change needed.
+  - #4898 (remove pending status from tiebreaker) — vibehouse's `get_payload_tiebreaker` already doesn't check `PAYLOAD_STATUS_PENDING` directly. The code checks `!is_previous_slot → return ordinal`, else EMPTY→1, else extend logic. Comment documents why PENDING is unreachable. No change needed.
+- **Performance optimization shipped**:
+  - `process_proposer_lookahead`: update milhouse Vector in-place instead of `to_vec()` + modify + `Vector::new()` round-trip. Old approach cloned all elements to a temporary Vec, modified it, then reconstructed the entire merkle tree from scratch via `Vector::new()`. New approach reads elements that need shifting, then writes them back with `get_mut()` — only the modified tree nodes get their hashes invalidated. Avoids one temporary Vec allocation and full tree reconstruction per epoch.
+- **EF spec tests**: 35/35 pass (operations + epoch_processing + sanity, minimal preset, fake crypto)
+- **State processing tests**: 463/463 pass
+- **Clippy**: zero warnings across entire workspace (lint-full passed)
+- **CI**: push succeeded
+
 ### 2026-03-01 — HashSet pre-sizing, spec tracking (run 295)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Verified recently merged spec PRs**:
