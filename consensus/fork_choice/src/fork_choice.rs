@@ -994,6 +994,7 @@ where
 
         // This does not apply a vote to the block, it just makes fork choice aware of the block so
         // it can still be identified as the head even if it doesn't have any votes.
+        let bid_opt = block.body().signed_execution_payload_bid().ok();
         self.proto_array.process_block::<E>(
             ProtoBlock {
                 slot: block.slot(),
@@ -1018,25 +1019,13 @@ where
                 execution_status,
                 unrealized_justified_checkpoint: Some(unrealized_justified_checkpoint),
                 unrealized_finalized_checkpoint: Some(unrealized_finalized_checkpoint),
-                builder_index: block
-                    .body()
-                    .signed_execution_payload_bid()
-                    .ok()
-                    .map(|bid| bid.message.builder_index),
+                builder_index: bid_opt.map(|bid| bid.message.builder_index),
                 payload_revealed: false,
                 ptc_weight: 0,
                 ptc_blob_data_available_weight: 0,
                 payload_data_available: false,
-                bid_block_hash: block
-                    .body()
-                    .signed_execution_payload_bid()
-                    .ok()
-                    .map(|bid| bid.message.block_hash),
-                bid_parent_block_hash: block
-                    .body()
-                    .signed_execution_payload_bid()
-                    .ok()
-                    .map(|bid| bid.message.parent_block_hash),
+                bid_block_hash: bid_opt.map(|bid| bid.message.block_hash),
+                bid_parent_block_hash: bid_opt.map(|bid| bid.message.parent_block_hash),
                 proposer_index: block.proposer_index(),
                 // PTC timeliness: block received in its own slot before the PTC deadline.
                 // The PTC deadline is later than the attestation deadline, so any block
