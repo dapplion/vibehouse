@@ -3192,9 +3192,19 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             state_processing::VerifySignatures::False,
             &self.spec,
         )
-        .map_err(|e| BlockProductionError::EnvelopeConstructionFailed(format!("{e:?}")))?;
+        .map_err(|e| {
+            warn!(
+                error = ?e,
+                "Self-build envelope processing failed"
+            );
+            BlockProductionError::EnvelopeConstructionFailed(format!("{e:?}"))
+        })?;
 
         let actual_root = envelope_state.canonical_root().map_err(|e| {
+            warn!(
+                error = ?e,
+                "Failed to compute post-envelope state root"
+            );
             BlockProductionError::EnvelopeConstructionFailed(format!(
                 "failed to compute post-envelope state root: {e:?}"
             ))
@@ -7051,6 +7061,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         (external_bid, None, bid_value)
                     } else {
                         // Self-build fallback: proposer builds own execution payload.
+                        debug!(
+                            slot = %slot,
+                            "No external builder bid available, using self-build"
+                        );
                         let (
                             payload,
                             kzg_commitments,
