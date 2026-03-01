@@ -15,7 +15,7 @@
 //! - Equivocation detection via observed message tracking
 //! - Signature verification batching where applicable
 
-use crate::{BeaconChain, BeaconChainError, BeaconChainTypes};
+use crate::{BeaconChain, BeaconChainError, BeaconChainTypes, metrics};
 use bls::PublicKey;
 use safe_arith::ArithError;
 use slot_clock::SlotClock;
@@ -399,6 +399,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         bid: SignedExecutionPayloadBid<T::EthSpec>,
     ) -> Result<VerifiedExecutionBid<T>, ExecutionBidError> {
+        let _timer = metrics::start_timer(&metrics::EXECUTION_BID_GOSSIP_VERIFICATION_TIMES);
         let bid_slot = bid.message.slot;
         let builder_index = bid.message.builder_index;
 
@@ -586,6 +587,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         attestation: PayloadAttestation<T::EthSpec>,
     ) -> Result<VerifiedPayloadAttestation<T>, PayloadAttestationError> {
+        let _timer = metrics::start_timer(&metrics::PAYLOAD_ATTESTATION_GOSSIP_VERIFICATION_TIMES);
         let attestation_slot = attestation.data.slot;
 
         // Check 1: Slot validation
@@ -738,6 +740,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         signed_envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,
     ) -> Result<VerifiedPayloadEnvelope<T>, PayloadEnvelopeError> {
+        let _timer = metrics::start_timer(&metrics::PAYLOAD_ENVELOPE_GOSSIP_VERIFICATION_TIMES);
         let envelope = &signed_envelope.message;
         let beacon_block_root = envelope.beacon_block_root;
 

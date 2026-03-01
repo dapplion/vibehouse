@@ -228,6 +228,37 @@ pub static SELF_BUILD_ENVELOPE_SUCCESSES: LazyLock<Result<IntCounter>> = LazyLoc
 });
 
 /*
+ * Gloas ePBS Gossip Verification Timing
+ */
+pub static EXECUTION_BID_GOSSIP_VERIFICATION_TIMES: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
+        try_create_histogram(
+            "beacon_execution_bid_gossip_verification_seconds",
+            "Full runtime of execution bid gossip verification",
+        )
+    });
+pub static PAYLOAD_ATTESTATION_GOSSIP_VERIFICATION_TIMES: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
+        try_create_histogram(
+            "beacon_payload_attestation_gossip_verification_seconds",
+            "Full runtime of payload attestation gossip verification",
+        )
+    });
+pub static PAYLOAD_ENVELOPE_GOSSIP_VERIFICATION_TIMES: LazyLock<Result<Histogram>> =
+    LazyLock::new(|| {
+        try_create_histogram(
+            "beacon_payload_envelope_gossip_verification_seconds",
+            "Full runtime of payload envelope gossip verification",
+        )
+    });
+pub static PAYLOAD_ENVELOPE_PROCESSING_TIMES: LazyLock<Result<Histogram>> = LazyLock::new(|| {
+    try_create_histogram(
+        "beacon_payload_envelope_processing_seconds",
+        "Full runtime of payload envelope processing (EL newPayload + state transition)",
+    )
+});
+
+/*
  * Block Statistics
  */
 pub static OPERATIONS_PER_BLOCK_ATTESTATION: LazyLock<Result<Histogram>> = LazyLock::new(|| {

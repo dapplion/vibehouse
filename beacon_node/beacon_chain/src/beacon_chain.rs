@@ -2584,6 +2584,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         verified_envelope: &crate::gloas_verification::VerifiedPayloadEnvelope<T>,
     ) -> Result<(), Error> {
+        let _timer = metrics::start_timer(&metrics::PAYLOAD_ENVELOPE_PROCESSING_TIMES);
         let beacon_block_root = verified_envelope.beacon_block_root();
         let signed_envelope = verified_envelope.envelope();
 
