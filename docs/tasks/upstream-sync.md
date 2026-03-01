@@ -31,6 +31,14 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 285)
+- Checked consensus-specs: no new Gloas PRs merged since run 284 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (still open), #4892 (2 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4843, #4840, #4747, #4630, #4558, #4484 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests. @michaelsproul commented on #29 (ROCQ) expressing skepticism about formal verification of Lighthouse-derived code, suggesting clean-slate Lean instead.
+- **Nightly test vector validation**: ran full EF test suite against nightly consensus-specs vectors (includes all post-v1.7.0-alpha.2 merged changes). 78/78 real crypto + 138/138 fake crypto pass. No compliance gaps.
+- **Detailed spec PR review**: #4840 (variable PTC deadline) is the most impactful pending change — renames `payload_present` to `payload_timely`, introduces size-based timeliness deadline, adds `payload_envelopes` to store. Only 1 approval, still evolving. #4843 (SLOTNUM EIP-7843) would add `slot_number` to PayloadAttributes — small CL change. #4939 (request missing envelopes for index-1 attestation) would add new gossip validation rules.
+- **No code changes this run** — spec stable, fully compliant
+
 ### 2026-03-01 (run 281)
 - Checked consensus-specs: no new Gloas PRs merged since run 280 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged

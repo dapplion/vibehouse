@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — nightly vector validation, spec PR review (run 285)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 284
+- Open Gloas spec PRs tracked: #4892 (2 approvals — remove impossible branch, already compliant), #4940 (initial fork choice tests — 0 reviews, test runner ready), #4932 (sanity/blocks tests — 0 reviews), #4939 (request missing envelopes — 0 reviews), #4926 (SLOT_DURATION_MS — 1 approval), #4906 (deposit tests — 1 approval), #4898 (remove pending tiebreaker — 1 approval, already compliant), #4843 (EIP-7843 SLOTNUM — 0 approvals), #4840 (variable PTC deadline — 1 approval), #4747 (fast confirmation — 0 reviews), #4630 (EIP-7688 forward compat SSZ — 0 reviews), #4558 (cell dissemination — 1 approval), #4484 (6s slots — 0 reviews) — all still open/unmerged
+- **Nightly vector validation**: downloaded latest nightly test vectors from consensus-specs master (run 22511755730, Feb 28). These include all post-v1.7.0-alpha.2 merged changes (#4918, #4923, #4947, #4948). Results: **78/78 real crypto + 138/138 fake crypto pass** (minimal preset). No new failures, no new test categories requiring handler changes.
+- **Open spec PR compliance review**: reviewed #4892 (already have debug_assert + == check), #4898 (no PENDING check in tiebreaker — already compliant), #4932 (sanity/blocks payload attestation tests — handler already supports), #4940 (fork choice tests — Step::OnExecutionPayload + check_head_payload_status already wired), #4843 (SLOTNUM — small PayloadAttributes change, not yet merged), #4840 (variable PTC deadline — major change, 1 approval only), #4939 (missing envelope request — new gossip rules, 0 approvals)
+- **Spec issue review**: checked open Gloas issues — #4899 (proposer boost in is_parent_strong) confirmed vibehouse correctly excludes proposer boost from parent strength check in Gloas via attestation-only weight in `should_apply_proposer_boost_gloas`; #4561 (same-slot slashings before builder payments) still open discussion, vibehouse follows current spec ordering
+- **Nightly CI schedule**: confirmed schedule cron (`30 8 * * *` UTC) not yet triggered (workflow added Feb 28, first scheduled run expected Mar 1 08:30 UTC). All 3 existing nightly runs are manual workflow_dispatch — all pass except one transient failure (moonrepo 502 + fulu timeout, resolved in rerun)
+- **CI status**: all green, 4 in-progress (doc-only runs)
+- **No code changes this run** — spec fully compliant with nightly vectors, no new merged PRs to implement
+
 ### 2026-03-01 — spec tracking, on_block compliance review (run 284)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 283
