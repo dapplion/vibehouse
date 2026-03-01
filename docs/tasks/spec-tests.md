@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — proposer slashing ordering fix, attestation weight audit, spec tracking (run 307)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 306
+- Open Gloas spec PRs tracked: #4950 (by_root serve range), #4940 (initial fork choice tests), #4843 (variable PTC deadline), #4939, #4926, #4932, #4892, #4898, #4630, #4840 — all still open/unmerged
+- **Spec ordering fix: process_proposer_slashing payment removal**:
+  - Spec's `process_proposer_slashing` removes the `BuilderPendingPayment` BEFORE calling `slash_validator`
+  - Vibehouse had these in reverse order (slash first, then remove payment)
+  - The operations are independent (no data dependency between `slash_validator` and payment removal), so behavior was unchanged
+  - Fixed to match spec ordering for correctness and auditability
+- **Deep attestation weight accumulation audit**:
+  - `process_attestation` Gloas changes: ✅ `is_attestation_same_slot` pre-computation correct (depends only on state + data, not per-validator)
+  - `will_set_new_flag` logic: ✅ tracks whether any new participation flag is set, matching spec exactly
+  - `payment_slot_index` computation: ✅ `SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH` for current epoch, `slot % SLOTS_PER_EPOCH` for previous epoch
+  - Weight accumulation: ✅ `saturating_add(validator_effective_balance)` — spec uses `+=` which in Python is direct addition; saturating is safe since max possible weight (~32e15) fits in u64
+  - In-place modification: ✅ vibehouse mutates `builder_pending_payments` in place each iteration vs spec fetching reference then writing back; functionally equivalent since Python's assignment to `payment` mutates the list element directly
+  - `data.index < 2` check: ✅ implemented in `verify_attestation.rs:79`
+- **Tests**: 464 state_processing, 138/138 EF fake_crypto, 17 slashing-specific, 686 beacon_chain (gloas) — all pass
+- **Clippy**: zero warnings (lint-full passed via pre-commit hook)
+
 ### 2026-03-01 — deep state transition spec audit, spec tracking (run 306)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 305
