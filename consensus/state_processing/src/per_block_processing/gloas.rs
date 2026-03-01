@@ -7134,4 +7134,214 @@ mod tests {
             "next_withdrawal_index should be preserved when no withdrawals occur"
         );
     }
+
+    // ── Self-build bid error priority ──
+
+    #[test]
+    fn self_build_bid_nonzero_value_checked_before_signature() {
+        // When a self-build bid has BOTH invalid conditions (non-zero value AND
+        // non-infinity signature), the value check should be the first rejection.
+        // This verifies error ordering: the value=0 check comes before the
+        // signature infinity check in the code.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let mut bid = make_self_build_bid(&state, &spec);
+        bid.message.value = 100; // FIRST invalid condition
+        bid.signature = Signature::empty(); // SECOND invalid condition (not infinity)
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        // The value check should fire first
+        assert!(matches!(
+            result,
+            Err(BlockProcessingError::PayloadBidInvalid { reason })
+                if reason.contains("value = 0")
+        ));
+    }
+
+    // ── Builder bid at last slot of epoch ──
+
+    #[test]
+    fn builder_bid_pending_payment_at_last_slot_of_epoch() {
+        // At the last slot of an epoch (slot % slots_per_epoch == slots_per_epoch - 1),
+        // the pending payment index should be: slots_per_epoch + (slots_per_epoch - 1)
+        // = 2 * slots_per_epoch - 1, which is the last valid index.
+        // For MinimalEthSpec: slots_per_epoch = 8, last slot in epoch = 15 (epoch 1)
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Advance state to slot 15 (last slot of epoch 1)
+        *state.slot_mut() = Slot::new(15);
+        // Update the bid to match slot 15
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_execution_payload_bid.slot = Slot::new(15);
+
+        let parent_root = state.latest_block_header().parent_root;
+        let bid_value = 777_000;
+        let mut bid = make_builder_bid(&state, &spec, bid_value);
+        bid.message.slot = Slot::new(15);
+
+        process_execution_payload_bid(
+            &mut state,
+            &bid,
+            Slot::new(15),
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // slot_index = 8 + (15 % 8) = 8 + 7 = 15 (last index)
+        let expected_index = (E::slots_per_epoch() + 15 % E::slots_per_epoch()) as usize;
+        assert_eq!(expected_index, 15);
+
+        let payment = state
+            .builder_pending_payments()
+            .unwrap()
+            .get(expected_index)
+            .unwrap();
+        assert_eq!(
+            payment.withdrawal.amount, bid_value,
+            "payment at last epoch slot should be stored at index 2*SPE-1"
+        );
+    }
+
+    // ── Withdrawal multiple-builder sweep wrap-around ──
+
+    #[test]
+    fn withdrawals_builder_sweep_wraps_with_multiple_builders() {
+        // Start next_withdrawal_builder_index at builder 2 of 3 builders.
+        // Two builders (2 and 0) are exiting, builder 1 is active.
+        // The sweep should wrap around: process builder 2, skip builder 1,
+        // process builder 0, advancing the index correctly.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add two more builders (total 3: indices 0, 1, 2)
+        let state_gloas = state.as_gloas_mut().unwrap();
+        for _ in 0..2 {
+            state_gloas
+                .builders
+                .push(Builder {
+                    pubkey: types::PublicKeyBytes::empty(),
+                    version: 0x03,
+                    execution_address: Address::repeat_byte(0xCC),
+                    balance: 3_000_000_000,
+                    deposit_epoch: Epoch::new(0),
+                    withdrawable_epoch: spec.far_future_epoch,
+                })
+                .unwrap();
+        }
+
+        // Make builders 0 and 2 withdrawable (exiting), leave builder 1 active
+        state_gloas.builders.get_mut(0).unwrap().withdrawable_epoch = Epoch::new(0);
+        state_gloas.builders.get_mut(2).unwrap().withdrawable_epoch = Epoch::new(0);
+        state_gloas.builders.get_mut(2).unwrap().balance = 2_000_000_000;
+
+        // Start sweep at builder index 2
+        state_gloas.next_withdrawal_builder_index = 2;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let withdrawals = &state_gloas.payload_expected_withdrawals;
+
+        // Should find builder 2 first, then wrap to builder 0
+        let builder_withdrawals: Vec<_> = withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(
+            builder_withdrawals.len(),
+            2,
+            "two exiting builders should produce withdrawals"
+        );
+
+        // Builder 2: balance 2B
+        assert_eq!(
+            builder_withdrawals[0].validator_index,
+            2 | BUILDER_INDEX_FLAG,
+        );
+        assert_eq!(builder_withdrawals[0].amount, 2_000_000_000);
+
+        // Builder 0: balance 5B (original state balance)
+        assert_eq!(builder_withdrawals[1].validator_index, BUILDER_INDEX_FLAG,);
+        assert_eq!(builder_withdrawals[1].amount, 5_000_000_000);
+    }
+
+    // ── Payload attestation wrong block root produces correct error ──
+
+    #[test]
+    fn payload_attestation_wrong_block_root_rejected() {
+        // A payload attestation referencing a block root that doesn't match the
+        // parent block header should be rejected with WrongBeaconBlockRoot.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let attestation = PayloadAttestation {
+            data: types::PayloadAttestationData {
+                beacon_block_root: Hash256::repeat_byte(0xFF), // wrong root
+                slot: state.slot().saturating_sub(1u64),
+                payload_present: true,
+                blob_data_available: true,
+            },
+            aggregation_bits: BitVector::new(),
+            signature: bls::AggregateSignature::empty(),
+        };
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongBeaconBlockRoot
+                ))
+            ),
+            "wrong block root should produce WrongBeaconBlockRoot error: {:?}",
+            result,
+        );
+    }
+
+    // ── Payload attestation wrong slot produces correct error values ──
+
+    #[test]
+    fn payload_attestation_wrong_slot_reports_values() {
+        // A payload attestation with data.slot + 1 != state.slot should be
+        // rejected with WrongSlot containing the correct expected/actual values.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+        let wrong_data_slot = state.slot(); // data.slot = state.slot → data.slot + 1 != state.slot
+
+        let attestation = PayloadAttestation {
+            data: types::PayloadAttestationData {
+                beacon_block_root: parent_root,
+                slot: wrong_data_slot,
+                payload_present: true,
+                blob_data_available: true,
+            },
+            aggregation_bits: BitVector::new(),
+            signature: bls::AggregateSignature::empty(),
+        };
+
+        let result =
+            process_payload_attestation(&mut state, &attestation, VerifySignatures::False, &spec);
+        match result {
+            Err(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::WrongSlot { expected, actual },
+            )) => {
+                assert_eq!(expected, state.slot(), "expected slot should be state.slot");
+                assert_eq!(
+                    actual, wrong_data_slot,
+                    "actual slot should be the attestation's data.slot"
+                );
+            }
+            other => panic!("expected WrongSlot error, got {:?}", other),
+        }
+    }
 }
