@@ -815,13 +815,9 @@ where
         //
         // Spec: record_block_timeliness — block_timeliness[ATTESTATION_TIMELINESS_INDEX]
         // is true when the block arrives before the attestation deadline.
-        // Pre-Gloas: slot split into 3 intervals. Gloas: 4 intervals.
+        // Uses spec's get_attestation_due_ms which varies by epoch (pre/post-Gloas).
         let block_epoch = block.slot().epoch(E::slots_per_epoch());
-        let is_gloas = spec
-            .gloas_fork_epoch
-            .is_some_and(|fork_epoch| block_epoch >= fork_epoch);
-        let intervals_per_slot: u64 = if is_gloas { 4 } else { 3 };
-        let attestation_due_ms = spec.seconds_per_slot.saturating_mul(1000) / intervals_per_slot;
+        let attestation_due_ms = spec.get_attestation_due_ms(block_epoch);
         let is_before_attesting_interval = block_delay < Duration::from_millis(attestation_due_ms);
 
         let is_first_block = self.fc_store.proposer_boost_root().is_zero();
@@ -1028,11 +1024,9 @@ where
                 proposer_index: block.proposer_index(),
                 // Spec: record_block_timeliness — block_timeliness[PTC_TIMELINESS_INDEX]
                 // is true when the block arrives in its own slot AND before the PTC
-                // deadline (payload_attestation_due, 75% of slot duration).
-                // PTC deadline = 3/4 of slot = seconds_per_slot * 750ms.
+                // deadline (get_payload_attestation_due_ms, 75% of slot).
                 ptc_timely: current_slot == block.slot()
-                    && block_delay
-                        < Duration::from_millis(spec.seconds_per_slot.saturating_mul(750)),
+                    && block_delay < Duration::from_millis(spec.get_payload_attestation_due_ms()),
                 envelope_received: false,
             },
             current_slot,
