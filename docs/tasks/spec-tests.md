@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — withdrawal processing edge case tests, spec tracking (run 277)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 276
+- Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Added 5 withdrawal processing edge case tests** targeting builder sweep phase interactions:
+  - `withdrawals_builder_sweep_early_exit_reserved_limit`: sweep exits early when reserved_limit is hit (not builders_limit), verifies next_withdrawal_builder_index advances by actual iteration count only
+  - `withdrawals_zero_builders_no_panic`: empty builders list doesn't panic, builder sweep phase is cleanly skipped
+  - `withdrawals_builder_sweep_all_ineligible_advances_index`: all builders active (far_future_epoch), sweep iterates full builders_limit but produces no withdrawals, index still advances
+  - `withdrawals_builder_sweep_skipped_when_reserved_limit_full`: phase 1 fills reserved_limit, sweep breaks on first iteration, builder index stays at 0
+  - `withdrawals_builder_pending_plus_sweep_wrap`: combined phase 1 + phase 3 with sweep wrapping around 2 builders, verifies withdrawal ordering and contiguous indices
+- **Test results**: 465/465 state_processing tests pass (was 460). Clippy clean.
+- **CI status**: all green, nightly green
+
 ### 2026-03-01 — test coverage audit, spec tracking (run 276)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 275

@@ -6059,4 +6059,328 @@ mod tests {
             "processed pending withdrawal should be removed from list"
         );
     }
+
+    /// Builder sweep exits early due to reserved_limit (not builders_limit).
+    /// With 5 builders and reserved_limit=3, if phase 1 already produced 2
+    /// withdrawals, the sweep can only produce 1 more before hitting
+    /// reserved_limit. Verify next_withdrawal_builder_index reflects only the
+    /// iterations actually executed, not the full builders_limit.
+    #[test]
+    fn withdrawals_builder_sweep_early_exit_reserved_limit() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 10_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add 4 more exited builders (total 5, indices 0-4)
+        for i in 1..5u8 {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .push(Builder {
+                    pubkey: types::PublicKeyBytes::empty(),
+                    version: 0x03,
+                    execution_address: Address::repeat_byte(0xB0 + i),
+                    balance: 10_000_000_000,
+                    deposit_epoch: Epoch::new(0),
+                    withdrawable_epoch: Epoch::new(0), // exited
+                })
+                .unwrap();
+        }
+
+        // Make builder 0 also exited
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Add 2 builder pending withdrawals to fill phase 1 partially
+        // reserved_limit = max_withdrawals(4) - 1 = 3
+        // Phase 1 produces 2 withdrawals, leaving room for 1 more in phases 2-3
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                builder_index: 0,
+                amount: 1_000_000_000,
+                fee_recipient: Address::repeat_byte(0xBB),
+            })
+            .unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                builder_index: 1,
+                amount: 1_000_000_000,
+                fee_recipient: Address::repeat_byte(0xB1),
+            })
+            .unwrap();
+
+        // Start sweep at builder 2
+        state_gloas.next_withdrawal_builder_index = 2;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let builder_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+
+        // Phase 1: 2 pending withdrawals (builders 0 and 1)
+        // Phase 3: sweep starts at builder 2, produces 1 withdrawal → hits reserved_limit=3
+        // Total builder withdrawals: 3
+        assert_eq!(
+            builder_w.len(),
+            3,
+            "2 pending + 1 sweep = 3 builder withdrawals"
+        );
+
+        // The sweep withdrawal should be builder 2
+        assert_eq!(
+            builder_w[2].validator_index,
+            2 | BUILDER_INDEX_FLAG,
+            "sweep should process builder 2"
+        );
+
+        // The sweep ran only 1 iteration before reserved_limit was hit
+        // next_withdrawal_builder_index = (2 + 1) % 5 = 3
+        assert_eq!(
+            state_gloas.next_withdrawal_builder_index, 3,
+            "builder index advances by 1 (early exit after 1 iteration)"
+        );
+    }
+
+    /// Withdrawal processing with zero builders in state.
+    /// The builder sweep phase should gracefully handle an empty builders list
+    /// without panicking or producing any builder withdrawals.
+    #[test]
+    fn withdrawals_zero_builders_no_panic() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 0);
+        make_parent_block_full(&mut state);
+
+        // Remove all builders
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.builders = List::default();
+
+        // Should not panic
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // No builder withdrawals should exist
+        let builder_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert!(
+            builder_w.is_empty(),
+            "no builder withdrawals with empty builders list"
+        );
+
+        // next_withdrawal_builder_index should remain 0 (no builders to advance through)
+        assert_eq!(
+            state_gloas.next_withdrawal_builder_index, 0,
+            "builder index unchanged with empty builders list"
+        );
+    }
+
+    /// Builder sweep processes exactly builders_limit iterations when no
+    /// eligible builder is found (all active). Verify next_withdrawal_builder_index
+    /// advances by the full sweep count, not just eligible-builder count.
+    #[test]
+    fn withdrawals_builder_sweep_all_ineligible_advances_index() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 5_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add 2 more active builders (total 3, all active with far_future_epoch)
+        for i in 1..3u8 {
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .push(Builder {
+                    pubkey: types::PublicKeyBytes::empty(),
+                    version: 0x03,
+                    execution_address: Address::repeat_byte(0xB0 + i),
+                    balance: 5_000_000_000,
+                    deposit_epoch: Epoch::new(0),
+                    withdrawable_epoch: spec.far_future_epoch, // active — not swept
+                })
+                .unwrap();
+        }
+
+        // Start sweep at builder 1
+        state.as_gloas_mut().unwrap().next_withdrawal_builder_index = 1;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // No builder sweep withdrawals (all active)
+        let builder_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert!(builder_w.is_empty(), "no active builders should be swept");
+
+        // builders_limit = min(3, 16) = 3, all 3 iterated
+        // next_withdrawal_builder_index = (1 + 3) % 3 = 1
+        assert_eq!(
+            state_gloas.next_withdrawal_builder_index, 1,
+            "index advances by builders_limit even when no builder is eligible"
+        );
+    }
+
+    /// Builder sweep with reserved_limit already fully consumed by phase 1
+    /// (builder pending withdrawals). The sweep loop should not execute any
+    /// iterations, so next_withdrawal_builder_index should not advance.
+    #[test]
+    fn withdrawals_builder_sweep_skipped_when_reserved_limit_full() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 100_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make builder 0 exited
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Add 3 pending withdrawals to fill reserved_limit (3 in minimal)
+        let state_gloas = state.as_gloas_mut().unwrap();
+        for i in 0..3u64 {
+            state_gloas
+                .builder_pending_withdrawals
+                .push(BuilderPendingWithdrawal {
+                    builder_index: 0,
+                    amount: 1_000_000_000 + i,
+                    fee_recipient: Address::repeat_byte(0xBB),
+                })
+                .unwrap();
+        }
+
+        // Start sweep at builder 0
+        state_gloas.next_withdrawal_builder_index = 0;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+
+        // Phase 1 should have produced 3 withdrawals (filling reserved_limit)
+        let builder_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+        assert_eq!(builder_w.len(), 3, "3 pending withdrawals from phase 1");
+
+        // Phase 3 sweep should have iterated 0 times (reserved_limit already hit)
+        // But wait — the sweep loop still iterates builders_limit times, checking
+        // reserved_limit at the start of each iteration. Since reserved_limit is
+        // already met, the very first iteration breaks.
+        // processed_builders_sweep_count = 0
+        // next_withdrawal_builder_index = (0 + 0) % 1 = 0
+        assert_eq!(
+            state_gloas.next_withdrawal_builder_index, 0,
+            "sweep didn't iterate, so builder index should not advance"
+        );
+    }
+
+    /// Phase 1 (builder pending) partially fills, phase 3 (builder sweep)
+    /// wraps around with 2 builders starting near the end. Tests the combined
+    /// index tracking when both pending and sweep phases contribute withdrawals.
+    #[test]
+    fn withdrawals_builder_pending_plus_sweep_wrap() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 50_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a second exited builder
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .push(Builder {
+                pubkey: types::PublicKeyBytes::empty(),
+                version: 0x03,
+                execution_address: Address::repeat_byte(0xCC),
+                balance: 20_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: Epoch::new(0), // exited
+            })
+            .unwrap();
+
+        // Make builder 0 exited too
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(0);
+
+        // Add 1 pending withdrawal (phase 1 produces 1)
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                builder_index: 0,
+                amount: 3_000_000_000,
+                fee_recipient: Address::repeat_byte(0xBB),
+            })
+            .unwrap();
+
+        // Start sweep at builder 1
+        state_gloas.next_withdrawal_builder_index = 1;
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let state_gloas = state.as_gloas().unwrap();
+        let builder_w: Vec<_> = state_gloas
+            .payload_expected_withdrawals
+            .iter()
+            .filter(|w| (w.validator_index & BUILDER_INDEX_FLAG) != 0)
+            .collect();
+
+        // Phase 1: 1 pending withdrawal for builder 0
+        // Phase 3: sweep starts at builder 1 (exited, balance=20B → withdrawal)
+        //          then wraps to builder 0 (exited, balance=50B → withdrawal)
+        //          now withdrawals.len() = 3 = reserved_limit → break
+        // Total: 3 builder withdrawals
+        assert_eq!(
+            builder_w.len(),
+            3,
+            "1 pending + 2 sweep = 3 builder withdrawals"
+        );
+
+        // Verify sweep withdrawal order: builder 1 first, then builder 0
+        assert_eq!(
+            builder_w[1].validator_index,
+            1 | BUILDER_INDEX_FLAG,
+            "sweep starts at builder 1"
+        );
+        assert_eq!(
+            builder_w[2].validator_index,
+            BUILDER_INDEX_FLAG, // builder index 0
+            "sweep wraps to builder 0"
+        );
+
+        // Sweep iterated 2 times: builders 1 and 0
+        // next_withdrawal_builder_index = (1 + 2) % 2 = 1
+        assert_eq!(
+            state_gloas.next_withdrawal_builder_index, 1,
+            "builder index wraps after sweep processes both builders"
+        );
+
+        // Withdrawal indices should be contiguous
+        for (i, w) in state_gloas.payload_expected_withdrawals.iter().enumerate() {
+            assert_eq!(w.index, i as u64, "withdrawal index should be contiguous");
+        }
+    }
 }
