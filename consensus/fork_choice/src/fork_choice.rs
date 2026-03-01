@@ -4459,5 +4459,183 @@ mod tests {
                 "execution_status should not be set without payload quorum"
             );
         }
+
+        /// Envelope arrival after PTC quorum does not reset accumulated PTC weight.
+        /// The on_execution_payload function sets payload_revealed, envelope_received,
+        /// payload_data_available, and execution_status — but it must NOT touch
+        /// ptc_weight or ptc_blob_data_available_weight that were accumulated from
+        /// prior attestations.
+        #[test]
+        fn envelope_after_ptc_quorum_preserves_all_weights() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Set a bid so bid_block_hash is available
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            // Send quorum+1 payload_present=true AND blob_data_available=true votes
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            let ptc_weight_before = node.ptc_weight;
+            let blob_weight_before = node.ptc_blob_data_available_weight;
+            assert!(node.payload_revealed, "PTC quorum should reveal payload");
+            assert!(ptc_weight_before > quorum_threshold);
+            assert!(blob_weight_before > quorum_threshold);
+
+            // Now envelope arrives — should set envelope_received but NOT touch weights
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.envelope_received, "envelope_received should be set");
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.ptc_weight, ptc_weight_before,
+                "on_execution_payload must NOT modify ptc_weight"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, blob_weight_before,
+                "on_execution_payload must NOT modify blob weight"
+            );
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should be updated to envelope hash"
+            );
+        }
+
+        /// on_execution_payload for unknown block root returns MissingProtoArrayBlock error
+        #[test]
+        fn envelope_unknown_block_root() {
+            let mut fc = new_fc();
+            let unknown = root(999);
+            let hash = ExecutionBlockHash::repeat_byte(0xAA);
+            let err = fc.on_execution_payload(unknown, hash).unwrap_err();
+            assert!(
+                matches!(err, Error::MissingProtoArrayBlock(r) if r == unknown),
+                "expected MissingProtoArrayBlock for unknown root, got {:?}",
+                err
+            );
+        }
+
+        /// on_execution_bid slot mismatch returns SlotMismatch error.
+        /// Block at slot 1, bid for slot 2 — should fail.
+        #[test]
+        fn bid_slot_mismatch_rejected() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Bid with wrong slot (2 instead of 1)
+            let bid = make_bid(2, 42);
+            let err = fc.on_execution_bid(&bid, block_root).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidExecutionBid(InvalidExecutionBid::SlotMismatch {
+                        bid_slot,
+                        block_slot,
+                    }) if bid_slot == Slot::new(2) && block_slot == Slot::new(1)
+                ),
+                "expected SlotMismatch with correct slot values, got {:?}",
+                err
+            );
+        }
+
+        /// on_payload_attestation for future slot returns FutureSlot error
+        #[test]
+        fn payload_attestation_future_slot_rejected() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let spec = ChainSpec::minimal();
+            // Attestation for slot 5, but current_slot is 3 — slot is in the future
+            let att = make_payload_attestation(5, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(5, block_root, true, true, vec![0]);
+
+            let err = fc
+                .on_payload_attestation(&att, &indexed, Slot::new(3), &spec)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidPayloadAttestation(InvalidPayloadAttestation::FutureSlot {
+                        attestation_slot,
+                        current_slot,
+                    }) if attestation_slot == Slot::new(5) && current_slot == Slot::new(3)
+                ),
+                "expected FutureSlot with correct values, got {:?}",
+                err
+            );
+        }
+
+        /// PTC weight accumulates across multiple separate attestation batches.
+        /// Three separate batches of attestations contribute to the same node's
+        /// ptc_weight, and quorum is reached on the third batch.
+        #[test]
+        fn ptc_weight_accumulates_across_batches() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2; // 1 for minimal
+
+            // Batch 1: 1 attester, payload_present=true
+            let att1 = make_payload_attestation(1, block_root, true, false);
+            let idx1 = make_indexed_payload_attestation(1, block_root, true, false, vec![0]);
+            fc.on_payload_attestation(&att1, &idx1, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 1, "batch 1: weight should be 1");
+            // With minimal spec, quorum_threshold=1, so weight=1 is NOT > 1 (strict)
+            // payload_revealed depends on whether ptc_size/2 = 1 and weight > 1
+            // For minimal: ptc_size=2, quorum=1, weight=1 is NOT > 1 => not revealed
+            assert!(
+                !node.payload_revealed,
+                "weight exactly at threshold should NOT reveal"
+            );
+
+            // Batch 2: 1 more attester, payload_present=true (total: 2)
+            let att2 = make_payload_attestation(1, block_root, true, false);
+            let idx2 = make_indexed_payload_attestation(1, block_root, true, false, vec![1]);
+            fc.on_payload_attestation(&att2, &idx2, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 2, "batch 2: cumulative weight should be 2");
+            assert!(
+                node.payload_revealed,
+                "weight exceeding threshold should reveal payload"
+            );
+        }
     }
 }

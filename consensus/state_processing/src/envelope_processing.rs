@@ -2598,4 +2598,236 @@ mod tests {
             "availability bit at last valid index should be set after processing"
         );
     }
+
+    // ── Zero-amount payment skips withdrawal queue ──────────
+
+    #[test]
+    fn zero_amount_payment_not_queued_as_withdrawal() {
+        // When the pending payment has amount=0, the spec says we skip
+        // adding it to builder_pending_withdrawals. This verifies the
+        // `if amount > 0` guard in process_execution_payload_envelope.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let payment_index = (slots_per_epoch + state.slot().as_u64() % slots_per_epoch) as usize;
+
+        // Set a payment with amount=0 (e.g. bid that committed no payment)
+        let payment = BuilderPendingPayment {
+            weight: 10,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xEE),
+                amount: 0,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(payment_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment slot should be cleared
+        let cleared = *state
+            .builder_pending_payments()
+            .unwrap()
+            .get(payment_index)
+            .unwrap();
+        assert_eq!(
+            cleared,
+            BuilderPendingPayment::default(),
+            "payment slot should be cleared even with zero amount"
+        );
+
+        // No withdrawal should be queued since amount was 0
+        assert!(
+            state.builder_pending_withdrawals().unwrap().is_empty(),
+            "zero-amount payment should NOT be queued as withdrawal"
+        );
+    }
+
+    // ── Self-build signature verification uses proposer pubkey ──
+
+    #[test]
+    fn self_build_envelope_valid_signature_succeeds() {
+        // Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) use
+        // the proposer's validator pubkey for signature verification, not a
+        // builder registry pubkey. This exercises that code path.
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        // Set the bid to self-build
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let mut envelope = make_valid_envelope(&state);
+        // The proposer is validator 0 (proposer_index=0 in latest_block_header)
+        let proposer_kp = &keypairs[0];
+        sign_envelope(&state, &mut envelope, &proposer_kp.sk, &spec);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        sign_envelope(&state, &mut envelope, &proposer_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "self-build envelope signed by proposer should succeed: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    #[test]
+    fn self_build_envelope_wrong_signer_rejected() {
+        // Self-build envelope signed by a NON-proposer key should fail
+        // signature verification, proving the self-build path uses
+        // the correct pubkey (proposer's, not some other validator's).
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+
+        // Set the bid to self-build
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let mut envelope = make_valid_envelope(&state);
+        // Sign with a non-proposer key (validator 1 instead of proposer at index 0)
+        let wrong_kp = &keypairs[1];
+        sign_envelope(&state, &mut envelope, &wrong_kp.sk, &spec);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+        sign_envelope(&state, &mut envelope, &wrong_kp.sk, &spec);
+
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
+            "self-build envelope signed by non-proposer should be rejected: {:?}",
+            result,
+        );
+    }
+
+    // ── Latest block hash is updated to envelope's block_hash ──
+
+    #[test]
+    fn latest_block_hash_updated_to_envelope_block_hash() {
+        // Explicitly verify that latest_block_hash changes from the parent
+        // to the envelope payload's block_hash after processing.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let old_block_hash = *state.latest_block_hash().unwrap();
+        let envelope = make_valid_envelope(&state);
+        let expected_new_hash = envelope.message.payload.block_hash;
+
+        // Sanity: the envelope's block_hash differs from the current latest
+        assert_ne!(
+            old_block_hash, expected_new_hash,
+            "sanity: envelope block_hash should differ from current latest_block_hash"
+        );
+
+        let mut envelope = envelope;
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        assert_eq!(
+            *state.latest_block_hash().unwrap(),
+            expected_new_hash,
+            "latest_block_hash should be set to the envelope's payload block_hash"
+        );
+    }
+
+    // ── Concurrent mid-slot payment index tests ─────────────
+
+    #[test]
+    fn envelope_at_mid_epoch_slot_uses_correct_payment_index() {
+        // Test payment index calculation for a mid-epoch slot (slot 12 = epoch 1, slot 4)
+        // payment_index = slots_per_epoch + (slot % slots_per_epoch) = 8 + 4 = 12
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let mid_slot = Slot::new(E::slots_per_epoch() + 4); // slot 12
+        state.as_gloas_mut().unwrap().slot = mid_slot;
+        state.as_gloas_mut().unwrap().latest_block_header.slot = mid_slot.saturating_sub(1u64);
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .latest_execution_payload_bid
+            .slot = mid_slot;
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let expected_index = (slots_per_epoch + mid_slot.as_u64() % slots_per_epoch) as usize;
+        assert_eq!(expected_index, 12, "sanity: payment index for slot 12");
+
+        let payment = BuilderPendingPayment {
+            weight: 30,
+            withdrawal: BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xCC),
+                amount: 7_000_000_000,
+                builder_index: 0,
+            },
+        };
+        *state
+            .builder_pending_payments_mut()
+            .unwrap()
+            .get_mut(expected_index)
+            .unwrap() = payment;
+
+        let mut envelope = make_valid_envelope(&state);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Payment should be cleared at the correct index
+        let cleared = *state
+            .builder_pending_payments()
+            .unwrap()
+            .get(expected_index)
+            .unwrap();
+        assert_eq!(
+            cleared,
+            BuilderPendingPayment::default(),
+            "payment at mid-epoch index should be cleared"
+        );
+
+        // Withdrawal should be queued with correct amount
+        let withdrawals = state.builder_pending_withdrawals().unwrap();
+        assert_eq!(withdrawals.len(), 1);
+        assert_eq!(withdrawals.get(0).unwrap().amount, 7_000_000_000);
+    }
 }
