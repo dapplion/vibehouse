@@ -28,6 +28,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — deep state transition spec audit, spec tracking (run 306)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 305
+- Open Gloas spec PRs tracked: #4950 (by_root serve range extension), #4940 (initial fork choice tests — new `on_execution_payload` step and `head_payload_status` check, vibehouse test runner already supports both), #4843 (variable PTC deadline), #4939, #4926, #4932, #4892, #4898, #4630, #4840 — all still open/unmerged
+- **Comprehensive state transition spec audit** — compared all Gloas state processing functions against the latest spec:
+  - `process_execution_payload_bid`: ✅ all 7 assertions match (self-build, active builder, can_cover_bid, blob commitments, slot, parent_block_hash, parent_block_root, prev_randao)
+  - `process_execution_payload` (envelope): ✅ all 10 verification steps match (signature, state_root caching, beacon_block_root, slot, builder_index, prev_randao, withdrawals, gas_limit, block_hash, parent_hash, timestamp)
+  - `process_execution_payload` state mutations: ✅ correct order (execution requests → payment clearing → availability bit → latest_block_hash → state_root verify)
+  - `process_builder_pending_payments`: ✅ quorum calculation, first-half check, rotation logic all match
+  - `process_proposer_lookahead`: ✅ shift + fill with `next_epoch = current + min_seed_lookahead + 1`
+  - `process_attestation` weight accumulation: ✅ `will_set_new_flag && same_slot && payment.amount > 0 → weight += effective_balance`
+  - `process_withdrawals_gloas`: ✅ all 4 phases (builder pending, partial validator, builder sweep, validator sweep) match spec ordering and limits
+  - `get_expected_withdrawals_gloas`: ✅ mirrors process_withdrawals_gloas exactly (read-only version)
+  - `apply_withdrawals`: ✅ `saturating_sub` equivalent to spec's `min(amount, balance)` subtraction
+  - `update_next_withdrawal_builder_index`: ✅ uses `processed_builders_sweep_count` (total iterations, not withdrawal count)
+  - `update_next_withdrawal_validator_index`: ✅ if-max-reached/else logic matches Electra spec
+  - `process_slot` / `cache_state`: ✅ `execution_payload_availability[(slot+1) % SLOTS_PER_HISTORICAL_ROOT] = 0b0` — temporary slot increment handled correctly
+  - `is_active_builder`: ✅ `deposit_epoch < finalized_epoch && withdrawable_epoch == FAR_FUTURE_EPOCH`
+  - `is_parent_block_full`: ✅ `latest_execution_payload_bid.block_hash == latest_block_hash`
+  - `verify_attestation` committee index: ✅ `data.index < 2` for Gloas, `data.index == 0` for Fulu
+  - Constants: ✅ `BUILDER_INDEX_FLAG = 2^40`, `BUILDER_INDEX_SELF_BUILD = u64::MAX`
+- **No spec deviations found** — all functions match the latest consensus-specs (v1.7.0-alpha.2)
+- **PR #4940 readiness**: vibehouse EF test runner already supports `OnExecutionPayload` step (SignedExecutionPayloadEnvelope SSZ loading) and `head_payload_status` check — ready for these tests when they're released
+
 ### 2026-03-01 — fork choice spec audit and timeliness fix, spec tracking (run 305)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **11 merged PRs since run 304** reviewed — 6 high-impact:
