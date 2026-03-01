@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — code quality fix, spec tracking (run 348)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **All 12 open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558. None merged.
+- **CI status**: all green. Run 342 failure was transient 502 (spec test vector download). Nightly (Mar 1 08:51 UTC) green.
+- **Code quality fix shipped**: `migrate.rs` — silent error drop in migration thread retry path
+  - Previously: `let _ = tx.send(tx_err.0)` silently discarded the retry result when sending a migration notification to the newly spawned background thread
+  - If the retry also failed, the finalization/reconstruction notification was dropped with no log, no metric, no operator visibility
+  - Now: logs a warning with the notification kind when the retry fails
+  - 96/96 store/finalization tests pass
+- **Codebase audit findings** (for future runs):
+  - `builder.rs:614`: all data columns persisted on checkpoint sync, not just custody columns (disk waste)
+  - `builder.rs:1029-1047`: 10 TODO comments about pool persistence, none tracked with issues
+  - Multiple `TODO(EIP-7732)` and `TODO(EIP-7892)` without vibehouse-local issue references
+  - `verify_operation.rs:354,367,379`: dead DB schema v17 compat code, no issue for removal
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — Engine API V5 audit, devnet smoke test (run 347)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
