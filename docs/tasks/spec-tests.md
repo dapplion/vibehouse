@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, merged PR review (run 282)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **4 newly merged Gloas PRs** detected since run 281 (all already implemented in vibehouse):
+  - **#4948** (merged Feb 26): reorder PayloadStatus constants (EMPTY=0, FULL=1, PENDING=2) — vibehouse already uses this ordering since run 130. Fixed stale comment in `docs/workstreams/gloas-fork-choice.md` that still said `PENDING=0, EMPTY=1, FULL=2`.
+  - **#4947** (merged Feb 26): add pre-fork subscription note for `proposer_preferences` topic — doc-only spec change, no code needed. Nodes SHOULD subscribe one epoch before fork activation.
+  - **#4923** (merged Feb 16): ignore beacon block if parent payload unknown — already implemented at `block_verification.rs:971-984` (`GloasParentPayloadUnknown` error) since run 264.
+  - **#4918** (merged Feb 23): only allow attestations for known payload statuses — already implemented at `fork_choice.rs:1209-1217` (`PayloadNotRevealed` error for index=1 with unrevealed payload) since run 267.
+- Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge), #4940 (initial fork choice tests — no reviews yet), #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- **PR #4940 (Gloas fork choice test vectors)**: reviewed test structure — tests `on_execution_payload` lifecycle (EMPTY→FULL transition), store initialization (payload_states, payload_timeliness_vote, payload_data_availability_vote), and `head_payload_status` check. Vibehouse EF test runner already has all required infrastructure wired (`process_execution_payload`, `check_head_payload_status` in fork_choice.rs test harness).
+- **Clippy**: zero warnings across workspace (excluding ef_tests)
+- **Nightly CI**: latest nightly green (22522736397)
+- **CI status**: all green
+- **Code change**: fix stale doc comment in gloas-fork-choice.md (PENDING=0→PENDING=2)
+
 ### 2026-03-01 — spec conformance audits, gossip validation review (run 281)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 280

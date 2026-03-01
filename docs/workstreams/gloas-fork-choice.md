@@ -38,7 +38,7 @@ Spec source: https://github.com/ethereum/consensus-specs/blob/master/specs/gloas
 ```python
 class ForkChoiceNode(Container):
     root: Root
-    payload_status: PayloadStatus  # PENDING=0, EMPTY=1, FULL=2
+    payload_status: PayloadStatus  # EMPTY=0, FULL=1, PENDING=2
 ```
 
 This is the fundamental difference. In pre-Gloas, a node is identified by its root.
