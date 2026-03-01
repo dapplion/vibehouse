@@ -849,8 +849,7 @@ where
         )?;
 
         // Update unrealized justified/finalized checkpoints.
-        let block_epoch = block.slot().epoch(E::slots_per_epoch());
-
+        //
         // If the parent checkpoints are already at the same epoch as the block being imported,
         // it's impossible for the unrealized checkpoints to differ from the parent's. This
         // holds true because:
@@ -953,6 +952,8 @@ where
             .on_verified_block(block, block_root, state)
             .map_err(Error::AfterBlockFailed)?;
 
+        let bid_opt = block.body().signed_execution_payload_bid().ok();
+
         let execution_status = if let Ok(execution_payload) = block.body().execution_payload() {
             let block_hash = execution_payload.block_hash();
 
@@ -977,7 +978,7 @@ where
                     }
                 }
             }
-        } else if let Ok(bid) = block.body().signed_execution_payload_bid() {
+        } else if let Some(bid) = &bid_opt {
             // Gloas ePBS: block contains a bid, not a payload. Use the bid's block_hash
             // so head_hash is available for forkchoice_updated (especially for self-build
             // blocks which are immediately viable for head).
@@ -994,7 +995,6 @@ where
 
         // This does not apply a vote to the block, it just makes fork choice aware of the block so
         // it can still be identified as the head even if it doesn't have any votes.
-        let bid_opt = block.body().signed_execution_payload_bid().ok();
         self.proto_array.process_block::<E>(
             ProtoBlock {
                 slot: block.slot(),
