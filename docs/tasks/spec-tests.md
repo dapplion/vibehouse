@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fix chain_segment_varying_chunk_size CI timeout (run 327)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 326
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Fixed CI timeout**: `chain_segment_varying_chunk_size` test was timing out (>50 minutes) in nightly CI (run 22520311458, beacon-chain-tests fulu job)
+  - Root cause: test builds 320-block chain then reimports it 8 times with different chunk sizes. With Gloas (FORK_NAME=gloas), every block requires individual import + envelope processing, so chunk batching never helps — all 8 iterations do the same thing (320 sequential imports)
+  - Fix: limit the test to first 48 blocks (enough to cover largest chunk size of 42) — reduces 320×8=2560 imports to 48×8=384 imports
+  - Result: test runs in ~21s locally (was >3000s in CI), all 4 chain_segment tests pass
+  - The altair nightly failure in the same run was unrelated (CI toolchain setup failure: `moonrepo/setup-rust@v1`)
+- **Spec compliance audit**: reviewed 2 recently merged PRs
+  - #4948 (reorder payload status constants) — vibehouse already uses the new ordering (Empty=0, Full=1, Pending=2), no change needed
+  - #4947 (pre-fork subscription note for proposer_preferences) — documentation note only, no code change
+- **Tests**: all 4 chain_segment tests pass, clippy clean
+
 ### 2026-03-01 — fix flaky CI tests, spec tracking (run 326)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 325
