@@ -352,3 +352,20 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 3. **Simplified `saturating_sub(min(amount, balance))`** to `saturating_sub(amount)` in builder withdrawal balance decrease — the `min` is redundant since `saturating_sub` already clamps to zero.
 
 **Verification**: 463/463 state_processing tests, 711/711 types tests, 17/17 EF operations+sanity tests, 18/18 EF epoch processing tests, full workspace clippy clean.
+
+### Run 299: execution payload envelope metrics
+
+**Scope**: Observability improvement — add metrics for execution payload envelope gossip processing and self-build envelope processing.
+
+**Problem**: Execution bids had 3 metrics (verified, imported, equivocating) and payload attestations had 3 metrics, but execution payload envelopes — the second half of the ePBS pipeline where builders reveal payloads — had zero metrics. Operators could not monitor envelope verification rates, rejection patterns, or import success rates.
+
+**Changes**:
+1. **Network gossip metrics** (3 new counters in `beacon_node/network/src/metrics.rs`):
+   - `beacon_processor_payload_envelope_verified_total` — envelope passed gossip validation
+   - `beacon_processor_payload_envelope_imported_total` — envelope fully processed (EL + state transition)
+   - `beacon_processor_payload_envelope_rejected_total` — envelope rejected (InvalidSignature, SlotMismatch, BuilderIndexMismatch, BlockHashMismatch, NotGloasBlock)
+
+2. **Beacon chain metric** (1 new counter in `beacon_node/beacon_chain/src/metrics.rs`):
+   - `beacon_self_build_envelope_successes_total` — self-build envelope processed successfully
+
+**Verification**: 44/44 Gloas network tests, 17/17 self-build envelope tests, 17/17 EF spec tests, full workspace clippy clean (lint-full passed).

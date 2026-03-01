@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — add execution payload envelope metrics, spec tracking (run 299)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 298
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898 (1 approval), #4892 (3 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Observability improvement shipped**:
+  - Added execution payload envelope metrics for gossip processing — previously only execution bids and payload attestations had metrics, envelopes had none
+  - Network metrics (3 new counters): `beacon_processor_payload_envelope_verified_total`, `beacon_processor_payload_envelope_imported_total`, `beacon_processor_payload_envelope_rejected_total`
+  - Beacon chain metrics (1 new counter): `beacon_self_build_envelope_successes_total` for local self-build envelope processing
+  - Rejected counter incremented on InvalidSignature, SlotMismatch, BuilderIndexMismatch, BlockHashMismatch, NotGloasBlock errors
+  - Verified counter incremented after gossip validation passes (before fork choice import)
+  - Imported counter incremented after full envelope processing succeeds (EL newPayload + state transition)
+- **Tests**: 44/44 Gloas network tests, 17/17 self-build envelope tests, 17/17 EF operations+sanity tests all pass
+- **Clippy**: zero warnings across entire workspace (lint-full passed)
+- **CI**: push succeeded
+
 ### 2026-03-01 — pre-compute weights in find_head_gloas, spec tracking (run 298)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 297
