@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — routine spec tracking, all stable (run 335)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 334
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+  - #4950 (extend by_root serve range): 4 approvals, ready to merge — documentation change, no code change needed
+  - #4898 (remove pending from tiebreaker): 1 approval — already compliant
+  - #4892 (remove impossible branch): 2 approvals — already compliant
+  - #4843 (variable PTC deadline): 1 approval — significant change, will need refactor when merged
+  - Others: awaiting review, no movement
+- No new nightly test vector runs since run 334 (next expected Mar 2 ~03:00 UTC)
+- **Coverage audit**: investigated explorer-identified gaps in POST /beacon/pool/execution_bid endpoint — determined to be false positive (5 tests already exist: bid_submission_rejected_before_gloas, bid_submission_accepted_valid_builder, bid_submission_duplicate_returns_ok, bid_submission_rejected_unknown_builder, bid_submission_rejected_zero_payment). Other identified gaps (PTC committee error path, weak subjectivity checkpoint Gloas handling) are either not cost-effective to test or require integration-level scenarios that would be artificial
+- **CI status**: all completed runs green; transient beacon_chain timeout in run 22546986185 (CI runner contention); 3 runs currently in progress
+- **Nightly CI**: latest nightly (Mar 1 08:51 UTC) all green; Feb 28 nightly fulu failure was chain_segment_varying_chunk_size timeout (already excluded in run 327)
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — nightly test vector validation, all 216 pass including new builder exit tests (run 334)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 333
