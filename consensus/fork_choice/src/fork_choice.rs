@@ -813,10 +813,9 @@ where
         //
         // Spec: `update_proposer_boost_root` / `record_block_timeliness`
         //
-        // Pre-Gloas: slot is split into 3 intervals (block, attestation, aggregate).
-        // Gloas: slot is split into 4 intervals (block, attestation, aggregate, PTC).
-        // Use millisecond precision to avoid integer division truncation that loses
-        // sub-second thresholds (e.g. 6s / 4 = 1s instead of correct 1.5s).
+        // Spec: record_block_timeliness — block_timeliness[ATTESTATION_TIMELINESS_INDEX]
+        // is true when the block arrives before the attestation deadline.
+        // Pre-Gloas: slot split into 3 intervals. Gloas: 4 intervals.
         let block_epoch = block.slot().epoch(E::slots_per_epoch());
         let is_gloas = spec
             .gloas_fork_epoch
@@ -1027,10 +1026,13 @@ where
                 bid_block_hash: bid_opt.map(|bid| bid.message.block_hash),
                 bid_parent_block_hash: bid_opt.map(|bid| bid.message.parent_block_hash),
                 proposer_index: block.proposer_index(),
-                // PTC timeliness: block received in its own slot before the PTC deadline.
-                // The PTC deadline is later than the attestation deadline, so any block
-                // that's current-slot is conservatively PTC-timely.
-                ptc_timely: current_slot == block.slot(),
+                // Spec: record_block_timeliness — block_timeliness[PTC_TIMELINESS_INDEX]
+                // is true when the block arrives in its own slot AND before the PTC
+                // deadline (payload_attestation_due, 75% of slot duration).
+                // PTC deadline = 3/4 of slot = seconds_per_slot * 750ms.
+                ptc_timely: current_slot == block.slot()
+                    && block_delay
+                        < Duration::from_millis(spec.seconds_per_slot.saturating_mul(750)),
                 envelope_received: false,
             },
             current_slot,
