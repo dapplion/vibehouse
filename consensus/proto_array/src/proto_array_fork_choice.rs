@@ -1173,12 +1173,14 @@ impl ProtoArrayForkChoice {
             }
         }
 
-        pa.nodes
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| filtered[*i])
-            .map(|(_, node)| node.root)
-            .collect()
+        let count = filtered.iter().filter(|&&b| b).count();
+        let mut roots = HashSet::with_capacity(count);
+        for (i, node) in pa.nodes.iter().enumerate() {
+            if filtered[i] {
+                roots.insert(node.root);
+            }
+        }
+        roots
     }
 
     /// Get children of a Gloas fork choice node.
