@@ -403,7 +403,11 @@ pub fn get_ptc_committee<E: EthSpec>(
     let committees = state
         .get_beacon_committees_at_slot(slot)
         .map_err(BlockProcessingError::BeaconStateError)?;
-    let mut indices: Vec<u64> = Vec::new();
+    let mut indices: Vec<u64> = Vec::with_capacity(
+        committees
+            .iter()
+            .fold(0usize, |acc, c| acc.saturating_add(c.committee.len())),
+    );
     for committee in &committees {
         for &validator_index in committee.committee {
             indices.push(validator_index as u64);
@@ -424,6 +428,8 @@ pub fn get_ptc_committee<E: EthSpec>(
 
     let mut selected: Vec<u64> = Vec::with_capacity(ptc_size);
     let mut i: u64 = 0;
+    let mut hash_input = [0u8; 40];
+    hash_input[..32].copy_from_slice(seed.as_slice());
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;
         // shuffle_indices=False, so just use next_index directly
@@ -435,7 +441,8 @@ pub fn get_ptc_committee<E: EthSpec>(
                 ))?;
 
         // compute_balance_weighted_acceptance
-        let random_bytes = hash(&[&seed[..], &int_to_bytes8(i.safe_div(16)?)].concat());
+        hash_input[32..].copy_from_slice(&int_to_bytes8(i.safe_div(16)?));
+        let random_bytes = hash(&hash_input);
         let offset = i.safe_rem(16)?.safe_mul(2)? as usize;
         let random_byte_0 =
             *random_bytes
