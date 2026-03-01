@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — checkpoint sync disk optimization, spec tracking (run 349)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **All 12 open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558. None merged.
+- **Checkpoint sync disk optimization shipped**: `builder.rs` — data columns now filtered by custody during checkpoint sync
+  - Previously: `put_data_columns` stored ALL 128 data columns on checkpoint sync (the TODO(das) at line 614)
+  - Now: only custody columns are stored, determined by `node_custody_type` and `ordered_custody_column_indices`
+  - Fullnode stores `custody_requirement * columns_per_group` columns (typically 4 on mainnet)
+  - Supernode still stores all columns (no filtering)
+  - Semi-supernode stores half (64 groups)
+  - Added `custody_column_indices_for_checkpoint_sync()` helper method
+  - 4 new unit tests: fullnode filtering, supernode bypass, semi-supernode filtering, no-indices fallback
+  - All 6 builder tests pass, zero clippy warnings, full workspace compiles clean
+- **CI status**: all green (3 runs in progress from run 348, all completed runs green)
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+
 ### 2026-03-01 — code quality fix, spec tracking (run 348)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
