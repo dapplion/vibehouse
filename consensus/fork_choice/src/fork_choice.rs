@@ -4216,5 +4216,248 @@ mod tests {
                 "execution_status should not be set when bid_block_hash is None"
             );
         }
+
+        /// Bid arrives AFTER the execution payload envelope has already been
+        /// processed. This is a race condition where the bid gossip is delayed
+        /// relative to the envelope. The bid should reset all envelope-derived
+        /// state: `payload_revealed`, `ptc_weight`, `ptc_blob_data_available_weight`,
+        /// and `payload_data_available`. However, `envelope_received` and
+        /// `execution_status` are NOT reset by `on_execution_bid`.
+        ///
+        /// This verifies that a late bid doesn't leave stale envelope state that
+        /// could cause the fork choice to incorrectly treat the block as revealed.
+        #[test]
+        fn bid_after_envelope_resets_revealed_state() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Envelope arrives first — sets payload_revealed, envelope_received,
+            // payload_data_available, execution_status
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xCC);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Sanity: verify envelope state
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.envelope_received);
+            assert!(node.payload_data_available);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash)
+            );
+
+            // Now a bid arrives late — this resets the payload-related fields
+            let bid = make_bid(1, 55);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(55));
+            assert!(
+                !node.payload_revealed,
+                "bid should reset payload_revealed even after envelope"
+            );
+            assert_eq!(node.ptc_weight, 0, "bid should reset ptc_weight to 0");
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "bid should reset blob weight to 0"
+            );
+            assert!(
+                !node.payload_data_available,
+                "bid should reset payload_data_available"
+            );
+            // envelope_received is NOT reset by on_execution_bid
+            assert!(
+                node.envelope_received,
+                "envelope_received should persist through bid"
+            );
+        }
+
+        /// Envelope arrival preserves previously accumulated PTC weight.
+        /// PTC votes arrive first (but below quorum), then the envelope reveals
+        /// the payload. The accumulated ptc_weight should be unchanged because
+        /// `on_execution_payload` only sets reveal/envelope/DA flags — it does
+        /// NOT touch ptc_weight or ptc_blob_data_available_weight.
+        #[test]
+        fn envelope_preserves_accumulated_ptc_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            let spec = ChainSpec::minimal();
+            // MinimalEthSpec: ptc_size=2, quorum_threshold=1.
+            // Need ptc_weight <= quorum to stay below quorum (strictly greater required).
+            let _quorum_threshold = spec.ptc_size / 2; // 1
+
+            // Send 1 payload_present vote (at quorum boundary — not exceeded)
+            let att1 = make_payload_attestation(1, block_root, true, false);
+            let indexed1 = make_indexed_payload_attestation(1, block_root, true, false, vec![0]);
+            fc.on_payload_attestation(&att1, &indexed1, Slot::new(1), &spec)
+                .unwrap();
+
+            // Send 1 blob_data_available vote (separate attester, no payload_present)
+            let att2 = make_payload_attestation(1, block_root, false, true);
+            let indexed2 = make_indexed_payload_attestation(1, block_root, false, true, vec![1]);
+            fc.on_payload_attestation(&att2, &indexed2, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 1, "sanity: 1 payload_present vote");
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 1,
+                "sanity: 1 blob_data_available vote"
+            );
+            // ptc_weight (1) is NOT strictly greater than quorum_threshold (1)
+            assert!(
+                !node.payload_revealed,
+                "at quorum boundary — not yet revealed (need strictly greater)"
+            );
+
+            // Envelope arrives — reveals payload but should NOT touch PTC weights
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xDD);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed, "envelope should reveal payload");
+            assert!(node.envelope_received, "envelope_received should be set");
+            assert!(
+                node.payload_data_available,
+                "payload_data_available should be set by envelope"
+            );
+            assert_eq!(node.ptc_weight, 1, "envelope should NOT change ptc_weight");
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 1,
+                "envelope should NOT change blob weight"
+            );
+        }
+
+        /// Payload attestation at the exact epoch boundary — the attestation is
+        /// exactly `slots_per_epoch` slots old, which is the last slot before the
+        /// `TooOld` rejection. Verifies the boundary condition:
+        ///   `current_slot > attestation.slot + slots_per_epoch` → TooOld
+        /// So `current_slot == attestation.slot + slots_per_epoch` should succeed.
+        #[test]
+        fn payload_attestation_at_epoch_boundary_accepted() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let spec = ChainSpec::minimal();
+            let slots_per_epoch = E::slots_per_epoch();
+
+            // Attestation at slot 1, current_slot = 1 + slots_per_epoch (exact boundary)
+            let current_slot = Slot::new(1 + slots_per_epoch);
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, vec![0]);
+
+            // Should succeed — exactly at boundary
+            fc.on_payload_attestation(&att, &indexed, current_slot, &spec)
+                .unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.ptc_weight, 1, "attestation at boundary should count");
+        }
+
+        /// Payload attestation one slot past the epoch boundary is rejected as TooOld.
+        /// Verifies: `current_slot > attestation.slot + slots_per_epoch` → TooOld
+        #[test]
+        fn payload_attestation_past_epoch_boundary_rejected() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let spec = ChainSpec::minimal();
+            let slots_per_epoch = E::slots_per_epoch();
+
+            // Attestation at slot 1, current_slot = 2 + slots_per_epoch (one past boundary)
+            let current_slot = Slot::new(2 + slots_per_epoch);
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, vec![0]);
+
+            let err = fc
+                .on_payload_attestation(&att, &indexed, current_slot, &spec)
+                .unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    Error::InvalidPayloadAttestation(InvalidPayloadAttestation::TooOld { .. })
+                ),
+                "expected TooOld, got {:?}",
+                err
+            );
+        }
+
+        /// Blob-only attestation (blob_data_available=true, payload_present=false)
+        /// reaches blob quorum without triggering payload_revealed. This verifies
+        /// the independence of the two quorum tracks: blob DA quorum does NOT imply
+        /// payload timeliness, and payload_revealed stays false.
+        #[test]
+        fn blob_only_quorum_does_not_reveal_payload() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].bid_block_hash =
+                Some(ExecutionBlockHash::repeat_byte(0xAA));
+
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+
+            // Send blob_data_available=true, payload_present=false with quorum+ attesters
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, false, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, false, true, indices);
+
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.ptc_weight, 0,
+                "payload_present=false should add zero ptc_weight"
+            );
+            assert!(
+                node.ptc_blob_data_available_weight > quorum_threshold,
+                "blob weight should exceed quorum"
+            );
+            assert!(
+                node.payload_data_available,
+                "blob DA quorum should set payload_data_available"
+            );
+            assert!(
+                !node.payload_revealed,
+                "blob-only quorum should NOT reveal payload"
+            );
+            assert!(
+                !node.execution_status.is_execution_enabled(),
+                "execution_status should not be set without payload quorum"
+            );
+        }
     }
 }
