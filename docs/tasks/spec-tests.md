@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice skip slot and payload status derivation tests, spec tracking (run 316)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 315
+- Open Gloas spec PRs status unchanged: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- Reviewed #4898 (remove pending from tiebreaker) — vibehouse already doesn't check PENDING in tiebreaker, matches proposed change
+- Reviewed #4892 (remove impossible branch in forkchoice) — vibehouse already uses `debug_assert!` + `==` pattern matching the proposed change
+- **10 new fork choice edge case tests**:
+  - `ancestor_skip_slot_derives_payload_status_from_spanning_child` — verifies payload status derivation across skip slots (slot 1→5 gap, child→parent hash mismatch → EMPTY)
+  - `ancestor_skip_slot_full_parent_derived_from_matching_hashes` — same skip slot setup with matching hashes → FULL parent status
+  - `ancestor_deep_skip_slot_chain_walks_multiple_hops` — 3-block chain with large skip slots (0→2→6→10), validates ancestor at intermediate slots walks correctly through multiple hops
+  - `gloas_children_empty_leaf_returns_no_children` — EMPTY virtual node at leaf block returns empty Vec (find_head termination)
+  - `gloas_children_full_leaf_returns_no_children` — FULL virtual node at leaf block returns empty Vec (find_head termination)
+  - `parent_payload_status_both_hashes_none_returns_empty` — both None bid hashes (genesis/default bids) derive EMPTY status
+  - `parent_payload_status_child_none_parent_some_returns_empty` — asymmetric None/Some hash combination derives EMPTY
+  - `parent_payload_status_child_some_parent_none_returns_empty` — reverse asymmetric combination derives EMPTY
+  - `supporting_vote_via_ancestor_across_skip_slots` — vote through skip slots correctly supports FULL ancestor and rejects EMPTY ancestor based on hash derivation
+  - `tiebreaker_non_previous_slot_returns_ordinal_value` — non-previous-slot nodes return raw enum ordinal (Empty=0, Full=1, Pending=2)
+- **Tests**: 152 proto_array (up from 142), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — PTC threshold boundary and withdrawal overflow tests, spec tracking (run 315)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **3 newly merged Gloas spec PRs reviewed** — all already implemented or no action needed:
