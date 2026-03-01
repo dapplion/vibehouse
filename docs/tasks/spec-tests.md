@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — is_supporting_vote spec compliance fix, comprehensive audit (run 341)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 340
+- **Open Gloas spec PRs**: 10 tracked PRs still open — #4950, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - #4940, #4932 still open but not returned by gloas label search (may have been relabeled)
+  - None are close to merging: #4940 blocked (0 reviews), #4932 has comments but no approvals, #4630 is dirty, #4840 has 0 reviews
+- **Spec compliance fix shipped**: `is_supporting_vote_gloas_at_slot` in proto_array_fork_choice.rs
+  - Changed `vote.current_slot == node_slot` → `vote.current_slot <= node_slot` to match spec's `if message.slot <= block.slot: return False` exactly
+  - Previous code used `debug_assert!(vote.current_slot >= node_slot)` + `== node_slot` — functionally equivalent when invariant holds, but `debug_assert` is stripped in release builds
+  - Using `<=` provides defense-in-depth: if the slot >= block.slot invariant were ever violated, the spec behavior is preserved
+  - All 157 proto_array tests pass, all 263 fork_choice tests pass, all 535 state_processing tests pass, all 8 fork_choice EF spec tests pass
+  - This aligns with spec PR #4892's proposal to formalize the assert (our code was already correct per the proposed change, now matches current spec exactly too)
+- **Comprehensive spec function audit**: verified all 18 Gloas spec functions from beacon-chain.md and all 32 from fork-choice.md are implemented — 10 as standalone functions, 8 inlined in larger functions. No missing functions.
+- **Error path coverage audit**: identified 5 untested Gloas error variants across 4 error types (EnvelopeProcessingError::BitFieldError, BuilderPaymentIndexOutOfBounds; PayloadAttestationError::PtcCommitteeError; PayloadEnvelopeError::MissingBeaconBlock, NotGloasBlock) — all are defensive guard-rails against state corruption, not triggerable by external input
+- **Production unwrap() audit**: all 14 production unwrap() calls are in dead debug code (`dump_as_dot`/`dump_dot_file`). Zero unwrap() in consensus-critical paths.
+- **CI status**: all completed runs green; 5 in progress from recent commits; nightly (Mar 1) all green
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+
 ### 2026-03-01 — deep code audit, all findings false positives (run 340)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
