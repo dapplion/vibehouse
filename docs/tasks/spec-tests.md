@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — dead code cleanup, spec tracking (run 350)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **All 12 open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558. None merged.
+- **Dead code cleanup shipped** — removed 3 items:
+  - `DepositDataTree::print_tree`: dead debug function with `println!`, zero callers (deposit_data_tree.rs)
+  - `CustodyBatchProcessResult::sent_columns`: field populated but never read, only matched with `..` (manager.rs, sync_methods.rs, custody_backfill_sync/mod.rs)
+  - `BeaconChain::dump_dot_file`: dead debug wrapper with bare `unwrap()` panics on file I/O (beacon_chain.rs)
+- **Additional dead code audit findings** (not removed, intentional):
+  - `GossipCacheBuilder` setter methods: standard builder pattern API, unused setters are intentional for future configurability
+  - `dump_as_dot`: core DOT graph diagnostic, kept as useful debug tool (only the unsafe wrapper removed)
+  - `MerkleTree::print_node`: debug utility in separate crate, could have external callers
+- **CI status**: all green (run 342 failure was transient 502 on spec test vector download — not code). 4 runs in progress from run 349.
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+- **Tests**: 535/535 state_processing pass, 140/140 network pass
+
 ### 2026-03-01 — checkpoint sync disk optimization, spec tracking (run 349)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
