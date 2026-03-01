@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — test deduplication, coverage audit, spec tracking (run 278)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 277
+- Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge — already compliant), #4940, #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Removed 2 duplicate `WithdrawalBuilderIndexInvalid` test cases** (`process_withdrawals_rejects_oob_builder_pending_withdrawal_index` and `get_expected_withdrawals_rejects_oob_builder_pending_withdrawal_index`) that were identical to existing tests (`withdrawal_rejects_invalid_builder_index_in_pending` and `get_expected_withdrawals_rejects_invalid_builder_index`)
+- **Comprehensive test coverage audit via subagent**: analyzed all Gloas code paths across state_processing, fork_choice, beacon_chain, and network for untested branches. Key findings:
+  - `WithdrawalBuilderIndexInvalid` for builder_pending_withdrawals OOB: already covered by 4 tests (was 6 before dedup)
+  - `BuilderPaymentIndexOutOfBounds` in envelope_processing: practically unreachable (vector always sized correctly)
+  - `prune_gloas_pools` overflow-clear paths: defensive code, requires full integration harness to test
+  - `is_supporting_vote_gloas`: extensively tested (10+ tests covering same-slot, later-slot, ancestor, multi-hop)
+  - `process_builder_pending_payments`: 15+ unit tests covering quorum, rotation, mixed payments
+  - `process_proposer_lookahead`: 8 unit tests + EF spec tests
+  - `process_deposit_request_gloas`: 15+ tests covering routing, top-up, signature verification
+  - `block_replayer` Gloas paths: 15+ tests covering anchor/non-anchor, full/blinded envelopes, error propagation
+  - Overall: test coverage is comprehensive across all major Gloas subsystems
+- **Nightly CI**: latest nightly (22522736397) green. Prior failure (22520311458) was transient: altair had moonrepo infra issue, fulu had test timeout — both resolved in rerun.
+- **Test results**: 463/463 state_processing tests pass (was 465, -2 duplicates). 217/217 fork_choice+proto_array pass. Clippy clean.
+- **CI status**: all green
+
 ### 2026-03-01 — withdrawal processing edge case tests, spec tracking (run 277)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 276
