@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — PTC committee allocation optimization, envelope accessor deduplication, spec tracking (run 292)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 291
+- Open Gloas spec PRs tracked: #4950, #4940, #4932, #4630, #4840, #4843, #4926, #4939, #4898, #4892, #4747, #4558 — all still open/unmerged
+- **EF spec tests**: 35/35 pass (operations + epoch_processing + sanity, minimal preset, fake crypto), 8/8 fork choice tests pass (minimal preset, real crypto)
+- **State processing tests**: 463/463 pass
+- **Performance optimizations shipped**:
+  - `get_ptc_committee`: pre-allocate `indices` Vec with `with_capacity(total_committee_size)` instead of growing from empty. For mainnet's ~512 committee members this avoids multiple Vec reallocations.
+  - `get_ptc_committee`: replaced per-iteration `[&seed[..], &int_to_bytes8(...)].concat()` heap allocation with a reusable `[u8; 40]` buffer. Seed bytes (first 32) written once; only last 8 bytes overwritten per iteration. Eliminates one Vec allocation per PTC selection step (~hundreds of iterations on mainnet).
+  - `process_execution_payload_envelope`: hoisted `payload_expected_withdrawals()` to a local binding — was called 3 times (twice on happy path, once on error path), now called once. Each call does superstruct enum matching.
+  - `process_execution_payload_envelope`: hoisted `latest_block_hash()` to a local binding — was called twice (condition + error branch), now called once.
+- **Clippy**: zero warnings across state_processing
+- **CI**: all green
+
 ### 2026-03-01 — clone elimination in envelope and attestation paths, spec tracking (run 291)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 290
