@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice bid/envelope/PTC interaction edge case tests, spec tracking (run 318)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 317
+- Open Gloas spec PRs status unchanged: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- **5 new fork choice interaction tests** covering bid/envelope/PTC ordering edge cases:
+  - `bid_after_envelope_resets_revealed_state` — late bid after envelope resets payload_revealed, ptc_weight, payload_data_available but preserves envelope_received
+  - `envelope_preserves_accumulated_ptc_weight` — PTC votes accumulate below quorum, then envelope arrives; verifies ptc_weight and blob_weight are untouched by envelope
+  - `payload_attestation_at_epoch_boundary_accepted` — attestation exactly slots_per_epoch old (boundary) is accepted
+  - `payload_attestation_past_epoch_boundary_rejected` — attestation slots_per_epoch+1 old is rejected as TooOld
+  - `blob_only_quorum_does_not_reveal_payload` — blob DA quorum (blob_data_available=true, payload_present=false) sets payload_data_available but does NOT set payload_revealed or execution_status
+- **Tests**: 89 fork_choice (up from 84), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — fork choice bid overwrite, PTC idempotency, and payment index boundary tests, spec tracking (run 317)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 316 (only #4931 FOCIL rebase, not core Gloas)
