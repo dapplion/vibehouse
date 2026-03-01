@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fix ptc_timely spec deviation, spec tracking (run 301)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **5 merged spec PRs verified** (all since alpha.2):
+  - #4948 (payload status reorder) — already implemented: GloasPayloadStatus enum has Empty=0, Full=1, Pending=2
+  - #4923 (ignore block if parent payload unknown) — already implemented: GloasParentPayloadUnknown error + IGNORE check in block_verification.rs
+  - #4930 (rename execution_payload_states → payload_states) — already done: vibehouse uses "payload_states" naming
+  - #4941 (execution proof from BeaconBlock) — N/A: vibehouse uses stub proofs, not spec's prover construction
+  - #4947 (pre-fork proposer_preferences subscription) — already done: PRE_FORK_SUBSCRIBE_EPOCHS = 1
+- Open Gloas spec PRs tracked: #4950, #4940, #4932, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Spec deviation found and fixed: `ptc_timely`**:
+  - Spec's `record_block_timeliness` sets `block_timeliness[PTC_TIMELINESS_INDEX] = is_current_slot AND time_into_slot_ms < ptc_threshold_ms`
+  - Vibehouse only checked `current_slot == block.slot()` without the timing threshold (75% of slot duration)
+  - This meant blocks arriving after the PTC deadline but in the same slot were incorrectly marked as PTC-timely
+  - Fix: added `&& block_delay < Duration::from_millis(spec.seconds_per_slot * 750)` to ptc_timely computation in fork_choice.rs
+  - Note: used `seconds_per_slot`-based calculation (not `bps_to_ms()` helper) because `slot_duration_ms` in minimal config is inherited from mainnet (12000) while `seconds_per_slot` is 6, making BPS helpers unreliable for minimal preset
+- **Tests**: 217 fork_choice+proto_array, 78/78 EF real crypto, 138/138 EF fake crypto, 323/323 beacon_chain gloas, 140 network, full clippy clean
+- **CI**: push succeeded
+
 ### 2026-03-01 — add gossip verification timing histograms, spec tracking (run 300)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 299
