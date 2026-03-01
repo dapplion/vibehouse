@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, deep payload status verification (run 342)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 341
+- No new nightly test vector runs — same commit 14e6ce5a since Feb 27
+- **Open Gloas spec PRs**: all 12 tracked PRs still open — #4950, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558, #4940, #4932
+  - #4950 (extend by_root serve range): 4 approvals, most likely to merge next — documentation-only, no code change needed
+  - No movement on any other PR since run 341
+- **Deep payload status constant verification** (PR #4948 compliance):
+  - Verified `GloasPayloadStatus` enum: Empty=0, Full=1, Pending=2 — matches spec exactly
+  - Verified `get_payload_tiebreaker` line 1556 hardcoded `1` for EMPTY at previous slot — matches spec `return 1` exactly (not a bug; spec intentionally maps EMPTY to FULL's ordinal for tiebreaking)
+  - Verified `get_payload_tiebreaker` FULL cases: `2` (should_extend) and `0` (not should_extend) — correct per spec
+  - Verified `head_payload_status` chain: enum → `as u8` storage → EF test comparison → block production check (== 1 for FULL)
+  - All explicit `as u8` casts use enum variants, no stale hardcoded values
+- **PR #4918 attestation validation verification**: implementation at fork_choice.rs:1194-1202 correct — rejects index=1 attestations when payload_revealed=false, gated on builder_index presence (Gloas-only), 3 unit tests cover accept/reject/pre-Gloas bypass
+- **Test verification**: all 263 proto_array+fork_choice tests pass, all 8 fork_choice EF spec tests pass, all 535 state_processing tests pass
+- **CI status**: all completed runs green; 5 runs in progress from run 341 commits; Mar 1 nightly all green
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — is_supporting_vote spec compliance fix, comprehensive audit (run 341)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
