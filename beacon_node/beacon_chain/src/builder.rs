@@ -34,7 +34,7 @@ use rayon::prelude::*;
 use slasher::Slasher;
 use slot_clock::{SlotClock, TestingSlotClock};
 use state_processing::{AllCaches, per_slot_processing};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
@@ -611,7 +611,22 @@ where
                 // into exposing another route.
                 let data_columns =
                     build_data_columns_from_blobs(&weak_subj_block, &blobs, &self.kzg, &self.spec)?;
-                // TODO(das): only persist the columns under custody
+                // Only persist the columns under custody to avoid wasting disk space.
+                let custody_columns = self.custody_column_indices_for_checkpoint_sync();
+                let total_columns = data_columns.len();
+                let data_columns = if let Some(ref indices) = custody_columns {
+                    data_columns
+                        .into_iter()
+                        .filter(|col| indices.contains(&col.index()))
+                        .collect()
+                } else {
+                    data_columns
+                };
+                debug!(
+                    total = total_columns,
+                    stored = data_columns.len(),
+                    "Storing checkpoint sync data columns (custody-filtered)"
+                );
                 store
                     .put_data_columns(&weak_subj_block_root, data_columns)
                     .map_err(|e| format!("Failed to store weak subjectivity data_column: {e:?}"))?;
@@ -681,6 +696,34 @@ where
     ) -> Self {
         self.ordered_custody_column_indices = Some(ordered_custody_column_indices);
         self
+    }
+
+    /// Returns the set of column indices under custody for checkpoint sync filtering.
+    /// Returns `None` if the node custodies all columns (supernode) or if indices
+    /// are not yet configured, in which case no filtering should be applied.
+    fn custody_column_indices_for_checkpoint_sync(&self) -> Option<HashSet<ColumnIndex>> {
+        let ordered_indices = self.ordered_custody_column_indices.as_ref()?;
+
+        let custody_group_count = self
+            .node_custody_type
+            .get_custody_count_override(&self.spec)
+            .unwrap_or(self.spec.custody_requirement);
+
+        // If custodying all groups, no filtering needed
+        if custody_group_count >= self.spec.number_of_custody_groups {
+            return None;
+        }
+
+        let columns_per_group = self.spec.data_columns_per_group::<E>() as usize;
+        let custody_column_count = columns_per_group.saturating_mul(custody_group_count as usize);
+        let custody_column_count = std::cmp::min(custody_column_count, ordered_indices.len());
+
+        Some(
+            ordered_indices[..custody_column_count]
+                .iter()
+                .copied()
+                .collect(),
+        )
     }
 
     /// Sets the `BeaconChain` event handler backend.
@@ -1452,6 +1495,96 @@ mod test {
             state.validators().len(),
             validator_count,
             "validator count should be correct"
+        );
+    }
+
+    #[test]
+    fn custody_column_filtering_fullnode() {
+        let spec = MinimalEthSpec::default_spec();
+        let kzg = get_kzg(&spec);
+        let ordered = generate_data_column_indices_rand_order::<MinimalEthSpec>();
+
+        let builder = Builder::new(MinimalEthSpec, kzg)
+            .node_custody_type(NodeCustodyType::Fullnode)
+            .ordered_custody_column_indices(ordered.clone());
+
+        let indices = builder
+            .custody_column_indices_for_checkpoint_sync()
+            .expect("fullnode should return Some with filtered indices");
+
+        let columns_per_group = spec.data_columns_per_group::<MinimalEthSpec>() as usize;
+        let expected_count = columns_per_group * spec.custody_requirement as usize;
+        assert_eq!(
+            indices.len(),
+            expected_count,
+            "fullnode should custody {} columns",
+            expected_count
+        );
+
+        // Verify the indices match the first N entries from ordered list
+        let expected_indices: HashSet<ColumnIndex> =
+            ordered[..expected_count].iter().copied().collect();
+        assert_eq!(indices, expected_indices);
+    }
+
+    #[test]
+    fn custody_column_filtering_supernode() {
+        let spec = MinimalEthSpec::default_spec();
+        let kzg = get_kzg(&spec);
+        let ordered = generate_data_column_indices_rand_order::<MinimalEthSpec>();
+
+        let builder = Builder::new(MinimalEthSpec, kzg)
+            .node_custody_type(NodeCustodyType::Supernode)
+            .ordered_custody_column_indices(ordered);
+
+        // Supernode should return None (no filtering needed)
+        assert!(
+            builder
+                .custody_column_indices_for_checkpoint_sync()
+                .is_none(),
+            "supernode should return None (store all columns)"
+        );
+    }
+
+    #[test]
+    fn custody_column_filtering_semi_supernode() {
+        let spec = MinimalEthSpec::default_spec();
+        let kzg = get_kzg(&spec);
+        let ordered = generate_data_column_indices_rand_order::<MinimalEthSpec>();
+
+        let builder = Builder::new(MinimalEthSpec, kzg)
+            .node_custody_type(NodeCustodyType::SemiSupernode)
+            .ordered_custody_column_indices(ordered.clone());
+
+        let indices = builder
+            .custody_column_indices_for_checkpoint_sync()
+            .expect("semi-supernode should return Some with filtered indices");
+
+        let columns_per_group = spec.data_columns_per_group::<MinimalEthSpec>() as usize;
+        let expected_count = columns_per_group * (spec.number_of_custody_groups / 2) as usize;
+        assert_eq!(
+            indices.len(),
+            expected_count,
+            "semi-supernode should custody {} columns",
+            expected_count
+        );
+    }
+
+    #[test]
+    fn custody_column_filtering_no_indices() {
+        let spec = MinimalEthSpec::default_spec();
+        let kzg = get_kzg(&spec);
+
+        // Builder without ordered_custody_column_indices set
+        let builder =
+            Builder::new(MinimalEthSpec, kzg).node_custody_type(NodeCustodyType::Fullnode);
+
+        // Should return None when indices not configured
+        assert!(
+            builder
+                .custody_column_indices_for_checkpoint_sync()
+                .is_none(),
+            "should return None when custody column indices not set"
         );
     }
 }
