@@ -3506,6 +3506,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 return;
             }
             Err(PayloadEnvelopeError::InvalidSignature) => {
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL);
                 warn!(
                     ?beacon_block_root,
                     builder_index,
@@ -3526,6 +3527,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 | e @ PayloadEnvelopeError::BlockHashMismatch { .. }
                 | e @ PayloadEnvelopeError::NotGloasBlock { .. },
             ) => {
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL);
                 warn!(
                     ?beacon_block_root,
                     builder_index,
@@ -3554,6 +3556,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
         };
 
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_VERIFIED_TOTAL);
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
         // Import to fork choice — mark payload as revealed
@@ -3580,6 +3583,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             .await
         {
             Ok(()) => {
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_IMPORTED_TOTAL);
                 debug!(
                     ?beacon_block_root,
                     builder_index, "Successfully processed execution payload envelope"

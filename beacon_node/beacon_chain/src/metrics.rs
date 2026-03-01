@@ -218,6 +218,16 @@ pub static BLOCK_PRODUCTION_STATE_ROOT_TIMES: LazyLock<Result<Histogram>> = Lazy
 });
 
 /*
+ * Self-Build Envelope Processing (gloas ePBS)
+ */
+pub static SELF_BUILD_ENVELOPE_SUCCESSES: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_self_build_envelope_successes_total",
+        "Count of self-build execution payload envelopes successfully processed.",
+    )
+});
+
+/*
  * Block Statistics
  */
 pub static OPERATIONS_PER_BLOCK_ATTESTATION: LazyLock<Result<Histogram>> = LazyLock::new(|| {

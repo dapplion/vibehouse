@@ -250,6 +250,29 @@ pub static BEACON_PROCESSOR_PAYLOAD_ATTESTATION_EQUIVOCATING_TOTAL: LazyLock<Res
         )
     });
 
+// Gossip execution payload envelopes (gloas ePBS).
+pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_VERIFIED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_payload_envelope_verified_total",
+            "Total number of execution payload envelopes verified for propagation.",
+        )
+    });
+pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_payload_envelope_imported_total",
+            "Total number of execution payload envelopes imported and processed.",
+        )
+    });
+pub static BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_processor_payload_envelope_rejected_total",
+            "Total number of execution payload envelopes rejected (invalid signature, slot mismatch, etc).",
+        )
+    });
+
 // Rpc blocks.
 pub static BEACON_PROCESSOR_RPC_BLOCK_IMPORTED_TOTAL: LazyLock<Result<IntCounter>> =
     LazyLock::new(|| {

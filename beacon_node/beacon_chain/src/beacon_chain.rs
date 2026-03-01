@@ -3129,6 +3129,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.canonical_head
             .try_update_head_state(beacon_block_root, state);
 
+        metrics::inc_counter(&metrics::SELF_BUILD_ENVELOPE_SUCCESSES);
         debug!(
             ?beacon_block_root,
             block_hash = ?signed_envelope.message.payload.block_hash,
