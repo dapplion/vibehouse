@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — envelope payment ordering fix, spec tracking (run 308)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 307
+- Open Gloas spec PRs tracked: #4950 (by_root serve range), #4940 (initial fork choice tests), #4843 (variable PTC deadline), #4939, #4926 (SLOT_DURATION_MS), #4932 (sanity/blocks tests), #4892, #4898 (remove pending from tiebreaker), #4944 (ExecutionProofsByRoot — EIP-8025 only), #4630, #4840 — all still open/unmerged
+- **PR readiness assessment**:
+  - #4898 (remove pending from tiebreaker): 1 APPROVED, MERGEABLE — vibehouse already omits the PENDING case in `get_payload_tiebreaker` with matching reasoning. No action needed.
+  - #4892 (assert in `is_supporting_vote`): 2 APPROVED but author doubts value — vibehouse already has `debug_assert!` for the impossible `<` case and explicit `== node_slot` early return. No action needed.
+  - #4932 (Gloas sanity/blocks tests): conflicts fixed by jtraglia, no approvals yet — vibehouse's `SanityBlocksHandler` will auto-pick up Gloas vectors. Verified all test cases (wrong_beacon_block_root, too_old_slot, invalid_signature, multiple attestations) already pass via existing unit tests.
+  - #4926 (SLOT_DURATION_MS): major refactor moving fork choice store from seconds to milliseconds — not merged, tracking.
+  - #4843 (variable PTC deadline): active discussion, 1 APPROVED, significant timing change — not merged, tracking.
+- **Spec ordering fix: process_execution_payload (envelope) payment queuing**:
+  - Spec order: read payment → append withdrawal if amount > 0 → blank payment slot
+  - Vibehouse had: copy withdrawal → blank payment slot → append withdrawal if amount > 0
+  - Result was identical (payment is copied before blank, final state is same), but ordering didn't match spec
+  - Fixed to match spec ordering: read immutably first, append, then blank with mutable access
+- **Full envelope processing audit**: verified all 10 verification steps, execution request processing, payment queuing, availability bit, latest_block_hash update, and state_root check all match spec exactly
+- **Tests**: 464 state_processing, 69 envelope-specific, 85 beacon_chain envelope, 15 EF operations — all pass
+
 ### 2026-03-01 — proposer slashing ordering fix, attestation weight audit, spec tracking (run 307)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 306
