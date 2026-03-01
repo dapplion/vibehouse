@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking and test health verification (run 322)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 321
+- **Open Gloas spec PRs status**:
+  - #4950 (extend by_root serve range, APPROVED) — changes `by_root` serve range from "since finalized" to `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs back
+  - #4898 (remove pending status from tiebreaker, APPROVED) — removes unreachable `PAYLOAD_STATUS_PENDING` branch from `get_payload_status_tiebreaker`; our implementation already has a test documenting this (`tiebreaker_pending_at_previous_slot_unreachable_but_safe`)
+  - #4892 (remove impossible branch in forkchoice, APPROVED) — replaces `message.slot <= block.slot` with assert + `==`; our implementation already uses `debug_assert!(vote.current_slot >= node_slot)` + `if vote.current_slot == node_slot` — already aligned
+  - #4843 (variable PTC deadline, APPROVED) — major change: renames `payload_present` → `payload_timely`, adds variable deadline based on payload size, new `MIN_PAYLOAD_DUE_BPS` config, new store field `payload_envelopes`; will require significant implementation when merged
+  - #4940 (fork choice tests, REVIEW_REQUIRED), #4939 (envelope request, REVIEW_REQUIRED), #4932 (sanity tests, REVIEW_REQUIRED), #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS, REVIEW_REQUIRED), #4840 (eip7843, REVIEW_REQUIRED), #4630 (SSZ compat, REVIEW_REQUIRED)
+- **Test health verification**: all core tests pass
+  - proto_array: 157/157 pass
+  - state_processing: 516/516 pass
+  - fork_choice: 98/98 pass
+- **Test coverage audit**: comprehensive across all Gloas modules — 800+ Gloas-specific tests, no significant gaps identified. Coverage spans: proto_array fork choice (157), state_processing (516), fork_choice wrapper (98), envelope_processing (47), upgrade_to_gloas (21), per_slot_processing (8), epoch_processing (19), gloas_verification integration (57), observed_execution_bids (18), observed_payload_attestations (15), execution_bid_pool (17), early_attester_cache (7)
+
 ### 2026-03-01 — fork choice and bid/envelope/withdrawal edge case tests, spec tracking (run 321)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 320
