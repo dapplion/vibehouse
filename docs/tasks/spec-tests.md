@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — bid payment overwrite and builder activation edge case tests (run 325)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 324
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **5 new state_processing tests** (bid payment/builder activation edge cases):
+  - `two_bids_same_builder_second_overwrites_payment` — second bid in same block overwrites first's pending payment at same slot index, not accumulated
+  - `self_build_then_external_bid_only_external_records_payment` — self-build (value=0) skips payment recording, external bid writes payment
+  - `exited_builder_bid_rejected` — builder with withdrawable_epoch set cannot submit bid (is_active_at_finalized_epoch check)
+  - `builder_deposit_at_finalized_epoch_not_active` — builder with deposit_epoch == finalized_epoch is not active (requires strict less-than)
+  - `external_then_self_build_leaves_external_payment` — self-build after external bid does not clear external's payment (amount=0 guard skips write)
+- **Tests**: 157 proto_array, 534 state_processing (up from 529), 106 fork_choice, all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — withdrawal processing and payload attestation edge case tests (run 324)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 323
