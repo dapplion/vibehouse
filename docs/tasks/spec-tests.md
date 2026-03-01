@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, logging improvements (run 338)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 337
+- No new nightly test vector runs since run 334 (same commit 14e6ce5a)
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+  - No movement since run 337
+- **Code improvement shipped**: added debug/warn logging for Gloas block production paths
+  - `debug!` when self-build fallback is used (no external bid available) — operators can now see whether blocks use external bids or self-build
+  - `warn!` before propagating envelope construction failures in `build_self_build_envelope` — errors no longer silently propagate without logging
+  - All 686 beacon_chain tests pass (FORK_NAME=gloas)
+- **Codebase audit**: searched for Gloas-specific TODO/FIXME comments — found 3 `TODO(EIP-7732)` about blinded block conversions (architectural consideration, not actionable) and 1 `FIXME(gloas)` in test utils (pattern inherited from all forks, not actionable)
+- **Visibility audit**: reviewed `pub` items in Gloas modules — most are either already effectively private (module is `mod` not `pub mod`) or need `pub` for integration tests. No changes warranted.
+- **CI status**: all completed runs green; nightly (Mar 1 08:51 UTC) all green
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+
 ### 2026-03-01 — spec tracking, fork choice test readiness audit (run 337)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
