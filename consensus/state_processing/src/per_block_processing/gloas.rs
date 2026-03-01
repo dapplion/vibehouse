@@ -7915,4 +7915,271 @@ mod tests {
             "should accumulate both pending withdrawal and pending payment"
         );
     }
+
+    /// Two external bids from the same builder in the same block: second overwrites
+    /// first's pending payment at the same slot index. This proves there's no
+    /// accumulation — it's a direct overwrite of the payment slot.
+    #[test]
+    fn two_bids_same_builder_second_overwrites_payment() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let slot_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        // First bid: value = 2 ETH
+        let bid1 = make_builder_bid(&state, &spec, 2_000_000_000);
+        process_execution_payload_bid(
+            &mut state,
+            &bid1,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let payment1 = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(
+            payment1.withdrawal.amount, 2_000_000_000,
+            "first bid recorded"
+        );
+
+        // Second bid: value = 3 ETH (overwrites first)
+        let mut bid2 = make_builder_bid(&state, &spec, 3_000_000_000);
+        bid2.message.fee_recipient = Address::repeat_byte(0xDD);
+        process_execution_payload_bid(
+            &mut state,
+            &bid2,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let payment2 = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(
+            payment2.withdrawal.amount, 3_000_000_000,
+            "second bid overwrites first payment"
+        );
+        assert_eq!(
+            payment2.withdrawal.fee_recipient,
+            Address::repeat_byte(0xDD),
+            "fee_recipient from second bid"
+        );
+        assert_eq!(payment2.weight, 0, "weight reset to zero by overwrite");
+    }
+
+    /// Self-build bid (value=0) leaves payment slot untouched, then external bid
+    /// writes payment. Verifies the `if amount > 0` guard on payment recording.
+    #[test]
+    fn self_build_then_external_bid_only_external_records_payment() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let slot_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        // Self-build first
+        let self_bid = make_self_build_bid(&state, &spec);
+        process_execution_payload_bid(
+            &mut state,
+            &self_bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Self-build (value=0) should NOT record a payment
+        let after_self = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(
+            after_self.withdrawal.amount, 0,
+            "self-build should not record payment"
+        );
+
+        // External bid
+        let ext_bid = make_builder_bid(&state, &spec, 5_000_000_000);
+        process_execution_payload_bid(
+            &mut state,
+            &ext_bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let after_ext = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(
+            after_ext.withdrawal.amount, 5_000_000_000,
+            "external bid should record payment"
+        );
+    }
+
+    /// Builder with exit initiated (withdrawable_epoch set) cannot submit a bid.
+    /// The `is_active_at_finalized_epoch` check requires `withdrawable_epoch == FAR_FUTURE_EPOCH`.
+    #[test]
+    fn exited_builder_bid_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Initiate builder exit
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .withdrawable_epoch = Epoch::new(10);
+
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadBidInvalid { reason })
+                    if reason.contains("not active")
+            ),
+            "exited builder should be rejected"
+        );
+    }
+
+    /// Builder whose deposit_epoch == finalized_epoch (not strictly less) is not active.
+    /// `is_active_at_finalized_epoch` requires `deposit_epoch < finalized_epoch`.
+    #[test]
+    fn builder_deposit_at_finalized_epoch_not_active() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let finalized = state.finalized_checkpoint().epoch;
+        // Set deposit_epoch == finalized_epoch (not strictly less)
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builders
+            .get_mut(0)
+            .unwrap()
+            .deposit_epoch = finalized;
+
+        let bid = make_builder_bid(&state, &spec, 1_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let result = process_execution_payload_bid(
+            &mut state,
+            &bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadBidInvalid { reason })
+                    if reason.contains("not active")
+            ),
+            "builder deposited at finalized_epoch should not be considered active"
+        );
+    }
+
+    /// External bid followed by self-build: self-build does not clear the payment
+    /// that was recorded by the external bid. The `if amount > 0` guard skips
+    /// payment recording for self-build, leaving the external bid's payment intact.
+    #[test]
+    fn external_then_self_build_leaves_external_payment() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+
+        let slots_per_epoch = E::slots_per_epoch();
+        let slot_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        // External bid first
+        let ext_bid = make_builder_bid(&state, &spec, 4_000_000_000);
+        process_execution_payload_bid(
+            &mut state,
+            &ext_bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let after_ext = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(after_ext.withdrawal.amount, 4_000_000_000);
+
+        // Self-build overwrites cached bid but does NOT touch payment
+        let self_bid = make_self_build_bid(&state, &spec);
+        process_execution_payload_bid(
+            &mut state,
+            &self_bid,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Cached bid is now self-build
+        assert_eq!(
+            state
+                .as_gloas()
+                .unwrap()
+                .latest_execution_payload_bid
+                .builder_index,
+            spec.builder_index_self_build,
+        );
+
+        // Payment from external bid is still there (self-build skips payment recording)
+        let after_self = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(
+            after_self.withdrawal.amount, 4_000_000_000,
+            "self-build should not clear external bid's payment"
+        );
+    }
 }
