@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — FULL/EMPTY reorg integration test, spec tracking (run 352)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **FULL/EMPTY payload state reorg integration test shipped** — `gloas_reorg_full_vs_empty_with_late_envelope`:
+  - Tests fork choice resolution across competing chains with different payload states
+  - Fork A: block with envelope processed (FULL), attested by 25% validators
+  - Fork B: block without envelope (EMPTY/PENDING), attested by 75% validators
+  - Verifies head follows fork B (majority weight) in EMPTY state
+  - Late envelope arrives for fork B → transitions to FULL
+  - Verifies head remains on fork B with FULL status and correct `latest_block_hash`
+  - Closes the "re-org between FULL/EMPTY payload states" coverage gap from run 351
+- **All 57 Gloas beacon_chain tests pass** (including new test, ~55s total)
+- **CI status**: all green, clippy zero warnings (full workspace, verified by pre-push hook)
+- **Remaining high-priority coverage gaps** (from run 351):
+  - End-to-end builder payment accounting (bid→envelope→epoch payment→withdrawal at integration level)
+  - SSE events for ExecutionBid, PayloadAttestation, ExecutionProofReceived (emitted in gossip_methods.rs but never tested at integration level)
+
 ### 2026-03-01 — skip-slot fork transition tests, spec tracking (run 351)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
