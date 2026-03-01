@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — HashSet pre-sizing, spec tracking (run 295)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Verified recently merged spec PRs**:
+  - #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2) — merged Feb 26. vibehouse's `GloasPayloadStatus` enum already uses these values (commit cffb4a699). No change needed.
+  - #4918 (only allow attestations for known payload statuses) — merged Feb 23. vibehouse's `validate_on_attestation` already checks `if index == 1 && !block.payload_revealed` (returns `PayloadNotRevealed` error). No change needed.
+  - #4947 (pre-fork subscription note for proposer_preferences topic) — merged Feb 26. Documentation-only. vibehouse already subscribes to all fork topics 1 epoch before fork via `PRE_FORK_SUBSCRIBE_EPOCHS = 1`. No change needed.
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Performance optimization shipped**:
+  - `compute_filtered_roots`: pre-size HashSet with exact count from filtered bool array. Called once per `find_head_gloas` (per block/attestation processing). Avoids HashSet rehashing on large proto_arrays.
+- **EF spec tests**: 35/35 pass (operations + epoch_processing + sanity, minimal preset, fake crypto), 8/8 fork choice tests pass (minimal preset, real crypto)
+- **Proto_array tests**: 136/136 pass
+- **Fork_choice tests**: 81/81 pass
+- **State processing tests**: 463/463 pass
+- **Clippy**: zero warnings across entire workspace (lint-full passed)
+- **CI**: all green
+
 ### 2026-03-01 — Vec pre-sizing and bid accessor deduplication, spec tracking (run 293)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 292
