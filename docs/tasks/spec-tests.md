@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — full fork choice spec verification, codebase audit (run 343)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new nightly test vector runs — same commit 14e6ce5a since Feb 27
+- **All 12 open Gloas spec PRs unchanged**: #4950 (4 approvals, CI green — documentation-only, closest to merge), #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+  - #4950 had one new comment (Feb 27, nalepae re: DataColumnSidecarsByRoot serve range)
+  - #4558 had one new comment (Feb 26, dknopik re: validation for empty messages)
+  - No new approvals on any PR
+- **Deep fork choice spec verification** — line-by-line comparison against consensus-specs/gloas/fork-choice.md:
+  - `is_supporting_vote_gloas_at_slot`: all 7 branches match spec exactly, including the `message.slot <= block.slot` fix from run 341
+  - `get_ancestor_gloas`: slot check, while loop, return value with `get_parent_payload_status_of` — all match spec
+  - `get_gloas_weight`: zero-weight condition (`NOT_PENDING AND slot+1 == current_slot`) correctly negated from spec's positive condition; proposer boost synthetic vote uses `payload_present=false` via `VoteTracker::default()` — matches spec
+  - All three functions confirmed spec-compliant
+- **Codebase quality audit**: zero clippy warnings (full workspace), zero cargo doc warnings, all CI green, all nightly tests green
+- **Test coverage assessment**: comprehensive search for untested code paths — found no critical gaps. All envelope processing validation errors (BuilderIndexMismatch, GasLimitMismatch, BlockHashMismatch, ParentHashMismatch, WithdrawalsRootMismatch, TimestampMismatch, PrevRandaoMismatch) are tested at either the gossip verification layer (integration tests) or state processing layer (unit tests). Full builder payment flow (bid → payment queue → epoch rotation → withdrawal) is tested at the state processing unit level with 10+ tests, and rotation is tested at the integration level.
+- **CI status**: 3 runs in progress from runs 340-342; all completed runs green; Mar 1 nightly all green
+
 ### 2026-03-01 — spec tracking, deep payload status verification (run 342)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
