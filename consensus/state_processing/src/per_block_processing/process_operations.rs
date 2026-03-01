@@ -282,10 +282,9 @@ pub fn process_proposer_slashings<E: EthSpec>(
 
             let proposer_index = proposer_slashing.signed_header_1.message.proposer_index as usize;
 
-            slash_validator(state, proposer_index, None, ctxt, spec)?;
-
             // [New in Gloas:EIP7732] Remove the BuilderPendingPayment for this proposal
-            // if it is still in the 2-epoch window.
+            // if it is still in the 2-epoch window. Per spec, this happens before
+            // slash_validator.
             if state.fork_name_unchecked().gloas_enabled() {
                 let slot = proposer_slashing.signed_header_1.message.slot;
                 let slots_per_epoch = E::slots_per_epoch();
@@ -311,6 +310,8 @@ pub fn process_proposer_slashings<E: EthSpec>(
                     }
                 }
             }
+
+            slash_validator(state, proposer_index, None, ctxt, spec)?;
 
             Ok(())
         })
