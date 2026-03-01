@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — end-to-end builder payment tests, spec tracking (run 353)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **End-to-end builder payment accounting tests shipped** — 3 new integration tests:
+  - `gloas_builder_pending_withdrawal_appears_in_envelope`: injects pending withdrawal at genesis, verifies it appears in block production envelope with correct builder_index | BUILDER_INDEX_FLAG, fee_recipient, and amount
+  - `gloas_external_bid_records_pending_payment_in_state`: after 64-slot finalization, external bid with value > 0 records pending payment at correct index (SLOTS_PER_EPOCH + slot_mod) in builder_pending_payments array
+  - `gloas_multiple_builder_withdrawals_in_envelope`: two builders with pending withdrawals, verifies both appear in order with sequential withdrawal indices, pending_withdrawals drained after processing
+  - New helper: `gloas_harness_with_pending_withdrawals` — creates harness with builders AND pre-seeded builder_pending_withdrawals for testing withdrawal output
+  - Closes the "end-to-end builder payment accounting" coverage gap from run 352
+- **All 60 Gloas beacon_chain tests pass** (303 total, ~234s)
+- **Clippy**: zero warnings (verified by pre-push hook)
+- **Remaining high-priority coverage gap** (from run 351):
+  - SSE events for ExecutionBid, PayloadAttestation, ExecutionProofReceived (emitted in gossip_methods.rs but never tested at integration level)
+
 ### 2026-03-01 — FULL/EMPTY reorg integration test, spec tracking (run 352)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
