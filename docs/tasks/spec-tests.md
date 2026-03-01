@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — deep coverage audit, no actionable gaps found (run 332)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 331
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Deep coverage audit**: systematic review of 8+ major code areas for untested Gloas code paths
+  - **envelope_processing.rs**: 52 tests covering all error paths (WithdrawalsRootMismatch, ParentHashMismatch, TimestampMismatch, InvalidStateRoot, builder payment queueing, state mutations, execution requests, blanking). No gaps found
+  - **per_block_processing/gloas.rs**: process_execution_payload_bid (17+ tests), process_payload_attestation (20+ tests), can_builder_cover_bid (12 tests), process_withdrawals_gloas (60+ tests), get_expected_withdrawals_gloas (20+ tests), is_parent_block_full (3 tests). No gaps found
+  - **per_epoch_processing/gloas.rs**: process_builder_pending_payments (20 tests covering quorum boundary, rotation, multi-builder, double epoch, sparse patterns). No gaps found
+  - **upgrade/gloas.rs**: 21 tests covering field migration, builder onboarding, deposit routing, pubkey cache, top-up, edge cases. No gaps found
+  - **fork_choice/fork_choice.rs**: on_execution_bid, on_payload_attestation, on_execution_payload — all extensively tested with quorum boundary, idempotency, accumulation, execution status transitions. No gaps found
+  - **execution_bid_pool.rs**: 16 tests. No gaps found
+  - **per_block_processing/process_operations.rs**: Gloas deposit routing (is_pending_validator, builder deposit, frontrunning protection) — 20+ tests. Attestation weight accumulation — 10+ tests. No gaps found
+  - **per_slot_processing.rs**: Gloas payload availability clearing — tested. No gaps found
+- **Assessment**: test coverage has reached saturation for Gloas ePBS code paths. All consensus-critical functions have boundary, error path, and interaction tests. Remaining untested paths are defensive bounds or integration-level error injection scenarios that are not cost-effective to test
+- **CI status**: all recent runs green (completed runs all success), nightly passing
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — coverage audit and builder exit edge case test (run 331)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 330
