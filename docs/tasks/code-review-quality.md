@@ -338,3 +338,17 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 **Verification**: 452/452 state_processing tests, 138/138 EF spec tests (fake_crypto), 4/4 EF operations_execution_payload tests (real crypto), clippy clean (full workspace including tests).
 
 **Conclusion**: Phase 5 complete. Gloas test quality is strong — comprehensive coverage, specific assertions, deterministic execution. No actionable gaps found that justify new tests. The codebase has ~600+ Gloas-specific tests across all layers.
+
+### Run 294: withdrawal loop optimization, Copy derivation, saturating_sub simplification
+
+**Scope**: Performance optimizations in Gloas withdrawal processing and builder payment types.
+
+**Changes**:
+
+1. **Hoisted `state.validators().len()` out of hot loops** in both `process_withdrawals_gloas` and `get_expected_withdrawals_gloas` — the validator count was called per-iteration in the validator sweep loop for the `safe_rem` modulus. Now cached before the loop. Affects both the mutation path and the read-only expected-withdrawals computation.
+
+2. **Derived `Copy` on `BuilderPendingWithdrawal` and `BuilderPendingPayment`** — both types are small fixed-size structs (36 and 44 bytes respectively, all-Copy fields: `Address` + `u64` + `u64`). With `Copy`, all `.clone()` calls become zero-cost bitwise copies. Fixed 7 `clone_on_copy` clippy lints across production and test code (replaced `.clone()` with dereference or direct pass).
+
+3. **Simplified `saturating_sub(min(amount, balance))`** to `saturating_sub(amount)` in builder withdrawal balance decrease — the `min` is redundant since `saturating_sub` already clamps to zero.
+
+**Verification**: 463/463 state_processing tests, 711/711 types tests, 17/17 EF operations+sanity tests, 18/18 EF epoch processing tests, full workspace clippy clean.
