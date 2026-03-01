@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, on_block compliance review (run 284)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 283
+- Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge — already compliant), #4940 (initial fork choice tests — 0 reviews), #4932 (sanity/blocks tests — 1 reviewer), #4939, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **PR #4941 compliance check** (merged Feb 19): updates execution proof construction to use `BeaconBlock` instead of `BeaconBlockBody` for `parent_beacon_block_root`. Vibehouse already uses `block_ref.parent_root` in `NewPayloadRequest` (new_payload_request.rs:199,209,220) — no code change needed.
+- **Spec `on_block` EMPTY-path assertion audit**: the spec's `assert bid.parent_block_hash == parent_bid.parent_block_hash` (for EMPTY parent case) is validated in vibehouse through `process_execution_payload_bid` (gloas.rs:138-149) which checks `bid.parent_block_hash == state.latest_block_hash`. When parent is EMPTY, `state.latest_block_hash` holds the grandparent's hash (unchanged by missing envelope), which is exactly what `parent_bid.parent_block_hash` would be. Validation is correct.
+- **EF test runner readiness for #4940**: confirmed `OnExecutionPayload` step handler (fork_choice.rs:133,368), `check_head_payload_status` assertion (fork_choice.rs:872), and `PayloadNotRevealed` tolerance for pre-#4918 vectors — all in place. No prep needed.
+- **Clippy**: zero warnings across workspace (excluding ef_tests)
+- **CI status**: all completed runs green, 4 doc-only runs still in progress
+- **Nightly CI**: latest nightly green (22522736397)
+- **No code changes this run** — spec fully compliant, test infrastructure ready for upcoming test vectors
+
 ### 2026-03-01 — deep test coverage audit, spec tracking (run 283)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 282
