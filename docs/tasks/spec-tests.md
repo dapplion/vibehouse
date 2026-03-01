@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — state processing deduplication, spec tracking (run 290)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 289
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **EF spec tests**: 35/35 pass (operations + epoch_processing + sanity, minimal preset, fake crypto)
+- **State processing tests**: 463/463 pass
+- **Performance optimizations shipped**:
+  - Deduplicated state accessor calls in `process_execution_payload_bid`: extracted `latest_block_hash` once before the self-build/external-builder branch (was calling `as_gloas()` twice — once inside else branch, once unconditionally). Hoisted single `as_gloas_mut()` call before payment+cache section (was calling it twice — once inside `if amount > 0`, once unconditionally).
+  - Removed redundant `.clone()` in `process_proposer_lookahead`: `proposer_lookahead()` returns `&Vector` which derefs to `&[u64]`, so `.to_vec()` already copies. The intermediate `.clone()` was allocating the full Vector unnecessarily before `.to_vec()` copied it again.
+- **Clippy**: zero warnings on state_processing
+
 ### 2026-03-01 — fork choice hot path optimizations, spec tracking (run 289)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 288

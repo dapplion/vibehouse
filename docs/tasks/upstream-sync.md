@@ -31,6 +31,13 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 290)
+- Checked consensus-specs: no new Gloas PRs merged since run 289 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Code improvements shipped**: deduplicated state accessor calls in bid processing, removed redundant clone in proposer lookahead
+- **Spec status**: stable, fully compliant
+
 ### 2026-03-01 (run 285)
 - Checked consensus-specs: no new Gloas PRs merged since run 284 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (still open), #4892 (2 approvals), #4940, #4939, #4932, #4926, #4906, #4898, #4843, #4840, #4747, #4630, #4558, #4484 — all still open/unmerged
