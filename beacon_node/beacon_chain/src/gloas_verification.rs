@@ -372,6 +372,11 @@ impl<T: BeaconChainTypes> VerifiedPayloadEnvelope<T> {
         self.beacon_block_root
     }
 
+    /// Returns a cheap Arc clone of the underlying envelope.
+    pub fn envelope_arc(&self) -> Arc<SignedExecutionPayloadEnvelope<T::EthSpec>> {
+        Arc::clone(&self.envelope)
+    }
+
     /// Consume self and return the underlying envelope.
     pub fn into_inner(self) -> Arc<SignedExecutionPayloadEnvelope<T::EthSpec>> {
         self.envelope

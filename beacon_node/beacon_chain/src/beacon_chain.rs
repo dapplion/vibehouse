@@ -2763,10 +2763,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Persist the envelope to disk so it can be retrieved later via the REST API.
+        // Use envelope_arc() (cheap Arc clone) instead of Arc::new(clone()) to avoid
+        // cloning the entire SignedExecutionPayloadEnvelope.
+        let envelope_arc = verified_envelope.envelope_arc();
         self.store
             .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
                 beacon_block_root,
-                Arc::new(signed_envelope.clone()),
+                envelope_arc,
             )])
             .map_err(Error::DBError)?;
 
@@ -3286,9 +3289,9 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             signature: agg_sig,
         };
 
-        // Verify using the same gossip verification path
+        // Verify using the same gossip verification path (move attestation — not used after)
         let verified = self
-            .verify_payload_attestation_for_gossip(attestation.clone())
+            .verify_payload_attestation_for_gossip(attestation)
             .map_err(|e| Error::PayloadAttestationVerificationFailed(format!("{:?}", e)))?;
 
         // Insert into fork choice
@@ -3301,10 +3304,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             );
         }
 
-        // Insert into pool for block inclusion
-        self.insert_payload_attestation_to_pool(verified.attestation().clone());
+        // Insert into pool for block inclusion.
+        // Consume verified to avoid cloning: one clone for pool, move for return.
+        let attestation = verified.into_inner();
+        self.insert_payload_attestation_to_pool(attestation.clone());
 
-        Ok(verified.attestation().clone())
+        Ok(attestation)
     }
 
     /// Inserts a verified payload attestation into the pool for later block inclusion (gloas ePBS).

@@ -3732,11 +3732,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
-        // Store in payload attestation pool for block inclusion
-        self.chain
-            .insert_payload_attestation_to_pool(verified_attestation.attestation().clone());
-
-        // Import to fork choice
+        // Import to fork choice first (borrows verified_attestation), then consume for pool.
         if let Err(e) = self
             .chain
             .apply_payload_attestation_to_fork_choice(&verified_attestation)
@@ -3766,6 +3762,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             // PTC vote may have triggered payload_revealed — recompute head
             self.chain.recompute_head_at_current_slot().await;
         }
+
+        // Store in payload attestation pool for block inclusion.
+        // Done after fork choice import so we can consume verified_attestation
+        // (via into_inner) instead of cloning.
+        self.chain
+            .insert_payload_attestation_to_pool(verified_attestation.into_inner());
     }
 
     /// Process a gossip proposer preferences message (gloas ePBS).
