@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — deep test coverage audit, spec tracking (run 283)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 282
+- Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge — extends by_root serve range, already compliant), #4940 (initial fork choice tests — 0 reviews), #4939, #4932, #4926, #4906, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **PR #4950 analysis**: extends `BeaconBlocksByRoot` and `ExecutionPayloadEnvelopesByRoot` serve range from "since latest finalized epoch" to `MIN_EPOCHS_FOR_BLOCK_REQUESTS`. Vibehouse already serves anything in the store without range filtering — no code change needed when merged.
+- **PR #4940 readiness**: reviewed diff — adds `test_on_execution_payload` with `on_execution_payload` step and `check_head_payload_status` assertions. Vibehouse test runner already has both handlers implemented (`Step::OnExecutionPayload` at fork_choice.rs:133, `check_head_payload_status` at fork_choice.rs:872). No code changes needed when test vectors land.
+- **Deep test coverage audit**: systematic analysis of all Gloas-specific code paths across envelope_processing, gossip_methods, block_verification, per_block_processing, upgrade/gloas, and single_pass:
+  - **envelope_processing.rs**: 7 signature verification tests with `VerifySignatures::True` (builder, self-build, wrong-key, empty, OOB), 5 execution request tests (deposit, builder topup, withdrawal, consolidation, combined), 6 error value verification tests, 3 payment boundary tests — all paths covered
+  - **gossip_methods.rs**: 2 timing edge cases identified (head-epoch-behind and pre-Fulu-lookahead in `process_gossip_proposer_preferences`) but both are fork-boundary races that require manipulating chain state beyond test rig capabilities
+  - **upgrade/gloas.rs**: `apply_builder_deposit` slot reuse branch (lines 248-258) is unreachable in upgrade context — `builders` list always starts empty, so `position()` always returns `None`. Dead code during upgrade but correct defensive code for potential future reuse. 13 existing upgrade tests cover all reachable paths
+  - **per_block_processing/process_operations.rs**: builder slot reuse path IS thoroughly tested in block processing context (5+ tests: slot reuse with cache invalidation, topup after reuse, evicted builder re-registration, deposit frontrunning)
+  - **single_pass.rs**: `process_epoch_single_pass` tested with `SinglePassConfig::enable_all()` (matches `altair::process_epoch`'s default config). Gap: no test calls `process_epoch` directly on Gloas state, but this is a trivial dispatch (Gloas → altair::process_epoch → single_pass with enable_all)
+  - **Overall assessment**: Gloas test coverage is comprehensive across all major subsystems. Remaining gaps are limited to timing-race edge cases and unreachable defensive code paths.
+- **Nightly CI**: latest nightly green (22522736397). Prior failure (22520311458) was transient: altair had moonrepo infra issue, fulu had 61-min test timeout — both resolved in rerun.
+- **CI status**: all green (8/8 completed runs success, 7 in-progress)
+- **No code changes this run** — test coverage found to be comprehensive, no actionable gaps
+
 ### 2026-03-01 — spec tracking, merged PR review (run 282)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **4 newly merged Gloas PRs** detected since run 281 (all already implemented in vibehouse):
