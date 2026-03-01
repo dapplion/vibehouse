@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — devnet-0 readiness verification, spec tracking (run 344)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new nightly test vector runs — same commit 14e6ce5a since Feb 27
+- **All 12 open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- **ePBS devnet-0 launching March 4th** (ACDC #175 context):
+  - Spec: v1.7.0-alpha.2, minimal preset, `gloas_fork_epoch: 1`, self-built payloads only
+  - Engine APIs: `engine_newPayloadV5`, `engine_getPayloadV5`, `engine_forkchoiceUpdatedV3`
+  - EL: `ethpandaops/geth:epbs-devnet-0`
+  - Lighthouse ready for interop "in next week or two", Teku next week
+  - PR #4843 (variable PTC deadline) explicitly noted as NOT a blocker for devnet-0
+  - **vibehouse fully compatible**: engine API V5, forkchoiceUpdatedV3, correct Kurtosis config already matches devnet-0 spec
+- **Test verification**: 798/798 state_processing+proto_array+fork_choice tests pass, 138/138 EF spec tests pass (fake_crypto, minimal)
+- **Build**: clean compilation, zero clippy warnings, Rust 1.93.1
+- **CI status**: all completed runs green; nightly (Mar 1 08:51 UTC) green
+
 ### 2026-03-01 — full fork choice spec verification, codebase audit (run 343)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
