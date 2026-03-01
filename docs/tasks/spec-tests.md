@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice bid overwrite, PTC idempotency, and payment index boundary tests, spec tracking (run 317)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 316 (only #4931 FOCIL rebase, not core Gloas)
+- Open Gloas spec PRs status unchanged: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+- **10 new edge case tests**:
+  - `consecutive_bids_overwrite_previous_state` — verifies second bid to same block resets builder_index, ptc_weight, payload_revealed, and payload_data_available
+  - `payload_revealed_transition_happens_once` — after PTC quorum, additional attestations accumulate weight but don't re-trigger payload_revealed or overwrite execution_status
+  - `ptc_quorum_without_bid_block_hash_skips_execution_status` — PTC quorum with bid_block_hash=None sets payload_revealed but does NOT set execution_status to Optimistic
+  - `envelope_at_first_slot_of_epoch_uses_correct_payment_index` — boundary test: slot % slots_per_epoch = 0 → payment_index = slots_per_epoch (correct epoch boundary arithmetic)
+  - `invalid_state_root_reports_correct_values` — verifies InvalidStateRoot error contains the correct computed state root and envelope's bad state root
+  - `availability_bit_set_at_last_valid_index` — boundary test: slot mapping to slots_per_historical_root - 1 correctly sets the last valid availability bit
+  - `withdrawals_builder_sweep_single_builder_wraps` — builders_count=1 modular arithmetic: builder_index = (0+1) % 1 = 0 wraps correctly
+  - `withdrawals_validator_sweep_at_max_advances_to_last_plus_one` — at max withdrawals, next_withdrawal_validator_index = (last.validator_index + 1) % validators_len
+  - `bid_payment_slot_zero_of_epoch_computes_correct_index` — bid payment index at epoch boundary: slots_per_epoch + 0 = slots_per_epoch
+  - `withdrawals_no_withdrawals_preserves_next_withdrawal_index` — when zero withdrawals produced, next_withdrawal_index remains unchanged
+- **Tests**: 501 state_processing (up from 494), 84 fork_choice (up from 81), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — fork choice skip slot and payload status derivation tests, spec tracking (run 316)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 315
