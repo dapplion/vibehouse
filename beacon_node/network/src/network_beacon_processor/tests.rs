@@ -11,6 +11,7 @@ use crate::{
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::custody_context::NodeCustodyType;
 use beacon_chain::data_column_verification::validate_data_column_sidecar_for_gossip;
+use beacon_chain::events::EventKind;
 use beacon_chain::kzg_utils::blobs_to_data_column_sidecars;
 use beacon_chain::observed_data_sidecars::DoNotObserve;
 use beacon_chain::test_utils::{
@@ -4329,4 +4330,201 @@ async fn test_gloas_envelopes_by_root_mixed_roots() {
         2,
         "should receive 2 envelopes for 2 known roots, skipping the unknown"
     );
+}
+
+// ======== SSE event emission integration tests ========
+//
+// These tests verify that the gossip handlers emit Server-Sent Events (SSE) for
+// ExecutionBid, PayloadAttestation, and ExecutionProofReceived when valid gossip
+// items are processed. The SSE events are consumed by the /eth/v1/events HTTP API
+// endpoint. Each test subscribes to the appropriate event channel before processing,
+// then verifies the event data matches the gossip item.
+
+/// Verifies that an ExecutionBid SSE event is emitted when a valid bid is
+/// processed via gossip. The event should contain the bid's slot, parent block
+/// root, builder_index, block_hash, and value.
+///
+/// The bid must target the head block (slot matches) for the fork choice import
+/// to succeed and trigger the SSE event. We extend the chain by one slot so that
+/// the head is at `current_slot`, then bid on it.
+#[tokio::test]
+async fn test_gloas_sse_event_execution_bid() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
+
+    // Produce one more block so that head_slot == current_slot.
+    // This is needed because on_execution_bid requires bid.slot == node.slot,
+    // and the bid slot must be current_slot for gossip validation.
+    rig._harness.extend_slots(1).await;
+
+    let head = rig.chain.head_snapshot();
+    let current_slot = rig.chain.slot().unwrap();
+    assert_eq!(
+        head.beacon_block.slot(),
+        current_slot,
+        "precondition: head is at current slot after extend_slots"
+    );
+
+    // Subscribe to execution bid events before processing
+    let event_handler = rig.chain.event_handler.as_ref().unwrap();
+    let mut bid_rx = event_handler.subscribe_execution_bid();
+
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg.clone());
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    // Verify the gossip was accepted
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Verify SSE event was emitted with correct data
+    let event = bid_rx
+        .try_recv()
+        .expect("should receive execution bid SSE event");
+    match event {
+        EventKind::ExecutionBid(sse_bid) => {
+            assert_eq!(sse_bid.slot, bid_msg.slot);
+            assert_eq!(sse_bid.block, bid_msg.parent_block_root);
+            assert_eq!(sse_bid.builder_index, bid_msg.builder_index);
+            assert_eq!(sse_bid.block_hash, bid_msg.block_hash.into_root());
+            assert_eq!(sse_bid.value, bid_msg.value);
+        }
+        other => panic!("expected ExecutionBid event, got {:?}", other.topic_name()),
+    }
+}
+
+/// Verifies that a PayloadAttestation SSE event is emitted when a valid PTC
+/// attestation is processed via gossip. The event should contain the slot,
+/// beacon_block_root, payload_present, and blob_data_available flags.
+#[tokio::test]
+async fn test_gloas_sse_event_payload_attestation() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Subscribe to payload attestation events before processing
+    let event_handler = rig.chain.event_handler.as_ref().unwrap();
+    let mut att_rx = event_handler.subscribe_payload_attestation();
+
+    let (attestation, _validator_index, _ptc_bit) = build_valid_payload_attestation(&rig, true);
+    let expected_data = attestation.data.clone();
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    // Verify the gossip was accepted
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Verify SSE event was emitted with correct data
+    let event = att_rx
+        .try_recv()
+        .expect("should receive payload attestation SSE event");
+    match event {
+        EventKind::PayloadAttestation(sse_att) => {
+            assert_eq!(sse_att.slot, expected_data.slot);
+            assert_eq!(sse_att.beacon_block_root, expected_data.beacon_block_root);
+            assert_eq!(sse_att.payload_present, expected_data.payload_present);
+            assert_eq!(
+                sse_att.blob_data_available,
+                expected_data.blob_data_available
+            );
+        }
+        other => panic!(
+            "expected PayloadAttestation event, got {:?}",
+            other.topic_name()
+        ),
+    }
+}
+
+/// Verifies that an ExecutionProofReceived SSE event is emitted when a valid
+/// execution proof is processed via gossip. The event should contain the
+/// block_root, block_hash, subnet_id, and version.
+#[tokio::test]
+async fn test_gloas_sse_event_execution_proof_received() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Subscribe to execution proof events before processing
+    let event_handler = rig.chain.event_handler.as_ref().unwrap();
+    let mut proof_rx = event_handler.subscribe_execution_proof_received();
+
+    // Get the actual bid block_hash from fork choice for the head block
+    let bid_block_hash = {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&head_root)
+            .expect("head must be in fork choice");
+        node.bid_block_hash
+            .expect("Gloas head must have bid_block_hash")
+    };
+
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+    let proof = Arc::new(ExecutionProof::new(
+        head_root,
+        bid_block_hash,
+        subnet_id,
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42],
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            subnet_id,
+            proof.clone(),
+            Duration::ZERO,
+        )
+        .await;
+
+    // Verify the gossip was accepted
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Verify SSE event was emitted with correct data
+    let event = proof_rx
+        .try_recv()
+        .expect("should receive execution proof SSE event");
+    match event {
+        EventKind::ExecutionProofReceived(sse_proof) => {
+            assert_eq!(sse_proof.block_root, head_root);
+            assert_eq!(sse_proof.block_hash, bid_block_hash.into_root());
+            assert_eq!(sse_proof.subnet_id, *subnet_id);
+            assert_eq!(
+                sse_proof.version,
+                types::execution_proof::PROOF_VERSION_STUB
+            );
+        }
+        other => panic!(
+            "expected ExecutionProofReceived event, got {:?}",
+            other.topic_name()
+        ),
+    }
 }
