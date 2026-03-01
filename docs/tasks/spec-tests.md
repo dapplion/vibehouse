@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, performance optimizations (run 288)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 287
+- Open Gloas spec PRs tracked: #4950, #4940, #4932, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **EF spec tests**: 8/8 fork choice tests pass (minimal preset, real crypto)
+- **Proto_array tests**: 136/136 pass
+- **Fork_choice tests**: 81/81 pass
+- **Performance optimizations shipped**:
+  - Removed unnecessary `node.clone()` in `proto_array::on_block` — `ProtoNode` is a large struct cloned on every block import. Restructured to move instead of clone by saving `parent` field before push.
+  - Deduplicated triple `signed_execution_payload_bid()` accessor call in `fork_choice::on_block` — extracted to single `bid_opt` binding used for `builder_index`, `bid_block_hash`, and `bid_parent_block_hash` fields.
+- **Clippy**: zero warnings on both packages
+- **Nightly CI**: latest nightly (22522736397) passed on Feb 28. Previous failure was moonrepo infra + fulu timeout (already fixed by excluding `chain_segment_varying_chunk_size` from nightly prior-fork runs).
+
 ### 2026-03-01 — spec tracking, test coverage audit, EF test validation (run 287)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 286
