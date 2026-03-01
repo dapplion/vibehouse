@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — coverage audit and builder exit edge case test (run 331)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 330
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Coverage audit**: performed deep exploration of untested code paths across beacon_chain, state_processing, fork_choice, and proto_array
+  - Many gaps identified by automated search turned out to already be tested (e.g., `bid_unknown_block_root`, `pending_balance_sums_both_queues`)
+  - Real gap found: `verify_exit` integration tested pending withdrawals and pending payments separately, but never both simultaneously
+  - Added `verify_exit_builder_with_both_pending_withdrawal_and_payment_rejected` — verifies that `get_pending_balance_to_withdraw_for_builder` correctly sums both sources through the full verify_exit path
+- **Other gaps assessed (deferred — not cost-effective to test)**:
+  - `process_pending_envelope` FC failure branch: requires inducing fork-choice error after successful gossip verification — hard to set up naturally
+  - `prune_gloas_pools` overflow cap: requires 17+ pending envelopes in integration test — heavy setup for a defensive bound
+  - `is_attestation_same_slot` at slot 0: spec-correct special case, tested at unit level
+- **CI status**: all recent runs green (7/7 jobs passing), no new nightly failures
+  - Feb 28 nightly failures explained: fulu `chain_segment_varying_chunk_size` timeout (fixed in run 327), altair toolchain 502 (transient)
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — spec compliance audit of untracked merged PRs (run 330)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 329
