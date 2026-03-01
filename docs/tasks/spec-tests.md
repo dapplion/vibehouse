@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — blob/exit/withdrawal boundary tests, spec tracking (run 313)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 312
+- Open Gloas spec PRs status: #4950 (APPROVED), #4898 (APPROVED), #4892 (APPROVED), #4843 (APPROVED), #4940 (REVIEW_REQUIRED), #4932 (REVIEW_REQUIRED), #4939 (REVIEW_REQUIRED), #4926 (REVIEW_REQUIRED)
+  - #4939 (request missing payload envelopes for index-1 attestation) — adds REJECT/IGNORE rules for index-1 attestations without payload, triggers `ExecutionPayloadEnvelopesByRoot` recovery. Not yet merged, no action needed.
+  - #4926 (replace SECONDS_PER_SLOT with SLOT_DURATION_MS) — removes SECONDS_PER_SLOT config constant, replaces with SLOT_DURATION_MS throughout. ~50 files in vibehouse use seconds_per_slot. Not yet merged, no action needed.
+  - Other tracked PRs (#4840, #4747, #4630, #4558) unchanged — all OPEN, REVIEW_REQUIRED
+- **8 new edge case tests**:
+  - `builder_bid_blob_commitments_at_exactly_max_succeeds` — boundary: exactly max blob commitments accepted (only > max rejected)
+  - `builder_bid_zero_blob_commitments_succeeds` — bid with zero blob commitments is valid
+  - `builder_bid_blob_commitments_one_over_max_rejected` — max+1 blob commitments rejected, verifying off-by-one boundary
+  - `initiate_builder_exit_second_builder_while_first_active` — exit builder at index 1 does not affect builder 0
+  - `initiate_builder_exit_preserves_first_exit_epoch_on_reentry` — calling exit twice preserves first exit's withdrawable_epoch
+  - `ptc_committee_zero_balance_validators_eventually_selected` — algorithm robustness with zero effective_balance validators
+  - `payload_attestation_signature_verify_rejects_invalid_pubkey` — corrupted pubkey with VerifySignatures::True produces InvalidPubkey/BadSignature, not panic
+  - `process_withdrawals_gloas_empty_parent_block_noop` — empty parent block produces zero withdrawals even with pending entries
+- **Tests**: 491 state_processing (up from 483), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — upgrade_to_gloas edge case tests, spec tracking (run 312)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 311
