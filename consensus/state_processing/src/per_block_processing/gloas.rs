@@ -30,13 +30,12 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     let builder_index = bid.builder_index;
     let amount = bid.value;
 
-    // Extract latest_block_hash once (needed for parent_block_hash check below)
-    let latest_block_hash = state
-        .as_gloas()
-        .map_err(|_| BlockProcessingError::PayloadBidInvalid {
-            reason: "state is not Gloas".into(),
-        })?
-        .latest_block_hash;
+    // Extract Gloas state once (shared by latest_block_hash extraction and builder validation)
+    let gloas_err = |_| BlockProcessingError::PayloadBidInvalid {
+        reason: "state is not Gloas".into(),
+    };
+    let state_gloas = state.as_gloas().map_err(gloas_err)?;
+    let latest_block_hash = state_gloas.latest_block_hash;
 
     // Self-build validation
     if builder_index == spec.builder_index_self_build {
@@ -55,13 +54,6 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         let finalized_epoch = state.finalized_checkpoint().epoch;
         let fork = state.fork();
         let genesis_validators_root = state.genesis_validators_root();
-
-        let state_gloas =
-            state
-                .as_gloas()
-                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
-                    reason: "state is not Gloas".into(),
-                })?;
 
         let builder = state_gloas
             .builders
@@ -354,7 +346,7 @@ pub fn get_indexed_payload_attestation<E: EthSpec>(
 
     // Convert aggregation bits to list of attesting indices
     // Spec: attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
-    let mut attesting_indices = Vec::new();
+    let mut attesting_indices = Vec::with_capacity(ptc_indices.len());
     for (i, &validator_index) in ptc_indices.iter().enumerate() {
         if attestation.aggregation_bits.get(i).map_err(|_| {
             BlockProcessingError::PayloadAttestationInvalid(
@@ -506,7 +498,7 @@ pub fn process_withdrawals_gloas<E: EthSpec>(
     // Builders, partials, and builder sweep reserve 1 slot for the validator sweep
     let reserved_limit = max_withdrawals.saturating_sub(1);
     let mut withdrawal_index = state.next_withdrawal_index()?;
-    let mut withdrawals = Vec::<Withdrawal>::new();
+    let mut withdrawals = Vec::<Withdrawal>::with_capacity(max_withdrawals);
 
     // 1. Builder pending withdrawals (limit: MAX_WITHDRAWALS_PER_PAYLOAD - 1)
     let mut processed_builder_withdrawals_count: usize = 0;
@@ -802,7 +794,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
     let max_withdrawals = E::max_withdrawals_per_payload();
     let reserved_limit = max_withdrawals.saturating_sub(1);
     let mut withdrawal_index = state.next_withdrawal_index()?;
-    let mut withdrawals = Vec::<Withdrawal>::new();
+    let mut withdrawals = Vec::<Withdrawal>::with_capacity(max_withdrawals);
 
     // 1. Builder pending withdrawals
     {

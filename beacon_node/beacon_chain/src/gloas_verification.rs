@@ -649,7 +649,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         })?;
 
         // Convert aggregation bits to attesting indices
-        let mut indexed_attestation_indices = Vec::new();
+        let mut indexed_attestation_indices = Vec::with_capacity(ptc_indices.len());
         for (i, &validator_index) in ptc_indices.iter().enumerate() {
             if attestation
                 .aggregation_bits
