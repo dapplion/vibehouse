@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, deep spec audit (run 310)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **5 recently merged Gloas spec PRs reviewed** — all already implemented:
+  - #4948 (reorder payload status constants: EMPTY=0, FULL=1, PENDING=2) — vibehouse already uses this ordering
+  - #4918 (only allow attestations for known payload statuses) — already implemented at fork_choice.rs:1196 (`if index == 1 && !block.payload_revealed`)
+  - #4884 (payload data availability vote in store) — already implemented: `ptc_blob_data_available_weight`, `payload_data_available`, `should_extend_payload` checks both quorums
+  - #4923 (IGNORE beacon block if parent payload unknown) — already implemented at block_verification.rs:971 (`GloasParentPayloadUnknown` error with `MessageAcceptance::Ignore`)
+  - #4947 (pre-fork subscription note for proposer_preferences) — documentation-only, no code change needed
+- Open Gloas spec PRs unchanged: #4950, #4940, #4939, #4926, #4898, #4892, #4843, #4840, #4747, #4630, #4558
+- **Deep spec function audit**: verified `compute_proposer_index`, `get_next_sync_committee_indices`, and `compute_balance_weighted_selection` — the Gloas spec refactors these into `compute_balance_weighted_selection`/`compute_balance_weighted_acceptance` helpers, but the underlying algorithm (shuffled index + 16-bit balance-weighted acceptance) is identical to the existing Electra implementation. No code changes needed.
+- **Spec constant verification**: `process_builder_pending_payments` uses `>= quorum` (matches spec), `on_payload_attestation` uses `> threshold` for timeliness (matches spec)
+- **Tests**: 472 state_processing, 220 fork_choice+proto_array, 712 types — all pass (1,404 total verified)
+
 ### 2026-03-01 — bid processing edge case tests, spec tracking (run 309)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 308
