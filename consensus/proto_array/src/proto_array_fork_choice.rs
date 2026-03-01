@@ -7237,4 +7237,375 @@ mod test_gloas_fork_choice {
             "both weights at threshold+1 with envelope_received should extend payload"
         );
     }
+
+    // ── get_ancestor_gloas with skip slots ──
+
+    #[test]
+    fn ancestor_skip_slot_derives_payload_status_from_spanning_child() {
+        // Chain: slot 0 → slot 1 → slot 5 (skip slots 2-4)
+        // Ancestor at slot 3 should return root(1) with payload status derived
+        // from the child (slot 5) → parent (slot 1) relationship.
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        // slot 5 block: bid_parent_block_hash != parent's bid_block_hash → EMPTY parent
+        insert_gloas_block(
+            &mut fc,
+            5,
+            root(5),
+            root(1),
+            Some(exec_hash(5)),
+            Some(exec_hash(99)), // mismatched → parent was EMPTY
+            false,
+        );
+
+        // Ancestor of root(5) at slot 3 → walks up to root(1) (slot 1 <= 3 < 5)
+        // Payload status: child(slot 5).bid_parent_block_hash = exec_hash(99) !=
+        //                 parent(slot 1).bid_block_hash = exec_hash(1) → EMPTY
+        let result = fc.get_ancestor_gloas(root(5), Slot::new(3));
+        let ancestor = result.expect("ancestor should exist");
+        assert_eq!(ancestor.root, root(1));
+        assert_eq!(
+            ancestor.payload_status,
+            GloasPayloadStatus::Empty,
+            "mismatched bid hashes across skip slots should derive EMPTY status"
+        );
+    }
+
+    #[test]
+    fn ancestor_skip_slot_full_parent_derived_from_matching_hashes() {
+        // Same skip slot setup but with matching hashes → FULL parent status
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        // slot 5 block: bid_parent_block_hash matches parent's bid_block_hash → FULL parent
+        insert_gloas_block(
+            &mut fc,
+            5,
+            root(5),
+            root(1),
+            Some(exec_hash(5)),
+            Some(exec_hash(1)), // matches parent → parent was FULL
+            false,
+        );
+
+        let result = fc.get_ancestor_gloas(root(5), Slot::new(3));
+        let ancestor = result.expect("ancestor should exist");
+        assert_eq!(ancestor.root, root(1));
+        assert_eq!(
+            ancestor.payload_status,
+            GloasPayloadStatus::Full,
+            "matching bid hashes across skip slots should derive FULL status"
+        );
+    }
+
+    #[test]
+    fn ancestor_deep_skip_slot_chain_walks_multiple_hops() {
+        // Chain: slot 0 → slot 2 → slot 6 → slot 10
+        // Ancestor at slot 4 should walk back from slot 10 through slot 6 to slot 2
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(0),
+            Some(exec_hash(2)),
+            None, // genesis parent
+            true,
+        );
+        insert_gloas_block(
+            &mut fc,
+            6,
+            root(6),
+            root(2),
+            Some(exec_hash(6)),
+            Some(exec_hash(2)), // FULL parent
+            true,
+        );
+        insert_gloas_block(
+            &mut fc,
+            10,
+            root(10),
+            root(6),
+            Some(exec_hash(10)),
+            Some(exec_hash(99)), // EMPTY parent
+            false,
+        );
+
+        // Ancestor at slot 4: root(10) → walk → root(6) at slot 6 > 4, root(2) at slot 2 <= 4
+        // Child=root(6), parent=root(2): exec_hash(2) == exec_hash(2) → FULL
+        let result = fc.get_ancestor_gloas(root(10), Slot::new(4));
+        let ancestor = result.expect("ancestor should exist");
+        assert_eq!(ancestor.root, root(2));
+        assert_eq!(ancestor.payload_status, GloasPayloadStatus::Full);
+
+        // Ancestor at slot 8: root(10) at slot 10 > 8, root(6) at slot 6 <= 8
+        // Child=root(10), parent=root(6): exec_hash(99) != exec_hash(6) → EMPTY
+        let result = fc.get_ancestor_gloas(root(10), Slot::new(8));
+        let ancestor = result.expect("ancestor should exist");
+        assert_eq!(ancestor.root, root(6));
+        assert_eq!(ancestor.payload_status, GloasPayloadStatus::Empty);
+    }
+
+    // ── get_gloas_children leaf termination ──
+
+    #[test]
+    fn gloas_children_empty_leaf_returns_no_children() {
+        // An EMPTY virtual node at a leaf block (no child blocks) should return
+        // an empty Vec, causing find_head_gloas to terminate at this node.
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+
+        let children = fc.get_gloas_children(&empty_node, &filtered);
+        assert!(
+            children.is_empty(),
+            "EMPTY leaf with no child blocks should have no children"
+        );
+    }
+
+    #[test]
+    fn gloas_children_full_leaf_returns_no_children() {
+        // Same as above but for FULL virtual node at a leaf
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        let children = fc.get_gloas_children(&full_node, &filtered);
+        assert!(
+            children.is_empty(),
+            "FULL leaf with no child blocks should have no children"
+        );
+    }
+
+    // ── get_parent_payload_status_of with None hashes ──
+
+    #[test]
+    fn parent_payload_status_both_hashes_none_returns_empty() {
+        // When both child.bid_parent_block_hash and parent.bid_block_hash are None
+        // (e.g. genesis or default bids), the match arm falls to _ → Empty.
+        let (mut fc, _spec) = new_gloas_fc();
+        // Insert with None bid hashes
+        insert_gloas_block(&mut fc, 1, root(1), root(0), None, None, false);
+
+        let child = get_node(&fc, &root(1));
+        let parent = get_node(&fc, &root(0));
+
+        let status = fc.get_parent_payload_status_of(child, parent);
+        assert_eq!(
+            status,
+            GloasPayloadStatus::Empty,
+            "both None bid hashes should derive EMPTY parent status"
+        );
+    }
+
+    #[test]
+    fn parent_payload_status_child_none_parent_some_returns_empty() {
+        // Child has None bid_parent_block_hash but parent has Some bid_block_hash
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        // Child at slot 2 with bid_parent_block_hash = None
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            None,
+            false,
+        );
+
+        let child = get_node(&fc, &root(2));
+        let parent = get_node(&fc, &root(1));
+
+        let status = fc.get_parent_payload_status_of(child, parent);
+        assert_eq!(
+            status,
+            GloasPayloadStatus::Empty,
+            "child None parent_hash with parent Some block_hash should derive EMPTY"
+        );
+    }
+
+    #[test]
+    fn parent_payload_status_child_some_parent_none_returns_empty() {
+        // Child has Some bid_parent_block_hash but parent has None bid_block_hash
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(&mut fc, 1, root(1), root(0), None, None, false);
+        insert_gloas_block(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)),
+            false,
+        );
+
+        let child = get_node(&fc, &root(2));
+        let parent = get_node(&fc, &root(1));
+
+        let status = fc.get_parent_payload_status_of(child, parent);
+        assert_eq!(
+            status,
+            GloasPayloadStatus::Empty,
+            "child Some parent_hash with parent None block_hash should derive EMPTY"
+        );
+    }
+
+    // ── is_supporting_vote through ancestor with skip slots ──
+
+    #[test]
+    fn supporting_vote_via_ancestor_across_skip_slots() {
+        // Vote on a block at slot 5, check if it supports an ancestor at slot 1
+        // when there are skip slots between them.
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+        // Skip slots 2-4, block at slot 5 with matching parent hash → FULL parent
+        insert_gloas_block(
+            &mut fc,
+            5,
+            root(5),
+            root(1),
+            Some(exec_hash(5)),
+            Some(exec_hash(1)), // matches parent → FULL
+            false,
+        );
+
+        // FULL ancestor node at slot 1
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+
+        // Vote at slot 5 pointing to root(5), ancestor at slot 1 should be FULL
+        let vote = VoteTracker {
+            current_root: root(5),
+            current_slot: Slot::new(5),
+            current_payload_present: true,
+            ..VoteTracker::default()
+        };
+
+        // The ancestor check: get_ancestor_gloas(root(5), slot=1) → root(1) FULL
+        // FULL == FULL → supporting
+        assert!(
+            fc.is_supporting_vote_gloas(&full_node, &vote),
+            "vote through skip slots with FULL ancestor derivation should support FULL node"
+        );
+
+        // EMPTY ancestor node — should NOT support since ancestor derives FULL
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        assert!(
+            !fc.is_supporting_vote_gloas(&empty_node, &vote),
+            "vote through skip slots with FULL ancestor derivation should NOT support EMPTY node"
+        );
+    }
+
+    // ── get_payload_tiebreaker not-previous-slot returns ordinal ──
+
+    #[test]
+    fn tiebreaker_non_previous_slot_returns_ordinal_value() {
+        // For nodes NOT from the previous slot, tiebreaker returns the enum ordinal.
+        // EMPTY=0, FULL=1, PENDING=2
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        // Current slot = 5, block at slot 1 → not previous slot (1 + 1 != 5)
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+        let pending_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        assert_eq!(
+            fc.get_payload_tiebreaker(&empty_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            GloasPayloadStatus::Empty as u8,
+            "EMPTY ordinal for non-previous-slot"
+        );
+        assert_eq!(
+            fc.get_payload_tiebreaker(&full_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            GloasPayloadStatus::Full as u8,
+            "FULL ordinal for non-previous-slot"
+        );
+        assert_eq!(
+            fc.get_payload_tiebreaker(&pending_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            GloasPayloadStatus::Pending as u8,
+            "PENDING ordinal for non-previous-slot"
+        );
+    }
 }
