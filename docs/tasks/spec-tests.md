@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice and bid/envelope/withdrawal edge case tests, spec tracking (run 321)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 320
+- Open Gloas spec PRs status: #4940 (fork choice tests, OPEN), #4939 (envelope request, OPEN), #4932 (sanity tests, OPEN), #4840 (eip7843, OPEN), #4630 (SSZ compat, OPEN)
+- Confirmed all previously-assessed merged PRs still implemented: #4948, #4930, #4884, #4923, #4918
+- **4 new fork_choice tests**:
+  - `payload_attestation_both_false_no_weight_change` — PTC "absent vote" path: both flags false, multiple attesters, zero weight change
+  - `envelope_overwrites_ptc_quorum_execution_status` — PTC quorum sets Optimistic(bid_hash), then envelope overwrites with Optimistic(envelope_hash)
+  - `execution_bid_for_slot_one_block` — bid application to first post-genesis block
+  - `envelope_without_prior_bid_sets_execution_status` — envelope for block with no prior bid sets execution_status from envelope hash
+- **5 new state_processing tests**:
+  - `builder_bid_at_epoch_start_payment_recorded_at_correct_index` — epoch boundary payment index calculation: slot 8 → index 8
+  - `builder_bid_cached_even_with_zero_value_external_builder` — zero-value external bid cached but no pending payment recorded
+  - `builder_bid_replaces_previously_cached_self_build` — second bid overwrites first cached bid (no latch semantics)
+  - `payload_attestation_correct_slot_passes` — end-to-end attestation with correct slot, block root, and PTC bit passes validation
+  - `builder_pending_withdrawal_decreases_balance` — withdrawal processing reduces builder balance and produces expected withdrawal
+- **Tests**: 157 proto_array, 516 state_processing (up from 511), 98 fork_choice (up from 94), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — fork choice and state processing edge case tests, spec tracking (run 320)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 319
