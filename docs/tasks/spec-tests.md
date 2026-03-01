@@ -28,6 +28,31 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — skip-slot fork transition tests, spec tracking (run 351)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**. 4 approved (#4950, #4898, #4892, #4843), none merged.
+- **Skip-slot fork transition integration tests shipped** — 3 new tests in `beacon_chain/tests/gloas.rs`:
+  - `gloas_fork_transition_with_skipped_fork_slot`: first Gloas slot skipped, block at fork_slot+1
+  - `gloas_fork_transition_with_multiple_skipped_slots`: 3 slots skipped across boundary, block at fork_slot+3
+  - `gloas_fork_transition_with_skipped_last_fulu_slot`: last Fulu slot skipped, first block at fork_slot
+  - All verify bid `parent_block_hash` correctly references the Fulu header and chain continues
+- **Test coverage gap analysis** — comprehensive review of ePBS integration test coverage identified:
+  - High: end-to-end builder payment accounting (bid→envelope→epoch payment→withdrawal never tested at integration level)
+  - High: SSE events for ExecutionBid, PayloadAttestation, ExecutionProofReceived never tested
+  - High: re-org between FULL/EMPTY payload states untested (only self-build FULL-vs-FULL tested)
+  - Medium: external builder envelope → next block's bid picks up external `block_hash` (partial coverage)
+  - Medium: blob data quorum trigger and consequences untested
+  - Lower: PTC duties at epoch boundaries, execution proof acceptance path
+- **Dead code audit** — #[allow(dead_code)] annotations reviewed:
+  - `StateSummaryIteratorError`, `RemoveChain`: NOT dead — fields used for debug formatting via error propagation
+  - `PersistedOperationPoolV15`: still used for reading legacy DB formats (V15→V20 op pool conversion)
+  - Schema v17 compat impls (`AttesterSlashingBase`): used by V15 op pool loading, can't remove without dropping V15
+  - `GossipCacheBuilder` impl: intentional builder pattern API
+- **ePBS production code hardening check**: zero `.unwrap()`/`.expect()` in Gloas production paths confirmed
+- **CI status**: all green, 4 runs in progress from run 350
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+
 ### 2026-03-01 — dead code cleanup, spec tracking (run 350)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
