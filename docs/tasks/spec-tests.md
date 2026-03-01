@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — deep spec conformance audit (run 286)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 285
+- Open Gloas spec PRs tracked: #4950 (extend by_root serve range — already compliant), #4940 (fork choice tests — 0 reviews, handler ready), #4932 (sanity/blocks tests — handler ready), #4939 (missing envelope request — 0 reviews), #4926 (SLOT_DURATION_MS — 1 approval, 106 occurrences in codebase), #4898 (remove pending tiebreaker — already compliant), #4892 (remove impossible branch — already compliant), #4843 (SLOTNUM — not merged), #4840 (variable PTC deadline — not merged), #4747 (fast confirmation — 0 reviews), #4630 (EIP-7688 SSZ — 0 reviews), #4558 (cell dissemination — 0 reviews)
+- **Deep spec conformance audit**: line-by-line comparison against consensus-specs master for all critical Gloas functions:
+  - `process_execution_payload_bid` (gloas.rs:21-214): all 10 validation steps match spec exactly — self-build checks, is_active_builder, can_builder_cover_bid, signature verification, blob commitment limits, slot/parent validation, pending payment recording
+  - `can_builder_cover_bid` (gloas.rs:223-242): matches spec exactly — balance - (MIN_DEPOSIT + pending_withdrawals) >= bid_amount
+  - `is_active_builder` / `is_active_at_finalized_epoch` (builder.rs:39-41): matches spec — deposit_epoch < finalized_epoch && withdrawable_epoch == FAR_FUTURE_EPOCH
+  - `process_execution_payload_envelope` (envelope_processing.rs:112-299): all 14 verification steps match spec — signature, state_root caching, beacon_block_root, slot, builder_index, prev_randao, withdrawals, gas_limit, block_hash, parent_hash, timestamp, execution requests, builder payment, availability + latest_block_hash update, state_root verification
+  - `process_block` ordering (per_block_processing.rs:150-210): matches spec — block_header → withdrawals → bid → randao → eth1_data → operations → sync_aggregate
+  - `process_operations` (process_operations.rs:25-63): correctly excludes execution requests in Gloas (moved to envelope), includes payload_attestations
+  - `per_slot_processing` / `cache_state` (per_slot_processing.rs:126-141): execution_payload_availability clearing matches spec — `(state.slot + 1) % SLOTS_PER_HISTORICAL_ROOT = 0b0`
+  - `get_attestation_participation_flag_indices` (get_attestation_participation.rs:35-84): payload_matches logic matches spec — same-slot always true, historical uses execution_payload_availability bitfield
+  - `is_attestation_same_slot` (get_attestation_participation.rs:15-26): matches spec — data.slot==0 returns true, else blockroot == slot_blockroot && blockroot != prev_blockroot
+  - `get_expected_withdrawals_gloas` / `process_withdrawals_gloas`: both match spec withdrawal phases — builder pending, partial validator, builder sweep, validator sweep
+- **Clippy**: zero warnings across entire workspace (excluding ef_tests)
+- **CI status**: all green
+- **Nightly CI**: first scheduled cron run expected today at 08:30 UTC
+- **No code changes this run** — spec fully conformant, no divergence found
+
 ### 2026-03-01 — nightly vector validation, spec PR review (run 285)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 284
