@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — envelope processing and fork choice PTC interaction edge case tests (run 323)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 322
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630. Most active: #4843 (variable PTC deadline, 10 review comments), #4950 (dapplion, updated Feb 27)
+- **4 new envelope processing tests** (state_processing):
+  - `payment_blanking_preserves_adjacent_slots` — verifies envelope only blanks target payment_index, not neighboring slots
+  - `self_build_envelope_blanks_payment_but_no_withdrawal` — self-build path: payment slot blanked, no withdrawal queued (amount=0)
+  - `availability_bit_idempotent_when_already_set` — re-setting availability bit doesn't panic or error
+  - `payment_appends_preserve_existing_withdrawals` — new payment appended to existing withdrawals list, not replacing
+- **4 new fork choice PTC interaction tests** (fork_choice):
+  - `false_ptc_vote_after_envelope_does_not_unreveal` — PTC false-votes after envelope cannot flip payload_revealed back to false
+  - `true_ptc_vote_after_envelope_accumulates_weight_no_double_reveal` — PTC true-votes after envelope still accumulate weight but don't re-trigger quorum path
+  - `mixed_ptc_votes_only_true_adds_weight` — interleaved true/false PTC votes: only true-voters contribute to ptc_weight
+  - `split_payload_and_blob_votes_independent_counters` — payload_present and blob_data_available weight counters are truly independent
+- **Tests**: 157 proto_array, 520 state_processing (up from 516), 102 fork_choice (up from 98), all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — spec tracking and test health verification (run 322)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 321
