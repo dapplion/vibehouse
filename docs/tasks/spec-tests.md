@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — deep spec compliance audit, all verified (run 336)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- No new merged Gloas spec PRs since run 335
+- No new nightly test vector runs since run 334 (last: Mar 1 03:04 UTC, commit 14e6ce5a)
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+  - #4950 (extend by_root serve range): 4 approvals, most likely to merge next
+  - Others: no movement since run 335
+- **Deep spec compliance audit** — systematically verified all merged spec PRs against implementation:
+  - **#4884** (payload data availability vote): fully implemented — `ptc_blob_data_available_weight` tracked independently, `payload_data_available` flag set by both envelope reception and PTC quorum, `should_extend_payload` correctly checks `is_payload_timely AND is_payload_data_available`
+  - **#4923** (ignore block if parent payload unknown): fully implemented — `GloasParentPayloadUnknown` error variant, gossip check in `GossipVerifiedBlock::new`, network handler sends `MessageAcceptance::Ignore` and queues for sync, 3 integration tests
+  - **#4916** (refactor builder deposit conditions): fully implemented — `is_validator` only checks finalized validators, `is_pending_validator` called lazily (short-circuit when `is_builder` or `is_validator` true)
+  - **#4884/#4930** (renamed stores): verified — `payload_timeliness_vote` mapped to `ptc_weight`, `payload_data_availability_vote` mapped to `ptc_blob_data_available_weight`, `payload_states` correctly used throughout
+- **Code quality exploration** — analyzed 6 key files for unwrap() calls, error handling, potential panics:
+  - Zero unwrap() calls in production code across all 6 target files (consensus/state_processing, consensus/fork_choice, proto_array)
+  - Identified fragile invariant in `process_withdrawals_gloas`: `next_withdrawal_validator_index` update reads `withdrawals[-1].validator_index` which could contain `BUILDER_INDEX_FLAG` if last withdrawal is a builder withdrawal. Currently safe because phases 1-3 cap at `MAX_WITHDRAWALS - 1` ensuring phase 4 (validator sweep) always provides the last entry. This matches the Capella spec's `update_next_withdrawal_validator_index` which also doesn't filter by flag — the spec relies on the same invariant.
+  - Verified `blob_data_available` is correctly produced by BN (`get_payload_attestation_data` reads `block.payload_data_available` from fork choice) and consumed by VC (passes through to signed `PayloadAttestationData`)
+- **CI status**: all completed runs green; 3 runs in progress (all passing so far); nightly (Mar 1 08:51 UTC) all green
+- **Clippy**: zero warnings (full workspace)
+
 ### 2026-03-01 — routine spec tracking, all stable (run 335)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
