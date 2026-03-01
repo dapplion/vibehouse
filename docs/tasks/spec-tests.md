@@ -28,6 +28,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fix envelope state root check spec deviation, spec tracking (run 304)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 303
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4898 (1 approval), #4892 (multiple approvals), #4940, #4932, #4939, #4926, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Open PR review**:
+  - #4939 (request missing payload envelopes for index-1 attestation) — adds REJECT/IGNORE rules for attestations with index=1 (payload present for past blocks). Still open, not merged. Would require envelope-by-root fetching on attestation gossip.
+  - #4926 (replace SECONDS_PER_SLOT with SLOT_DURATION_MS) — deprecates SECONDS_PER_SLOT in configs and all spec references. Still open. Vibehouse already fixed the minimal preset inconsistency in run 303; full migration deferred until merge.
+  - #4892 (remove impossible branch in forkchoice) — already aligned: `debug_assert!(vote.current_slot >= node_slot)` + `vote.current_slot == node_slot` check match the PR's semantics
+  - FOCIL promoted to Heze fork (#4942), not Gloas — no action needed for vibehouse
+- **Spec deviation found and fixed: envelope state root verification**:
+  - Spec's `process_execution_payload` gates `assert envelope.state_root == hash_tree_root(state)` behind `if verify:`
+  - Vibehouse was checking unconditionally, causing:
+    1. Spurious InvalidStateRoot errors during replay/reconstruction (silently dropped)
+    2. A hack in `build_self_build_envelope` that caught InvalidStateRoot to discover the actual root
+    3. Wasted canonical_root() computation on every verify=false path
+  - Fix: gated state root check behind `verify_signatures.is_true()`
+  - `build_self_build_envelope` now computes state root explicitly via `canonical_root()` on the mutated clone
+  - Added `update_tree_hash_cache()` calls in `process_payload_envelope` and `process_self_build_envelope` before state caching
+  - New test: `wrong_state_root_skipped_when_verify_false`
+  - Updated test: `wrong_state_root_rejected` now uses `VerifySignatures::True` with properly signed envelope
+- **Tests**: 464 state_processing, 686 beacon_chain (gloas), 138/138 EF fake_crypto — all pass
+- **Clippy**: zero warnings (lint-full passed via pre-push hook)
+- **CI**: push succeeded
+
 ### 2026-03-01 — fix minimal preset slot_duration_ms, spec tracking (run 303)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Newly merged PR verified**: #4918 (only allow attestations for known payload statuses) — already implemented in vibehouse (fork_choice.rs:1200-1208, PayloadNotRevealed error)
