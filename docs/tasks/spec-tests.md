@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec tracking, compliance review, correctness audit (run 279)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 278
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906, #4898 (1 approval), #4892 (2 approvals), #4843 (1 approval), #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Spec PR compliance review**:
+  - **#4892** (Remove impossible branch in forkchoice): changes `is_supporting_vote` to use assert+`==` instead of `<=`. Already compliant — vibehouse uses `debug_assert!(vote.current_slot >= block.slot)` + `==` check since implementation
+  - **#4898** (Remove pending status from tiebreaker): removes dead PENDING check from `get_payload_status_tiebreaker`. Already compliant — vibehouse's `get_payload_tiebreaker` never had a PENDING special-case, with doc comment explaining why PENDING is unreachable
+- **Correctness audit**: deep review of `BuilderPubkeyCache` consistency during builder index reuse, deposit processing routing, and `get_index_for_new_builder` conditions. All match spec exactly. Edge cases (exited-with-balance not reusable, not-yet-withdrawable not reusable, cache remove+insert on index reuse) all have dedicated unit tests.
+- **Coverage status**: pending envelope replay (6 tests), epoch processing (22 tests), deposit routing (20+ tests), fork choice tiebreaker (12 tests), withdrawal processing (15+ tests) — all comprehensive
+- **Nightly CI**: latest nightly (22522736397) green
+- **CI status**: all green
+
 ### 2026-03-01 — test deduplication, coverage audit, spec tracking (run 278)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 277

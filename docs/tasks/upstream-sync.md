@@ -31,6 +31,15 @@ Stay current with upstream lighthouse fixes and improvements.
 
 ## Progress log
 
+### 2026-03-01 (run 279)
+- Checked consensus-specs: no new Gloas PRs merged since run 278 (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4939, #4932, #4926, #4906 (1 approval), #4898 (1 approval), #4892 (2 approvals), #4843 (1 approval), #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Spec PR compliance review**: #4892 (remove impossible branch in forkchoice) and #4898 (remove pending status from tiebreaker) — both already compliant, no changes needed
+- **Correctness audit**: BuilderPubkeyCache index reuse, deposit routing, builder slot reuse conditions — all match spec, all edge cases tested
+- **CI status**: all green, nightly green
+- **No code changes this run** — spec stable, fully compliant
+
 ### 2026-03-01 (run 276)
 - Checked consensus-specs: no new Gloas PRs merged since run 275 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950 (4 approvals, likely next to merge), #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
