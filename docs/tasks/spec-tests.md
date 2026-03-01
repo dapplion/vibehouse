@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — compute_filtered_roots single-pass, spec tracking (run 297)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 296
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Verified open PR alignment**:
+  - #4950 (extend by_root reqresp serve range) — vibehouse's `ExecutionPayloadEnvelopesByRoot` and `BlocksByRoot` handlers serve all available data from the store without epoch range restriction. Already more permissive than both current spec and proposed extension. No change needed.
+  - #4939 (request missing envelopes for index-1 attestations) — still open. vibehouse's fork choice already rejects index==1 attestations via `PayloadNotRevealed` when envelope isn't received (#4918 implemented). The gossip-level queueing and envelope request logic from #4939 will need implementation when it merges.
+- **Performance optimization shipped**:
+  - `compute_filtered_roots`: combined the upward propagation pass and root collection into a single reverse pass. Old approach: pass 1 (forward) marks viable nodes, pass 2 (reverse) propagates to parents, pass 3 (forward) collects roots — 3 full iterations. New approach: pass 1 (forward) marks viable nodes, pass 2 (reverse) propagates AND collects — 2 full iterations. Since nodes are ordered parent-before-child, the reverse pass naturally discovers newly-marked parents before visiting them. Called once per `find_head_gloas`.
+- **Analysis of proto_array hot paths**: reviewed `get_gloas_children` (O(n) linear scan), `get_gloas_weight` (O(validators) per candidate), `should_apply_proposer_boost_gloas` (equivocation scan). The O(n) children scan is bounded by proto_array size (typically 64-96 nodes during normal finality), not validator count — not a bottleneck. The per-validator weight computation is inherent to the Gloas spec design (top-down traversal). No further structural optimizations warranted without changing the algorithm.
+- **EF spec tests**: 35/35 pass (operations + epoch_processing + sanity, minimal preset, fake crypto), 8/8 fork choice tests pass (minimal preset, real crypto)
+- **Proto_array tests**: 136/136 pass
+- **Fork_choice tests**: 81/81 pass
+- **State processing tests**: 463/463 pass
+- **Clippy**: zero warnings on proto_array
+- **CI**: push pending
+
 ### 2026-03-01 — in-place proposer lookahead update, spec tracking (run 296)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 295
