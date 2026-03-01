@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking, codebase health check (run 355)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs commits since Feb 26 (last: #4947, #4948)
+- **Verified PR #4948 (reorder payload status constants) already implemented**: our `GloasPayloadStatus` enum is `Empty=0, Full=1, Pending=2` matching the new spec
+- **Verified PR #4918 (only allow attestations for known payload statuses) already implemented**: line 1198 of fork_choice.rs checks `index == 1 && !block.payload_revealed`
+- **PR #4941 (execution proof BeaconBlock vs BeaconBlockBody)**: prover-side change in `_features/eip8025`, our stub proofs don't construct NewPayloadRequest — no action needed until real proving
+- **Open Gloas PRs tracked**: #4940 (initial fork choice tests — test runner already supports all needed steps), #4939 (request missing payload envelopes for index-1 attestation — not merged), #4932 (sanity/blocks with payload attestation), #4843 (variable PTC deadline — still under discussion)
+- **Clippy**: zero warnings (full workspace via `make lint`)
+- **Build**: zero warnings (release build)
+- **CI**: all green (main CI + nightly tests passing)
+- **Nightly test vectors**: generated from commit 14e6ce5a (same as v1.7.0-alpha.2 + #4947/#4948), no new Gloas test categories
+- **EF test completeness audit**: all Gloas operation tests wired (execution_payload_bid, payload_attestation, execution_payload_envelope), all epoch processing tests wired (builder_pending_payments, proposer_lookahead), fork choice runner has head_payload_status + on_execution_payload support ready for PR #4940
+- **Glamsterdam timeline**: targeted H1 2026 per EF blog post (Feb 18), ePBS is headliner
+
 ### 2026-03-02 — SSE event integration tests, spec tracking (run 354)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
