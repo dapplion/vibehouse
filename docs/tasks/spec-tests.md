@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — pre-compute weights in find_head_gloas, spec tracking (run 298)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas PRs since run 297
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4940, #4932, #4939, #4926, #4898 (1 approval), #4892 (2 approvals), #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Performance optimizations shipped**:
+  - `find_head_gloas`: pre-compute `get_gloas_weight` for all children before `max_by` comparison. Previously, `max_by` called the comparator per pair, re-computing the O(validators) weight scan each time a child appeared in a comparison. Now weights are computed exactly once per child via `map` + `collect`, then `max_by` compares pre-computed values. For N children, saves up to N-1 redundant full validator scans.
+  - `compute_filtered_roots`: restored `HashSet::with_capacity(initial_count)` that was lost during the single-pass refactor in run 297. Counts initially-filtered nodes before the reverse propagation pass to provide a lower-bound capacity hint.
+  - `get_gloas_children` Empty/Full branch: `Vec::with_capacity(2)` instead of `Vec::new()`. Children count is bounded (typically 0-3 PENDING blocks per slot), so 2 avoids heap growth in the common case.
+- **EF spec tests**: 8/8 fork choice tests pass (minimal preset, real crypto)
+- **Proto_array tests**: 136/136 pass
+- **Fork_choice tests**: 81/81 pass
+- **Clippy**: zero warnings across entire workspace (lint-full passed)
+- **CI**: push succeeded
+
 ### 2026-03-01 — compute_filtered_roots single-pass, spec tracking (run 297)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 296
