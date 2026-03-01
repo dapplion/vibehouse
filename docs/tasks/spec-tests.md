@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — nightly test vector validation, all 216 pass including new builder exit tests (run 334)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 333
+- **Open Gloas spec PRs status**: tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630. Some previously tracked PRs no longer appear in open list search but are confirmed still open via direct query
+- **Nightly test vector validation**: downloaded nightly vectors (from consensus-specs nightly-reftests run 22534672633, Mar 1) and ran all EF tests
+  - **138/138 fake_crypto pass** (minimal preset, nightly vectors)
+  - **78/78 real_crypto pass** (minimal preset, nightly vectors)
+  - **6 new Gloas builder voluntary exit tests** (from merged PR #4908): `builder_voluntary_exit__success`, `builder_voluntary_exit__invalid__bad_signature`, `builder_voluntary_exit__invalid__inactive_already_exited`, `builder_voluntary_exit__invalid__inactive_deposit_epoch`, `builder_voluntary_exit__invalid__pending_payment`, `builder_voluntary_exit__invalid__pending_withdrawal` — all pass
+  - Nightly also has EIP-7441 (Whisk) tests (`eip7441_opening_proof`, `eip7441_registration`, `shuffled_trackers`) — these are skipped in test generation (separate EIP fork, not part of Gloas ePBS)
+  - Restored v1.7.0-alpha.2 vectors after validation (CI is pinned to release)
+- **Open PR assessment for upcoming implementation**:
+  - #4939 (request missing payload envelopes for index-1 attestation): adds REJECT/IGNORE conditions for index-1 attestations based on payload state. Our `validate_on_attestation` (fork_choice.rs:1198) already REJECT when `!payload_revealed`. PR adds IGNORE+queue for "seen but not validated" — will need queue mechanism when merged
+- **CI status**: all completed runs green (1 transient beacon_chain timeout in run 22546986185 — CI runner contention, not a real failure; adjacent runs pass), 3 runs in progress
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — spec PR tracking, all merged PRs already implemented (run 333)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Newly merged Gloas spec PRs found** (merged since run 332, all already implemented):
