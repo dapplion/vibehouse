@@ -2744,6 +2744,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         )
         .map_err(Error::EnvelopeProcessingError)?;
 
+        // Update tree hash cache after envelope processing so the state is clean
+        // for caching (verify=false skips the state root check which would
+        // otherwise update the cache via canonical_root()).
+        state.update_tree_hash_cache().map_err(Error::from)?;
+
         // Cache the post-envelope state in memory so that block verification (gossip
         // import) and block production load a state with the correct `latest_block_hash`.
         // Without this, `process_execution_payload_bid` rejects bids because
@@ -3106,6 +3111,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         )
         .map_err(Error::EnvelopeProcessingError)?;
 
+        // Update tree hash cache after envelope processing so the state is clean
+        // for caching (verify=false skips the state root check which would
+        // otherwise update the cache via canonical_root()).
+        state.update_tree_hash_cache().map_err(Error::from)?;
+
         // Cache the post-envelope state in memory. See process_payload_envelope for
         // the full explanation — cached under block's state_root to keep the
         // state_roots array and hot DB pruning DAG consistent.
@@ -3158,13 +3168,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let slot = block.slot();
         let builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
 
-        // Create a temporary envelope with a placeholder state_root. We'll run
-        // process_execution_payload_envelope on a cloned state to discover the
-        // actual post-envelope state root.
-        let temp_envelope = SignedExecutionPayloadEnvelope {
+        // Run envelope processing on a cloned state with verify=false to apply
+        // all state mutations (execution requests, builder payment, availability,
+        // latest_block_hash) without checking the state root. Then compute the
+        // post-envelope state root from the mutated state.
+        let mut envelope = SignedExecutionPayloadEnvelope {
             message: ExecutionPayloadEnvelope {
-                payload: gloas_payload.clone(),
-                execution_requests: execution_requests.clone(),
+                payload: gloas_payload,
+                execution_requests,
                 builder_index,
                 beacon_block_root,
                 slot,
@@ -3174,55 +3185,28 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         };
 
         let mut envelope_state = post_block_state.clone();
-        match state_processing::envelope_processing::process_execution_payload_envelope(
+        state_processing::envelope_processing::process_execution_payload_envelope(
             &mut envelope_state,
             Some(block_state_root),
-            &temp_envelope,
+            &envelope,
             state_processing::VerifySignatures::False,
             &self.spec,
-        ) {
-            Ok(()) => {
-                // Placeholder state_root happened to match (extremely unlikely but valid)
-                debug!(
-                    %beacon_block_root,
-                    "Constructed self-build execution payload envelope (state_root matched placeholder)"
-                );
-                Ok(temp_envelope)
-            }
-            Err(
-                state_processing::envelope_processing::EnvelopeProcessingError::InvalidStateRoot {
-                    state: actual_root,
-                    ..
-                },
-            ) => {
-                // Expected path: all checks passed, state was mutated, but state_root
-                // didn't match our placeholder. Use the actual root.
-                let envelope = SignedExecutionPayloadEnvelope {
-                    message: ExecutionPayloadEnvelope {
-                        payload: gloas_payload,
-                        execution_requests,
-                        builder_index,
-                        beacon_block_root,
-                        slot,
-                        state_root: actual_root,
-                    },
-                    signature: Signature::empty(),
-                };
-                debug!(
-                    %beacon_block_root,
-                    envelope_state_root = %actual_root,
-                    "Constructed self-build execution payload envelope"
-                );
-                Ok(envelope)
-            }
-            Err(e) => {
-                // Fail block production — publishing a self-build block without an envelope
-                // would stall the chain because no one would reveal the payload.
-                Err(BlockProductionError::EnvelopeConstructionFailed(format!(
-                    "{e:?}"
-                )))
-            }
-        }
+        )
+        .map_err(|e| BlockProductionError::EnvelopeConstructionFailed(format!("{e:?}")))?;
+
+        let actual_root = envelope_state.canonical_root().map_err(|e| {
+            BlockProductionError::EnvelopeConstructionFailed(format!(
+                "failed to compute post-envelope state root: {e:?}"
+            ))
+        })?;
+        envelope.message.state_root = actual_root;
+
+        debug!(
+            %beacon_block_root,
+            envelope_state_root = %actual_root,
+            "Constructed self-build execution payload envelope"
+        );
+        Ok(envelope)
     }
 
     /// Applies a verified payload attestation to fork choice (gloas ePBS).

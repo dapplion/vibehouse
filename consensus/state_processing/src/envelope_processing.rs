@@ -286,14 +286,16 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     *state.latest_block_hash_mut()? = payload.block_hash;
 
     // Verify the state root (envelope contains post-state root)
-    let state_root = state.canonical_root()?;
-    envelope_verify!(
-        envelope.state_root == state_root,
-        EnvelopeProcessingError::InvalidStateRoot {
-            state: state_root,
-            envelope: envelope.state_root,
-        }
-    );
+    if verify_signatures.is_true() {
+        let state_root = state.canonical_root()?;
+        envelope_verify!(
+            envelope.state_root == state_root,
+            EnvelopeProcessingError::InvalidStateRoot {
+                state: state_root,
+                envelope: envelope.state_root,
+            }
+        );
+    }
 
     Ok(())
 }
@@ -519,26 +521,17 @@ mod tests {
         spec: &ChainSpec,
     ) {
         let mut state_clone = state.clone();
-        let result = process_execution_payload_envelope(
+        process_execution_payload_envelope(
             &mut state_clone,
             None,
             envelope,
             VerifySignatures::False,
             spec,
-        );
-        match result {
-            Err(EnvelopeProcessingError::InvalidStateRoot {
-                state: real_root, ..
-            }) => {
-                envelope.message.state_root = real_root;
-            }
-            Ok(()) => {
-                // state_root was already correct (unlikely with dummy)
-            }
-            Err(e) => {
-                panic!("fix_envelope_state_root: unexpected error: {:?}", e);
-            }
-        }
+        )
+        .expect("fix_envelope_state_root: envelope processing should succeed");
+        envelope.message.state_root = state_clone
+            .canonical_root()
+            .expect("fix_envelope_state_root: canonical_root should succeed");
     }
 
     // ── Happy path ─────────────────────────────────────────────
@@ -791,9 +784,39 @@ mod tests {
 
     #[test]
     fn wrong_state_root_rejected() {
+        let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
+        let builder_kp = &keypairs[8];
+
+        let mut envelope = make_valid_envelope(&state);
+        // Set wrong state_root, then sign with the wrong root in the message
+        envelope.message.state_root = Hash256::repeat_byte(0x99);
+        sign_envelope(&state, &mut envelope, &builder_kp.sk, &spec);
+
+        // State root is only verified when verify_signatures is true (per spec).
+        // Signature is valid for this message (including the wrong state_root),
+        // so the check should reach and fail on state root mismatch.
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            matches!(
+                result,
+                Err(EnvelopeProcessingError::InvalidStateRoot { .. })
+            ),
+            "wrong state_root should fail: {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn wrong_state_root_skipped_when_verify_false() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
         let mut envelope = make_valid_envelope(&state);
-        // Leave state_root as zero — should mismatch the computed state root
+        // Set wrong state_root — but verify=false so it should be ignored
         envelope.message.state_root = Hash256::repeat_byte(0x99);
 
         let result = process_execution_payload_envelope(
@@ -804,12 +827,9 @@ mod tests {
             &spec,
         );
         assert!(
-            matches!(
-                result,
-                Err(EnvelopeProcessingError::InvalidStateRoot { .. })
-            ),
-            "wrong state_root should fail: {:?}",
-            result,
+            result.is_ok(),
+            "state_root check should be skipped when verify=false: {:?}",
+            result.unwrap_err(),
         );
     }
 
@@ -1082,27 +1102,17 @@ mod tests {
         spec: &ChainSpec,
     ) {
         let mut state_clone = state.clone();
-        let result = process_execution_payload_envelope(
+        process_execution_payload_envelope(
             &mut state_clone,
             parent_state_root,
             envelope,
             VerifySignatures::False,
             spec,
-        );
-        match result {
-            Err(EnvelopeProcessingError::InvalidStateRoot {
-                state: real_root, ..
-            }) => {
-                envelope.message.state_root = real_root;
-            }
-            Ok(()) => {}
-            Err(e) => {
-                panic!(
-                    "fix_envelope_state_root_with_parent: unexpected error: {:?}",
-                    e
-                );
-            }
-        }
+        )
+        .expect("fix_envelope_state_root_with_parent: envelope processing should succeed");
+        envelope.message.state_root = state_clone
+            .canonical_root()
+            .expect("fix_envelope_state_root_with_parent: canonical_root should succeed");
     }
 
     // ── Helpers for signature verification tests ──────────────
