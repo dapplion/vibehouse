@@ -6723,6 +6723,25 @@ mod tests {
         );
     }
 
+    // ── initiate_builder_exit arithmetic overflow ──────────
+
+    #[test]
+    fn initiate_builder_exit_overflows_at_max_epoch() {
+        // When current_epoch + min_builder_withdrawability_delay overflows u64,
+        // safe_add should return an arithmetic error rather than wrapping.
+        let (mut state, mut spec) = make_gloas_state(8, 32_000_000_000, 1_000_000_000);
+
+        // Set delay so large that epoch + delay overflows. With slot=8 and
+        // slots_per_epoch=8, current_epoch=1, so delay=u64::MAX triggers overflow.
+        spec.min_builder_withdrawability_delay = Epoch::new(u64::MAX);
+
+        let result = initiate_builder_exit::<E>(&mut state, 0, &spec);
+        assert!(
+            result.is_err(),
+            "should return ArithError when epoch + delay overflows u64"
+        );
+    }
+
     // ── get_ptc_committee zero-balance edge case tests ──────────
 
     #[test]
