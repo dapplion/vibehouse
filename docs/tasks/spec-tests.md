@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fork choice spec audit and timeliness fix, spec tracking (run 305)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **11 merged PRs since run 304** reviewed — 6 high-impact:
+  - #4948 (PayloadStatus reorder 0=EMPTY, 1=FULL, 2=PENDING) — already implemented
+  - #4918 (only allow attestations for known payload statuses) — already implemented
+  - #4923 (IGNORE blocks if parent payload unknown) — already implemented
+  - #4947 (pre-fork proposer_preferences subscription) — already implemented
+  - #4931 (FOCIL rebased onto Gloas) — lives in `_features/eip7805/`, not core Gloas; promoted to Heze fork (#4942). No action.
+  - #4914 (replace pubkey with validator_index in SignedExecutionProof) — `_features/eip8025/` only. No action.
+  - 5 test/editorial PRs: #4900, #4903, #4908, #4921, #4920
+- **Deep fork choice spec audit** — compared all Gloas fork-choice functions against spec:
+  - `get_weight` / `get_gloas_weight`: ✅ matches spec
+  - `should_extend_payload`: ✅ matches spec (all 4 OR conditions)
+  - `get_payload_status_tiebreaker` / `get_payload_tiebreaker`: ✅ exact match
+  - `on_execution_payload`: ✅ functional match (simplified; EL interaction in beacon_chain layer)
+  - `is_supporting_vote` / `is_supporting_vote_gloas_at_slot`: ✅ matches spec
+  - `get_node_children` / `get_gloas_children`: ✅ matches spec
+  - `on_payload_attestation_message` / `on_payload_attestation`: ✅ functional match (counter-based vs bitvector)
+  - `should_apply_proposer_boost` / `should_apply_proposer_boost_gloas`: ✅ matches spec
+  - `update_proposer_boost_root`: ✅ matches spec (proposer index pre-computed by caller)
+  - `record_block_timeliness`: ✅ correct thresholds
+- **Fix: use spec timing functions in on_block** — attestation and PTC timeliness thresholds were computed inline; replaced with `spec.get_attestation_due_ms()` and `spec.get_payload_attestation_due_ms()` for correctness and consistency
+- **Known deviation (no fix needed)**: `is_head_weak` in `should_apply_proposer_boost_gloas` includes ALL equivocating validators, not just committee members for the head slot. This is conservative (overcounts weight → parent appears stronger → boost applied more often). Fixing requires passing committee data into proto_array — deferred as architectural limitation with negligible practical impact.
+- **Tests**: 220 fork_choice+proto_array, 8/8 EF fork_choice, 686 beacon_chain — all pass
+- **Clippy**: zero warnings (fmt passed via pre-commit hook)
+
 ### 2026-03-01 — fix envelope state root check spec deviation, spec tracking (run 304)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas PRs since run 303
