@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fix minimal preset slot_duration_ms, spec tracking (run 303)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Newly merged PR verified**: #4918 (only allow attestations for known payload statuses) — already implemented in vibehouse (fork_choice.rs:1200-1208, PayloadNotRevealed error)
+- Open Gloas spec PRs tracked: #4950 (4 approvals), #4898 (1 approval), #4892 (multiple approvals), #4940, #4932, #4939, #4926, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- **Proactive alignment verified**:
+  - #4892 (remove pending from tiebreaker) — vibehouse already handles this: PENDING never reaches tiebreaker due to get_node_children uniformity, commented at line 1534-1537
+  - #4898 (remove pending from tiebreaker) — same pattern, already correct
+- **Bug fix: minimal preset slot_duration_ms**:
+  - `ChainSpec::minimal()` had `seconds_per_slot=6` but `slot_duration_ms=12000` (inherited from mainnet via `..ChainSpec::mainnet()`)
+  - This caused all BPS-based timing helpers (`bps_to_ms`, `get_attestation_due_ms`, etc.) to produce values for 12s slots when minimal uses 6s slots
+  - Fixed to `slot_duration_ms: 6000`
+  - Added `slot_duration_ms_consistent_with_seconds_per_slot` test that checks all presets (mainnet, minimal, gnosis)
+- **Tests**: 712 types, 463 state_processing, 220 fork_choice+proto_array, 138/138 EF fake_crypto — all pass
+- **Clippy**: zero warnings (lint-full passed via pre-push hook)
+- **CI**: push succeeded
+
 ### 2026-03-01 — fork choice defensive edge case tests (run 302)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Open Gloas spec PRs tracked: #4950 (4 approvals), #4898 (1 approval), #4892 (multiple approvals) — all already implemented in vibehouse
