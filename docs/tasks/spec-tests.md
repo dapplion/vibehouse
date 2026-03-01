@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — fix flaky CI tests, spec tracking (run 326)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new merged Gloas spec PRs since run 325
+- **Open Gloas spec PRs status**: all 10 tracked PRs still open — #4950, #4898, #4892, #4843, #4940, #4939, #4932, #4926, #4840, #4630
+- **Fixed flaky CI tests**: increased mock EL timeout multiplier from 1 (2s) to 3 (6s) in `MockExecutionLayer`
+  - Root cause: `ENGINE_GET_PAYLOAD_TIMEOUT` = 2s is too tight when CI runners are under resource contention with 425+ parallel beacon_chain tests
+  - Affected tests: `gloas_mixed_full_and_blinded_envelopes_after_partial_prune`, `proposer_shuffling_root_consistency_at_fork_boundary`
+  - Both failed with `GetPayloadFailed(EngineError(Api { error: HttpClient(..., kind: timeout) }))` across 3 separate CI runs
+  - Fix: set `execution_timeout_multiplier: Some(3)` in mock EL config — only affects test timeouts, not production behavior
+- **Test coverage audit**: 800+ Gloas-specific tests across all modules, no significant gaps identified
+  - Explored untested error paths in gloas_verification.rs: `InvalidAggregationBits` (unreachable — BitVector size always matches PTC committee), `PtcCommitteeError` (edge case when head state epoch mismatches attestation epoch)
+  - All major gossip verification error paths already tested: NotGloasBlock, MissingBeaconBlock, EmptyAggregationBits, FutureSlot, PastSlot, ValidatorEquivocation, InvalidSignature, BlockRootUnknown, DuplicateEnvelope, SlotMismatch, BuilderIndexMismatch, BlockHashMismatch
+- **Tests**: 157 proto_array, 534 state_processing, 106 fork_choice, all pass
+- **Clippy**: zero warnings
+
 ### 2026-03-01 — bid payment overwrite and builder activation edge case tests (run 325)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new merged Gloas spec PRs since run 324
