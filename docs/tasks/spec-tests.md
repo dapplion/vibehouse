@@ -28,6 +28,35 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-01 — spec PR review, deposit routing tests (run 311)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **10 newly merged Gloas spec PRs reviewed** — all already implemented or no action needed:
+  - #4931 (rebase FOCIL onto Gloas) — FOCIL is a separate feature (`_features/eip7805/`), not core Gloas. No action needed.
+  - #4930 (rename `execution_payload_states` → `payload_states`) — vibehouse already uses `payload_states` in comments; actual implementation uses `envelope_received` boolean in ProtoNode. No code change needed.
+  - #4922 (add missing fork comment to Store) — spec documentation only. No code change needed.
+  - #4920 (make "Constructing the XYZ" sections consistent) — spec documentation only. No code change needed.
+  - #4916 (refactor builder deposit conditions in `process_deposit_request`) — optimization: `is_pending_validator` only called when needed via short-circuit. Vibehouse already uses this exact short-circuit pattern (lines 728-731 of process_operations.rs). No code change needed.
+  - #4914 (replace pubkey with validator_index in `SignedExecutionProof`) — vibehouse's `ExecutionProof` is a custom ZK proof type (unsigned, no identity field). Not the same type as spec's `SignedExecutionProof`. No action needed.
+  - #4908 (add voluntary exit tests for builders) — test addition in spec. No code change needed.
+  - #4903 (fix field in random block tests for Gloas) — spec test fix. No code change needed.
+  - #4900 (add Gloas randomized block tests) — spec test addition. No code change needed.
+  - #4897 (check pending deposit exists before applying to builder) — `is_pending_validator` function and deposit routing check already implemented (lines 728-731, 759-782 of process_operations.rs). No code change needed.
+- **Open Gloas spec PRs** — 4 now APPROVED and ready to merge:
+  - #4950 (extend by_root serve range) — APPROVED, MERGEABLE. Changes serve range from "since finalized" to sliding window. Will need minor update when merged.
+  - #4898 (remove pending from tiebreaker) — APPROVED ~3 weeks. Already implemented in vibehouse.
+  - #4892 (remove impossible branch in forkchoice) — APPROVED ~4 weeks. Already implemented (debug_assert).
+  - #4843 (variable PTC deadline) — APPROVED. **Significant change**: renames `payload_present` → `payload_timely`, adds `MIN_PAYLOAD_DUE_BPS`, variable deadline based on payload size, adds `payload_envelopes` to store. Will require substantial work when merged.
+- Remaining open Gloas PRs unchanged: #4940, #4939, #4926, #4840, #4747, #4630, #4558
+- **6 new deposit routing and pending validator edge case tests** added:
+  - `deposit_request_pending_invalid_then_valid_blocks_builder` — multiple pending deposits: invalid sig then valid sig, valid one blocks builder creation (spec PR #4897 test case)
+  - `deposit_request_pending_with_builder_creds_valid_sig_blocks_builder` — pending deposit has builder credentials but valid sig still blocks builder creation (spec PR #4897 test case)
+  - `deposit_request_existing_validator_with_builder_prefix_goes_to_pending` — existing validator + 0x03 prefix → pending (is_validator short-circuit)
+  - `deposit_request_pending_for_different_pubkey_does_not_block_builder` — pending for pubkey A doesn't affect pubkey B's builder creation
+  - `deposit_request_new_builder_invalid_sig_silently_dropped` — new builder with bad sig: no builder, no pending deposit
+  - (existing test `deposit_request_routes_existing_validator_to_pending` already covers existing validator with validator prefix)
+- **Tests**: 477 state_processing (up from 472), all pass
+- **Clippy**: zero warnings (lint-full passed via pre-push hook)
+
 ### 2026-03-01 — spec tracking, deep spec audit (run 310)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **5 recently merged Gloas spec PRs reviewed** — all already implemented:
