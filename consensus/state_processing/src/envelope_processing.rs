@@ -195,14 +195,12 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     );
 
     // Verify consistency with expected withdrawals
+    let expected_withdrawals = state.payload_expected_withdrawals()?;
     envelope_verify!(
-        payload.withdrawals.len() == state.payload_expected_withdrawals()?.len()
-            && payload
-                .withdrawals
-                .iter()
-                .eq(state.payload_expected_withdrawals()?.iter()),
+        payload.withdrawals.len() == expected_withdrawals.len()
+            && payload.withdrawals.iter().eq(expected_withdrawals.iter()),
         EnvelopeProcessingError::WithdrawalsRootMismatch {
-            state: state.payload_expected_withdrawals()?.tree_hash_root(),
+            state: expected_withdrawals.tree_hash_root(),
             payload: payload.withdrawals.tree_hash_root(),
         }
     );
@@ -226,10 +224,11 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     );
 
     // Verify consistency of the parent hash with respect to the previous execution payload
+    let latest_block_hash = *state.latest_block_hash()?;
     envelope_verify!(
-        payload.parent_hash == *state.latest_block_hash()?,
+        payload.parent_hash == latest_block_hash,
         EnvelopeProcessingError::ParentHashMismatch {
-            state: *state.latest_block_hash()?,
+            state: latest_block_hash,
             envelope: payload.parent_hash,
         }
     );
