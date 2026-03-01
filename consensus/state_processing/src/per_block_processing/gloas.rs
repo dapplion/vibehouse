@@ -30,6 +30,14 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     let builder_index = bid.builder_index;
     let amount = bid.value;
 
+    // Extract latest_block_hash once (needed for parent_block_hash check below)
+    let latest_block_hash = state
+        .as_gloas()
+        .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+            reason: "state is not Gloas".into(),
+        })?
+        .latest_block_hash;
+
     // Self-build validation
     if builder_index == spec.builder_index_self_build {
         if amount != 0 {
@@ -135,14 +143,7 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     }
 
     // Verify that the bid is for the right parent block
-    if bid.parent_block_hash
-        != state
-            .as_gloas()
-            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            })?
-            .latest_block_hash
-    {
+    if bid.parent_block_hash != latest_block_hash {
         return Err(BlockProcessingError::PayloadBidInvalid {
             reason: "bid parent_block_hash does not match state latest_block_hash".into(),
         });
@@ -167,6 +168,14 @@ pub fn process_execution_payload_bid<E: EthSpec>(
         });
     }
 
+    // Mutate state: record pending payment + cache the bid
+    let state_gloas =
+        state
+            .as_gloas_mut()
+            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
+                reason: "state is not Gloas".into(),
+            })?;
+
     // Record the pending payment if there is some payment
     if amount > 0 {
         // Spec: state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH]
@@ -183,13 +192,6 @@ pub fn process_execution_payload_bid<E: EthSpec>(
             },
         };
 
-        let state_gloas =
-            state
-                .as_gloas_mut()
-                .map_err(|_| BlockProcessingError::PayloadBidInvalid {
-                    reason: "state is not Gloas".into(),
-                })?;
-
         *state_gloas
             .builder_pending_payments
             .get_mut(slot_index)
@@ -202,12 +204,6 @@ pub fn process_execution_payload_bid<E: EthSpec>(
     }
 
     // Cache the signed execution payload bid
-    let state_gloas =
-        state
-            .as_gloas_mut()
-            .map_err(|_| BlockProcessingError::PayloadBidInvalid {
-                reason: "state is not Gloas".into(),
-            })?;
     state_gloas.latest_execution_payload_bid = bid.clone();
 
     Ok(())
