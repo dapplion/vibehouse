@@ -1347,11 +1347,12 @@ where
             // Record which builder won this slot's bid
             node.builder_index = Some(bid.message.builder_index);
 
-            // Only reset payload state if the envelope hasn't already been received.
-            // A late gossip bid arriving after the envelope should not invalidate
-            // the already-confirmed payload delivery.
-            if !node.envelope_received {
-                node.payload_revealed = false;
+            // Only reset payload state if neither the envelope has been received
+            // nor PTC quorum has already established payload_revealed. A late gossip
+            // bid arriving after either event should not invalidate the already-confirmed
+            // payload status — the PTC attestations that established quorum are tracked
+            // in observed_payload_attestations and won't be re-applied.
+            if !node.envelope_received && !node.payload_revealed {
                 node.ptc_weight = 0;
                 node.ptc_blob_data_available_weight = 0;
                 node.payload_data_available = false;
@@ -2360,12 +2361,16 @@ mod tests {
         }
 
         #[test]
-        fn bid_resets_payload_revealed() {
+        fn bid_preserves_ptc_quorum_payload_revealed() {
             let mut fc = new_fc();
             let block_root = root(1);
             insert_block(&mut fc, 1, block_root);
 
-            // Manually set payload_revealed to true (simulating prior state)
+            // Simulate PTC quorum establishing payload_revealed=true before bid.
+            // This can happen when PTC members have seen the envelope via gossip
+            // but our node hasn't imported the envelope yet. The accumulated PTC
+            // votes that established quorum are tracked in observed_payload_attestations
+            // and won't be re-applied, so resetting here would be permanent.
             let idx = *fc
                 .proto_array
                 .core_proto_array()
@@ -2375,14 +2380,51 @@ mod tests {
             fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = true;
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 100;
 
-            // Bid should reset these
+            // Late bid should update builder_index but preserve payload state
+            let bid = make_bid(1, 77);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(77));
+            assert!(
+                node.payload_revealed,
+                "payload_revealed must be preserved when PTC quorum already established"
+            );
+            assert_eq!(
+                node.ptc_weight, 100,
+                "ptc_weight must be preserved when payload_revealed is true"
+            );
+        }
+
+        #[test]
+        fn bid_resets_sub_quorum_ptc_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // Simulate sub-quorum PTC weight: payload_revealed is still false
+            // because quorum hasn't been reached yet.
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 50;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 30;
+
+            // Bid should reset sub-quorum PTC state (payload_revealed=false)
             let bid = make_bid(1, 77);
             fc.on_execution_bid(&bid, block_root).unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(node.builder_index, Some(77));
             assert!(!node.payload_revealed);
-            assert_eq!(node.ptc_weight, 0);
+            assert_eq!(node.ptc_weight, 0, "sub-quorum ptc_weight should be reset");
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "sub-quorum blob weight should be reset"
+            );
         }
 
         #[test]
@@ -4064,7 +4106,7 @@ mod tests {
         }
 
         #[test]
-        fn consecutive_bids_overwrite_previous_state() {
+        fn consecutive_bids_overwrite_sub_quorum_state() {
             let mut fc = new_fc();
             let block_root = root(1);
             insert_block(&mut fc, 1, block_root);
@@ -4080,13 +4122,13 @@ mod tests {
                 .get(&block_root)
                 .unwrap();
 
-            // Simulate some PTC weight accumulated for the first bid
+            // Simulate sub-quorum PTC weight for the first bid.
+            // payload_revealed remains false (quorum not reached).
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 5;
             fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 3;
-            fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = true;
             fc.proto_array.core_proto_array_mut().nodes[idx].payload_data_available = true;
 
-            // Second bid overwrites with builder 20
+            // Second bid overwrites with builder 20 — resets sub-quorum state
             let bid2 = make_bid(1, 20);
             fc.on_execution_bid(&bid2, block_root).unwrap();
 
@@ -4103,7 +4145,7 @@ mod tests {
             );
             assert!(
                 !node.payload_revealed,
-                "payload_revealed should be reset to false"
+                "payload_revealed stays false (was never set)"
             );
             assert!(
                 !node.payload_data_available,

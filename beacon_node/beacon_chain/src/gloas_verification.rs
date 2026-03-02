@@ -663,40 +663,46 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             return Err(PayloadAttestationError::EmptyAggregationBits);
         }
 
-        // Check 5: Equivocation detection
+        // Check 5: Equivocation detection (read-only — don't record yet)
+        // We check for duplicates and equivocations without recording in the cache.
+        // Recording happens after signature verification to prevent invalid attestations
+        // (bad BLS signature) from permanently marking validators as "seen", which would
+        // cause subsequent valid attestations to be dropped as duplicates.
         let beacon_block_root = attestation.data.beacon_block_root;
         let payload_present = attestation.data.payload_present;
 
-        let mut observed_attestations = self.observed_payload_attestations.lock();
-        for &validator_index in &indexed_attestation_indices {
-            let outcome = observed_attestations.observe_attestation(
-                attestation_slot,
-                beacon_block_root,
-                validator_index,
-                payload_present,
-            );
+        {
+            let observed_attestations = self.observed_payload_attestations.lock();
+            for &validator_index in &indexed_attestation_indices {
+                let outcome = observed_attestations.check_attestation(
+                    attestation_slot,
+                    beacon_block_root,
+                    validator_index,
+                    payload_present,
+                );
 
-            match outcome {
-                crate::observed_payload_attestations::AttestationObservationOutcome::New => {
-                    // Continue
-                }
-                crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
-                    // This validator already attested with same value, skip
-                    continue;
-                }
-                crate::observed_payload_attestations::AttestationObservationOutcome::Equivocation {
-                    ..
-                } => {
-                    return Err(PayloadAttestationError::ValidatorEquivocation {
-                        validator_index,
-                        slot: attestation_slot,
-                        beacon_block_root,
-                    });
+                match outcome {
+                    crate::observed_payload_attestations::AttestationObservationOutcome::New => {
+                        // Continue
+                    }
+                    crate::observed_payload_attestations::AttestationObservationOutcome::Duplicate => {
+                        // This validator already attested with same value, skip
+                        continue;
+                    }
+                    crate::observed_payload_attestations::AttestationObservationOutcome::Equivocation {
+                        ..
+                    } => {
+                        return Err(PayloadAttestationError::ValidatorEquivocation {
+                            validator_index,
+                            slot: attestation_slot,
+                            beacon_block_root,
+                        });
+                    }
                 }
             }
         }
 
-        // Check 6: Signature verification
+        // Check 6: Signature verification (before recording observations)
         let get_pubkey = |validator_idx: usize| -> Option<Cow<PublicKey>> {
             state
                 .validators()
@@ -715,6 +721,19 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         if !signature_set.verify() {
             return Err(PayloadAttestationError::InvalidSignature);
+        }
+
+        // Check 7: Record observations now that signature is verified
+        {
+            let mut observed_attestations = self.observed_payload_attestations.lock();
+            for &validator_index in &indexed_attestation_indices {
+                observed_attestations.observe_attestation(
+                    attestation_slot,
+                    beacon_block_root,
+                    validator_index,
+                    payload_present,
+                );
+            }
         }
 
         Ok(VerifiedPayloadAttestation {

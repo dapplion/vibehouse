@@ -6674,9 +6674,9 @@ async fn gloas_bid_then_envelope_lifecycle_via_beacon_chain() {
     let head_root = head.beacon_block_root;
     let head_slot = head.beacon_block.slot();
 
-    // Clear envelope_received so bid triggers payload state reset
-    // (self-build blocks have envelope_received=true, but this test verifies
-    // the bid→envelope lifecycle when envelope hasn't arrived yet)
+    // Clear envelope_received and payload_revealed so bid triggers payload state reset.
+    // Self-build blocks have envelope_received=true and payload_revealed=true, but this
+    // test verifies the bid→envelope lifecycle when neither has happened yet.
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
         let block_index = *fc
@@ -6687,6 +6687,7 @@ async fn gloas_bid_then_envelope_lifecycle_via_beacon_chain() {
             .expect("head root should be in fork choice");
         let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
         node.envelope_received = false;
+        node.payload_revealed = false;
     }
 
     // Step 1: Apply external bid — should reset payload_revealed (envelope not received)
@@ -10313,11 +10314,10 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
     let head_slot = head.beacon_block.slot();
     let state = harness.chain.head_beacon_state_cloned();
 
-    // Manually set some non-default values on the head's fork choice node
-    // to simulate a state where PTC weight has accumulated and payload was revealed.
-    // Also clear envelope_received so that on_execution_bid will reset payload state
-    // (self-build blocks have envelope_received=true, but we want to test the reset
-    // path that applies when a bid arrives before the envelope).
+    // Manually set sub-quorum PTC weight to test that on_execution_bid resets it.
+    // Clear envelope_received and payload_revealed so the bid triggers the reset
+    // path (self-build blocks have both true, but we want to test the external
+    // builder path where neither has happened yet).
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
         let block_index = *fc
@@ -10327,12 +10327,10 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
             .get(&head_root)
             .expect("head root should be in fork choice");
         let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
-        // Simulate previous bid state: payload was revealed, had PTC weight, etc.
-        node.payload_revealed = true;
+        node.payload_revealed = false;
         node.ptc_weight = 42;
         node.ptc_blob_data_available_weight = 17;
         node.payload_data_available = true;
-        // Clear envelope_received so bid triggers reset
         node.envelope_received = false;
     }
 
@@ -10341,8 +10339,8 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let node = fc.get_block(&head_root).unwrap();
         assert!(
-            node.payload_revealed,
-            "sanity: payload_revealed should be true before bid"
+            !node.payload_revealed,
+            "sanity: payload_revealed should be false before bid"
         );
         assert_eq!(node.ptc_weight, 42, "sanity: ptc_weight should be 42");
     }
@@ -12443,7 +12441,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
 /// it later fails at the signature check. The second attestation (different
 /// `payload_present`) then triggers equivocation before reaching signature check.
 #[tokio::test]
-async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
+async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
     let harness = gloas_harness_at_epoch(0);
     Box::pin(harness.extend_slots(3)).await;
 
@@ -12465,8 +12463,8 @@ async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
         .expect("PTC member should be in PTC committee");
 
     // First attestation: payload_present=true, invalid signature.
-    // The equivocation check records `New` before signature verification,
-    // so the observation is committed even though sig check will fail.
+    // Since BLS verification runs BEFORE recording in observed_payload_attestations,
+    // this invalid attestation should NOT mark the validator as "seen".
     let mut aggregation_bits_1 = BitVector::default();
     aggregation_bits_1
         .set(ptc_position, true)
@@ -12483,12 +12481,10 @@ async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
         signature: AggregateSignature::empty(),
     };
 
-    // Submit first attestation — it will get `New` at equivocation check,
-    // then fail at signature verification. That's expected.
+    // First attempt: fails at BLS verify
     let result_1 = harness
         .chain
         .verify_payload_attestation_for_gossip(attestation_1);
-    // Verify it failed at signature, not at equivocation
     match result_1 {
         Err(PayloadAttestationError::InvalidSignature) => {}
         Err(other) => panic!(
@@ -12498,8 +12494,9 @@ async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
         Ok(_) => panic!("first attestation should fail at signature check"),
     }
 
-    // Second attestation: same validator, same slot/block, but payload_present=false.
-    // This should trigger ValidatorEquivocation before reaching signature check.
+    // Second attestation: same validator, same values. Should also fail at
+    // BLS verify (not as Duplicate), proving the first attempt didn't
+    // poison the observed cache.
     let mut aggregation_bits_2 = BitVector::default();
     aggregation_bits_2
         .set(ptc_position, true)
@@ -12510,7 +12507,7 @@ async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
         data: PayloadAttestationData {
             beacon_block_root: head_root,
             slot: head_slot,
-            payload_present: false, // opposite of first attestation
+            payload_present: true,
             blob_data_available: true,
         },
         signature: AggregateSignature::empty(),
@@ -12520,17 +12517,15 @@ async fn gloas_payload_attestation_gossip_rejects_validator_equivocation() {
         .chain
         .verify_payload_attestation_for_gossip(attestation_2);
     match result_2 {
-        Err(PayloadAttestationError::ValidatorEquivocation {
-            validator_index,
-            slot,
-            beacon_block_root,
-        }) => {
-            assert_eq!(validator_index, ptc_member_index);
-            assert_eq!(slot, head_slot);
-            assert_eq!(beacon_block_root, head_root);
+        Err(PayloadAttestationError::InvalidSignature) => {
+            // Correct: the validator was NOT recorded by the first attempt,
+            // so this attempt also reaches BLS verification (and fails).
         }
-        Err(other) => panic!("expected ValidatorEquivocation, got {:?}", other),
-        Ok(_) => panic!("second attestation should be rejected as equivocation"),
+        Err(other) => panic!(
+            "second attestation should also fail with InvalidSignature (not Duplicate), got {:?}",
+            other
+        ),
+        Ok(_) => panic!("second attestation should fail at signature check"),
     }
 }
 
@@ -13233,6 +13228,9 @@ async fn gloas_envelope_gossip_rejects_finalized_slot() {
         old_slot,
         finalized_slot
     );
+
+    // Clear observed envelopes so the duplicate check doesn't preempt finalization error
+    harness.chain.observed_payload_envelopes.lock().clear();
 
     // We need a block root that IS in fork choice so we pass check 1 (BlockRootUnknown).
     // Use the finalized root — it's in FC but the envelope's slot will be old_slot.

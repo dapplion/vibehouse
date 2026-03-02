@@ -3140,6 +3140,14 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         self.canonical_head
             .try_update_head_state(beacon_block_root, state);
 
+        // Mark this envelope as observed so gossip echoes are ignored. Without this,
+        // a re-gossipped copy of our self-build envelope would pass gossip verification
+        // and call on_execution_payload again, which unconditionally sets
+        // execution_status = Optimistic — downgrading the Valid status we just set.
+        self.observed_payload_envelopes
+            .lock()
+            .observe_envelope(beacon_block_root);
+
         metrics::inc_counter(&metrics::SELF_BUILD_ENVELOPE_SUCCESSES);
         debug!(
             ?beacon_block_root,

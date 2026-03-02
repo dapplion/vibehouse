@@ -60,6 +60,38 @@ impl<E: EthSpec> ObservedPayloadAttestations<E> {
         Self::default()
     }
 
+    /// Check what the outcome would be for an attestation, without recording it.
+    ///
+    /// Use this to detect duplicates and equivocations before signature verification,
+    /// so that invalid attestations (bad BLS signature) don't pollute the cache.
+    pub fn check_attestation(
+        &self,
+        slot: Slot,
+        beacon_block_root: Hash256,
+        validator_index: u64,
+        payload_present: bool,
+    ) -> AttestationObservationOutcome {
+        let key = AttestationKey {
+            slot,
+            beacon_block_root,
+            validator_index,
+        };
+
+        match self.observed_attestations.get(&key) {
+            None => AttestationObservationOutcome::New,
+            Some(&existing_payload_present) => {
+                if existing_payload_present == payload_present {
+                    AttestationObservationOutcome::Duplicate
+                } else {
+                    AttestationObservationOutcome::Equivocation {
+                        existing_payload_present,
+                        new_payload_present: payload_present,
+                    }
+                }
+            }
+        }
+    }
+
     /// Observe an attestation with the given parameters.
     ///
     /// Returns:

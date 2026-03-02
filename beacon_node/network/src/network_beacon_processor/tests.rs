@@ -3364,6 +3364,9 @@ async fn test_gloas_gossip_payload_envelope_slot_mismatch_rejected() {
         .signed_execution_payload_bid()
         .expect("head is a Gloas block");
 
+    // Clear observed envelopes so the duplicate check doesn't preempt the slot mismatch error
+    rig.chain.observed_payload_envelopes.lock().clear();
+
     let envelope = SignedExecutionPayloadEnvelope {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
@@ -3409,6 +3412,9 @@ async fn test_gloas_gossip_payload_envelope_builder_index_mismatch_rejected() {
         .signed_execution_payload_bid()
         .expect("head is a Gloas block");
 
+    // Clear observed envelopes so the duplicate check doesn't preempt the builder index error
+    rig.chain.observed_payload_envelopes.lock().clear();
+
     let envelope = SignedExecutionPayloadEnvelope {
         message: ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
@@ -3453,6 +3459,9 @@ async fn test_gloas_gossip_payload_envelope_block_hash_mismatch_rejected() {
         .body()
         .signed_execution_payload_bid()
         .expect("head is a Gloas block");
+
+    // Clear observed envelopes so the duplicate check doesn't preempt the block hash error
+    rig.chain.observed_payload_envelopes.lock().clear();
 
     let envelope = SignedExecutionPayloadEnvelope {
         message: ExecutionPayloadEnvelope {
@@ -3500,6 +3509,10 @@ async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
         .body()
         .signed_execution_payload_bid()
         .expect("head is a Gloas block");
+
+    // Clear observed envelopes so the gossip envelope can be accepted (not rejected as duplicate
+    // of the self-build envelope that was already processed during block production)
+    rig.chain.observed_payload_envelopes.lock().clear();
 
     // Construct a self-build envelope matching all committed bid fields
     let envelope = SignedExecutionPayloadEnvelope {
@@ -3564,7 +3577,19 @@ async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
         signature: bls::Signature::empty(),
     };
 
-    // First submission: should be accepted (self-build, matching bid fields)
+    // Self-build envelope was already processed during block production, so
+    // a gossip submission of the same envelope is immediately ignored as duplicate.
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), make_envelope())
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+
+    // Clear observed to test the independent gossip dedup path
+    rig.chain.observed_payload_envelopes.lock().clear();
+
+    // First gossip submission after clear: accepted
     rig.network_beacon_processor
         .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), make_envelope())
         .await;
@@ -3572,7 +3597,7 @@ async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_accept(result);
 
-    // Second submission (identical envelope): should be ignored (DuplicateEnvelope)
+    // Second gossip submission: ignored (DuplicateEnvelope from first gossip acceptance)
     rig.network_beacon_processor
         .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), make_envelope())
         .await;

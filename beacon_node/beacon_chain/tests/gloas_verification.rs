@@ -926,6 +926,9 @@ async fn envelope_slot_mismatch() {
     let head_root = head.beacon_block_root;
     let head_slot = head.beacon_block.slot();
 
+    // Clear observed envelopes so the duplicate check doesn't preempt the slot mismatch error
+    harness.chain.observed_payload_envelopes.lock().clear();
+
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
     envelope.message.beacon_block_root = head_root;
     envelope.message.slot = head_slot + 5;
@@ -969,6 +972,9 @@ async fn envelope_builder_index_mismatch() {
         .signed_execution_payload_bid()
         .unwrap();
 
+    // Clear observed envelopes so the duplicate check doesn't preempt the builder index error
+    harness.chain.observed_payload_envelopes.lock().clear();
+
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
     envelope.message.beacon_block_root = head_root;
     envelope.message.slot = head_slot;
@@ -1006,6 +1012,9 @@ async fn envelope_block_hash_mismatch() {
         .body()
         .signed_execution_payload_bid()
         .unwrap();
+
+    // Clear observed envelopes so the duplicate check doesn't preempt the block hash error
+    harness.chain.observed_payload_envelopes.lock().clear();
 
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
     envelope.message.beacon_block_root = head_root;
@@ -1286,18 +1295,34 @@ async fn envelope_duplicate_returns_ignore() {
         .unwrap()
         .expect("self-build envelope should exist for head block");
 
-    // First verification should succeed — self-build envelopes are not observed
-    // during process_self_build_envelope, only through gossip verification.
+    // Self-build envelopes are marked as observed during process_self_build_envelope,
+    // so a gossip echo should immediately be rejected as duplicate.
+    let err = unwrap_err(
+        harness
+            .chain
+            .verify_payload_envelope_for_gossip(Arc::new(stored_envelope.clone())),
+        "gossip echo of self-build envelope should be rejected as duplicate",
+    );
+    assert!(
+        matches!(err, PayloadEnvelopeError::DuplicateEnvelope { block_root } if block_root == head_root),
+        "expected DuplicateEnvelope for self-build gossip echo, got {:?}",
+        err
+    );
+
+    // Clear observed envelopes to test the independent gossip dedup path
+    harness.chain.observed_payload_envelopes.lock().clear();
+
+    // First gossip verification should succeed after clearing
     let result = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(stored_envelope.clone()));
     assert!(
         result.is_ok(),
-        "first gossip verification should succeed, got: {:?}",
+        "first gossip verification should succeed after clearing observed, got: {:?}",
         result.err()
     );
 
-    // Second verification of the same block root should return DuplicateEnvelope
+    // Second gossip verification should return DuplicateEnvelope
     // (the root was recorded by the first successful verification).
     let err = unwrap_err(
         harness
@@ -1330,6 +1355,9 @@ async fn envelope_prior_to_finalization() {
     if finalized_slot > Slot::new(0) {
         let head = harness.chain.head_snapshot();
         let head_root = head.beacon_block_root;
+
+        // Clear observed envelopes so the duplicate check doesn't preempt finalization error
+        harness.chain.observed_payload_envelopes.lock().clear();
 
         let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
         envelope.message.beacon_block_root = head_root;
@@ -1999,6 +2027,9 @@ async fn envelope_self_build_skips_signature_verification() {
         "harness should produce self-build blocks"
     );
 
+    // Clear observed envelopes so the duplicate check doesn't preempt signature test
+    harness.chain.observed_payload_envelopes.lock().clear();
+
     let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
     envelope_msg.beacon_block_root = head_root;
     envelope_msg.slot = head_slot;
@@ -2051,6 +2082,9 @@ async fn envelope_prior_to_finalization_direct() {
     // Use the current head (in fork choice) but set envelope slot to 0 (finalized)
     let head = harness.chain.head_snapshot();
     let head_root = head.beacon_block_root;
+
+    // Clear observed envelopes so the duplicate check doesn't preempt finalization error
+    harness.chain.observed_payload_envelopes.lock().clear();
 
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::empty();
     envelope.message.beacon_block_root = head_root;

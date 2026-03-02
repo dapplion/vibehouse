@@ -71,8 +71,7 @@ impl<E: EthSpec> ObservedPayloadEnvelopes<E> {
         self.observed_roots.is_empty()
     }
 
-    /// Clear all tracked roots. Useful for testing.
-    #[cfg(test)]
+    /// Clear all tracked roots.
     pub fn clear(&mut self) {
         self.observed_roots.clear();
         self.insertion_order.clear();
