@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — ePBS chain integrity and EMPTY-path availability tests (run 385)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. 4+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **CI health**: All completed runs green. Nightly fully green.
+- **Zero clippy warnings** across entire workspace
+- **Builder index reusability audit**: Verified complete handling of builder index reuse (exited builder's slot reassigned to new builder with different pubkey). All 8 components correct: BuilderPubkeyCache remove+insert pattern, deposit routing, fork upgrade, is_active_builder, can_builder_cover_bid, fork choice builder_index, envelope pubkey verification, pending payments/withdrawals. 6+ unit tests explicitly cover index reuse. No bugs found.
+- **Test harness attestation factory audit**: Confirmed `produce_unaggregated_attestation_for_block` uses `payload_present: false` — correct for same-slot attestations (always index=0 per spec). Non-same-slot attestation index behavior covered by unit tests in `get_attestation_participation.rs`.
+- **New test: `gloas_full_chain_block_hash_integrity`**: Walks every block in a 3-epoch (24-slot) chain dump, verifying the three fundamental ePBS hash chain invariants:
+  1. `bid.block_hash == envelope.payload.block_hash` (committed == delivered)
+  2. `bid[n+1].parent_block_hash == envelope[n].payload.block_hash` (parent link)
+  3. `state.latest_block_hash == last_envelope.payload.block_hash` (state consistency)
+- **New test: `gloas_empty_path_clears_availability_bit`**: After an external builder withholds a payload (EMPTY path), verifies `execution_payload_availability` bit for that slot is false. Then produces a continuation block with envelope and verifies the EMPTY slot's bit remains false while the FULL slot's bit is true. This is consensus-critical: the availability bit determines attestation `is_matching_head` via `get_attestation_participation_flag_indices`.
+- **716/716 beacon_chain tests pass** (2 new tests added), zero clippy warnings across workspace
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass (inferred — no consensus code changes)
+
 ### 2026-03-02 — comprehensive codebase audit, no actionable gaps (run 384)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. 4+ days of silence on master.
