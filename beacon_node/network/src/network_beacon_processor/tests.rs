@@ -2497,6 +2497,39 @@ async fn test_gloas_gossip_payload_attestation_future_slot_ignored() {
     assert_ignore(result);
 }
 
+/// Gloas gossip: payload attestation for a past slot is IGNORED.
+///
+/// Per spec: [IGNORE] data.slot == current_slot (with MAXIMUM_GOSSIP_CLOCK_DISPARITY)
+/// An attestation targeting slot 0 (far behind wall clock) should be ignored.
+/// This complements the future_slot test by covering the opposite time direction.
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_past_slot_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+
+    let attestation = PayloadAttestation {
+        aggregation_bits: ssz_types::BitVector::new(),
+        data: PayloadAttestationData {
+            beacon_block_root: head.beacon_block_root,
+            slot: Slot::new(0), // far past
+            payload_present: true,
+            blob_data_available: false,
+        },
+        signature: bls::AggregateSignature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
 /// Gloas gossip: payload attestation with empty aggregation bits is REJECTED.
 ///
 /// Per spec: aggregation bits must have at least one set bit.
@@ -3332,6 +3365,62 @@ async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_accept(result);
+}
+
+/// Gloas gossip: submitting the same payload envelope twice results in IGNORE on the second
+/// submission due to the DuplicateEnvelope deduplication check.
+///
+/// Per spec: [IGNORE] The node has not seen another valid SignedExecutionPayloadEnvelope
+/// for this block root. The first envelope is accepted and recorded in
+/// `observed_payload_envelopes`; the second hits the dedup guard.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let bid = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("head is a Gloas block");
+
+    let make_envelope = || SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas {
+                block_hash: bid.message.block_hash,
+                ..Default::default()
+            },
+            execution_requests: <_>::default(),
+            builder_index: bid.message.builder_index,
+            beacon_block_root: head_root,
+            slot: head_slot,
+            state_root: Hash256::ZERO,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    // First submission: should be accepted (self-build, matching bid fields)
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), make_envelope())
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Second submission (identical envelope): should be ignored (DuplicateEnvelope)
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), make_envelope())
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
 }
 
 /// Gloas gossip: payload envelope for a finalized slot is IGNORED.
