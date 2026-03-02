@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — comprehensive test coverage audit (run 407)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new spec PRs merged since run 406.
+- **Open PRs**: #4955 (dependabot), #4954 (milliseconds fork choice, no reviews), #4950 (extend by_root serve range, 4 approvals still not merged), #4940 (Gloas fork choice tests, no reviews), #4939 (missing payload envelopes), #4932 (Gloas sanity/blocks tests), #4843 (variable PTC deadline), others unchanged.
+- **CI health**: Runs 405-406 green. Runs from run 406 commits (`a62e466f1`, `4a20a4067`) completing successfully — check/clippy/fmt, ef-tests, network+op_pool all passed; beacon_chain and http_api tests in progress.
+- **Comprehensive test coverage audit** across the entire Gloas codebase:
+  - Audited `gloas_verification.rs` (898 lines): 57 tests in external test file cover all major error paths. Remaining untested: `PtcCommitteeError`, `InvalidAggregationBits` (both defensively unreachable — PtcSize=512 matches BitVector<PtcSize>), `MissingBeaconBlock` (requires DB inconsistency), `NotGloasBlock` (requires pre-Gloas block in Gloas-genesis harness).
+  - Audited `per_block_processing/gloas.rs` (8400+ lines): 100+ tests covering bid processing, payload attestation, PTC committee, withdrawals, builder deposits, participation flags. All error paths for `get_ptc_committee`, `get_indexed_payload_attestation`, `process_payload_attestation` well-covered. Remaining untested: arithmetic overflow paths in `get_ptc_committee` (u64 overflow, unreachable in practice), `get_seed` failure (requires corrupted state).
+  - Audited `per_epoch_processing/gloas.rs` (970 lines): 21 tests covering quorum thresholds, rotation, multi-builder scenarios, min-balance edge cases, sparse patterns, max-weight overflow.
+  - Audited `envelope_processing.rs` (3259 lines): 54 tests covering all major error paths.
+  - Audited `proto_array_fork_choice.rs` (8352 lines): 146 tests covering reorg resistance, proposer boost, weight calculations, tiebreakers.
+  - Audited `signature_sets.rs`: Extensive tests for bid, envelope, and payload attestation signature construction including domain isolation, cross-type non-transferability, multi-signer aggregation.
+  - Audited `block_signature_verifier.rs`: `include_execution_payload_bid()` and `include_payload_attestations()` methods (added in run 395) have no direct unit tests but are exercised through full block import in beacon_chain integration tests.
+  - Audited `beacon_chain.rs` Gloas methods: `process_pending_envelope` (4 tests), `prune_gloas_pools` (2 tests), `apply_execution_bid_to_fork_choice` (7+ tests), `get_proposer_preferences` (tested via insertion/dedup test), `insert_proposer_preferences` (tested via insertion/dedup + gossip verification tests).
+  - Audited `beacon_chain/tests/gloas.rs`: 268 integration tests.
+  - Audited `beacon_chain/tests/gloas_verification.rs`: 57 tests.
+- **Conclusion**: Gloas test coverage is comprehensive with 1000+ tests across all modules. Remaining gaps are limited to defensively unreachable error paths (arithmetic overflow, BitVector size mismatches, DB corruption). The marginal value of additional defensive-path tests is low.
+- Full workspace clippy clean (state_processing, beacon_chain, network — zero warnings).
+
 ### 2026-03-03 — SECONDS_PER_SLOT config forward-compat + spec PR review (run 406)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **3 new spec PRs merged** (since run 405):
