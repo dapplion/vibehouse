@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — prune_gloas_pools buffer cap tests, spec audit (run 362)
+- **Consensus-specs audit**: Reviewed all 30 commits on master since v1.7.0-alpha.2 (Feb 3):
+  - **#4948** (reorder PayloadStatus constants): Already implemented (Empty=0, Full=1, Pending=2)
+  - **#4897+#4916** (deposit frontrunning fix + is_pending_validator): Already implemented
+  - **#4918** (attestations for known payload statuses): Already implemented (PayloadNotRevealed check)
+  - **#4923** (ignore block if parent payload unknown): Already implemented (GloasParentPayloadUnknown)
+  - **#4884** (payload data availability vote): Already implemented (ptc_blob_data_available_weight, is_payload_data_available)
+  - **#4914** (execution proof uses validator_index): Feature-branch code (eip8025), lower priority
+  - **#4941** (execution proof uses beacon block): Feature-branch code (eip8025), documentation-only change
+  - **Conclusion**: vibehouse is fully up to date with all spec changes on master
+- **prune_gloas_pools buffer cap integration tests shipped** — 2 new tests:
+  - `gloas_prune_gloas_pools_buffer_cap_enforcement`: fills 3 root-keyed buffers above cap (17 > 16), verifies all cleared after per_slot_task; also verifies slot-keyed pools prune entries older than MAX_GLOAS_POOL_SLOTS=4
+  - `gloas_prune_gloas_pools_at_cap_not_cleared`: fills 3 root-keyed buffers to exactly cap (16), verifies NOT cleared — boundary condition test
+  - Tests cover: pending_gossip_envelopes, execution_proof_tracker, pending_execution_proofs, payload_attestation_pool, proposer_preferences_pool
+- **All 706 beacon_chain tests pass** (704 + 2 new)
+- **Clippy**: zero warnings
+
 ### 2026-03-02 — builder payment quorum promotion test, spec tracking (run 361)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
