@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — nightly spec test validation (run 393)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Merged spec PRs since last check: #4953, #4952, #4951 (all CI/testing infra, no spec changes)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630, #4898. None merged.
+- **CI health**: Nightly (Mar 2) fully green. Run 392 CI in progress (check+clippy passed). Zero clippy warnings.
+- **EF test results (v1.7.0-alpha.2)**: 78/78 real crypto pass, 138/138 fake_crypto pass
+- **Nightly spec test validation**: Downloaded nightly test vectors from consensus-specs master (commit `14e6ce5a5334`, Mar 2 build) and ran against vibehouse:
+  - **78/78 real crypto pass** (including new Gloas `random` test category — 16 randomized state transition tests)
+  - **138/138 fake_crypto pass** (all new test cases included)
+  - **New test categories in nightly**:
+    - 4 `deposit_request` routing tests for builder credentials (pending deposits with valid/invalid signatures, builder credential routing)
+    - 6 `builder_voluntary_exit` tests (success path + 5 invalid paths: bad signature, already exited, deposit epoch, pending payment, pending withdrawal)
+    - 16 Gloas `random` randomized state transition tests (new category, not in v1.7.0-alpha.2)
+  - All new tests pass without any code changes — vibehouse is ready for the next spec test release
+- **No new spec compliance issues found**
+
 ### 2026-03-02 — comprehensive test coverage audit (run 392)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - New spec master commits: #4953 (shuffling tests to pytest), #4952 (seeded rng), #4951 (pytest parallelism). All CI-only, no spec changes.
