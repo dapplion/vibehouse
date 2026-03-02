@@ -1143,8 +1143,18 @@ impl ProtoArrayForkChoice {
                 .into_iter()
                 .max_by(|(a, wa), (b, wb)| {
                     wa.cmp(wb).then_with(|| a.root.cmp(&b.root)).then_with(|| {
-                        let ta = self.get_payload_tiebreaker(a, current_slot, ptc_quorum_threshold);
-                        let tb = self.get_payload_tiebreaker(b, current_slot, ptc_quorum_threshold);
+                        let ta = self.get_payload_tiebreaker(
+                            a,
+                            current_slot,
+                            ptc_quorum_threshold,
+                            proposer_boost_root,
+                        );
+                        let tb = self.get_payload_tiebreaker(
+                            b,
+                            current_slot,
+                            ptc_quorum_threshold,
+                            proposer_boost_root,
+                        );
                         ta.cmp(&tb)
                     })
                 })
@@ -1536,6 +1546,7 @@ impl ProtoArrayForkChoice {
         node: &GloasForkChoiceNode,
         current_slot: Slot,
         ptc_quorum_threshold: u64,
+        proposer_boost_root: Hash256,
     ) -> u8 {
         let pa = &self.proto_array;
 
@@ -1556,7 +1567,7 @@ impl ProtoArrayForkChoice {
             1
         } else {
             // FULL: use 2 if should extend payload, else 0.
-            if self.should_extend_payload(node, ptc_quorum_threshold) {
+            if self.should_extend_payload(node, ptc_quorum_threshold, proposer_boost_root) {
                 2
             } else {
                 0
@@ -1571,7 +1582,12 @@ impl ProtoArrayForkChoice {
     /// - no proposer boost root, OR
     /// - boosted block's parent is not this root, OR
     /// - boosted block's parent is already FULL
-    fn should_extend_payload(&self, node: &GloasForkChoiceNode, ptc_quorum_threshold: u64) -> bool {
+    fn should_extend_payload(
+        &self,
+        node: &GloasForkChoiceNode,
+        ptc_quorum_threshold: u64,
+        proposer_boost_root: Hash256,
+    ) -> bool {
         let pa = &self.proto_array;
 
         // Check if payload is both timely and data-available.
@@ -1592,8 +1608,9 @@ impl ProtoArrayForkChoice {
             return true;
         }
 
-        // No proposer boost root
-        let proposer_boost_root = pa.previous_proposer_boost.root;
+        // No proposer boost root — use the current proposer_boost_root from find_head_gloas,
+        // not pa.previous_proposer_boost.root which is stale (apply_score_changes is skipped
+        // in the Gloas path).
         if proposer_boost_root.is_zero() {
             return true;
         }
@@ -3843,7 +3860,11 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -3864,7 +3885,11 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -3881,7 +3906,11 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -3909,7 +3938,11 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // block_b's parent is block_c, not block_a → should extend
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -3941,7 +3974,11 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Child builds on FULL parent → should extend
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -3971,7 +4008,11 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Child builds on EMPTY parent → should NOT extend
-        assert!(!fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(!fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -3991,7 +4032,11 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     #[test]
@@ -4015,7 +4060,11 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Genesis has no parent → should extend
-        assert!(fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD));
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
     }
 
     // ──────── get_payload_tiebreaker tests ────────────────────
@@ -4034,7 +4083,12 @@ mod test_gloas_fork_choice {
 
         // Non-previous-slot: PENDING returns ordinal
         assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(100), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &gloas_node,
+                Slot::new(100),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Pending as u8
         );
     }
@@ -4052,7 +4106,12 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Empty,
         };
         assert_eq!(
-            fc.get_payload_tiebreaker(&empty_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &empty_node,
+                Slot::new(5),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Empty as u8
         );
 
@@ -4061,7 +4120,12 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         assert_eq!(
-            fc.get_payload_tiebreaker(&full_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &full_node,
+                Slot::new(5),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Full as u8
         );
     }
@@ -4080,7 +4144,12 @@ mod test_gloas_fork_choice {
 
         // Block at slot 1, current_slot = 2 (previous slot)
         assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &gloas_node,
+                Slot::new(2),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             1
         );
     }
@@ -4105,7 +4174,12 @@ mod test_gloas_fork_choice {
 
         // Block at slot 1, current_slot = 2 (previous slot)
         assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &gloas_node,
+                Slot::new(2),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             2
         );
     }
@@ -4138,7 +4212,12 @@ mod test_gloas_fork_choice {
         // Block at slot 1, current_slot = 2 (previous slot)
         // should_extend_payload=false → tiebreaker returns 0
         assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &gloas_node,
+                Slot::new(2),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             0
         );
     }
@@ -4167,8 +4246,18 @@ mod test_gloas_fork_choice {
         };
 
         let current_slot = Slot::new(2); // previous slot for block at slot 1
-        let te = fc.get_payload_tiebreaker(&empty, current_slot, MINIMAL_PTC_THRESHOLD);
-        let tf = fc.get_payload_tiebreaker(&full, current_slot, MINIMAL_PTC_THRESHOLD);
+        let te = fc.get_payload_tiebreaker(
+            &empty,
+            current_slot,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root,
+        );
+        let tf = fc.get_payload_tiebreaker(
+            &full,
+            current_slot,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root,
+        );
 
         // FULL > EMPTY when extending
         assert!(tf > te, "FULL({}) should beat EMPTY({})", tf, te);
@@ -4186,7 +4275,12 @@ mod test_gloas_fork_choice {
 
         // Unknown root → not at previous slot → returns ordinal
         assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &gloas_node,
+                Slot::new(2),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Full as u8
         );
     }
@@ -4209,7 +4303,12 @@ mod test_gloas_fork_choice {
         // Block at slot 1, current_slot = 2 (previous slot).
         // PENDING always returns ordinal (2) per spec, regardless of slot.
         assert_eq!(
-            fc.get_payload_tiebreaker(&gloas_node, Slot::new(2), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &gloas_node,
+                Slot::new(2),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Pending as u8
         );
     }
@@ -6265,16 +6364,16 @@ mod test_gloas_fork_choice {
             fc.proto_array.nodes[idx].execution_status =
                 ExecutionStatus::Invalid(ExecutionBlockHash::zero());
         }
-        fc.proto_array.previous_proposer_boost.root = root(2);
-
         let balances = balances(0); // no votes
 
+        // Pass root(2) as proposer_boost_root — its parent (root(1)) was EMPTY,
+        // so should_extend_payload returns false for root(1)'s FULL node.
         let head = fc
             .find_head::<MinimalEthSpec>(
                 genesis_checkpoint(),
                 genesis_checkpoint(),
                 &balances,
-                Hash256::zero(),
+                root(2),
                 &BTreeSet::new(),
                 Slot::new(2),
                 &spec,
@@ -6905,7 +7004,11 @@ mod test_gloas_fork_choice {
         // envelope_received but PTC quorum not above threshold → timely check fails.
         // Boosted child builds on EMPTY parent of block_root → should NOT extend.
         assert!(
-            !fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            !fc.should_extend_payload(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             "should_extend_payload should be false: envelope arrived but PTC quorum \
              not reached, and boosted child builds on EMPTY parent"
         );
@@ -7213,7 +7316,11 @@ mod test_gloas_fork_choice {
         };
 
         assert!(
-            !fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            !fc.should_extend_payload(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             "ptc_weight == threshold (not strictly above) must NOT extend payload"
         );
     }
@@ -7240,7 +7347,11 @@ mod test_gloas_fork_choice {
         };
 
         assert!(
-            !fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            !fc.should_extend_payload(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             "blob_data_available_weight == threshold (not strictly above) must NOT extend payload"
         );
     }
@@ -7265,7 +7376,11 @@ mod test_gloas_fork_choice {
         };
 
         assert!(
-            fc.should_extend_payload(&gloas_node, MINIMAL_PTC_THRESHOLD),
+            fc.should_extend_payload(
+                &gloas_node,
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             "both weights at threshold+1 with envelope_received should extend payload"
         );
     }
@@ -7625,17 +7740,32 @@ mod test_gloas_fork_choice {
         };
 
         assert_eq!(
-            fc.get_payload_tiebreaker(&empty_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &empty_node,
+                Slot::new(5),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Empty as u8,
             "EMPTY ordinal for non-previous-slot"
         );
         assert_eq!(
-            fc.get_payload_tiebreaker(&full_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &full_node,
+                Slot::new(5),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Full as u8,
             "FULL ordinal for non-previous-slot"
         );
         assert_eq!(
-            fc.get_payload_tiebreaker(&pending_node, Slot::new(5), MINIMAL_PTC_THRESHOLD),
+            fc.get_payload_tiebreaker(
+                &pending_node,
+                Slot::new(5),
+                MINIMAL_PTC_THRESHOLD,
+                fc.proto_array.previous_proposer_boost.root
+            ),
             GloasPayloadStatus::Pending as u8,
             "PENDING ordinal for non-previous-slot"
         );
