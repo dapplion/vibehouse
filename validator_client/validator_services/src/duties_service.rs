@@ -1644,10 +1644,12 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
     let current_epoch = current_slot.epoch(S::E::slots_per_epoch());
     let next_epoch = current_epoch.saturating_add(1u64);
 
-    // Only broadcast after Gloas is activated.
+    // Broadcast when the next epoch is a Gloas epoch — this allows broadcasting
+    // preferences one epoch before the fork, as recommended by the spec:
+    // "Proposers SHOULD broadcast their preferences in the epoch before the fork."
     if spec
         .gloas_fork_epoch
-        .is_none_or(|gloas_epoch| current_epoch < gloas_epoch)
+        .is_none_or(|gloas_epoch| next_epoch < gloas_epoch)
     {
         return Ok(());
     }
@@ -2420,6 +2422,67 @@ mod broadcast_preferences_tests {
         assert!(
             ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
             "epoch should be marked even when BN POST fails"
+        );
+    }
+
+    /// Pre-fork broadcast: preferences are broadcast in the epoch before Gloas activates.
+    ///
+    /// Per consensus-specs #4947: "Proposers SHOULD broadcast their preferences in the
+    /// epoch before the fork." When current_epoch == gloas_epoch - 1, next_epoch == gloas_epoch,
+    /// so the function should proceed (not skip) and broadcast preferences for the first
+    /// Gloas epoch.
+    #[tokio::test]
+    async fn broadcast_preferences_epoch_before_fork_proceeds() {
+        let gloas_epoch = 3u64;
+        let spec = spec_with_gloas(Some(gloas_epoch));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xCC));
+        // current_epoch = gloas_epoch - 1 = 2, next_epoch = gloas_epoch = 3
+        let current_slot = Slot::new(slots_per_epoch * (gloas_epoch - 1));
+        let next_epoch = Epoch::new(gloas_epoch);
+
+        let mut mock = MockBeaconNode::<E>::new().await;
+
+        let proposer_duty = ProposerData {
+            pubkey,
+            validator_index: 100,
+            slot: Slot::new(slots_per_epoch * gloas_epoch), // first slot in Gloas epoch
+        };
+        let _m1 = mock.mock_get_validator_duties_proposer(next_epoch, vec![proposer_duty]);
+        let _m2 = mock.mock_post_beacon_pool_proposer_preferences();
+
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        assert!(
+            ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
+            "should broadcast preferences for gloas_epoch when current_epoch = gloas_epoch - 1"
+        );
+    }
+
+    /// Two epochs before Gloas: preferences are NOT broadcast (too early).
+    #[tokio::test]
+    async fn broadcast_preferences_two_epochs_before_fork_skips() {
+        let gloas_epoch = 5u64;
+        let spec = spec_with_gloas(Some(gloas_epoch));
+        let slots_per_epoch = E::slots_per_epoch();
+        let pubkey = PreferencesValidatorStore::pubkey(1);
+        let store = PreferencesValidatorStore::new(vec![(pubkey, 100)])
+            .with_fee_recipient(pubkey, Address::repeat_byte(0xDD));
+        // current_epoch = gloas_epoch - 2 = 3, next_epoch = 4 (still before Gloas)
+        let current_slot = Slot::new(slots_per_epoch * (gloas_epoch - 2));
+        let mock = MockBeaconNode::<E>::new().await;
+        let (ds, _rt) = make_duties_service(&mock, store, spec, current_slot).await;
+
+        broadcast_proposer_preferences(&ds).await.unwrap();
+
+        // Should skip — next_epoch (4) < gloas_epoch (5)
+        assert!(
+            ds.preferences_broadcast_epochs.lock().is_empty(),
+            "should not broadcast when next_epoch < gloas_epoch"
         );
     }
 }
