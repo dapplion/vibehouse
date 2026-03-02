@@ -15010,3 +15010,202 @@ async fn gloas_builder_payment_quorum_promotion_end_to_end() {
         "original payment amount should be cleared after rotation"
     );
 }
+
+/// `prune_gloas_pools` clears root-keyed pending buffers when they exceed the
+/// cap of 16 entries, preventing unbounded memory growth from orphan gossip.
+/// Also verifies slot-keyed pools prune entries older than 4 slots.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gloas_prune_gloas_pools_buffer_cap_enforcement() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend enough slots so that slot 0 is older than MAX_GLOAS_POOL_SLOTS=4
+    Box::pin(harness.extend_slots(6)).await;
+
+    let cap: usize = 16;
+
+    // ── Fill root-keyed buffers above the cap (17 entries each) ──
+
+    // pending_gossip_envelopes
+    {
+        let mut pending = harness.chain.pending_gossip_envelopes.lock();
+        for i in 0..=cap {
+            pending.insert(
+                Hash256::from_low_u64_be(1000 + i as u64),
+                Arc::new(SignedExecutionPayloadEnvelope::empty()),
+            );
+        }
+        assert_eq!(pending.len(), cap + 1, "should have 17 pending envelopes");
+    }
+
+    // execution_proof_tracker
+    {
+        let mut tracker = harness.chain.execution_proof_tracker.lock();
+        for i in 0..=cap {
+            tracker.insert(
+                Hash256::from_low_u64_be(2000 + i as u64),
+                std::collections::HashSet::new(),
+            );
+        }
+        assert_eq!(tracker.len(), cap + 1, "should have 17 tracker entries");
+    }
+
+    // pending_execution_proofs
+    {
+        let mut pending = harness.chain.pending_execution_proofs.lock();
+        for i in 0..=cap {
+            pending.insert(Hash256::from_low_u64_be(3000 + i as u64), vec![]);
+        }
+        assert_eq!(pending.len(), cap + 1, "should have 17 pending proofs");
+    }
+
+    // ── Fill slot-keyed pools with old entries ──
+
+    // After extend_slots(6), head is at slot 6. advance_slot moves clock to 7.
+    // earliest_slot = 7 - 4 = 3, so slot 0 should be pruned, slot 7 should survive.
+    let old_slot = Slot::new(0);
+
+    {
+        let mut pool = harness.chain.payload_attestation_pool.lock();
+        pool.insert(old_slot, vec![]);
+    }
+    {
+        let dummy_prefs = SignedProposerPreferences {
+            message: ProposerPreferences {
+                proposal_slot: 0,
+                validator_index: 0,
+                fee_recipient: Address::ZERO,
+                gas_limit: 0,
+            },
+            signature: Signature::empty(),
+        };
+        let mut pool = harness.chain.proposer_preferences_pool.lock();
+        pool.insert(old_slot, dummy_prefs);
+    }
+
+    // ── Trigger pruning via per_slot_task ──
+    // Advance slot clock so per_slot_task can run
+    harness.advance_slot();
+    harness.chain.per_slot_task().await;
+
+    // ── Verify root-keyed buffers were cleared (exceeded cap) ──
+    {
+        let pending = harness.chain.pending_gossip_envelopes.lock();
+        assert_eq!(
+            pending.len(),
+            0,
+            "pending_gossip_envelopes should be cleared when exceeding cap of {}",
+            cap
+        );
+    }
+    {
+        let tracker = harness.chain.execution_proof_tracker.lock();
+        assert_eq!(
+            tracker.len(),
+            0,
+            "execution_proof_tracker should be cleared when exceeding cap of {}",
+            cap
+        );
+    }
+    {
+        let pending = harness.chain.pending_execution_proofs.lock();
+        assert_eq!(
+            pending.len(),
+            0,
+            "pending_execution_proofs should be cleared when exceeding cap of {}",
+            cap
+        );
+    }
+
+    // ── Verify slot-keyed pools pruned old entries ──
+    {
+        let pool = harness.chain.payload_attestation_pool.lock();
+        assert!(
+            !pool.contains_key(&old_slot),
+            "payload_attestation_pool should prune old slot {}",
+            old_slot
+        );
+    }
+    {
+        let pool = harness.chain.proposer_preferences_pool.lock();
+        assert!(
+            !pool.contains_key(&old_slot),
+            "proposer_preferences_pool should prune old slot {}",
+            old_slot
+        );
+    }
+}
+
+/// `prune_gloas_pools` does NOT clear root-keyed buffers at exactly the cap (16 entries).
+/// Only buffers strictly exceeding the cap are cleared.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gloas_prune_gloas_pools_at_cap_not_cleared() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let cap: usize = 16;
+
+    // Fill buffers to exactly the cap (16 entries)
+    {
+        let mut pending = harness.chain.pending_gossip_envelopes.lock();
+        for i in 0..cap {
+            pending.insert(
+                Hash256::from_low_u64_be(1000 + i as u64),
+                Arc::new(SignedExecutionPayloadEnvelope::empty()),
+            );
+        }
+        assert_eq!(
+            pending.len(),
+            cap,
+            "should have exactly 16 pending envelopes"
+        );
+    }
+    {
+        let mut tracker = harness.chain.execution_proof_tracker.lock();
+        for i in 0..cap {
+            tracker.insert(
+                Hash256::from_low_u64_be(2000 + i as u64),
+                std::collections::HashSet::new(),
+            );
+        }
+        assert_eq!(tracker.len(), cap, "should have exactly 16 tracker entries");
+    }
+    {
+        let mut pending = harness.chain.pending_execution_proofs.lock();
+        for i in 0..cap {
+            pending.insert(Hash256::from_low_u64_be(3000 + i as u64), vec![]);
+        }
+        assert_eq!(pending.len(), cap, "should have exactly 16 pending proofs");
+    }
+
+    // Trigger pruning
+    harness.advance_slot();
+    harness.chain.per_slot_task().await;
+
+    // Verify buffers at exactly the cap are NOT cleared
+    {
+        let pending = harness.chain.pending_gossip_envelopes.lock();
+        assert_eq!(
+            pending.len(),
+            cap,
+            "pending_gossip_envelopes at exactly cap={} should NOT be cleared",
+            cap
+        );
+    }
+    {
+        let tracker = harness.chain.execution_proof_tracker.lock();
+        assert_eq!(
+            tracker.len(),
+            cap,
+            "execution_proof_tracker at exactly cap={} should NOT be cleared",
+            cap
+        );
+    }
+    {
+        let pending = harness.chain.pending_execution_proofs.lock();
+        assert_eq!(
+            pending.len(),
+            cap,
+            "pending_execution_proofs at exactly cap={} should NOT be cleared",
+            cap
+        );
+    }
+}
