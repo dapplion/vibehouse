@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — SECONDS_PER_SLOT config forward-compat + spec PR review (run 406)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **3 new spec PRs merged** (since run 405):
+  - **#4944** (Request execution proofs by block root and proof types): EIP-8025 P2P change — modifies `_features/eip8025/p2p-interface.md`. No impact on vibehouse (experimental feature spec).
+  - **#4926** (Replace `SECONDS_PER_SLOT` with `SLOT_DURATION_MS`): Removes `SECONDS_PER_SLOT` from config YAML, uses `SLOT_DURATION_MS // 1000` everywhere. Changes `compute_time_at_slot`, `get_slots_since_genesis`, `on_tick`, `get_forkchoice_store` in `phase0/fork-choice.md` and `gloas/fork-choice.md`. **Impact**: vibehouse's Config struct required `SECONDS_PER_SLOT` — future config YAMLs without it would fail to parse. **Fixed in this run.**
+  - **#4814** (Add helpers for simple config derivations): Converts `MAX_REQUEST_BLOB_SIDECARS`, `MAX_REQUEST_DATA_COLUMN_SIDECARS`, `ATTESTATION_SUBNET_PREFIX_BITS`, `MIN_EPOCHS_FOR_BLOCK_REQUESTS` from config values to computed helpers. Removes these from config YAML. No code impact on vibehouse (these values are hardcoded or used only in comments/error strings).
+- **Open PRs unchanged**: #4954, #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **CI health**: Runs 400-404 in progress, runs 396-399 fully green.
+- **Config forward-compatibility fix** for spec PR #4926:
+  - Made `SECONDS_PER_SLOT` optional in Config serde struct (default=0 sentinel)
+  - Added `SLOT_DURATION_MS` to Config serde struct (default=0)
+  - `apply_to_chain_spec` now handles all 3 scenarios: SLOT_DURATION_MS only (new spec), SECONDS_PER_SLOT only (legacy), or both present
+  - 3 new tests: `config_without_seconds_per_slot`, `config_with_both_slot_timing_fields`, `config_with_only_seconds_per_slot`
+  - All 47 chain_spec tests pass, 715 types tests pass, full workspace clippy clean
+- **Test coverage audit** of Gloas-specific code paths. Found extensive existing coverage across all major areas:
+  - `payload_attestation_message_to_attestation`: 8+ integration tests via `import_payload_attestation_message`
+  - `GloasParentPayloadUnknown` gossip check: 3 tests (reject, accept revealed, pre-Gloas parent)
+  - `get_parent_payload_status_of`: 4 tests covering all None/Some combinations
+  - `load_parent` latest_block_hash patching: 4 tests (range sync, no-patch, genesis, EMPTY parent)
+  - `envelope_processing`: 54 unit tests covering all error paths and state mutations
+- Commit: `a62e466f1`
+
 ### 2026-03-03 — fork choice envelope_received guard and EL validation lifecycle tests (run 405)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
