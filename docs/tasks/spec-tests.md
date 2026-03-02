@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec compliance audit and pre-fork preferences fix (run 380)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. 10+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4843, #4840, #4630. None merged. Both #4932 (sanity/blocks tests) and #4940 (fork choice tests) won't require vibehouse code changes — all test handlers already implemented.
+- **CI health**: All completed runs green. Nightly (Mar 2) fully green.
+- **Deep spec compliance audit**: Line-by-line comparison of vibehouse vs consensus-specs for:
+  - `process_execution_payload_envelope` (12 validation steps) — all match spec
+  - `process_execution_payload_bid` (self-build validation, builder active check, balance check, signature, commitments limit, slot/parent/randao checks, pending payment recording) — all match spec
+  - `can_builder_cover_bid` — matches spec exactly (MIN_DEPOSIT_AMOUNT + pending_withdrawals)
+  - `is_active_builder` — matches spec (deposit_epoch < finalized_epoch, withdrawable == FAR_FUTURE)
+  - `upgrade_to_gloas` / `onboard_builders_from_pending_deposits` — all field assignments, builder deposit routing, and pubkey cache management match spec
+  - `GloasPayloadStatus` enum values (Empty=0, Full=1, Pending=2) — already aligned with spec after #4948 reorder
+- **Bug fix: VC broadcast_proposer_preferences pre-fork guard too strict**: Per consensus-specs #4947 ("Proposers SHOULD broadcast their preferences in the epoch before the fork"), the VC should broadcast preferences when `next_epoch >= gloas_epoch`. The old guard required `current_epoch >= gloas_epoch`, which meant preferences for the first Gloas epoch could not be broadcast in the preceding epoch. Fix: changed guard from `current_epoch < gloas_epoch` to `next_epoch < gloas_epoch`. Added 2 tests: `broadcast_preferences_epoch_before_fork_proceeds` and `broadcast_preferences_two_epochs_before_fork_skips`.
+- **47/47 validator_services tests pass, zero clippy warnings**
+
 ### 2026-03-02 — comprehensive codebase and spec compliance audit (run 379)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. 9+ days of silence on master.
