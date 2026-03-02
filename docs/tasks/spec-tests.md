@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix CI and spec compliance review (run 396)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- New spec master commits: #4926 (replace SECONDS_PER_SLOT with SLOT_DURATION_MS), #4814 (config derivation helpers). #4926 merged today (Mar 2).
+- **Recently merged Gloas spec PRs reviewed**:
+  - **#4923 (Ignore beacon block if parent payload unknown)**: Already implemented — `GloasParentPayloadUnknown` error variant in `block_verification.rs:971-984`, with IGNORE handling + sync queue in gossip_methods.rs. Three integration tests cover both accept/reject paths.
+  - **#4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS)**: Config naming change only. Vibehouse uses `seconds_per_slot` through `ChainSpec`; the arithmetic is equivalent. No code change needed.
+  - **#4930 (execution_payload_states → payload_states)**: Naming rename only in spec fork-choice. No behavioral change.
+- **CI fix**: 3 HTTP API envelope error-path tests (`post_execution_payload_envelope_block_hash_mismatch`, `_builder_index_mismatch`, `_slot_mismatch`) were failing because the `observe_envelope()` call added in run 394's self-build dedup fix (c9d1cd402) caused `DuplicateEnvelope` to fire before field-level validation. Fix: clear `observed_payload_envelopes` cache before submitting modified envelopes in these tests.
+- **229/229 HTTP API tests pass**, zero clippy warnings across full workspace
+- Commit: `f18a3de29`
+
 ### 2026-03-02 — fix batch signature verification for Gloas bid/PTC signatures (run 395)
 - **Bug fix (HIGH): BlockSignatureVerifier missing Gloas bid + payload attestation signatures**
   - `BlockSignatureVerifier` (used in `VerifyBulk` mode, the default block import path) was missing verification of execution payload bid signatures and payload attestation signatures
