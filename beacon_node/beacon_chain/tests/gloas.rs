@@ -11304,6 +11304,175 @@ async fn gloas_gossip_envelope_el_transport_error_returns_error() {
     );
 }
 
+/// In stateless validation mode, `process_payload_envelope` (the gossip path) skips the
+/// EL `newPayload` call entirely. The envelope's state transition still runs (execution
+/// requests, builder payments, `latest_block_hash` update), but the block remains
+/// Optimistic because no EL verification occurred. Execution validity is established
+/// later via execution proofs arriving on gossip subnets.
+///
+/// This is the gossip-path counterpart of `gloas_self_build_envelope_stateless_mode_stays_optimistic`
+/// which exercises `process_self_build_envelope`. In a live stateless network, node B receives
+/// a gossip envelope produced by node A and must process it without consulting the EL.
+#[tokio::test]
+async fn gloas_gossip_envelope_stateless_mode_skips_el() {
+    // Stateless node that receives the gossip envelope
+    let stateless = gloas_stateless_harness(1);
+    // Normal producer node to create blocks and envelopes
+    let producer = gloas_harness_at_epoch(0);
+
+    // Build 2 blocks on both harnesses to establish chain state
+    for _ in 0..2 {
+        producer.advance_slot();
+        stateless.advance_slot();
+        let head_state = producer.chain.head_beacon_state_cloned();
+        let next_slot = head_state.slot() + 1;
+        let (block_contents, _state, envelope) = producer
+            .make_block_with_envelope(head_state, next_slot)
+            .await;
+
+        let envelope = envelope.expect("Gloas should produce envelope");
+        let block_root = block_contents.0.canonical_root();
+
+        // Import block + envelope on producer
+        producer
+            .process_block(next_slot, block_root, block_contents.clone())
+            .await
+            .expect("producer import should succeed");
+        producer
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .expect("producer envelope should succeed");
+
+        // Import block + envelope on stateless (using self-build path for setup)
+        stateless
+            .process_block(next_slot, block_root, block_contents)
+            .await
+            .expect("stateless import should succeed");
+        stateless
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .expect("stateless envelope should succeed");
+    }
+
+    // Now produce a 3rd block — this time we'll process the envelope via the GOSSIP path
+    // on the stateless harness (process_payload_envelope instead of process_self_build_envelope)
+    producer.advance_slot();
+    stateless.advance_slot();
+    let head_state = producer.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = producer
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas should produce envelope");
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block + envelope on the producer (so it stays in sync)
+    producer
+        .process_block(next_slot, block_root, block_contents.clone())
+        .await
+        .expect("producer block import should succeed");
+    producer
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("producer envelope should succeed");
+
+    // Import the block on the stateless harness (but NOT the envelope yet)
+    stateless
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("stateless block import should succeed");
+
+    // Confirm payload_revealed is false before envelope processing
+    {
+        let fc = stateless.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "payload_revealed should be false before envelope"
+        );
+    }
+
+    // Step 1: Gossip verification on the stateless node
+    let verified = stateless
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass on stateless node");
+
+    // Step 2: Apply to fork choice (marks payload_revealed = true)
+    stateless
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice on stateless node");
+
+    // Step 3: process_payload_envelope — in stateless mode, this should skip the EL
+    // call entirely but still run the state transition
+    stateless
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("stateless process_payload_envelope should succeed without EL");
+
+    // Verify: payload_revealed should be true
+    {
+        let fc = stateless.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true after gossip envelope processing"
+        );
+    }
+
+    // Verify: block should remain Optimistic (EL was not consulted)
+    {
+        let fc = stateless.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic in stateless mode, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // Verify: envelope is persisted to the store (state transition succeeded)
+    let stored_envelope = stateless
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error")
+        .expect("envelope should be persisted after stateless processing");
+    assert_eq!(
+        stored_envelope.message.beacon_block_root, block_root,
+        "stored envelope should reference correct block root"
+    );
+
+    // Verify: the post-envelope state has latest_block_hash updated
+    let block_state_root = stateless
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .unwrap()
+        .message()
+        .state_root();
+    let post_state = stateless
+        .chain
+        .get_state(&block_state_root, Some(next_slot), false)
+        .expect("should not error")
+        .expect("post-envelope state should be in cache");
+    let latest_hash = post_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        *latest_hash, envelope_block_hash,
+        "post-envelope state latest_block_hash should match the envelope's block_hash"
+    );
+}
+
 /// When the block is in fork choice but has been pruned from the store (e.g., due to
 /// finalization pruning a hot DB block that FC still references), the gossip verification
 /// path should return `MissingBeaconBlock`.
