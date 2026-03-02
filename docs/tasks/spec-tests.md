@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — operation pool Gloas attestation index tests (run 390)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- New spec master commits: #4953 (shuffling tests to pytest), #4952 (seeded rng in tests), #4951 (pytest parallelism). All CI-only, no spec changes.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **CI health**: Runs #607 and #608 failed (pre-fix commits for PTC double-counting). Runs #609 and #610 in progress for the fixed commits. check+clippy+fmt passed on both.
+- **Zero clippy warnings** across entire workspace
+- **Found and fixed test gap: operation pool attestation storage with Gloas index values**. The `update_covering_set` comment in `attestation.rs` incorrectly stated that `data.index` is always 0 post-Electra — in Gloas, it can be 0 (same-slot/payload-absent) or 1 (payload-present). The code was correct (it compares `(slot, index)`, so index=0 and index=1 attestations are independent), but the comment was misleading. Updated the comment and added 5 unit tests to `attestation_storage.rs`:
+  - `gloas_index_zero_and_one_stored_separately`: index=0 and index=1 attestations for the same slot go into separate buckets
+  - `gloas_same_index_attestations_aggregate`: attestations with matching index correctly aggregate
+  - `gloas_cross_committee_aggregation_respects_index`: `aggregate_across_committees` only merges within the same index group
+  - `compact_attestation_data_index_hash_distinct`: Hash/Eq distinguishes index values
+  - `compact_attestation_ref_preserves_index`: clone_as_attestation preserves index for both 0 and 1
+- **Also confirmed**: test harness `produce_unaggregated_attestation_for_block` always sets `payload_present=false` (line 1350), so all existing operation pool tests only exercise index=0. The new unit tests directly construct index=1 attestations to cover this gap.
+- **31/31 operation pool tests pass** (26 existing + 5 new), zero clippy warnings
+
 ### 2026-03-02 — PTC double-counting regression tests and spec audit (run 389)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - New spec master commit: `#4952 - Use seeded rng in tests` (CI-only, no spec changes)
