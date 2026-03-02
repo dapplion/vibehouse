@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix payload attestation gossip timing bug (run 391)
+- Found and fixed a real bug in PayloadAttestation gossip timing validation (`gloas_verification.rs:593-619`)
+- Bug: `gossip_clock_disparity.as_secs()` truncated the 500ms MAXIMUM_GOSSIP_CLOCK_DISPARITY to 0 seconds; dividing by `seconds_per_slot` then yielded 0, making clock disparity tolerance completely ineffective
+- Fix: replaced manual calculation with standard `now_with_future_tolerance` / `now_with_past_tolerance` from SlotClock, matching every other gossip verification in the codebase (attestation, block, blob, data_column, sync_committee)
+- Comprehensive spec compliance audit found no other divergences across: process_execution_payload_envelope, process_execution_payload_bid, is_active_builder, is_parent_block_full, get_builder_withdrawals, process_builder_pending_payments, process_proposer_lookahead, process_attestation PTC weight
+- Confirmed spec unchanged at v1.7.0-alpha.2, all open Gloas PRs (#4940, #4939, #4932, #4843, #4840, #4630) unchanged
+- All 719 beacon_chain tests pass, clippy clean
+- Commit: `46a8e7cb2`
+
 ### 2026-03-02 — operation pool Gloas attestation index tests (run 390)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - New spec master commits: #4953 (shuffling tests to pytest), #4952 (seeded rng in tests), #4951 (pytest parallelism). All CI-only, no spec changes.
