@@ -52,14 +52,16 @@ jobs:
         # Gloas-specific integration tests (gloas::*, gloas_verification::*) are
         # already tested on every push via ci.yml with FORK_NAME=gloas. Exclude
         # them from nightly prior-fork runs to avoid timeout (they take ~25-30s
-        # each and there are 280+). Also exclude chain_segment_varying_chunk_size
-        # which times out under fulu (320 blocks × 8 chunk sizes with PeerDAS);
-        # it tests fork-agnostic batching logic already covered by gloas CI runs.
+        # each and there are 280+). Also exclude block_verification:: tests which
+        # build a 320-block chain via get_chain_segment() — under fulu with PeerDAS
+        # data columns, each test takes 20+ minutes causing job timeouts. These
+        # tests exercise fork-agnostic chain segment import logic already covered
+        # by the gloas CI run on every push.
         run: >
           env FORK_NAME=${{ matrix.fork }} cargo nextest run --release
           --features "fork_from_env,slasher/lmdb"
           -p beacon_chain
-          -E 'not test(/gloas::|gloas_verification::|chain_segment_varying_chunk_size/)'
+          -E 'not test(/gloas::|gloas_verification::|block_verification::/)'
         timeout-minutes: 90
 
   op-pool-tests:

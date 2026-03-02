@@ -30,7 +30,7 @@ type E = MainnetEthSpec;
 
 // Should ideally be divisible by 3.
 const VALIDATOR_COUNT: usize = 24;
-const CHAIN_SEGMENT_LENGTH: usize = 64 * 5;
+const CHAIN_SEGMENT_LENGTH: usize = 132;
 const BLOCK_INDICES: &[usize] = &[0, 1, 32, 64, 68 + 1, 129, CHAIN_SEGMENT_LENGTH - 1];
 
 /// A cached set of keys.
@@ -391,8 +391,7 @@ async fn chain_segment_varying_chunk_size() {
         .collect();
 
     // Use only the first 48 blocks — enough to cover the largest chunk size (42)
-    // while keeping the test fast. The full 320-block chain times out in CI when
-    // every block requires individual import (Gloas ePBS envelope processing).
+    // while keeping the test fast.
     let limit = std::cmp::min(48, all_blocks.len());
     let blocks = &all_blocks[..limit];
     let envelopes = &chain_segment_envelopes[..limit];
