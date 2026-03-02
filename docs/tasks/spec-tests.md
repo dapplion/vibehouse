@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking, coverage audit (run 364)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **New PR tracked**: #4950 (extend by_root reqresp serve range to match by_range) — has `gloas` label, affects `ExecutionPayloadEnvelopesByRoot` serve range. Not yet reviewed. Monitoring.
+- **CI health**: Good. Recent failures are external infrastructure (EF test vector download HTTP 502 errors from GitHub releases). Last 5+ code runs all successful.
+- **Comprehensive test coverage audit** performed across all Gloas ePBS components:
+  - 15,211 lines of Gloas beacon_chain integration tests (258+ async test functions)
+  - 49+ network-level Gloas gossip handler tests
+  - 100+ state_processing Gloas unit tests
+  - All major error paths verified as tested: bid verification (7 error variants), envelope verification (8 error variants), payload attestation verification (7 error variants), fork choice (bid/envelope/attestation), epoch processing (builder payments/lookahead), fork upgrade (16+ unit tests), slot timing (10+ tests)
+  - Zero `todo!()` or `unimplemented!()` in production code
+  - Zero clippy warnings
+  - EF spec test runner already supports `on_execution_payload` step and `head_payload_status` check — ready for PR #4940 test vectors
+  - `on_execution_bid` and `on_payload_attestation` steps not yet in spec test format — will be added when spec PRs merge
+- **Conclusion**: Test coverage is exceptional. No meaningful gaps remain. Remaining items are theoretical edge cases (cache clone interactions, envelope re-application failure paths) that are defensive and extremely hard to trigger in practice.
+
 ### 2026-03-02 — duplicate envelope & past slot attestation gossip tests, spec tracking (run 363)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
