@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — deep state transition audit: deposits, withdrawals, bid processing (run 399)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **No new Gloas spec PRs merged**. Open Gloas PRs unchanged: #4940, #4939, #4932, #4843, #4840, #4630, #4898
+- **CI health**: Run on `d198e46f1` fully green (all 6 jobs passed). Run on `49b73dabd` (task docs) in progress, check+clippy passed.
+- **Deep spec compliance audits of 3 consensus-critical paths**:
+  - **Deposit processing (`process_deposit_request_gloas`)**: Verified correct routing of builder vs validator deposits. Gloas correctly removes `deposit_requests_start_index` initialization (spec drops this from `process_deposit_request`). Execution requests correctly moved from block body to envelope processing. `is_pending_validator` check prevents misrouting pending validator deposits to builders. All edge cases covered by existing tests.
+  - **Withdrawal processing (`process_withdrawals_gloas`)**: All 4 phases verified against spec: (1) builder pending withdrawals with reserved_limit cap, (2) pending partial withdrawals with `min(prior + MAX_PARTIALS, MAX-1)` limit, (3) builder sweep with `min(builders, MAX_BUILDERS_SWEEP)` bound, (4) validator sweep with full `MAX_WITHDRAWALS` limit. State mutations verified: balance decreases, index updates (next_withdrawal_index, next_withdrawal_builder_index, next_withdrawal_validator_index), pending list cleanup (pop_front), payload_expected_withdrawals storage. `update_next_withdrawal_validator_index` logic confirmed structurally safe — builder withdrawals with BUILDER_INDEX_FLAG can never be the last withdrawal when `withdrawals_len == max_withdrawals` because reserved_limit guarantees phase 4 gets at least 1 slot.
+  - **Bid processing (`process_execution_payload_bid`)**: All 11 validations verified against spec: self-build amount/signature check, builder active check (`deposit_epoch < finalized_epoch && withdrawable_epoch == FAR_FUTURE_EPOCH`), `can_builder_cover_bid` with `MIN_DEPOSIT_AMOUNT + pending_withdrawals` minimum, blob commitments limit, slot/parent_block_hash/parent_block_root/prev_randao consistency. Pending payment indexing (`SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH`) correct. Bid cached in `latest_execution_payload_bid`.
+- **Reviewed spec PR #4939** (request missing envelopes on index-1 attestation): Open, not merged. Describes requesting missing envelopes via `ExecutionPayloadEnvelopesByRoot` when index-1 attestations arrive. Vibehouse has the RPC protocol but not the proactive request trigger — this is spec guidance, not a requirement, and the PR isn't merged.
+- **No code changes** — all audited paths are spec-compliant
+- **No new bugs found**
+
 ### 2026-03-02 — spec tracking + devnet validation of recent fixes (run 398)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Newly merged spec PRs reviewed**:
