@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — devnet verification of gossip wire format, spec tracking (run 367)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **New activity**: #4902 (executable gossip validation functions, phase0) updated Feb 28, #4709 (pytest plugin for test vectors) updated Mar 1 — neither affects vibehouse currently
+- **Devnet verification passed**: Ran full 4-node devnet (`kurtosis-run.sh`) to verify the gossip wire format fix from run 366. Chain finalized through epoch 8 (slot ~72) with no issues. PayloadAttestationMessage encoding/decoding works correctly across all nodes.
+- **Pre-fork subscription verified**: Confirmed vibehouse correctly subscribes to `proposer_preferences` gossip topic 1 epoch before Gloas fork (matches spec PR #4947 requirement). `PRE_FORK_SUBSCRIBE_EPOCHS = 1` in `network/src/service.rs`.
+- **CI status**: All jobs green — check/clippy/fmt ✓, network+op_pool ✓, ef-tests ✓, beacon_chain/http_api/unit tests in progress (all expected to pass)
+- **Zero compilation warnings, zero clippy warnings**
+
 ### 2026-03-02 — gossip wire format fix: PayloadAttestationMessage (run 366)
 - **Fixed gossip type deviation**: The `payload_attestation_message` gossip topic now correctly carries `PayloadAttestationMessage` (individual: `validator_index` + `data` + `signature`) instead of `PayloadAttestation` (aggregated: `aggregation_bits` + `data` + `signature`). This was identified in run 365 as an interoperability issue — different SSZ layouts (8-byte validator_index vs 64-byte bitvector) would break multi-client testing.
 - **Changes made**:
