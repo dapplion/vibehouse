@@ -196,10 +196,6 @@ pub enum HotColdDBError {
     BlockReplaySlotError(SlotProcessingError),
     BlockReplayBlockError(BlockProcessingError),
     BlockReplayEnvelopeError(EnvelopeProcessingError),
-    MissingEnvelopeForReconstruction {
-        block_root: Hash256,
-        slot: Slot,
-    },
     InvalidSlotsPerRestorePoint {
         slots_per_restore_point: u64,
         slots_per_historical_root: u64,

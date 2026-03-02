@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix EMPTY-path state reconstruction bug (run 376)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 7+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged. No new Gloas PRs opened.
+- **CI health**: All completed runs green. Latest nightly (Mar 1) fully green.
+- **Bug fix: state reconstruction EMPTY-path Gloas blocks**: Found that `reconstruct_historic_states` would fail with `MissingEnvelopeForReconstruction` for any Gloas block where the builder withheld the payload (EMPTY path). In the EMPTY path, no envelope is ever stored — the builder submitted a bid but never delivered the execution payload. The state after block processing is correct (latest_block_hash unchanged). The fix removes the error and allows reconstruction to proceed. Safety: if a FULL-path block lost its envelope, the next block's bid validation (`parent_block_hash` mismatch) catches the inconsistency during reconstruction.
+  - Removed `MissingEnvelopeForReconstruction` error variant from `HotColdDBError` (dead code after fix)
+  - Changed `reconstruct.rs` to skip envelope processing for Gloas blocks with no stored envelope (EMPTY path)
+  - 342/342 Gloas tests pass, 80/80 store_tests pass, 31/31 block_replayer tests pass
+  - Zero clippy warnings across workspace
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass (inferred — no changes to consensus logic)
+
 ### 2026-03-02 — targeted test coverage for untested production paths (run 375)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 6+ days of silence on master.

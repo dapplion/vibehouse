@@ -152,11 +152,14 @@ where
                             return Err(HotColdDBError::BlockReplayEnvelopeError(e).into());
                         }
                         None if block.fork_name_unchecked().gloas_enabled() => {
-                            return Err(HotColdDBError::MissingEnvelopeForReconstruction {
-                                block_root,
-                                slot: block.slot(),
-                            }
-                            .into());
+                            // No envelope stored for this Gloas block. This is the EMPTY
+                            // path — the builder withheld the payload, so no envelope was
+                            // ever delivered or stored. In this case, latest_block_hash
+                            // is NOT updated, which is correct: subsequent blocks' bids
+                            // will reference the last FULL block's hash. If this was
+                            // actually a FULL-path block with a lost envelope, the next
+                            // block's per_block_processing will fail bid validation
+                            // (parent_block_hash mismatch), catching the inconsistency.
                         }
                         _ => {}
                     }
