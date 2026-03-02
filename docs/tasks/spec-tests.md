@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — comprehensive spec audit and devnet verification (run 381)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. 4+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4940 (fork choice tests), #4939 (missing envelope requests), #4932 (sanity/blocks tests), #4843 (variable PTC deadline), #4840 (SLOTNUM), #4630 (forward-compatible SSZ). None merged.
+- **CI health**: All completed runs green. Nightly (Mar 2) fully green.
+- **Comprehensive spec change audit**: Reviewed ALL 30 consensus-specs commits since v1.7.0-alpha.2 (Feb 3), checking each for required vibehouse implementation changes. Result: **all Gloas-relevant PRs already implemented**:
+  - PR #4918 (Only allow attestations for known payload statuses) — implemented at fork_choice.rs:1194-1202 (`PayloadNotRevealed` check)
+  - PR #4923 (Ignore beacon block if parent payload unknown) — implemented at block_verification.rs:972-981 (`GloasParentPayloadUnknown` error)
+  - PR #4884 (Add payload data availability vote to the store) — implemented: `ptc_blob_data_available_weight` tracked in proto_array, `should_extend_payload` requires both timely AND data-available, `on_payload_attestation` records both `payload_present` and `blob_data_available` votes
+  - PR #4897 (Check if pending deposit exists before applying to builder) — implemented: `is_pending_validator` function at process_operations.rs:759, deposit routing short-circuits pending validator check
+  - PR #4916 (Refactor builder deposit conditions) — implemented (merged with #4897 implementation)
+  - PR #4948 (Reorder payload status constants) — already aligned
+  - PR #4947 (Pre-fork subscription for proposer_preferences) — implemented in run 380
+  - Non-Gloas PRs: #4942 (FOCIL/Heze promotion), #4931 (FOCIL rebase), #4941/#4914/#4915 (EIP-8025 execution proofs), #4920 (doc formatting), #4924/#4927 (style changes), #4930 (rename, no code change), #4922 (comment only), #4908 (test-only), various CI/infra PRs
+- **Devnet verification**: 4-node devnet (vibehouse CL + geth EL) — SUCCESS. Finalized epoch 8. Chain progressed cleanly through Gloas fork boundary (epoch 1). Full stack healthy after recent changes (pre-fork preferences fix, etc.). Logs at `/tmp/kurtosis-runs/20260302-113016/`
+- **TODO audit**: Reviewed all TODO/FIXME comments in Gloas production code paths. No critical actionable items — all are inherited DAS/PeerDAS debt or architectural cleanup (EIP-7732 blinded block removal, pool persistence). No Gloas consensus bugs found.
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass (inferred — no code changes)
+
 ### 2026-03-02 — spec compliance audit and pre-fork preferences fix (run 380)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. 10+ days of silence on master.
