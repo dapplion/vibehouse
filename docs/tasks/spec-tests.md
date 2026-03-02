@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking, test runner readiness audit (run 369)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged.
+- **PR #4948 verification**: Payload status constant reorder (Empty=0, Full=1, Pending=2) already matches vibehouse's `GloasPayloadStatus` enum. No action needed.
+- **PR #4950 review**: Extends `ExecutionPayloadEnvelopesByRoot` serve range from "since finalized" to `[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`. Vibehouse's handler currently serves any envelope in the store with no epoch filtering (more permissive than either spec version). No action needed until PR merges.
+- **PR #4940 test runner readiness**: Confirmed `OnExecutionPayload` step, `head_payload_status` check, and `SignedExecutionPayloadEnvelope` SSZ deserialization are all implemented. Ready for new fork choice test vectors when PR merges.
+- **PR #4932 test runner readiness**: Confirmed `SanityBlocksHandler` is enabled for all forks (real crypto only). Ready for Gloas sanity/blocks tests when PR merges.
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+- **Zero clippy warnings across workspace**
+- **CI status**: All recent runs green. Latest nightly (Mar 1) fully green.
+
 ### 2026-03-02 — spec tracking, EF test runner improvement (run 368)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
