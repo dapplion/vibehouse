@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — full spec compliance audit: envelope processing, deposit routing, fork choice (run 400)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Newly merged Gloas spec PRs reviewed**:
+  - **#4948 (Reorder payload status constants)**: Changes PENDING=0/EMPTY=1/FULL=2 → EMPTY=0/FULL=1/PENDING=2. Vibehouse already had the correct ordinals (`GloasPayloadStatus::Empty=0, Full=1, Pending=2`). No change needed.
+  - **#4947 (Pre-fork subscription for proposer_preferences topic)**: Adds SHOULD note that nodes subscribe to `proposer_preferences` topic ≥1 epoch before fork. Vibehouse already implements this via `PRE_FORK_SUBSCRIBE_EPOCHS=1` in `network/src/service.rs` and `next_topic_subscriptions_delay()`. No change needed.
+- **Open Gloas spec PRs unchanged**: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630. None merged. Two new tracked: #4950 (extend by_root serve range), #4892 (remove impossible fork choice branch).
+- **CI health**: Run on `b048a470c` in progress, prior run on `d198e46f1` fully green.
+- **Deep spec compliance audits of 4 consensus-critical paths**:
+  - **Envelope processing (`process_execution_payload_envelope`)**: All 19 spec assertions verified present and correct: signature verification (self-build vs external builder distinction), block header state root caching, beacon_block_root/slot consistency, 6 bid consistency checks (builder_index, prev_randao, withdrawals, gas_limit, block_hash, parent_hash), timestamp, EL validation (delegated to beacon chain layer), 3 execution request types processing, builder payment queueing with correct index calculation, availability bit set, latest_block_hash update, state root verification (gated behind verify flag). Order of operations matches spec exactly. 35+ tests cover all paths.
+  - **Deposit request routing (`process_deposit_request_gloas`)**: All routing logic verified: `is_builder` check via pubkey cache, `is_builder_prefix` check, `is_validator` check, `is_pending_validator` with BLS signature re-verification. `apply_deposit_for_builder` correctly handles new builder creation (with `get_index_for_new_builder` for slot reuse) and balance top-up. Builder fields (`pubkey`, `version`, `execution_address`, `balance`, `deposit_epoch`, `withdrawable_epoch`) all match `add_builder_to_registry` spec. Gloas correctly drops `deposit_requests_start_index` initialization.
+  - **Builder pending payments (`process_builder_pending_payments`)**: Quorum threshold calculation matches `get_builder_payment_quorum_threshold` spec. First-half quorum check, second-half→first-half rotation, second-half clearing all correct. 20+ unit tests cover edge cases.
+  - **Fork choice attestation validation (`validate_on_attestation`)**: PR #4918 check (index=1 → payload_revealed required) already implemented at fork_choice.rs:1198. PR #4884 data availability vote split already implemented: `ptc_blob_data_available_weight` tracked separately, `should_extend_payload` requires both `is_payload_timely AND is_payload_data_available`.
+- **No code changes** — all audited paths are spec-compliant
+- **No new bugs found**
+
 ### 2026-03-02 — deep state transition audit: deposits, withdrawals, bid processing (run 399)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **No new Gloas spec PRs merged**. Open Gloas PRs unchanged: #4940, #4939, #4932, #4843, #4840, #4630, #4898
