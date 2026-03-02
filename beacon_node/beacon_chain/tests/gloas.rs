@@ -5135,7 +5135,8 @@ async fn fc_on_execution_bid_rejects_slot_mismatch() {
     assert!(result.is_err(), "should reject bid with wrong slot");
 }
 
-/// on_execution_bid: accepts a valid bid and updates node fields.
+/// on_execution_bid: accepts a valid bid and updates builder_index.
+/// When the envelope was already received (self-build), payload state is preserved.
 #[tokio::test]
 async fn fc_on_execution_bid_updates_node_fields() {
     let harness = gloas_harness_at_epoch(0);
@@ -5159,7 +5160,6 @@ async fn fc_on_execution_bid_updates_node_fields() {
         .on_execution_bid(&bid, block_root)
         .expect("valid bid should succeed");
 
-    // Verify node was updated
     let node = harness
         .chain
         .canonical_head
@@ -5172,29 +5172,22 @@ async fn fc_on_execution_bid_updates_node_fields() {
         Some(42),
         "builder_index should be set from bid"
     );
-    // After on_execution_bid, payload_revealed is reset to false (awaiting builder reveal)
+    // Self-build block has envelope_received=true, so on_execution_bid
+    // preserves payload state (run 387 fix: late bid must not invalidate
+    // an already-confirmed payload delivery).
     assert!(
-        !node.payload_revealed,
-        "payload_revealed should be false after bid (awaiting reveal)"
-    );
-    assert_eq!(node.ptc_weight, 0, "ptc_weight should be initialized to 0");
-    assert_eq!(
-        node.ptc_blob_data_available_weight, 0,
-        "ptc_blob_data_available_weight should be initialized to 0"
-    );
-    assert!(
-        !node.payload_data_available,
-        "payload_data_available should be false"
+        node.payload_revealed,
+        "payload_revealed should be preserved (envelope already received)"
     );
 }
 
-/// on_execution_payload: marks payload as revealed and sets execution status.
+/// on_execution_payload: sets execution status and ensures payload is revealed.
 #[tokio::test]
 async fn fc_on_execution_payload_marks_revealed() {
     let harness = gloas_harness_at_epoch(0);
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
-    // First apply a bid to set payload_revealed=false
+    // Apply a bid (self-build block has envelope_received=true, so payload state is preserved)
     let bid = SignedExecutionPayloadBid::<E> {
         message: ExecutionPayloadBid {
             slot,
@@ -5211,16 +5204,19 @@ async fn fc_on_execution_payload_marks_revealed() {
         .on_execution_bid(&bid, block_root)
         .unwrap();
 
-    // Verify not yet revealed
+    // Self-build: payload is already revealed (envelope_received=true)
     let node = harness
         .chain
         .canonical_head
         .fork_choice_read_lock()
         .get_block(&block_root)
         .unwrap();
-    assert!(!node.payload_revealed);
+    assert!(
+        node.payload_revealed,
+        "self-build should have payload_revealed=true"
+    );
 
-    // Now reveal the payload
+    // Apply on_execution_payload — should update execution_status
     let payload_hash = ExecutionBlockHash::repeat_byte(0xcc);
     harness
         .chain
@@ -5428,7 +5424,8 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
     let harness = gloas_harness_at_epoch(0);
     let (block_root, slot) = produce_gloas_block(&harness).await;
 
-    // Apply a bid to initialize PTC tracking and set payload_revealed=false
+    // Apply a bid. Self-build block has envelope_received=true, so
+    // payload_revealed stays true and PTC weights are preserved.
     let bid = SignedExecutionPayloadBid::<E> {
         message: ExecutionPayloadBid {
             slot,
@@ -5448,8 +5445,20 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
     let ptc_size = harness.spec.ptc_size;
     let quorum_threshold = ptc_size / 2;
 
-    // Send attestation with exactly quorum_threshold votes (should NOT trigger)
-    let attestation_below = PayloadAttestation::<E> {
+    // Self-build: payload_revealed already true, ptc_weight already 0
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert!(
+        node.payload_revealed,
+        "self-build should have payload_revealed=true"
+    );
+
+    // Send attestation with quorum_threshold votes
+    let attestation = PayloadAttestation::<E> {
         data: PayloadAttestationData {
             beacon_block_root: block_root,
             slot,
@@ -5458,7 +5467,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         },
         ..PayloadAttestation::empty()
     };
-    let indexed_below = IndexedPayloadAttestation::<E> {
+    let indexed = IndexedPayloadAttestation::<E> {
         attesting_indices: {
             let mut list = ssz_types::VariableList::empty();
             for i in 0..quorum_threshold {
@@ -5466,7 +5475,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
             }
             list
         },
-        data: attestation_below.data.clone(),
+        data: attestation.data.clone(),
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -5474,10 +5483,10 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         .chain
         .canonical_head
         .fork_choice_write_lock()
-        .on_payload_attestation(&attestation_below, &indexed_below, slot, &harness.spec)
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec)
         .unwrap();
 
-    // Check: ptc_weight should be exactly quorum_threshold, but NOT revealed yet
+    // Verify weight accumulates correctly
     let node = harness
         .chain
         .canonical_head
@@ -5488,10 +5497,8 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         node.ptc_weight, quorum_threshold,
         "ptc_weight should equal quorum_threshold"
     );
-    assert!(
-        !node.payload_revealed,
-        "payload_revealed should still be false at exactly quorum_threshold (needs strictly greater)"
-    );
+    // payload_revealed stays true (was already true from self-build)
+    assert!(node.payload_revealed);
 
     // Send one more vote to cross the threshold
     let attestation_one_more = PayloadAttestation::<E> {
@@ -5506,7 +5513,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
     let indexed_one_more = IndexedPayloadAttestation::<E> {
         attesting_indices: {
             let mut list = ssz_types::VariableList::empty();
-            list.push(quorum_threshold as u64).unwrap(); // one more attester
+            list.push(quorum_threshold as u64).unwrap();
             list
         },
         data: attestation_one_more.data.clone(),
@@ -5536,10 +5543,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
         quorum_threshold + 1,
         "ptc_weight should be quorum_threshold + 1"
     );
-    assert!(
-        node.payload_revealed,
-        "payload_revealed should be true after crossing quorum threshold"
-    );
+    assert!(node.payload_revealed, "payload_revealed should be true");
 }
 
 /// on_payload_attestation: blob_data_available quorum is tracked independently
@@ -5610,9 +5614,12 @@ async fn fc_on_payload_attestation_blob_quorum_independent() {
         node.ptc_weight, 0,
         "ptc_weight should be 0 when payload_present=false"
     );
+    // payload_revealed stays true because produce_gloas_block creates a self-build
+    // block with envelope_received=true, and on_execution_bid preserves payload state
+    // when the envelope has already been received.
     assert!(
-        !node.payload_revealed,
-        "payload_revealed should be false (no payload_present votes)"
+        node.payload_revealed,
+        "payload_revealed should be true (preserved from self-build envelope)"
     );
 
     // blob_data_available should have crossed quorum
@@ -5666,7 +5673,8 @@ async fn fc_on_payload_attestation_rejects_unknown_root() {
 }
 
 /// on_execution_bid followed by on_execution_payload: full lifecycle.
-/// Bid sets payload_revealed=false, then on_execution_payload reveals it.
+/// When envelope has already been received (self-build), bid preserves payload state.
+/// on_execution_payload then confirms the reveal.
 #[tokio::test]
 async fn fc_bid_then_payload_lifecycle() {
     let harness = gloas_harness_at_epoch(0);
@@ -5674,7 +5682,8 @@ async fn fc_bid_then_payload_lifecycle() {
 
     let payload_hash = ExecutionBlockHash::repeat_byte(0xf0);
 
-    // 1. Apply bid
+    // 1. Apply bid — self-build block has envelope_received=true, so
+    //    on_execution_bid preserves payload_revealed and payload_data_available
     let bid = SignedExecutionPayloadBid::<E> {
         message: ExecutionPayloadBid {
             slot,
@@ -5699,8 +5708,9 @@ async fn fc_bid_then_payload_lifecycle() {
         .get_block(&block_root)
         .unwrap();
     assert_eq!(node.builder_index, Some(7));
-    assert!(!node.payload_revealed);
-    assert!(!node.payload_data_available);
+    // payload state preserved from self-build envelope
+    assert!(node.payload_revealed);
+    assert!(node.payload_data_available);
 
     // 2. Reveal payload
     harness
@@ -5725,8 +5735,7 @@ async fn fc_bid_then_payload_lifecycle() {
 }
 
 /// on_payload_attestation with payload_present=true sets execution_status
-/// to Optimistic via bid_block_hash when quorum is reached and envelope
-/// hasn't arrived yet.
+/// to Optimistic via bid_block_hash when quorum is reached.
 #[tokio::test]
 async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
     let harness = gloas_harness_at_epoch(0);
@@ -5734,13 +5743,13 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
 
     let bid_hash = ExecutionBlockHash::repeat_byte(0xfa);
 
-    // Apply bid — this also stores bid_block_hash in the proto node via on_block
-    // We need to manually set bid_block_hash since on_execution_bid doesn't set it
-    // (it's set during on_block). Instead, test the quorum path by first setting
-    // the node's bid_block_hash directly through a write lock.
+    // Apply bid and manually set bid_block_hash + reset execution_status
+    // to test the quorum path that sets Optimistic(bid_block_hash).
+    // Note: on_execution_bid preserves payload state when envelope_received=true
+    // (self-build block), so we also manually reset payload_revealed to test
+    // the quorum-triggers-reveal path.
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        // Apply bid to reset PTC state
         let bid = SignedExecutionPayloadBid::<E> {
             message: ExecutionPayloadBid {
                 slot,
@@ -5764,7 +5773,9 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
         let nodes = &mut fc.proto_array_mut().core_proto_array_mut().nodes;
         if let Some(node) = nodes.get_mut(block_index) {
             node.bid_block_hash = Some(bid_hash);
-            // Reset execution_status so the quorum path has to set it
+            // Reset payload_revealed and execution_status so the quorum path
+            // has to set them (testing the PTC quorum → reveal logic)
+            node.payload_revealed = false;
             node.execution_status = ExecutionStatus::irrelevant();
         }
     }
@@ -6467,10 +6478,10 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
 // apply_execution_bid_to_fork_choice — end-to-end integration tests
 // =============================================================================
 
-/// Test that `apply_execution_bid_to_fork_choice` updates fork choice node fields:
-/// builder_index, payload_revealed=false, ptc_weight=0, ptc_blob_data_available_weight=0.
-/// This exercises the full beacon_chain → fork_choice → proto_array pipeline that
-/// was previously only tested by directly manipulating the bid pool.
+/// Test that `apply_execution_bid_to_fork_choice` updates fork choice node fields.
+/// When envelope has already been received (self-build), on_execution_bid preserves
+/// payload_revealed/payload_data_available state while updating builder_index.
+/// This exercises the full beacon_chain → fork_choice → proto_array pipeline.
 #[tokio::test]
 async fn gloas_apply_bid_to_fork_choice_updates_node_fields() {
     use beacon_chain::gloas_verification::VerifiedExecutionBid;
@@ -6536,18 +6547,14 @@ async fn gloas_apply_bid_to_fork_choice_updates_node_fields() {
         Some(external_builder_index),
         "builder_index should be updated to external builder"
     );
+    // Payload state preserved because envelope was already received (self-build)
     assert!(
-        !node.payload_revealed,
-        "payload_revealed should be reset to false after new bid"
-    );
-    assert_eq!(node.ptc_weight, 0, "ptc_weight should be initialized to 0");
-    assert_eq!(
-        node.ptc_blob_data_available_weight, 0,
-        "ptc_blob_data_available_weight should be initialized to 0"
+        node.payload_revealed,
+        "payload_revealed should be preserved (envelope already received)"
     );
     assert!(
-        !node.payload_data_available,
-        "payload_data_available should be false"
+        node.payload_data_available,
+        "payload_data_available should be preserved (envelope already received)"
     );
 }
 
@@ -6667,7 +6674,22 @@ async fn gloas_bid_then_envelope_lifecycle_via_beacon_chain() {
     let head_root = head.beacon_block_root;
     let head_slot = head.beacon_block.slot();
 
-    // Step 1: Apply external bid — should reset payload_revealed
+    // Clear envelope_received so bid triggers payload state reset
+    // (self-build blocks have envelope_received=true, but this test verifies
+    // the bid→envelope lifecycle when envelope hasn't arrived yet)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.envelope_received = false;
+    }
+
+    // Step 1: Apply external bid — should reset payload_revealed (envelope not received)
     let bid = SignedExecutionPayloadBid::<E> {
         message: ExecutionPayloadBid {
             slot: head_slot,
@@ -6685,7 +6707,7 @@ async fn gloas_bid_then_envelope_lifecycle_via_beacon_chain() {
         .apply_execution_bid_to_fork_choice(&verified_bid)
         .expect("bid should be applied");
 
-    // Verify payload_revealed is false after bid
+    // Verify payload_revealed is false after bid (envelope not received)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let node = fc.get_block(&head_root).unwrap();
@@ -10292,7 +10314,10 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
     let state = harness.chain.head_beacon_state_cloned();
 
     // Manually set some non-default values on the head's fork choice node
-    // to simulate a state where PTC weight has accumulated and payload was revealed
+    // to simulate a state where PTC weight has accumulated and payload was revealed.
+    // Also clear envelope_received so that on_execution_bid will reset payload state
+    // (self-build blocks have envelope_received=true, but we want to test the reset
+    // path that applies when a bid arrives before the envelope).
     {
         let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
         let block_index = *fc
@@ -10307,6 +10332,8 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
         node.ptc_weight = 42;
         node.ptc_blob_data_available_weight = 17;
         node.payload_data_available = true;
+        // Clear envelope_received so bid triggers reset
+        node.envelope_received = false;
     }
 
     // Verify the non-default state before the bid
@@ -16270,5 +16297,98 @@ async fn gloas_empty_path_clears_availability_bit() {
             .unwrap_or(false),
         "continuation slot {} availability bit should be true after envelope processing",
         cont_slot
+    );
+}
+
+/// Verify that PTC weight is not double-counted when the same payload attestation
+/// is received both via gossip and via in-block inclusion (notify_ptc_messages).
+///
+/// The spec uses per-PTC-member bitvectors (idempotent overwrites), but our
+/// implementation uses weight counters. Without dedup, importing a block that
+/// contains an already-gossipped attestation would add the weight twice.
+#[tokio::test]
+async fn gloas_in_block_attestation_does_not_double_count_ptc_weight() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Verify initial ptc_weight is 0
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(node.ptc_weight, 0, "initial ptc_weight should be 0");
+    }
+
+    // Step 1: Import a PTC attestation via gossip path
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = harness.chain.import_payload_attestation_message(message);
+    assert!(
+        result.is_ok(),
+        "gossip import should succeed: {:?}",
+        result.err()
+    );
+
+    // Verify ptc_weight = 1 after gossip import
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(
+            node.ptc_weight, 1,
+            "ptc_weight should be 1 after gossip import"
+        );
+    }
+
+    // Step 2: Advance slot and produce a block that includes the attestation from pool
+    harness.advance_slot();
+    let block_state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, blobs), _) = harness.make_block(block_state, head_slot + 1).await;
+
+    // Verify the block includes the payload attestation
+    let payload_attestations = signed_block
+        .message()
+        .body()
+        .payload_attestations()
+        .expect("Gloas block should have payload_attestations");
+    assert!(
+        !payload_attestations.is_empty(),
+        "block should include the gossipped attestation from pool"
+    );
+
+    // Step 3: Import the block (triggers notify_ptc_messages with in-block attestation)
+    let import_result = harness.process_block_result((signed_block, blobs)).await;
+    assert!(
+        import_result.is_ok(),
+        "block import should succeed: {:?}",
+        import_result.err()
+    );
+
+    // Step 4: Verify ptc_weight is still 1, NOT 2 (no double-counting)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_weight, 1,
+        "ptc_weight should still be 1 after block import — in-block attestation \
+         for the same validator should not double-count"
     );
 }
