@@ -16392,3 +16392,172 @@ async fn gloas_in_block_attestation_does_not_double_count_ptc_weight() {
          for the same validator should not double-count"
     );
 }
+
+/// Verify that full PTC quorum via gossip is not double-counted when the same
+/// attestations are included in a block. With PTC_SIZE=2 (minimal), both members
+/// attest via gossip (weight=2), then a block includes both. Weight must stay 2.
+#[tokio::test]
+async fn gloas_full_ptc_gossip_then_block_no_double_count() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(ptc.len() >= 2, "minimal PTC should have at least 2 members");
+
+    // Import gossip attestations from ALL PTC members
+    for &validator_index in &ptc {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: false,
+        };
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+        let result = harness.chain.import_payload_attestation_message(message);
+        assert!(
+            result.is_ok(),
+            "gossip import for validator {} should succeed: {:?}",
+            validator_index,
+            result.err()
+        );
+    }
+
+    // Verify ptc_weight equals full PTC after gossip
+    let expected_weight = ptc.len() as u64;
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(
+            node.ptc_weight, expected_weight,
+            "ptc_weight should be {} after all gossip imports",
+            expected_weight
+        );
+    }
+
+    // Produce a block that includes the attestations from pool
+    harness.advance_slot();
+    let block_state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, blobs), _) = harness.make_block(block_state, head_slot + 1).await;
+
+    let payload_attestations = signed_block
+        .message()
+        .body()
+        .payload_attestations()
+        .expect("Gloas block should have payload_attestations");
+    assert!(
+        !payload_attestations.is_empty(),
+        "block should include gossipped attestations from pool"
+    );
+
+    // Import the block — in-block attestations must not double-count
+    let import_result = harness.process_block_result((signed_block, blobs)).await;
+    assert!(
+        import_result.is_ok(),
+        "block import should succeed: {:?}",
+        import_result.err()
+    );
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_weight, expected_weight,
+        "ptc_weight should still be {} after block import — full PTC \
+         gossip + in-block must not double-count",
+        expected_weight
+    );
+}
+
+/// Verify that partial gossip + full in-block attestation correctly counts each
+/// PTC member exactly once. First member via gossip (weight=1), then a block
+/// includes both first and second member. Weight should become 2, not 3.
+#[tokio::test]
+async fn gloas_partial_gossip_full_inblock_no_double_count() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(ptc.len() >= 2, "minimal PTC should have at least 2 members");
+
+    // Import ONLY the first PTC member via gossip
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+    let sig = sign_payload_attestation_data(&data, ptc[0] as usize, state, &harness.spec);
+    harness
+        .chain
+        .import_payload_attestation_message(PayloadAttestationMessage {
+            validator_index: ptc[0],
+            data: data.clone(),
+            signature: sig,
+        })
+        .expect("gossip import should succeed");
+
+    // Also import second member via gossip (needed to populate pool for block production)
+    let sig2 = sign_payload_attestation_data(&data, ptc[1] as usize, state, &harness.spec);
+    harness
+        .chain
+        .import_payload_attestation_message(PayloadAttestationMessage {
+            validator_index: ptc[1],
+            data: data.clone(),
+            signature: sig2,
+        })
+        .expect("gossip import should succeed");
+
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(node.ptc_weight, 2, "both gossip attestations should count");
+    }
+
+    // Produce and import a block that includes both attestations from pool
+    harness.advance_slot();
+    let block_state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, blobs), _) = harness.make_block(block_state, head_slot + 1).await;
+
+    let payload_attestations = signed_block
+        .message()
+        .body()
+        .payload_attestations()
+        .expect("Gloas block should have payload_attestations");
+    assert!(
+        !payload_attestations.is_empty(),
+        "block should include attestations from pool"
+    );
+
+    let import_result = harness.process_block_result((signed_block, blobs)).await;
+    assert!(
+        import_result.is_ok(),
+        "block import should succeed: {:?}",
+        import_result.err()
+    );
+
+    // Both were already seen via gossip — in-block must not add extra weight
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_weight, 2,
+        "ptc_weight should stay at 2 — both PTC members seen via gossip, \
+         in-block must not double-count"
+    );
+}
