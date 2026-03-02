@@ -5954,6 +5954,333 @@ async fn gloas_import_attestation_payload_absent_no_ptc_weight() {
     );
 }
 
+/// PTC blob_data_available quorum via import_payload_attestation_message updates
+/// get_payload_attestation_data: when enough PTC members attest with
+/// blob_data_available=true to cross quorum, the validator-facing API should
+/// reflect blob_data_available=true even without payload_present.
+#[tokio::test]
+async fn gloas_blob_quorum_via_ptc_updates_attestation_data() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Reset payload_data_available to false so PTC quorum can trigger it
+    // (extend_slots processes envelopes, which sets it unconditionally)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_data_available = false;
+        node.ptc_blob_data_available_weight = 0;
+        // Keep payload_revealed=true (envelope was processed) — we're only
+        // testing the blob quorum path independently.
+    }
+
+    // Before PTC votes: blob_data_available should be false
+    let data_before = harness
+        .chain
+        .get_payload_attestation_data(head_slot)
+        .expect("should get payload attestation data");
+    assert!(
+        !data_before.blob_data_available,
+        "blob_data_available should be false before PTC quorum"
+    );
+
+    // Get all PTC members and import blob_data_available=true attestations
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let quorum_threshold = harness.spec.ptc_size / 2;
+
+    for (i, &validator_index) in ptc.iter().enumerate() {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: false,
+            blob_data_available: true,
+        };
+
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+
+        let result = harness.chain.import_payload_attestation_message(message);
+        assert!(
+            result.is_ok(),
+            "should import blob attestation from PTC member {}: {:?}",
+            i,
+            result.err()
+        );
+    }
+
+    // After all PTC votes: blob quorum should be crossed
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert_eq!(
+        node.ptc_blob_data_available_weight,
+        ptc.len() as u64,
+        "blob weight should equal PTC size"
+    );
+    assert!(
+        node.ptc_blob_data_available_weight > quorum_threshold,
+        "blob weight should exceed quorum threshold"
+    );
+    assert!(
+        node.payload_data_available,
+        "payload_data_available should be true after blob quorum"
+    );
+    // payload_present votes were all false — ptc_weight should remain 0
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should be 0 (all votes had payload_present=false)"
+    );
+    drop(fc);
+
+    // Validator-facing API should now reflect blob_data_available=true
+    let data_after = harness
+        .chain
+        .get_payload_attestation_data(head_slot)
+        .expect("should get payload attestation data after quorum");
+    assert!(
+        data_after.blob_data_available,
+        "blob_data_available should be true after PTC quorum"
+    );
+    assert!(
+        data_after.payload_present,
+        "payload_present should still be true (envelope was processed, payload_revealed=true)"
+    );
+}
+
+/// PTC payload_present quorum WITHOUT envelope: when no envelope is processed but
+/// enough PTC members attest payload_present=true (quorum via gossip), fork choice
+/// flips payload_revealed=true and get_payload_attestation_data reflects it. This
+/// tests the social consensus path where the node trusts PTC attestations even
+/// though it never received the envelope directly.
+#[tokio::test]
+async fn gloas_ptc_payload_quorum_without_envelope() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Simulate a block whose envelope was never received locally:
+    // reset payload_revealed, payload_data_available, and all PTC weights to zero.
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_revealed = false;
+        node.payload_data_available = false;
+        node.ptc_weight = 0;
+        node.ptc_blob_data_available_weight = 0;
+    }
+
+    // Before PTC votes: payload_present should be false
+    let data_before = harness
+        .chain
+        .get_payload_attestation_data(head_slot)
+        .expect("should get payload attestation data");
+    assert!(
+        !data_before.payload_present,
+        "payload_present should be false before PTC quorum (no envelope)"
+    );
+    assert!(
+        !data_before.blob_data_available,
+        "blob_data_available should be false before PTC quorum"
+    );
+
+    // Import payload_present=true AND blob_data_available=true from all PTC members
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let quorum_threshold = harness.spec.ptc_size / 2;
+
+    for (i, &validator_index) in ptc.iter().enumerate() {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        };
+
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+
+        let result = harness.chain.import_payload_attestation_message(message);
+        assert!(
+            result.is_ok(),
+            "should import attestation from PTC member {}: {:?}",
+            i,
+            result.err()
+        );
+    }
+
+    // Both quorums should be crossed
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let node = fc.get_block(&head_root).unwrap();
+    assert!(
+        node.ptc_weight > quorum_threshold,
+        "ptc_weight ({}) should exceed quorum threshold ({})",
+        node.ptc_weight,
+        quorum_threshold,
+    );
+    assert!(
+        node.payload_revealed,
+        "payload_revealed should be true via PTC quorum (no envelope needed)"
+    );
+    assert!(
+        node.ptc_blob_data_available_weight > quorum_threshold,
+        "blob weight should exceed quorum threshold"
+    );
+    assert!(
+        node.payload_data_available,
+        "payload_data_available should be true via PTC blob quorum"
+    );
+    drop(fc);
+
+    // Validator-facing API should reflect both flags
+    let data_after = harness
+        .chain
+        .get_payload_attestation_data(head_slot)
+        .expect("should get payload attestation data after quorum");
+    assert!(
+        data_after.payload_present,
+        "payload_present should be true after PTC quorum (no envelope)"
+    );
+    assert!(
+        data_after.blob_data_available,
+        "blob_data_available should be true after PTC quorum"
+    );
+}
+
+/// Verify that the blob quorum path has a strict > threshold requirement
+/// (not >=). With minimal PTC size=2, quorum_threshold=1, a single vote
+/// should NOT trigger the quorum, but two votes should.
+#[tokio::test]
+async fn gloas_blob_quorum_strictly_greater_than_threshold() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Reset blob data availability state
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&head_root)
+            .expect("head root should be in fork choice");
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_data_available = false;
+        node.ptc_blob_data_available_weight = 0;
+    }
+
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let quorum_threshold = harness.spec.ptc_size / 2; // 1 for minimal
+
+    // Import first PTC member's blob attestation — exactly at threshold, NOT above
+    let first_validator = ptc[0];
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: false,
+        blob_data_available: true,
+    };
+    let signature =
+        sign_payload_attestation_data(&data, first_validator as usize, state, &harness.spec);
+    let message = PayloadAttestationMessage {
+        validator_index: first_validator,
+        data: data.clone(),
+        signature,
+    };
+    harness
+        .chain
+        .import_payload_attestation_message(message)
+        .expect("should import first blob attestation");
+
+    // At exactly quorum_threshold (1), payload_data_available should still be false
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(
+            node.ptc_blob_data_available_weight, 1,
+            "blob weight should be 1 after one vote"
+        );
+        assert_eq!(
+            node.ptc_blob_data_available_weight, quorum_threshold,
+            "blob weight should equal quorum_threshold"
+        );
+        assert!(
+            !node.payload_data_available,
+            "payload_data_available should still be false at exactly quorum_threshold (strict >)"
+        );
+    }
+
+    // Import second PTC member's blob attestation — crosses threshold
+    let second_validator = ptc[1];
+    let signature =
+        sign_payload_attestation_data(&data, second_validator as usize, state, &harness.spec);
+    let message = PayloadAttestationMessage {
+        validator_index: second_validator,
+        data,
+        signature,
+    };
+    harness
+        .chain
+        .import_payload_attestation_message(message)
+        .expect("should import second blob attestation");
+
+    // Now above threshold — payload_data_available should be true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let node = fc.get_block(&head_root).unwrap();
+        assert_eq!(
+            node.ptc_blob_data_available_weight, 2,
+            "blob weight should be 2 after two votes"
+        );
+        assert!(
+            node.ptc_blob_data_available_weight > quorum_threshold,
+            "blob weight should exceed quorum_threshold"
+        );
+        assert!(
+            node.payload_data_available,
+            "payload_data_available should be true after crossing quorum"
+        );
+    }
+}
+
 // =============================================================================
 // apply_execution_bid_to_fork_choice integration tests
 // =============================================================================
