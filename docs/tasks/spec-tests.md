@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fork-boundary proposer preferences domain tests (run 382)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. Still quiet.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **CI health**: All completed runs green. Nightly fully green. 3 runs in progress.
+- **Systematic untested code path audit**: Used Explore agent to identify 8 ranked untested Gloas code paths by consensus-bug risk. Key findings:
+  - **Rank 1 (self-build bid signature via gossip): FALSE POSITIVE** — Self-build bids have `execution_payment=0` and `builder_index=BUILDER_INDEX_SELF_BUILD` (u64::MAX). Gossip validation rejects them at Check 1b (zero payment) and Check 2 (unknown builder index) long before reaching the signature closure. Self-build bids are local-only (per-block processing), never gossiped. The `get_builder_pubkey` closure's self-build branch in gloas_verification.rs:503 is dead code on the gossip path.
+  - **Rank 2 (GloasParentPayloadUnknown network dispatch): ALREADY TESTED** — beacon_chain tests at gloas.rs:323 cover the error generation. Network-layer mapping is a simple pattern match.
+  - **Rank 3 (fork-boundary proposer preferences domain): FIXED** — added 2 tests (see below)
+  - **Rank 4 (pre-Fulu head state): EDGE CASE** — Only occurs if head is pre-Fulu at Fulu→Gloas transition. Since `proposer_lookahead` exists in Fulu states, the pre-Fulu path only fires for very stale heads (e.g., Electra). The `Ignore` response is correct.
+  - **Ranks 5-8**: Partially tested by existing unit/integration tests. End-to-end integration would be high-effort, low-marginal-value.
+- **New tests: fork-boundary proposer preferences domain verification**:
+  - `test_gloas_gossip_proposer_preferences_fork_boundary_accepted`: At the Fulu→Gloas transition (head in epoch 0/Fulu, proposal in epoch 1/Gloas), verifies that preferences signed with the Gloas domain (via `spec.fork_at_epoch(proposal_epoch)`) are ACCEPTED even though the head state is Fulu.
+  - `test_gloas_gossip_proposer_preferences_fork_boundary_wrong_domain_rejected`: Same setup, but signs with the Fulu domain (from `head_state.fork()`) — correctly REJECTED because the gossip handler uses `spec.fork_at_epoch` not `head_state.fork()`.
+  - Added `pre_gloas_rig()` helper: creates a TestRig with Gloas at epoch 1, all earlier forks at genesis, head in epoch 0 (Fulu). Reusable for future fork-boundary tests.
+- **149/149 network tests pass** (147 run + 2 skipped), zero clippy warnings across workspace
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass (inferred — no consensus code changes)
+
 ### 2026-03-02 — comprehensive spec audit and devnet verification (run 381)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. 4+ days of silence on master.
