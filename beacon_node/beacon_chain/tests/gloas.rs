@@ -1226,6 +1226,118 @@ async fn gloas_external_bid_highest_value_selected_for_block() {
     );
 }
 
+/// Test that PTC duties change correctly across an epoch boundary.
+///
+/// Extends the chain from epoch 1 through epoch 2 (where RANDAO mixes have
+/// accumulated distinct per-block entropy), verifying:
+/// - Duties for each epoch have slots in the correct range
+/// - Duty counts remain correct in both epochs
+/// - Dependent roots diverge once the chain has enough history
+/// - PTC member assignments change due to epoch-based reshuffling
+#[tokio::test]
+async fn gloas_ptc_duties_change_across_epoch_boundary() {
+    let harness = gloas_harness_at_epoch(0);
+
+    let all_indices: Vec<u64> = (0..VALIDATOR_COUNT as u64).collect();
+    let slots_per_epoch = E::slots_per_epoch();
+    let ptc_size = E::ptc_size();
+    let expected_duties = ptc_size * slots_per_epoch as usize;
+
+    // Extend through all of epoch 0 into epoch 1 (8 slots gets us through epoch 0,
+    // then 6 more into epoch 1 = 14 total)
+    Box::pin(harness.extend_slots(14)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    assert_eq!(state.current_epoch(), Epoch::new(1), "should be in epoch 1");
+
+    // Get PTC duties for epoch 1 (current epoch)
+    let epoch_1 = Epoch::new(1);
+    let (duties_epoch_1, dependent_root_1) = harness
+        .chain
+        .validator_ptc_duties(&all_indices, epoch_1)
+        .expect("should compute PTC duties for epoch 1");
+
+    assert_eq!(
+        duties_epoch_1.len(),
+        expected_duties,
+        "epoch 1 should have ptc_size * slots_per_epoch duties"
+    );
+
+    // Verify all epoch 1 duties are in epoch 1's slot range
+    let epoch_1_start = epoch_1.start_slot(slots_per_epoch);
+    for duty in &duties_epoch_1 {
+        assert!(
+            duty.slot >= epoch_1_start && duty.slot < epoch_1_start + slots_per_epoch,
+            "epoch 1 duty slot {} should be in range [{}, {})",
+            duty.slot,
+            epoch_1_start,
+            epoch_1_start + slots_per_epoch
+        );
+    }
+
+    // Cross into epoch 2: extend the remaining 2 slots of epoch 1 + 2 into epoch 2
+    Box::pin(harness.extend_slots(4)).await;
+
+    let state = harness.chain.head_beacon_state_cloned();
+    assert_eq!(
+        state.current_epoch(),
+        Epoch::new(2),
+        "should be in epoch 2 after extending"
+    );
+
+    // Get PTC duties for epoch 2
+    let epoch_2 = Epoch::new(2);
+    let (duties_epoch_2, dependent_root_2) = harness
+        .chain
+        .validator_ptc_duties(&all_indices, epoch_2)
+        .expect("should compute PTC duties for epoch 2");
+
+    assert_eq!(
+        duties_epoch_2.len(),
+        expected_duties,
+        "epoch 2 should have ptc_size * slots_per_epoch duties"
+    );
+
+    // Verify all epoch 2 duties are in epoch 2's slot range
+    let epoch_2_start = epoch_2.start_slot(slots_per_epoch);
+    for duty in &duties_epoch_2 {
+        assert!(
+            duty.slot >= epoch_2_start && duty.slot < epoch_2_start + slots_per_epoch,
+            "epoch 2 duty slot {} should be in range [{}, {})",
+            duty.slot,
+            epoch_2_start,
+            epoch_2_start + slots_per_epoch
+        );
+    }
+
+    // Dependent roots should differ between epoch 1 and epoch 2.
+    // Epoch 1's decision slot = epoch 0 start - 1 = genesis (slot 0).
+    // Epoch 2's decision slot = epoch 1 start - 1 = slot 7 (last slot of epoch 0).
+    // Since we produced blocks through epoch 0, slot 7 has a real block root ≠ genesis.
+    assert_ne!(
+        dependent_root_1, dependent_root_2,
+        "dependent root should change between epoch 1 and epoch 2"
+    );
+
+    // Collect per-epoch PTC member assignments (validator, relative slot offset)
+    let epoch_1_members: std::collections::HashSet<(u64, u64)> = duties_epoch_1
+        .iter()
+        .map(|d| (d.validator_index, d.slot.as_u64() - epoch_1_start.as_u64()))
+        .collect();
+
+    let epoch_2_members: std::collections::HashSet<(u64, u64)> = duties_epoch_2
+        .iter()
+        .map(|d| (d.validator_index, d.slot.as_u64() - epoch_2_start.as_u64()))
+        .collect();
+
+    // With 32 validators, PTC_SIZE=2, 8 slots/epoch → 16 duties per epoch,
+    // different RANDAO seeds should produce different committee selections.
+    assert_ne!(
+        epoch_1_members, epoch_2_members,
+        "PTC member assignments should differ between epochs due to reshuffling"
+    );
+}
+
 /// Test that validator_ptc_duties returns unique slot/committee_index pairs (no duplicates).
 #[tokio::test]
 async fn gloas_validator_ptc_duties_unique_positions() {
