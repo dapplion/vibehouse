@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking, EF test runner improvement (run 368)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630. None merged.
+- **PR #4918 verification**: Confirmed vibehouse already implements the attestation validation change (fork_choice.rs:1194-1202, `PayloadNotRevealed` check). No action needed.
+- **EF test runner improvement**: Replaced fragile `format!("{:?}").contains("PayloadNotRevealed")` string matching in fork choice test runner with proper Rust pattern matching (`BeaconChainError::ForkChoiceError(Error::InvalidAttestation(InvalidAttestation::PayloadNotRevealed{..}))`). This tolerance handles v1.7.0-alpha.2 test vectors that predate PR #4918 (index=1 attestations without prior on_execution_payload steps). Will be removed when test vectors are regenerated.
+- **Epoch processing audit**: Deep review of `process_builder_pending_payments`, `process_proposer_lookahead`, and envelope processing confirmed all match spec exactly. No deviations found.
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass, 8/8 fork choice pass
+- **CI status**: All completed runs green, zero clippy warnings
+
 ### 2026-03-02 — devnet verification of gossip wire format, spec tracking (run 367)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)

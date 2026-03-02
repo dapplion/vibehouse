@@ -806,7 +806,11 @@ impl<E: EthSpec> Tester<E> {
             // v1.7.0-alpha.2 test vectors predate this change and contain index=1
             // attestations without prior on_execution_payload steps. Tolerate this
             // until test vectors are regenerated.
-            Err(e) if format!("{:?}", e).contains("PayloadNotRevealed") => Ok(()),
+            Err(beacon_chain::BeaconChainError::ForkChoiceError(
+                ::fork_choice::Error::InvalidAttestation(
+                    ::fork_choice::InvalidAttestation::PayloadNotRevealed { .. },
+                ),
+            )) => Ok(()),
             Err(e) => Err(Error::InternalError(format!(
                 "attestation import failed with {:?}",
                 e,
