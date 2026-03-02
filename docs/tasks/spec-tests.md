@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — deep fork transition + block production audit (run 402)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **CI health**: Run 401 check+clippy passed, integration tests in progress. Run 398 fully green.
+- **Deep spec compliance audit of 3 consensus-critical paths**:
+  - **`upgrade_to_gloas` fork transition**: Complete line-by-line comparison against spec's `upgrade_to_gloas`, `onboard_builders_from_pending_deposits`, `apply_deposit_for_builder`, `add_builder_to_registry`, and `get_index_for_new_builder`. All fields in the post-state construction match spec exactly. Builder onboarding deposit routing logic matches: validator pubkeys checked first (priority), builder credentials (0x03) or existing builder → apply_deposit_for_builder, valid new validator signature → keep in pending, invalid → drop. Builder pubkey cache correctly updated on each iteration (O(1) vs spec's O(n) rebuild — functionally equivalent since cache stays in sync). `apply_builder_deposit` correctly handles top-up (no sig re-check) and new builder (sig verification + slot reuse or append). 25 unit tests + EF spec fork tests cover all paths.
+  - **Block production (`produce_block_on_state`, `complete_partial_beacon_block`)**: Verified Gloas block body construction: external builder bid selection (filtered by parent_root), self-build fallback with `BUILDER_INDEX_SELF_BUILD`, infinity signature, value=0. Payload attestations packed from pool filtered by slot+parent_root. `build_self_build_envelope` correctly constructs envelope with zero state_root, processes on cloned state with verify=false, computes actual post-envelope state root.
+  - **Withdrawal computation (`process_withdrawals_gloas`, `get_expected_withdrawals_gloas`)**: All 4 phases verified against spec helpers (`get_builder_withdrawals`, `get_builders_sweep_withdrawals`, `get_pending_partial_withdrawals`, `get_validators_sweep_withdrawals`). Phase limits match: reserved_limit = MAX-1 for phases 1-3, full MAX for phase 4. `processed_count` tracking matches spec: builder pending count tracks each processed withdrawal, builder sweep count tracks each visited builder (not just withdrawn). State mutations verified: `builder_pending_withdrawals.pop_front`, `pending_partial_withdrawals.pop_front`, `next_withdrawal_builder_index` advance by sweep count, `next_withdrawal_validator_index` advance by max sweep or (last+1)%len. `is_parent_block_full` matches spec exactly: `bid.block_hash == latest_block_hash`.
+  - **`per_slot_processing` availability clearing**: Verified `execution_payload_availability[(slot+1) % SLOTS_PER_HISTORICAL_ROOT] = false` matches spec. Slot increment/decrement ordering confirmed correct. 6 unit tests cover normal path, wraparound, idempotency, and state root preservation.
+  - **`BUILDER_INDEX_FLAG`**: Verified `1 << 40 = 2^40` matches spec's `uint64(2**40)`.
+- **No code changes** — all audited paths are spec-compliant
+- **No new bugs found**
+
 ### 2026-03-02 — withdrawal invariant + cross-phase consistency tests (run 401)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
