@@ -12155,6 +12155,136 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
     }
 }
 
+/// Same failure mode as `gloas_process_payload_envelope_state_transition_fails_after_el_valid`
+/// but exercises the SELF-BUILD path (`process_self_build_envelope`) instead of the gossip
+/// path (`process_payload_envelope`).
+///
+/// In the self-build path (beacon_chain.rs:2955), the flow is:
+/// 1. `on_execution_payload` → fork choice marks payload revealed
+/// 2. `notify_new_payload` → EL returns Valid
+/// 3. `on_valid_execution_payload` → fork choice marks block as Valid
+/// 4. `get_state` → loads pre-envelope state
+/// 5. `process_execution_payload_envelope` → state transition (THIS FAILS)
+///
+/// After step 3, fork choice has execution_status=Valid. If step 5 fails, the state cache
+/// is never updated with the post-envelope state, creating the same inconsistency as the
+/// gossip path test. The next block's `load_parent` would load stale state.
+#[tokio::test]
+async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Pre-condition: execution_status should be Optimistic after block import
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "pre-condition: should be Optimistic, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // Corrupt the state cache: modify the bid's builder_index so that
+    // process_execution_payload_envelope fails with BuilderIndexMismatch.
+    // The EL will return Valid (mock EL), but the state transition will fail.
+    let block_state_root = harness
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .unwrap()
+        .message()
+        .state_root();
+
+    {
+        let mut state = harness
+            .chain
+            .get_state(&block_state_root, Some(next_slot), false)
+            .expect("should not error")
+            .expect("state should be in cache");
+
+        let original_builder_index = state.latest_execution_payload_bid().unwrap().builder_index;
+        state
+            .latest_execution_payload_bid_mut()
+            .unwrap()
+            .builder_index = original_builder_index + 999;
+
+        state.apply_pending_mutations().unwrap();
+
+        let mut cache = harness.chain.store.state_cache.lock();
+        cache.delete_state(&block_state_root);
+        cache
+            .put_state(block_state_root, block_root, &state)
+            .expect("should re-cache corrupted state");
+    }
+
+    // process_self_build_envelope: EL returns Valid (steps 1-3 succeed) but
+    // state transition fails (step 5) because builder_index doesn't match
+    let result = harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await;
+
+    let err = result.expect_err("should fail due to state transition error");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("BuilderIndexMismatch"),
+        "error should mention BuilderIndexMismatch, got: {}",
+        err_msg
+    );
+
+    // Key assertion: fork choice has execution_status = Valid because the EL
+    // returned Valid and on_valid_execution_payload ran BEFORE the state transition.
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Valid(_)),
+            "execution_status should be Valid (EL validated before state transition failed), got {:?}",
+            proto_block.execution_status
+        );
+
+        // payload_revealed should be true (on_execution_payload ran in step 1)
+        assert!(
+            proto_block.payload_revealed,
+            "payload should be marked as revealed (step 1 succeeded)"
+        );
+    }
+
+    // The state cache should NOT have the post-envelope state
+    {
+        let state = harness
+            .chain
+            .get_state(&block_state_root, Some(next_slot), false)
+            .expect("should not error")
+            .expect("state should still be in cache");
+
+        let bid = state.latest_execution_payload_bid().unwrap();
+        assert_ne!(
+            bid.builder_index, signed_envelope.message.builder_index,
+            "cached state should still have corrupted builder_index (state transition failed)"
+        );
+    }
+}
+
 // =============================================================================
 // Execution bid gossip: InsufficientBuilderBalance
 // =============================================================================
@@ -13328,6 +13458,135 @@ async fn gloas_load_parent_empty_parent_does_not_patch() {
     assert!(
         fc.get_block(&block_root).is_some(),
         "block should be in fork choice"
+    );
+}
+
+// =============================================================================
+// get_advanced_hot_state: DB path with envelope re-application from store
+// =============================================================================
+
+/// Verify that `get_advanced_hot_state`'s DB fallback path (hot_cold_store.rs:1184-1230)
+/// correctly re-applies stored envelopes when the state cache is cold.
+///
+/// This simulates a scenario similar to a node restart during range sync:
+/// 1. Build a chain with blocks + envelopes (all stored to DB)
+/// 2. Evict the state cache for the parent block
+/// 3. Import the next block — `load_parent` calls `get_advanced_hot_state`
+/// 4. Cache miss → DB path loads pre-envelope state from disk
+/// 5. DB path finds the stored envelope → re-applies it
+/// 6. Returned state has correct `latest_block_hash` and all envelope effects
+/// 7. Block import succeeds
+///
+/// Without envelope re-application, the returned state would be pre-envelope and
+/// `process_execution_payload_bid` would fail because
+/// `bid.parent_block_hash != state.latest_block_hash()`.
+#[tokio::test]
+async fn gloas_get_advanced_hot_state_reapplies_envelope_from_db() {
+    // Build 3 blocks with envelopes
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let head_block = harness.chain.head_snapshot().beacon_block.clone();
+    let head_root = head_block.canonical_root();
+
+    // Verify the head state's latest_block_hash matches the head bid (post-envelope)
+    let head_bid_hash = head_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .block_hash;
+    let head_latest_hash = *head_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        head_latest_hash, head_bid_hash,
+        "pre-condition: head state should have post-envelope latest_block_hash"
+    );
+
+    // Verify the envelope is stored in the DB
+    let stored_envelope = harness
+        .chain
+        .store
+        .get_payload_envelope(&head_root)
+        .expect("should not error")
+        .expect("envelope should be stored for head block");
+    assert_eq!(
+        stored_envelope.message.payload.block_hash, head_bid_hash,
+        "stored envelope should match the bid's block_hash"
+    );
+
+    // Evict the state from the cache to force the DB path
+    let block_state_root = head_block.message().state_root();
+    {
+        let mut cache = harness.chain.store.state_cache.lock();
+        cache.delete_state(&block_state_root);
+    }
+
+    // Verify cache miss
+    assert!(
+        harness
+            .chain
+            .store
+            .get_advanced_hot_state_from_cache(head_root, head_state.slot())
+            .is_none(),
+        "state should NOT be in cache after eviction"
+    );
+
+    // Now call get_advanced_hot_state — it should:
+    // 1. Miss the cache
+    // 2. Load pre-envelope state from DB
+    // 3. Find the stored envelope
+    // 4. Re-apply it (updating latest_block_hash, availability, etc.)
+    let (_, reloaded_state) = harness
+        .chain
+        .store
+        .get_advanced_hot_state(head_root, head_state.slot(), block_state_root)
+        .expect("should not error")
+        .expect("should find state in DB");
+
+    let reloaded_latest_hash = *reloaded_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        reloaded_latest_hash, head_bid_hash,
+        "after DB reload with envelope re-application, latest_block_hash \
+         should match the bid's block_hash"
+    );
+
+    // Verify envelope effects: execution_payload_availability bit should be set
+    let availability_index =
+        head_state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+    let availability = reloaded_state
+        .execution_payload_availability()
+        .expect("should have availability");
+    assert!(
+        availability.get(availability_index).unwrap_or(false),
+        "after envelope re-application, availability bit at index {} should be set",
+        availability_index
+    );
+
+    // Build and import the next block — this uses load_parent which calls
+    // get_advanced_hot_state. The state is now back in cache from the DB reload,
+    // with correct post-envelope values.
+    harness.advance_slot();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, _envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let block_root = block_contents.0.canonical_root();
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed after DB state reload with envelope re-application");
+
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    assert!(
+        fc.get_block(&block_root).is_some(),
+        "new block should be in fork choice"
     );
 }
 
