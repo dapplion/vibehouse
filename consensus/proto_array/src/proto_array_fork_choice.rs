@@ -5426,6 +5426,48 @@ mod test_gloas_fork_choice {
         assert!(children.is_empty());
     }
 
+    /// PENDING node where PTC quorum was reached (`payload_revealed = true`) but the
+    /// execution payload envelope was NOT actually received (`envelope_received = false`).
+    /// The FULL virtual child must NOT be created — only the EMPTY child should exist.
+    ///
+    /// In the spec, the FULL child maps to `root in store.payload_states`. A PTC quorum
+    /// alone does not create a payload_state entry — only receiving the actual envelope
+    /// does. If `envelope_received` were accidentally replaced with `payload_revealed`
+    /// in the guard, PTC-quorum-only blocks would create spurious FULL children and
+    /// could cause head selection to favor blocks whose payload was never delivered.
+    #[test]
+    fn pending_node_ptc_quorum_without_envelope_has_empty_child_only() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,  // payload_revealed = true (PTC quorum reached)
+            0,     // proposer_index
+            false, // ptc_timely
+            false, // envelope_received = false (envelope never arrived)
+        );
+
+        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let pending = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let children = fc.get_gloas_children(&pending, &filtered);
+
+        // Must have ONLY the EMPTY child — no FULL child without envelope
+        assert_eq!(children.len(), 1, "should have exactly one child (EMPTY)");
+        assert_eq!(
+            children[0].payload_status,
+            GloasPayloadStatus::Empty,
+            "the only child should be EMPTY"
+        );
+    }
+
     #[test]
     fn proposer_boost_parent_node_missing_returns_true() {
         // When boost_block.parent index exists but the node at that index is gone

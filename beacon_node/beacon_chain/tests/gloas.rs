@@ -11878,6 +11878,145 @@ async fn gloas_process_envelope_missing_block_returns_error() {
 }
 
 // =============================================================================
+// process_payload_envelope: EL rejection paths (external builder / gossip)
+// =============================================================================
+
+/// When the EL returns `Invalid` for the envelope's `newPayload` on the external
+/// builder / gossip path (`process_payload_envelope`), the method should return an
+/// error. This is the counterpart of `gloas_self_build_envelope_el_invalid_returns_error`
+/// — both must reject, but through different code paths.
+///
+/// Concretely: builder submits a payload that the EL deems invalid. We must reject it
+/// so the block falls back to the EMPTY path and the chain continues.
+#[tokio::test]
+async fn gloas_process_payload_envelope_el_invalid_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Gossip-verify the envelope and apply to fork choice
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Configure mock EL to return Invalid for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero());
+
+    // process_payload_envelope should fail because EL says Invalid
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    let err = result.expect_err("should error when EL returns Invalid");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("invalid"),
+        "error should mention invalid payload, got: {}",
+        err_msg
+    );
+
+    // Block should still be Optimistic (not Valid) in fork choice
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns Invalid, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
+/// When the EL returns `InvalidBlockHash` for the envelope's `newPayload` on the
+/// external builder / gossip path, the method should return an error mentioning
+/// "invalid block hash". This is the counterpart of
+/// `gloas_self_build_envelope_el_invalid_block_hash_returns_error`.
+#[tokio::test]
+async fn gloas_process_payload_envelope_el_invalid_block_hash_returns_error() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Gossip-verify the envelope and apply to fork choice
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Configure mock EL to return InvalidBlockHash for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_block_hash_on_new_payload();
+
+    // process_payload_envelope should fail
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    let err = result.expect_err("should error when EL returns InvalidBlockHash");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("invalid block hash"),
+        "error should mention invalid block hash, got: {}",
+        err_msg
+    );
+
+    // Block should still be Optimistic
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns InvalidBlockHash, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
+// =============================================================================
 // Execution bid gossip: InsufficientBuilderBalance
 // =============================================================================
 
