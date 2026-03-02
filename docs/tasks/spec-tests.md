@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix stale proposer_boost_root in should_extend_payload (run 386)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Spec PR review**: Checked recently merged PRs #4948 (reorder payload status constants) and #4918 (reject FULL attestations when payload unknown). Both already implemented in vibehouse — our payload status constants already match the new ordering (Empty=0, Full=1, Pending=2), and our `validate_on_attestation` already rejects index=1 attestations when `!block.payload_revealed`.
+- **Bug fix: stale proposer_boost_root in should_extend_payload** (7ad6aa94a): `should_extend_payload` was reading `pa.previous_proposer_boost.root` which is stale in the Gloas path (because `apply_score_changes` is skipped — Gloas uses its own weight computation). Now passes the current `proposer_boost_root` from `find_head_gloas` through `get_payload_tiebreaker` and `should_extend_payload`. This could have caused incorrect head selection when the stale boost root happened to be zero (short-circuiting to `true`) while the actual boost root pointed to an EMPTY-parent child.
+- **Regression test** (4157067e6): `find_head_gloas_proposer_boost_root_propagated_not_stale` — sets `previous_proposer_boost.root` to zero (stale), calls `find_head` with a different root whose parent is EMPTY, and verifies EMPTY wins (not FULL, which would happen if the stale value were used).
+- **159/159 proto_array tests pass** (1 new), **106/106 fork_choice tests pass**, **8/8 EF fork_choice spec tests pass**
+- **Zero clippy warnings** across entire workspace
+
 ### 2026-03-02 — ePBS chain integrity and EMPTY-path availability tests (run 385)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. 4+ days of silence on master.
