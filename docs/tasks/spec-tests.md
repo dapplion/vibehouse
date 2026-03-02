@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking + devnet validation of recent fixes (run 398)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Newly merged spec PRs reviewed**:
+  - **#4944 (Request execution proofs by block root and proof types)**: EIP-8025 feature track, not Gloas. Allows batch proof requests with proof-type selection. Not implemented in vibehouse (EIP-8025 is separate). No action needed.
+  - **#4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS)**: Config naming change only. Already reviewed in run 396. No code change needed.
+  - **#4953/#4952/#4951**: Testing infra only (pytest, seeded rng, parallelism). No spec changes.
+  - **#4814 (config derivation helpers)**: Utility helpers. No spec changes.
+- **Open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630, #4898. None merged.
+- **CI health**: Run on commit `d53135332` fully green (all 6 jobs + ci-success). Run on `d198e46f1` (latest) in progress — check/clippy/fmt, ef-tests, network+op_pool all passed. HTTP API fix from run 396 confirmed working.
+- **Comprehensive audits completed**:
+  - **Block signature verification audit**: All 10 include_* methods in BlockSignatureVerifier confirmed complete. Every signature-bearing field in Gloas BeaconBlockBody is covered: block proposal, RANDAO, proposer slashings, attester slashings, attestations, exits, sync aggregate, BLS-to-execution changes, execution payload bid, payload attestations. Self-build bid correctly skipped (infinity signature). Domain separation verified correct for all types.
+  - **Engine API wire format audit**: Confirmed correct: newPayloadV5 for Gloas, forkchoiceUpdatedV3, getPayloadV5. ExecutionPayloadGloas correctly contains all required fields. Gloas blocks correctly never construct NewPayloadRequest (payload comes via envelope). PayloadAttributes V3 correct. Special Gloas withdrawal computation wired correctly.
+- **Devnet validation**: 4-node devnet (d198e46f1) finalized_epoch=8 (slot 80, epoch 10). Validates all recent bug fixes: batch signature verification, PTC double-counting fix, bid state reset, observe_envelope for self-build, unchecked indexing removal. No stalls, clean finalization through Gloas fork.
+
 ### 2026-03-02 — deep fork choice spec audit + fix unchecked indexing (run 397)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged since last check (last Gloas merge was #4931 on Feb 20)
