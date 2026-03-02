@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — builder payment quorum promotion test, spec tracking (run 361)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Builder payment quorum promotion integration test shipped** — `gloas_builder_payment_quorum_promotion_end_to_end`:
+  - Seeds a `BuilderPendingPayment` at genesis with `amount = 5 ETH`, `weight = 200 ETH` (above 60% quorum threshold)
+  - Runs chain through epoch 0→1 boundary where `process_builder_pending_payments` fires
+  - Verifies quorum promotion: payment with `weight >= quorum` is added to `builder_pending_withdrawals`
+  - Verifies the epoch 1 start block's envelope includes the builder withdrawal with correct `validator_index` (BUILDER_INDEX_FLAG), `fee_recipient`, and `amount`
+  - Verifies `builder_pending_withdrawals` is drained after envelope processing
+  - Verifies the original payment slot is cleared after epoch rotation
+  - Closes the "builder payment quorum → promotion → withdrawal in envelope" coverage gap (previously only tested with pre-seeded `builder_pending_withdrawals` or zero-value self-build payments)
+- **All 704 beacon_chain tests pass** (703 + 1 new)
+- **Clippy**: zero warnings (beacon_chain, production + tests)
+- **Coverage gap analysis update**:
+  - Builder payment quorum promotion — **DONE** (this run)
+  - External bid → pool → block production → no envelope → EMPTY path: tested by `gloas_external_bid_withheld_*` tests
+  - All high-priority gaps now closed
+
 ### 2026-03-02 — PTC duties epoch boundary test, spec tracking (run 360)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
