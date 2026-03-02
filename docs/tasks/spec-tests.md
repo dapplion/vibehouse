@@ -28,6 +28,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec compliance audit, test coverage analysis (run 372)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged. No new Gloas PRs opened.
+- **CI health**: All recent runs green (no failures in last 20 runs). Latest nightly (Mar 1) fully green.
+- **Deep spec compliance audit**: Systematically verified critical Gloas functions against the consensus-specs:
+  - `process_execution_payload_bid`: All 10 validation checks match spec exactly (builder active, balance coverage, commitments limit, slot, parent_block_hash, parent_block_root, prev_randao, pending payment recording, bid caching). Field ordering in `ExecutionPayloadBid` container matches spec (11 fields). The `execution_payment` field exists in spec container but is only used in gossip validation, not per-block processing — matches our implementation.
+  - `process_withdrawals_gloas`: Correctly calls `is_parent_block_full` as first operation, returns early when parent is EMPTY. Matches spec.
+  - `is_parent_block_full`: Implementation `bid.block_hash == state.latest_block_hash` matches spec exactly.
+  - `process_epoch` ordering: `process_builder_pending_payments` after `process_pending_consolidations`, before `process_effective_balance_updates`, `process_proposer_lookahead` after effective balances — all match spec.
+  - `process_block` ordering: withdrawals → bid → randao → eth1 → operations → sync_aggregate — matches spec.
+  - Gossip bid validation: All 10 spec checks implemented (slot, execution_payment>0, builder active, balance coverage, parent_block_root known, parent_block_hash known, proposer preferences match, signature valid, equivocation detection, highest-value filtering).
+- **Test coverage gap analysis**: Comprehensive analysis of 2554+ tests found no meaningful production-risk gaps remaining. All critical paths extensively covered:
+  - Range sync with Gloas blocks (FULL + EMPTY parent paths)
+  - Reorg handling with payload_revealed status changes
+  - Fork transition boundary (Fulu→Gloas) with skipped slots
+  - Multi-epoch chain health and state consistency
+  - External builder full lifecycle (bid → block → envelope → continuation)
+  - Stateless mode envelope processing
+  - All error paths documented as either tested or structurally unreachable
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+- **Zero clippy warnings across workspace**
+
 ### 2026-03-02 — CI robustness, block_verification speedup (run 371)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
