@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — envelope state transition failure test (run 377)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26
+- **CI health**: All completed runs green
+- **New test: `gloas_process_payload_envelope_state_transition_fails_after_el_valid`**: Exercises the critical error path in `process_payload_envelope` where the EL returns Valid (fork choice updated to execution_status=Valid) but the subsequent state transition fails. This was identified as the #1 untested gap via systematic production code path analysis. The test:
+  - Corrupts the state cache (modifies bid builder_index) after gossip verification but before envelope processing
+  - Verifies the state transition fails with `BuilderIndexMismatch`
+  - Verifies fork choice retains `execution_status=Valid` (EL validated before state transition failed)
+  - Verifies the state cache was NOT updated with a post-envelope state
+  - Documents the inconsistency (Valid in fork choice, no post-envelope state) as recoverable by re-processing
+- **Key architectural insight discovered**: External builder EMPTY-path blocks (payload withheld) are NOT viable for head in fork choice (`node_is_viable_for_head` returns false). This means consecutive EMPTY blocks from the same builder are siblings of the last FULL block, not a chain. The head always stays at the last FULL block. This is a vibehouse-specific optimization not in the base spec.
+- **710/710 beacon_chain tests pass, 2555/2555 workspace tests pass (excluding web3signer pre-existing failures)**
+- **Zero clippy warnings across workspace**
+
 ### 2026-03-02 — fix EMPTY-path state reconstruction bug (run 376)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 7+ days of silence on master.
