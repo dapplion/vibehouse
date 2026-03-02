@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — proposer lookahead integration tests (run 383)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. Still quiet.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **CI health**: All completed runs green. Nightly fully green.
+- **Comprehensive test gap audit**: Used Explore agents to systematically audit all Gloas error paths in:
+  - `envelope_processing.rs`: All 15+ error variants already tested (WithdrawalsRootMismatch, ParentHashMismatch, PrevRandaoMismatch, TimestampMismatch, BuilderPaymentIndexOutOfBounds, InvalidStateRoot — all have triggering tests)
+  - `gloas_verification.rs`: 30/35 error variants tested. 5 untested are error conversions (BeaconChainError, ArithError) and structurally unreachable paths (InvalidAggregationBits with fixed-size BitVector, PtcCommitteeError requiring pre-Gloas head state)
+  - `beacon_chain.rs` Gloas methods: All major functions have integration tests
+  - `block_verification.rs` load_parent: All FULL/EMPTY/genesis paths covered
+  - `fork_choice.rs`: Bid, envelope, and PTC attestation paths all tested
+  - Withdrawal processing: 78+ tests covering all 4 phases, limits, wrapping, edge cases
+- **Gap found: proposer_lookahead integration tests**. Only 1 test existed (store_tests::proposer_lookahead_gloas_fork_epoch). No test verified the lookahead shift correctness across multiple epoch boundaries or that actual block proposers match lookahead values.
+- **New tests: proposer lookahead multi-epoch integration**:
+  - `gloas_proposer_lookahead_consistency_across_epochs`: Runs through 4 epoch boundaries, verifies the lookahead shift (second half of epoch N becomes first half of epoch N+1), validates all entries are valid validator indices
+  - `gloas_block_proposers_match_lookahead`: Runs 3 full epochs, verifies each block's proposer_index matches the lookahead value for that slot in the current epoch
+- **714/714 beacon_chain tests pass**, zero clippy warnings across workspace
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass (inferred — no consensus code changes)
+
 ### 2026-03-02 — fork-boundary proposer preferences domain tests (run 382)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. Still quiet.
