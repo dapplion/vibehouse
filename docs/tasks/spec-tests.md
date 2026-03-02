@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec PR review + fork choice verification audit (run 403)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **CI health**: Runs 396-398 fully green. Runs 399-402 in progress (no failures in completed jobs).
+- **Reviewed 3 recently merged spec PRs** for impact on vibehouse:
+  - **#4948 (Reorder payload status constants)**: Changed from PENDING=0/EMPTY=1/FULL=2 to EMPTY=0/FULL=1/PENDING=2. Vibehouse's `GloasPayloadStatus` enum already uses the new ordering (implemented proactively). `get_payload_tiebreaker` hardcoded values (0, 1, 2) are tiebreaker ordering values not enum ordinals — verified still correct. **No changes needed.**
+  - **#4918 (Only allow attestations for known payload statuses)**: New `validate_on_attestation` check: if `index == 1` (full vote), `beacon_block_root` must be in `payload_states`. Already implemented at `fork_choice.rs:1194-1202` with `PayloadNotRevealed` error. Tests exist for all paths. **No changes needed.**
+  - **#4923 (Ignore beacon block if parent payload unknown)**: New `[IGNORE]` gossip validation for beacon blocks whose `bid.parent_block_hash` hasn't been seen. Already implemented at `block_verification.rs:971-984` with `GloasParentPayloadUnknown` error. **No changes needed.**
+  - **#4947 (Pre-fork subscription for proposer_preferences)**: Spec note: "Nodes SHOULD subscribe at least one epoch before fork." Already handled: `PRE_FORK_SUBSCRIBE_EPOCHS = 1` in `network/src/service.rs:51`. **No changes needed.**
+- **Fork choice algorithm verification** — line-by-line comparison of 5 spec functions:
+  - `is_supporting_vote`: Matches spec exactly — PENDING always true, same-root requires slot > block.slot + payload_present check, ancestor path checks payload_status match
+  - `get_weight`: Non-PENDING nodes from previous slot get 0 weight — matches spec. Proposer boost creates synthetic vote with `payload_present=false` matching spec's `LatestMessage(payload_present=False)`
+  - `get_ancestor`: Walk-up logic correct, returns PENDING for `block.slot <= slot`, parent_payload_status from child→parent relationship for deeper ancestors
+  - `get_parent_payload_status`: Compares child's `bid.parent_block_hash` with parent's `bid.block_hash` — Full if equal, Empty otherwise. Matches spec exactly.
+  - `get_head`: Top-down traversal with tuple comparison `(weight, root, tiebreaker)` — ordering matches spec's `max(key=lambda: (weight, root, tiebreaker))`
+- **No code changes** — all reviewed paths are spec-compliant
+- **No new bugs found**
+
 ### 2026-03-02 — deep fork transition + block production audit (run 402)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
