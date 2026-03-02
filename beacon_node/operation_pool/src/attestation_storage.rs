@@ -492,3 +492,168 @@ impl<E: EthSpec> AttestationDataMap<E> {
         stats
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn make_checkpoint() -> CheckpointKey {
+        CheckpointKey {
+            source: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            target_epoch: Epoch::new(1),
+        }
+    }
+
+    fn make_electra_attestation(slot: u64, index: u64, committee_idx: u64) -> Attestation<E> {
+        let mut committee_bits: BitVector<<E as EthSpec>::MaxCommitteesPerSlot> =
+            BitVector::default();
+        committee_bits.set(committee_idx as usize, true).unwrap();
+
+        Attestation::Electra(AttestationElectra {
+            aggregation_bits: BitList::with_capacity(8).unwrap(),
+            data: AttestationData {
+                slot: Slot::new(slot),
+                index,
+                beacon_block_root: Hash256::repeat_byte(0x01),
+                source: Checkpoint {
+                    epoch: Epoch::new(0),
+                    root: Hash256::zero(),
+                },
+                target: Checkpoint {
+                    epoch: Epoch::new(1),
+                    root: Hash256::repeat_byte(0x02),
+                },
+            },
+            committee_bits,
+            signature: AggregateSignature::infinity(),
+        })
+    }
+
+    fn set_attestation_bit(att: &mut Attestation<E>, bit: usize) {
+        match att {
+            Attestation::Electra(a) => a.aggregation_bits.set(bit, true).unwrap(),
+            Attestation::Base(a) => a.aggregation_bits.set(bit, true).unwrap(),
+        }
+    }
+
+    /// Index=0 and index=1 attestations for the same slot/block are stored in separate buckets.
+    /// In Gloas, index=0 means payload-absent or same-slot, index=1 means payload-present.
+    /// They represent different votes and must not be merged.
+    #[test]
+    fn gloas_index_zero_and_one_stored_separately() {
+        let mut map = AttestationMap::<E>::default();
+
+        let mut att0 = make_electra_attestation(10, 0, 0);
+        set_attestation_bit(&mut att0, 0);
+        map.insert(att0, vec![100]);
+
+        let mut att1 = make_electra_attestation(10, 1, 0);
+        set_attestation_bit(&mut att1, 0);
+        map.insert(att1, vec![100]);
+
+        let stats = map.stats();
+        // Two distinct attestation data entries (one for index=0, one for index=1)
+        assert_eq!(stats.num_attestation_data, 2);
+        assert_eq!(stats.num_attestations, 2);
+    }
+
+    /// Attestations with the same index are grouped together and can aggregate.
+    #[test]
+    fn gloas_same_index_attestations_aggregate() {
+        let mut map = AttestationMap::<E>::default();
+
+        let mut att_a = make_electra_attestation(10, 1, 0);
+        set_attestation_bit(&mut att_a, 0);
+        map.insert(att_a, vec![100]);
+
+        let mut att_b = make_electra_attestation(10, 1, 0);
+        set_attestation_bit(&mut att_b, 1);
+        map.insert(att_b, vec![101]);
+
+        let stats = map.stats();
+        // Same attestation data (same index=1), should have aggregated
+        assert_eq!(stats.num_attestation_data, 1);
+        assert_eq!(stats.num_attestations, 1);
+    }
+
+    /// Index=0 and index=1 attestations from different committees for the same slot
+    /// are stored independently and aggregate_across_committees only merges within the
+    /// same index group.
+    #[test]
+    fn gloas_cross_committee_aggregation_respects_index() {
+        let mut map = AttestationMap::<E>::default();
+        let checkpoint = make_checkpoint();
+
+        // Committee 0, index=0 (payload absent)
+        let mut att_c0_i0 = make_electra_attestation(10, 0, 0);
+        set_attestation_bit(&mut att_c0_i0, 0);
+        map.insert(att_c0_i0, vec![100]);
+
+        // Committee 1, index=0 (payload absent)
+        let mut att_c1_i0 = make_electra_attestation(10, 0, 1);
+        set_attestation_bit(&mut att_c1_i0, 0);
+        map.insert(att_c1_i0, vec![200]);
+
+        // Committee 0, index=1 (payload present)
+        let mut att_c0_i1 = make_electra_attestation(10, 1, 0);
+        set_attestation_bit(&mut att_c0_i1, 0);
+        map.insert(att_c0_i1, vec![100]);
+
+        // Before aggregation: 3 attestations, 2 data keys (index=0 and index=1)
+        let stats = map.stats();
+        assert_eq!(stats.num_attestation_data, 2);
+        // index=0 has 2 attestations (different committees), index=1 has 1
+        assert_eq!(stats.num_attestations, 3);
+
+        // Aggregate across committees for this checkpoint
+        map.aggregate_across_committees(checkpoint);
+
+        let stats = map.stats();
+        // After aggregation: index=0 committees 0+1 merged into 1 aggregate,
+        // index=1 has only committee 0 (no merging needed)
+        assert_eq!(stats.num_attestation_data, 2);
+        assert_eq!(stats.num_attestations, 2);
+    }
+
+    /// The CompactAttestationData hash/eq distinguishes index=0 from index=1.
+    #[test]
+    fn compact_attestation_data_index_hash_distinct() {
+        let data0 = CompactAttestationData {
+            slot: Slot::new(10),
+            index: 0,
+            beacon_block_root: Hash256::repeat_byte(0x01),
+            target_root: Hash256::repeat_byte(0x02),
+        };
+        let data1 = CompactAttestationData {
+            slot: Slot::new(10),
+            index: 1,
+            beacon_block_root: Hash256::repeat_byte(0x01),
+            target_root: Hash256::repeat_byte(0x02),
+        };
+        assert_ne!(data0, data1);
+
+        let mut set = std::collections::HashSet::new();
+        set.insert(data0);
+        set.insert(data1);
+        assert_eq!(set.len(), 2);
+    }
+
+    /// The clone_as_attestation preserves index value for both 0 and 1.
+    #[test]
+    fn compact_attestation_ref_preserves_index() {
+        for index in [0u64, 1u64] {
+            let mut att = make_electra_attestation(10, index, 0);
+            set_attestation_bit(&mut att, 0);
+            let split = SplitAttestation::<E>::new(att, vec![100]);
+            let att_ref = split.as_ref();
+            let reconstructed = att_ref.clone_as_attestation();
+            assert_eq!(reconstructed.data().index, index);
+        }
+    }
+}
