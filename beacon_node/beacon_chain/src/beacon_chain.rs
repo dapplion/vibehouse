@@ -5116,13 +5116,50 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             // Apply in-block payload attestations to fork choice so the parent block's
             // PTC quorum is updated. This is important during sync when gossip
             // attestations may not have been received.
+            //
+            // The spec uses per-PTC-member bitvectors (idempotent overwrites), but we
+            // use weight counters. To avoid double-counting attesters already seen via
+            // gossip, filter through observed_payload_attestations first.
             if let Ok(payload_attestations) = block.body().payload_attestations() {
+                use types::IndexedPayloadAttestation;
+
+                let mut observed = self.observed_payload_attestations.lock();
                 for attestation in payload_attestations.iter() {
                     match get_indexed_payload_attestation(&state, attestation, &self.spec) {
                         Ok(indexed) => {
+                            // Filter to only new attesters not already seen via gossip.
+                            let new_indices: Vec<u64> = indexed
+                                .attesting_indices
+                                .iter()
+                                .copied()
+                                .filter(|&idx| {
+                                    let outcome = observed.observe_attestation(
+                                        attestation.data.slot,
+                                        attestation.data.beacon_block_root,
+                                        idx,
+                                        attestation.data.payload_present,
+                                    );
+                                    matches!(
+                                        outcome,
+                                        crate::observed_payload_attestations
+                                            ::AttestationObservationOutcome::New
+                                    )
+                                })
+                                .collect();
+
+                            if new_indices.is_empty() {
+                                continue;
+                            }
+
+                            let filtered = IndexedPayloadAttestation {
+                                attesting_indices: new_indices.into(),
+                                data: indexed.data.clone(),
+                                signature: indexed.signature.clone(),
+                            };
+
                             if let Err(e) = fork_choice.on_payload_attestation(
                                 attestation,
-                                &indexed,
+                                &filtered,
                                 current_slot,
                                 &self.spec,
                             ) {
@@ -5142,6 +5179,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         }
                     }
                 }
+                drop(observed);
             }
         }
 
