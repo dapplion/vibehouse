@@ -8247,4 +8247,106 @@ mod test_gloas_fork_choice {
              (not stale previous_proposer_boost.root)"
         );
     }
+
+    // ─────── same-slot vote behavior (spec: vote.slot == block.slot) ───────
+    //
+    // Per the current spec's is_supporting_vote, when vote.slot <= block.slot
+    // (and validate_on_attestation guarantees slot >= block.slot, so this means
+    // vote.slot == block.slot), the vote returns false for both EMPTY and FULL
+    // nodes. Only PENDING is supported.
+    //
+    // This behavior is documented by spec PR #4892 as "the impossible branch" —
+    // the spec currently returns false for same-slot EMPTY/FULL even with
+    // payload_present set. If #4892 merges, same-slot votes with payload_present
+    // would support FULL (and without payload_present would support EMPTY).
+    // These tests document the CURRENT behavior as a regression baseline.
+
+    #[test]
+    fn same_slot_vote_with_payload_present_does_not_support_full() {
+        // Current spec: vote.slot == block.slot → return false for EMPTY/FULL
+        // regardless of payload_present.
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        let full_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Full,
+        };
+        let empty_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Empty,
+        };
+
+        // Same-slot vote with payload_present=true
+        let vote = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(1), // same as block slot
+            current_payload_present: true,
+            ..VoteTracker::default()
+        };
+
+        // Per current spec: same-slot votes NEVER support EMPTY or FULL
+        assert!(
+            !fc.is_supporting_vote_gloas(&full_node, &vote),
+            "same-slot vote with payload_present should NOT support FULL (current spec)"
+        );
+        assert!(
+            !fc.is_supporting_vote_gloas(&empty_node, &vote),
+            "same-slot vote with payload_present should NOT support EMPTY (current spec)"
+        );
+    }
+
+    #[test]
+    fn same_slot_vote_always_supports_pending() {
+        // Even same-slot votes support PENDING (the first branch in is_supporting_vote
+        // returns true for any PENDING node when root matches).
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_gloas_block(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,
+        );
+
+        let pending_node = GloasForkChoiceNode {
+            root: root(1),
+            payload_status: GloasPayloadStatus::Pending,
+        };
+
+        let vote = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(1), // same as block slot
+            current_payload_present: false,
+            ..VoteTracker::default()
+        };
+
+        assert!(
+            fc.is_supporting_vote_gloas(&pending_node, &vote),
+            "same-slot vote should always support PENDING"
+        );
+
+        // Also with payload_present=true
+        let vote_pp = VoteTracker {
+            current_root: root(1),
+            current_slot: Slot::new(1),
+            current_payload_present: true,
+            ..VoteTracker::default()
+        };
+
+        assert!(
+            fc.is_supporting_vote_gloas(&pending_node, &vote_pp),
+            "same-slot vote with payload_present should still support PENDING"
+        );
+    }
 }

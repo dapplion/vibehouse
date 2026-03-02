@@ -316,6 +316,31 @@ mod tests {
         }
     }
 
+    fn make_bid_full(
+        slot: u64,
+        builder_index: u64,
+        value: u64,
+        parent_block_root: Hash256,
+        parent_block_hash: ExecutionBlockHash,
+    ) -> SignedExecutionPayloadBid<E> {
+        SignedExecutionPayloadBid {
+            message: ExecutionPayloadBid {
+                slot: Slot::new(slot),
+                builder_index,
+                value,
+                parent_block_hash,
+                parent_block_root,
+                block_hash: ExecutionBlockHash(Hash256::zero()),
+                prev_randao: Hash256::zero(),
+                fee_recipient: Default::default(),
+                gas_limit: 30_000_000,
+                execution_payment: value,
+                blob_kzg_commitments: Default::default(),
+            },
+            signature: Signature::empty(),
+        }
+    }
+
     #[test]
     fn best_bid_filters_by_parent_block_root() {
         let root_a = Hash256::from_low_u64_be(0xaa);
@@ -363,5 +388,109 @@ mod tests {
         let best = pool.get_best_bid(Slot::new(10), root_a).unwrap();
         assert_eq!(best.message.value, 900);
         assert_eq!(best.message.builder_index, 2);
+    }
+
+    /// Simulate a re-org scenario: bids arrive for parent root A, then the head
+    /// switches to parent root B. Querying with root B should only return bids
+    /// targeting root B, and old root A bids should be invisible. Then a new bid
+    /// for root B arrives and should be selectable.
+    #[test]
+    fn reorg_scenario_old_parent_bids_invisible_new_parent_selectable() {
+        let root_a = Hash256::from_low_u64_be(0xaa);
+        let root_b = Hash256::from_low_u64_be(0xbb);
+
+        let mut pool = ExecutionBidPool::<E>::new();
+
+        // Phase 1: bids arrive targeting parent root A (pre-reorg head)
+        pool.insert(make_bid_with_parent(10, 1, 1000, root_a));
+        pool.insert(make_bid_with_parent(10, 2, 2000, root_a));
+        pool.insert(make_bid_with_parent(10, 3, 3000, root_a));
+
+        // Verify all 3 bids visible via root_a
+        let best_a = pool.get_best_bid(Slot::new(10), root_a).unwrap();
+        assert_eq!(best_a.message.value, 3000);
+
+        // Phase 2: head re-orgs to root_b — no bids for root_b yet
+        assert!(
+            pool.get_best_bid(Slot::new(10), root_b).is_none(),
+            "no bids should be visible for new head root_b"
+        );
+
+        // Phase 3: a new bid arrives targeting the post-reorg head
+        pool.insert(make_bid_with_parent(10, 4, 500, root_b));
+
+        let best_b = pool.get_best_bid(Slot::new(10), root_b).unwrap();
+        assert_eq!(best_b.message.value, 500);
+        assert_eq!(best_b.message.builder_index, 4);
+
+        // Root A bids are still there but filtered out for root_b queries
+        let best_a = pool.get_best_bid(Slot::new(10), root_a).unwrap();
+        assert_eq!(best_a.message.value, 3000);
+    }
+
+    /// Bids with the same parent_block_root but different parent_block_hash values
+    /// are both eligible for selection. The pool does NOT filter by parent_block_hash.
+    /// This is correct because parent_block_hash validation happens during block
+    /// processing (process_execution_payload_bid), not during bid pool selection.
+    #[test]
+    fn same_parent_root_different_parent_block_hash_both_eligible() {
+        let root = Hash256::from_low_u64_be(0xaa);
+        let exec_hash_a = ExecutionBlockHash(Hash256::from_low_u64_be(0x11));
+        let exec_hash_b = ExecutionBlockHash(Hash256::from_low_u64_be(0x22));
+
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid_full(10, 1, 100, root, exec_hash_a));
+        pool.insert(make_bid_full(10, 2, 500, root, exec_hash_b));
+
+        // The highest-value bid wins regardless of parent_block_hash
+        let best = pool.get_best_bid(Slot::new(10), root).unwrap();
+        assert_eq!(best.message.value, 500);
+        assert_eq!(best.message.parent_block_hash, exec_hash_b);
+    }
+
+    /// Verify that pruning at sequential slots correctly preserves bids
+    /// within the retention window and removes those outside it.
+    #[test]
+    fn sequential_prune_calls_preserve_window_correctly() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        // Insert bids for slots 5 through 12
+        for slot in 5..=12 {
+            pool.insert(make_bid(slot, 1, slot * 100));
+        }
+        assert_eq!(pool.total_bid_count(), 8);
+
+        // Prune at slot 10: keeps slots >= 6 (10 - 4 = 6)
+        pool.prune(Slot::new(10));
+        assert!(pool.get_best_bid(Slot::new(5), Hash256::zero()).is_none());
+        assert!(pool.get_best_bid(Slot::new(6), Hash256::zero()).is_some());
+        assert!(pool.get_best_bid(Slot::new(10), Hash256::zero()).is_some());
+
+        // Prune at slot 11: keeps slots >= 7 (11 - 4 = 7)
+        pool.prune(Slot::new(11));
+        assert!(pool.get_best_bid(Slot::new(6), Hash256::zero()).is_none());
+        assert!(pool.get_best_bid(Slot::new(7), Hash256::zero()).is_some());
+        assert!(pool.get_best_bid(Slot::new(11), Hash256::zero()).is_some());
+        assert!(pool.get_best_bid(Slot::new(12), Hash256::zero()).is_some());
+
+        // Prune at slot 20: removes everything (20 - 4 = 16 > 12)
+        pool.prune(Slot::new(20));
+        assert_eq!(pool.total_bid_count(), 0);
+    }
+
+    /// Verify that inserting a bid for the same (slot, builder_index) after
+    /// pruning works correctly — the pool doesn't retain stale metadata.
+    #[test]
+    fn insert_after_prune_same_builder_works() {
+        let mut pool = ExecutionBidPool::<E>::new();
+        pool.insert(make_bid(5, 1, 100));
+
+        pool.prune(Slot::new(15)); // removes slot 5
+        assert_eq!(pool.total_bid_count(), 0);
+
+        // Re-insert at slot 5 with different value — should work since pruning
+        // removed the slot entirely
+        pool.insert(make_bid(5, 1, 999));
+        let best = pool.get_best_bid(Slot::new(5), Hash256::zero()).unwrap();
+        assert_eq!(best.message.value, 999);
     }
 }
