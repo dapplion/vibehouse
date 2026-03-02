@@ -8182,4 +8182,224 @@ mod tests {
             "self-build should not clear external bid's payment"
         );
     }
+
+    // ── withdrawal invariant tests ───────────────────────────────
+
+    /// When total withdrawals exactly equals MAX_WITHDRAWALS_PER_PAYLOAD, the last
+    /// withdrawal MUST come from the validator sweep (phase 4). This invariant is
+    /// critical because `update_next_withdrawal_validator_index` uses
+    /// `last_withdrawal.validator_index` to set the next sweep start, and builder
+    /// withdrawals encode the index with BUILDER_INDEX_FLAG which would produce a
+    /// nonsensical validator_index modulo validators_len.
+    ///
+    /// The reserved_limit (MAX - 1) cap on phases 1-3 guarantees this invariant.
+    #[test]
+    fn withdrawals_max_hit_last_is_always_validator_sweep() {
+        // Setup: 3 builder pending withdrawals + 1 fully-withdrawable validator = 4 = max
+        // MinimalEthSpec: max_withdrawals = 4, reserved_limit = 3
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Make parent block full so withdrawals are processed
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_block_hash = state_gloas.latest_execution_payload_bid.block_hash;
+
+        // Add 3 builder pending withdrawals (fills reserved_limit = 3)
+        for _ in 0..3 {
+            state_gloas
+                .builder_pending_withdrawals
+                .push(BuilderPendingWithdrawal {
+                    builder_index: 0,
+                    fee_recipient: Address::repeat_byte(0xBB),
+                    amount: 1_000_000_000,
+                })
+                .unwrap();
+        }
+
+        // Make validator 0 fully withdrawable: set exit_epoch and withdrawable_epoch in the past
+        let validator = state.validators_mut().get_mut(0).unwrap();
+        validator.exit_epoch = Epoch::new(0);
+        validator.withdrawable_epoch = Epoch::new(0);
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let withdrawals = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let max = E::max_withdrawals_per_payload();
+
+        // Should have exactly max_withdrawals
+        assert_eq!(
+            withdrawals.len(),
+            max,
+            "should produce exactly max_withdrawals"
+        );
+
+        // First 3 are builder withdrawals
+        for i in 0..3 {
+            assert_ne!(
+                withdrawals.get(i).unwrap().validator_index & BUILDER_INDEX_FLAG,
+                0,
+                "withdrawal {} should be a builder withdrawal",
+                i
+            );
+        }
+
+        // Last withdrawal must be from validator sweep (no BUILDER_INDEX_FLAG)
+        let last = withdrawals.get(max - 1).unwrap();
+        assert_eq!(
+            last.validator_index & BUILDER_INDEX_FLAG,
+            0,
+            "last withdrawal when at max must be from validator sweep, got validator_index={}",
+            last.validator_index
+        );
+
+        // Verify next_withdrawal_validator_index is reasonable (< validators_len)
+        let next_idx = state.next_withdrawal_validator_index().unwrap();
+        let validators_len = state.validators().len() as u64;
+        assert!(
+            next_idx < validators_len,
+            "next_withdrawal_validator_index {} should be < validators_len {}",
+            next_idx,
+            validators_len
+        );
+    }
+
+    /// When all phases produce output but total stays below max_withdrawals,
+    /// the next_withdrawal_validator_index advances by max_validators_per_sweep.
+    #[test]
+    fn withdrawals_below_max_validator_index_advances_by_sweep_len() {
+        // Setup: 1 builder pending + 1 partially withdrawable validator = 2 < 4 = max
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_block_hash = state_gloas.latest_execution_payload_bid.block_hash;
+        state_gloas.next_withdrawal_validator_index = 2;
+
+        // 1 builder pending withdrawal
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                builder_index: 0,
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 500_000_000,
+            })
+            .unwrap();
+
+        // Give validator 2 excess balance for partial withdrawal
+        *state.balances_mut().get_mut(2).unwrap() = 40_000_000_000; // 8 ETH excess
+
+        let initial_validator_idx = state.next_withdrawal_validator_index().unwrap();
+
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let max = E::max_withdrawals_per_payload();
+        let withdrawals = &state.as_gloas().unwrap().payload_expected_withdrawals;
+
+        assert!(
+            withdrawals.len() < max,
+            "total withdrawals {} should be less than max {}",
+            withdrawals.len(),
+            max
+        );
+
+        // When below max, next = (initial + max_validators_per_sweep) % validators_len
+        let expected_next = (initial_validator_idx + spec.max_validators_per_withdrawals_sweep)
+            % state.validators().len() as u64;
+        assert_eq!(
+            state.next_withdrawal_validator_index().unwrap(),
+            expected_next,
+            "below-max: validator index should advance by sweep length"
+        );
+    }
+
+    /// get_expected_withdrawals_gloas must produce the exact same withdrawal list as
+    /// process_withdrawals_gloas when all 4 phases are active simultaneously.
+    #[test]
+    fn get_expected_matches_process_all_four_phases_active() {
+        // Setup state where all 4 withdrawal phases produce output:
+        // Phase 1: builder pending withdrawal
+        // Phase 2: pending partial withdrawal for a validator
+        // Phase 3: builder sweep picks up exiting builder with balance
+        // Phase 4: validator sweep picks up excess balance validator
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Make parent full
+        let state_gloas = state.as_gloas_mut().unwrap();
+        state_gloas.latest_block_hash = state_gloas.latest_execution_payload_bid.block_hash;
+
+        // Phase 1: 1 builder pending withdrawal (builder 0)
+        state_gloas
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                builder_index: 0,
+                fee_recipient: Address::repeat_byte(0xBB),
+                amount: 1_000_000_000,
+            })
+            .unwrap();
+
+        // Phase 3: Add a second builder (index 1) that is exiting with balance
+        state_gloas
+            .builders
+            .push(Builder {
+                pubkey: types::PublicKeyBytes::empty(),
+                version: 0x03,
+                execution_address: Address::repeat_byte(0xDD),
+                balance: 5_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: Epoch::new(0), // already withdrawable
+            })
+            .unwrap();
+        // Start sweep at builder 1 so it gets picked up
+        state_gloas.next_withdrawal_builder_index = 1;
+
+        // Phase 2: pending partial withdrawal for validator 0
+        state
+            .pending_partial_withdrawals_mut()
+            .unwrap()
+            .push(types::PendingPartialWithdrawal {
+                validator_index: 0,
+                amount: 2_000_000_000,
+                withdrawable_epoch: Epoch::new(0), // already withdrawable
+            })
+            .unwrap();
+        // Give validator 0 excess balance
+        *state.balances_mut().get_mut(0).unwrap() = 40_000_000_000;
+
+        // Phase 4: Give validator 1 excess balance for validator sweep
+        *state.balances_mut().get_mut(1).unwrap() = 40_000_000_000;
+
+        // Get expected (read-only)
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+        assert!(
+            !expected.is_empty(),
+            "all 4 phases active should produce withdrawals"
+        );
+
+        // Process (mutating) on a clone
+        let mut state_clone = state.clone();
+        process_withdrawals_gloas::<E>(&mut state_clone, &spec).unwrap();
+
+        let processed = &state_clone.as_gloas().unwrap().payload_expected_withdrawals;
+
+        // Both must produce the same withdrawal list
+        assert_eq!(
+            expected.len(),
+            processed.len(),
+            "expected {} vs processed {} withdrawal count mismatch",
+            expected.len(),
+            processed.len()
+        );
+        for (i, (exp, proc)) in expected.iter().zip(processed.iter()).enumerate() {
+            assert_eq!(exp.index, proc.index, "withdrawal {}: index mismatch", i);
+            assert_eq!(
+                exp.validator_index, proc.validator_index,
+                "withdrawal {}: validator_index mismatch",
+                i
+            );
+            assert_eq!(
+                exp.address, proc.address,
+                "withdrawal {}: address mismatch",
+                i
+            );
+            assert_eq!(exp.amount, proc.amount, "withdrawal {}: amount mismatch", i);
+        }
+    }
 }
