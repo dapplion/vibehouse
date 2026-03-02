@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix batch signature verification for Gloas bid/PTC signatures (run 395)
+- **Bug fix (HIGH): BlockSignatureVerifier missing Gloas bid + payload attestation signatures**
+  - `BlockSignatureVerifier` (used in `VerifyBulk` mode, the default block import path) was missing verification of execution payload bid signatures and payload attestation signatures
+  - When `VerifyBulk` is used, all signatures are batch-verified first, then `verify_signatures` is set to `False` — individual inline verification in `process_execution_payload_bid` and `process_payload_attestation` is skipped
+  - This meant blocks with invalid bid or PTC aggregate signatures would pass import without any signature check
+  - Fix: added `include_execution_payload_bid()` and `include_payload_attestations()` methods to `BlockSignatureVerifier`
+  - Self-build bids (builder_index == builder_index_self_build) are correctly skipped — they use G2_POINT_AT_INFINITY validated unconditionally in `process_execution_payload_bid`
+  - Payload attestation signature sets use `get_indexed_payload_attestation` to resolve PTC committee → attesting indices, then construct `SignatureSet::multiple_pubkeys` with `Domain::PtcAttester`
+- **Test fixes**: `make_external_bid` now signs bids with builder keypairs (was using `Signature::empty()`). Removed redundant `make_signed_external_bid`. Fixed manually-constructed bid in `gloas_external_builder_revealed_next_block_uses_builder_block_hash`. Fixed `gloas_payload_attestation_pool_prunes_old` to clear pool before extending chain.
+- **All tests pass**: 538/538 state_processing, 19/19 EF spec tests (real crypto, operations+sanity), 719/719 beacon_chain. Zero clippy warnings across full workspace.
+- Commit: `192a934c2`
+
 ### 2026-03-02 — fix three gossip-fork_choice interaction bugs (run 394)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Merged spec PRs since last check: #4953, #4952, #4951 (all CI/testing infra, no spec changes)
