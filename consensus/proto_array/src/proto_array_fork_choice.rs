@@ -8165,4 +8165,84 @@ mod test_gloas_fork_choice {
             "root(2) has no payload → EMPTY"
         );
     }
+
+    /// Regression test: should_extend_payload must use the proposer_boost_root
+    /// passed through find_head, not the stale previous_proposer_boost.root.
+    ///
+    /// Setup: block at slot 1 with envelope_received but NOT timely (PTC quorum 0).
+    /// - previous_proposer_boost.root set to Hash256::zero() (stale, would cause
+    ///   should_extend_payload to short-circuit to true → FULL wins tiebreaker)
+    /// - find_head called with proposer_boost_root=root(2), whose parent builds on
+    ///   EMPTY path of root(1), so should_extend_payload returns false → EMPTY wins
+    ///
+    /// If the stale value were used instead, FULL would incorrectly win.
+    #[test]
+    fn find_head_gloas_proposer_boost_root_propagated_not_stale() {
+        let (mut fc, spec) = new_gloas_fc();
+
+        // Block at slot 1: payload revealed (FULL child exists) but NOT timely
+        insert_gloas_block_ext(
+            &mut fc,
+            1,
+            root(1),
+            root(0),
+            Some(exec_hash(1)),
+            Some(exec_hash(0)),
+            true,  // payload_revealed
+            0,     // proposer_index
+            false, // ptc_timely = false
+            true,  // envelope_received
+        );
+
+        // Insert child block at slot 2 that builds on EMPTY parent (mismatched hashes)
+        // and mark it execution-invalid so it can't become head itself.
+        insert_gloas_block_ext(
+            &mut fc,
+            2,
+            root(2),
+            root(1),
+            Some(exec_hash(2)),
+            Some(exec_hash(99)), // != exec_hash(1) → parent EMPTY
+            false,
+            0,
+            false,
+            false,
+        );
+        if let Some(&idx) = fc.proto_array.indices.get(&root(2)) {
+            fc.proto_array.nodes[idx].execution_status =
+                ExecutionStatus::Invalid(ExecutionBlockHash::zero());
+        }
+
+        // Set previous_proposer_boost to zero — stale value that would cause
+        // should_extend_payload to short-circuit to true if incorrectly read.
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: Hash256::zero(),
+            score: 0,
+        };
+
+        let balances = balances(0);
+
+        // Call find_head with root(2) as proposer_boost_root.
+        // root(2)'s parent is root(1) via EMPTY path → should_extend_payload=false
+        // → FULL tiebreaker=0, EMPTY tiebreaker=1 → EMPTY wins.
+        let head = fc
+            .find_head::<MinimalEthSpec>(
+                genesis_checkpoint(),
+                genesis_checkpoint(),
+                &balances,
+                root(2),
+                &BTreeSet::new(),
+                Slot::new(2),
+                &spec,
+            )
+            .unwrap();
+
+        assert_eq!(head, root(1));
+        assert_eq!(
+            fc.gloas_head_payload_status(),
+            Some(GloasPayloadStatus::Empty as u8),
+            "EMPTY should win: find_head's proposer_boost_root must be used \
+             (not stale previous_proposer_boost.root)"
+        );
+    }
 }
