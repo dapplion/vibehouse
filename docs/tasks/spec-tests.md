@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec compliance audit, gossip type deviation found (run 365)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **New PRs tracked**: #4944 (ExecutionProofsByRoot multi-root, eip8025), #4898 (remove pending from tiebreaker — code already in vibehouse, reverted to match current spec), #4892 (remove impossible branch — code matches spec)
+- **EF fork choice tests**: 8/8 pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update)
+- **Gloas verification tests**: 57/57 pass (all bid, envelope, attestation gossip verification paths)
+- **Zero clippy warnings, zero compilation warnings across workspace**
+- **CI health**: All recent completed runs green (success). 3 in-progress runs from latest doc pushes.
+- **Gossip type deviation found**: The spec defines `payload_attestation_message` gossip topic as carrying `PayloadAttestationMessage` (individual: `validator_index` + `data` + `signature`), but vibehouse publishes `PayloadAttestation` (aggregated: `aggregation_bits` + `data` + `signature`). These have different SSZ layouts (8-byte validator_index vs 64-byte bitvector). The BN converts `PayloadAttestationMessage` → `PayloadAttestation` in `import_payload_attestation_message()` before publishing on gossip. This works for all-vibehouse devnets but would break interoperability with spec-conformant clients. Design choice from initial wire-up (commit `b0fafabd6`). Not urgent since vibehouse is the only Gloas implementation, but should be fixed before multi-client testing.
+- **Untested error paths audit**: 10 untested error variants across bid/envelope/attestation verification. All are defensive/impossible paths (BeaconChainError, BeaconStateError, ArithError wrappers + InvalidAggregationBits, PtcCommitteeError, MissingBeaconBlock, NotGloasBlock). These require internal state inconsistencies to trigger and are not practically testable in integration tests without mocking.
+- **Spec PR readiness**: EF test runner already supports `OnExecutionPayload` step + `head_payload_status` check (ready for #4940 test vectors when they're released)
+
 ### 2026-03-02 — spec tracking, coverage audit (run 364)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
