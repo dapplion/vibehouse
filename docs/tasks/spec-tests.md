@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — envelope execution request state-change tests, spec tracking (run 358)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Envelope execution request state-change tests shipped** — 3 new unit tests in `envelope_processing.rs`:
+  - `envelope_withdrawal_request_initiates_full_exit`: full exit request via envelope with matching source_address → validator exit_epoch set, withdrawable_epoch set. Tests the state-changing path where `process_withdrawal_requests` actually calls `initiate_validator_exit`.
+  - `envelope_withdrawal_request_wrong_source_is_noop`: withdrawal request with mismatched source_address → no exit initiated. Tests the credential validation guard.
+  - `envelope_deposit_and_withdrawal_request_combined`: deposit request (new validator → pending_deposits) AND withdrawal request (full exit for validator 0) in the same envelope → both effects visible. Tests that multiple execution request types in a single envelope are processed independently.
+- **All 538 state_processing tests pass** (535 + 3 new)
+- **Clippy**: zero warnings (state_processing, production + tests)
+- **Remaining medium-priority coverage gaps**:
+  - Envelope processing with execution requests that trigger state changes — **DONE** (this run)
+  - Stale attestation filtering in block production (wrong beacon_block_root due to reorg)
+  - PTC duties at epoch boundaries (lower priority)
+  - Execution proof acceptance path (lower priority)
+
 ### 2026-03-02 — PTC quorum integration tests, spec tracking (run 357)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
