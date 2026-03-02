@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — PTC double-counting regression tests and spec audit (run 389)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- New spec master commit: `#4952 - Use seeded rng in tests` (CI-only, no spec changes)
+- All open Gloas spec PRs unchanged: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Verified spec alignment**: PR #4948 (payload status reorder Empty=0, Full=1, Pending=2) — already matches our `GloasPayloadStatus` enum. PR #4947 (pre-fork proposer_preferences subscription) — already implemented (commit a80459a7a + `PRE_FORK_SUBSCRIBE_EPOCHS=1`). PR #4941 (execution proof construction uses block.parent_root) — doesn't affect our proof generator (uses block_root/block_hash only).
+- **Pushed 3 unpushed commits from run 388** that fix CI failures: PTC double-counting fix (f448189c6), test assertion updates (b8539b638), task doc update (f21c90765). CI was failing on 3 beacon_chain tests; now all pass.
+- **New tests: 2 PTC double-counting regression tests** (01b71a5f9):
+  - `gloas_full_ptc_gossip_then_block_no_double_count`: All PTC members (PTC_SIZE=2) attest via gossip, then block includes all. Weight must stay at 2, not double to 4.
+  - `gloas_partial_gossip_full_inblock_no_double_count`: Both PTC members via gossip, then block includes both. Weight stays at 2.
+- **719/719 beacon_chain tests pass** (2 new), **266/266 fork_choice + proto_array tests pass**
+- **Zero clippy warnings**
+
 ### 2026-03-02 — fix PTC weight double-counting and update test assertions (run 388)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - All open Gloas spec PRs unchanged
