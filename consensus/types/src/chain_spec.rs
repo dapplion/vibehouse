@@ -1921,8 +1921,12 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_fork_epoch")]
     pub gloas_fork_epoch: Option<MaybeQuoted<Epoch>>,
 
+    #[serde(default = "default_seconds_per_slot")]
     #[serde(with = "serde_utils::quoted_u64")]
     seconds_per_slot: u64,
+    #[serde(default)]
+    #[serde(with = "serde_utils::quoted_u64")]
+    slot_duration_ms: u64,
     #[serde(with = "serde_utils::quoted_u64")]
     seconds_per_eth1_block: u64,
     #[serde(with = "serde_utils::quoted_u64")]
@@ -2130,6 +2134,13 @@ fn default_terminal_block_hash() -> ExecutionBlockHash {
 
 fn default_terminal_block_hash_activation_epoch() -> Epoch {
     Epoch::new(u64::MAX)
+}
+
+/// Default for configs that omit SECONDS_PER_SLOT (deprecated by spec PR #4926).
+/// The value 0 is a sentinel: `apply_to_chain_spec` derives it from SLOT_DURATION_MS
+/// or the preset default when it sees 0.
+const fn default_seconds_per_slot() -> u64 {
+    0
 }
 
 fn default_subnets_per_node() -> u8 {
@@ -2450,6 +2461,7 @@ impl Config {
                 .map(|epoch| MaybeQuoted { value: epoch }),
 
             seconds_per_slot: spec.seconds_per_slot,
+            slot_duration_ms: spec.slot_duration_ms,
             seconds_per_eth1_block: spec.seconds_per_eth1_block,
             min_validator_withdrawability_delay: spec.min_validator_withdrawability_delay,
             shard_committee_period: spec.shard_committee_period,
@@ -2550,6 +2562,7 @@ impl Config {
             gloas_fork_version,
             gloas_fork_epoch,
             seconds_per_slot,
+            slot_duration_ms,
             seconds_per_eth1_block,
             min_validator_withdrawability_delay,
             shard_committee_period,
@@ -2631,7 +2644,22 @@ impl Config {
             fulu_fork_version,
             gloas_fork_version,
             gloas_fork_epoch: gloas_fork_epoch.map(|q| q.value),
-            seconds_per_slot,
+            // Forward-compat: SECONDS_PER_SLOT is deprecated (spec PR #4926).
+            // Derive from SLOT_DURATION_MS when missing, fall back to preset.
+            seconds_per_slot: if seconds_per_slot > 0 {
+                seconds_per_slot
+            } else if slot_duration_ms > 0 {
+                slot_duration_ms / 1000
+            } else {
+                chain_spec.seconds_per_slot
+            },
+            slot_duration_ms: if slot_duration_ms > 0 {
+                slot_duration_ms
+            } else if seconds_per_slot > 0 {
+                seconds_per_slot.saturating_mul(1000)
+            } else {
+                chain_spec.slot_duration_ms
+            },
             seconds_per_eth1_block,
             min_validator_withdrawability_delay,
             shard_committee_period,
@@ -3704,6 +3732,125 @@ mod yaml_tests {
         assert!(
             err.contains("duplicate epoch"),
             "Error should mention duplicate epoch, got: {err}"
+        );
+    }
+
+    /// Config with SLOT_DURATION_MS but no SECONDS_PER_SLOT (spec PR #4926 deprecation).
+    /// Both seconds_per_slot and slot_duration_ms should be correctly derived.
+    #[test]
+    fn config_without_seconds_per_slot() {
+        let spec_contents = r#"
+        PRESET_BASE: 'mainnet'
+        MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
+        MIN_GENESIS_TIME: 1606824000
+        GENESIS_FORK_VERSION: 0x00000000
+        GENESIS_DELAY: 604800
+        ALTAIR_FORK_VERSION: 0x01000000
+        ALTAIR_FORK_EPOCH: 74240
+        SLOT_DURATION_MS: 12000
+        SECONDS_PER_ETH1_BLOCK: 14
+        MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+        SHARD_COMMITTEE_PERIOD: 256
+        ETH1_FOLLOW_DISTANCE: 2048
+        INACTIVITY_SCORE_BIAS: 4
+        INACTIVITY_SCORE_RECOVERY_RATE: 16
+        EJECTION_BALANCE: 16000000000
+        MIN_PER_EPOCH_CHURN_LIMIT: 4
+        MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 8
+        CHURN_LIMIT_QUOTIENT: 65536
+        PROPOSER_SCORE_BOOST: 40
+        DEPOSIT_CHAIN_ID: 1
+        DEPOSIT_NETWORK_ID: 1
+        DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
+        "#;
+        let config: Config =
+            serde_yaml::from_str(spec_contents).expect("should parse without SECONDS_PER_SLOT");
+        let spec = ChainSpec::from_config::<MainnetEthSpec>(&config)
+            .expect("should create spec without SECONDS_PER_SLOT");
+
+        assert_eq!(
+            spec.seconds_per_slot, 12,
+            "should derive from SLOT_DURATION_MS"
+        );
+        assert_eq!(
+            spec.slot_duration_ms, 12000,
+            "should use SLOT_DURATION_MS directly"
+        );
+    }
+
+    /// Config with both SECONDS_PER_SLOT and SLOT_DURATION_MS preserves both values.
+    #[test]
+    fn config_with_both_slot_timing_fields() {
+        let spec_contents = r#"
+        PRESET_BASE: 'mainnet'
+        MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
+        MIN_GENESIS_TIME: 1606824000
+        GENESIS_FORK_VERSION: 0x00000000
+        GENESIS_DELAY: 604800
+        ALTAIR_FORK_VERSION: 0x01000000
+        ALTAIR_FORK_EPOCH: 74240
+        SECONDS_PER_SLOT: 12
+        SLOT_DURATION_MS: 12000
+        SECONDS_PER_ETH1_BLOCK: 14
+        MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+        SHARD_COMMITTEE_PERIOD: 256
+        ETH1_FOLLOW_DISTANCE: 2048
+        INACTIVITY_SCORE_BIAS: 4
+        INACTIVITY_SCORE_RECOVERY_RATE: 16
+        EJECTION_BALANCE: 16000000000
+        MIN_PER_EPOCH_CHURN_LIMIT: 4
+        MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 8
+        CHURN_LIMIT_QUOTIENT: 65536
+        PROPOSER_SCORE_BOOST: 40
+        DEPOSIT_CHAIN_ID: 1
+        DEPOSIT_NETWORK_ID: 1
+        DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
+        "#;
+        let config: Config =
+            serde_yaml::from_str(spec_contents).expect("should parse with both fields");
+        let spec = ChainSpec::from_config::<MainnetEthSpec>(&config)
+            .expect("should create spec with both fields");
+
+        assert_eq!(spec.seconds_per_slot, 12);
+        assert_eq!(spec.slot_duration_ms, 12000);
+    }
+
+    /// Config with only SECONDS_PER_SLOT (pre-#4926 format) still derives slot_duration_ms.
+    #[test]
+    fn config_with_only_seconds_per_slot() {
+        let spec_contents = r#"
+        PRESET_BASE: 'mainnet'
+        MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 16384
+        MIN_GENESIS_TIME: 1606824000
+        GENESIS_FORK_VERSION: 0x00000000
+        GENESIS_DELAY: 604800
+        ALTAIR_FORK_VERSION: 0x01000000
+        ALTAIR_FORK_EPOCH: 74240
+        SECONDS_PER_SLOT: 12
+        SECONDS_PER_ETH1_BLOCK: 14
+        MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
+        SHARD_COMMITTEE_PERIOD: 256
+        ETH1_FOLLOW_DISTANCE: 2048
+        INACTIVITY_SCORE_BIAS: 4
+        INACTIVITY_SCORE_RECOVERY_RATE: 16
+        EJECTION_BALANCE: 16000000000
+        MIN_PER_EPOCH_CHURN_LIMIT: 4
+        MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 8
+        CHURN_LIMIT_QUOTIENT: 65536
+        PROPOSER_SCORE_BOOST: 40
+        DEPOSIT_CHAIN_ID: 1
+        DEPOSIT_NETWORK_ID: 1
+        DEPOSIT_CONTRACT_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
+        "#;
+        let config: Config =
+            serde_yaml::from_str(spec_contents).expect("should parse with only SECONDS_PER_SLOT");
+        let spec = ChainSpec::from_config::<MainnetEthSpec>(&config)
+            .expect("should create spec with only SECONDS_PER_SLOT");
+
+        assert_eq!(spec.seconds_per_slot, 12);
+        assert_eq!(
+            spec.slot_duration_ms, 12000,
+            "should derive from SECONDS_PER_SLOT * 1000"
         );
     }
 }
