@@ -590,31 +590,28 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let _timer = metrics::start_timer(&metrics::PAYLOAD_ATTESTATION_GOSSIP_VERIFICATION_TIMES);
         let attestation_slot = attestation.data.slot;
 
-        // Check 1: Slot validation
-        let current_slot = self
-            .slot_clock
-            .now()
-            .ok_or(BeaconChainError::UnableToReadSlot)?;
-
+        // Check 1: Slot validation (with clock disparity tolerance)
         let gossip_clock_disparity = self.spec.maximum_gossip_clock_disparity();
-        let earliest_permissible_slot = current_slot
-            .as_u64()
-            .saturating_sub(gossip_clock_disparity.as_secs() / self.spec.seconds_per_slot);
-        let latest_permissible_slot = current_slot
-            .as_u64()
-            .saturating_add(gossip_clock_disparity.as_secs() / self.spec.seconds_per_slot);
 
-        if attestation_slot.as_u64() < earliest_permissible_slot {
-            return Err(PayloadAttestationError::PastSlot {
+        let latest_permissible_slot = self
+            .slot_clock
+            .now_with_future_tolerance(gossip_clock_disparity)
+            .ok_or(BeaconChainError::UnableToReadSlot)?;
+        if attestation_slot > latest_permissible_slot {
+            return Err(PayloadAttestationError::FutureSlot {
                 attestation_slot,
-                earliest_permissible_slot: Slot::new(earliest_permissible_slot),
+                latest_permissible_slot,
             });
         }
 
-        if attestation_slot.as_u64() > latest_permissible_slot {
-            return Err(PayloadAttestationError::FutureSlot {
+        let earliest_permissible_slot = self
+            .slot_clock
+            .now_with_past_tolerance(gossip_clock_disparity)
+            .ok_or(BeaconChainError::UnableToReadSlot)?;
+        if attestation_slot < earliest_permissible_slot {
+            return Err(PayloadAttestationError::PastSlot {
                 attestation_slot,
-                latest_permissible_slot: Slot::new(latest_permissible_slot),
+                earliest_permissible_slot,
             });
         }
 
