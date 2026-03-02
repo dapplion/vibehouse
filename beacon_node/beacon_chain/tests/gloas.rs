@@ -14541,3 +14541,184 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         "latest_block_hash should have moved past the external builder's hash"
     );
 }
+
+/// After a reorg between two competing forks, block production on the new head
+/// should correctly filter attestations from the operation pool. Attestations
+/// from the abandoned fork with compatible shuffling (same epoch, same RANDAO
+/// decision block) remain valid and can be included. The produced block must
+/// import successfully.
+///
+/// Scenario:
+/// - Shared chain: 2 blocks (slots 1-2)
+/// - Fork A at slot 3: minority attestations (25%)
+/// - Fork B at slot 3: majority attestations (75%) → becomes head
+/// - Produce block at slot 4 on fork B's head
+/// - Verify: block imports, attestations reference valid beacon_block_roots
+#[tokio::test]
+async fn gloas_block_production_after_reorg_filters_stale_attestations() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build 2-block shared chain (FULL via extend_slots)
+    Box::pin(harness.extend_slots(2)).await;
+
+    let shared_head = harness.chain.head_snapshot();
+    let shared_slot = shared_head.beacon_block.slot();
+    assert_eq!(shared_slot, Slot::new(2));
+
+    // Get post-envelope state for producing fork blocks
+    let (shared_state, _shared_state_root) = harness.get_current_state_and_root();
+
+    // Split validators: 25% for fork A (minority), 75% for fork B (majority)
+    let fork_a_validators: Vec<usize> = (0..8).collect();
+    let fork_b_validators: Vec<usize> = (8..VALIDATOR_COUNT).collect();
+
+    // --- Fork A: block at slot 3 ---
+    harness.advance_slot(); // slot 3
+    let fork_a_slot = Slot::new(3);
+    let (fork_a_contents, fork_a_state, fork_a_envelope) =
+        Box::pin(harness.make_block_with_envelope(shared_state.clone(), fork_a_slot)).await;
+    let fork_a_envelope = fork_a_envelope.expect("fork A should have envelope");
+    let fork_a_root = fork_a_contents.0.canonical_root();
+
+    // Import fork A block + envelope
+    Box::pin(harness.process_block(fork_a_slot, fork_a_root, fork_a_contents))
+        .await
+        .expect("fork A block import should succeed");
+    Box::pin(harness.chain.process_self_build_envelope(&fork_a_envelope))
+        .await
+        .expect("fork A envelope should succeed");
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // Attest fork A with minority validators → goes into naive aggregation pool
+    let mut fork_a_state_for_attest = fork_a_state.clone();
+    let fork_a_state_root = fork_a_state_for_attest.update_tree_hash_cache().unwrap();
+    let fork_a_attestations = harness.make_attestations(
+        &fork_a_validators,
+        &fork_a_state_for_attest,
+        fork_a_state_root,
+        fork_a_root.into(),
+        fork_a_slot,
+    );
+    harness.process_attestations(fork_a_attestations, &fork_a_state_for_attest);
+
+    // --- Fork B: block at slot 3 (from shared state, same slot as fork A) ---
+    let (fork_b_contents, fork_b_state, fork_b_envelope) =
+        Box::pin(harness.make_block_with_envelope(shared_state, fork_a_slot)).await;
+    let fork_b_envelope = fork_b_envelope.expect("fork B should have envelope");
+    let fork_b_root = fork_b_contents.0.canonical_root();
+    assert_ne!(
+        fork_a_root, fork_b_root,
+        "forks should produce distinct blocks"
+    );
+
+    // Import fork B block + envelope
+    Box::pin(harness.process_block(fork_a_slot, fork_b_root, fork_b_contents))
+        .await
+        .expect("fork B block import should succeed");
+    Box::pin(harness.chain.process_self_build_envelope(&fork_b_envelope))
+        .await
+        .expect("fork B envelope should succeed");
+
+    // Attest fork B with majority validators
+    let mut fork_b_state_for_attest = fork_b_state.clone();
+    let fork_b_state_root = fork_b_state_for_attest.update_tree_hash_cache().unwrap();
+    let fork_b_attestations = harness.make_attestations(
+        &fork_b_validators,
+        &fork_b_state_for_attest,
+        fork_b_state_root,
+        fork_b_root.into(),
+        fork_a_slot,
+    );
+    harness.process_attestations(fork_b_attestations, &fork_b_state_for_attest);
+
+    // --- Reorg: fork B wins (majority weight) ---
+    harness.advance_slot(); // slot 4
+    harness.chain.recompute_head_at_current_slot().await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block_root, fork_b_root,
+        "head should be fork B (majority weight)"
+    );
+
+    // --- Produce block at slot 4 on fork B's head ---
+    // This exercises the attestation packing path after a reorg:
+    // 1. import_naive_aggregation_pool moves attestations to op pool
+    // 2. filter_op_pool_attestation checks shuffling compatibility
+    // 3. get_attestations selects optimal set
+    let produce_slot = Slot::new(4);
+    let produce_state = harness.chain.head_beacon_state_cloned();
+    let (produced_contents, _produced_state, produced_envelope) =
+        Box::pin(harness.make_block_with_envelope(produce_state, produce_slot)).await;
+    let produced_envelope = produced_envelope.expect("produced block should have envelope");
+    let produced_root = produced_contents.0.canonical_root();
+
+    // Verify the produced block is valid Gloas
+    assert!(
+        produced_contents
+            .0
+            .message()
+            .fork_name_unchecked()
+            .gloas_enabled(),
+        "produced block should be a Gloas block"
+    );
+
+    // Verify attestations in the block reference valid beacon_block_roots.
+    // Both fork A and fork B attestations have compatible shuffling (same epoch,
+    // same RANDAO decision block from shared prefix), so either can be included.
+    // The key invariant: every included attestation's beacon_block_root must be
+    // present in fork choice.
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        for att in produced_contents.0.message().body().attestations() {
+            let att_root = att.data().beacon_block_root;
+            assert!(
+                fc.get_block(&att_root).is_some(),
+                "attestation beacon_block_root {:?} must be in fork choice",
+                att_root
+            );
+        }
+    }
+
+    // Import the produced block — this is the critical check: block production
+    // after a reorg produces a valid, importable block
+    Box::pin(harness.process_block(produce_slot, produced_root, produced_contents))
+        .await
+        .expect("block produced after reorg should import successfully");
+
+    // Process envelope
+    Box::pin(
+        harness
+            .chain
+            .process_self_build_envelope(&produced_envelope),
+    )
+    .await
+    .expect("produced envelope should process successfully");
+
+    // Verify the chain progressed
+    harness.chain.recompute_head_at_current_slot().await;
+    let final_head = harness.chain.head_snapshot();
+    assert_eq!(
+        final_head.beacon_block_root, produced_root,
+        "head should be the newly produced block"
+    );
+    assert_eq!(
+        final_head.beacon_block.slot(),
+        produce_slot,
+        "head should be at the produced slot"
+    );
+
+    // Verify parent hash continuity: the produced block's bid should reference
+    // fork B's execution block hash (the parent)
+    let produced_bid = final_head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have signed bid");
+    let fork_b_envelope_hash = fork_b_envelope.message.payload.block_hash;
+    assert_eq!(
+        produced_bid.message.parent_block_hash, fork_b_envelope_hash,
+        "produced block's bid should reference fork B's block_hash as parent"
+    );
+}

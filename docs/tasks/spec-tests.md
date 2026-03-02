@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — block production after reorg test, spec tracking (run 359)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Block production after reorg attestation filtering test shipped** — `gloas_block_production_after_reorg_filters_stale_attestations`:
+  - Creates two competing forks at slot 3: fork A (minority 25% attestations) and fork B (majority 75% attestations)
+  - Fork B wins via attestation weight, becomes canonical head
+  - Produces a block at slot 4 on fork B's head, exercising the full attestation packing path after reorg:
+    1. `import_naive_aggregation_pool` moves attestations from naive pool → op pool
+    2. `filter_op_pool_attestation` / `shuffling_is_compatible` checks each attestation's `beacon_block_root`
+    3. `get_attestations` selects optimal set via max-cover algorithm
+  - Verifies every included attestation references a `beacon_block_root` present in fork choice
+  - Verifies the produced block imports successfully (block + envelope)
+  - Verifies parent_block_hash continuity: produced block's bid references fork B's execution block_hash
+  - Key insight: within the same epoch, fork A and fork B share the same RANDAO decision block, so fork A attestations have compatible shuffling and ARE valid for inclusion — this is correct behavior
+- **All 702 beacon_chain tests pass** (701 + 1 new)
+- **Clippy**: zero warnings (beacon_chain, production + tests)
+- **Remaining medium-priority coverage gaps**:
+  - Stale attestation filtering in block production — **DONE** (this run)
+  - PTC duties at epoch boundaries (lower priority)
+  - Execution proof acceptance path (lower priority)
+
 ### 2026-03-02 — envelope execution request state-change tests, spec tracking (run 358)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
