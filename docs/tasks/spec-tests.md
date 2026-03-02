@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — targeted test coverage for untested production paths (run 375)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 6+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged. No new Gloas PRs opened.
+- **CI health**: All completed runs green. Latest nightly (Mar 1) fully green.
+- **Systematic untested code path analysis**: Used the Explore agent to audit beacon_chain, fork_choice, proto_array, and state_processing for production code paths lacking test coverage. Identified 10 candidate gaps ranked by bug-catching potential. Top 3 addressed:
+- **New test: `gloas_process_payload_envelope_el_invalid_returns_error`**: Exercises the external builder / gossip path where the EL returns `PayloadStatus::Invalid` for `newPayload`. Verifies the method returns an error (not silent acceptance) and the block remains Optimistic. This was the #1 gap — the self-build path had this test but the gossip path did not.
+- **New test: `gloas_process_payload_envelope_el_invalid_block_hash_returns_error`**: Same as above but for `PayloadStatus::InvalidBlockHash`. Verifies the error message mentions "invalid block hash".
+- **New test: `pending_node_ptc_quorum_without_envelope_has_empty_child_only`**: Exercises `get_gloas_children` with `payload_revealed=true` (PTC quorum reached) but `envelope_received=false` (envelope never arrived). Verifies only the EMPTY virtual child is created — no spurious FULL child. Uses `insert_gloas_block_ext` to independently control these two fields.
+- **Already covered (no new test needed)**: `on_execution_bid` resetting `payload_data_available` — already tested by `bid_after_envelope_resets_revealed_state` in fork_choice.rs (line 4230), which asserts `!node.payload_data_available` after bid.
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+- **Zero clippy warnings across workspace**
+
 ### 2026-03-02 — comprehensive merged PR audit, full spec compliance verification (run 374)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 6+ days of silence on master.
