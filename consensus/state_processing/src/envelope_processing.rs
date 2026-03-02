@@ -3100,4 +3100,160 @@ mod tests {
             "new withdrawal appended"
         );
     }
+
+    // ── Withdrawal/exit request via envelope ──────────────────
+
+    #[test]
+    fn envelope_withdrawal_request_initiates_full_exit() {
+        let (mut state, mut spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        // Allow immediate exit (bypass shard_committee_period check)
+        spec.shard_committee_period = 0;
+
+        // Build all required caches
+        state.update_pubkey_cache().unwrap();
+        state.build_total_active_balance_cache(&spec).unwrap();
+
+        // Validator 0 has withdrawal credentials [0x01, 0x00*11, 0xAA*20]
+        // so source_address must be 0xAA..AA
+        let validator_pubkey = state.validators().get(0).unwrap().pubkey;
+
+        // Sanity: validator has not exited
+        assert_eq!(
+            state.validators().get(0).unwrap().exit_epoch,
+            spec.far_future_epoch,
+            "sanity: validator should not have exited yet"
+        );
+
+        let withdrawal_request = WithdrawalRequest {
+            source_address: Address::repeat_byte(0xAA),
+            validator_pubkey,
+            amount: spec.full_exit_request_amount,
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.withdrawals.push(withdrawal_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Validator 0 should now have exit epoch set
+        assert_ne!(
+            state.validators().get(0).unwrap().exit_epoch,
+            spec.far_future_epoch,
+            "validator should have exit initiated after full exit request"
+        );
+        // Withdrawable epoch should also be set
+        assert_ne!(
+            state.validators().get(0).unwrap().withdrawable_epoch,
+            spec.far_future_epoch,
+            "validator withdrawable_epoch should be set"
+        );
+    }
+
+    #[test]
+    fn envelope_withdrawal_request_wrong_source_is_noop() {
+        let (mut state, mut spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        spec.shard_committee_period = 0;
+
+        state.update_pubkey_cache().unwrap();
+        state.build_total_active_balance_cache(&spec).unwrap();
+
+        let validator_pubkey = state.validators().get(0).unwrap().pubkey;
+
+        // Wrong source_address (validator has 0xAA..AA, we send 0xBB..BB)
+        let withdrawal_request = WithdrawalRequest {
+            source_address: Address::repeat_byte(0xBB),
+            validator_pubkey,
+            amount: spec.full_exit_request_amount,
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.withdrawals.push(withdrawal_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Validator should NOT have exited (wrong source address)
+        assert_eq!(
+            state.validators().get(0).unwrap().exit_epoch,
+            spec.far_future_epoch,
+            "validator should not exit when source_address doesn't match"
+        );
+    }
+
+    #[test]
+    fn envelope_deposit_and_withdrawal_request_combined() {
+        let (mut state, mut spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        spec.shard_committee_period = 0;
+
+        state.update_pubkey_cache().unwrap();
+        state.update_builder_pubkey_cache().unwrap();
+        state.build_total_active_balance_cache(&spec).unwrap();
+
+        // Deposit: new validator pubkey → pending_deposits
+        let mut val_creds = [0u8; 32];
+        val_creds[0] = 0x01;
+        let deposit_request = DepositRequest {
+            pubkey: PublicKeyBytes::deserialize(&[0xAB; 48])
+                .unwrap_or_else(|_| PublicKeyBytes::empty()),
+            withdrawal_credentials: Hash256::from_slice(&val_creds),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 0,
+        };
+
+        // Withdrawal: full exit for validator 0
+        let validator_pubkey = state.validators().get(0).unwrap().pubkey;
+        let withdrawal_request = WithdrawalRequest {
+            source_address: Address::repeat_byte(0xAA),
+            validator_pubkey,
+            amount: spec.full_exit_request_amount,
+        };
+
+        let mut requests = ExecutionRequests::default();
+        requests.deposits.push(deposit_request).unwrap();
+        requests.withdrawals.push(withdrawal_request).unwrap();
+
+        let mut envelope = make_valid_envelope_with_requests(&state, requests);
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        // Both effects should be visible
+        assert_eq!(
+            state.pending_deposits().unwrap().len(),
+            1,
+            "deposit should be added to pending_deposits"
+        );
+        assert_ne!(
+            state.validators().get(0).unwrap().exit_epoch,
+            spec.far_future_epoch,
+            "validator should have exit initiated"
+        );
+    }
 }
