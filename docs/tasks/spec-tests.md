@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — self-build envelope failure and DB state reload tests (run 378)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. 8+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged. Notable: #4932 (sanity/blocks tests) now has 6 reviews, #4939 (missing envelope requests) has 5 reviews, #4843 (variable PTC deadline) has 11 reviews.
+- **CI health**: All completed runs green. 3 runs queued from run 377.
+- **Systematic untested code path audit**: Used 3 parallel Explore agents to audit fork_choice/beacon_chain, state_processing, and network/gossip for Gloas code paths lacking test coverage. Identified ~28 candidate gaps across all three areas, ranked by consensus-bug risk.
+- **New test: `gloas_self_build_envelope_state_transition_fails_after_el_valid`**: Same failure pattern as the gossip-path test from run 377, but exercises `process_self_build_envelope` instead of `process_payload_envelope`. In the self-build path, `on_execution_payload` (step 1), EL validation (step 2), and `on_valid_execution_payload` (step 3) all succeed BEFORE the state transition (step 5). The test verifies:
+  - State transition fails with `BuilderIndexMismatch` (corrupted state cache)
+  - Fork choice retains `execution_status=Valid` AND `payload_revealed=true` (steps 1-3 already ran)
+  - State cache was NOT updated with post-envelope state
+- **New test: `gloas_get_advanced_hot_state_reapplies_envelope_from_db`**: Exercises the DB fallback path in `get_advanced_hot_state` (hot_cold_store.rs:1184-1230) when the state cache is cold. This simulates a node restart or cache eviction:
+  - Builds 3 blocks with envelopes, evicts the head state from cache
+  - Verifies cache miss, then calls `get_advanced_hot_state`
+  - Verifies the DB path correctly loads the pre-envelope state from disk, finds the stored envelope, and re-applies it (restoring `latest_block_hash` and `execution_payload_availability`)
+  - Imports the next block successfully using the reloaded state
+- **Key architectural insight**: The `load_parent` patch in block_verification.rs (line 2005-2022) only patches `latest_block_hash`, but envelope processing also modifies `execution_payload_availability`, builder payments, and execution requests. Range sync without envelopes would fail with `StateRootMismatch` even with the patch. The actual safety mechanism for range sync is `get_advanced_hot_state`'s DB path re-applying the envelope from the store (which IS tested by the new test).
+- **712/712 beacon_chain tests pass** (2 new tests added)
+- **Zero clippy warnings across workspace**
+
 ### 2026-03-02 — envelope state transition failure test (run 377)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26
