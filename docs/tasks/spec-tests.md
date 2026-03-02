@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — comprehensive codebase and spec compliance audit (run 379)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26. 9+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4950 (4 approvals, likely to merge, no vibehouse changes needed), #4940 (fork choice tests, 0 approvals), #4939 (missing envelope requests, 0 approvals), #4932 (sanity/blocks tests, 0 approvals), #4843 (variable PTC deadline, 1 approval, stalled since Jan 21), #4840 (SLOTNUM, stale), #4630 (forward-compatible SSZ, stale).
+- **CI health**: All completed runs green. Nightly (Mar 2) fully green. 3 CI runs in progress.
+- **Systematic codebase audit**: Used Explore agent to identify ~8 candidate untested Gloas code paths ranked by consensus-bug risk. On closer manual inspection, ALL identified paths are either already tested or structurally unreachable:
+  - Skip-slot attestation payload_present: covered by `gloas_attestation_non_same_slot_payload_revealed_index_one` + `gloas_attestation_refused_for_unrevealed_payload_block` (EMPTY blocks stay Optimistic, attestation refused)
+  - Builder pending payment epoch rotation: 15 unit tests in `per_epoch_processing/gloas.rs`, quorum boundary (>=) matches spec exactly
+  - EMPTY vs FULL virtual child fork choice: covered by `pending_node_ptc_quorum_without_envelope_has_empty_child_only` (run 375) + `gloas_head_payload_status_*` tests
+  - Proposer preferences bid filtering: 8+ gossip handler tests covering before/after preferences, fee_recipient/gas_limit mismatch
+  - `on_valid_execution_payload` idempotency: structurally safe (`propagate_execution_payload_validation_by_index` returns early if already Valid)
+  - `process_withdrawals_gloas` parent block status: 3+ tests including `is_parent_block_full_both_zero_hashes` and EMPTY parent with pending withdrawals
+  - `payload_expected_withdrawals` stale value: not a bug — spec does not clear it for EMPTY parents, and envelope processing (which reads it) only runs for FULL parents
+  - `get_expected_withdrawals_gloas` vs `process_withdrawals_gloas` divergence: verified structurally identical withdrawal computation logic
+- **PR #4950 readiness**: vibehouse's `handle_execution_payload_envelopes_by_root_request_inner` has no restrictive epoch-based range check — serves any envelope from store by root. No changes needed when #4950 merges. Same for `handle_blocks_by_root_request_inner`.
+- **Code quality**: Zero compilation warnings, zero clippy warnings, zero unwrap/panic in production code, zero TODOs in Gloas production code (only inherited non-actionable ones from Lighthouse)
+- **Test coverage metrics**: 15,917 lines in gloas.rs integration tests, 52 envelope processing unit tests, 3,259 lines in envelope_processing.rs, 712+ beacon_chain tests, 2555+ workspace tests, 78/78 EF tests (real crypto), 138/138 (fake crypto)
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass (inferred — no code changes)
+
 ### 2026-03-02 — self-build envelope failure and DB state reload tests (run 378)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26. 8+ days of silence on master.
