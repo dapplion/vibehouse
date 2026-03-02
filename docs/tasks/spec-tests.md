@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — bid pool edge case + fork choice same-slot vote tests (run 404)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **CI health**: Runs 396-399 fully green. Runs 400-403 in progress.
+- **Comprehensive test coverage audit** of gossip verification, bid pool, and fork choice paths. Identified 2 genuinely untested gossip error variants (`InvalidAggregationBits`, `PtcCommitteeError`) but both are defensively unreachable under normal operation (PtcSize is fixed at 512, matching BitVector size). Focused on writing tests for real behavioral edge cases instead.
+- **5 new bid pool tests** added to `beacon_node/beacon_chain/src/execution_bid_pool.rs`:
+  - `reorg_scenario_old_parent_bids_invisible_new_parent_selectable`: Simulates a re-org where bids targeting parent root A become invisible when querying with parent root B (the new head). Verifies that both old and new root bids coexist correctly and are filtered per query.
+  - `same_parent_root_different_parent_block_hash_both_eligible`: Documents that the bid pool filters only by `parent_block_root`, not `parent_block_hash`. Bids with different `parent_block_hash` values are both eligible, with block-level validation happening later in `process_execution_payload_bid`.
+  - `sequential_prune_calls_preserve_window_correctly`: Verifies that pruning at sequential slots (10, 11, 20) correctly preserves the retention window and removes stale bids progressively.
+  - `insert_after_prune_same_builder_works`: Ensures re-inserting at a pruned slot works correctly since pruning removes the slot's HashMap entry entirely.
+  - Added `make_bid_full` helper for constructing bids with both `parent_block_root` and `parent_block_hash` set.
+- **2 new proto_array fork choice tests** added documenting current spec's same-slot vote behavior:
+  - `same_slot_vote_with_payload_present_does_not_support_full`: Per current spec, when `vote.slot == block.slot`, the vote returns false for EMPTY and FULL nodes regardless of `payload_present`. This is the behavior that spec PR #4892 ("Remove impossible branch in forkchoice") proposes to change.
+  - `same_slot_vote_always_supports_pending`: Verifies that same-slot votes still support PENDING nodes (the first branch in `is_supporting_vote` always returns true for PENDING when root matches).
+- **Spec PR #4892 review**: Would remove the `if vote.slot == block.slot: return false` branch from `is_supporting_vote`, allowing same-slot votes to support FULL (when `payload_present=true`) or EMPTY (when `payload_present=false`). Not merged yet. Current vibehouse behavior matches the pre-#4892 spec. Tests added as regression baseline.
+- **Spec PR #4898 review**: Would remove the `PAYLOAD_STATUS_PENDING` check from `get_payload_tiebreaker`, simplifying to only check `slot + 1 != current_slot`. The pending check is redundant because `get_node_children` returns exactly one PENDING node per root. Not merged yet. Vibehouse's `get_payload_tiebreaker` at lines 1556-1558 has this check — would need updating if PR merges.
+- All 21 bid pool tests pass, 161 proto_array tests pass, 108 fork_choice tests pass, zero clippy warnings
+- Commit: `4fb2323d7`
+
 ### 2026-03-02 — spec PR review + fork choice verification audit (run 403)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
