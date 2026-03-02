@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — withdrawal invariant + cross-phase consistency tests (run 401)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **CI health**: Previous run fully green. Zero clippy warnings across workspace.
+- **Comprehensive test coverage audit** of Gloas withdrawal processing, epoch processing, per-slot processing, and fork upgrade paths. Found withdrawal processing invariant gap.
+- **3 new withdrawal processing tests** added to `consensus/state_processing/src/per_block_processing/gloas.rs`:
+  - `withdrawals_max_hit_last_is_always_validator_sweep`: Validates the critical invariant that when withdrawal count hits `MAX_WITHDRAWALS_PER_PAYLOAD`, the last withdrawal is always from the validator sweep (phase 4), never a builder withdrawal. This invariant protects `update_next_withdrawal_validator_index` from computing nonsensical indices when `BUILDER_INDEX_FLAG` is set on the `validator_index` field. The `reserved_limit = MAX - 1` cap on phases 1-3 guarantees this invariant, and the test now explicitly validates it.
+  - `withdrawals_below_max_validator_index_advances_by_sweep_len`: Verifies that when total withdrawals < max, the next_withdrawal_validator_index advances by `max_validators_per_withdrawals_sweep` as specified in the Capella/Gloas spec.
+  - `get_expected_matches_process_all_four_phases_active`: Exercises all 4 withdrawal phases simultaneously (builder pending, pending partial, builder sweep, validator sweep) and verifies `get_expected_withdrawals_gloas` produces the exact same output as `process_withdrawals_gloas`. This is the most complex cross-phase interaction test.
+- **All 541 state_processing tests pass** (538 existing + 3 new), zero clippy warnings
+- Commit: `671da0497`
+
 ### 2026-03-02 — full spec compliance audit: envelope processing, deposit routing, fork choice (run 400)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Newly merged Gloas spec PRs reviewed**:
