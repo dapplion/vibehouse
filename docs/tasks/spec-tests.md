@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking, PR readiness verification, codebase audit (run 373)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 5+ days of silence on master.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged. No new Gloas PRs opened since Feb 26.
+- **PR #4950 status**: 4 approvals, likely to merge soon. Vibehouse already handles it (serves any envelope in store, more permissive than either spec version). No code changes needed.
+- **PR #4940 deep review**: Read full diff. Only adds `on_execution_payload` step and `head_payload_status` check to fork choice tests — both already implemented in vibehouse's EF test runner (Step::OnExecutionPayload, Tester::process_execution_payload, Tester::check_head_payload_status). Test vectors will work out of the box when released. No `on_execution_bid` or `on_payload_attestation` steps specced yet.
+- **PR #4932 review**: Adds sanity/blocks generator for Gloas. SanityBlocksHandler already enabled for all forks (real crypto only). Will work out of the box.
+- **Nightly CI**: Latest nightly (Mar 1) fully green. All 26 jobs passed. Longest job: beacon-chain-tests (fulu) at 55m 18s within 90-minute timeout. No concerns.
+- **CI health**: All 12 recent completed runs successful. 3 in-progress. Zero failures.
+- **Codebase audit findings**:
+  - Zero `todo!()` or `unimplemented!()` in production code (63 occurrences are all in `#[cfg(test)]` mock ValidatorStore trait impls)
+  - Zero `unwrap()` in production consensus/beacon_node code
+  - Zero compiler warnings, zero clippy warnings
+  - 10 TODOs in builder.rs about pool persistence (inherited, not actionable)
+  - 412 `payload_present` occurrences across 24 files — will need rename if PR #4843 (Variable PTC deadline) merges
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+
 ### 2026-03-02 — spec compliance audit, test coverage analysis (run 372)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
