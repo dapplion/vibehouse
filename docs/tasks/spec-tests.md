@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix three gossip-fork_choice interaction bugs (run 394)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- Merged spec PRs since last check: #4953, #4952, #4951 (all CI/testing infra, no spec changes)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630, #4898. None merged.
+- **CI health**: Runs 391-393 in progress. Run 390+ fully green. Zero clippy warnings.
+- **Deep audit of self-build envelope + gossip interaction paths** found 3 real bugs:
+  - **Bug 1 (HIGH): `process_self_build_envelope` never called `observe_envelope()`** (`beacon_chain.rs:3141`). After self-build completes, the envelope is broadcast on gossip. A re-gossipped echo passes verification (dedup check misses it since the root was never recorded) and calls `on_execution_payload` again, which unconditionally sets `execution_status = Optimistic(hash)`, downgrading the `Valid` status established by the EL response. This silently degrades the proposer's view of their own block, potentially disabling block production for subsequent slots. Fix: call `observed_payload_envelopes.lock().observe_envelope(beacon_block_root)` after successful processing.
+  - **Bug 2 (MEDIUM): `on_execution_bid` reset PTC-quorum-established `payload_revealed`** (`fork_choice.rs:1353`). When PTC quorum establishes `payload_revealed=true` (via `on_payload_attestation` accumulating `ptc_weight > threshold`) but the envelope hasn't been received yet (`envelope_received=false`), a late gossip bid would reset `payload_revealed=false` and `ptc_weight=0`. Since the PTC votes are tracked in `observed_payload_attestations` and won't be re-applied, this reset was permanent. Fix: guard on `!envelope_received && !payload_revealed`.
+  - **Bug 3 (MEDIUM): `verify_payload_attestation_for_gossip` recorded validators before BLS verify** (`gloas_verification.rs:670-718`). Validators were marked as "seen" in `observed_payload_attestations` before signature verification. An attestation with an invalid BLS signature permanently poisoned the cache, causing subsequent valid attestations from the same validators to be silently dropped as `Duplicate`. Fix: add read-only `check_attestation()` method, reorder to BLS verify first then record.
+- **All 1133 tests pass**: 719/719 beacon_chain, 267/267 fork_choice + proto_array, 147/147 network. Zero clippy warnings.
+- Commit: `c9d1cd402`
+
 ### 2026-03-02 — nightly spec test validation (run 393)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - Merged spec PRs since last check: #4953, #4952, #4951 (all CI/testing infra, no spec changes)
