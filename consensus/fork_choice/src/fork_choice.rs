@@ -1347,14 +1347,15 @@ where
             // Record which builder won this slot's bid
             node.builder_index = Some(bid.message.builder_index);
 
-            // Mark payload as not yet revealed
-            // (will be set to true when builder publishes the execution payload envelope)
-            node.payload_revealed = false;
-
-            // Initialize PTC weights to 0 (will accumulate via on_payload_attestation)
-            node.ptc_weight = 0;
-            node.ptc_blob_data_available_weight = 0;
-            node.payload_data_available = false;
+            // Only reset payload state if the envelope hasn't already been received.
+            // A late gossip bid arriving after the envelope should not invalidate
+            // the already-confirmed payload delivery.
+            if !node.envelope_received {
+                node.payload_revealed = false;
+                node.ptc_weight = 0;
+                node.ptc_blob_data_available_weight = 0;
+                node.payload_data_available = false;
+            }
         }
 
         debug!(
@@ -4219,15 +4220,13 @@ mod tests {
 
         /// Bid arrives AFTER the execution payload envelope has already been
         /// processed. This is a race condition where the bid gossip is delayed
-        /// relative to the envelope. The bid should reset all envelope-derived
-        /// state: `payload_revealed`, `ptc_weight`, `ptc_blob_data_available_weight`,
-        /// and `payload_data_available`. However, `envelope_received` and
-        /// `execution_status` are NOT reset by `on_execution_bid`.
-        ///
-        /// This verifies that a late bid doesn't leave stale envelope state that
-        /// could cause the fork choice to incorrectly treat the block as revealed.
+        /// relative to the envelope. The bid should update `builder_index` but
+        /// must NOT reset `payload_revealed`, PTC weights, or
+        /// `payload_data_available` — the envelope has already been received,
+        /// confirming payload delivery. Resetting these would make the block
+        /// non-viable for head selection and break the FULL-path chain.
         #[test]
-        fn bid_after_envelope_resets_revealed_state() {
+        fn bid_after_envelope_preserves_revealed_state() {
             let mut fc = new_fc();
             let block_root = root(1);
             insert_block(&mut fc, 1, block_root);
@@ -4254,30 +4253,60 @@ mod tests {
                 ExecutionStatus::Optimistic(envelope_hash)
             );
 
-            // Now a bid arrives late — this resets the payload-related fields
+            // Now a bid arrives late — builder_index should be updated but
+            // payload state should be preserved since envelope was already received
             let bid = make_bid(1, 55);
             fc.on_execution_bid(&bid, block_root).unwrap();
 
             let node = &fc.proto_array.core_proto_array().nodes[idx];
             assert_eq!(node.builder_index, Some(55));
             assert!(
-                !node.payload_revealed,
-                "bid should reset payload_revealed even after envelope"
-            );
-            assert_eq!(node.ptc_weight, 0, "bid should reset ptc_weight to 0");
-            assert_eq!(
-                node.ptc_blob_data_available_weight, 0,
-                "bid should reset blob weight to 0"
+                node.payload_revealed,
+                "late bid must NOT reset payload_revealed when envelope already received"
             );
             assert!(
-                !node.payload_data_available,
-                "bid should reset payload_data_available"
+                node.payload_data_available,
+                "late bid must NOT reset payload_data_available when envelope already received"
             );
-            // envelope_received is NOT reset by on_execution_bid
             assert!(
                 node.envelope_received,
                 "envelope_received should persist through bid"
             );
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status should persist through bid"
+            );
+        }
+
+        /// Bid arrives BEFORE the envelope (normal flow). The bid should reset
+        /// payload state since no envelope has been received yet.
+        #[test]
+        fn bid_before_envelope_resets_payload_state() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(42));
+            assert!(
+                !node.payload_revealed,
+                "bid before envelope should set payload_revealed = false"
+            );
+            assert!(!node.envelope_received);
+            assert!(!node.payload_data_available);
+            assert_eq!(node.ptc_weight, 0);
+            assert_eq!(node.ptc_blob_data_available_weight, 0);
         }
 
         /// Envelope arrival preserves previously accumulated PTC weight.
