@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — deep fork choice spec audit + fix unchecked indexing (run 397)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged since last check (last Gloas merge was #4931 on Feb 20)
+- **Open Gloas spec PRs reviewed**:
+  - **#4940 (Add initial fork choice tests for Gloas)**: Adds `execution_payload` step type and `head_payload_status` check to EF fork choice test format. Vibehouse already fully supports both — `Step::OnExecutionPayload` handler and `check_head_payload_status` are implemented in `testing/ef_tests/src/cases/fork_choice.rs`. Ready for merge.
+  - **#4932 (Add Gloas sanity/blocks tests with payload attestation coverage)**: Standard sanity/blocks format, exercises `process_payload_attestation` during full block processing. No new test format needed.
+- **Deep fork choice spec compliance audit**:
+  - `find_head_gloas`: Algorithm verified correct — weight → root → tiebreaker ordering matches spec's `get_head`
+  - `get_gloas_weight`: PENDING/non-previous-slot zero-weight logic matches spec's `get_weight`
+  - `is_supporting_vote_gloas_at_slot`: All 3 cases (PENDING, same-root EMPTY/FULL, ancestor) match spec
+  - `get_gloas_children`: PENDING→[EMPTY,FULL] and EMPTY/FULL→[PENDING children] match spec's `get_node_children`
+  - `get_payload_tiebreaker`: Non-previous-slot ordinal, EMPTY→1, FULL→(2 if should_extend else 0) matches spec
+  - `should_extend_payload`: All 4 OR conditions match spec exactly
+  - `process_execution_payload_envelope`: All validations and state mutations match spec's `process_execution_payload`
+  - **Known deviation**: `should_apply_proposer_boost_gloas` adds ALL equivocating validators' weight, not just those in committees at the head slot. Spec's `is_head_weak` only adds weight from committee members at the head block's slot. This is conservative (makes head appear stronger, suppresses reorgs), matches inherited pre-Gloas behavior, and would require passing committee info to proto_array to fix.
+- **Fix: remove 3 unchecked indexing patterns in proto_array Gloas hot path**:
+  - `find_head_gloas`: `.unwrap()` → `.ok_or_else(...)` for max_by result (logically safe but violated no-panics rule)
+  - `compute_filtered_roots`: `filtered[parent_idx]` → `filtered.get_mut(parent_idx)` bounds check
+  - `get_gloas_children`: `pa.nodes[parent_idx]` → `pa.nodes.get(parent_idx)` bounds check
+- **All tests pass**: 267/267 proto_array + fork_choice, 8/8 EF fork choice, 719/719 beacon_chain. Zero clippy warnings.
+- Commit: (this run)
+
 ### 2026-03-02 — fix CI and spec compliance review (run 396)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - New spec master commits: #4926 (replace SECONDS_PER_SLOT with SLOT_DURATION_MS), #4814 (config derivation helpers). #4926 merged today (Mar 2).

@@ -1158,7 +1158,7 @@ impl ProtoArrayForkChoice {
                         ta.cmp(&tb)
                     })
                 })
-                .unwrap() // safe: children is non-empty
+                .ok_or_else(|| "find_head_gloas: no children despite non-empty check".to_string())?
                 .0;
         }
     }
@@ -1184,8 +1184,10 @@ impl ProtoArrayForkChoice {
         for i in (0..pa.nodes.len()).rev() {
             if filtered[i] {
                 roots.insert(pa.nodes[i].root);
-                if let Some(parent_idx) = pa.nodes[i].parent {
-                    filtered[parent_idx] = true;
+                if let Some(parent_idx) = pa.nodes[i].parent
+                    && let Some(f) = filtered.get_mut(parent_idx)
+                {
+                    *f = true;
                 }
             }
         }
@@ -1227,9 +1229,9 @@ impl ProtoArrayForkChoice {
             GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
                 let mut children = Vec::with_capacity(2);
 
-                if let Some(&parent_idx) = pa.indices.get(&node.root) {
-                    let parent_node = &pa.nodes[parent_idx];
-
+                if let Some(&parent_idx) = pa.indices.get(&node.root)
+                    && let Some(parent_node) = pa.nodes.get(parent_idx)
+                {
                     // Find all blocks whose parent is node.root with matching payload status
                     for child_node in &pa.nodes {
                         if child_node.parent != Some(parent_idx) {
