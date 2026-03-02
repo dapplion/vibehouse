@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — external builder FULL-path chain continuation test (run 356)
+- **New integration test shipped**: `gloas_external_builder_revealed_next_block_uses_builder_block_hash`
+  - Tests the complete FULL path for external builders: bid selection → block import → envelope gossip verification → envelope state transition → head recompute → next block production
+  - Verifies that after an external builder reveals their payload (envelope processed), the next block's bid correctly references the external builder's `block_hash` as `parent_block_hash`
+  - Key implementation details:
+    - External builder blocks are NOT viable for fork choice head until `payload_revealed=true` (proto_array viability check)
+    - Must call `recompute_head_at_current_slot()` after `process_self_build_envelope` so fork choice re-evaluates with the now-revealed payload
+    - Mock EL needs the external builder's execution payload registered in its block generator so `forkchoiceUpdated(head=external_block_hash)` can prepare payloads for subsequent blocks
+    - Gossip verification (BLS signature check) is exercised for the external builder's envelope
+  - Also verifies continuation block imports + self-build envelope processes successfully, with `latest_block_hash` progressing through the chain
+  - Closes the "external builder envelope → next block's bid picks up external block_hash (FULL path)" coverage gap from run 351
+- **All 698 beacon_chain tests pass** (~471s)
+- **Clippy**: zero warnings
+
 ### 2026-03-02 — spec tracking, codebase health check (run 355)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs commits since Feb 26 (last: #4947, #4948)
