@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix late gossip bid resetting payload state after envelope (run 387)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26.
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Comprehensive spec divergence audit**: Used Explore agents to systematically review all Gloas implementation against spec. 10 potential divergences identified and verified — all confirmed as false positives or by-design behavior:
+  - `process_payload_attestation` is purely validation (no weight update) — matches spec exactly
+  - Weight accumulation in `process_attestation` via same-slot attestation logic — matches spec
+  - Envelope processing pays builder unconditionally (spec design: envelope IS proof of delivery)
+  - `is_valid_indexed_payload_attestation` sorted check allows duplicates — matches spec (`sorted(indices)` not `sorted(set(indices))`)
+  - `onboard_builders_from_pending_deposits` drops invalid-signature deposits — spec explicitly says "deposits with invalid signatures are dropped here since they would fail in apply_pending_deposit anyway"
+- **Bug fix: late gossip bid resetting payload state after envelope** (452d93722): `on_execution_bid` unconditionally reset `payload_revealed`, `ptc_weight`, `ptc_blob_data_available_weight`, and `payload_data_available` to initial values. If a gossip bid arrived after the envelope had already been received (race condition with delayed gossip), this would make the block non-viable for head selection by setting `payload_revealed=false`. Since gossip deduplication prevents the envelope from being re-processed, the block would remain invisible to `find_head_gloas` permanently. Fix: skip payload state reset if `envelope_received` is already `true`.
+- **Test updates**: `bid_after_envelope_preserves_revealed_state` replaces old test that asserted the broken behavior. New `bid_before_envelope_resets_payload_state` test verifies the normal flow still resets correctly.
+- **107/107 fork_choice tests pass** (1 renamed, 1 new), **159/159 proto_array tests pass**, **8/8 EF fork_choice spec tests pass**
+- **Zero clippy warnings** across entire workspace
+
 ### 2026-03-02 — fix stale proposer_boost_root in should_extend_payload (run 386)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26.
