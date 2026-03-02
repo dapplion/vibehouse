@@ -12016,6 +12016,145 @@ async fn gloas_process_payload_envelope_el_invalid_block_hash_returns_error() {
     }
 }
 
+/// When the EL returns `Valid` for the envelope's `newPayload`, fork choice is
+/// updated to mark the block as Valid (`on_valid_execution_payload`). If the
+/// subsequent state transition then fails (e.g. because the state was corrupted
+/// in the cache), the error should propagate to the caller. However, fork choice
+/// retains the Valid execution status because the EL already validated the payload.
+///
+/// This test exercises the code path at beacon_chain.rs where:
+/// 1. EL returns Valid → fork choice updated (execution_status = Valid)
+/// 2. State loaded from cache
+/// 3. State transition (process_execution_payload_envelope) fails
+/// 4. Error returned to caller
+///
+/// This is a potential inconsistency: fork choice says Valid but the state cache
+/// was never updated with the post-envelope state. In practice this should be
+/// recoverable by re-processing the envelope or restarting.
+#[tokio::test]
+async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Pre-condition: execution_status should be Optimistic after block import
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "pre-condition: should be Optimistic after block import, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // Gossip-verify the envelope and apply to fork choice
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Corrupt the cached state: change the bid's builder_index so that
+    // process_execution_payload_envelope fails with BuilderIndexMismatch.
+    // The EL will still return Valid (mock EL accepts everything by default),
+    // but the state transition will fail.
+    let block_state_root = harness
+        .chain
+        .store
+        .get_blinded_block(&block_root)
+        .unwrap()
+        .unwrap()
+        .message()
+        .state_root();
+
+    {
+        let mut state = harness
+            .chain
+            .get_state(&block_state_root, Some(next_slot), false)
+            .expect("should not error")
+            .expect("state should be in cache");
+
+        // Corrupt the bid's builder_index to a value that won't match the envelope
+        let original_builder_index = state.latest_execution_payload_bid().unwrap().builder_index;
+        state
+            .latest_execution_payload_bid_mut()
+            .unwrap()
+            .builder_index = original_builder_index + 999;
+
+        state.apply_pending_mutations().unwrap();
+
+        // Replace the cached state with the corrupted one
+        let mut cache = harness.chain.store.state_cache.lock();
+        cache.delete_state(&block_state_root);
+        cache
+            .put_state(block_state_root, block_root, &state)
+            .expect("should re-cache corrupted state");
+    }
+
+    // process_payload_envelope: EL returns Valid (fork choice updated) but
+    // state transition fails because builder_index doesn't match
+    let result = harness.chain.process_payload_envelope(&verified).await;
+
+    let err = result.expect_err("should fail due to state transition error");
+    let err_msg = format!("{:?}", err);
+    assert!(
+        err_msg.contains("BuilderIndexMismatch"),
+        "error should mention BuilderIndexMismatch, got: {}",
+        err_msg
+    );
+
+    // Key assertion: fork choice has execution_status = Valid because the EL
+    // returned Valid BEFORE the state transition failed.
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Valid(_)),
+            "execution_status should be Valid (EL validated before state transition failed), got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // The state cache should NOT have the post-envelope state (state transition failed)
+    // The corrupted state should still be in the cache (not replaced by post-envelope state)
+    {
+        let state = harness
+            .chain
+            .get_state(&block_state_root, Some(next_slot), false)
+            .expect("should not error")
+            .expect("state should still be in cache");
+
+        // The state should still have the corrupted builder_index (state transition never completed)
+        let bid = state.latest_execution_payload_bid().unwrap();
+        assert_ne!(
+            bid.builder_index,
+            verified.envelope().message.builder_index,
+            "cached state should still have corrupted builder_index (state transition failed)"
+        );
+    }
+}
+
 // =============================================================================
 // Execution bid gossip: InsufficientBuilderBalance
 // =============================================================================
