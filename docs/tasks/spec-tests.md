@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — PTC duties epoch boundary test, spec tracking (run 360)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+  - Note: #4843 (Variable PTC deadline) is approved by jtraglia/potuz but not yet merged
+- **PTC duties epoch boundary integration test shipped** — `gloas_ptc_duties_change_across_epoch_boundary`:
+  - Extends chain from epoch 0 through epoch 2 (18 slots total)
+  - Gets PTC duties for epoch 1 and epoch 2 separately
+  - Verifies duty slot ranges are correctly scoped to each epoch
+  - Verifies duty counts are correct (PTC_SIZE * slots_per_epoch per epoch)
+  - Verifies dependent roots differ between epoch 1 and epoch 2 (epoch 1 decision slot = genesis, epoch 2 decision slot = slot 7 with a real block root)
+  - Verifies PTC member assignments change due to epoch-based reshuffling (different RANDAO seeds)
+  - Key insight: epochs 0 and 1 share the same dependent root (both point to genesis), so the test uses epoch 1 vs 2 where the decision slots actually diverge
+- **All 703 beacon_chain tests pass** (702 + 1 new)
+- **Clippy**: zero warnings (beacon_chain, production + tests)
+- **Remaining lower-priority coverage gaps**:
+  - PTC duties at epoch boundaries — **DONE** (this run)
+  - Execution proof acceptance path — already well-covered (7 integration tests + 6 unit tests from earlier runs)
+
 ### 2026-03-02 — block production after reorg test, spec tracking (run 359)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
