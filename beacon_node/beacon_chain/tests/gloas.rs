@@ -16072,3 +16072,203 @@ async fn gloas_block_proposers_match_lookahead() {
         }
     }
 }
+
+/// Walk the entire chain dump across 3 epochs and verify the ePBS hash chain:
+///   bid[n].block_hash == envelope[n].payload.block_hash  (committed == delivered)
+///   bid[n+1].parent_block_hash == envelope[n].payload.block_hash  (parent link)
+///   state.latest_block_hash == last envelope's payload.block_hash  (state consistency)
+///
+/// This is the fundamental ePBS invariant. Individual tests verify single transitions;
+/// this test verifies the invariant holds across every block in a multi-epoch chain.
+#[tokio::test]
+async fn gloas_full_chain_block_hash_integrity() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build 3 full epochs (24 slots on minimal)
+    let num_slots = 3 * E::slots_per_epoch() as usize;
+    Box::pin(harness.extend_slots(num_slots)).await;
+
+    // Walk the chain dump
+    let chain_dump = harness.chain.chain_dump().expect("should dump chain");
+    assert!(
+        chain_dump.len() > num_slots,
+        "chain dump should have at least {} entries (genesis + blocks), got {}",
+        num_slots + 1,
+        chain_dump.len()
+    );
+
+    // Collect bid and envelope data for every non-genesis block
+    let mut prev_envelope_block_hash: Option<ExecutionBlockHash> = None;
+
+    for (i, snapshot) in chain_dump.iter().enumerate() {
+        let block = &snapshot.beacon_block;
+
+        // Skip genesis (slot 0, no bid)
+        if block.slot() == Slot::new(0) {
+            continue;
+        }
+
+        let bid = block
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .unwrap_or_else(|_| {
+                panic!(
+                    "block {} at slot {} should be a Gloas block with a bid",
+                    i,
+                    block.slot()
+                )
+            });
+
+        // Load the envelope from the store
+        let envelope = harness
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap_or_else(|e| {
+                panic!(
+                    "should get envelope for block {} at slot {}: {:?}",
+                    i,
+                    block.slot(),
+                    e
+                )
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "envelope should exist for block {} at slot {} (self-build chain)",
+                    i,
+                    block.slot()
+                )
+            });
+
+        // Invariant 1: bid.block_hash == envelope.payload.block_hash
+        // The committed hash in the bid must match the delivered hash in the envelope.
+        assert_eq!(
+            bid.message.block_hash,
+            envelope.message.payload.block_hash,
+            "slot {}: bid.block_hash ({:?}) != envelope.payload.block_hash ({:?})",
+            block.slot(),
+            bid.message.block_hash,
+            envelope.message.payload.block_hash
+        );
+
+        // Invariant 2: bid[n].parent_block_hash == previous envelope's payload.block_hash
+        // Each block's bid must reference the previous block's delivered EL hash.
+        if let Some(prev_hash) = prev_envelope_block_hash {
+            assert_eq!(
+                bid.message.parent_block_hash,
+                prev_hash,
+                "slot {}: bid.parent_block_hash ({:?}) != previous envelope block_hash ({:?})",
+                block.slot(),
+                bid.message.parent_block_hash,
+                prev_hash
+            );
+        }
+
+        prev_envelope_block_hash = Some(envelope.message.payload.block_hash);
+    }
+
+    // Invariant 3: state.latest_block_hash == last envelope's payload.block_hash
+    let head = harness.chain.head_snapshot();
+    let latest_block_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        latest_block_hash,
+        prev_envelope_block_hash.expect("should have processed at least one block"),
+        "state.latest_block_hash should equal the last envelope's payload.block_hash"
+    );
+}
+
+/// Verify that after an EMPTY-path slot (external bid, no envelope), the
+/// execution_payload_availability bit for that slot is false, and that
+/// the continuation block can still be produced and imported successfully.
+/// This directly exercises the consensus-critical path where
+/// get_attestation_participation_flag_indices reads the availability bit.
+#[tokio::test]
+async fn gloas_empty_path_clears_availability_bit() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Build enough chain for builder activation
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert external bid for the next slot (builder will withhold)
+    let ext_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce external bid block (no envelope)
+    harness.advance_slot();
+    let ((block, blobs), block_state, _env) =
+        harness.make_block_with_envelope(state, ext_slot).await;
+    let ext_root = block.canonical_root();
+    harness
+        .process_block(ext_slot, ext_root, (block, blobs))
+        .await
+        .unwrap();
+
+    // The block_state is the post-block-processing state (pre-envelope).
+    // The availability bit for ext_slot should be false (cleared by per_slot_processing,
+    // never set back by envelope processing).
+    let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+    let ext_slot_index = ext_slot.as_usize() % slots_per_hist;
+    let gloas_state = block_state.as_gloas().expect("should be Gloas state");
+    assert!(
+        !gloas_state
+            .execution_payload_availability
+            .get(ext_slot_index)
+            .unwrap_or(true),
+        "availability bit for EMPTY-path slot {} (index {}) should be false",
+        ext_slot,
+        ext_slot_index
+    );
+
+    // Now produce + import the continuation block (self-build) and process its envelope
+    let cont_slot = ext_slot + 1;
+    let state_for_cont = harness.chain.head_beacon_state_cloned();
+    harness.advance_slot();
+    let ((cont_block, cont_blobs), _cont_state, cont_env) = harness
+        .make_block_with_envelope(state_for_cont, cont_slot)
+        .await;
+    let cont_root = cont_block.canonical_root();
+    harness
+        .process_block(cont_slot, cont_root, (cont_block, cont_blobs))
+        .await
+        .unwrap();
+
+    let envelope = cont_env.expect("self-build should have envelope");
+    harness
+        .chain
+        .process_self_build_envelope(&envelope)
+        .await
+        .unwrap();
+
+    // After envelope processing for cont_slot, check both bits:
+    // - ext_slot bit should still be false (EMPTY, no envelope ever processed)
+    // - cont_slot bit should be true (FULL, envelope processed)
+    let final_state = harness.chain.head_beacon_state_cloned();
+    let gloas_final = final_state.as_gloas().expect("should be Gloas state");
+
+    let cont_slot_index = cont_slot.as_usize() % slots_per_hist;
+    assert!(
+        !gloas_final
+            .execution_payload_availability
+            .get(ext_slot_index)
+            .unwrap_or(true),
+        "EMPTY-path slot {} availability bit should remain false after continuation",
+        ext_slot
+    );
+    assert!(
+        gloas_final
+            .execution_payload_availability
+            .get(cont_slot_index)
+            .unwrap_or(false),
+        "continuation slot {} availability bit should be true after envelope processing",
+        cont_slot
+    );
+}
