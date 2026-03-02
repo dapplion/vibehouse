@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — CI robustness, block_verification speedup (run 371)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged.
+- **Nightly CI fulu timeout fix**: The Feb 28 nightly `beacon-chain-tests (fulu)` job timed out at 60 minutes. Root cause: all 13 `block_verification` tests that call `get_chain_segment()` build a 320-block chain from scratch — under fulu with PeerDAS data columns, each takes 20+ minutes. Two fixes:
+  1. **Reduced `CHAIN_SEGMENT_LENGTH` from 320 to 132** — largest `BLOCK_INDICES` entry is 129, so 132 is sufficient. All 18 block_verification tests pass, entire module runs in 42 seconds (was 50+ minutes).
+  2. **Excluded `block_verification::` module from nightly prior-fork runs** — these tests exercise fork-agnostic chain segment import logic already covered by the gloas CI run on every push. Previously only `chain_segment_varying_chunk_size` was excluded.
+- **Open spec PR review**: #4950 (envelope serve range, high merge likelihood, no vibehouse changes needed), #4843 (variable PTC deadline, moderate likelihood, most impactful — would rename `payload_present` to `payload_timely` across ~49 files), #4939 (envelope request on index-1 attestation, low/not imminent), #4926 (SECONDS_PER_SLOT → SLOT_DURATION_MS, no changes needed — vibehouse already ms-first internally)
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+- **Zero clippy warnings across workspace**
+
 ### 2026-03-02 — spec tracking, stateless gossip envelope test (run 370)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
