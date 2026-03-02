@@ -5256,5 +5256,264 @@ mod tests {
                 "existing execution_status preserved when already execution-enabled"
             );
         }
+
+        // ── on_execution_bid envelope_received guard tests ────────────────
+
+        /// A late bid arriving after the envelope was received (envelope_received=true)
+        /// but before PTC quorum (payload_revealed=false) must NOT reset PTC weights.
+        /// This scenario occurs when the envelope arrives before the bid gossip:
+        /// on_execution_payload sets envelope_received=true but doesn't set ptc_weight.
+        /// PTC members may have started voting but quorum isn't reached yet.
+        /// A late bid must preserve those votes.
+        #[test]
+        fn bid_preserves_ptc_state_when_envelope_received_pre_quorum() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Simulate envelope received before bid: envelope_received=true,
+            // payload_revealed=false (PTC hasn't reached quorum yet), some PTC weight
+            fc.proto_array.core_proto_array_mut().nodes[idx].envelope_received = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = false;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 1;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 1;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_data_available = true;
+
+            // Late bid arrives — envelope_received is true, so PTC state must be preserved
+            let bid = make_bid(1, 55);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(55), "builder_index should be set");
+            assert_eq!(
+                node.ptc_weight, 1,
+                "ptc_weight must be preserved when envelope_received=true"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 1,
+                "blob weight must be preserved when envelope_received=true"
+            );
+            assert!(
+                node.payload_data_available,
+                "payload_data_available must be preserved when envelope_received=true"
+            );
+        }
+
+        /// A late bid arriving when both envelope_received=true AND
+        /// payload_revealed=true must preserve all PTC state. This is the
+        /// doubly-protected case: either guard alone should prevent reset.
+        #[test]
+        fn bid_preserves_state_when_both_envelope_received_and_payload_revealed() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Both guards active
+            fc.proto_array.core_proto_array_mut().nodes[idx].envelope_received = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_revealed = true;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 100;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 50;
+            fc.proto_array.core_proto_array_mut().nodes[idx].payload_data_available = true;
+
+            let bid = make_bid(1, 99);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(node.builder_index, Some(99));
+            assert_eq!(node.ptc_weight, 100);
+            assert_eq!(node.ptc_blob_data_available_weight, 50);
+            assert!(node.payload_data_available);
+            assert!(node.payload_revealed);
+        }
+
+        // ── on_execution_payload envelope_received flag test ──────────────
+
+        /// on_execution_payload must set envelope_received=true. This flag is
+        /// critical for the on_execution_bid guard: without it, a late bid could
+        /// reset PTC state that was accumulated after the envelope was processed.
+        #[test]
+        fn execution_payload_sets_envelope_received_flag() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Verify initial state
+            assert!(
+                !fc.proto_array.core_proto_array().nodes[idx].envelope_received,
+                "envelope_received should be false initially"
+            );
+
+            let hash = ExecutionBlockHash::repeat_byte(0xAA);
+            fc.on_execution_payload(block_root, hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(
+                node.envelope_received,
+                "on_execution_payload must set envelope_received=true"
+            );
+            assert!(
+                node.payload_revealed,
+                "on_execution_payload must set payload_revealed=true"
+            );
+            assert!(
+                node.payload_data_available,
+                "on_execution_payload must set payload_data_available=true"
+            );
+        }
+
+        // ── on_valid_execution_payload transition test ────────────────────
+
+        /// After on_execution_payload marks a block as Optimistic, calling
+        /// on_valid_execution_payload should transition it to Valid (execution
+        /// confirmed by the EL). This is the normal happy-path EL confirmation.
+        #[test]
+        fn valid_execution_payload_transitions_optimistic_to_valid() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(block_root, hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            assert_eq!(
+                fc.proto_array.core_proto_array().nodes[idx].execution_status,
+                ExecutionStatus::Optimistic(hash),
+                "should start as Optimistic"
+            );
+
+            fc.on_valid_execution_payload(block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Valid(hash),
+                "should transition to Valid after EL confirmation"
+            );
+            // Other flags should be unchanged
+            assert!(node.payload_revealed);
+            assert!(node.envelope_received);
+            assert!(node.payload_data_available);
+        }
+
+        /// on_valid_execution_payload for an unknown block root returns an error.
+        #[test]
+        fn valid_execution_payload_unknown_root_errors() {
+            let mut fc = new_fc();
+            let unknown = root(999);
+
+            let err = fc.on_valid_execution_payload(unknown).unwrap_err();
+            assert!(
+                matches!(err, Error::FailedToProcessValidExecutionPayload(_)),
+                "expected FailedToProcessValidExecutionPayload, got {:?}",
+                err
+            );
+        }
+
+        // ── Envelope → bid → PTC lifecycle integration test ───────────────
+
+        /// Full lifecycle where envelope arrives BEFORE the bid gossip.
+        /// This is the reverse of the typical bid→envelope order.
+        /// 1. Block imported (builder_index=None, no bid yet)
+        /// 2. Envelope arrives via gossip (on_execution_payload)
+        /// 3. Bid arrives late via gossip (on_execution_bid)
+        /// 4. PTC attestations arrive
+        ///
+        /// Verify: the late bid doesn't destroy the envelope's work, and the
+        /// PTC quorum path handles the already-revealed payload correctly.
+        #[test]
+        fn lifecycle_envelope_before_bid_then_ptc() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // 1. Envelope arrives first (before bid)
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xEE);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.envelope_received);
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash)
+            );
+
+            // 2. Late bid arrives (from gossip)
+            let bid = make_bid(1, 42);
+            fc.on_execution_bid(&bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.builder_index,
+                Some(42),
+                "builder_index should be set by late bid"
+            );
+            assert!(
+                node.payload_revealed,
+                "payload_revealed must survive late bid"
+            );
+            assert!(
+                node.envelope_received,
+                "envelope_received must survive late bid"
+            );
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "execution_status must not change from late bid"
+            );
+
+            // 3. PTC attestations arrive (after both envelope and bid)
+            let spec = ChainSpec::minimal();
+            let quorum_threshold = spec.ptc_size / 2;
+            let indices: Vec<u64> = (0..=quorum_threshold).collect();
+            let att = make_payload_attestation(1, block_root, true, true);
+            let indexed = make_indexed_payload_attestation(1, block_root, true, true, indices);
+            fc.on_payload_attestation(&att, &indexed, Slot::new(1), &spec)
+                .unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.ptc_weight > quorum_threshold);
+            // execution_status should NOT be overwritten by PTC quorum path
+            // because payload_revealed was already true before quorum
+            assert_eq!(
+                node.execution_status,
+                ExecutionStatus::Optimistic(envelope_hash),
+                "PTC quorum must not overwrite execution_status when already revealed"
+            );
+        }
     }
 }
