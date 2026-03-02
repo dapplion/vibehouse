@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — gossip wire format fix: PayloadAttestationMessage (run 366)
+- **Fixed gossip type deviation**: The `payload_attestation_message` gossip topic now correctly carries `PayloadAttestationMessage` (individual: `validator_index` + `data` + `signature`) instead of `PayloadAttestation` (aggregated: `aggregation_bits` + `data` + `signature`). This was identified in run 365 as an interoperability issue — different SSZ layouts (8-byte validator_index vs 64-byte bitvector) would break multi-client testing.
+- **Changes made**:
+  - `PubsubMessage::PayloadAttestation` now wraps `PayloadAttestationMessage` (not `PayloadAttestation<E>`)
+  - Gossip encode/decode uses `PayloadAttestationMessage` SSZ wire format
+  - HTTP API publishes the original individual message on gossip (no conversion before broadcast)
+  - Gossip processor converts received `PayloadAttestationMessage` to `PayloadAttestation` internally via new `payload_attestation_message_to_attestation()` method
+  - Extracted `BeaconChain::payload_attestation_message_to_attestation()` for reuse across HTTP API and gossip paths
+  - Updated all 8 network gossip handler tests to use `PayloadAttestationMessage`
+- **Test results**: 145/145 network tests pass, 49/49 beacon_chain payload_attestation tests pass, 13/13 http_api payload_attestation tests pass, 12/12 pubsub round-trip tests pass
+- **Zero clippy warnings**, full lint passed (pre-push hook)
+- No new consensus-specs releases or master commits since run 365
+
 ### 2026-03-02 — spec compliance audit, gossip type deviation found (run 365)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
