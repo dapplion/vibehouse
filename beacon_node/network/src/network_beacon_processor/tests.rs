@@ -3139,6 +3139,167 @@ async fn test_gloas_gossip_proposer_preferences_duplicate_ignored() {
     assert_ignore(result);
 }
 
+/// Helper: create a TestRig where the head state is in the last pre-Gloas epoch.
+///
+/// Sets `gloas_fork_epoch = Epoch(1)` with all earlier forks at genesis. The chain
+/// is extended by `chain_length` blocks, leaving the head in epoch 0 (Fulu). This
+/// allows testing the fork-boundary path where `proposal_epoch == gloas_fork_epoch`
+/// but the head state is still pre-Gloas.
+async fn pre_gloas_rig(chain_length: u64) -> TestRig {
+    let mut spec = test_spec::<E>();
+    spec.shard_committee_period = 2;
+    // All forks before Gloas at genesis, Gloas at epoch 1
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(Epoch::new(1));
+    TestRig::new_parametric(
+        chain_length,
+        BeaconProcessorConfig::default(),
+        NodeCustodyType::Fullnode,
+        spec,
+    )
+    .await
+}
+
+/// Gloas gossip: proposer preferences at the fork boundary use the Gloas domain.
+///
+/// At the Fulu→Gloas transition (head in epoch 0/Fulu, proposal in epoch 1/Gloas),
+/// the gossip handler must compute the signature domain using `spec.fork_at_epoch(proposal_epoch)`
+/// (Gloas fork version) rather than `head_state.fork()` (Fulu fork version).
+/// This test verifies that a preferences message signed with the Gloas domain is
+/// ACCEPTED even though the head state is still Fulu.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_fork_boundary_accepted() {
+    let mut rig = pre_gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let spec = &rig.chain.spec;
+
+    // Verify preconditions: head is in epoch 0, Gloas activates at epoch 1
+    let head_epoch = head_state.current_epoch();
+    assert_eq!(head_epoch, Epoch::new(0), "head should be in epoch 0");
+    assert_eq!(
+        spec.gloas_fork_epoch,
+        Some(Epoch::new(1)),
+        "Gloas should activate at epoch 1"
+    );
+
+    // Head state is Fulu (not Gloas)
+    assert!(
+        !head_state.fork_name_unchecked().gloas_enabled(),
+        "head state should be pre-Gloas (Fulu)"
+    );
+
+    let current_epoch = head_epoch;
+    let next_epoch = current_epoch.saturating_add(1u64);
+    assert_eq!(
+        next_epoch,
+        Epoch::new(1),
+        "next epoch should be the Gloas fork epoch"
+    );
+
+    // Get a proposal slot in the first Gloas epoch
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer from the lookahead
+    let lookahead = head_state
+        .proposer_lookahead()
+        .expect("Fulu state should have proposer_lookahead");
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index: actual_proposer,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    // Sign using the Gloas fork version (correct: matches what spec.fork_at_epoch returns)
+    let gloas_fork = spec.fork_at_epoch(next_epoch);
+    let domain = spec.get_domain(
+        next_epoch,
+        Domain::ProposerPreferences,
+        &gloas_fork,
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+
+    let sk = &rig._harness.validator_keypairs[actual_proposer as usize].sk;
+    let signature = sk.sign(signing_root);
+
+    let signed_preferences = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+}
+
+/// Gloas gossip: proposer preferences signed with Fulu domain at fork boundary is REJECTED.
+///
+/// This is the converse of the above test: a preferences message for a Gloas-epoch slot
+/// signed with the Fulu fork version (from `head_state.fork()`) should fail signature
+/// verification because the gossip handler correctly uses `spec.fork_at_epoch(proposal_epoch)`.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_fork_boundary_wrong_domain_rejected() {
+    let mut rig = pre_gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let spec = &rig.chain.spec;
+
+    let current_epoch = head_state.current_epoch();
+    let next_epoch = current_epoch.saturating_add(1u64);
+
+    let proposal_slot = next_epoch.start_slot(E::slots_per_epoch());
+
+    // Find the actual proposer from the lookahead
+    let lookahead = head_state.proposer_lookahead().unwrap();
+    let slots_per_epoch = E::slots_per_epoch() as usize;
+    let lookahead_index = slots_per_epoch + (proposal_slot.as_usize() % slots_per_epoch);
+    let actual_proposer = *lookahead.get(lookahead_index).unwrap();
+
+    let preferences = ProposerPreferences {
+        proposal_slot: proposal_slot.as_u64(),
+        validator_index: actual_proposer,
+        fee_recipient: Address::repeat_byte(0x42),
+        gas_limit: 30_000_000,
+    };
+
+    // Sign using the Fulu fork version (WRONG: head_state.fork() returns Fulu)
+    let fulu_fork = head_state.fork();
+    let domain = spec.get_domain(
+        next_epoch,
+        Domain::ProposerPreferences,
+        &fulu_fork,
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = preferences.signing_root(domain);
+
+    let sk = &rig._harness.validator_keypairs[actual_proposer as usize].sk;
+    let signature = sk.sign(signing_root);
+
+    let signed_preferences = SignedProposerPreferences {
+        message: preferences,
+        signature,
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
+
 // ======== Gloas (ePBS) execution payload envelope gossip handler tests ========
 //
 // These tests verify the `process_gossip_execution_payload` handler which
