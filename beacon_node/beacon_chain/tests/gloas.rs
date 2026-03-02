@@ -777,8 +777,16 @@ async fn gloas_payload_attestation_pool_prunes_old() {
         .get_payload_attestations_for_block(early_slot + 1, early_root);
     assert_eq!(result.len(), 1);
 
+    // Clear the pool before extending — block production at slot 2 would otherwise
+    // pack the unsigned test attestation into the block, failing batch BLS verification.
+    harness.chain.payload_attestation_pool.lock().clear();
+
     // Now advance many epochs (pruning threshold is 2 epochs = 16 slots for minimal)
     Box::pin(harness.extend_slots(20)).await;
+
+    // Re-insert the old attestation so we can verify it gets pruned
+    let att = make_payload_attestation(early_root, early_slot, true, false);
+    harness.chain.insert_payload_attestation_to_pool(att);
 
     // Insert a new attestation to trigger pruning
     let new_root = harness.chain.head_snapshot().beacon_block_root;
@@ -966,42 +974,6 @@ fn make_external_bid(
         .get_randao_mix(current_epoch)
         .expect("should get randao mix");
 
-    SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
-            slot,
-            builder_index,
-            value,
-            parent_block_hash: gloas_state.latest_block_hash,
-            parent_block_root: head_root,
-            prev_randao: randao_mix,
-            block_hash: ExecutionBlockHash::zero(),
-            fee_recipient: Address::zero(),
-            gas_limit: 30_000_000,
-            execution_payment: value,
-            blob_kzg_commitments: Default::default(),
-        },
-        signature: Signature::empty(),
-    }
-}
-
-/// Build an external bid with a valid signature, matching the current state.
-///
-/// Unlike `make_external_bid`, this signs the bid with the builder's keypair
-/// so it passes signature verification in gossip validation.
-fn make_signed_external_bid(
-    state: &BeaconState<E>,
-    head_root: Hash256,
-    slot: Slot,
-    builder_index: u64,
-    value: u64,
-    spec: &ChainSpec,
-) -> SignedExecutionPayloadBid<E> {
-    let gloas_state = state.as_gloas().expect("state should be Gloas");
-    let current_epoch = state.current_epoch();
-    let randao_mix = *state
-        .get_randao_mix(current_epoch)
-        .expect("should get randao mix");
-
     let bid = ExecutionPayloadBid {
         slot,
         builder_index,
@@ -1016,6 +988,7 @@ fn make_signed_external_bid(
         blob_kzg_commitments: Default::default(),
     };
 
+    let spec = E::default_spec();
     let epoch = slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
         epoch,
@@ -1036,7 +1009,7 @@ fn make_signed_external_bid(
 
 /// Insert proposer preferences for a slot so that bid gossip validation can pass
 /// the proposer preferences check. Uses fee_recipient=zero and gas_limit=30M
-/// (matching `make_external_bid` / `make_signed_external_bid` defaults).
+/// (matching `make_external_bid` defaults).
 fn insert_bid_proposer_preferences(
     harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
     slot: Slot,
@@ -12399,7 +12372,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
 
     // First bid: value=5000. Properly signed, passes all checks including
     // signature verification and equivocation detection (recorded as New).
-    let bid_1 = make_signed_external_bid(&state, head_root, next_slot, 0, 5000, &harness.spec);
+    let bid_1 = make_external_bid(&state, head_root, next_slot, 0, 5000);
     let result_1 = harness.chain.verify_execution_bid_for_gossip(bid_1);
     assert!(
         result_1.is_ok(),
@@ -12410,7 +12383,7 @@ async fn gloas_bid_gossip_rejects_builder_equivocation() {
     // Second bid: value=6000 (different value → different tree_hash_root).
     // Same builder (0), same slot (next_slot). This should trigger Equivocation
     // because we already recorded a different bid root from builder 0.
-    let bid_2 = make_signed_external_bid(&state, head_root, next_slot, 0, 6000, &harness.spec);
+    let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 6000);
 
     let err = assert_bid_rejected(&harness, bid_2, "second bid should be equivocation");
     match err {
@@ -12962,7 +12935,7 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
     insert_bid_proposer_preferences(&harness, next_slot);
 
     // Create a properly signed bid.
-    let bid = make_signed_external_bid(&state, head_root, next_slot, 0, 5000, &harness.spec);
+    let bid = make_external_bid(&state, head_root, next_slot, 0, 5000);
     let bid_root = bid.tree_hash_root();
 
     // First submission: passes all checks (signature, equivocation=New, highest value).
@@ -12970,7 +12943,7 @@ async fn gloas_bid_gossip_rejects_duplicate_bid() {
     assert!(result.is_ok(), "first bid should pass: {:?}", result.err());
 
     // Second submission: same bid, same root → Duplicate.
-    let bid_2 = make_signed_external_bid(&state, head_root, next_slot, 0, 5000, &harness.spec);
+    let bid_2 = make_external_bid(&state, head_root, next_slot, 0, 5000);
     assert_eq!(
         bid_2.tree_hash_root(),
         bid_root,
@@ -15134,21 +15107,31 @@ async fn gloas_external_builder_revealed_next_block_uses_builder_block_hash() {
         .get_randao_mix(current_epoch)
         .expect("should get randao mix");
 
+    let bid_msg = ExecutionPayloadBid {
+        slot: ext_slot,
+        builder_index: 0,
+        value: 5000,
+        parent_block_hash: gloas_state.latest_block_hash,
+        parent_block_root: head_root,
+        prev_randao: randao_mix,
+        block_hash: external_block_hash,
+        fee_recipient: Address::zero(),
+        gas_limit: 30_000_000,
+        execution_payment: 5000,
+        blob_kzg_commitments: Default::default(),
+    };
+    let spec = E::default_spec();
+    let epoch = ext_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = bid_msg.signing_root(domain);
     let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
-            slot: ext_slot,
-            builder_index: 0,
-            value: 5000,
-            parent_block_hash: gloas_state.latest_block_hash,
-            parent_block_root: head_root,
-            prev_randao: randao_mix,
-            block_hash: external_block_hash,
-            fee_recipient: Address::zero(),
-            gas_limit: 30_000_000,
-            execution_payment: 5000,
-            blob_kzg_commitments: Default::default(),
-        },
-        signature: Signature::empty(),
+        message: bid_msg,
+        signature: BUILDER_KEYPAIRS[0].sk.sign(signing_root),
     };
     harness.chain.execution_bid_pool.lock().insert(bid.clone());
 

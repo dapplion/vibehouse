@@ -7,7 +7,7 @@ use bls::{PublicKey, PublicKeyBytes, SignatureSet, verify_signature_sets};
 use std::borrow::Cow;
 use types::{
     AbstractExecPayload, BeaconState, BeaconStateError, ChainSpec, EthSpec, Hash256,
-    SignedBeaconBlock,
+    SignedBeaconBlock, SignedRoot,
 };
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -170,6 +170,8 @@ where
         self.include_exits(block)?;
         self.include_sync_aggregate(block)?;
         self.include_bls_to_execution_changes(block)?;
+        self.include_execution_payload_bid(block)?;
+        self.include_payload_attestations(block)?;
 
         Ok(())
     }
@@ -352,6 +354,88 @@ where
                     bls_to_execution_change,
                     self.spec,
                 )?);
+            }
+        }
+        Ok(())
+    }
+
+    /// Include the execution payload bid signature for verification (Gloas only).
+    ///
+    /// Skips self-build bids (which use an infinity signature checked elsewhere).
+    pub fn include_execution_payload_bid<Payload: AbstractExecPayload<E>>(
+        &mut self,
+        block: &'a SignedBeaconBlock<E, Payload>,
+    ) -> Result<()> {
+        if let Ok(signed_bid) = block.message().body().signed_execution_payload_bid() {
+            // Self-build bids use G2_POINT_AT_INFINITY and are validated unconditionally
+            // in process_execution_payload_bid; skip them here.
+            if signed_bid.message.builder_index != self.spec.builder_index_self_build {
+                let set = execution_payload_bid_signature_set(
+                    self.state,
+                    |builder_index: u64| {
+                        self.state
+                            .builders()
+                            .ok()
+                            .and_then(|builders| builders.get(builder_index as usize))
+                            .and_then(|builder| builder.pubkey.decompress().ok())
+                            .map(Cow::Owned)
+                    },
+                    signed_bid,
+                    self.spec,
+                )?;
+                self.sets.push(set);
+            }
+        }
+        Ok(())
+    }
+
+    /// Include all payload attestation signatures for verification (Gloas only).
+    pub fn include_payload_attestations<Payload: AbstractExecPayload<E>>(
+        &mut self,
+        block: &'a SignedBeaconBlock<E, Payload>,
+    ) -> Result<()> {
+        if let Ok(payload_attestations) = block.message().body().payload_attestations() {
+            self.sets.sets.reserve(payload_attestations.len());
+
+            for attestation in payload_attestations.iter() {
+                let indexed = super::gloas::get_indexed_payload_attestation(
+                    self.state,
+                    attestation,
+                    self.spec,
+                )
+                .map_err(|e| match e {
+                    super::errors::BlockProcessingError::BeaconStateError(e) => {
+                        Error::BeaconStateError(e)
+                    }
+                    _ => Error::BeaconStateError(BeaconStateError::IncorrectStateVariant),
+                })?;
+
+                if indexed.attesting_indices.is_empty() {
+                    continue;
+                }
+
+                // Collect pubkeys from attesting indices (owned, to satisfy lifetime).
+                let mut pubkeys = Vec::with_capacity(indexed.attesting_indices.len());
+                for &validator_index in indexed.attesting_indices.iter() {
+                    let pubkey = (self.get_pubkey)(validator_index as usize)
+                        .ok_or(SignatureSetError::ValidatorUnknown(validator_index))?;
+                    pubkeys.push(pubkey);
+                }
+
+                let epoch = attestation.data.slot.epoch(E::slots_per_epoch());
+                let domain = self.spec.get_domain(
+                    epoch,
+                    types::Domain::PtcAttester,
+                    &self.state.fork(),
+                    self.state.genesis_validators_root(),
+                );
+                let message = attestation.data.signing_root(domain);
+
+                self.sets.push(SignatureSet::multiple_pubkeys(
+                    &attestation.signature,
+                    pubkeys,
+                    message,
+                ));
             }
         }
         Ok(())
