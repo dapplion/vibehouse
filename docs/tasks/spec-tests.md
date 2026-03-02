@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fork choice envelope_received guard and EL validation lifecycle tests (run 405)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- **New Gloas spec PR**: #4954 (Update fork choice store to use milliseconds) — converts `Store.time` → `Store.time_ms` and `Store.genesis_time` → `Store.genesis_time_ms`. Open, no reviews yet. Not merged.
+- **CI health**: Runs 400-404 in progress, runs 396-399 fully green.
+- **Spec PR momentum assessment**: #4950 (extend by_root serve range) has 4 approvals — most likely to merge next. #4898 and #4892 both approved but idle 2-3 weeks. #4843 (variable PTC deadline) approved but significant design change.
+- **Deep test coverage audit** of fork choice lifecycle interaction paths. Identified genuinely untested edge cases around the `envelope_received` guard in `on_execution_bid` and the Optimistic→Valid execution status transition.
+- **7 new fork choice tests** added to `consensus/fork_choice/src/fork_choice.rs`:
+  - `bid_preserves_ptc_state_when_envelope_received_pre_quorum`: Late bid arriving after `envelope_received=true` but before PTC quorum (`payload_revealed=false`) must NOT reset PTC weights. Exercises the `!node.envelope_received` guard that was previously untested in isolation.
+  - `bid_preserves_state_when_both_envelope_received_and_payload_revealed`: Both guards (`envelope_received=true` AND `payload_revealed=true`) active simultaneously — doubly-protected case.
+  - `execution_payload_sets_envelope_received_flag`: Explicitly verifies `on_execution_payload` sets `envelope_received=true` — critical for the bid guard to work correctly.
+  - `valid_execution_payload_transitions_optimistic_to_valid`: Verifies the Optimistic→Valid execution status transition via `on_valid_execution_payload` after envelope processing.
+  - `valid_execution_payload_unknown_root_errors`: Error path for `on_valid_execution_payload` with unknown block root.
+  - `lifecycle_envelope_before_bid_then_ptc`: Full reverse-order lifecycle (envelope→bid→PTC) verifying that the late bid doesn't reset envelope state and PTC quorum path doesn't overwrite execution_status.
+- **upgrade_to_gloas audit**: Found 25 existing unit tests covering all builder onboarding edge cases including: mixed deposits, validator/builder routing priority, pubkey cache consistency, balance saturation, invalid signature handling, deposit ordering, and slot reuse. No gaps found — the explore agent's initial assessment was outdated.
+- All 114 fork_choice tests pass, all 161 proto_array tests pass, zero clippy warnings across full workspace
+- Commit: `2d076177b`
+
 ### 2026-03-03 — bid pool edge case + fork choice same-slot vote tests (run 404)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630
