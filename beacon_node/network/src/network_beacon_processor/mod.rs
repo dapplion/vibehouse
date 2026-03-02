@@ -320,12 +320,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
-        attestation: Box<types::PayloadAttestation<T::EthSpec>>,
+        message: Box<types::PayloadAttestationMessage>,
     ) -> Result<(), Error<T::EthSpec>> {
         let processor = self.clone();
         let process_fn = async move {
             processor
-                .process_gossip_payload_attestation(message_id, peer_id, *attestation)
+                .process_gossip_payload_attestation(message_id, peer_id, *message)
                 .await;
         };
 

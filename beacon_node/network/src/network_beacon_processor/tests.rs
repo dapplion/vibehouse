@@ -48,11 +48,10 @@ use types::{
     Address, AttesterSlashing, BlobSidecar, BlobSidecarList, Builder, ChainSpec,
     DataColumnSidecarList, DataColumnSubnetId, Domain, Epoch, EthSpec, ExecutionBlockHash,
     ExecutionPayloadBid, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionProof,
-    ExecutionProofSubnetId, Hash256, Keypair, MainnetEthSpec, PayloadAttestation,
-    PayloadAttestationData, ProposerPreferences, ProposerSlashing, RuntimeVariableList,
-    SignedAggregateAndProof, SignedBeaconBlock, SignedExecutionPayloadBid,
-    SignedExecutionPayloadEnvelope, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
-    SingleAttestation, Slot, SubnetId,
+    ExecutionProofSubnetId, Hash256, Keypair, MainnetEthSpec, PayloadAttestationData,
+    ProposerPreferences, ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof,
+    SignedBeaconBlock, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedProposerPreferences, SignedRoot, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
 };
 
 type E = MainnetEthSpec;
@@ -2440,37 +2439,46 @@ async fn test_gloas_gossip_payload_attestation_unknown_root_ignored() {
     }
 
     let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
     let current_slot = rig.chain.slot().unwrap();
+    let spec = &rig.chain.spec;
 
-    // Must have at least one aggregation bit set to pass the empty-bits check
-    let mut bits = ssz_types::BitVector::new();
-    bits.set(0, true).unwrap();
+    // Get a valid PTC member so the conversion succeeds, but use an unknown block root
+    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+        head_state,
+        current_slot,
+        spec,
+    )
+    .expect("should get PTC committee");
+    let validator_index = ptc_indices[0];
 
-    let attestation = PayloadAttestation {
-        aggregation_bits: bits,
+    let message = types::PayloadAttestationMessage {
+        validator_index,
         data: PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xff), // unknown root
-            slot: current_slot,                            // must be current to pass slot check
+            slot: current_slot,
             payload_present: true,
             blob_data_available: true,
         },
-        signature: bls::AggregateSignature::empty(),
+        signature: bls::Signature::empty(),
     };
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_ignore(result);
 }
 
-/// Gloas gossip: payload attestation for a future slot is IGNORED.
+/// Gloas gossip: payload attestation for a future slot is REJECTED.
 ///
 /// Per spec: [IGNORE] data.slot == current_slot (with clock disparity)
-/// A payload attestation for slot 999 when the chain is at slot 2 should be ignored.
+/// A payload attestation for slot 999 when the chain is at slot 2 should be rejected
+/// because the PTC committee cannot be computed for a far-future slot.
 #[tokio::test]
-async fn test_gloas_gossip_payload_attestation_future_slot_ignored() {
+async fn test_gloas_gossip_payload_attestation_future_slot_rejected() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
         return;
     }
@@ -2478,32 +2486,33 @@ async fn test_gloas_gossip_payload_attestation_future_slot_ignored() {
     let mut rig = gloas_rig(SMALL_CHAIN).await;
     let head = rig.chain.head_snapshot();
 
-    let attestation = PayloadAttestation {
-        aggregation_bits: ssz_types::BitVector::new(),
+    let message = types::PayloadAttestationMessage {
+        validator_index: 0,
         data: PayloadAttestationData {
             beacon_block_root: head.beacon_block_root,
             slot: Slot::new(999), // far future
             payload_present: true,
             blob_data_available: false,
         },
-        signature: bls::AggregateSignature::empty(),
+        signature: bls::Signature::empty(),
     };
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
-    assert_ignore(result);
+    assert_reject(result);
 }
 
-/// Gloas gossip: payload attestation for a past slot is IGNORED.
+/// Gloas gossip: payload attestation for a past slot is REJECTED.
 ///
 /// Per spec: [IGNORE] data.slot == current_slot (with MAXIMUM_GOSSIP_CLOCK_DISPARITY)
-/// An attestation targeting slot 0 (far behind wall clock) should be ignored.
-/// This complements the future_slot test by covering the opposite time direction.
+/// An attestation targeting slot 0 (far behind wall clock) should be rejected
+/// because the validator is not in the PTC for that slot, or the PTC committee
+/// computation fails for a past slot.
 #[tokio::test]
-async fn test_gloas_gossip_payload_attestation_past_slot_ignored() {
+async fn test_gloas_gossip_payload_attestation_past_slot_rejected() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
         return;
     }
@@ -2511,32 +2520,32 @@ async fn test_gloas_gossip_payload_attestation_past_slot_ignored() {
     let mut rig = gloas_rig(SMALL_CHAIN).await;
     let head = rig.chain.head_snapshot();
 
-    let attestation = PayloadAttestation {
-        aggregation_bits: ssz_types::BitVector::new(),
+    let message = types::PayloadAttestationMessage {
+        validator_index: 0,
         data: PayloadAttestationData {
             beacon_block_root: head.beacon_block_root,
             slot: Slot::new(0), // far past
             payload_present: true,
             blob_data_available: false,
         },
-        signature: bls::AggregateSignature::empty(),
+        signature: bls::Signature::empty(),
     };
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
-    assert_ignore(result);
+    assert_reject(result);
 }
 
-/// Gloas gossip: payload attestation with empty aggregation bits is REJECTED.
+/// Gloas gossip: payload attestation from a non-PTC validator is REJECTED.
 ///
-/// Per spec: aggregation bits must have at least one set bit.
-/// An attestation with zero set bits indicates no PTC members signed,
-/// which is invalid and should be rejected (mapped to Reject by gossip handler).
+/// An individual PayloadAttestationMessage from a validator not in the PTC
+/// for the attestation's slot should be rejected during message-to-attestation
+/// conversion, since the validator_index cannot be found in the PTC committee.
 #[tokio::test]
-async fn test_gloas_gossip_payload_attestation_empty_bits_rejected() {
+async fn test_gloas_gossip_payload_attestation_non_ptc_validator_rejected() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
         return;
     }
@@ -2545,35 +2554,36 @@ async fn test_gloas_gossip_payload_attestation_empty_bits_rejected() {
     let head = rig.chain.head_snapshot();
     let current_slot = rig.chain.slot().unwrap();
 
-    let attestation = PayloadAttestation {
-        aggregation_bits: ssz_types::BitVector::new(), // all zeros → empty
+    // Use a validator_index that is guaranteed not in the PTC (u64::MAX)
+    let message = types::PayloadAttestationMessage {
+        validator_index: u64::MAX,
         data: PayloadAttestationData {
             beacon_block_root: head.beacon_block_root,
-            slot: current_slot, // must be current slot to pass slot check
+            slot: current_slot,
             payload_present: true,
             blob_data_available: true,
         },
-        signature: bls::AggregateSignature::empty(),
+        signature: bls::Signature::empty(),
     };
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_reject(result);
 }
 
-/// Helper: build a validly-signed payload attestation from a single PTC member.
+/// Helper: build a validly-signed payload attestation message from a single PTC member.
 ///
-/// Returns (attestation, ptc_validator_index, ptc_bit_index) where
+/// Returns (message, ptc_validator_index, ptc_bit_index) where
 /// `ptc_validator_index` is the global validator index and `ptc_bit_index` is the
-/// position in the PTC bitfield. The attestation has a valid BLS aggregate signature
+/// position in the PTC bitfield. The message has a valid BLS signature
 /// using Domain::PtcAttester.
-fn build_valid_payload_attestation(
+fn build_valid_payload_attestation_message(
     rig: &TestRig,
     payload_present: bool,
-) -> (PayloadAttestation<E>, u64, usize) {
+) -> (types::PayloadAttestationMessage, u64, usize) {
     let head = rig.chain.head_snapshot();
     let head_state = &head.beacon_state;
     let current_slot = rig.chain.slot().unwrap();
@@ -2613,28 +2623,20 @@ fn build_valid_payload_attestation(
     let sk = &rig._harness.validator_keypairs[validator_index as usize].sk;
     let individual_sig = sk.sign(signing_root);
 
-    // Wrap in AggregateSignature
-    let mut agg_sig = bls::AggregateSignature::infinity();
-    agg_sig.add_assign(&individual_sig);
-
-    // Set aggregation bits
-    let mut bits = ssz_types::BitVector::new();
-    bits.set(ptc_bit_index, true).unwrap();
-
-    let attestation = PayloadAttestation {
-        aggregation_bits: bits,
+    let message = types::PayloadAttestationMessage {
+        validator_index,
         data,
-        signature: agg_sig,
+        signature: individual_sig,
     };
 
-    (attestation, validator_index, ptc_bit_index)
+    (message, validator_index, ptc_bit_index)
 }
 
 /// Gloas gossip: valid payload attestation from a PTC member is ACCEPTED.
 ///
 /// Per spec: all checks pass (current slot, known block root, valid PTC member,
 /// no equivocation, valid aggregation bits, valid BLS signature) → [ACCEPT].
-/// This test constructs a properly signed payload attestation from a real PTC
+/// This test constructs a properly signed PayloadAttestationMessage from a real PTC
 /// committee member, exercises the full validation pipeline end-to-end, and
 /// verifies the gossip handler accepts and propagates the message.
 #[tokio::test]
@@ -2644,10 +2646,10 @@ async fn test_gloas_gossip_payload_attestation_valid_accepted() {
     }
 
     let mut rig = gloas_rig(SMALL_CHAIN).await;
-    let (attestation, _validator_index, _ptc_bit) = build_valid_payload_attestation(&rig, true);
+    let (message, _validator_index, _ptc_bit) = build_valid_payload_attestation_message(&rig, true);
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
@@ -2671,20 +2673,22 @@ async fn test_gloas_gossip_payload_attestation_equivocation_rejected() {
     let mut rig = gloas_rig(SMALL_CHAIN).await;
 
     // First attestation: payload_present=true → should be accepted
-    let (attestation1, _validator_index, _ptc_bit) = build_valid_payload_attestation(&rig, true);
+    let (message1, _validator_index, _ptc_bit) =
+        build_valid_payload_attestation_message(&rig, true);
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation1)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message1)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_accept(result);
 
     // Second attestation from the same PTC member: payload_present=false → equivocation
-    let (attestation2, _validator_index2, _ptc_bit2) = build_valid_payload_attestation(&rig, false);
+    let (message2, _validator_index2, _ptc_bit2) =
+        build_valid_payload_attestation_message(&rig, false);
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation2)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message2)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
@@ -2693,10 +2697,10 @@ async fn test_gloas_gossip_payload_attestation_equivocation_rejected() {
 
 /// Gloas gossip: payload attestation with invalid signature is REJECTED.
 ///
-/// Per spec: [REJECT] the aggregate BLS signature must verify against the
-/// attesting PTC members' public keys. This test constructs an attestation
-/// with correct aggregation bits (valid PTC member) but signs with a different
-/// validator's key. The handler should reject and penalize the peer.
+/// Per spec: [REJECT] the BLS signature must verify against the PTC member's
+/// public key. This test constructs a PayloadAttestationMessage with the correct
+/// validator_index (valid PTC member) but signs with a different validator's key.
+/// The handler should reject and penalize the peer.
 #[tokio::test]
 async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
@@ -2717,8 +2721,7 @@ async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     )
     .expect("should get PTC committee");
 
-    let ptc_bit_index = 0;
-    let validator_index = ptc_indices[ptc_bit_index];
+    let validator_index = ptc_indices[0];
 
     let data = PayloadAttestationData {
         beacon_block_root: head.beacon_block_root,
@@ -2742,20 +2745,14 @@ async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     let wrong_sk = &rig._harness.validator_keypairs[wrong_signer as usize].sk;
     let wrong_sig = wrong_sk.sign(signing_root);
 
-    let mut agg_sig = bls::AggregateSignature::infinity();
-    agg_sig.add_assign(&wrong_sig);
-
-    let mut bits = ssz_types::BitVector::new();
-    bits.set(ptc_bit_index, true).unwrap();
-
-    let attestation = PayloadAttestation {
-        aggregation_bits: bits,
+    let message = types::PayloadAttestationMessage {
+        validator_index,
         data,
-        signature: agg_sig,
+        signature: wrong_sig,
     };
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     let result = drain_validation_result(&mut rig.network_rx).await;
@@ -4515,11 +4512,11 @@ async fn test_gloas_sse_event_payload_attestation() {
     let event_handler = rig.chain.event_handler.as_ref().unwrap();
     let mut att_rx = event_handler.subscribe_payload_attestation();
 
-    let (attestation, _validator_index, _ptc_bit) = build_valid_payload_attestation(&rig, true);
-    let expected_data = attestation.data.clone();
+    let (message, _validator_index, _ptc_bit) = build_valid_payload_attestation_message(&rig, true);
+    let expected_data = message.data.clone();
 
     rig.network_beacon_processor
-        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), attestation)
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)
         .await;
 
     // Verify the gossip was accepted

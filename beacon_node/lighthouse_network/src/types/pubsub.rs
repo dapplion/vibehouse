@@ -10,13 +10,14 @@ use types::{
     AttesterSlashing, AttesterSlashingBase, AttesterSlashingElectra, BlobSidecar,
     DataColumnSidecar, DataColumnSubnetId, EthSpec, ExecutionProof, ExecutionProofSubnetId,
     ForkContext, ForkName, LightClientFinalityUpdate, LightClientOptimisticUpdate,
-    PayloadAttestation, ProposerSlashing, SignedAggregateAndProof, SignedAggregateAndProofBase,
-    SignedAggregateAndProofElectra, SignedBeaconBlock, SignedBeaconBlockAltair,
-    SignedBeaconBlockBase, SignedBeaconBlockBellatrix, SignedBeaconBlockCapella,
-    SignedBeaconBlockDeneb, SignedBeaconBlockElectra, SignedBeaconBlockFulu,
-    SignedBeaconBlockGloas, SignedBlsToExecutionChange, SignedContributionAndProof,
-    SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
-    SignedVoluntaryExit, SingleAttestation, SubnetId, SyncCommitteeMessage, SyncSubnetId,
+    PayloadAttestationMessage, ProposerSlashing, SignedAggregateAndProof,
+    SignedAggregateAndProofBase, SignedAggregateAndProofElectra, SignedBeaconBlock,
+    SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockBellatrix,
+    SignedBeaconBlockCapella, SignedBeaconBlockDeneb, SignedBeaconBlockElectra,
+    SignedBeaconBlockFulu, SignedBeaconBlockGloas, SignedBlsToExecutionChange,
+    SignedContributionAndProof, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
+    SignedProposerPreferences, SignedVoluntaryExit, SingleAttestation, SubnetId,
+    SyncCommitteeMessage, SyncSubnetId,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,7 +53,8 @@ pub enum PubsubMessage<E: EthSpec> {
     /// Gossipsub message providing notification of an execution payload envelope reveal (gloas ePBS).
     ExecutionPayload(Box<SignedExecutionPayloadEnvelope<E>>),
     /// Gossipsub message providing notification of a payload attestation from PTC (gloas ePBS).
-    PayloadAttestation(Box<PayloadAttestation<E>>),
+    /// Per spec, the gossip topic carries individual `PayloadAttestationMessage` (not aggregated).
+    PayloadAttestation(Box<PayloadAttestationMessage>),
     /// Gossipsub message providing notification of proposer preferences (gloas ePBS).
     ProposerPreferences(Box<types::SignedProposerPreferences>),
     /// Gossipsub message providing a ZK execution proof on a particular proof subnet.
@@ -433,11 +435,9 @@ impl<E: EthSpec> PubsubMessage<E> {
                     GossipKind::PayloadAttestation => {
                         match fork_context.get_fork_from_context_bytes(gossip_topic.fork_digest) {
                             Some(fork) if fork.gloas_enabled() => {
-                                let payload_attestation = PayloadAttestation::from_ssz_bytes(data)
+                                let message = PayloadAttestationMessage::from_ssz_bytes(data)
                                     .map_err(|e| format!("{:?}", e))?;
-                                Ok(PubsubMessage::PayloadAttestation(Box::new(
-                                    payload_attestation,
-                                )))
+                                Ok(PubsubMessage::PayloadAttestation(Box::new(message)))
                             }
                             Some(_) | None => Err(format!(
                                 "payload_attestation topic invalid for given fork digest {:?}",
@@ -575,10 +575,8 @@ impl<E: EthSpec> std::fmt::Display for PubsubMessage<E> {
             ),
             PubsubMessage::PayloadAttestation(data) => write!(
                 f,
-                "Payload Attestation: slot: {}, beacon_block_root: {:?}, num_attesters: {}",
-                data.data.slot,
-                data.data.beacon_block_root,
-                data.num_attesters()
+                "Payload Attestation: slot: {}, beacon_block_root: {:?}, validator_index: {}",
+                data.data.slot, data.data.beacon_block_root, data.validator_index
             ),
             PubsubMessage::ProposerPreferences(data) => write!(
                 f,
@@ -718,19 +716,19 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // ── PayloadAttestation round-trip ──
+    // ── PayloadAttestation (PayloadAttestationMessage) round-trip ──
 
     #[test]
     fn encode_decode_payload_attestation() {
         let fork_context = gloas_fork_context();
         let mut rng = rand::rng();
-        let attestation = PayloadAttestation::<E>::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(attestation.clone()));
+        let message = PayloadAttestationMessage::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(message.clone()));
 
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::PayloadAttestation);
         let decoded = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context)
-            .expect("should decode PayloadAttestation");
+            .expect("should decode PayloadAttestationMessage");
 
         assert_eq!(decoded, msg);
     }
@@ -738,8 +736,8 @@ mod tests {
     #[test]
     fn payload_attestation_kind() {
         let mut rng = rand::rng();
-        let attestation = PayloadAttestation::<E>::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(attestation));
+        let message = PayloadAttestationMessage::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(message));
         assert_eq!(msg.kind(), GossipKind::PayloadAttestation);
     }
 
@@ -747,8 +745,8 @@ mod tests {
     fn payload_attestation_rejected_pre_gloas() {
         let fork_context = pre_gloas_fork_context();
         let mut rng = rand::rng();
-        let attestation = PayloadAttestation::<E>::random_for_test(&mut rng);
-        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(attestation));
+        let message = PayloadAttestationMessage::random_for_test(&mut rng);
+        let msg = PubsubMessage::<E>::PayloadAttestation(Box::new(message));
         let encoded = msg.encode(GossipEncoding::SSZSnappy);
         let topic = gloas_topic(&fork_context, GossipKind::PayloadAttestation);
         let result = PubsubMessage::<E>::decode(&topic, &encoded, &fork_context);

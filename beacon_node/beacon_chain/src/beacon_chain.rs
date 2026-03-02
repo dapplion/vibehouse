@@ -3244,13 +3244,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
-    /// Imports a `PayloadAttestationMessage` submitted via the REST API.
+    /// Converts a `PayloadAttestationMessage` (individual) to a `PayloadAttestation` (aggregated)
+    /// with a single bit set in the aggregation bitvector.
     ///
-    /// Converts the individual message to an aggregated `PayloadAttestation` with a single bit,
-    /// verifies it via the gossip verification path, and inserts into fork choice + pool.
-    pub fn import_payload_attestation_message(
+    /// This is used by both the HTTP API import path and the gossip processing path.
+    pub fn payload_attestation_message_to_attestation(
         &self,
-        message: PayloadAttestationMessage,
+        message: &PayloadAttestationMessage,
     ) -> Result<PayloadAttestation<T::EthSpec>, Error> {
         // Get PTC committee to find this validator's position
         let head = self.canonical_head.cached_head();
@@ -3279,11 +3279,22 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Convert individual signature to aggregate signature
         let agg_sig = AggregateSignature::from(&message.signature);
 
-        let attestation = PayloadAttestation {
+        Ok(PayloadAttestation {
             aggregation_bits,
-            data: message.data,
+            data: message.data.clone(),
             signature: agg_sig,
-        };
+        })
+    }
+
+    /// Imports a `PayloadAttestationMessage` submitted via the REST API.
+    ///
+    /// Converts the individual message to an aggregated `PayloadAttestation` with a single bit,
+    /// verifies it via the gossip verification path, and inserts into fork choice + pool.
+    pub fn import_payload_attestation_message(
+        &self,
+        message: PayloadAttestationMessage,
+    ) -> Result<PayloadAttestation<T::EthSpec>, Error> {
+        let attestation = self.payload_attestation_message_to_attestation(&message)?;
 
         // Verify using the same gossip verification path (move attestation — not used after)
         let verified = self

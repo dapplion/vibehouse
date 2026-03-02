@@ -2596,11 +2596,12 @@ pub fn serve<T: BeaconChainTypes>(
                     let mut failures = vec![];
 
                     for (index, message) in messages.into_iter().enumerate() {
-                        match chain.import_payload_attestation_message(message) {
-                            Ok(attestation) => {
+                        match chain.import_payload_attestation_message(message.clone()) {
+                            Ok(_attestation) => {
+                                // Publish the original individual message on gossip (spec-compliant)
                                 publish_pubsub_message(
                                     &network_tx,
-                                    PubsubMessage::PayloadAttestation(Box::new(attestation)),
+                                    PubsubMessage::PayloadAttestation(Box::new(message)),
                                 )?;
                             }
                             Err(e) => {

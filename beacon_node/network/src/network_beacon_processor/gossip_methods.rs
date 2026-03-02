@@ -3619,16 +3619,45 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     }
 
     /// Process a gossip payload attestation from PTC members (gloas ePBS).
+    ///
+    /// Receives an individual `PayloadAttestationMessage` from the gossip network (per spec),
+    /// converts it to an aggregated `PayloadAttestation` with a single bit, then verifies
+    /// and imports.
     pub async fn process_gossip_payload_attestation(
         self: &Arc<Self>,
         message_id: MessageId,
         peer_id: PeerId,
-        attestation: types::PayloadAttestation<T::EthSpec>,
+        message: types::PayloadAttestationMessage,
     ) {
         use beacon_chain::gloas_verification::PayloadAttestationError;
 
-        let slot = attestation.data.slot;
-        let beacon_block_root = attestation.data.beacon_block_root;
+        let slot = message.data.slot;
+        let beacon_block_root = message.data.beacon_block_root;
+
+        // Convert individual message to aggregated form for internal processing
+        let attestation = match self
+            .chain
+            .payload_attestation_message_to_attestation(&message)
+        {
+            Ok(att) => att,
+            Err(e) => {
+                debug!(
+                    %slot,
+                    ?beacon_block_root,
+                    %peer_id,
+                    validator_index = message.validator_index,
+                    error = ?e,
+                    "Failed to convert payload attestation message"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "payload_attestation_conversion_failed",
+                );
+                return;
+            }
+        };
 
         let verified_attestation = match self
             .chain
