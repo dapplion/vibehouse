@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — comprehensive merged PR audit, full spec compliance verification (run 374)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 6+ days of silence on master.
+- **Deep audit of ALL 12 spec PRs merged since Feb 12**. This is the first run to systematically verify every merged PR since the v1.7.0-alpha.2 tag:
+  - **#4884** (payload data availability vote split): Already implemented — vibehouse has `ptc_blob_data_available_weight` on proto_array nodes, `is_payload_data_available` logic in `should_extend_payload`, and `blob_data_available` field in `PayloadAttestationData`. Anchor initialization uses weight=0 which is correct (anchor is finalized, never subject to fork choice head selection).
+  - **#4897** (check pending deposit before builder): Already implemented — `is_pending_validator` check in `process_deposit_request` at state_processing/per_block_processing/process_operations.rs:728-731.
+  - **#4908** (voluntary exit tests for builders): Test-only PR, no code changes needed.
+  - **#4914** (replace pubkey with validator_index in SignedExecutionProof): Not applicable — this is EIP-8025 (future feature). Vibehouse has its own custom `ExecutionProof` type, not the spec's `SignedExecutionProof`.
+  - **#4915** (prevent duplicate proof verification): Not applicable — EIP-8025 (future feature).
+  - **#4916** (refactor builder deposit conditions): Already implemented — same logic as #4897 with short-circuit optimization.
+  - **#4918** (reject full-vote attestations when payload unknown): Already implemented — `validate_on_attestation` at fork_choice/src/fork_choice.rs:1194-1202 checks `index == 1 && !block.payload_revealed`.
+  - **#4920** (consistent section headings): Documentation-only, no code changes.
+  - **#4921** (use ckzg for tests): Test infrastructure, no client changes.
+  - **#4923** (IGNORE blocks when parent payload unknown): Already implemented — gossip validation at block_verification.rs:971-984 checks `parent_block.bid_block_hash.is_some() && !parent_block.payload_revealed`.
+  - **#4930** (rename execution_payload_states to payload_states): Already aligned — vibehouse already uses `payload_states` naming.
+  - **#4931** (rebase FOCIL onto Gloas): FOCIL/Heze fork, not Gloas. No action needed.
+  - **#4941** (update execution proof construction): EIP-8025 prover doc, not applicable.
+  - **#4942** (promote EIP-7805 to Heze): Heze fork, not Gloas.
+  - **#4945** (fix inclusion list test for mainnet): Test-only, not applicable.
+  - **#4946** (bump actions/stale): CI, not applicable.
+  - **#4947** (pre-fork subscription for proposer_preferences): Already handled — vibehouse's `PRE_FORK_SUBSCRIBE_EPOCHS = 1` in network/src/service.rs subscribes to all Gloas topics (including `proposer_preferences`) one epoch before fork activation.
+  - **#4948** (reorder payload status constants): Already aligned — vibehouse's `GloasPayloadStatus` enum already matches.
+- **Result: Vibehouse is fully up-to-date with all merged spec changes.** Zero compliance gaps found.
+- **Open Gloas PRs (4 remaining)**: #4940 (fork choice tests, 0 approvals), #4932 (sanity/blocks tests, 0 approvals), #4843 (variable PTC deadline, 1 approval + design debate), #4840 (EIP-7843 SLOTNUM, stale). Plus #4950 (by_root serve range, 4 approvals — likely to merge, no vibehouse changes needed). #4939 (envelope request on index-1 attestation, 0 approvals, needs work) and #4630 (EIP-7688 forward-compatible SSZ, 0 approvals) also remain open.
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+
 ### 2026-03-02 — spec tracking, PR readiness verification, codebase audit (run 373)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948). 5+ days of silence on master.
