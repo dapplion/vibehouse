@@ -14834,3 +14834,179 @@ async fn gloas_block_production_after_reorg_filters_stale_attestations() {
         "produced block's bid should reference fork B's block_hash as parent"
     );
 }
+
+/// End-to-end test for builder payment quorum promotion and withdrawal.
+///
+/// Seeds a `BuilderPendingPayment` with sufficient weight at genesis, then runs
+/// the chain through epoch processing which:
+/// 1. Promotes the payment to `builder_pending_withdrawals` (quorum met)
+/// 2. Includes the builder withdrawal in the next block's envelope
+/// 3. Drains `builder_pending_withdrawals` after processing
+///
+/// This tests the full epoch processing → withdrawal computation → envelope inclusion
+/// pipeline that was previously only tested with pre-seeded `builder_pending_withdrawals`
+/// (bypassing the quorum check) or with zero-value self-build payments.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gloas_builder_payment_quorum_promotion_end_to_end() {
+    let bid_value = 5_000_000_000u64; // 5 ETH in Gwei
+    let builder_index = 0u64;
+    let fee_recipient = Address::repeat_byte(0xCC);
+
+    // Quorum threshold = (total_active_balance / SLOTS_PER_EPOCH) * 6 / 10
+    // With 32 validators at 32 ETH: total = 1024 ETH = 1024 * 10^9 Gwei
+    // per_slot = 1024 * 10^9 / 8 = 128 * 10^9
+    // quorum = 128 * 10^9 * 6 / 10 = 76.8 * 10^9
+    // Set weight well above quorum
+    let sufficient_weight = 200_000_000_000u64; // 200 ETH equivalent
+
+    // Create harness with a builder AND a pre-seeded pending payment in the first
+    // half of builder_pending_payments (index 1). The first half represents the
+    // "previous epoch" at the first epoch boundary, so it will be checked for
+    // quorum promotion immediately at epoch 0→1.
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+    let spec_arc = Arc::new(spec.clone());
+    let keypairs = types::test_utils::generate_deterministic_keypairs(VALIDATOR_COUNT);
+
+    let header = generate_genesis_header::<E>(&spec, false);
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject builder
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    gloas_state
+        .builders
+        .push(Builder {
+            pubkey: BUILDER_KEYPAIRS[0].pk.clone().into(),
+            version: 0,
+            execution_address: Address::zero(),
+            balance: 10_000_000_000, // 10 ETH
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        })
+        .expect("should push builder");
+
+    // Seed a BuilderPendingPayment at index 1 (first half = "previous epoch").
+    // At the epoch 0→1 boundary, process_builder_pending_payments checks the first
+    // half and promotes entries with weight >= quorum.
+    let payment = BuilderPendingPayment {
+        weight: sufficient_weight,
+        withdrawal: BuilderPendingWithdrawal {
+            fee_recipient,
+            amount: bid_value,
+            builder_index,
+        },
+    };
+    *gloas_state
+        .builder_pending_payments
+        .get_mut(1)
+        .expect("index 1 should be valid") = payment;
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let harness = BeaconChainHarness::builder(E::default())
+        .spec(spec_arc)
+        .keypairs(keypairs)
+        .genesis_state_ephemeral_store(state)
+        .mock_execution_layer()
+        .build();
+
+    harness.advance_slot();
+
+    // Run through the first epoch boundary (8 slots for minimal preset).
+    // At the epoch 0→1 boundary, process_builder_pending_payments:
+    // 1. Checks first half (indices 0-7) — finds payment at index 1 with weight >= quorum
+    // 2. Promotes it to builder_pending_withdrawals
+    // Then process_withdrawals_gloas includes the builder withdrawal in the next block's
+    // payload_expected_withdrawals, and the envelope carries it.
+    Box::pin(harness.extend_slots(9)).await;
+
+    let head = harness.chain.head_snapshot();
+    assert!(
+        head.beacon_block.slot() >= Slot::new(9),
+        "head should be at slot 9 or later (got slot {})",
+        head.beacon_block.slot()
+    );
+
+    // The epoch boundary fires at the transition to slot 8 (first slot of epoch 1).
+    // The block at slot 8 processes withdrawals including the promoted builder withdrawal.
+    // The envelope at slot 8 carries the builder withdrawal.
+    let epoch_1_start = Slot::new(8);
+    let epoch_1_root = *harness
+        .chain
+        .head_beacon_state_cloned()
+        .get_block_root(epoch_1_start)
+        .expect("should have block root for epoch 1 start");
+
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&epoch_1_root)
+        .expect("should read store")
+        .expect("should have envelope for epoch 1 start slot");
+
+    let builder_withdrawals: Vec<_> = envelope
+        .message
+        .payload
+        .withdrawals
+        .iter()
+        .filter(|w| w.validator_index & consts::gloas::BUILDER_INDEX_FLAG != 0)
+        .collect();
+
+    assert!(
+        !builder_withdrawals.is_empty(),
+        "epoch 1 start envelope should contain builder withdrawal from quorum promotion"
+    );
+
+    let builder_withdrawal = builder_withdrawals[0];
+    assert_eq!(
+        builder_withdrawal.validator_index,
+        builder_index | consts::gloas::BUILDER_INDEX_FLAG,
+        "withdrawal validator_index should be builder_index with BUILDER_INDEX_FLAG set"
+    );
+    assert_eq!(
+        builder_withdrawal.address, fee_recipient,
+        "withdrawal address should match the builder's fee_recipient"
+    );
+    assert_eq!(
+        builder_withdrawal.amount, bid_value,
+        "withdrawal amount should match the pending payment amount"
+    );
+
+    // Verify builder_pending_withdrawals is drained after processing
+    let final_state = harness.chain.head_beacon_state_cloned();
+    let gloas_state = final_state.as_gloas().expect("should be Gloas");
+    assert_eq!(
+        gloas_state.builder_pending_withdrawals.len(),
+        0,
+        "builder_pending_withdrawals should be drained after withdrawal processing"
+    );
+
+    // Verify the original payment was rotated out (first half cleared during rotation)
+    let original_payment = gloas_state
+        .builder_pending_payments
+        .get(1)
+        .expect("index 1 should be valid");
+    assert_eq!(
+        original_payment.weight, 0,
+        "original payment slot should be cleared after rotation"
+    );
+    assert_eq!(
+        original_payment.withdrawal.amount, 0,
+        "original payment amount should be cleared after rotation"
+    );
+}
