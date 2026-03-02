@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — PTC quorum integration tests, spec tracking (run 357)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **PTC quorum integration tests shipped** — 3 new tests in `beacon_chain/tests/gloas.rs`:
+  - `gloas_blob_quorum_via_ptc_updates_attestation_data`: PTC members attest with `blob_data_available=true` → quorum crosses → `get_payload_attestation_data` returns `blob_data_available=true`. Tests the end-to-end path from PTC gossip votes → fork choice state → validator-facing API.
+  - `gloas_ptc_payload_quorum_without_envelope`: PTC members attest `payload_present=true` on a block whose envelope was never received locally → quorum crosses → `payload_revealed` flips true via social consensus → `get_payload_attestation_data` returns `payload_present=true`. Tests the critical ePBS social consensus path.
+  - `gloas_blob_quorum_strictly_greater_than_threshold`: verifies strict `>` threshold requirement (not `>=`) for blob data availability quorum — first vote at exactly threshold does NOT trigger, second vote crossing threshold does.
+- **All 701 beacon_chain tests pass** (698 + 3 new)
+- **Clippy**: zero warnings (full workspace, verified by pre-push hook)
+- **Remaining medium-priority coverage gaps**:
+  - Blob data quorum trigger — **DONE** (this run)
+  - PTC quorum without envelope — **DONE** (this run)
+  - Stale attestation filtering in block production (wrong beacon_block_root due to reorg)
+  - Envelope processing with execution requests that trigger state changes
+  - PTC duties at epoch boundaries (lower priority)
+  - Execution proof acceptance path (lower priority)
+
 ### 2026-03-02 — external builder FULL-path chain continuation test (run 356)
 - **New integration test shipped**: `gloas_external_builder_revealed_next_block_uses_builder_block_hash`
   - Tests the complete FULL path for external builders: bid selection → block import → envelope gossip verification → envelope state transition → head recompute → next block production
