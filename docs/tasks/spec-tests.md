@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — spec tracking, stateless gossip envelope test (run 370)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4926, #4843, #4840, #4630, #4950. None merged. No new Gloas PRs opened.
+- **CI health**: All recent completed runs green. 3 in-progress runs from latest pushes.
+- **Test coverage gap analysis**: Comprehensive review of `process_payload_envelope`, `process_self_build_envelope`, and `build_self_build_envelope` identified the stateless gossip path as the most meaningful untested deployment scenario. All envelope validation errors are already covered at the state_processing unit test level. The EL `Accepted` status shares a branch with `Syncing` (already tested).
+- **New test: `gloas_gossip_envelope_stateless_mode_skips_el`**: Exercises the full gossip envelope pipeline (`verify_payload_envelope_for_gossip` → `apply_payload_envelope_to_fork_choice` → `process_payload_envelope`) on a stateless node. Verifies EL is skipped, state transition runs, envelope is persisted, `latest_block_hash` is updated, and block remains Optimistic. This was the only untested deployment path — all prior stateless tests only used `process_self_build_envelope`.
+- **EF test results**: 78/78 real crypto pass, 138/138 fake_crypto pass
+- **Zero clippy warnings across workspace**
+
 ### 2026-03-02 — spec tracking, test runner readiness audit (run 369)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
