@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — duplicate envelope & past slot attestation gossip tests, spec tracking (run 363)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new consensus-specs master commits since Feb 26 (last: #4947, #4948)
+- **All open Gloas spec PRs unchanged**: #4940, #4939, #4932, #4843, #4840, #4630. None merged.
+- **Two new network-level gossip handler tests shipped**:
+  - `test_gloas_gossip_payload_envelope_duplicate_ignored`: submits a valid self-build envelope twice for the same block root — first is Accepted (passes all verification, recorded in `observed_payload_envelopes`), second is Ignored (DuplicateEnvelope dedup guard). Covers the previously-untested IGNORE dedup condition from the gossip spec.
+  - `test_gloas_gossip_payload_attestation_past_slot_ignored`: submits a payload attestation targeting slot 0 (far behind wall clock) — Ignored via `PastSlot` check. Complements the existing `FutureSlot` test covering the opposite time direction.
+- **Coverage gap analysis**: reviewed all gossip handler error branches:
+  - Envelope handler: BlockRootUnknown ✓, DuplicateEnvelope ✓ (NEW), PriorToFinalization ✓, InvalidSignature (requires external builder chain — beacon_chain tests cover it), SlotMismatch ✓, BuilderIndexMismatch ✓, BlockHashMismatch ✓, NotGloasBlock (requires mixed-fork chain — beacon_chain tests cover it), SelfBuild Accept ✓
+  - Payload attestation handler: UnknownBeaconBlockRoot ✓, FutureSlot ✓, PastSlot ✓ (NEW), EmptyAggregationBits ✓, ValidAccepted ✓, ValidatorEquivocation ✓, InvalidSignature ✓
+  - Execution proof handler: UnknownBlockRoot ✓, InvalidVersion ✓, ProofDataEmpty ✓, ProofDataTooLarge ✓, BlockHashMismatch ✓, ValidStub ✓, PriorToFinalization (unreachable: requires block in FC at slot < finalized_slot, which proto_array prunes), InvalidSubnetId (unreachable: `ExecutionProofSubnetId::new()` prevents construction)
+  - SSE event tests: ExecutionBid ✓, PayloadAttestation ✓, ExecutionProofReceived ✓, ExecutionPayload (only emitted in gossip pipeline after full process_payload_envelope success — requires real valid envelope)
+- **All 147 network tests pass** (145 + 2 new)
+- **Clippy**: zero warnings
+
 ### 2026-03-02 — prune_gloas_pools buffer cap tests, spec audit (run 362)
 - **Consensus-specs audit**: Reviewed all 30 commits on master since v1.7.0-alpha.2 (Feb 3):
   - **#4948** (reorder PayloadStatus constants): Already implemented (Empty=0, Full=1, Pending=2)
