@@ -1313,6 +1313,10 @@ async fn post_execution_payload_envelope_slot_mismatch() {
     // Change the slot to a different value (slot mismatch with the block)
     envelope.message.slot = Slot::new(99);
 
+    // Clear observed envelopes so the dedup check doesn't fire before
+    // field-level validation (self-build already observed this root).
+    harness.chain.observed_payload_envelopes.lock().clear();
+
     let result = client
         .post_beacon_execution_payload_envelope(&envelope)
         .await;
@@ -1362,6 +1366,10 @@ async fn post_execution_payload_envelope_builder_index_mismatch() {
 
     // Change builder_index to something different from the committed bid
     envelope.message.builder_index = 42;
+
+    // Clear observed envelopes so the dedup check doesn't fire before
+    // field-level validation (self-build already observed this root).
+    harness.chain.observed_payload_envelopes.lock().clear();
 
     let result = client
         .post_beacon_execution_payload_envelope(&envelope)
@@ -1414,6 +1422,10 @@ async fn post_execution_payload_envelope_block_hash_mismatch() {
 
     // Change the payload block_hash to something different from the committed bid
     envelope.message.payload.block_hash = ExecutionBlockHash::repeat_byte(0xba);
+
+    // Clear observed envelopes so the dedup check doesn't fire before
+    // field-level validation (self-build already observed this root).
+    harness.chain.observed_payload_envelopes.lock().clear();
 
     let result = client
         .post_beacon_execution_payload_envelope(&envelope)
