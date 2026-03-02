@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-02 — fix PTC weight double-counting and update test assertions (run 388)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- All open Gloas spec PRs unchanged
+- **Bug fix: PTC weight double-counting for in-block + gossip attestations** (f448189c6): The spec uses per-PTC-member bitvectors (idempotent overwrites) for tracking payload timeliness and blob data availability votes. Vibehouse uses weight counters. When a PTC attestation arrived via both gossip and block inclusion, the weight counter was incremented twice, potentially causing false quorum (e.g., 200 unique voters counted as 400 weight). Fix: filter in-block attestations through `observed_payload_attestations` before applying to fork choice, ensuring each validator's vote is counted only once.
+- **Test fixes: 9 integration tests updated** (b8539b638) for run 387's `on_execution_bid` envelope preservation fix. Tests that verify the payload reset path now explicitly clear `envelope_received` first. Tests that don't need the reset path update their assertions to match the preserved-state behavior. Added regression test `gloas_in_block_attestation_does_not_double_count_ptc_weight`.
+- **350/350 Gloas beacon_chain tests pass**, **367/367 non-Gloas beacon_chain tests pass**, **266/266 fork_choice + proto_array tests pass**
+- **Zero clippy warnings**
+
 ### 2026-03-02 — fix late gossip bid resetting payload state after envelope (run 387)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new consensus-specs master commits since Feb 26.
