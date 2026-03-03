@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — deep spec conformance audit, all verified (run 412)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest), no new Gloas spec PRs
+- **Comprehensive spec conformance audits** (all verified correct):
+  - **`process_execution_payload_bid`** (state_processing/gloas.rs) — all 12 spec checks match v1.7.0-alpha.2
+  - **`process_execution_payload_envelope`** (envelope_processing.rs) — all 17 spec checks match
+  - **`compute_timestamp_at_slot`** — uses `spec.seconds_per_slot` (functionally equivalent to spec's `SLOT_DURATION_MS // 1000`)
+  - **`get_gloas_weight`** (proto_array_fork_choice.rs) — attestation scoring, proposer boost, non-PENDING zero-weight all match spec
+  - **`is_supporting_vote_gloas_at_slot`** — same-root and ancestor-path checks match spec's `is_supporting_vote`
+  - **`get_ancestor_gloas`** — parent walk and payload status derivation match spec's `get_ancestor`
+  - **`get_payload_tiebreaker`** — PENDING/non-previous-slot ordinal, EMPTY→1, FULL→conditional match spec
+  - **`should_extend_payload`** — correctly implements both `is_payload_timely AND is_payload_data_available` per merged PR #4884 (post-alpha.2, merged 2026-02-12). Both thresholds use `ptc_size / 2` matching spec's `PAYLOAD_TIMELY_THRESHOLD` and `DATA_AVAILABILITY_TIMELY_THRESHOLD`.
+- **Unchecked indexing audit** — all Gloas hot paths (block import, envelope processing, fork choice, gossip validation) use safe `.get()`, `.ok_or()`, and `?` patterns. No runtime panics found.
+- **Block import pipeline audit** — external builder blocks correctly handled: `load_parent` patches `latest_block_hash`, `process_self_build_envelope` uses `get_state`, state cache returns clones
+- No code changes this run — purely audit/verification
+
 ### 2026-03-03 — fork choice tests + spec tracking (run 411)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **3 recently merged spec PRs reviewed**:
