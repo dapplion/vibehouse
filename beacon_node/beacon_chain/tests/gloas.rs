@@ -5802,6 +5802,551 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
     );
 }
 
+/// on_payload_attestation: exactly quorum_threshold votes should NOT trigger payload_revealed.
+/// The spec requires strictly greater than: `ptc_weight > quorum_threshold`.
+#[tokio::test]
+async fn fc_on_payload_attestation_exact_quorum_does_not_reveal() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid_hash = ExecutionBlockHash::repeat_byte(0xa1);
+
+    // Set up: external builder block with payload_revealed=false
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let bid = SignedExecutionPayloadBid::<E> {
+            message: ExecutionPayloadBid {
+                slot,
+                builder_index: 5,
+                block_hash: bid_hash,
+                ..Default::default()
+            },
+            signature: bls::Signature::empty(),
+        };
+        fc.on_execution_bid(&bid, block_root).unwrap();
+
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.bid_block_hash = Some(bid_hash);
+        node.payload_revealed = false;
+        node.envelope_received = false;
+        node.execution_status = ExecutionStatus::irrelevant();
+    }
+
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Send exactly quorum_threshold votes — should NOT trigger reveal
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: true,
+            blob_data_available: false,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            for i in 0..quorum_threshold {
+                list.push(i).unwrap();
+            }
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.ptc_weight, quorum_threshold,
+        "ptc_weight should equal quorum_threshold"
+    );
+    assert!(
+        !node.payload_revealed,
+        "payload_revealed should remain false at exact quorum (spec: strictly greater than)"
+    );
+    assert!(
+        !node.execution_status.is_execution_enabled(),
+        "execution_status should remain irrelevant at exact quorum"
+    );
+}
+
+/// on_payload_attestation: one vote beyond quorum_threshold triggers payload_revealed on
+/// a block that started with payload_revealed=false (external builder path).
+#[tokio::test]
+async fn fc_on_payload_attestation_one_above_quorum_reveals() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid_hash = ExecutionBlockHash::repeat_byte(0xa2);
+
+    // Set up: external builder block with payload_revealed=false
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let bid = SignedExecutionPayloadBid::<E> {
+            message: ExecutionPayloadBid {
+                slot,
+                builder_index: 5,
+                block_hash: bid_hash,
+                ..Default::default()
+            },
+            signature: bls::Signature::empty(),
+        };
+        fc.on_execution_bid(&bid, block_root).unwrap();
+
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.bid_block_hash = Some(bid_hash);
+        node.payload_revealed = false;
+        node.envelope_received = false;
+        node.execution_status = ExecutionStatus::irrelevant();
+    }
+
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Send quorum_threshold + 1 votes — should trigger reveal
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: true,
+            blob_data_available: false,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            for i in 0..=quorum_threshold {
+                list.push(i).unwrap();
+            }
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.ptc_weight,
+        quorum_threshold + 1,
+        "ptc_weight should be quorum_threshold + 1"
+    );
+    assert!(
+        node.payload_revealed,
+        "payload_revealed should be true after crossing quorum"
+    );
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Optimistic(bid_hash),
+        "execution_status should be Optimistic(bid_hash) after quorum"
+    );
+}
+
+/// on_execution_bid: late bid arriving after PTC quorum (payload_revealed=true,
+/// envelope_received=false) should preserve payload state and not reset PTC weights.
+#[tokio::test]
+async fn fc_on_execution_bid_preserves_state_after_ptc_quorum() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid_hash = ExecutionBlockHash::repeat_byte(0xa3);
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Set up: simulate PTC quorum reached without envelope
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_revealed = true;
+        node.envelope_received = false; // no envelope yet
+        node.ptc_weight = quorum_threshold + 1;
+        node.ptc_blob_data_available_weight = 10;
+        node.payload_data_available = false;
+        node.bid_block_hash = Some(bid_hash);
+        node.execution_status = ExecutionStatus::Optimistic(bid_hash);
+    }
+
+    // Late bid arrives — should preserve PTC state because payload_revealed=true
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 99,
+            block_hash: bid_hash,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+
+    assert_eq!(
+        node.builder_index,
+        Some(99),
+        "builder_index should be updated from late bid"
+    );
+    assert!(
+        node.payload_revealed,
+        "payload_revealed should be preserved (PTC quorum already established)"
+    );
+    assert_eq!(
+        node.ptc_weight,
+        quorum_threshold + 1,
+        "ptc_weight should be preserved (not reset by late bid)"
+    );
+    assert_eq!(
+        node.ptc_blob_data_available_weight, 10,
+        "blob weight should be preserved"
+    );
+}
+
+/// on_execution_bid: bid arriving before any PTC votes or envelope (payload_revealed=false,
+/// envelope_received=false) should reset PTC weights to 0.
+#[tokio::test]
+async fn fc_on_execution_bid_resets_state_when_no_quorum_or_envelope() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    // Set up: simulate partial PTC votes with no quorum, no envelope
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_revealed = false;
+        node.envelope_received = false;
+        node.ptc_weight = 42;
+        node.ptc_blob_data_available_weight = 17;
+        node.payload_data_available = true;
+    }
+
+    let bid = SignedExecutionPayloadBid::<E> {
+        message: ExecutionPayloadBid {
+            slot,
+            builder_index: 10,
+            block_hash: ExecutionBlockHash::repeat_byte(0xa4),
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_bid(&bid, block_root)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+
+    assert_eq!(node.builder_index, Some(10), "builder_index should be set");
+    assert_eq!(
+        node.ptc_weight, 0,
+        "ptc_weight should be reset to 0 (no envelope, no quorum)"
+    );
+    assert_eq!(
+        node.ptc_blob_data_available_weight, 0,
+        "blob weight should be reset to 0"
+    );
+    assert!(
+        !node.payload_data_available,
+        "payload_data_available should be reset to false"
+    );
+}
+
+/// on_valid_execution_payload: transitions execution_status from Optimistic to Valid.
+#[tokio::test]
+async fn fc_on_valid_execution_payload_transitions_to_valid() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, _slot) = produce_gloas_block(&harness).await;
+
+    let payload_hash = ExecutionBlockHash::repeat_byte(0xa5);
+
+    // Set up: simulate block with Optimistic status (post-envelope, pre-EL-validation)
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        fc.on_execution_payload(block_root, payload_hash).unwrap();
+
+        // Verify it's Optimistic
+        let node = fc.get_block(&block_root).unwrap();
+        assert_eq!(
+            node.execution_status,
+            ExecutionStatus::Optimistic(payload_hash),
+            "should be Optimistic after on_execution_payload"
+        );
+    }
+
+    // Transition to Valid
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_valid_execution_payload(block_root)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Valid(payload_hash),
+        "execution_status should be Valid after on_valid_execution_payload"
+    );
+    // Verify other payload fields are not affected
+    assert!(node.payload_revealed, "payload_revealed should remain true");
+    assert!(
+        node.envelope_received,
+        "envelope_received should remain true"
+    );
+}
+
+/// on_valid_execution_payload: rejects unknown block root.
+#[tokio::test]
+async fn fc_on_valid_execution_payload_rejects_unknown_root() {
+    let harness = gloas_harness_at_epoch(0);
+    let _ = produce_gloas_block(&harness).await;
+
+    let result = harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_valid_execution_payload(Hash256::repeat_byte(0xff));
+
+    assert!(
+        result.is_err(),
+        "should reject on_valid_execution_payload for unknown root"
+    );
+}
+
+/// Full lifecycle: bid → PTC quorum (no envelope) → envelope → EL Valid.
+/// Verifies the complete state machine for an external builder block.
+#[tokio::test]
+async fn fc_full_external_builder_lifecycle() {
+    let harness = gloas_harness_at_epoch(0);
+    let (block_root, slot) = produce_gloas_block(&harness).await;
+
+    let bid_hash = ExecutionBlockHash::repeat_byte(0xa6);
+    let ptc_size = harness.spec.ptc_size;
+    let quorum_threshold = ptc_size / 2;
+
+    // Step 0: Reset to external builder initial state
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
+        node.payload_revealed = false;
+        node.envelope_received = false;
+        node.payload_data_available = false;
+        node.ptc_weight = 0;
+        node.ptc_blob_data_available_weight = 0;
+        node.execution_status = ExecutionStatus::irrelevant();
+        node.builder_index = None;
+        node.bid_block_hash = None;
+    }
+
+    // Step 1: Bid arrives
+    {
+        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
+        let bid = SignedExecutionPayloadBid::<E> {
+            message: ExecutionPayloadBid {
+                slot,
+                builder_index: 7,
+                block_hash: bid_hash,
+                ..Default::default()
+            },
+            signature: bls::Signature::empty(),
+        };
+        fc.on_execution_bid(&bid, block_root).unwrap();
+
+        let block_index = fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .copied()
+            .unwrap();
+        // Set bid_block_hash (normally set during on_block)
+        fc.proto_array_mut().core_proto_array_mut().nodes[block_index].bid_block_hash =
+            Some(bid_hash);
+    }
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(node.builder_index, Some(7));
+    assert!(!node.payload_revealed, "no envelope or quorum yet");
+    assert!(!node.execution_status.is_execution_enabled());
+
+    // Step 2: PTC votes arrive and reach quorum
+    let attestation = PayloadAttestation::<E> {
+        data: PayloadAttestationData {
+            beacon_block_root: block_root,
+            slot,
+            payload_present: true,
+            blob_data_available: true,
+        },
+        ..PayloadAttestation::empty()
+    };
+    let indexed = IndexedPayloadAttestation::<E> {
+        attesting_indices: {
+            let mut list = ssz_types::VariableList::empty();
+            for i in 0..=quorum_threshold {
+                list.push(i).unwrap();
+            }
+            list
+        },
+        data: attestation.data.clone(),
+        ..IndexedPayloadAttestation::empty()
+    };
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_payload_attestation(&attestation, &indexed, slot, &harness.spec)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert!(node.payload_revealed, "quorum should trigger reveal");
+    assert!(
+        node.payload_data_available,
+        "blob quorum should also be reached"
+    );
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Optimistic(bid_hash),
+        "should be Optimistic after quorum"
+    );
+    assert!(!node.envelope_received, "envelope not yet received");
+
+    // Step 3: Envelope arrives
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_execution_payload(block_root, bid_hash)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert!(node.envelope_received, "envelope should be marked received");
+    assert!(node.payload_revealed);
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Optimistic(bid_hash),
+        "still Optimistic until EL confirms"
+    );
+
+    // Step 4: EL validates payload
+    harness
+        .chain
+        .canonical_head
+        .fork_choice_write_lock()
+        .on_valid_execution_payload(block_root)
+        .unwrap();
+
+    let node = harness
+        .chain
+        .canonical_head
+        .fork_choice_read_lock()
+        .get_block(&block_root)
+        .unwrap();
+    assert_eq!(
+        node.execution_status,
+        ExecutionStatus::Valid(bid_hash),
+        "should be Valid after EL confirmation"
+    );
+    assert!(node.payload_revealed);
+    assert!(node.envelope_received);
+    assert!(node.payload_data_available);
+}
+
 // =============================================================================
 // apply_payload_attestation_to_fork_choice integration tests
 // =============================================================================
