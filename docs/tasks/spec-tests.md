@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — comprehensive spec PR audit (run 424)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Full audit of all merged Gloas spec PRs since v1.7.0-alpha.2** — systematically verified vibehouse compliance against every merged PR that modifies Gloas spec files:
+  - **#4897** (builder deposit pending check): Already implemented — `is_pending_validator()` in `process_deposit_request_gloas` correctly prevents routing pending validator deposits to builders
+  - **#4918** (attestation index=1 requires known payload): Already implemented — `validate_on_attestation` checks `payload_revealed` for index=1 attestations, with tests
+  - **#4884** (payload_data_availability_vote in fork choice): Already implemented — `ptc_blob_data_available_weight` tracked per ProtoNode, `should_extend_payload` requires both timeliness AND data availability
+  - **#4923** (ignore block if parent payload unknown): Already implemented — `GloasParentPayloadUnknown` error in gossip block verification
+  - **#4948** (payload status constant reordering): Already implemented — `GloasPayloadStatus` enum: Empty=0, Full=1, Pending=2
+  - **#4947** (pre-fork proposer_preferences subscription): Already implemented — `PRE_FORK_SUBSCRIBE_EPOCHS` wiring
+  - **#4926** (SLOT_DURATION_MS replaces SECONDS_PER_SLOT): Already implemented — `slot_duration_ms` field in ChainSpec
+  - **#4916** (builder deposit refactor): Already implemented — condition ordering matches spec optimization
+  - **#4930** (rename execution_payload_states → payload_states): Naming-only change; vibehouse uses its own field names
+- **Spec conformance fix** (commit `dc0eaad9f`): Anchor block PTC weight initialization. The spec's `get_forkchoice_store` initializes `payload_timeliness_vote[anchor]` and `payload_data_availability_vote[anchor]` to `Vector[True]*PTC_SIZE`. vibehouse was setting the derived boolean flags (`payload_revealed`, `payload_data_available`, `ptc_timely`) but not the underlying weight counters (`ptc_weight`, `ptc_blob_data_available_weight`). While functionally benign (fallback conditions in `should_extend_payload` cover the anchor), this makes the anchor node fully spec-conformant.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range), #4939 (envelope request on index-1 attestation), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch)
+- All 738 Gloas beacon_chain tests pass. All 8 EF fork_choice spec tests pass. 114 fork_choice + 161 proto_array unit tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — payload attestation aggregation fix (run 423)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 422. Same set: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
