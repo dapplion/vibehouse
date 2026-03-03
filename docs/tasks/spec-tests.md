@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — block production source metrics + audits (run 417)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new merges since run 416. Same set: #4955 (dependabot), #4944 (execution proofs by_root), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas or already handled.
+- **Open Gloas PR status**:
+  - **#4954** (millisecond store) now has 1 reviewer (was 0). Still open. Not implementing proactively — large refactor (Store.time → Store.time_ms).
+  - **#4950** (by_root serve range extension) still open with 4 approvals. vibehouse already compliant.
+  - #4940 (Gloas fork choice tests), #4932 (Gloas sanity/blocks tests), #4939 (missing payload envelopes) — all unchanged.
+- **Block production source metrics** (commit `509b46b92`):
+  - `beacon_block_production_external_bid_total` — count of blocks produced using an external builder bid
+  - `beacon_block_production_self_build_total` — count of blocks produced using self-build (no external bid)
+  - Placed in `complete_partial_beacon_block` Gloas path, incremented before bid/payload construction
+  - Enables operators to monitor external builder usage vs self-build fallback in production
+- **Comprehensive audits performed** (no issues found):
+  - **Block production error handling**: Reviewed full produce_block_on_state → complete_partial_beacon_block → build_self_build_envelope pipeline. All error paths properly propagated. External bid signature not re-verified at production time (correct — verified during gossip). KZG commitments check happens after block construction (correct — checks blob count matches before returning to caller).
+  - **Fork transition path**: upgrade_to_gloas correctly initializes all fields (latest_block_hash from header, proposer_lookahead inherited from Fulu, builder_pubkey_cache populated by onboard_builders_from_pending_deposits). load_parent correctly handles state cache patching for zero block_hash genesis/default bids.
+  - **Payload attestation data endpoint**: get_payload_attestation_data correctly reads payload_revealed and payload_data_available from fork choice proto_array block.
+  - **TODO/FIXME audit**: No actionable TODOs remain. 3 `TODO(EIP-7732)` about blinded block conversions are architectural (non-actionable). 1 `FIXME(gloas)` in test utils inherits pattern from all forks.
+- CI from runs 415-416 still in progress. All previous runs (413-414) green.
+- All 735 beacon_chain tests pass (Gloas fork). Full workspace clippy clean.
+
 ### 2026-03-03 — envelope processing metrics + spec tracking (run 416)
 - No new consensus-specs releases (v1.6.1 latest stable; v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 415. #4955 (dependabot), #4944 (execution proofs by_root, eip8025 only), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas or already handled.
