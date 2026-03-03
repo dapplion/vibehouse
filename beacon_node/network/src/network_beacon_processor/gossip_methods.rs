@@ -3608,6 +3608,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 self.chain.recompute_head_at_current_slot().await;
             }
             Err(e) => {
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL);
                 warn!(
                     ?beacon_block_root,
                     builder_index,

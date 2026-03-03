@@ -609,6 +609,9 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
                         );
                     }
                     Err(e) => {
+                        beacon_chain::metrics::inc_counter(
+                            &beacon_chain::metrics::SELF_BUILD_ENVELOPE_FAILURES,
+                        );
                         error!(
                             slot = %block.slot(),
                             error = ?e,

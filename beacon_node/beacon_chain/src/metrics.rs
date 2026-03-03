@@ -226,6 +226,48 @@ pub static SELF_BUILD_ENVELOPE_SUCCESSES: LazyLock<Result<IntCounter>> = LazyLoc
         "Count of self-build execution payload envelopes successfully processed.",
     )
 });
+pub static SELF_BUILD_ENVELOPE_FAILURES: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_self_build_envelope_failures_total",
+        "Count of self-build execution payload envelopes that failed processing.",
+    )
+});
+
+/*
+ * Gloas ePBS Envelope Processing Outcomes
+ */
+pub static PAYLOAD_ENVELOPE_EL_VALID_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_payload_envelope_el_valid_total",
+        "Count of execution payload envelopes that received VALID from the EL.",
+    )
+});
+pub static PAYLOAD_ENVELOPE_EL_INVALID_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_payload_envelope_el_invalid_total",
+        "Count of execution payload envelopes that received INVALID from the EL.",
+    )
+});
+pub static PAYLOAD_ENVELOPE_EL_SYNCING_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_payload_envelope_el_syncing_total",
+        "Count of execution payload envelopes that received SYNCING/ACCEPTED from the EL.",
+    )
+});
+pub static PAYLOAD_ENVELOPE_PROCESSING_SUCCESSES: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_payload_envelope_processing_successes_total",
+            "Count of execution payload envelopes successfully processed (state transition).",
+        )
+    });
+pub static PAYLOAD_ENVELOPE_PROCESSING_FAILURES: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_payload_envelope_processing_failures_total",
+            "Count of execution payload envelopes that failed state transition.",
+        )
+    });
 
 /*
  * Gloas ePBS Gossip Verification Timing

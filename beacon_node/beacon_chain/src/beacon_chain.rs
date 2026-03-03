@@ -2651,6 +2651,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             match payload_status {
                 PayloadStatus::Valid => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_VALID_TOTAL);
                     debug!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2674,6 +2675,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     }
                 }
                 PayloadStatus::Syncing | PayloadStatus::Accepted => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_SYNCING_TOTAL);
                     debug!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2685,6 +2687,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     ref latest_valid_hash,
                     ref validation_error,
                 } => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_INVALID_TOTAL);
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2699,6 +2702,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 PayloadStatus::InvalidBlockHash {
                     ref validation_error,
                 } => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_INVALID_TOTAL);
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -2785,6 +2789,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // head block hasn't changed, so we must update the snapshot directly.
         self.canonical_head
             .try_update_head_state(beacon_block_root, state);
+
+        metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_PROCESSING_SUCCESSES);
 
         debug!(
             ?beacon_block_root,
@@ -3022,6 +3028,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
             match payload_status {
                 PayloadStatus::Valid => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_VALID_TOTAL);
                     debug!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -3044,6 +3051,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     }
                 }
                 PayloadStatus::Syncing | PayloadStatus::Accepted => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_SYNCING_TOTAL);
                     debug!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -3055,6 +3063,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     ref latest_valid_hash,
                     ref validation_error,
                 } => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_INVALID_TOTAL);
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
@@ -3069,6 +3078,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 PayloadStatus::InvalidBlockHash {
                     ref validation_error,
                 } => {
+                    metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_INVALID_TOTAL);
                     warn!(
                         ?beacon_block_root,
                         block_hash = ?envelope.payload.block_hash,
