@@ -572,4 +572,56 @@ mod gloas_per_slot_tests {
             "RANDAO mixes must not change from envelope processing"
         );
     }
+
+    /// Advancing through multiple skip slots clears consecutive availability bits.
+    ///
+    /// When a block is at slot N and the next block is at slot N+3, per_slot_processing
+    /// is called 3 times (once per slot advance). Each call clears the availability bit
+    /// for the NEXT slot: bits at indices N+1, N+2, N+3 should all be cleared.
+    ///
+    /// This mirrors real-world behavior when proposers miss their slots and the chain
+    /// must advance through empty slots. The cleared bits signal that no payload was
+    /// delivered at those slots (because no block was produced at all).
+    #[test]
+    fn skip_slots_clear_consecutive_availability_bits() {
+        let (mut state, spec) = make_gloas_state_at_slot(1);
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+
+        // Advance 3 slots (simulating slot 1→2, 2→3, 3→4 — i.e. 2 skip slots + 1 block)
+        // Each per_slot_processing call:
+        //   slot 1→2: clears bit at index 2
+        //   slot 2→3: clears bit at index 3
+        //   slot 3→4: clears bit at index 4
+        for _ in 0..3 {
+            let state_root = Hash256::repeat_byte(0xDD);
+            per_slot_processing(&mut state, Some(state_root), &spec).unwrap();
+        }
+
+        assert_eq!(state.slot(), Slot::new(4), "should have advanced to slot 4");
+
+        // Bits at indices 2, 3, 4 should be cleared
+        let gloas = state.as_gloas().unwrap();
+        for cleared_index in [2, 3, 4] {
+            assert!(
+                !gloas
+                    .execution_payload_availability
+                    .get(cleared_index % slots_per_hist)
+                    .unwrap(),
+                "bit at index {} should be cleared after skip slots",
+                cleared_index
+            );
+        }
+
+        // Bits at other indices (0, 1, 5, 6, 7...) should still be true
+        for i in 0..slots_per_hist {
+            if (2..=4).contains(&i) {
+                continue;
+            }
+            assert!(
+                gloas.execution_payload_availability.get(i).unwrap(),
+                "bit at index {} should remain true (not a skip slot target)",
+                i
+            );
+        }
+    }
 }
