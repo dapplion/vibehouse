@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — spec tracking, dead code cleanup (run 431)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**:
+  - **#4948** (Reorder payload status constants, merged Feb 26): EMPTY=0, FULL=1, PENDING=2. Vibehouse already matches — `GloasPayloadStatus` enum in proto_array has had these values since implementation. No change needed.
+  - **#4947** (Pre-fork subscription for proposer_preferences, merged Feb 26): Nodes SHOULD subscribe one epoch before Gloas activation, proposers SHOULD broadcast preferences in the pre-fork epoch. Vibehouse already handles both: BN subscribes via `PRE_FORK_SUBSCRIBE_EPOCHS = 1`, VC broadcasts via `broadcast_proposer_preferences` which activates when next_epoch >= gloas_epoch (tested in `broadcast_preferences_epoch_before_fork_proceeds`). No change needed.
+  - **#4918** (Only allow attestations for known payload statuses, merged Feb 23): Attestations with index=1 require block root in `payload_states`. Vibehouse already implements this check at fork_choice.rs:1202 (`if index == 1 && !block.payload_revealed`), added during initial ePBS implementation. No change needed.
+  - **#4926** (SLOT_DURATION_MS, merged Mar 2): Already reviewed in run 429.
+- **Open Gloas PR status**: #4954 (millisecond store, still open), #4950 (by_root serve range, 4 approvals — likely to merge soon; reviewed: documentation-only change aligning by_root serve range with by_range, no code change needed), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation, needs rework per potuz feedback), #4898 (remove pending from tiebreaker, stale), #4892 (remove impossible branch, 2 approvals, stale), #4747 (fast confirmation rule, very active, not close to merge)
+- **Dead code cleanup**: Found and removed 7 unused `PayloadAttestationInvalid` error variants that were never constructed anywhere in the codebase: `IncorrectStateVariant`, `SlotOutOfBounds`, `SignatureInvalid`, `IndicesNotSorted`, `DuplicateIndices`, `ShuffleError`, `InsufficientValidators`. These were defined speculatively but never wired up — the actual validation paths use `WrongSlot`, `WrongBeaconBlockRoot`, `BadSignature`, `InvalidPubkey`, `AttesterIndexOutOfBounds`, and `NoActiveValidators`. All 545 state_processing tests pass, full workspace compiles clean, clippy clean.
+- **CI status**: All recent runs green. Nightly tests passing.
+
 ### 2026-03-03 — BlockSignatureVerifier integration tests for builder exits (run 430)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 429. Same set tracked.

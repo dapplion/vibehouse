@@ -485,26 +485,12 @@ pub enum PayloadAttestationInvalid {
     WrongSlot { expected: Slot, actual: Slot },
     /// Attestation beacon_block_root does not match state
     WrongBeaconBlockRoot,
-    /// State is not Gloas variant
-    IncorrectStateVariant,
-    /// Slot index out of bounds for execution_payload_availability
-    SlotOutOfBounds,
-    /// The signature is invalid
-    SignatureInvalid,
     /// Signature verification failed
     BadSignature,
     /// Failed to decompress a public key
     InvalidPubkey,
-    /// Attesting indices are not sorted
-    IndicesNotSorted,
-    /// Attesting indices contain duplicates
-    DuplicateIndices,
     /// One or more attesting indices are out of bounds
     AttesterIndexOutOfBounds,
     /// No active validators to form PTC
     NoActiveValidators,
-    /// Shuffle computation failed
-    ShuffleError,
-    /// Not enough validators to form a full PTC (less than 512)
-    InsufficientValidators,
 }
