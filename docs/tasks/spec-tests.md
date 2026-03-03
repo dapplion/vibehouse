@@ -28,6 +28,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — comprehensive spec conformance audit, no issues found (run 427)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 426. Same set: #4955 (dependabot), #4944 (execution proofs by_root), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch)
+- **Deep spec conformance audit** — systematically verified all Gloas consensus-critical code paths against the raw consensus-specs Python:
+  - `per_slot_processing` payload availability clearing: CORRECT — temporary slot increment means `state.slot()` matches spec's `state.slot + 1`
+  - `process_block` Gloas ordering (withdrawals → bid → randao → operations): CORRECT matches spec
+  - `process_operations` Gloas: CORRECT — skips execution_requests (moved to envelope), processes payload attestations
+  - `verify_attestation_for_state`: CORRECT — allows `index < 2` for Gloas (0=standard, 1=payload present)
+  - `get_attestation_participation_flag_indices` payload matching: CORRECT — head flag requires payload_present match
+  - `is_parent_block_full`: CORRECT — compares bid.block_hash == state.latest_block_hash
+  - `on_execution_payload` fork choice: CORRECT — sets payload_revealed, envelope_received, payload_data_available
+  - `should_extend_payload`: CORRECT — both thresholds = PTC_SIZE/2, 4-condition check matches spec
+  - `get_gloas_weight`: CORRECT — zero weight for non-PENDING previous-slot nodes (De Morgan's matches spec)
+  - `find_head_gloas` sort key: CORRECT — (weight, root, tiebreaker) matches spec
+  - `get_payload_tiebreaker`: CORRECT — Empty=0, Full=1, Pending=2 matches spec enum values
+  - `is_supporting_vote_gloas_at_slot`: CORRECT — vote support logic matches spec
+  - `validate_on_attestation` Gloas checks: CORRECT — index < 2, same-slot index=0, payload_revealed for index=1
+- **Test coverage assessment**: All audited paths have extensive test coverage (500+ Gloas state processing tests, 50+ envelope tests, 20+ epoch processing tests, comprehensive fork choice tests). No significant gaps found.
+- No code changes needed — all paths spec-conformant.
+
 ### 2026-03-03 — fix batch signature verification for builder exits (run 426)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 425. Same set: #4955 (dependabot), #4944 (execution proofs by_root), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas.
