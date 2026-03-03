@@ -4305,4 +4305,83 @@ mod gloas_operations_tests {
             "wrong key should fail signature verification"
         );
     }
+
+    #[test]
+    fn include_exits_builder_exit_through_block_signature_verifier() {
+        // Integration test: exercise the include_exits method in BlockSignatureVerifier
+        // with a Gloas block containing a builder exit. This tests the exact code path
+        // used by VerifyBulk during block import — if include_exits regresses to using
+        // the validator pubkey resolver for builder exits, this test will fail.
+        use crate::per_block_processing::block_signature_verifier::BlockSignatureVerifier;
+        use crate::per_block_processing::signature_sets::get_pubkey_from_state;
+        use std::borrow::Cow;
+        use types::{BeaconBlock, EmptyBlock, FullPayload, SignedBeaconBlock};
+
+        let (state, spec, keypairs) = make_state_with_builder_keys();
+        let builder_kp = &keypairs[NUM_VALIDATORS];
+        let exit = sign_builder_exit(&state, 0, state.current_epoch(), &builder_kp.sk, &spec);
+
+        // Build a minimal Gloas block with the builder exit
+        let mut block = BeaconBlockGloas::<E, FullPayload<E>>::empty(&spec);
+        block.body.voluntary_exits = vec![exit].into();
+        let signed_block =
+            SignedBeaconBlock::from_block(BeaconBlock::Gloas(block), bls::Signature::empty());
+
+        // Create verifier with the standard validator pubkey resolver (same as VerifyBulk)
+        let mut verifier = BlockSignatureVerifier::new(
+            &state,
+            |i| get_pubkey_from_state(&state, i),
+            |pk_bytes: &_| pk_bytes.decompress().ok().map(Cow::Owned),
+            &spec,
+        );
+
+        // include_exits must succeed (before the fix, this would fail with
+        // ValidatorUnknown because BUILDER_INDEX_FLAG makes the index huge)
+        verifier
+            .include_exits(&signed_block)
+            .expect("include_exits should handle builder exit via builder registry");
+
+        // The collected signature set must verify
+        assert!(
+            verifier.verify().is_ok(),
+            "builder exit signature should verify through BlockSignatureVerifier"
+        );
+    }
+
+    #[test]
+    fn include_exits_builder_exit_wrong_key_rejected_through_verifier() {
+        // Verify that BlockSignatureVerifier::include_exits correctly rejects
+        // a builder exit signed with the wrong key.
+        use crate::per_block_processing::block_signature_verifier::BlockSignatureVerifier;
+        use crate::per_block_processing::signature_sets::get_pubkey_from_state;
+        use std::borrow::Cow;
+        use types::{BeaconBlock, EmptyBlock, FullPayload, SignedBeaconBlock};
+
+        let (state, spec, keypairs) = make_state_with_builder_keys();
+        // Sign with validator 0's key instead of builder's key
+        let wrong_kp = &keypairs[0];
+        let exit = sign_builder_exit(&state, 0, state.current_epoch(), &wrong_kp.sk, &spec);
+
+        let mut block = BeaconBlockGloas::<E, FullPayload<E>>::empty(&spec);
+        block.body.voluntary_exits = vec![exit].into();
+        let signed_block =
+            SignedBeaconBlock::from_block(BeaconBlock::Gloas(block), bls::Signature::empty());
+
+        let mut verifier = BlockSignatureVerifier::new(
+            &state,
+            |i| get_pubkey_from_state(&state, i),
+            |pk_bytes: &_| pk_bytes.decompress().ok().map(Cow::Owned),
+            &spec,
+        );
+
+        verifier
+            .include_exits(&signed_block)
+            .expect("include_exits should succeed even with wrong key");
+
+        // verify() should fail because the signature doesn't match
+        assert!(
+            verifier.verify().is_err(),
+            "wrong key should fail verification through BlockSignatureVerifier"
+        );
+    }
 }
