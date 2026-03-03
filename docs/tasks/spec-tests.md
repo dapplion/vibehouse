@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fix proposer preferences broadcast retry (run 409)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged.
+- **Block production audit**: Reviewed Gloas external bid path in `complete_partial_beacon_block` — blob commitments live inside `signed_execution_payload_bid.message.blob_kzg_commitments` (not as a separate block body field). No missing data. FALSE POSITIVE.
+- **Payload clone-then-deconstruct audit**: Reviewed `complete_partial_beacon_block` clone path — clone happens before consumption, no mutation between. FALSE POSITIVE.
+- **Range sync / block replayer audit**: Gloas envelope handling well-implemented with full and blinded envelope support, keyed by block root.
+- **VC duty handling audit**: PTC duties, payload attestation production, proposer preferences gossip, bid selection all reviewed.
+- **Bug found & fixed**: `broadcast_proposer_preferences` in `duties_service.rs` marked the epoch as "done" unconditionally — even when some preference POST submissions failed. This prevented retry on subsequent slots. Fix: track `all_succeeded` flag, only mark epoch complete when all submissions succeed. Re-submitting successful ones is harmless (BN deduplicates).
+- All validator_client tests pass, full workspace clippy clean.
+- Commit: `ed370a5b8`
+
 ### 2026-03-03 — fix forkchoiceUpdated head_hash for Gloas heads (run 408)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged: #4955, #4954, #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630.
