@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fix forkchoiceUpdated head_hash for Gloas heads (run 408)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- No new Gloas spec PRs merged. Open PRs unchanged: #4955, #4954, #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630.
+- **CI health**: Runs 406-407 fully green (all 6 jobs passed). Run 407 completing.
+- **Reviewed spec PR #4954** (fork choice store milliseconds): Converts `Store.time` → `Store.time_ms` and `Store.genesis_time` → `Store.genesis_time_ms`. Not merged, no reviews. Moderate impact if merged: rename Store fields + pass ms instead of seconds to `on_tick`. Vibehouse's relevant code is in `consensus/fork_choice/` and slot clock — mechanical changes. Not implementing proactively.
+- **Reviewed spec PR #4843** (variable PTC deadline): Would make PTC attestation deadline vary by payload size (small payloads → earlier deadline for more execution time; large payloads → later deadline). Adds `MIN_PAYLOAD_DUE_BPS` config, renames `payload_present` → `payload_timely`, tracks `payload_envelopes` in store, adds `get_payload_due_ms()` interpolation helper. Not merged, has open design issues (potuz: `is_payload_timely` depends on store entry which requires execution to complete, but PTC should attest before execution finishes). Not implementing yet.
+- **Engine API Gloas audit** found and fixed a **consensus-impacting bug** in `canonical_head.rs`:
+  - **Bug**: `recompute_head` passed raw `ForkchoiceUpdateParameters` (from fork choice) to `spawn_execution_layer_updates`. For Gloas heads, `head_hash=None` (because `ExecutionStatus::Irrelevant`). This caused `update_execution_engine_forkchoice` to enter the pre-merge PoW transition path, which skipped sending `forkchoiceUpdated` to the EL entirely (returned early at "not a proposer" or "no terminal PoW block" check).
+  - **Impact**: The EL never received `forkchoiceUpdated` through the primary path for Gloas heads. It still worked in the devnet because `prepare_beacon_proposer` (a secondary path) reads from `CachedHead` which has the correct patched `head_hash`. But non-proposer slots would miss FCU entirely, and the EL's view of safe/finalized blocks could lag.
+  - **Fix 1** (`recompute_head`): Pass `new_cached_head.forkchoice_update_parameters()` to `spawn_execution_layer_updates` instead of raw fork choice params. The cached head already has the correct `head_hash` fallback from `state.latest_block_hash()`.
+  - **Fix 2** (`try_update_head_state`): When envelope processing updates the head state, also update `head_hash` in the cached head from the post-envelope state's `latest_block_hash`. Previously only the beacon state snapshot was updated, leaving `head_hash` stale until the next `recompute_head`.
+- **1 new integration test**: `gloas_try_update_head_state_updates_head_hash` — verifies that `try_update_head_state` updates `head_hash` from the post-envelope state without requiring `recompute_head`. 4 existing head_hash tests all pass.
+- All 723 beacon_chain tests pass (Gloas fork), full workspace clippy clean.
+- Commit: `ec482f8b4`
+
 ### 2026-03-03 — comprehensive test coverage audit (run 407)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new spec PRs merged since run 406.
