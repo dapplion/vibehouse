@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fix envelope fork choice consistency bug (run 418)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 417. All recent PRs (#4947, #4916/#4897, #4923, #4918, #4948, #4930, #4926) already implemented or non-applicable.
+- **Bug fix: envelope processing fork choice consistency** (commit `ce6d3462f`):
+  - **Problem**: Fork choice was updated (marking payload as revealed/FULL) BEFORE EL validation and state transition. If the EL returned Invalid or the state transition failed, fork choice would incorrectly show the payload as revealed, creating an inconsistency between fork choice state and actual processing outcome.
+  - **Fix**: Moved fork choice updates to AFTER successful EL validation and state transition in all three envelope processing paths: gossip handler (`gossip_methods.rs`), self-build (`process_self_build_envelope`), and pending/buffered envelopes (`process_pending_envelope`). Also updated the HTTP API handler (`lib.rs`).
+  - Added `revert_execution_payload` method to fork choice (for potential future use), though the primary fix uses reordering to eliminate the partial failure window entirely.
+  - `process_payload_envelope` return type changed from `Result<(), Error>` to `Result<bool, Error>` where bool indicates EL returned Valid. Callers now responsible for fork choice update + `on_valid_execution_payload`.
+  - Updated 12+ tests to reflect new ordering: failure paths now correctly assert `payload_revealed=false` and `execution_status=Optimistic`.
+- All 364 gloas beacon_chain tests pass. All 97 envelope tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — block production source metrics + audits (run 417)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new merges since run 416. Same set: #4955 (dependabot), #4944 (execution proofs by_root), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas or already handled.
