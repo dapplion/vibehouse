@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — BlockSignatureVerifier integration tests for builder exits (run 430)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 429. Same set tracked.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch), #4747 (fast confirmation rule — still actively developed, daily commits, 89 review comments, not close to merge)
+- **Fast confirmation rule (#4747) assessment**: Large new consensus feature adding `confirmed_root` to fork choice store, `on_fast_confirmation` handler, and `CONFIRMATION_BYZANTINE_THRESHOLD` constant. Still under active development with unresolved edge cases. Nimbus has started implementing. Not actionable yet — monitor weekly.
+- **Coverage gap analysis**: Systematically searched for untested Gloas code paths. Previous coverage gaps (combined pending obligations for bids, pending payments for builder exits) were already tested. The one genuine gap found: `BlockSignatureVerifier::include_exits` was only tested at the `exit_signature_set` level — no test exercised the actual `include_exits` method that routes builder exits to the builder pubkey resolver (the exact code path where the VerifyBulk bug was fixed in run 426).
+- **New tests** (2, commit `24bdc1b7f`):
+  - `include_exits_builder_exit_through_block_signature_verifier` — creates a Gloas block with a properly-signed builder exit, exercises `BlockSignatureVerifier::include_exits` with the standard validator pubkey resolver (same as VerifyBulk), verifies the builder exit is correctly routed to the builder registry's pubkey. If `include_exits` regresses to using the validator resolver, this test fails.
+  - `include_exits_builder_exit_wrong_key_rejected_through_verifier` — same path but with a builder exit signed with the wrong key, verifying `verify()` correctly rejects the invalid signature through the full `BlockSignatureVerifier` pipeline.
+- All 545 state_processing tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — deep code audit, signature verification trace, spec tracking (run 429)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4926 (SLOT_DURATION_MS replaces SECONDS_PER_SLOT, merged Mar 2) — vibehouse already handles this with forward-compat derivation in ChainSpec (both `seconds_per_slot` and `slot_duration_ms` present, bidirectional derivation, 3 config-parsing tests). #4955 (dependabot), #4953/#4952/#4951 (pytest infra), #4944 (execution proofs by_root, eip8025 only) — all non-Gloas or already handled.
