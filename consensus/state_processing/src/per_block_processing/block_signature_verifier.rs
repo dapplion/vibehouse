@@ -298,13 +298,20 @@ where
     }
 
     /// Includes all signatures in `self.block.body.voluntary_exits` for verification.
+    ///
+    /// [Modified in Gloas:EIP7732] Builder exits (validator_index with BUILDER_INDEX_FLAG)
+    /// use the builder's pubkey from the builder registry instead of the validator pubkey.
     pub fn include_exits<Payload: AbstractExecPayload<E>>(
         &mut self,
         block: &'a SignedBeaconBlock<E, Payload>,
     ) -> Result<()> {
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+
         self.sets
             .sets
             .reserve(block.message().body().voluntary_exits().len());
+
+        let is_gloas = self.state.fork_name_unchecked().gloas_enabled();
 
         block
             .message()
@@ -312,10 +319,25 @@ where
             .voluntary_exits()
             .iter()
             .try_for_each(|exit| {
-                let exit =
-                    exit_signature_set(self.state, self.get_pubkey.clone(), exit, self.spec)?;
-
-                self.sets.push(exit);
+                // In Gloas, builder exits have BUILDER_INDEX_FLAG set on validator_index.
+                // These must use the builder's pubkey from the builder registry.
+                if is_gloas && (exit.message.validator_index & BUILDER_INDEX_FLAG) != 0 {
+                    let builder_index = exit.message.validator_index & !BUILDER_INDEX_FLAG;
+                    let get_builder_pubkey = |_i: usize| -> Option<Cow<'a, PublicKey>> {
+                        self.state
+                            .builders()
+                            .ok()
+                            .and_then(|builders| builders.get(builder_index as usize))
+                            .and_then(|builder| builder.pubkey.decompress().ok())
+                            .map(Cow::Owned)
+                    };
+                    let set = exit_signature_set(self.state, get_builder_pubkey, exit, self.spec)?;
+                    self.sets.push(set);
+                } else {
+                    let set =
+                        exit_signature_set(self.state, self.get_pubkey.clone(), exit, self.spec)?;
+                    self.sets.push(set);
+                }
 
                 Ok(())
             })

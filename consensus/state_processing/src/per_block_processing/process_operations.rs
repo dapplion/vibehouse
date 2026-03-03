@@ -4216,4 +4216,93 @@ mod gloas_operations_tests {
             "builder should not be active at any epoch after exit"
         );
     }
+
+    // ── batch signature verification for builder exits ──────────
+
+    #[test]
+    fn batch_verify_builder_exit_signature_uses_builder_pubkey() {
+        // Regression test: batch signature verification (VerifyBulk) must use
+        // the builder's pubkey from the builder registry, not the validator
+        // pubkey resolver. Before the fix, include_exits passed the validator
+        // pubkey resolver to exit_signature_set, which failed with
+        // ValidatorUnknown because the BUILDER_INDEX_FLAG makes the index huge.
+        use crate::per_block_processing::signature_sets::{
+            exit_signature_set, get_pubkey_from_state,
+        };
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+
+        let (state, spec, keypairs) = make_state_with_builder_keys();
+        let builder_kp = &keypairs[NUM_VALIDATORS];
+        let exit = sign_builder_exit(&state, 0, state.current_epoch(), &builder_kp.sk, &spec);
+
+        // Verify the validator pubkey resolver fails for builder exits
+        // (this is the bug that existed before the fix)
+        let validator_pubkey_result =
+            exit_signature_set(&state, |i| get_pubkey_from_state(&state, i), &exit, &spec);
+        assert!(
+            validator_pubkey_result.is_err(),
+            "validator pubkey resolver should fail for builder exits (index too large)"
+        );
+
+        // Verify the builder-aware pubkey resolver succeeds
+        // (this is what include_exits now uses for builder exits)
+        let builder_index = exit.message.validator_index & !BUILDER_INDEX_FLAG;
+        let builder_pubkey_result = exit_signature_set(
+            &state,
+            |_i: usize| {
+                state
+                    .builders()
+                    .ok()
+                    .and_then(|builders| builders.get(builder_index as usize))
+                    .and_then(|builder| builder.pubkey.decompress().ok())
+                    .map(std::borrow::Cow::Owned)
+            },
+            &exit,
+            &spec,
+        );
+        assert!(
+            builder_pubkey_result.is_ok(),
+            "builder pubkey resolver should succeed: {:?}",
+            builder_pubkey_result.err()
+        );
+
+        // Verify the signature set itself validates
+        assert!(
+            builder_pubkey_result.unwrap().verify(),
+            "builder exit signature should verify with builder's pubkey"
+        );
+    }
+
+    #[test]
+    fn batch_verify_builder_exit_wrong_key_fails_verification() {
+        // The builder-aware pubkey resolver should still reject exits signed
+        // with the wrong key.
+        use crate::per_block_processing::signature_sets::exit_signature_set;
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+
+        let (state, spec, keypairs) = make_state_with_builder_keys();
+        // Sign with validator 0's key instead of the builder's key
+        let wrong_kp = &keypairs[0];
+        let exit = sign_builder_exit(&state, 0, state.current_epoch(), &wrong_kp.sk, &spec);
+
+        let builder_index = exit.message.validator_index & !BUILDER_INDEX_FLAG;
+        let result = exit_signature_set(
+            &state,
+            |_i: usize| {
+                state
+                    .builders()
+                    .ok()
+                    .and_then(|builders| builders.get(builder_index as usize))
+                    .and_then(|builder| builder.pubkey.decompress().ok())
+                    .map(std::borrow::Cow::Owned)
+            },
+            &exit,
+            &spec,
+        );
+        assert!(result.is_ok(), "should create signature set");
+        assert!(
+            !result.unwrap().verify(),
+            "wrong key should fail signature verification"
+        );
+    }
 }
