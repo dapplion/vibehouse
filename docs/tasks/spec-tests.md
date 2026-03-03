@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — deep code audit, signature verification trace, spec tracking (run 429)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4926 (SLOT_DURATION_MS replaces SECONDS_PER_SLOT, merged Mar 2) — vibehouse already handles this with forward-compat derivation in ChainSpec (both `seconds_per_slot` and `slot_duration_ms` present, bidirectional derivation, 3 config-parsing tests). #4955 (dependabot), #4953/#4952/#4951 (pytest infra), #4944 (execution proofs by_root, eip8025 only) — all non-Gloas or already handled.
+- **Open Gloas PR status**: All 8 still open — #4954 (millisecond store, updated Mar 2), #4950 (by_root serve range, 4 approvals), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch, 2 approvals), #4747 (fast confirmation rule, updated Mar 3)
+- **Comprehensive code audit via subagent** — 13 potential issues identified across 5 critical files, all investigated:
+  - Issue 1 (partial withdrawal count for ineligible entries): NOT A BUG — spec intentionally increments `processed_count` for all examined entries, verified against `get_pending_partial_withdrawals` in spec. Ineligible entries are consumed to prevent queue accumulation.
+  - Issue 5 (magic number `s == 1` for GloasPayloadStatus::Full): Code quality — `GloasPayloadStatus` is private in proto_array, exposed as `u8`. Values are stable (match spec enum: Empty=0, Full=1, Pending=2). Not a correctness issue. Changing would touch ~30 test assertions for cosmetic improvement — not worth the churn.
+  - Issue 7 (Signature::empty() in self-build envelope): NOT A BUG — placeholder in `build_self_build_envelope` is replaced by VC signing before use. Flow: create with empty → process with VerifySignatures::False to compute state_root → return to VC → VC signs → publish with real signature. Never reaches network or verification path.
+  - Issue 9 (GloasParentPayloadUnknown only on gossip path): CORRECT BY DESIGN — gossip path follows spec `[IGNORE]` condition (don't propagate blocks with unknown parent payload). RPC/range sync path doesn't need this check — it patches `latest_block_hash` in `load_parent` instead, handling the parent state correctly for sequential import.
+  - Issue 11 (silent unwrap_or_default in epoch processing): NOT A BUG — inside `if src_idx < total_len` guard, so `get(src_idx)` always succeeds. Defensive programming, not a correctness issue.
+  - Issues 2,3,4,6,8,10,12,13: Investigated, all either already tested, correct by design, or low-priority code quality.
+- **Signature verification trace** — complete audit of all Gloas bulk vs individual verification paths:
+  - Builder exits: FIXED in run 426 (commit `19ab946a0`). Both bulk and individual paths now correctly use builder registry.
+  - Execution payload bid: CORRECT — `include_execution_payload_bid` uses builder-aware closure, `execution_payload_bid_signature_set` takes `Fn(u64)` (builder index), forcing correct resolver.
+  - Payload attestation (PTC): CORRECT — uses `self.get_pubkey` (validator resolver). PTC members are regular validators, not builders.
+  - Execution payload envelope: CORRECT — not in bulk verifier (processed separately), individual path in `envelope_processing.rs` handles both self-build (proposer pubkey) and external (builder registry).
+  - No remaining instances of the builder exit bug class found.
+- **Spec issue review**: #4561 (same-slot slashings before builder payments) still open discussion — vibehouse follows current spec ordering. #4899 (proposer boost in is_parent_strong) already verified correct in run 284.
+- **EF spec test verification**: 3/3 execution_payload operation tests pass (bid + full + blinded). Full EF suite inferred passing (no code changes).
+- **CI status**: nightly (Mar 3) in progress (fulu http-api + beacon-chain in flight), all completed jobs passing. Previous nightly (Mar 2) fully green. 4 CI runs from today all green.
+- **No code changes needed** — all audited paths spec-conformant, no bugs found, tests green.
+
 ### 2026-03-03 — spec tracking, test verification, codebase health check (run 428)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 427. Same set tracked.
