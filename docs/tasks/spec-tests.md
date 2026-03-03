@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — PriorToFinalization HTTP API envelope test (run 436)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 435. Same set tracked: #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4747 (fast confirmation rule — very active, not close to merge).
+- **Open Gloas PR status**: All 6 key PRs still open (#4954, #4950, #4940, #4932, #4939, #4747). Also open: #4898 (remove pending from tiebreaker), #4892 (remove impossible branch), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 forward-compatible SSZ), #4558 (cell dissemination). PR #4747 (fast confirmation rule) updated today — still actively developed, not close to merge.
+- **Coverage gap analysis**: Deep search across HTTP API, beacon_chain builder.rs, block_verification.rs, canonical_head.rs, gossip_methods.rs, and hot_cold_store.rs for untested Gloas paths. Found 3 genuine gaps:
+  1. **POST envelope PriorToFinalization → 200 OK** (http_api/src/lib.rs:2966-2972): When `verify_payload_envelope_for_gossip` returns `PriorToFinalization` (stale envelope for already-finalized block), the HTTP handler returns 200 OK (not 400). All existing POST envelope tests exercise invalid-field 400 errors (unknown root, slot mismatch, builder index mismatch, block hash mismatch) and duplicate 200 OK, but none triggered the PriorToFinalization path. This matters for builder software that should not retry stale envelopes.
+  2. Builder.rs WSS state root override (Gloas checkpoint sync): untested but requires complex multi-node setup.
+  3. SSZ Accept header branch for GET envelope: lower impact content-type variant.
+- **New test** (1, commit `a7e1827d5`):
+  - `post_execution_payload_envelope_prior_to_finalization_returns_200` — builds 32 slots (4 epochs with MinimalEthSpec) to achieve finalization past epoch 0, clears `observed_payload_envelopes` to bypass dedup, creates an envelope with a valid head block root but slot=0 (below finalized_slot), POSTs it via the HTTP client, and asserts 200 OK response. The verification order (BlockRootUnknown → DuplicateEnvelope → PriorToFinalization → SlotMismatch) means the fabricated low slot triggers PriorToFinalization before SlotMismatch. All 7 POST envelope tests pass. Clippy clean.
+- **CI status**: All tests green. 7/7 POST envelope HTTP tests pass.
+
 ### 2026-03-03 — PayloadNotRevealed beacon chain integration test (run 435)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 434. Same set tracked: #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4747 (fast confirmation rule — very active, not close to merge).
