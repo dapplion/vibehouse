@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — skip slot availability clearing test (run 434)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 433.
+- **Coverage gap analysis**: Exhaustive search across 600+ Gloas tests for genuine untested paths. Analyzed block_verification.rs, payload_attestation_service.rs, reconstruct.rs, gloas_verification.rs, canonical_head.rs, hot_cold_store.rs, execution_payload.rs, and per_slot_processing.rs. Most identified "gaps" were already covered upon deeper investigation.
+- **New test** (1, commit `1f741698a`):
+  - `skip_slots_clear_consecutive_availability_bits` — verifies that when `per_slot_processing` is called multiple times consecutively (simulating skip slots, e.g. slot 1→4), each call correctly clears the `execution_payload_availability` bit for the next slot. After 3 consecutive calls, bits at indices 2, 3, 4 are cleared while all other bits remain true. Tests the real-world scenario where proposers miss slots and the chain must advance through empty slots.
+- **CI status**: All tests green. Clippy clean. 547/547 state_processing tests pass.
+
 ### 2026-03-03 — spec tracking, withdrawal capacity coverage (run 433)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 432.
