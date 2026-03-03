@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — gossip verification audit + FULL/EMPTY path metrics (run 421)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 420. Recent merges: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range, 4 approvals), #4939 (envelope request on index-1 attestation, 5 COMMENTED), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4898 (remove pending from tiebreaker, 1 APPROVED), #4892 (remove impossible branch, 2 APPROVED)
+- **Comprehensive gossip verification audit** — compared all [REJECT]/[IGNORE] conditions from spec p2p-interface.md against `gloas_verification.rs`:
+  - **Execution bid**: All 12 spec conditions correctly implemented (slot, execution_payment!=0, builder active, balance, parent_root, parent_block_hash, proposer_preferences, fee_recipient, gas_limit, signature, equivocation, highest-value)
+  - **Payload attestation**: All 6 conditions correct. PTC membership validated in `payload_attestation_message_to_attestation` before verification function. Equivocation detection correct with read-before-write pattern.
+  - **Execution payload envelope**: All 8 conditions correct. "Block passes validation" satisfied by fork choice inclusion. Builder/block_hash matching against committed bid. Self-build signature skip correct.
+- **Epoch processing audit**: `process_builder_pending_payments` and `process_proposer_lookahead` both spec-compliant. Ordering correct (builder payments after pending consolidations, before effective balance updates).
+- **`compute_timestamp_at_slot` verification**: Confirmed equivalent to spec's `compute_time_at_slot` — same calculation (genesis_time + slots_since_genesis * seconds_per_slot).
+- **FULL/EMPTY parent path metrics** (commit `a1cde9a9e`):
+  - `beacon_block_import_full_parent_total` — count of blocks imported where parent had payload revealed
+  - `beacon_block_import_empty_parent_total` — count of blocks imported where parent's payload was withheld
+  - Placed in `load_parent` (block_verification.rs), skips genesis/zero-hash to avoid fork transition artifacts
+  - Enables operators to monitor builder reliability in production
+- All 364 Gloas beacon_chain tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — devnet validation + spec conformance audit (run 420)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 419. Recent merges: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
