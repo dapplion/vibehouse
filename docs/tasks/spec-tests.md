@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — envelope processing metrics + spec tracking (run 416)
+- No new consensus-specs releases (v1.6.1 latest stable; v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 415. #4955 (dependabot), #4944 (execution proofs by_root, eip8025 only), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas or already handled.
+- **Open Gloas PR status**:
+  - **#4950** (by_root serve range extension, 4 approvals, CLEAN, ready to merge) — reviewed: extends `BeaconBlocksByRoot` and `ExecutionPayloadEnvelopesByRoot` serve range to `MIN_EPOCHS_FOR_BLOCK_REQUESTS`. vibehouse already compliant — we serve any envelope/block we have in store, which is more permissive than the MUST range.
+  - #4954 (millisecond store, 0 reviews) — changes `Store.time` → `Store.time_ms`, `Store.genesis_time` → `Store.genesis_time_ms`. Large refactor, not close to merging.
+  - #4939 (request envelope on index-1 attestation, discussion ongoing)
+  - #4843 (variable PTC deadline), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch) — all stale
+- **New metrics for production observability** (commit `483a17493`):
+  - `beacon_payload_envelope_el_valid_total` — count of EL VALID responses for envelope payloads
+  - `beacon_payload_envelope_el_invalid_total` — count of EL INVALID/InvalidBlockHash responses
+  - `beacon_payload_envelope_el_syncing_total` — count of EL SYNCING/ACCEPTED responses
+  - `beacon_payload_envelope_processing_successes_total` — successful envelope state transitions
+  - `beacon_payload_envelope_processing_failures_total` — failed envelope state transitions
+  - `beacon_self_build_envelope_failures_total` — failed self-build envelope processing
+  - Metrics added to both `process_payload_envelope` (gossip path) and `process_self_build_envelope` (block production path)
+  - Network gossip handler also increments `BEACON_PROCESSOR_PAYLOAD_ENVELOPE_REJECTED_TOTAL` on processing failure
+- All CI green: 36 Gloas envelope tests, 28 network gossip tests, 10 HTTP API tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — spec tracking + devnet validation (run 415)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Recently merged spec PRs reviewed**:
