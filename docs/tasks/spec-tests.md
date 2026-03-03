@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fix CI test failure + P2P robustness audit (run 413)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Recently merged spec PRs**: #4955 (dependabot), #4953/#4952/#4951 (pytest infrastructure) — no Gloas impact
+- **Open PR status**: #4950 (by_root serve range, 4 approvals, CLEAN — most likely to merge next). #4954 (milliseconds store) still 0 reviews. #4898/#4892 stale. #4843 stale. #4939 blocked on #4918.
+- **CI failure fixed**: Run 409 introduced a behavioral change (broadcast_proposer_preferences only marks epoch on full success) but 2 tests still asserted the old behavior. Updated `broadcast_preferences_bn_post_failure_still_marks_epoch` → `..._leaves_epoch_unmarked` and `broadcast_preferences_sign_failure_continues` → `..._leaves_epoch_unmarked` to assert the new retry-on-failure semantics.
+- **Comprehensive Gloas P2P robustness audit** (RPC handlers, gossip validation, deduplication caches):
+  - All handlers use safe error handling (no `.unwrap()`, no array indexing on user input)
+  - Error classification for peer scoring is thorough (REJECT for malicious, IGNORE for timing races)
+  - All caches (observed_execution_bids, observed_payload_envelopes, observed_payload_attestations) properly bounded with pruning
+  - `pending_gossip_envelopes` buffer bounded at 16 entries with periodic clearing
+  - Self-build envelope path handles all EL PayloadStatus variants (Valid, Syncing/Accepted, Invalid, InvalidBlockHash)
+  - No resource exhaustion vectors found
+  - No panics possible from malformed messages
+- All 47 validator_services tests pass, full workspace clippy clean
+- Commit: `da8c000a0`
+
 ### 2026-03-03 — deep spec conformance audit, all verified (run 412)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest), no new Gloas spec PRs
 - **Comprehensive spec conformance audits** (all verified correct):
