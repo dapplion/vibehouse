@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — spec audit + dead code cleanup (run 419)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**:
+  - #4948 (reorder payload status constants: Empty=0, Full=1, Pending=2) — **already matches** our GloasPayloadStatus enum
+  - #4947 (pre-fork subscription for proposer_preferences topic) — **already implemented**: `PRE_FORK_SUBSCRIBE_EPOCHS=1` fires `subscribe_new_fork_topics` one epoch before fork, which calls `core_topics_to_subscribe` including ProposerPreferences when `fork_name.gloas_enabled()`
+  - #4926 (SLOT_DURATION_MS replaces SECONDS_PER_SLOT) — **already implemented**: `slot_duration_ms` field in ChainSpec, forward-compat derivation from SLOT_DURATION_MS when SECONDS_PER_SLOT missing, tests for all config combinations
+  - #4944 (execution proofs by_root batched request) — eip8025 only, not Gloas
+- **Open Gloas PR status**: #4954 (millisecond store, 1 reviewer), #4950 (by_root serve range, 4 approvals), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation) — all unchanged
+- **Dead code cleanup** (commit `680cf2925`):
+  - Removed unused `revert_execution_payload` method from fork choice. Was added in ce6d3462f as conservative option but never called — the fix correctly reorders fork choice updates after EL validation, eliminating rollback need entirely.
+- **Comprehensive code audit** — reviewed all envelope processing paths (gossip, self-build, pending, REST API) for correctness after run 418 fix:
+  - All four paths correctly delay fork choice updates until after EL validation and state transition
+  - Builder sweep zero-builders edge case verified safe (guarded by `if builders_count > 0`)
+  - `is_parent_block_full` at genesis verified correct (both hashes zero → returns true, as per spec)
+  - No remaining dead code from recent commits
+- CI green on runs 415-416. Runs 417-418 in progress (unit tests final job).
+
 ### 2026-03-03 — fix envelope fork choice consistency bug (run 418)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 417. All recent PRs (#4947, #4916/#4897, #4923, #4918, #4948, #4930, #4926) already implemented or non-applicable.
