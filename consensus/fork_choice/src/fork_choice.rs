@@ -475,6 +475,10 @@ where
             anchor_node.payload_revealed = true;
             anchor_node.payload_data_available = true;
             anchor_node.ptc_timely = true;
+            // Spec: anchor has payload_timeliness_vote[root] = Vector[True]*PTC_SIZE
+            // and payload_data_availability_vote[root] = Vector[True]*PTC_SIZE.
+            anchor_node.ptc_weight = spec.ptc_size;
+            anchor_node.ptc_blob_data_available_weight = spec.ptc_size;
         }
 
         let mut fork_choice = Self {
