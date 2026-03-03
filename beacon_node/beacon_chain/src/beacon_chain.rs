@@ -7125,6 +7125,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             %bid_value,
                             "Using external builder bid for block production"
                         );
+                        metrics::inc_counter(&metrics::BLOCK_PRODUCTION_EXTERNAL_BID_TOTAL);
                         (external_bid, None, bid_value)
                     } else {
                         // Self-build fallback: proposer builds own execution payload.
@@ -7132,6 +7133,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             slot = %slot,
                             "No external builder bid available, using self-build"
                         );
+                        metrics::inc_counter(&metrics::BLOCK_PRODUCTION_SELF_BUILD_TOTAL);
                         let (
                             payload,
                             kzg_commitments,

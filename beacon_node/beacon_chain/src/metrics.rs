@@ -218,6 +218,23 @@ pub static BLOCK_PRODUCTION_STATE_ROOT_TIMES: LazyLock<Result<Histogram>> = Lazy
 });
 
 /*
+ * Gloas ePBS Block Production Source
+ */
+pub static BLOCK_PRODUCTION_EXTERNAL_BID_TOTAL: LazyLock<Result<IntCounter>> =
+    LazyLock::new(|| {
+        try_create_int_counter(
+            "beacon_block_production_external_bid_total",
+            "Count of blocks produced using an external builder bid",
+        )
+    });
+pub static BLOCK_PRODUCTION_SELF_BUILD_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_block_production_self_build_total",
+        "Count of blocks produced using self-build (no external bid)",
+    )
+});
+
+/*
  * Self-Build Envelope Processing (gloas ePBS)
  */
 pub static SELF_BUILD_ENVELOPE_SUCCESSES: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
