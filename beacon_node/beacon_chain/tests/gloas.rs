@@ -3234,6 +3234,79 @@ async fn gloas_process_pending_envelope_self_build_succeeds() {
     );
 }
 
+/// After `process_pending_envelope` processes a buffered self-build envelope,
+/// the block's execution_status should transition from Optimistic to Valid.
+/// This is the buffered-envelope analogue of
+/// `gloas_self_build_envelope_marks_execution_status_valid` — the same
+/// `on_valid_execution_payload` call happens inside `process_pending_envelope`
+/// when the EL returns Valid for the newPayload. Without this, blocks whose
+/// envelopes arrived before the block would stay permanently Optimistic,
+/// blocking block production (forkchoiceUpdated requires a Valid head).
+#[tokio::test]
+async fn gloas_process_pending_envelope_marks_execution_status_valid() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let payload_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only (no envelope)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Pre-condition: execution_status should be Optimistic after block import
+    // (the EL hasn't seen the payload yet — Gloas block import skips newPayload)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !matches!(proto_block.execution_status, ExecutionStatus::Valid(_)),
+            "pre-condition: should NOT be Valid after block import (no envelope yet), got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // Buffer the self-build envelope (simulating gossip arrival before block)
+    harness
+        .chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(block_root, Arc::new(signed_envelope));
+
+    // process_pending_envelope: re-verifies, processes (EL returns Valid), applies to fork choice,
+    // then calls on_valid_execution_payload to transition execution_status
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Post-condition: execution_status should be Valid(payload_block_hash)
+    // This transition happens because process_pending_envelope:
+    // 1. Re-verifies the envelope (succeeds for self-build)
+    // 2. Calls process_payload_envelope → EL returns Valid → el_valid=true
+    // 3. Applies to fork choice (payload_revealed=true)
+    // 4. Calls on_valid_execution_payload (the path under test)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(
+                proto_block.execution_status,
+                ExecutionStatus::Valid(hash) if hash == payload_block_hash
+            ),
+            "should be Valid(payload_block_hash) after process_pending_envelope, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
 /// After importing a block without envelope, process_self_build_envelope
 /// reveals the payload in fork choice, persists the envelope to store, and
 /// updates the state cache.
