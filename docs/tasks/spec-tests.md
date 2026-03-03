@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — spec tracking, withdrawal capacity coverage (run 433)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 432.
+- **Open Gloas PR status**: #4954 (millisecond store, open), #4950 (by_root serve range, open), #4940 (fork choice tests, open since Feb 25), #4932 (sanity/blocks tests, open since Feb 18), #4939 (envelope request on index-1 attestation, open), #4898 (remove pending from tiebreaker, stale), #4892 (remove impossible branch, stale), #4747 (fast confirmation rule, updated today — still actively developed, not close to merge). New untracked open PRs: #4843 (variable PTC deadline), #4840 (EIP-7843 Gloas support), #4630 (EIP-7688 forward-compatible SSZ).
+- **Coverage gap analysis**: Explored 5 potential gaps identified by deep codebase analysis. Upon investigation:
+  - Gap 1 (EMPTY-parent withdrawal list to EL): Already implicitly covered — existing chain continuation tests (`gloas_external_bid_withheld_chain_continues_on_empty_path`) produce blocks successfully, which requires EL accepting the withdrawal list.
+  - Gap 2 (self-build zero-amount payment queuing): Isolated test exists (`self_build_envelope_blanks_payment_but_no_withdrawal`). Cross-epoch interaction is same code path as non-zero amounts.
+  - Gap 3 (builder exit with only pending payments): Already tested (`verify_exit_builder_with_pending_payment_rejected`).
+  - Gap 4 (on_execution_bid after PTC quorum): Already tested (`fc_on_execution_bid_preserves_state_after_ptc_quorum`). The `bid_block_hash` overwrite concern was incorrect — `on_execution_bid` doesn't set `bid_block_hash`.
+  - Gap 5 (three-way withdrawal capacity): Genuine gap — filled with new test.
+- **New test** (1, commit `7c767d0e1`):
+  - `withdrawals_builder_pending_plus_partials_fill_reserved_limit_sweep_blocked` — 2 builder pending withdrawals + 1 validator partial fill reserved_limit=3, blocking the builder sweep for an exited builder with balance. Verifies: sweep pointer doesn't advance, builder balance only reflects pending deductions (not sweep), withdrawal indices are sequential, `get_expected_withdrawals_gloas` matches `process_withdrawals_gloas`.
+- **Code quality audit**: Reviewed 11 findings across consensus crates. Most impactful: `ptc_size / 2` uses raw division (policy violation but safe — constant divisor), `previous_slot + 1` in `update_time()` uses saturating arithmetic (theoretical infinite loop at Slot::MAX, unreachable in practice), several TODO comments without GitHub issue links (inherited from upstream). No actionable bugs found.
+- **CI status**: All tests green. Clippy clean. 546/546 state_processing tests pass.
+
 ### 2026-03-03 — deep spec conformance audit, withdrawal/epoch verification (run 432)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 431. Same set: #4955 (dependabot), #4953/#4952/#4951 (pytest infra), #4948 (payload status constants), #4947 (pre-fork subscription), #4918 (attestation payload status check), #4926 (SLOT_DURATION_MS).
