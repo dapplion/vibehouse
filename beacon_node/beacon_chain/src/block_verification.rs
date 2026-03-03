@@ -2007,18 +2007,25 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
             && let Ok(parent_bid) = parent_block.message().body().signed_execution_payload_bid()
         {
             let parent_bid_block_hash = parent_bid.message.block_hash;
-            if child_bid.message.parent_block_hash == parent_bid_block_hash
-                && parent_bid_block_hash != ExecutionBlockHash::zero()
-                && let Ok(h) = state.latest_block_hash_mut()
-                && *h != parent_bid_block_hash
-            {
+            let is_full_parent = child_bid.message.parent_block_hash == parent_bid_block_hash
+                && parent_bid_block_hash != ExecutionBlockHash::zero();
+            if is_full_parent {
                 // Parent is FULL: ensure latest_block_hash reflects the parent's
                 // revealed payload. This covers range sync where envelopes aren't
                 // stored but the original chain had them processed.
-                *h = parent_bid_block_hash;
+                metrics::inc_counter(&metrics::BLOCK_IMPORT_FULL_PARENT_TOTAL);
+                if let Ok(h) = state.latest_block_hash_mut()
+                    && *h != parent_bid_block_hash
+                {
+                    *h = parent_bid_block_hash;
+                }
+            } else if parent_bid_block_hash != ExecutionBlockHash::zero() {
+                // Parent is EMPTY: state.latest_block_hash is already the grandparent's
+                // block_hash (pre-envelope). No patching needed.
+                metrics::inc_counter(&metrics::BLOCK_IMPORT_EMPTY_PARENT_TOTAL);
             }
-            // Parent is EMPTY: state.latest_block_hash is already the grandparent's
-            // block_hash (pre-envelope). No patching needed.
+            // When parent_bid_block_hash is zero (genesis), skip metrics — this is
+            // the first Gloas block after fork transition, not a real FULL/EMPTY choice.
         }
 
         if !state.all_caches_built() {

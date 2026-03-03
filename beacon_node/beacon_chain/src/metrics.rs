@@ -318,6 +318,22 @@ pub static PAYLOAD_ENVELOPE_PROCESSING_TIMES: LazyLock<Result<Histogram>> = Lazy
 });
 
 /*
+ * Gloas ePBS Parent Path Metrics (FULL vs EMPTY)
+ */
+pub static BLOCK_IMPORT_FULL_PARENT_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_block_import_full_parent_total",
+        "Count of Gloas blocks imported where the parent had its payload revealed (FULL path).",
+    )
+});
+pub static BLOCK_IMPORT_EMPTY_PARENT_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
+    try_create_int_counter(
+        "beacon_block_import_empty_parent_total",
+        "Count of Gloas blocks imported where the parent's payload was not revealed (EMPTY path).",
+    )
+});
+
+/*
  * Block Statistics
  */
 pub static OPERATIONS_PER_BLOCK_ATTESTATION: LazyLock<Result<Histogram>> = LazyLock::new(|| {
