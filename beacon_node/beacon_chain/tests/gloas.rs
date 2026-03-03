@@ -17657,3 +17657,128 @@ async fn gloas_competing_forks_full_vs_empty() {
         "head should be fork A (revealed payload)"
     );
 }
+
+/// When an external bid block is imported without an envelope (payload_revealed=false),
+/// an index=1 attestation for that block should pass gossip verification (which doesn't
+/// check payload_revealed) but fail when applied to fork choice with PayloadNotRevealed.
+///
+/// This exercises the full integration path: gossip verification → apply_attestation_to_fork_choice
+/// → on_attestation → PayloadNotRevealed error, which is the path the network processor uses.
+#[tokio::test]
+async fn gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choice() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Extend with attestations to reach finalization (builder needs deposit_epoch < finalized_epoch)
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert external bid (builder will withhold the envelope)
+    let ext_slot = head_slot + 1;
+    let state = harness.chain.head_beacon_state_cloned();
+    let bid = make_external_bid(&state, head_root, ext_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    // Produce + import external bid block (no envelope)
+    harness.advance_slot();
+    let ((block, blobs), mut block_state, env) =
+        harness.make_block_with_envelope(state, ext_slot).await;
+    assert!(
+        env.is_none(),
+        "should not produce envelope for external bid"
+    );
+    let ext_root = block.canonical_root();
+    harness
+        .process_block(ext_slot, ext_root, (block, blobs))
+        .await
+        .unwrap();
+
+    // Verify the block is in fork choice with payload_revealed=false
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto = fc.proto_array().core_proto_array();
+        let idx = *proto
+            .indices
+            .get(&ext_root)
+            .expect("external bid block should be in fork choice");
+        let node = &proto.nodes[idx];
+        assert!(
+            !node.payload_revealed,
+            "payload_revealed should be false (builder withheld)"
+        );
+    }
+
+    // Advance slot so attestations will be non-same-slot (index=1 allowed by gossip)
+    harness.advance_slot();
+    let attest_slot = ext_slot + 1;
+
+    // Use the block's post-state for attestation production (committees are the same)
+    let state_root = block_state.update_tree_hash_cache().unwrap();
+
+    // Produce attestations for the skip slot targeting the external bid block
+    let attestations = harness.get_single_attestations(
+        &AttestationStrategy::AllValidators,
+        &block_state,
+        state_root,
+        ext_root,
+        attest_slot,
+    );
+
+    let (mut attestation, subnet_id) = attestations
+        .into_iter()
+        .flatten()
+        .next()
+        .expect("should produce attestation for skip slot");
+
+    // Pre-condition: attestation targets the external bid block
+    assert_eq!(
+        attestation.data.beacon_block_root, ext_root,
+        "attestation should target the external bid block"
+    );
+
+    // Change index to 1 (payload_present=true) and re-sign
+    attestation.data.index = 1;
+    let validator_index = attestation.attester_index as usize;
+    let fork = harness
+        .chain
+        .spec
+        .fork_at_epoch(attestation.data.target.epoch);
+    let domain = harness.chain.spec.get_domain(
+        attestation.data.target.epoch,
+        Domain::BeaconAttester,
+        &fork,
+        block_state.genesis_validators_root(),
+    );
+    let message = attestation.data.signing_root(domain);
+    let mut agg_sig = AggregateSignature::infinity();
+    agg_sig.add_assign(&harness.validator_keypairs[validator_index].sk.sign(message));
+    attestation.signature = agg_sig;
+
+    // Step 1: Gossip verification should PASS (doesn't check payload_revealed)
+    let verified = harness
+        .chain
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
+        .expect(
+            "gossip verification should pass for index=1 attestation (no payload_revealed check)",
+        );
+
+    // Step 2: Apply to fork choice — should FAIL with PayloadNotRevealed
+    let err = harness
+        .chain
+        .apply_attestation_to_fork_choice(&verified)
+        .expect_err(
+            "apply_attestation_to_fork_choice should reject index=1 for unrevealed payload",
+        );
+
+    assert!(
+        matches!(
+            err,
+            BeaconChainError::ForkChoiceError(fork_choice::Error::InvalidAttestation(
+                fork_choice::InvalidAttestation::PayloadNotRevealed { .. }
+            ))
+        ),
+        "expected PayloadNotRevealed error, got {:?}",
+        err
+    );
+}
