@@ -403,11 +403,26 @@ pub fn get_execution_payload<T: BeaconChainTypes>(
     let withdrawals = if state.fork_name_unchecked().gloas_enabled() {
         // Gloas computes withdrawals differently: checks is_parent_block_full, includes
         // builder pending withdrawals and builder sweep alongside validator withdrawals.
-        Some(
-            state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas(
-                state, spec,
-            )?,
-        )
+        //
+        // When the parent block is EMPTY (payload not revealed), process_withdrawals returns
+        // early without updating payload_expected_withdrawals. The envelope must still match
+        // the stale value, so we use it directly instead of computing fresh withdrawals.
+        if state_processing::per_block_processing::gloas::is_parent_block_full::<T::EthSpec>(state)?
+        {
+            Some(
+                state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas(
+                    state, spec,
+                )?,
+            )
+        } else {
+            Some(
+                state
+                    .payload_expected_withdrawals()?
+                    .iter()
+                    .cloned()
+                    .collect(),
+            )
+        }
     } else if state.fork_name_unchecked().capella_enabled() {
         Some(get_expected_withdrawals(state, spec)?.0.into())
     } else {
