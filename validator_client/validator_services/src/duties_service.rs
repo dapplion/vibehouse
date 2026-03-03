@@ -1711,6 +1711,8 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
     );
 
     // Sign and submit preferences for each slot.
+    // Track whether all submissions succeeded so we can retry on failure.
+    let mut all_succeeded = true;
     for duty in &local_duties {
         let Some(fee_recipient) = duties_service
             .validator_store
@@ -1750,6 +1752,7 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
                     error = ?e,
                     "Failed to sign proposer preferences"
                 );
+                all_succeeded = false;
                 continue;
             }
         };
@@ -1773,6 +1776,7 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
                 error = %e,
                 "Failed to submit proposer preferences to BN"
             );
+            all_succeeded = false;
         } else {
             debug!(
                 slot = %duty.slot,
@@ -1784,11 +1788,16 @@ async fn broadcast_proposer_preferences<S: ValidatorStore + 'static, T: SlotCloc
         }
     }
 
-    // Mark this epoch as done.
-    let mut broadcast_epochs = duties_service.preferences_broadcast_epochs.lock();
-    broadcast_epochs.insert(next_epoch);
-    // Prune old entries.
-    broadcast_epochs.retain(|&e| e >= current_epoch.saturating_sub(1u64));
+    // Only mark epoch as done if all preferences were successfully submitted.
+    // If any failed, leave it unmarked so the next slot retries. The BN will
+    // deduplicate preferences that were already received, so re-submitting
+    // successful ones is harmless.
+    if all_succeeded {
+        let mut broadcast_epochs = duties_service.preferences_broadcast_epochs.lock();
+        broadcast_epochs.insert(next_epoch);
+        // Prune old entries.
+        broadcast_epochs.retain(|&e| e >= current_epoch.saturating_sub(1u64));
+    }
 
     Ok(())
 }
