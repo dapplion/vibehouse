@@ -10074,6 +10074,114 @@ async fn gloas_process_pending_envelope_el_invalid_drains_buffer() {
     }
 }
 
+/// When a buffered gossip envelope is processed via `process_pending_envelope` and
+/// the EL returns Syncing for `newPayload`, the envelope should be processed
+/// successfully but the block should remain Optimistic:
+/// - The pending buffer is drained (envelope removed)
+/// - Fork choice IS updated (payload_revealed = true)
+/// - The envelope IS persisted to the store
+/// - The block's execution_status stays Optimistic (on_valid_execution_payload NOT called)
+///
+/// This exercises the `el_valid=false` branch at beacon_chain.rs `process_pending_envelope`
+/// lines 2887-2898 through the full pending-buffer pipeline. The analogous direct
+/// path (`process_payload_envelope` + `apply_payload_envelope_to_fork_choice`) is
+/// tested by `gloas_gossip_envelope_el_syncing_stays_optimistic`, but that test
+/// bypasses the pending-buffer mechanism. The Syncing response is a common real-world
+/// scenario when the EL is still syncing the parent chain.
+#[tokio::test]
+async fn gloas_process_pending_envelope_el_syncing_stays_optimistic() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only (no envelope processing)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Syncing BEFORE buffering the envelope
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el.server.all_payloads_syncing_on_new_payload(false);
+
+    // Buffer the self-build envelope (simulating gossip arrival before EL is synced)
+    harness
+        .chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(block_root, Arc::new(signed_envelope));
+
+    // Pre-condition: payload_revealed should be false
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "pre-condition: payload_revealed should be false before envelope processing"
+        );
+    }
+
+    // Process the buffered envelope — EL returns Syncing, process_payload_envelope
+    // succeeds with el_valid=false, fork choice is updated but on_valid_execution_payload
+    // is NOT called
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Buffer should be drained
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "pending buffer should be empty after processing"
+    );
+
+    // Fork choice: payload_revealed should be true (Syncing is not an error,
+    // apply_payload_envelope_to_fork_choice runs successfully)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true after Syncing (processing succeeded)"
+        );
+    }
+
+    // Envelope SHOULD be persisted to the store (processing succeeded)
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error")
+        .expect("envelope should be persisted when EL returns Syncing");
+    assert_eq!(
+        stored.message.payload.block_hash, envelope_block_hash,
+        "stored envelope should have correct block hash"
+    );
+
+    // execution_status should still be Optimistic (EL said Syncing, not Valid)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "execution_status should be Optimistic when EL returns Syncing, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
 /// Verify that execution_payload_availability bits correctly track payload status
 /// across multiple epochs. The flow per slot is:
 /// 1. per_slot_processing: advances state.slot → N, clears bit at index N
