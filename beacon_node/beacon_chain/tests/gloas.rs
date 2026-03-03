@@ -10845,6 +10845,64 @@ async fn gloas_head_hash_updated_after_envelope_processing() {
     );
 }
 
+/// Verify that `try_update_head_state` (called by envelope processing) updates
+/// `head_hash` in the cached head WITHOUT requiring `recompute_head`.
+///
+/// Before this fix, `try_update_head_state` only updated the beacon state snapshot
+/// but left `head_hash` stale. This meant that `prepare_beacon_proposer` (which
+/// reads from the cached head) would send `forkchoiceUpdated` with the parent's
+/// payload hash instead of the current block's payload hash after envelope processing.
+#[tokio::test]
+async fn gloas_try_update_head_state_updates_head_hash() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    // Produce a new block + envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Process the envelope — this calls try_update_head_state internally
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("should process envelope");
+
+    // WITHOUT calling recompute_head, check that head_hash was updated by
+    // try_update_head_state to reflect the current envelope's payload hash
+    let head_hash_after_envelope = harness
+        .chain
+        .canonical_head
+        .cached_head()
+        .forkchoice_update_parameters()
+        .head_hash;
+
+    assert!(
+        head_hash_after_envelope.is_some(),
+        "head_hash should be Some after envelope processing (via try_update_head_state)"
+    );
+
+    let envelope_payload_block_hash = signed_envelope.message.payload.block_hash;
+    assert_eq!(
+        head_hash_after_envelope.unwrap(),
+        envelope_payload_block_hash,
+        "head_hash should be updated to the envelope's payload hash by try_update_head_state"
+    );
+}
+
 // =============================================================================
 // Proposer boost timing — Gloas 4-interval boundary
 // =============================================================================

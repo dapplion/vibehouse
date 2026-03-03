@@ -412,6 +412,14 @@ impl<T: BeaconChainTypes> CanonicalHead<T> {
     pub fn try_update_head_state(&self, block_root: Hash256, state: BeaconState<T::EthSpec>) {
         let mut cached_head = self.cached_head_write_lock();
         if cached_head.snapshot.beacon_block_root == block_root {
+            // Update head_hash from the post-envelope state's latest_block_hash.
+            // After envelope processing, the state has the correct execution block hash
+            // which should be used in subsequent forkchoiceUpdated calls.
+            if let Ok(latest_block_hash) = state.latest_block_hash()
+                && *latest_block_hash != ExecutionBlockHash::zero()
+            {
+                cached_head.head_hash = Some(*latest_block_hash);
+            }
             let new_snapshot = Arc::new(BeaconSnapshot {
                 beacon_block_root: cached_head.snapshot.beacon_block_root,
                 beacon_block: cached_head.snapshot.beacon_block.clone(),
@@ -847,8 +855,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // The execution layer updates might attempt to take a write-lock on fork choice, so it's
         // important to ensure the fork-choice lock isn't being held.
-        let el_update_handle =
-            spawn_execution_layer_updates(self.clone(), new_forkchoice_update_parameters)?;
+        //
+        // Use the cached head's forkchoice_update_parameters rather than the raw fork choice
+        // parameters. For Gloas blocks, fork choice returns head_hash=None (ExecutionStatus::
+        // Irrelevant) but the cached head has the correct fallback from state.latest_block_hash.
+        // Without this, update_execution_engine_forkchoice would skip forkchoiceUpdated entirely
+        // for Gloas heads (falling into the pre-merge PoW transition path).
+        let el_update_handle = spawn_execution_layer_updates(
+            self.clone(),
+            new_cached_head.forkchoice_update_parameters(),
+        )?;
 
         // We have completed recomputing the head and it's now valid for another process to do the
         // same.
