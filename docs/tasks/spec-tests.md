@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — PayloadNotRevealed beacon chain integration test (run 435)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 434. Same set tracked: #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4747 (fast confirmation rule — very active, not close to merge).
+- **Coverage gap analysis**: Deep search across all critical Gloas consensus paths (state_processing, fork_choice, block_verification, beacon_chain). Found one genuine untested integration path: the `PayloadNotRevealed` error through `apply_attestation_to_fork_choice`. The proto-array unit test (`gloas_index_1_rejected_when_payload_not_revealed`) verified the fork choice logic in isolation, but no test exercised the full beacon chain path where gossip-verified attestations flow through `apply_attestation_to_fork_choice` and hit the `PayloadNotRevealed` rejection.
+- **New test** (1, commit `f0eb5fa5d`):
+  - `gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choice` — imports an external-bid block without envelope (payload_revealed=false in fork choice), creates a properly-signed index=1 SingleAttestation targeting that block from a later slot, verifies it passes gossip verification (which doesn't check payload_revealed), then asserts that `apply_attestation_to_fork_choice` correctly rejects it with `BeaconChainError::ForkChoiceError(Error::InvalidAttestation(PayloadNotRevealed { .. }))`. This exercises the exact code path used by the network processor in `gossip_methods.rs:362`.
+- **CI status**: All tests green. Clippy clean. 740 beacon_chain tests pass.
+
 ### 2026-03-03 — skip slot availability clearing test (run 434)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 433.
