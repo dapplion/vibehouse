@@ -8,8 +8,10 @@ use beacon_chain::data_availability_checker::AvailableBlock;
 use beacon_chain::historical_data_columns::HistoricalDataColumnError;
 use beacon_chain::schema_change::migrate_schema;
 use beacon_chain::test_utils::{
-    AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_TARGET_AGGREGATORS,
-    DiskHarnessType, fork_name_from_env, get_kzg, mock_execution_layer_from_parts, test_spec,
+    AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_ETH1_BLOCK_HASH,
+    DEFAULT_TARGET_AGGREGATORS, DiskHarnessType, HARNESS_GENESIS_TIME, InteropGenesisBuilder,
+    fork_name_from_env, generate_genesis_header, get_kzg, mock_execution_layer_from_parts,
+    test_spec,
 };
 use beacon_chain::test_utils::{SyncCommitteeStrategy, generate_data_column_indices_rand_order};
 use beacon_chain::{
@@ -6001,6 +6003,392 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
         verified_count > 0,
         "should have verified at least one reconstructed Gloas state with correct latest_block_hash"
     );
+}
+
+/// Verify that `reconstruct_historic_states` correctly handles the EMPTY path
+/// (Gloas blocks where the builder withheld the payload, so no envelope was stored).
+///
+/// In Gloas ePBS, when a builder wins a bid but withholds the execution payload:
+/// - The block is imported with `payload_revealed=false` (no envelope delivered)
+/// - `latest_block_hash` is NOT updated in the state
+/// - The next block's bid references the last FULL block's EL hash (grandparent)
+///
+/// When `reconstruct_historic_states` replays such a chain, it must correctly skip
+/// envelope processing for the EMPTY-path block (no envelope in DB) and continue
+/// reconstruction with the un-updated `latest_block_hash`. The subsequent block's
+/// bid must pass validation against this un-updated hash.
+///
+/// This test:
+/// 1. Creates a mixed FULL/EMPTY chain: mostly self-build (FULL), with one external
+///    bid block where the payload was withheld (EMPTY)
+/// 2. Finalizes the chain so the EMPTY-path block ends up in the cold DB
+/// 3. Runs `reconstruct_historic_states` and verifies success
+/// 4. Checks that the EMPTY-path block has no envelope stored in the DB
+/// 5. Verifies reconstructed state `latest_block_hash` is correct (not updated
+///    at the EMPTY slot)
+#[tokio::test]
+async fn gloas_reconstruct_states_with_empty_path_block() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store_config = StoreConfig {
+        prune_payloads: false,
+        ..StoreConfig::default()
+    };
+    let store = get_store_generic(&db_path, store_config, spec.clone());
+
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+
+    // Generate a builder keypair (separate from validator keypairs).
+    let all_keypairs = types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT + 1);
+    let builder_keypair = all_keypairs[LOW_VALIDATOR_COUNT].clone();
+
+    // Build genesis state with one builder injected.
+    let spec_arc: Arc<ChainSpec> = spec.clone().into();
+    let header = generate_genesis_header::<E>(&spec, false);
+    let mut genesis_state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &validators_keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject builder: deposit_epoch=0, balance=10 ETH, active once finalized_epoch >= 1.
+    let builder_balance = 10_000_000_000u64;
+    let gloas_state = genesis_state.as_gloas_mut().expect("should be Gloas state");
+    let builder = types::builder::Builder {
+        pubkey: builder_keypair.pk.clone().into(),
+        version: 0,
+        execution_address: Address::zero(),
+        balance: builder_balance,
+        deposit_epoch: Epoch::new(0),
+        withdrawable_epoch: spec.far_future_epoch,
+    };
+    gloas_state
+        .builders
+        .push(builder)
+        .expect("should push builder");
+    genesis_state.drop_all_caches().expect("should drop caches");
+
+    let harness = TestHarness::builder(E::default())
+        .spec(spec_arc)
+        .keypairs(validators_keypairs)
+        .genesis_state_disk_store(store.clone(), genesis_state)
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: false,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Phase 1: Build 5 epochs (40 slots) to establish finalization and activate builder.
+    // Builder is active when deposit_epoch (0) < finalized_epoch (needs at least 1).
+    let phase1_slots: Vec<Slot> = (1..=slots_per_epoch * 5).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    let (_, _, _, phase1_end_state) = harness
+        .add_attested_blocks_at_slots(state, state_root, &phase1_slots, &all_validators)
+        .await;
+
+    let finalized_epoch = harness
+        .chain
+        .head_snapshot()
+        .beacon_state
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        finalized_epoch >= Epoch::new(1),
+        "builder should be active: finalized_epoch={} >= 1",
+        finalized_epoch
+    );
+
+    // Phase 2: Insert external bid for the next slot (EMPTY path).
+    let empty_path_slot = Slot::new(slots_per_epoch * 5 + 1);
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Record the "grandparent" EL hash — this is the last FULL block's latest_block_hash.
+    let grandparent_el_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_ne!(
+        grandparent_el_hash,
+        ExecutionBlockHash::zero(),
+        "pre-condition: head should have a non-zero latest_block_hash"
+    );
+
+    // Build and sign the external bid.
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let gloas_head = head_state.as_gloas().expect("should be Gloas");
+    let current_epoch = head_state.current_epoch();
+    let randao_mix = *head_state
+        .get_randao_mix(current_epoch)
+        .expect("should get randao mix");
+
+    // Use execution_payment=0 so the builder's balance isn't modified by bid processing.
+    // This ensures the EMPTY-path state's expected withdrawals match those the mock EL
+    // computed from the previous forkchoiceUpdated, avoiding WithdrawalsRootMismatch
+    // when building the continuation block.
+    let bid = ExecutionPayloadBid {
+        slot: empty_path_slot,
+        builder_index: 0,
+        value: 0,
+        parent_block_hash: gloas_head.latest_block_hash,
+        parent_block_root: head_root,
+        prev_randao: randao_mix,
+        block_hash: ExecutionBlockHash::repeat_byte(0xEE),
+        fee_recipient: Address::zero(),
+        gas_limit: 30_000_000,
+        execution_payment: 0,
+        blob_kzg_commitments: Default::default(),
+    };
+    let epoch = empty_path_slot.epoch(slots_per_epoch);
+    let domain = spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+    let signing_root = bid.signing_root(domain);
+    let signature = builder_keypair.sk.sign(signing_root);
+    let signed_bid = SignedExecutionPayloadBid::<E> {
+        message: bid,
+        signature,
+    };
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(signed_bid.clone());
+
+    // Produce block using the external bid (no self-build envelope).
+    harness.set_current_slot(empty_path_slot);
+    let ((empty_block, empty_blobs), empty_state, empty_envelope) = harness
+        .make_block_with_envelope(phase1_end_state, empty_path_slot)
+        .await;
+    assert!(
+        empty_envelope.is_none(),
+        "external bid block should not produce self-build envelope"
+    );
+
+    // Import the EMPTY-path block WITHOUT processing any envelope.
+    // Note: this block won't become the head (external builder blocks with
+    // payload_revealed=false are not viable for head in Gloas fork choice).
+    let empty_block_root = empty_block.canonical_root();
+    harness
+        .process_block(
+            empty_path_slot,
+            empty_block_root,
+            (empty_block.clone(), empty_blobs),
+        )
+        .await
+        .expect("should import EMPTY-path block");
+
+    // Verify EMPTY block's state: latest_block_hash NOT updated.
+    let lbh_after_empty = *empty_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        lbh_after_empty, grandparent_el_hash,
+        "EMPTY-path block should NOT update latest_block_hash"
+    );
+
+    // Phase 3a: Build continuation block ON TOP of the EMPTY block.
+    // We must manually produce from the EMPTY block's state so the continuation
+    // block's parent_root is the EMPTY block root (making EMPTY canonical).
+    // Use the block's state_root for Gloas state advance consistency.
+    let continuation_slot = empty_path_slot + 1;
+    harness.set_current_slot(continuation_slot);
+    let empty_block_state_root = Some(empty_block.message().state_root());
+    let ((cont_block, cont_blobs), _cont_state, cont_envelope) = harness
+        .make_block_with_envelope_and_state_root(
+            empty_state,
+            empty_block_state_root,
+            continuation_slot,
+        )
+        .await;
+
+    // The continuation block should be self-build (FULL) with an envelope.
+    assert!(
+        cont_envelope.is_some(),
+        "continuation block should produce self-build envelope"
+    );
+
+    // The continuation bid should reference the grandparent's EL hash
+    // (EMPTY path: the EMPTY block's payload was never revealed).
+    let cont_bid = cont_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("continuation should have bid");
+    assert_eq!(
+        cont_bid.message.parent_block_hash, grandparent_el_hash,
+        "continuation bid parent_block_hash should be the grandparent EL hash (EMPTY path)"
+    );
+    // Verify parent_root points to the EMPTY block.
+    assert_eq!(
+        cont_block.message().parent_root(),
+        empty_block_root,
+        "continuation block parent_root should be the EMPTY-path block"
+    );
+
+    // Import the continuation block and process its envelope.
+    let cont_block_root = cont_block.canonical_root();
+    harness
+        .process_block(continuation_slot, cont_block_root, (cont_block, cont_blobs))
+        .await
+        .expect("continuation block should import successfully");
+
+    // Process the continuation's self-build envelope.
+    let cont_signed_envelope = cont_envelope.unwrap();
+    harness
+        .chain
+        .process_self_build_envelope(&cont_signed_envelope)
+        .await
+        .expect("continuation envelope should process successfully");
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // The continuation block should now be the head (self-build, payload revealed).
+    let head_after_cont = harness.chain.head_snapshot();
+    assert_eq!(
+        head_after_cont.beacon_block_root, cont_block_root,
+        "continuation block should be the head after envelope processing"
+    );
+
+    // Phase 3b: Continue building through epoch 10 with self-build (FULL) blocks.
+    // Need enough epochs after the EMPTY block to finalize it into cold DB.
+    let phase3_start = continuation_slot.as_u64() + 1;
+    let num_slots = slots_per_epoch * 10;
+    let phase3_slots: Vec<Slot> = (phase3_start..=num_slots).map(Slot::new).collect();
+
+    if !phase3_slots.is_empty() {
+        let (cont_state, cont_state_root) = harness.get_current_state_and_root();
+        harness
+            .add_attested_blocks_at_slots(
+                cont_state,
+                cont_state_root,
+                &phase3_slots,
+                &all_validators,
+            )
+            .await;
+    }
+
+    // Verify the EMPTY-path block is in the cold DB.
+    let split_slot = store.get_split_slot();
+    assert!(
+        split_slot > empty_path_slot,
+        "split_slot {} should be past EMPTY-path block slot {}",
+        split_slot,
+        empty_path_slot
+    );
+
+    // Verify: no envelope stored for the EMPTY-path block.
+    assert!(
+        store
+            .get_payload_envelope(&empty_block_root)
+            .unwrap()
+            .is_none(),
+        "EMPTY-path block should have no full envelope in store"
+    );
+    assert!(
+        store
+            .get_blinded_payload_envelope(&empty_block_root)
+            .unwrap()
+            .is_none(),
+        "EMPTY-path block should have no blinded envelope in store"
+    );
+
+    // Reconstruct historic states — this exercises the EMPTY-path branch
+    // in reconstruct.rs (lines 154-163).
+    store
+        .clone()
+        .reconstruct_historic_states(None)
+        .expect("reconstruct_historic_states should succeed with EMPTY-path block");
+
+    // Verify the EMPTY-path block root is accessible in the cold range.
+    let empty_block_in_cold = harness
+        .chain
+        .block_root_at_slot(empty_path_slot, WhenSlotSkipped::Prev)
+        .unwrap();
+    assert_eq!(
+        empty_block_in_cold,
+        Some(empty_block_root),
+        "EMPTY-path block root should be in the block roots at slot {}",
+        empty_path_slot
+    );
+
+    // Use load_cold_state_by_slot to verify reconstructed states at key slots.
+    // This replays from snapshots/diffs stored during reconstruction and works for any slot.
+
+    // 1. Verify: FULL-path block just BEFORE the EMPTY slot has correct latest_block_hash.
+    let before_empty_slot = empty_path_slot - 1;
+    let state_before = store
+        .load_cold_state_by_slot(before_empty_slot)
+        .expect("should load cold state before EMPTY slot");
+    let lbh_before = *state_before
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    // This is the last FULL block before EMPTY — its latest_block_hash should be
+    // the grandparent EL hash (the same value we recorded before the EMPTY block).
+    assert_eq!(
+        lbh_before, grandparent_el_hash,
+        "FULL-path block before EMPTY: latest_block_hash should be grandparent EL hash"
+    );
+
+    // 2. Verify: EMPTY-path block's state has latest_block_hash NOT updated.
+    let state_at_empty = store
+        .load_cold_state_by_slot(empty_path_slot)
+        .expect("should load cold state at EMPTY slot");
+    let lbh_at_empty = *state_at_empty
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        lbh_at_empty, grandparent_el_hash,
+        "EMPTY-path block: latest_block_hash should be the grandparent's EL hash \
+         (not updated, no envelope processed during reconstruction)"
+    );
+
+    // 3. Verify: FULL-path block AFTER the EMPTY slot has latest_block_hash updated.
+    // The continuation block's envelope was processed, so latest_block_hash should
+    // now be the continuation block's bid block_hash.
+    let after_empty_slot = empty_path_slot + 1;
+    if after_empty_slot < split_slot {
+        let state_after = store
+            .load_cold_state_by_slot(after_empty_slot)
+            .expect("should load cold state after EMPTY slot");
+        let lbh_after = *state_after
+            .latest_block_hash()
+            .expect("should have latest_block_hash");
+        // The continuation block is self-build (FULL), so its envelope was stored and
+        // processed during reconstruction, updating latest_block_hash.
+        assert_ne!(
+            lbh_after, grandparent_el_hash,
+            "FULL-path block after EMPTY: latest_block_hash should differ from grandparent's \
+             (envelope was processed, latest_block_hash was updated)"
+        );
+        // Verify it matches the continuation block's envelope block_hash.
+        let after_block_root = harness
+            .chain
+            .block_root_at_slot(after_empty_slot, WhenSlotSkipped::Prev)
+            .unwrap()
+            .expect("should have block at continuation slot");
+        if let Ok(Some(blinded)) = store.get_blinded_payload_envelope(&after_block_root) {
+            assert_eq!(
+                lbh_after, blinded.message.payload_header.block_hash,
+                "continuation block latest_block_hash should match its envelope block_hash"
+            );
+        }
+    }
 }
 
 fn get_finalized_epoch_boundary_blocks(

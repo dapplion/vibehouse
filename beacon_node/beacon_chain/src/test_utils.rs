@@ -21,7 +21,7 @@ pub use crate::{
 };
 use bls::get_withdrawal_credentials;
 use eth2::types::SignedBlockContentsTuple;
-use execution_layer::test_utils::generate_genesis_header;
+pub use execution_layer::test_utils::generate_genesis_header;
 use execution_layer::{
     ExecutionLayer,
     auth::JwtKey,
@@ -317,6 +317,23 @@ impl<E: EthSpec> Builder<DiskHarnessType<E>> {
                     builder.get_spec(),
                 )
                 .expect("should generate interop state");
+            builder
+                .genesis_state(genesis_state)
+                .expect("should build state using recent genesis")
+        };
+        self.store = Some(store);
+        self.store_mutator(Box::new(mutator))
+    }
+
+    /// Disk store, start from a pre-built genesis state.
+    /// Unlike `fresh_disk_store`, this takes a fully-formed genesis state (e.g. with
+    /// injected builders for Gloas ePBS testing).
+    pub fn genesis_state_disk_store(
+        mut self,
+        store: Arc<HotColdDB<E, BeaconNodeBackend<E>, BeaconNodeBackend<E>>>,
+        genesis_state: BeaconState<E>,
+    ) -> Self {
+        let mutator = move |builder: BeaconChainBuilder<_>| {
             builder
                 .genesis_state(genesis_state)
                 .expect("should build state using recent genesis")
