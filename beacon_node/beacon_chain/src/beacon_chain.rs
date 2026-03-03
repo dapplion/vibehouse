@@ -3383,9 +3383,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
     /// Retrieves payload attestations from the pool for block inclusion at the given slot.
     ///
-    /// Returns attestations targeting `slot - 1` (the previous slot) with the correct
-    /// `beacon_block_root` (the parent of the block being produced), limited to
+    /// Returns aggregated attestations targeting `slot - 1` (the previous slot) with the
+    /// correct `beacon_block_root` (the parent of the block being produced), limited to
     /// `max_payload_attestations`.
+    ///
+    /// Per spec, the proposer MUST aggregate all payload attestations with the same data
+    /// into a single `PayloadAttestation` with combined `aggregation_bits` and aggregate
+    /// signature.
     pub fn get_payload_attestations_for_block(
         &self,
         block_slot: Slot,
@@ -3393,15 +3397,35 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ) -> Vec<PayloadAttestation<T::EthSpec>> {
         let target_slot = block_slot.saturating_sub(1u64);
         let pool = self.payload_attestation_pool.lock();
-        pool.get(&target_slot)
-            .map(|atts| {
-                atts.iter()
-                    .filter(|att| att.data.beacon_block_root == parent_block_root)
-                    .take(T::EthSpec::max_payload_attestations())
-                    .cloned()
-                    .collect()
-            })
-            .unwrap_or_default()
+        let Some(atts) = pool.get(&target_slot) else {
+            return vec![];
+        };
+
+        // Group attestations by data and aggregate bits + signatures.
+        let mut aggregated: HashMap<PayloadAttestationData, PayloadAttestation<T::EthSpec>> =
+            HashMap::new();
+
+        for att in atts
+            .iter()
+            .filter(|att| att.data.beacon_block_root == parent_block_root)
+        {
+            match aggregated.entry(att.data.clone()) {
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    entry.insert(att.clone());
+                }
+                std::collections::hash_map::Entry::Occupied(mut entry) => {
+                    let existing = entry.get_mut();
+                    existing.aggregation_bits =
+                        existing.aggregation_bits.union(&att.aggregation_bits);
+                    existing.signature.add_assign_aggregate(&att.signature);
+                }
+            }
+        }
+
+        aggregated
+            .into_values()
+            .take(T::EthSpec::max_payload_attestations())
+            .collect()
     }
 
     /// Insert a verified proposer preferences message into the pool.

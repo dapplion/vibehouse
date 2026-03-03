@@ -726,6 +726,7 @@ async fn gloas_payload_attestation_pool_wrong_slot_empty() {
 }
 
 /// Test that payload attestation pool respects max_payload_attestations limit.
+/// After aggregation, the limit applies to the number of unique data groups.
 #[tokio::test]
 async fn gloas_payload_attestation_pool_max_limit() {
     let harness = gloas_harness_at_epoch(0);
@@ -735,26 +736,40 @@ async fn gloas_payload_attestation_pool_max_limit() {
     let head_root = head.beacon_block_root;
     let head_slot = head.beacon_block.slot();
 
-    // Insert more attestations than the max (MinimalEthSpec max = 2)
     let max = E::max_payload_attestations();
-    for i in 0..(max + 3) {
-        let mut att = make_payload_attestation(head_root, head_slot, i % 2 == 0, false);
-        // Set different bits to make them distinct
-        if i < E::ptc_size() {
-            let _ = att.aggregation_bits.set(i, true);
+
+    // Insert attestations for all 4 possible data combinations.
+    // Each combination gets multiple validators to verify aggregation works.
+    let combos: [(bool, bool); 4] = [(true, true), (true, false), (false, true), (false, false)];
+    for (payload_present, blob_data_available) in &combos {
+        for bit in 0..E::ptc_size() {
+            let mut att = make_payload_attestation(
+                head_root,
+                head_slot,
+                *payload_present,
+                *blob_data_available,
+            );
+            let _ = att.aggregation_bits.set(bit, true);
+            harness.chain.insert_payload_attestation_to_pool(att);
         }
-        harness.chain.insert_payload_attestation_to_pool(att);
     }
 
     let result = harness
         .chain
         .get_payload_attestations_for_block(head_slot + 1, head_root);
 
+    // 4 data combinations → 4 aggregated attestations, exactly at the limit
+    assert!(
+        result.len() <= max,
+        "should be capped at max_payload_attestations ({}), got {}",
+        max,
+        result.len()
+    );
+    // With 4 unique data combos and max=4, all should be included
     assert_eq!(
         result.len(),
-        max,
-        "should be capped at max_payload_attestations ({})",
-        max
+        combos.len(),
+        "all 4 data combinations should be represented"
     );
 }
 
@@ -2715,6 +2730,7 @@ async fn gloas_block_production_filters_attestations_by_parent_root() {
 }
 
 /// Test that block production respects the max_payload_attestations limit.
+/// After aggregation, the limit applies to unique data combinations.
 #[tokio::test]
 async fn gloas_block_production_respects_max_payload_attestations() {
     let harness = gloas_harness_at_epoch(0);
@@ -2726,12 +2742,22 @@ async fn gloas_block_production_respects_max_payload_attestations() {
 
     let max_atts = E::max_payload_attestations();
 
-    // Insert more attestations than the max (each with different bits to differentiate)
-    for i in 0..max_atts + 5 {
-        let mut att = make_payload_attestation(head_root, head_slot, true, false);
-        // Set a different bit for each attestation to make them distinct
-        let _ = att.aggregation_bits.set(i % E::ptc_size(), true);
-        harness.chain.insert_payload_attestation_to_pool(att);
+    // Insert attestations with all 4 possible data combinations (payload_present x blob_data_available).
+    // With MAX_PAYLOAD_ATTESTATIONS=4 this should result in exactly max_atts aggregated attestations.
+    for (payload_present, blob_data_available) in
+        [(true, true), (true, false), (false, true), (false, false)]
+    {
+        // Insert multiple validators for each data combination (they'll get aggregated)
+        for i in 0..3 {
+            let mut att = make_payload_attestation(
+                head_root,
+                head_slot,
+                payload_present,
+                blob_data_available,
+            );
+            let _ = att.aggregation_bits.set(i % E::ptc_size(), true);
+            harness.chain.insert_payload_attestation_to_pool(att);
+        }
     }
 
     harness.advance_slot();
@@ -2751,6 +2777,101 @@ async fn gloas_block_production_respects_max_payload_attestations() {
         max_atts,
         payload_attestations.len()
     );
+}
+
+/// Test that block production aggregates payload attestations with matching data.
+/// Per spec: "The proposer MUST aggregate all payload attestations with the same
+/// data into a given PayloadAttestation object."
+#[tokio::test]
+async fn gloas_block_production_aggregates_matching_payload_attestations() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert multiple attestations with the SAME data but different aggregation bits.
+    // These should be aggregated into a single PayloadAttestation with combined bits.
+    let ptc_size = E::ptc_size();
+    let num_attesters = std::cmp::min(ptc_size, 2); // MinimalEthSpec has PtcSize=2
+    for i in 0..num_attesters {
+        let mut att = make_payload_attestation(head_root, head_slot, true, true);
+        // Clear the default bit 0 and set bit i
+        let _ = att.aggregation_bits.set(0, false);
+        let _ = att.aggregation_bits.set(i, true);
+        harness.chain.insert_payload_attestation_to_pool(att);
+    }
+
+    harness.advance_slot();
+
+    let atts = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 1, head_root);
+
+    // All attestations had the same data → should be aggregated into exactly 1
+    assert_eq!(
+        atts.len(),
+        1,
+        "attestations with same data should be aggregated into one, got {}",
+        atts.len()
+    );
+
+    // Verify the aggregated attestation has all bits set
+    let aggregated = &atts[0];
+    for i in 0..num_attesters {
+        assert!(
+            aggregated.aggregation_bits.get(i).unwrap_or(false),
+            "bit {} should be set in aggregated attestation",
+            i
+        );
+    }
+    assert_eq!(
+        aggregated.num_attesters(),
+        num_attesters,
+        "aggregated attestation should have {} attesters",
+        num_attesters
+    );
+    assert!(aggregated.data.payload_present);
+    assert!(aggregated.data.blob_data_available);
+}
+
+/// Test that attestations with different data are NOT aggregated together.
+#[tokio::test]
+async fn gloas_block_production_separates_different_payload_attestation_data() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Insert two attestations with different payload_present values
+    let att_present = make_payload_attestation(head_root, head_slot, true, true);
+    let att_absent = make_payload_attestation(head_root, head_slot, false, true);
+    harness
+        .chain
+        .insert_payload_attestation_to_pool(att_present);
+    harness.chain.insert_payload_attestation_to_pool(att_absent);
+
+    harness.advance_slot();
+
+    let atts = harness
+        .chain
+        .get_payload_attestations_for_block(head_slot + 1, head_root);
+
+    // Different data → should remain as 2 separate aggregated attestations
+    assert_eq!(
+        atts.len(),
+        2,
+        "attestations with different data should not be aggregated, got {}",
+        atts.len()
+    );
+
+    // Both should have exactly 1 attester (bit 0)
+    for att in &atts {
+        assert_eq!(att.num_attesters(), 1);
+    }
 }
 
 /// Test that block production produces empty payload_attestations when pool is empty.
