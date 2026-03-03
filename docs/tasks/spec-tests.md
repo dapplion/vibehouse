@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — payload attestation aggregation fix (run 423)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 422. Same set: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch)
+- **Spec compliance fix**: `get_payload_attestations_for_block` was not aggregating payload attestations with matching data. Per spec: "The proposer MUST aggregate all payload attestations with the same data into a given PayloadAttestation object." Previously, individual attestations from the pool were included without aggregation, wasting the `MAX_PAYLOAD_ATTESTATIONS` limit (4) on individual PTC member votes instead of aggregated groups. With PTC_SIZE=512 on mainnet and MAX_PAYLOAD_ATTESTATIONS=4, this meant only 4 out of 512 PTC votes could be included without aggregation.
+- **Fix** (commit `85a7f1bfb`): `get_payload_attestations_for_block` now groups attestations by `PayloadAttestationData`, merges `aggregation_bits` via `union()` and combines signatures via `add_assign_aggregate()`, then applies the `MAX_PAYLOAD_ATTESTATIONS` limit to the aggregated results.
+- **New tests**:
+  - `gloas_block_production_aggregates_matching_payload_attestations` — verifies multiple attestations with same data are merged into one with combined bits
+  - `gloas_block_production_separates_different_payload_attestation_data` — verifies attestations with different data (different payload_present/blob_data_available) remain separate
+- **Updated test**: `gloas_payload_attestation_pool_max_limit` — updated to test all 4 data combinations with aggregation
+- All 367 Gloas beacon_chain tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — store layer coverage: split-block-root test (run 422)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 421. Same set: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
