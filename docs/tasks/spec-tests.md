@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — process_pending_envelope EL Invalid error path test (run 438)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4955 (dependabot — GitHub Actions bumps, no spec changes), #4953 (shuffling tests to pytest), #4952 (seeded rng), #4951 (pytest parallelism), #4944 (execution proof by root — EIP-8025, not Gloas). No new Gloas merges since run 437.
+- **Open Gloas PR status**: No open PRs with `scope:epbs` label (all ePBS spec work merged into master). Tracked PRs (#4954, #4950, #4940, #4932, #4939, #4747) unchanged.
+- **Coverage gap analysis**: Exhaustive search across all major Gloas components (beacon_chain.rs, block_verification.rs, canonical_head.rs, execution_payload.rs, envelope_processing.rs, per_block_processing, per_epoch_processing, upgrade/gloas.rs, block_replayer.rs, early_attester_cache.rs, gloas_verification.rs, gossip_methods.rs, http_api). Found that the `process_pending_envelope` function has 5 tests covering: success path, execution_status Valid transition, no-op when empty, re-verification failure (SlotMismatch), and BlockRootUnknown. However, the `Err(e)` branch at lines 2900-2906 (where `process_payload_envelope` fails due to EL error) was never exercised through the full pending-buffer path — only through direct `process_payload_envelope` calls.
+- **New test** (1):
+  - `gloas_process_pending_envelope_el_invalid_drains_buffer` — builds a 2-slot chain, produces block+envelope for next slot, imports block only, configures mock EL to return Invalid for newPayload, buffers the envelope in `pending_gossip_envelopes`, calls `process_pending_envelope`, then asserts: (1) buffer is drained, (2) fork choice payload_revealed is still false, (3) envelope is NOT persisted to store, (4) execution_status is NOT Valid. This covers the error branch at beacon_chain.rs lines 2900-2906 through the full pending-buffer pipeline.
+- **CI status**: All tests green. Clippy clean. 742 beacon_chain tests pass (741→742).
+
 ### 2026-03-03 — process_pending_envelope execution_status transition test (run 437)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4955 (dependabot), #4944 (execution proof by root — EIP-8025, not Gloas), #4814 (config derivation helpers — converts ATTESTATION_SUBNET_PREFIX_BITS, MAX_REQUEST_BLOB_SIDECARS, MAX_REQUEST_BLOB_SIDECARS_ELECTRA, MAX_REQUEST_DATA_COLUMN_SIDECARS to derived values; vibehouse hardcoded values already match the formulas, no functional change needed), #4926 (SLOT_DURATION_MS — already tracked). No new Gloas merges since run 436.

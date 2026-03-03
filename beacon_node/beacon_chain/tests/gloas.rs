@@ -9971,6 +9971,109 @@ async fn gloas_process_pending_envelope_unknown_root_drains_buffer() {
     );
 }
 
+/// When a buffered gossip envelope is processed via `process_pending_envelope` and
+/// the EL returns Invalid for `newPayload`, the error should be handled gracefully:
+/// - The pending buffer is drained (envelope removed)
+/// - Fork choice is NOT updated (payload_revealed stays false)
+/// - The envelope is NOT persisted to the store
+/// - The block's execution_status stays Optimistic (not promoted to Valid)
+///
+/// This covers the `Err(e)` branch at beacon_chain.rs `process_pending_envelope`
+/// lines 2900-2906, which was previously only tested via direct
+/// `process_payload_envelope` calls, not through the full pending-buffer path.
+#[tokio::test]
+async fn gloas_process_pending_envelope_el_invalid_drains_buffer() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block only (no envelope processing)
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Invalid BEFORE buffering the envelope
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el
+        .server
+        .all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero());
+
+    // Buffer the self-build envelope (simulating gossip arrival)
+    harness
+        .chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(block_root, Arc::new(signed_envelope));
+
+    // Pre-condition: payload_revealed should be false, block should be Optimistic
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "pre-condition: payload_revealed should be false before envelope processing"
+        );
+    }
+
+    // Process the buffered envelope — EL returns Invalid, process_payload_envelope
+    // should error, and the error branch (lines 2900-2906) should fire
+    harness.chain.process_pending_envelope(block_root).await;
+
+    // Buffer should be drained regardless of the error
+    assert!(
+        harness
+            .chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "pending buffer should be empty after processing (even on EL Invalid)"
+    );
+
+    // Fork choice: payload_revealed should still be false (error path returns
+    // before apply_payload_envelope_to_fork_choice)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !proto_block.payload_revealed,
+            "payload_revealed should remain false when EL returns Invalid"
+        );
+    }
+
+    // Envelope should NOT be persisted to the store
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error");
+    assert!(
+        stored.is_none(),
+        "envelope should not be stored when EL returns Invalid"
+    );
+
+    // execution_status should NOT be Valid (block stays Optimistic)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            !matches!(proto_block.execution_status, ExecutionStatus::Valid(_)),
+            "execution_status should not be Valid when EL returns Invalid, got {:?}",
+            proto_block.execution_status
+        );
+    }
+}
+
 /// Verify that execution_payload_availability bits correctly track payload status
 /// across multiple epochs. The flow per slot is:
 /// 1. per_slot_processing: advances state.slot → N, clears bit at index N
