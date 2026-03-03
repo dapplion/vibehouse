@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — store layer coverage: split-block-root test (run 422)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 421. Same set: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range, 4 approvals), #4939 (envelope request on index-1 attestation), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch)
+- **Store layer test coverage audit** — systematically reviewed all Gloas-specific code in the store (`hot_cold_store.rs`, `reconstruct.rs`), `block_verification.rs`, and `beacon_chain.rs` for untested paths:
+  - **Well-covered**: `get_advanced_hot_state` envelope re-application (full + blinded fallback + already-applied guard), cold state dual indexing, payload pruning with blinded fallback, abandoned fork envelope pruning, WSS envelope copy, `process_payload_envelope` missing-block error, `process_pending_envelope` success + failure paths, `load_parent` FULL/EMPTY patching, range sync batch import
+  - **Gap found: split-block-root override** — `get_advanced_hot_state` has a special path at line 1167 that uses `split.state_root` (post-envelope) when `block_root == split.block_root`, instead of the caller's pre-envelope `state_root`. This is critical for Gloas because after migration the hot DB stores the state under the post-envelope root. Without this override, loading would fail. No existing test exercised this.
+  - **Gap identified but deferred: EMPTY-path reconstruction** — `reconstruct_historic_states` has an EMPTY-path branch (no envelope stored) that requires building a chain with genuine EMPTY-path blocks (external bid, no envelope). This requires test harness changes to support mixed FULL/EMPTY chains and was deferred.
+- **New test** (commit `7d3d50a4f`):
+  - `gloas_get_advanced_hot_state_split_block_root_override` — builds a Gloas chain to finalization, verifies the split block is Gloas, evicts its state from cache, then calls `get_advanced_hot_state` with the block's pre-envelope state root. Verifies the split-block-root override successfully loads the state (using `split.state_root`) and produces correct `latest_block_hash` after envelope re-application.
+- All 736 beacon_chain tests pass (Gloas fork). Full workspace clippy clean.
+
 ### 2026-03-03 — gossip verification audit + FULL/EMPTY path metrics (run 421)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 420. Recent merges: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
