@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — process_pending_envelope execution_status transition test (run 437)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4955 (dependabot), #4944 (execution proof by root — EIP-8025, not Gloas), #4814 (config derivation helpers — converts ATTESTATION_SUBNET_PREFIX_BITS, MAX_REQUEST_BLOB_SIDECARS, MAX_REQUEST_BLOB_SIDECARS_ELECTRA, MAX_REQUEST_DATA_COLUMN_SIDECARS to derived values; vibehouse hardcoded values already match the formulas, no functional change needed), #4926 (SLOT_DURATION_MS — already tracked). No new Gloas merges since run 436.
+- **Open Gloas PR status**: All 6 key PRs still open (#4954 millisecond store, #4950 by_root serve range, #4940 fork choice tests, #4932 sanity/blocks tests, #4939 envelope request on index-1 attestation, #4747 fast confirmation rule — updated today, still actively developed). No new comments or reviews on any since March 2.
+- **Coverage gap analysis**: Used deep exploration across beacon_chain.rs, block_verification.rs, hot_cold_store.rs, gossip_methods.rs, and per_block_processing.rs. Identified 3 genuine untested paths:
+  1. **process_pending_envelope `el_valid → on_valid_execution_payload` branch** (beacon_chain.rs:2887-2898): When a buffered envelope is processed after block import, the EL returning Valid should transition execution_status from Optimistic to Valid. The existing test (`gloas_process_pending_envelope_self_build_succeeds`) verified payload_revealed, envelope persistence, and post-envelope state but never checked execution_status. The analogous path in `process_self_build_envelope` was already tested (`gloas_self_build_envelope_marks_execution_status_valid`). A regression here means buffered envelopes leave blocks permanently Optimistic, blocking block production.
+  2. `process_gossip_verified_execution_proof` TOCTOU race (gossip_methods.rs:4154-4157): Block pruned between verify and import — silent no-op. Lower impact (stateless-only edge case).
+  3. End-to-end builder payment lifecycle (bid → epoch → withdrawal → envelope): Multi-component chain not tested end-to-end, but each stage is individually tested.
+- **New test** (1, commit `312dbe7b3`):
+  - `gloas_process_pending_envelope_marks_execution_status_valid` — builds 2-slot chain, makes block+envelope for next slot, imports block only, asserts execution_status is NOT Valid (pre-condition), buffers the self-build envelope in `pending_gossip_envelopes`, calls `process_pending_envelope`, then asserts execution_status is `Valid(payload_block_hash)`. This covers the `on_valid_execution_payload` call at beacon_chain.rs:2891 that transitions buffered-envelope blocks from Optimistic to Valid.
+- **CI status**: All tests green. Clippy clean. 740 beacon_chain tests pass.
+
 ### 2026-03-03 — PriorToFinalization HTTP API envelope test (run 436)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 435. Same set tracked: #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4747 (fast confirmation rule — very active, not close to merge).
