@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — range sync and fork scenario integration tests (run 414)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Recently merged spec PRs**: #4955 (CI), #4953/#4952/#4951 (pytest infrastructure), #4944 (execution proofs by_root, eip8025 only — not Gloas). No Gloas impact.
+- **Open PR status**: #4950 (by_root serve range) still open. #4940 (fork choice tests), #4939 (envelope request on index-1 attestation), #4932 (sanity/blocks tests) unchanged.
+- **Comprehensive test coverage audit** — identified gaps in range sync, late envelope, and competing fork scenarios:
+  - `load_parent` EMPTY/FULL parent paths were tested individually but not in realistic range sync scenarios
+  - No test for batch `process_chain_segment` import (the actual production path)
+  - No test for epoch boundary crossing during range sync
+  - No test for late envelope arrival after EMPTY-path blocks built on top
+  - No test for competing FULL vs EMPTY forks
+- **4 new integration tests** covering high-priority gaps:
+  1. `gloas_range_sync_batch_chain_segment` — batch import via process_chain_segment with envelope after each block (real range sync path)
+  2. `gloas_range_sync_across_epoch_boundary` — range sync spanning 2 epochs, verifying epoch transitions (process_builder_pending_payments, process_proposer_lookahead)
+  3. `gloas_late_envelope_arrival_empty_chain_then_reveal` — block imported, next block on EMPTY parent, then late envelope reveals original block
+  4. `gloas_competing_forks_full_vs_empty` — FULL fork (with envelope) vs common ancestor, head selection verification
+- **Key insight**: range sync WITHOUT envelopes is not possible for FULL-parent chains because the state root will mismatch — envelope processing changes execution requests, builder payments, and availability in addition to latest_block_hash. The `load_parent` patching covers the state cache race condition (cache returns pre-envelope clone) rather than the no-envelope-at-all case.
+- All 735 beacon_chain tests pass. Full workspace clippy clean.
+- Commit: `8282fa603`
+
 ### 2026-03-03 — fix CI test failure + P2P robustness audit (run 413)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Recently merged spec PRs**: #4955 (dependabot), #4953/#4952/#4951 (pytest infrastructure) — no Gloas impact
