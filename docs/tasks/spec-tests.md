@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — spec tracking, test verification, codebase health check (run 428)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 427. Same set tracked.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch), #4747 (fast confirmation rule — actively updated Mar 3)
+- **Open PR readiness assessment**:
+  - #4892 (2 approvals): replaces `<=` with `assert >=; ==` in `is_supporting_vote`. Verified vibehouse code at proto_array_fork_choice.rs:1483 already uses `<=` with comment explaining equivalence. No code change needed when this merges — only a comment update.
+  - #4898 (1 approval): removes PENDING early return from `get_payload_tiebreaker`. Verified that `get_gloas_children` never produces mixed PENDING/non-PENDING sibling lists — EMPTY/FULL parents produce all-PENDING children, PENDING parents produce {EMPTY, FULL} children. Confirms PR #4898 is semantically safe. No preemptive code change needed.
+  - #4747 (fast confirmation rule): large new feature, still in active development. Not actionable yet.
+- **Test verification** — all recent commits (runs 423-427) verified:
+  - 2/2 builder exit batch verification tests pass
+  - 4/4 EMPTY-path/reconstruction tests pass (including new `gloas_reconstruct_states_with_empty_path_block`)
+  - 35/35 EF spec tests pass (operations + sanity + epoch_processing, fake_crypto, minimal)
+  - 8/8 EF fork choice tests pass (real crypto, minimal)
+- **Codebase health**: per_slot_processing payload availability clearing verified correct (temporary slot increment means state.slot() matches spec's state.slot+1). Envelope processing all-field verification (except signature) runs regardless of VerifySignatures mode — no state root skip concern. builder_pending_payments index calculation verified correct for epoch boundaries.
+- **CI status**: nightly (Mar 3 09:04 UTC) in progress, all completed jobs passing. Previous nightly (Mar 2) fully green.
+- **No code changes needed** — all paths spec-conformant, tests green, no new spec merges.
+
 ### 2026-03-03 — comprehensive spec conformance audit, no issues found (run 427)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 426. Same set: #4955 (dependabot), #4944 (execution proofs by_root), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas.
