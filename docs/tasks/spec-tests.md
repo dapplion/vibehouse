@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — deep spec conformance audit, withdrawal/epoch verification (run 432)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 431. Same set: #4955 (dependabot), #4953/#4952/#4951 (pytest infra), #4948 (payload status constants), #4947 (pre-fork subscription), #4918 (attestation payload status check), #4926 (SLOT_DURATION_MS).
+- **Open Gloas PR status**: #4954 (millisecond store, open), #4950 (by_root serve range, 4 approvals — documentation-only change aligning serve ranges, no code impact), #4940 (fork choice tests — vibehouse test runner already has full support: OnExecutionPayload step + head_payload_status check, prepared in commit 2a4bd2880), #4932 (sanity/blocks tests — vibehouse sanity_blocks handler ready, all payload attestation processing verified spec-conformant), #4939 (envelope request on index-1 attestation, needs rework), #4898 (remove pending from tiebreaker, stale), #4892 (remove impossible branch, 2 approvals — vibehouse code already handles correctly, comment at proto_array:1480 explains equivalence), #4747 (fast confirmation rule, very active, daily commits, not close to merge)
+- **Deep spec conformance verification** — systematically verified Gloas-critical paths against raw spec Python:
+  - `process_withdrawals_gloas`: All 4 withdrawal phases (builder pending, validator partial, builder sweep, validator sweep) verified correct. Reserved limit (MAX_WITHDRAWALS-1) correctly applied. Builder sweep wrap-around correct. Balance-after-withdrawals accumulation correct.
+  - `process_builder_pending_payments`: Quorum calculation, promotion logic, rotation logic all match spec. In-place rotation equivalent to spec's slice+concat.
+  - `process_proposer_lookahead`: Shift + fill correctly match Fulu spec definition. `fulu_enabled()` gate is correct (function introduced in Fulu, inherited by Gloas).
+  - `process_operations` (Gloas): Ordering matches spec exactly (proposer_slashings → attester_slashings → attestations → deposits → voluntary_exits → bls_to_execution_changes → payload_attestations). Execution requests correctly skipped (in envelope, not block body).
+  - `process_block` (Gloas): Ordering matches spec exactly (block_header → withdrawals → bid → randao → eth1_data → operations → sync_aggregate).
+  - `process_epoch` (Gloas): builder_pending_payments correctly placed after pending_consolidations and before effective_balance_updates. proposer_lookahead at end, gated by fulu_enabled (correct).
+  - `apply_withdrawals` builder path: `saturating_sub` equivalent to spec's `min(amount, balance)` subtraction.
+  - `is_eligible_for_partial_withdrawals`: All 3 conditions match spec exactly.
+  - `get_builders_sweep_withdrawals`: builder_limit, withdrawals_limit, epoch check, balance check, index wrap all correct.
+- **Coverage gap assessment**: Explored subagent identified 14 potential gaps. Investigation:
+  - Envelope processing: 54 unit tests already cover all error paths (LatestBlockHeaderMismatch, SlotMismatch, WithdrawalsRootMismatch, BuilderIndexMismatch, etc.)
+  - Builder exit verification: 9 unit tests cover all paths (unknown builder, not active, pending withdrawals, future epoch, pending payment, mixed exits, signature verification)
+  - Block processing bid extraction: `if let Ok(signed_bid)` pattern is correct dispatch — Gloas blocks always have bids, non-Gloas returns Err. Not a gap.
+  - Fork choice attestation index-1 payload check (#4918): Correctly implemented at fork_choice.rs:1202.
+  - All identified "gaps" were either already tested, correct by design, or low-priority code quality.
+- **Upcoming spec test readiness**:
+  - PR #4940 (fork choice tests): Test runner fully ready (OnExecutionPayload step, head_payload_status check, SSZ deserialization of envelope files)
+  - PR #4932 (sanity/blocks tests): SanityBlocks handler ready, processes blocks with payload attestations correctly
+- **CI status**: EF tests (minimal, fake_crypto) pass. Clippy clean. Nightly green. Integration tests in progress.
+- **No code changes needed** — all paths verified spec-conformant, no new spec merges to implement.
+
 ### 2026-03-03 — spec tracking, dead code cleanup (run 431)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**:
