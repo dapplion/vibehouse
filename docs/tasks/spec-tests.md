@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fix EMPTY-path withdrawal bug + reconstruction test (run 425)
+- **Bug fix in `get_execution_payload`** (execution_payload.rs:403-423): When the parent block is EMPTY (builder withheld payload), `process_withdrawals` returns early without updating `payload_expected_withdrawals`. The envelope must match this stale value, but `get_execution_payload` was computing fresh (empty) withdrawals via `get_expected_withdrawals_gloas`, causing `WithdrawalsRootMismatch` during self-build envelope construction. Fix: when `is_parent_block_full` returns false, use the state's existing `payload_expected_withdrawals` field directly.
+- **New test** `gloas_reconstruct_states_with_empty_path_block` in `store_tests.rs`: Exercises the EMPTY-path branch in `reconstruct_historic_states` (reconstruct.rs:154-163). Creates a mixed FULL/EMPTY chain with a builder-withheld block, finalizes it into cold DB, runs reconstruction, and verifies:
+  - No envelope stored for the EMPTY-path block
+  - Reconstructed state at EMPTY slot has un-updated `latest_block_hash` (grandparent EL hash)
+  - State after EMPTY slot has correctly updated `latest_block_hash` (continuation block's envelope processed)
+- **Test infrastructure**: Added `genesis_state_disk_store()` method and re-exported `generate_genesis_header` from `test_utils` for building disk harnesses with custom genesis states (e.g. injected builders)
+- All 368 Gloas beacon_chain tests pass. All 82 store_tests pass. All 78 EF spec tests pass (minimal preset). All 103 state_processing withdrawal tests pass. All 15 EF operations tests pass.
+
 ### 2026-03-03 — comprehensive spec PR audit (run 424)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Full audit of all merged Gloas spec PRs since v1.7.0-alpha.2** — systematically verified vibehouse compliance against every merged PR that modifies Gloas spec files:
