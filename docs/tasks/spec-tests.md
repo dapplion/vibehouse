@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fork choice tests + spec tracking (run 411)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **3 recently merged spec PRs reviewed**:
+  - **#4926** (SECONDS_PER_SLOT → SLOT_DURATION_MS): Already forward-compatible in vibehouse — `slot_duration_ms` field exists, Config deserialization handles all 3 cases (only SLOT_DURATION_MS, only SECONDS_PER_SLOT, both). Gloas fork-choice change is a no-op since vibehouse uses slot-based time tracking.
+  - **#4814** (config derived helpers — remove MIN_EPOCHS_FOR_BLOCK_REQUESTS, ATTESTATION_SUBNET_PREFIX_BITS, MAX_REQUEST_BLOB_SIDECARS, etc.): Already forward-compatible — all removed config values have `#[serde(default)]` annotations with correct computed defaults.
+  - **#4926** config removal: SECONDS_PER_SLOT fully removed from mainnet/minimal configs. vibehouse's `default_seconds_per_slot()` sentinel (0) + derivation from SLOT_DURATION_MS handles this.
+- **Open Gloas PRs**: #4940 (fork choice tests, no reviews), #4939 (envelope request on index-1 attestation, active discussion), #4932 (sanity/blocks tests), #4630 (SSZ forward-compat). No changes since run 410.
+- **7 new fork choice integration tests** covering high-priority gaps:
+  1. `fc_on_payload_attestation_exact_quorum_does_not_reveal` — ptc_weight == quorum_threshold must NOT trigger reveal (spec: strictly greater than)
+  2. `fc_on_payload_attestation_one_above_quorum_reveals` — ptc_weight > quorum_threshold triggers reveal on external builder block (payload_revealed starts false)
+  3. `fc_on_execution_bid_preserves_state_after_ptc_quorum` — late bid after PTC quorum preserves weights and payload_revealed
+  4. `fc_on_execution_bid_resets_state_when_no_quorum_or_envelope` — bid with no prior quorum or envelope resets PTC state
+  5. `fc_on_valid_execution_payload_transitions_to_valid` — Optimistic(hash) → Valid(hash) transition
+  6. `fc_on_valid_execution_payload_rejects_unknown_root` — error on unknown block root
+  7. `fc_full_external_builder_lifecycle` — complete state machine: bid → PTC quorum → envelope → EL Valid
+- Key testing insight: existing quorum tests used self-build blocks (envelope_received=true, payload_revealed=true from start), so they never tested the actual quorum-triggers-reveal path. New tests explicitly set up external builder state (payload_revealed=false, envelope_received=false).
+- All 731 beacon_chain tests pass. Full workspace clippy clean.
+- Commit: `13e3ef10d`
+
 ### 2026-03-03 — spec tracking + comprehensive audits (run 410)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **3 recently merged Gloas spec PRs reviewed** — all already implemented in vibehouse:
