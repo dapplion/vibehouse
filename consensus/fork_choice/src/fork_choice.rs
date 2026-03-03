@@ -1547,41 +1547,6 @@ where
         Ok(())
     }
 
-    /// Reverts the fork choice state changes made by `on_execution_payload`.
-    ///
-    /// Called when envelope processing fails after fork choice was already updated (EL
-    /// returned Invalid, or state transition failed). Without this rollback, fork choice
-    /// would consider the payload revealed (FULL) even though the envelope was rejected,
-    /// causing the block to be selected as head with an invalid payload.
-    pub fn revert_execution_payload(
-        &mut self,
-        beacon_block_root: Hash256,
-    ) -> Result<(), Error<T::Error>> {
-        let block_index = self
-            .proto_array
-            .core_proto_array()
-            .indices
-            .get(&beacon_block_root)
-            .copied()
-            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
-
-        let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
-
-        if let Some(node) = nodes.get_mut(block_index) {
-            node.payload_revealed = false;
-            node.envelope_received = false;
-            node.payload_data_available = false;
-
-            debug!(
-                ?beacon_block_root,
-                slot = %node.slot,
-                "Reverted payload envelope in fork choice after processing failure"
-            );
-        }
-
-        Ok(())
-    }
-
     /// Call `on_tick` for all slots between `fc_store.get_current_slot()` and the provided
     /// `current_slot`. Returns the value of `self.fc_store.get_current_slot`.
     pub fn update_time(&mut self, current_slot: Slot) -> Result<Slot, Error<T::Error>> {
