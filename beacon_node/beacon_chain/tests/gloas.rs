@@ -3593,13 +3593,14 @@ async fn gloas_self_build_envelope_el_invalid_returns_error() {
         );
     }
 
-    // payload_revealed should be true because on_execution_payload ran first
+    // payload_revealed should be false because fork choice is updated AFTER EL
+    // validation, and the EL returned Invalid so we never got there.
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should be true (on_execution_payload runs before EL call)"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when EL returns Invalid)"
         );
     }
 }
@@ -3724,9 +3725,9 @@ async fn gloas_self_build_envelope_el_syncing_stays_optimistic() {
 /// When the EL has a transport-level error (connection dropped, RPC error) for
 /// the envelope's newPayload, process_self_build_envelope should return an error.
 /// Unlike payload status errors (Invalid/InvalidBlockHash), this simulates the
-/// EL being unreachable. The payload_revealed flag should still be set in fork
-/// choice (on_execution_payload runs before the EL call), and the block should
-/// remain Optimistic. The post-envelope state transition should NOT run.
+/// EL being unreachable. The payload_revealed flag should NOT be set in fork
+/// choice (fork choice is updated after EL validation succeeds), and the block
+/// should remain Optimistic. The post-envelope state transition should NOT run.
 #[tokio::test]
 async fn gloas_self_build_envelope_el_transport_error_returns_error() {
     let harness = gloas_harness_at_epoch(0);
@@ -3772,13 +3773,14 @@ async fn gloas_self_build_envelope_el_transport_error_returns_error() {
         err_msg
     );
 
-    // payload_revealed should be true (on_execution_payload ran before EL call)
+    // payload_revealed should be false (fork choice is updated after EL validation,
+    // but the EL had a transport error so we never got there)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should be true even after EL transport failure"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when EL has transport error)"
         );
     }
 
@@ -3887,13 +3889,14 @@ async fn gloas_self_build_envelope_missing_state_errors() {
         err_msg
     );
 
-    // Fork choice should have payload_revealed = true (set before state lookup fails)
+    // Fork choice should have payload_revealed = false (fork choice is updated
+    // after EL validation AND state transition, but state lookup failed first)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should be true (fork choice was updated before state transition failed)"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when state lookup fails)"
         );
     }
 }
@@ -10093,9 +10096,9 @@ async fn gloas_load_parent_skips_patch_for_genesis_zero_hash() {
 // =============================================================================
 
 /// Full gossip pipeline for a self-build envelope arriving at another node:
-/// verify_payload_envelope_for_gossip → apply_payload_envelope_to_fork_choice →
-/// process_payload_envelope. Verifies that the state transition runs, the envelope
-/// is persisted to the store, and the head state is updated with latest_block_hash.
+/// verify_payload_envelope_for_gossip → process_payload_envelope (EL + state) →
+/// apply_payload_envelope_to_fork_choice. Fork choice is updated AFTER EL
+/// validation and state transition succeed to avoid inconsistency on failure.
 ///
 /// This is the only test that exercises process_payload_envelope through the gossip
 /// verification path. All other tests use process_self_build_envelope which takes a
@@ -10146,11 +10149,44 @@ async fn gloas_gossip_envelope_full_processing_pipeline() {
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
 
-    // Step 2: Apply to fork choice (marks payload_revealed = true)
+    // Step 2: Full envelope processing (EL newPayload + state transition)
+    // Fork choice has NOT been updated yet — it's updated after processing succeeds.
+    let el_valid = harness
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("process_payload_envelope should succeed");
+
+    // payload_revealed should still be false (fork choice not updated yet)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&block_root)
+            .unwrap();
+        assert!(
+            !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "payload_revealed should still be false before fork choice update"
+        );
+    }
+
+    // Step 3: Apply to fork choice (marks payload_revealed = true)
     harness
         .chain
         .apply_payload_envelope_to_fork_choice(&verified)
         .expect("should apply to fork choice");
+
+    // Also mark as valid if EL confirmed
+    if el_valid {
+        harness
+            .chain
+            .canonical_head
+            .fork_choice_write_lock()
+            .on_valid_execution_payload(block_root)
+            .expect("should mark payload as valid");
+    }
 
     // Confirm payload_revealed is now true
     {
@@ -10166,13 +10202,6 @@ async fn gloas_gossip_envelope_full_processing_pipeline() {
             "payload_revealed should be true after fork choice update"
         );
     }
-
-    // Step 3: Full envelope processing (EL newPayload + state transition)
-    harness
-        .chain
-        .process_payload_envelope(&verified)
-        .await
-        .expect("process_payload_envelope should succeed");
 
     // Verify: envelope is persisted to the store
     let stored_envelope = harness
@@ -10589,13 +10618,17 @@ async fn gloas_external_builder_envelope_buffered_then_processed() {
         "pending buffer should be empty after processing"
     );
 
-    // The buffered envelope should have been re-verified and applied to fork choice
+    // The fake envelope was re-verified but processing fails because the envelope
+    // content (prev_randao, withdrawals, gas_limit) doesn't match the committed bid.
+    // Fork choice is only updated after successful processing, so payload_revealed
+    // stays false. The test verifies the buffering/draining mechanism — full
+    // processing is covered by other tests with realistic envelopes.
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload should be revealed after buffered external builder envelope was processed"
+            !proto_block.payload_revealed,
+            "payload should not be revealed (fake envelope fails state transition)"
         );
     }
 }
@@ -10915,8 +10948,8 @@ async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
 /// (self-build vs gossip). A bug here would cause gossip-received envelopes with
 /// invalid execution payloads to be silently accepted and stored.
 ///
-/// Note: `payload_revealed` is already true at this point because
-/// `apply_payload_envelope_to_fork_choice` runs before `process_payload_envelope`.
+/// Since fork choice is only updated AFTER successful processing, it should remain
+/// untouched (payload_revealed = false) when the EL rejects the payload.
 #[tokio::test]
 async fn gloas_gossip_envelope_el_invalid_returns_error() {
     let harness = gloas_harness_at_epoch(0);
@@ -10945,19 +10978,13 @@ async fn gloas_gossip_envelope_el_invalid_returns_error() {
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
 
-    // Step 2: Apply to fork choice (marks payload_revealed = true)
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
-
-    // Configure mock EL to return Invalid for newPayload BEFORE calling process_payload_envelope
+    // Configure mock EL to return Invalid for newPayload
     let mock_el = harness.mock_execution_layer.as_ref().unwrap();
     mock_el
         .server
         .all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero());
 
-    // Step 3: process_payload_envelope should fail because EL says Invalid
+    // Step 2: process_payload_envelope should fail because EL says Invalid
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     assert!(
@@ -10971,13 +10998,13 @@ async fn gloas_gossip_envelope_el_invalid_returns_error() {
         err_msg
     );
 
-    // payload_revealed should still be true (set before EL call)
+    // payload_revealed should be false (fork choice not updated on failure)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should remain true (set by apply_payload_envelope_to_fork_choice before EL call)"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when EL returns Invalid)"
         );
     }
 
@@ -11030,22 +11057,24 @@ async fn gloas_gossip_envelope_el_syncing_stays_optimistic() {
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
 
-    // Step 2: Apply to fork choice
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
-
     // Configure mock EL to return Syncing for newPayload
     let mock_el = harness.mock_execution_layer.as_ref().unwrap();
     mock_el.server.all_payloads_syncing_on_new_payload(false);
 
-    // Step 3: process_payload_envelope should succeed (Syncing is not an error)
-    harness
+    // Step 2: process_payload_envelope should succeed (Syncing is not an error)
+    let el_valid = harness
         .chain
         .process_payload_envelope(&verified)
         .await
         .expect("Syncing response should not cause an error");
+
+    assert!(!el_valid, "EL returned Syncing, not Valid");
+
+    // Step 3: Apply to fork choice after successful processing
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
 
     // Block should remain Optimistic (EL said Syncing, not Valid)
     {
@@ -11058,13 +11087,13 @@ async fn gloas_gossip_envelope_el_syncing_stays_optimistic() {
         );
     }
 
-    // payload_revealed should be true
+    // payload_revealed should be true (fork choice updated after successful processing)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
             proto_block.payload_revealed,
-            "payload_revealed should be true regardless of EL response"
+            "payload_revealed should be true after successful processing"
         );
     }
 
@@ -11734,8 +11763,8 @@ async fn gloas_invalidation_stops_at_irrelevant_boundary() {
 /// `gloas_self_build_envelope_el_invalid_block_hash_returns_error`.
 ///
 /// The `InvalidBlockHash` EL response (distinct from `Invalid`) indicates the payload's
-/// block hash itself is malformed. The gossip path calls `process_payload_envelope`
-/// (beacon_chain.rs:2699-2710) which must propagate this as an error.
+/// block hash itself is malformed. Since fork choice is only updated after successful
+/// processing, it remains untouched (payload_revealed = false).
 #[tokio::test]
 async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
     let harness = gloas_harness_at_epoch(0);
@@ -11758,17 +11787,11 @@ async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
         .await
         .expect("block import should succeed");
 
-    // Step 1: Gossip verification
+    // Gossip verification
     let verified = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
-
-    // Step 2: Apply to fork choice (marks payload_revealed = true)
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
 
     // Configure mock EL to return InvalidBlockHash for newPayload
     let mock_el = harness.mock_execution_layer.as_ref().unwrap();
@@ -11776,7 +11799,7 @@ async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
         .server
         .all_payloads_invalid_block_hash_on_new_payload();
 
-    // Step 3: process_payload_envelope should fail because EL says InvalidBlockHash
+    // process_payload_envelope should fail because EL says InvalidBlockHash
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     assert!(
@@ -11790,13 +11813,13 @@ async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
         err_msg
     );
 
-    // payload_revealed should still be true (set before EL call)
+    // payload_revealed should be false (fork choice not updated on failure)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should remain true (set by apply_payload_envelope_to_fork_choice)"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when EL returns InvalidBlockHash)"
         );
     }
 
@@ -11817,7 +11840,7 @@ async fn gloas_gossip_envelope_invalid_block_hash_returns_error() {
 /// error. This is the gossip-path counterpart of
 /// `gloas_self_build_envelope_el_transport_error_returns_error`. Unlike payload status
 /// errors (Invalid/InvalidBlockHash), this simulates the EL being unreachable.
-/// payload_revealed should remain true (set by apply_payload_envelope_to_fork_choice).
+/// Since fork choice is only updated after successful processing, it remains untouched.
 #[tokio::test]
 async fn gloas_gossip_envelope_el_transport_error_returns_error() {
     let harness = gloas_harness_at_epoch(0);
@@ -11846,12 +11869,6 @@ async fn gloas_gossip_envelope_el_transport_error_returns_error() {
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
 
-    // Apply to fork choice (marks payload_revealed = true)
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
-
     // Configure mock EL to return a transport error for this block hash
     let mock_el = harness.mock_execution_layer.as_ref().unwrap();
     mock_el
@@ -11872,13 +11889,13 @@ async fn gloas_gossip_envelope_el_transport_error_returns_error() {
         err_msg
     );
 
-    // payload_revealed should still be true
+    // payload_revealed should be false (fork choice not updated on failure)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should remain true after EL transport failure"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when EL transport fails)"
         );
     }
 
@@ -12004,19 +12021,19 @@ async fn gloas_gossip_envelope_stateless_mode_skips_el() {
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass on stateless node");
 
-    // Step 2: Apply to fork choice (marks payload_revealed = true)
-    stateless
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice on stateless node");
-
-    // Step 3: process_payload_envelope — in stateless mode, this should skip the EL
+    // Step 2: process_payload_envelope — in stateless mode, this should skip the EL
     // call entirely but still run the state transition
     stateless
         .chain
         .process_payload_envelope(&verified)
         .await
         .expect("stateless process_payload_envelope should succeed without EL");
+
+    // Step 3: Apply to fork choice after successful processing
+    stateless
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice on stateless node");
 
     // Verify: payload_revealed should be true
     {
@@ -12201,16 +12218,25 @@ async fn gloas_execution_status_lifecycle_bid_optimistic_to_valid() {
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
 
+    let el_valid = harness
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("process_payload_envelope should succeed");
+
     harness
         .chain
         .apply_payload_envelope_to_fork_choice(&verified)
         .expect("should apply to fork choice");
 
-    harness
-        .chain
-        .process_payload_envelope(&verified)
-        .await
-        .expect("process_payload_envelope should succeed");
+    if el_valid {
+        harness
+            .chain
+            .canonical_head
+            .fork_choice_write_lock()
+            .on_valid_execution_payload(block_root)
+            .expect("should mark payload as valid");
+    }
 
     // Step 3: Verify the block is now Valid with the bid's block_hash
     {
@@ -12310,11 +12336,10 @@ async fn gloas_fork_transition_fulu_parent_has_no_bid_in_fork_choice() {
 /// condition: the state cache is full and evicts the state between block import and
 /// envelope arrival, or the hot DB was pruned.
 ///
-/// After block import + gossip verification + fork choice update, we delete the state
-/// and call `process_payload_envelope`. It should return an `EnvelopeProcessingError`
-/// containing "Missing state". The block's `payload_revealed` should remain true in
-/// fork choice (set during `apply_payload_envelope_to_fork_choice`), but the state
-/// transition was not applied.
+/// After block import + gossip verification, we delete the state and call
+/// `process_payload_envelope`. It should return an error containing "Missing state".
+/// Since fork choice is only updated AFTER successful processing, it should remain
+/// untouched (payload_revealed = false).
 #[tokio::test]
 async fn gloas_process_envelope_missing_state_returns_error() {
     let harness = gloas_harness_at_epoch(0);
@@ -12337,16 +12362,11 @@ async fn gloas_process_envelope_missing_state_returns_error() {
         .await
         .expect("block import should succeed");
 
-    // Gossip-verify the envelope and apply to fork choice
+    // Gossip-verify the envelope (do NOT apply to fork choice — that happens after)
     let verified = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
-
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
 
     // Get the block's state root before evicting
     let block_state_root = harness
@@ -12386,13 +12406,14 @@ async fn gloas_process_envelope_missing_state_returns_error() {
         err_msg
     );
 
-    // Fork choice should still have payload_revealed = true (set during apply_payload_envelope_to_fork_choice)
+    // Fork choice should still have payload_revealed = false (fork choice is only
+    // updated AFTER successful processing)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should be true (fork choice was updated before state transition failed)"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated on processing failure)"
         );
     }
 }
@@ -12402,9 +12423,9 @@ async fn gloas_process_envelope_missing_state_returns_error() {
 /// if finalization prunes the block between the envelope's gossip verification and the
 /// state transition step.
 ///
-/// The code path at beacon_chain.rs:2608-2617 loads the block for `newPayload` and
-/// should return `EnvelopeProcessingError` containing "Missing beacon block" when the
-/// block is no longer in the store.
+/// `process_payload_envelope` loads the block for `newPayload` and should return an
+/// error containing "Missing beacon block" when the block is no longer in the store.
+/// Since fork choice is only updated after successful processing, it remains untouched.
 #[tokio::test]
 async fn gloas_process_envelope_missing_block_returns_error() {
     let harness = gloas_harness_at_epoch(0);
@@ -12427,16 +12448,11 @@ async fn gloas_process_envelope_missing_block_returns_error() {
         .await
         .expect("block import should succeed");
 
-    // Gossip-verify the envelope and apply to fork choice (block still in store at this point)
+    // Gossip-verify the envelope (block still in store at this point)
     let verified = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
-
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
 
     // Delete the block from the store (simulating finalization pruning)
     harness
@@ -12467,13 +12483,15 @@ async fn gloas_process_envelope_missing_block_returns_error() {
         err_msg
     );
 
-    // Fork choice should still have payload_revealed = true
+    // Fork choice should have payload_revealed = false (process_payload_envelope
+    // failed before fork choice was updated — the caller updates fork choice
+    // only after process_payload_envelope succeeds)
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            proto_block.payload_revealed,
-            "payload_revealed should be true (fork choice was updated before block deletion)"
+            !proto_block.payload_revealed,
+            "payload_revealed should be false (fork choice not updated when processing fails)"
         );
     }
 }
@@ -12511,16 +12529,11 @@ async fn gloas_process_payload_envelope_el_invalid_returns_error() {
         .await
         .expect("block import should succeed");
 
-    // Gossip-verify the envelope and apply to fork choice
+    // Gossip-verify the envelope
     let verified = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
-
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
 
     // Configure mock EL to return Invalid for newPayload
     let mock_el = harness.mock_execution_layer.as_ref().unwrap();
@@ -12577,16 +12590,11 @@ async fn gloas_process_payload_envelope_el_invalid_block_hash_returns_error() {
         .await
         .expect("block import should succeed");
 
-    // Gossip-verify the envelope and apply to fork choice
+    // Gossip-verify the envelope
     let verified = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
-
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
 
     // Configure mock EL to return InvalidBlockHash for newPayload
     let mock_el = harness.mock_execution_layer.as_ref().unwrap();
@@ -12617,21 +12625,20 @@ async fn gloas_process_payload_envelope_el_invalid_block_hash_returns_error() {
     }
 }
 
-/// When the EL returns `Valid` for the envelope's `newPayload`, fork choice is
-/// updated to mark the block as Valid (`on_valid_execution_payload`). If the
-/// subsequent state transition then fails (e.g. because the state was corrupted
-/// in the cache), the error should propagate to the caller. However, fork choice
-/// retains the Valid execution status because the EL already validated the payload.
+/// When the state transition fails after the EL returns Valid, the error should
+/// propagate to the caller. Critically, fork choice must NOT be updated — since
+/// `process_payload_envelope` does not update fork choice (the caller is responsible
+/// for that after success), a state transition failure means fork choice stays
+/// untouched.
 ///
 /// This test exercises the code path at beacon_chain.rs where:
-/// 1. EL returns Valid → fork choice updated (execution_status = Valid)
-/// 2. State loaded from cache
+/// 1. EL returns Valid (internal flag set)
+/// 2. State loaded from cache (corrupted)
 /// 3. State transition (process_execution_payload_envelope) fails
-/// 4. Error returned to caller
+/// 4. Error returned to caller — fork choice never updated
 ///
-/// This is a potential inconsistency: fork choice says Valid but the state cache
-/// was never updated with the post-envelope state. In practice this should be
-/// recoverable by re-processing the envelope or restarting.
+/// This is the correct behavior: fork choice never reflects a payload that wasn't
+/// fully processed.
 #[tokio::test]
 async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() {
     let harness = gloas_harness_at_epoch(0);
@@ -12665,16 +12672,12 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
         );
     }
 
-    // Gossip-verify the envelope and apply to fork choice
+    // Gossip-verify the envelope (but do NOT apply to fork choice — that happens
+    // after process_payload_envelope succeeds in the new ordering)
     let verified = harness
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
         .expect("gossip verification should pass");
-
-    harness
-        .chain
-        .apply_payload_envelope_to_fork_choice(&verified)
-        .expect("should apply to fork choice");
 
     // Corrupt the cached state: change the bid's builder_index so that
     // process_execution_payload_envelope fails with BuilderIndexMismatch.
@@ -12713,8 +12716,10 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
             .expect("should re-cache corrupted state");
     }
 
-    // process_payload_envelope: EL returns Valid (fork choice updated) but
-    // state transition fails because builder_index doesn't match
+    // process_payload_envelope: EL returns Valid but state transition fails
+    // because builder_index doesn't match. Since fork choice is NOT updated
+    // by process_payload_envelope (caller does that after success), it remains
+    // untouched.
     let result = harness.chain.process_payload_envelope(&verified).await;
 
     let err = result.expect_err("should fail due to state transition error");
@@ -12725,15 +12730,20 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
         err_msg
     );
 
-    // Key assertion: fork choice has execution_status = Valid because the EL
-    // returned Valid BEFORE the state transition failed.
+    // Key assertion: fork choice remains Optimistic because process_payload_envelope
+    // no longer updates fork choice — the caller (gossip handler) is responsible for
+    // that after success. Since processing failed, fork choice was never updated.
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            matches!(proto_block.execution_status, ExecutionStatus::Valid(_)),
-            "execution_status should be Valid (EL validated before state transition failed), got {:?}",
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "execution_status should remain Optimistic (fork choice not updated on failure), got {:?}",
             proto_block.execution_status
+        );
+        assert!(
+            !proto_block.payload_revealed,
+            "payload should NOT be revealed (fork choice not updated on failure)"
         );
     }
 
@@ -12760,16 +12770,14 @@ async fn gloas_process_payload_envelope_state_transition_fails_after_el_valid() 
 /// but exercises the SELF-BUILD path (`process_self_build_envelope`) instead of the gossip
 /// path (`process_payload_envelope`).
 ///
-/// In the self-build path (beacon_chain.rs:2955), the flow is:
-/// 1. `on_execution_payload` → fork choice marks payload revealed
-/// 2. `notify_new_payload` → EL returns Valid
-/// 3. `on_valid_execution_payload` → fork choice marks block as Valid
-/// 4. `get_state` → loads pre-envelope state
-/// 5. `process_execution_payload_envelope` → state transition (THIS FAILS)
+/// In the self-build path, the flow is:
+/// 1. `notify_new_payload` → EL returns Valid
+/// 2. `process_execution_payload_envelope` → state transition (THIS FAILS)
+/// 3. `on_execution_payload` → NOT reached (state transition failed first)
 ///
-/// After step 3, fork choice has execution_status=Valid. If step 5 fails, the state cache
-/// is never updated with the post-envelope state, creating the same inconsistency as the
-/// gossip path test. The next block's `load_parent` would load stale state.
+/// Since fork choice is updated AFTER state transition, a state transition failure
+/// means fork choice is never updated — the block stays Optimistic with
+/// payload_revealed=false.
 #[tokio::test]
 async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
     let harness = gloas_harness_at_epoch(0);
@@ -12837,8 +12845,9 @@ async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
             .expect("should re-cache corrupted state");
     }
 
-    // process_self_build_envelope: EL returns Valid (steps 1-3 succeed) but
-    // state transition fails (step 5) because builder_index doesn't match
+    // process_self_build_envelope: EL returns Valid (step 1) but state transition
+    // fails (step 2) because builder_index doesn't match. Fork choice update
+    // (step 3) is never reached.
     let result = harness
         .chain
         .process_self_build_envelope(&signed_envelope)
@@ -12852,21 +12861,20 @@ async fn gloas_self_build_envelope_state_transition_fails_after_el_valid() {
         err_msg
     );
 
-    // Key assertion: fork choice has execution_status = Valid because the EL
-    // returned Valid and on_valid_execution_payload ran BEFORE the state transition.
+    // Key assertion: fork choice remains Optimistic with payload_revealed=false.
+    // Since the state transition failed, fork choice was never updated.
     {
         let fc = harness.chain.canonical_head.fork_choice_read_lock();
         let proto_block = fc.get_block(&block_root).unwrap();
         assert!(
-            matches!(proto_block.execution_status, ExecutionStatus::Valid(_)),
-            "execution_status should be Valid (EL validated before state transition failed), got {:?}",
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "execution_status should remain Optimistic (fork choice not updated on failure), got {:?}",
             proto_block.execution_status
         );
 
-        // payload_revealed should be true (on_execution_payload ran in step 1)
         assert!(
-            proto_block.payload_revealed,
-            "payload should be marked as revealed (step 1 succeeded)"
+            !proto_block.payload_revealed,
+            "payload should NOT be revealed (fork choice not updated on failure)"
         );
     }
 

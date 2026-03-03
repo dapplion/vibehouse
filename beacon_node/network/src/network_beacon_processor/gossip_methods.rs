@@ -3559,35 +3559,56 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_VERIFIED_TOTAL);
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
-        // Import to fork choice — mark payload as revealed
-        if let Err(e) = self
-            .chain
-            .apply_payload_envelope_to_fork_choice(&verified_envelope)
-        {
-            warn!(
-                ?beacon_block_root,
-                builder_index,
-                error = ?e,
-                "Failed to import payload envelope to fork choice"
-            );
-            return;
-        }
-
         // Notify EL via newPayload + apply envelope state transition (validates bid
         // consistency, processes execution requests, builder payment, sets availability).
-        // This must happen BEFORE recompute_head so the EL knows the payload before
-        // receiving forkchoice_updated with this block as head.
+        // Fork choice is updated AFTER this succeeds to avoid marking the payload as
+        // revealed when the EL deems it invalid or the state transition fails.
         match self
             .chain
             .process_payload_envelope(&verified_envelope)
             .await
         {
-            Ok(()) => {
+            Ok(el_valid) => {
                 metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_IMPORTED_TOTAL);
                 debug!(
                     ?beacon_block_root,
                     builder_index, "Successfully processed execution payload envelope"
                 );
+
+                // Now update fork choice: mark payload as revealed. This happens after
+                // EL validation and state transition succeed so fork choice never reflects
+                // a payload that was rejected.
+                if let Err(e) = self
+                    .chain
+                    .apply_payload_envelope_to_fork_choice(&verified_envelope)
+                {
+                    warn!(
+                        ?beacon_block_root,
+                        builder_index,
+                        error = ?e,
+                        "Failed to import payload envelope to fork choice"
+                    );
+                    return;
+                }
+
+                // Mark the block as fully verified if the EL confirmed validity.
+                // Without this, the block stays Optimistic because recompute_head
+                // returns early ("No change in canonical head") and never issues
+                // forkchoiceUpdated, so on_valid_execution_payload is never called
+                // via the normal path.
+                if el_valid
+                    && let Err(e) = self
+                        .chain
+                        .canonical_head
+                        .fork_choice_write_lock()
+                        .on_valid_execution_payload(beacon_block_root)
+                {
+                    warn!(
+                        ?beacon_block_root,
+                        error = ?e,
+                        "Failed to mark envelope payload as valid in fork choice"
+                    );
+                }
 
                 if let Some(event_handler) = self.chain.event_handler.as_ref()
                     && event_handler.has_execution_payload_subscribers()

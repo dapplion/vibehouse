@@ -2985,12 +2985,39 @@ pub fn serve<T: BeaconChainTypes>(
                         )),
                     )?;
 
-                    if let Err(e) = chain.process_payload_envelope(&verified_envelope).await {
-                        warn!(
-                            builder_index,
-                            error = ?e,
-                            "Failed to process execution payload envelope"
-                        );
+                    match chain.process_payload_envelope(&verified_envelope).await {
+                        Ok(el_valid) => {
+                            let beacon_block_root = verified_envelope.beacon_block_root();
+
+                            if let Err(e) =
+                                chain.apply_payload_envelope_to_fork_choice(&verified_envelope)
+                            {
+                                warn!(
+                                    ?beacon_block_root,
+                                    builder_index,
+                                    error = ?e,
+                                    "Failed to import payload envelope to fork choice"
+                                );
+                            } else if el_valid
+                                && let Err(e) = chain
+                                    .canonical_head
+                                    .fork_choice_write_lock()
+                                    .on_valid_execution_payload(beacon_block_root)
+                            {
+                                warn!(
+                                    ?beacon_block_root,
+                                    error = ?e,
+                                    "Failed to mark envelope payload as valid in fork choice"
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            warn!(
+                                builder_index,
+                                error = ?e,
+                                "Failed to process execution payload envelope"
+                            );
+                        }
                     }
 
                     Ok(warp::reply::reply().into_response())

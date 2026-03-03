@@ -2580,10 +2580,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     ///
     /// The envelope must already be gossip-verified. This function retrieves the
     /// post-block state from the canonical head and applies the transition.
+    /// Returns `true` if the EL confirmed the payload as Valid.
     pub async fn process_payload_envelope(
         &self,
         verified_envelope: &crate::gloas_verification::VerifiedPayloadEnvelope<T>,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         let _timer = metrics::start_timer(&metrics::PAYLOAD_ENVELOPE_PROCESSING_TIMES);
         let beacon_block_root = verified_envelope.beacon_block_root();
         let signed_envelope = verified_envelope.envelope();
@@ -2604,6 +2605,10 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 ))
             })?;
         let block_state_root = block.message().state_root();
+
+        // Track whether EL returned Valid so the caller can mark the block as fully
+        // verified in fork choice.
+        let mut el_valid = false;
 
         // In stateless validation mode, skip the EL call entirely. The block remains
         // optimistic until sufficient execution proofs arrive via gossip subnets.
@@ -2657,22 +2662,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         block_hash = ?envelope.payload.block_hash,
                         "Execution payload validated by EL"
                     );
-                    // Mark the block as fully verified in fork choice so block/attestation
-                    // production is not disabled. Without this, the block stays Optimistic
-                    // because recompute_head returns early ("No change in canonical head")
-                    // and never issues forkchoiceUpdated, so on_valid_execution_payload is
-                    // never called via the normal path.
-                    if let Err(e) = self
-                        .canonical_head
-                        .fork_choice_write_lock()
-                        .on_valid_execution_payload(beacon_block_root)
-                    {
-                        warn!(
-                            ?beacon_block_root,
-                            error = ?e,
-                            "Failed to mark envelope payload as valid in fork choice"
-                        );
-                    }
+                    el_valid = true;
                 }
                 PayloadStatus::Syncing | PayloadStatus::Accepted => {
                     metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_SYNCING_TOTAL);
@@ -2799,7 +2789,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             "Successfully processed execution payload envelope state transition"
         );
 
-        Ok(())
+        Ok(el_valid)
     }
 
     /// Prune Gloas ePBS pools and pending buffers to prevent unbounded memory growth.
@@ -2881,23 +2871,39 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         };
 
-        // Apply to fork choice (marks payload as revealed).
-        if let Err(e) = self.apply_payload_envelope_to_fork_choice(&verified) {
-            warn!(
-                ?block_root,
-                error = ?e,
-                "Failed to apply buffered envelope to fork choice"
-            );
-            return;
-        }
-
-        // Send newPayload to EL and apply state transition.
-        if let Err(e) = self.process_payload_envelope(&verified).await {
-            warn!(
-                ?block_root,
-                error = ?e,
-                "Failed to process buffered gossip envelope"
-            );
+        // Send newPayload to EL and apply state transition. Fork choice is updated
+        // AFTER this succeeds to avoid marking the payload as revealed if the EL
+        // rejects it or the state transition fails.
+        match self.process_payload_envelope(&verified).await {
+            Ok(el_valid) => {
+                if let Err(e) = self.apply_payload_envelope_to_fork_choice(&verified) {
+                    warn!(
+                        ?block_root,
+                        error = ?e,
+                        "Failed to apply buffered envelope to fork choice"
+                    );
+                    return;
+                }
+                if el_valid
+                    && let Err(e) = self
+                        .canonical_head
+                        .fork_choice_write_lock()
+                        .on_valid_execution_payload(block_root)
+                {
+                    warn!(
+                        ?block_root,
+                        error = ?e,
+                        "Failed to mark buffered envelope payload as valid in fork choice"
+                    );
+                }
+            }
+            Err(e) => {
+                warn!(
+                    ?block_root,
+                    error = ?e,
+                    "Failed to process buffered gossip envelope"
+                );
+            }
         }
     }
 
@@ -2952,9 +2958,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// Process a locally-produced self-build envelope directly (no gossip verification).
     ///
     /// This is called after block import for self-built Gloas blocks. It:
-    /// 1. Applies `on_execution_payload` to fork choice (marks payload revealed)
-    /// 2. Sends `newPayload` to the EL
-    /// 3. Applies the envelope state transition
+    /// 1. Sends `newPayload` to the EL
+    /// 2. Applies the envelope state transition
+    /// 3. Applies `on_execution_payload` to fork choice (marks payload revealed)
+    ///
+    /// Fork choice is updated LAST so that if the EL rejects the payload or the
+    /// state transition fails, fork choice never sees the payload as revealed.
     ///
     /// Without this, the local EL would never receive `newPayload` for self-built blocks
     /// because libp2p gossipsub does not echo back your own messages.
@@ -2977,13 +2986,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 ))
             })?;
 
-        // 1. Update fork choice: mark payload as revealed
-        self.canonical_head
-            .fork_choice_write_lock()
-            .on_execution_payload(beacon_block_root, payload_block_hash)
-            .map_err(Into::<Error>::into)?;
+        // Track whether EL returned Valid so we can mark the block as fully verified
+        // in fork choice after updating it.
+        let mut el_valid = false;
 
-        // 2. Send newPayload to the EL (skip in stateless mode — payload stays optimistic)
+        // 1. Send newPayload to the EL (skip in stateless mode — payload stays optimistic)
         if self.config.stateless_validation {
             debug!(
                 ?beacon_block_root,
@@ -3034,21 +3041,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                         block_hash = ?envelope.payload.block_hash,
                         "Self-build execution payload validated by EL"
                     );
-                    // Mark the block as fully verified in fork choice. The block import
-                    // path issues forkchoiceUpdated before the envelope is processed, so
-                    // the EL returns SYNCING (unknown block). Without explicitly updating
-                    // here, the head stays Optimistic and block production is disabled.
-                    if let Err(e) = self
-                        .canonical_head
-                        .fork_choice_write_lock()
-                        .on_valid_execution_payload(beacon_block_root)
-                    {
-                        warn!(
-                            ?beacon_block_root,
-                            error = ?e,
-                            "Failed to mark self-build envelope payload as valid in fork choice"
-                        );
-                    }
+                    el_valid = true;
                 }
                 PayloadStatus::Syncing | PayloadStatus::Accepted => {
                     metrics::inc_counter(&metrics::PAYLOAD_ENVELOPE_EL_SYNCING_TOTAL);
@@ -3097,7 +3090,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             generator.generate_proof(beacon_block_root, payload_block_hash);
         }
 
-        // 3. Apply the envelope state transition (skip signature verification for self-build)
+        // 2. Apply the envelope state transition (skip signature verification for self-build)
         // Fetch the post-block state from the store using the block's state root.
         // We can't use canonical_head.cached_head() because at this point the block
         // has been imported but recompute_head hasn't run yet, so cached_head still
@@ -3125,6 +3118,29 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // for caching (verify=false skips the state root check which would
         // otherwise update the cache via canonical_root()).
         state.update_tree_hash_cache().map_err(Error::from)?;
+
+        // 3. Update fork choice: mark payload as revealed. This happens AFTER EL
+        // validation and state transition succeed to avoid leaving fork choice in an
+        // inconsistent state if either step fails. If we updated fork choice first and
+        // the EL returned Invalid, fork choice would consider the payload revealed
+        // (FULL) even though it was rejected.
+        {
+            let mut fc = self.canonical_head.fork_choice_write_lock();
+            fc.on_execution_payload(beacon_block_root, payload_block_hash)
+                .map_err(Into::<Error>::into)?;
+
+            // Mark the block as fully verified if the EL confirmed validity. The block
+            // import path issues forkchoiceUpdated before the envelope is processed, so
+            // the EL returns SYNCING (unknown block). Without explicitly updating here,
+            // the head stays Optimistic and block production is disabled.
+            if el_valid && let Err(e) = fc.on_valid_execution_payload(beacon_block_root) {
+                warn!(
+                    ?beacon_block_root,
+                    error = ?e,
+                    "Failed to mark self-build envelope payload as valid in fork choice"
+                );
+            }
+        }
 
         // Cache the post-envelope state in memory. See process_payload_envelope for
         // the full explanation — cached under block's state_root to keep the
