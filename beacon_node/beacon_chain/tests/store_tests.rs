@@ -6426,3 +6426,101 @@ async fn gloas_prunes_abandoned_fork_envelopes() {
         );
     }
 }
+
+/// Test that `get_advanced_hot_state` correctly uses the split's state root (post-envelope)
+/// when loading the state for the split block, even though the caller passes the block's
+/// pre-envelope state root.
+///
+/// For Gloas ePBS, the split's `state_root` is the post-envelope hash (set by the migrator
+/// from the finalized state cache). The block's `state_root()` is the pre-envelope hash.
+/// Without the split-block-root override (line 1167 in hot_cold_store.rs), loading the state
+/// would fail because the pre-envelope root isn't stored in the hot DB after migration.
+#[tokio::test]
+async fn gloas_get_advanced_hot_state_split_block_root_override() {
+    let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
+    spec.target_aggregators_per_committee = DEFAULT_TARGET_AGGREGATORS;
+
+    let db_path = tempdir().unwrap();
+    let store_config = StoreConfig {
+        prune_payloads: false,
+        ..StoreConfig::default()
+    };
+    let store = get_store_generic(&db_path, store_config, spec.clone());
+    let validators_keypairs =
+        types::test_utils::generate_deterministic_keypairs(LOW_VALIDATOR_COUNT);
+    let harness = TestHarness::builder(E::default())
+        .spec(spec.into())
+        .keypairs(validators_keypairs)
+        .fresh_disk_store(store.clone())
+        .mock_execution_layer()
+        .chain_config(ChainConfig {
+            reconstruct_historic_states: false,
+            ..ChainConfig::default()
+        })
+        .build();
+    harness.advance_slot();
+
+    let all_validators = harness.get_all_validators();
+    let slots_per_epoch = E::slots_per_epoch();
+
+    // Build enough epochs for finalization.
+    let num_slots = slots_per_epoch * 7;
+    let slots: Vec<Slot> = (1..=num_slots).map(Slot::new).collect();
+    let (state, state_root) = harness.get_current_state_and_root();
+    harness
+        .add_attested_blocks_at_slots(state, state_root, &slots, &all_validators)
+        .await;
+
+    let split = store.get_split_info();
+    assert!(
+        split.slot > Slot::new(0),
+        "chain should have finalized: split_slot={}",
+        split.slot
+    );
+
+    // Verify the split block is a Gloas block.
+    let split_block_root = split.block_root;
+    let split_block = store.get_blinded_block(&split_block_root).unwrap().unwrap();
+    assert!(
+        split_block.fork_name_unchecked().gloas_enabled(),
+        "split block should be a Gloas block"
+    );
+
+    // The block's pre-envelope state root differs from the split's (post-envelope) state root.
+    let pre_envelope_state_root = split_block.state_root();
+
+    // Get the expected block_hash from the envelope for verification.
+    let envelope = store
+        .get_payload_envelope(&split_block_root)
+        .unwrap()
+        .expect("split block should have an envelope");
+    let expected_block_hash = envelope.message.payload.block_hash;
+
+    // Evict the split block's state from cache to force a disk load.
+    store
+        .state_cache
+        .lock()
+        .delete_block_states(&split_block_root);
+
+    // Call get_advanced_hot_state with the block's pre-envelope state root.
+    // Without the split-block-root override, this would fail to load because
+    // the hot DB stores the state under the post-envelope root (split.state_root).
+    let (_returned_root, returned_state) = store
+        .get_advanced_hot_state(split_block_root, split.slot, pre_envelope_state_root)
+        .expect("get_advanced_hot_state should not error")
+        .expect("should successfully load state for split block");
+
+    // Verify the returned state has correct latest_block_hash.
+    let state_lbh = returned_state.latest_block_hash().unwrap();
+    assert_eq!(
+        *state_lbh, expected_block_hash,
+        "split block state should have correct latest_block_hash after envelope re-application"
+    );
+
+    // Verify the returned state slot matches the split slot.
+    assert_eq!(
+        returned_state.slot(),
+        split.slot,
+        "returned state slot should match split slot"
+    );
+}
