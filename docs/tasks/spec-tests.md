@@ -28,6 +28,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — devnet validation + spec conformance audit (run 420)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 419. Recent merges: #4955 (dependabot), #4953/#4952/#4951 (pytest) — all non-Gloas.
+- **Open Gloas PR status**:
+  - **#4954** (millisecond store) still 0 reviews. Not implementing proactively.
+  - **#4950** (by_root serve range) still open with 4 approvals. vibehouse already compliant.
+  - **#4939** (envelope request on index-1 attestation) has 5 COMMENTED reviews, no APPROVED. Still under discussion.
+  - **#4898** (remove pending from tiebreaker, 1 APPROVED), **#4892** (remove impossible branch, 2 APPROVED) — both small simplifications, not merged. Our code already handles both correctly (equivalent logic).
+  - #4940 (Gloas fork choice tests), #4932 (Gloas sanity/blocks tests) — unchanged.
+- **Devnet validation**: Ran full kurtosis devnet (4 CL+EL nodes, minimal preset, Gloas fork at epoch 1). **Passed**: finalized_epoch=8, chain healthy with no stalls. Validates the envelope fork choice consistency fix from run 418.
+- **Spec conformance audit of `get_expected_withdrawals_gloas` / `process_withdrawals_gloas`**:
+  - Compared all 4 phases against spec functions: `get_builder_withdrawals`, `get_pending_partial_withdrawals`, `get_builders_sweep_withdrawals`, `get_validators_sweep_withdrawals`.
+  - Phase 1 (builder pending): matches spec — iterates `builder_pending_withdrawals`, capped at `MAX_WITHDRAWALS - 1`.
+  - Phase 2 (partial): matches spec — `partials_limit = min(prior + MAX_PENDING_PARTIALS, MAX_WITHDRAWALS - 1)`, `processed_count` incremented for all examined entries (not just eligible ones).
+  - Phase 3 (builder sweep): matches spec — wrapping index, `withdrawable_epoch <= epoch && balance > 0`.
+  - Phase 4 (validator sweep): matches spec — `get_balance_after_withdrawals` logic correct, `MAX_WITHDRAWALS` full limit.
+  - `update_next_withdrawal_validator_index` logic verified: `withdrawals_len == max_withdrawals` can only be true when phase 4 contributed (phases 1-3 cap at `MAX_WITHDRAWALS - 1`), so `last_validator_index` always from validator sweep.
+  - `update_next_withdrawal_builder_index`: matches spec — `(start + processed_count) % builders_count`.
+- **CI status**: Runs 417-419 completing — all completed jobs green. Only `unit tests` still running on some.
+
 ### 2026-03-03 — spec audit + dead code cleanup (run 419)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**:
