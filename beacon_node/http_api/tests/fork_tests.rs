@@ -1444,6 +1444,59 @@ async fn post_execution_payload_envelope_block_hash_mismatch() {
     }
 }
 
+/// POST beacon/execution_payload_envelope with a slot prior to finalization should return 200 OK.
+/// The `PriorToFinalization` error is treated as "stale but not invalid" and returns 200 to avoid
+/// builders retrying indefinitely on envelopes for already-finalized blocks.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_prior_to_finalization_returns_200() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Build enough chain for finalization (MinimalEthSpec: 8 slots/epoch, 32 slots = 4 epochs)
+    harness.extend_slots(32).await;
+
+    let finalized_epoch = harness
+        .chain
+        .head_snapshot()
+        .beacon_state
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized past epoch 0, got epoch {finalized_epoch}"
+    );
+
+    // Use the current head's block root (which IS in fork choice, not pruned)
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Clear observed envelopes so the dedup check doesn't fire before PriorToFinalization
+    harness.chain.observed_payload_envelopes.lock().clear();
+
+    // Create an envelope that references a valid block root but with a slot
+    // prior to finalization. The verification order is:
+    //   1a. BlockRootUnknown (pass: head_root is in fork choice)
+    //   1b. DuplicateEnvelope (pass: cleared observed set)
+    //   2.  PriorToFinalization (hit: slot 0 < finalized_slot)
+    let mut envelope = types::SignedExecutionPayloadEnvelope::<E>::default();
+    envelope.message.beacon_block_root = head_root;
+    envelope.message.slot = Slot::new(0); // below finalized_slot
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&envelope)
+        .await;
+
+    // PriorToFinalization should return 200 OK (not 400)
+    assert!(
+        result.is_ok(),
+        "stale envelope (PriorToFinalization) should return 200 OK, got: {:?}",
+        result.err()
+    );
+}
+
 /// GET validator/payload_attestation_data for past slot returns correct data.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn payload_attestation_data_past_slot() {
