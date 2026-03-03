@@ -28,6 +28,31 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — spec tracking + comprehensive audits (run 410)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **3 recently merged Gloas spec PRs reviewed** — all already implemented in vibehouse:
+  - **#4948** (reorder payload status constants): EMPTY=0, FULL=1, PENDING=2. Vibehouse's `GloasPayloadStatus` enum already uses these values.
+  - **#4918** (only allow attestations for known payload statuses): `validate_on_attestation` already checks `block.payload_revealed` when `index == 1` (lines 1194-1202 in fork_choice.rs).
+  - **#4947** (pre-fork subscription to proposer_preferences topic): Vibehouse already subscribes to new fork topics 1 epoch before activation via `PRE_FORK_SUBSCRIBE_EPOCHS = 1` and `required_gossip_fork_digests()`.
+- **Open PR status**: #4955 merged (CI-only). #4954 (ms store time) still open, 0 reviews. #4950 (by_root serve range, 4 approvals) still open. #4940 (fork choice tests) open, 0 reviews. #4939 (envelope request on index-1 attestation) open, active discussion. #4932, #4898, #4892, #4843, #4840, #4630 unchanged.
+- **CI health**: Runs 408-409 in progress (clippy/fmt + ef-tests passed on both, remaining jobs completing).
+- **Comprehensive Engine API/EL interaction audit**: Reviewed all `forkchoiceUpdated`, `newPayload`, `getPayload`, and `PayloadAttributes` paths for Gloas correctness. All 11 critical paths verified correct:
+  - `recompute_head` uses patched `forkchoice_update_parameters()` from cached head (run 408 fix)
+  - `try_update_head_state` updates `head_hash` from post-envelope state
+  - `update_execution_engine_forkchoice` correctly distinguishes Gloas from pre-merge via patched `head_hash`
+  - `prepare_beacon_proposer` skips PayloadAttributes SSE for Gloas forks
+  - `process_payload_envelope` / `process_self_build_envelope` send `newPayload` correctly
+  - `get_execution_payload` uses `state.latest_block_hash()` as parent hash for Gloas
+  - `PayloadNotifier` marks Gloas blocks as `ExecutionStatus::Irrelevant`
+  - No bugs found.
+- **Gloas block production path audit**: Reviewed bid selection, self-build fallback, payload attestations packing, block body construction, and fork boundary handling. All correct. No bugs found. Key observations:
+  - Bid pool correctly filters by slot + parent_block_root for fork safety
+  - Self-build creates infinity signature correctly
+  - External bid path correctly separates blob delivery (blobs arrive via envelope)
+  - Proposer preferences validated at gossip time (sufficient — preferences stable within epoch)
+  - `process_execution_payload_bid` validates all 10 spec conditions correctly
+- No code changes this run — all reviewed areas are spec-compliant.
+
 ### 2026-03-03 — fix proposer preferences broadcast retry (run 409)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - No new Gloas spec PRs merged. Open PRs unchanged.
