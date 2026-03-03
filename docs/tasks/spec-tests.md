@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — fix batch signature verification for builder exits (run 426)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 425. Same set: #4955 (dependabot), #4944 (execution proofs by_root), #4814 (config derivations), #4926 (SLOT_DURATION_MS), #4953/#4952/#4951 (pytest) — all non-Gloas.
+- **Open Gloas PR status**: Unchanged — #4954 (millisecond store), #4950 (by_root serve range), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch)
+- **Consensus bug found and fixed** (commit `19ab946a0`): Batch signature verification (`BlockSignatureStrategy::VerifyBulk`) was broken for blocks containing builder exits.
+  - **Root cause**: `include_exits` in `BlockSignatureVerifier` passed the validator pubkey resolver (`get_pubkey_from_state`) to `exit_signature_set` for ALL exits, including builder exits. For builder exits, `validator_index` has `BUILDER_INDEX_FLAG` (bit 40) set, making it a huge index (~1099511627776). The validator pubkey resolver tried to look up a validator at that index, which doesn't exist, causing `ValidatorUnknown`.
+  - **Impact**: Any block imported via `VerifyBulk` (the default for non-proposer block processing) that contained a builder exit would fail signature verification and be rejected. Individual verification (`VerifyIndividual`) worked because `verify_builder_exit` uses a custom builder pubkey resolver.
+  - **Fix**: Modified `include_exits` to detect builder exits (Gloas-enabled state + `BUILDER_INDEX_FLAG` on `validator_index`) and resolve the builder's pubkey from the builder registry, matching the pattern used by `include_execution_payload_bid`.
+- **New tests** (2):
+  - `batch_verify_builder_exit_signature_uses_builder_pubkey` — regression test demonstrating that the validator pubkey resolver fails for builder exits (the bug) and the builder-aware resolver succeeds with correct signature verification.
+  - `batch_verify_builder_exit_wrong_key_fails_verification` — verifies that the builder-aware resolver correctly rejects exits signed with the wrong key.
+- All 543 state_processing tests pass. EF sanity tests pass. Full workspace clippy clean.
+
 ### 2026-03-03 — fix EMPTY-path withdrawal bug + reconstruction test (run 425)
 - **Bug fix in `get_execution_payload`** (execution_payload.rs:403-423): When the parent block is EMPTY (builder withheld payload), `process_withdrawals` returns early without updating `payload_expected_withdrawals`. The envelope must match this stale value, but `get_execution_payload` was computing fresh (empty) withdrawals via `get_expected_withdrawals_gloas`, causing `WithdrawalsRootMismatch` during self-build envelope construction. Fix: when `is_parent_block_full` returns false, use the state's existing `payload_expected_withdrawals` field directly.
 - **New test** `gloas_reconstruct_states_with_empty_path_block` in `store_tests.rs`: Exercises the EMPTY-path branch in `reconstruct_historic_states` (reconstruct.rs:154-163). Creates a mixed FULL/EMPTY chain with a builder-withheld block, finalizes it into cold DB, runs reconstruction, and verifies:
