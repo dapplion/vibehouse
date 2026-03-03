@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-03 — spec tracking + devnet validation (run 415)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest)
+- **Recently merged spec PRs reviewed**:
+  - #4918 (only allow attestations for known payload statuses) — **already implemented** in vibehouse at fork_choice.rs:1194-1202
+  - #4923 (ignore blocks with unknown parent payload) — **already implemented** at block_verification.rs:971-984
+  - #4948 (reorder payload status constants: Empty=0, Full=1, Pending=2) — **already matches** our GloasPayloadStatus enum at proto_array_fork_choice.rs:41-45
+  - #4930 (rename execution_payload_states to payload_states) — naming-only, our comments already use new name
+- **Open PR status**: #4940 (fork choice tests), #4932 (sanity/blocks tests), #4939 (request envelope on index-1 attestation), #4954 (millisecond store), #4898 (remove pending from tiebreaker), #4843 (variable PTC deadline) — all still open
+- **CI status**: Previous run's broadcast_preferences test fix confirmed working (runs 413/414 pass clippy, EF tests, network/op_pool; unit/beacon_chain/http_api still in-progress)
+- **Devnet validation passed**: 4-node devnet finalized epoch 8 with latest code, validating the forkchoiceUpdated head_hash fix (commit ec482f8b4) end-to-end. Chain finalized through Gloas fork boundary with correct EL communication.
+- No code changes needed — all recent spec changes already implemented
+
 ### 2026-03-03 — range sync and fork scenario integration tests (run 414)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest)
 - **Recently merged spec PRs**: #4955 (CI), #4953/#4952/#4951 (pytest infrastructure), #4944 (execution proofs by_root, eip8025 only — not Gloas). No Gloas impact.
