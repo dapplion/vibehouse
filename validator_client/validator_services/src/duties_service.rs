@@ -2361,13 +2361,13 @@ mod broadcast_preferences_tests {
         );
     }
 
-    /// Sign failure: sign_proposer_preferences returns error, validator skipped, epoch still marked.
+    /// Sign failure: sign_proposer_preferences returns error, validator skipped, epoch NOT marked.
     ///
     /// Tests the `Err(e)` branch in the `for duty in &local_duties` loop — the function
-    /// logs a warning and `continue`s to the next duty. With only one duty, it still
-    /// marks the epoch as broadcast.
+    /// logs a warning and `continue`s to the next duty. With only one duty and a sign
+    /// failure, the epoch is left unmarked so that the next slot retries.
     #[tokio::test]
-    async fn broadcast_preferences_sign_failure_continues() {
+    async fn broadcast_preferences_sign_failure_leaves_epoch_unmarked() {
         let spec = spec_with_gloas(Some(0));
         let slots_per_epoch = E::slots_per_epoch();
         let pubkey = PreferencesValidatorStore::pubkey(1);
@@ -2391,19 +2391,20 @@ mod broadcast_preferences_tests {
 
         broadcast_proposer_preferences(&ds).await.unwrap();
 
-        // Epoch still marked as broadcast (sign failure doesn't prevent marking)
+        // Epoch should NOT be marked — enables retry on the next slot
         assert!(
-            ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
-            "epoch should be marked even when sign fails"
+            !ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
+            "epoch should not be marked when sign fails, so next slot retries"
         );
     }
 
-    /// BN POST failure: signed ok but submission returns 500 error, epoch still marked.
+    /// BN POST failure: signed ok but submission returns 500 error, epoch NOT marked.
     ///
     /// Tests the `Err(e)` branch of `first_success(post_beacon_pool_proposer_preferences)`.
-    /// The function logs a warning and continues — epoch is still marked as broadcast.
+    /// The function logs a warning and returns Ok — but the epoch is left unmarked so that
+    /// the next slot retries the submission.
     #[tokio::test]
-    async fn broadcast_preferences_bn_post_failure_still_marks_epoch() {
+    async fn broadcast_preferences_bn_post_failure_leaves_epoch_unmarked() {
         let spec = spec_with_gloas(Some(0));
         let slots_per_epoch = E::slots_per_epoch();
         let pubkey = PreferencesValidatorStore::pubkey(1);
@@ -2427,10 +2428,10 @@ mod broadcast_preferences_tests {
         // Function should still return Ok (POST failure is logged but not fatal)
         broadcast_proposer_preferences(&ds).await.unwrap();
 
-        // Epoch is still marked as broadcast
+        // Epoch should NOT be marked — enables retry on the next slot
         assert!(
-            ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
-            "epoch should be marked even when BN POST fails"
+            !ds.preferences_broadcast_epochs.lock().contains(&next_epoch),
+            "epoch should not be marked when BN POST fails, so next slot retries"
         );
     }
 
