@@ -28,6 +28,25 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — dependency updates, spec tracking (run 488)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. PR #4979 (PTC Lookbehind) opened Mar 6, actively discussed. PR #4747 (Fast Confirmation Rule) updated Mar 6.
+- **Dependency updates** (commit TBD): Updated semver-compatible dependencies via targeted `cargo update`:
+  - `serde_json` 1.0.140 → 1.0.149
+  - `chrono` 0.4.40 → 0.4.44 (removed android-tzdata transitive dep)
+  - `futures-util` ecosystem 0.3.31 → 0.3.32 (7 crates)
+  - `flate2` 1.1.0 → 1.1.9 (added simd-adler32 optimization)
+  - `anyhow` 1.0.97 → 1.0.102
+  - `libc` 0.2.175 → 0.2.182
+  - `c-kzg` 2.1.5 → 2.1.6
+  - `bitflags` 2.9.0 → 2.11.0
+  - `alloy-rlp` 0.3.11 → 0.3.13, `alloy-primitives` 1.0.0 → 1.5.7
+  - `async-trait` 0.1.87 → 0.1.89, `syn` 2.0.100 → 2.0.117
+  - Note: full `cargo update` was attempted first but broke `leveldb-sys` build (cmake 0.1.54→0.1.57 passes unsupported `-Wthread-safety` flag to g++). Reverted and did targeted updates instead.
+- **Remaining advisories**: Same 11 unmaintained-crate warnings from transitive dependencies. No new vulnerabilities.
+- **Build & test verification**: Release build clean (0 warnings). 763/763 beacon_chain tests pass. 138/138 EF spec tests pass (fake_crypto, minimal). 2589/2598 workspace tests pass (8 web3signer = external service timeout, pre-existing).
+- **CI status**: All CI green. Nightly tests passing (5+ consecutive successes).
+
 ### 2026-03-06 — execution proof gossip verification tests, spec tracking (run 487)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
