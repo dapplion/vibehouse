@@ -5422,3 +5422,75 @@ async fn test_gloas_gossip_execution_proof_stateless_import_notifies_sync() {
         other => panic!("expected GossipBlockProcessResult, got {:?}", other),
     }
 }
+
+/// On a stateless node, an execution proof for an unknown block root is IGNORED
+/// (same as non-stateless) but also **buffered** in `pending_execution_proofs`.
+///
+/// Non-stateless nodes simply ignore unknown-root proofs (tested in
+/// `test_gloas_gossip_execution_proof_unknown_root_ignored`). Stateless nodes
+/// buffer them so they can be processed after the block is imported via
+/// `process_pending_execution_proofs`. This test exercises the stateless-specific
+/// buffering path at gossip_methods.rs:4057-4068.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_stateless_unknown_root_buffered() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_stateless(SMALL_CHAIN, 1).await;
+
+    assert!(
+        rig.chain.config.stateless_validation,
+        "precondition: node must be stateless"
+    );
+
+    let unknown_root = Hash256::repeat_byte(0xee);
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+
+    // Verify buffer is empty before
+    assert!(
+        rig.chain
+            .pending_execution_proofs
+            .lock()
+            .get(&unknown_root)
+            .is_none(),
+        "precondition: no pending proofs for unknown root"
+    );
+
+    let proof = Arc::new(ExecutionProof::new(
+        unknown_root,
+        ExecutionBlockHash::repeat_byte(0xaa),
+        subnet_id,
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42],
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            subnet_id,
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    // Should be Ignored (same as non-stateless)
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+
+    // Stateless-specific: proof should be buffered in pending_execution_proofs
+    let pending = rig.chain.pending_execution_proofs.lock();
+    let buffered_subnets = pending
+        .get(&unknown_root)
+        .expect("proof must be buffered for unknown root on stateless node");
+    assert_eq!(
+        buffered_subnets.len(),
+        1,
+        "exactly one subnet should be buffered"
+    );
+    assert_eq!(
+        *buffered_subnets[0], *subnet_id,
+        "buffered subnet id must match"
+    );
+}
