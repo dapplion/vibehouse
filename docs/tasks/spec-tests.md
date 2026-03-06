@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — stale withdrawal carryover across EMPTY parent test (run 454)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 453 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
+- **Open Gloas PR status**: 6 open PRs with Gloas relevance (#4962, #4960, #4940, #4939, #4843, #4932). No new merges. Noted #4962 (sanity/blocks tests for missed payload withdrawal interactions) — the 4-combination test matrix for block-with-withdrawals → EMPTY → next-block scenarios.
+- **Coverage gap analysis**: Inspired by consensus-specs PR #4962, audited withdrawal carryover across EMPTY parent blocks at the integration level. The unit-level test `empty_parent_preserves_stale_payload_expected_withdrawals` (gloas.rs:1893) verifies the state-processing invariant (stale withdrawals persist when `process_withdrawals_gloas` returns early on EMPTY parent). But no integration test exercised the full pipeline: block production → withheld envelope → EMPTY parent → stale withdrawal carryover → self-build envelope carrying stale withdrawals → `process_execution_payload_envelope` validation accepting them. This is the multi-block end-to-end path that PR #4962 targets.
+- **New test** (1, commit `a439e858d`):
+  - `gloas_stale_withdrawal_carryover_across_empty_parent` — creates a harness with a builder pending withdrawal, extends 64 slots for finalization, injects an external bid for the next slot (withheld envelope → EMPTY). Records the withheld block's post-state `payload_expected_withdrawals` (W_stale). Produces a self-build recovery block on the EMPTY parent. Asserts: (1) recovery block's post-state `payload_expected_withdrawals` == W_stale (process_withdrawals_gloas returned early), (2) recovery envelope's actual withdrawals == W_stale (EL produced payload with stale withdrawals), (3) `process_self_build_envelope` succeeds (envelope_processing.rs:197-206 validates withdrawals match), (4) chain continues normally after FULL recovery. This exercises the full stale withdrawal pipeline at the beacon_chain integration level.
+- **CI status**: All tests green. Clippy clean. 749/749 beacon_chain tests pass (748→749).
+
 ### 2026-03-06 — stateless proof unknown root buffering network test (run 453)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 452 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
