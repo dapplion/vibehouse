@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — restore_from_store head_hash recovery test + spec PR audit (run 448)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Spec PR audit** — reviewed 5 recently merged PRs for Gloas impact:
+  - **#4948 (reorder PayloadStatus constants)**: EMPTY=0, FULL=1, PENDING=2. vibehouse already has correct values in `GloasPayloadStatus` enum — no change needed.
+  - **#4918 (only allow attestations for known payload statuses)**: New rule: `if index == 1: assert block_root in payload_states`. vibehouse already implements this in `validate_on_attestation` (fork_choice.rs:1198-1201) with `PayloadNotRevealed` error + tests for both accept/reject.
+  - **#4923 (ignore beacon block if parent payload unknown)**: New `[IGNORE]` gossip rule. vibehouse already implements this in `verify_gossip_beacon_block` (block_verification.rs:971-984) with `GloasParentPayloadUnknown` error → `MessageAcceptance::Ignore` + sync queue.
+  - **#4947 (pre-fork proposer_preferences subscription)**: P2P timing note. Not yet assessed for vibehouse subscription logic.
+  - **#4906 (more deposit_request tests)**: Test-only, no spec change.
+- **Coverage gap analysis**: Exhaustive search across hot_cold_store.rs, block_replayer.rs, canonical_head.rs, execution_layer, and migrate.rs. Found the `restore_from_store` (canonical_head.rs:311) Gloas head_hash fallback was not directly tested — the existing `gloas_persist_load_fork_choice_preserves_head_hash` test reuses the in-memory snapshot, while `restore_from_store` loads state from DB via `get_advanced_hot_state` (which must re-apply stored envelopes for correct `latest_block_hash`).
+- **New test** (1, commit `6b8c099f2`):
+  - `gloas_restore_from_store_recovers_head_hash_from_db` — builds 4-block chain, persists fork choice, evicts state cache, loads fork choice + block + state all from DB (via `get_advanced_hot_state` which re-applies stored envelopes), constructs `CanonicalHead` from DB-loaded snapshot. Asserts: (1) head_hash matches pre-persist value, (2) state loaded from DB has correct `latest_block_hash` after envelope re-application. This exercises the full `restore_from_store` data path (persist → cache evict → DB load → envelope re-apply → head_hash fallback) ensuring node restart correctly recovers the Gloas head hash for `forkchoiceUpdated` calls to the EL.
+- **CI status**: All 746 beacon_chain tests pass (745→746). Full workspace clippy clean.
+
 ### 2026-03-06 — range sync mixed FULL/EMPTY chain test (run 447)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Coverage gap analysis**: Exhaustive search across beacon_chain.rs, fork_choice.rs, gloas_verification.rs, gossip_methods.rs, block_verification.rs, canonical_head.rs, hot_cold_store.rs, and http_api tests. Found extremely thorough existing coverage (18175+ lines of Gloas tests). Identified one genuine remaining gap: `process_chain_segment` (range sync import path) had no test exercising a chain with mixed FULL/EMPTY parents — blocks where some envelopes are processed and some are withheld (simulating builder withholding during range sync).
