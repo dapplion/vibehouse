@@ -4,14 +4,16 @@ use beacon_chain::{
     StateSkipConfig,
     test_utils::{DEFAULT_ETH1_BLOCK_HASH, HARNESS_GENESIS_TIME, RelativeSyncCommittee},
 };
-use eth2::types::{BlockId, IndexedErrorMessage, StateId, SyncSubcommittee};
+use eth2::types::{
+    BlockId, IndexedErrorMessage, ProduceBlockV3Response, StateId, SyncSubcommittee,
+};
 use execution_layer::test_utils::generate_genesis_header;
 use genesis::{InteropGenesisBuilder, bls_withdrawal_credentials};
 use http_api::test_utils::*;
 use std::collections::HashSet;
 use types::{
-    Address, BitVector, ChainSpec, Epoch, EthSpec, FixedBytesExtended, Hash256, MinimalEthSpec,
-    Signature, Slot,
+    Address, BitVector, ChainSpec, Domain, Epoch, EthSpec, FixedBytesExtended, ForkName, Hash256,
+    MinimalEthSpec, Signature, SignatureBytes, SignedRoot, Slot,
     test_utils::{generate_deterministic_keypair, generate_deterministic_keypairs},
 };
 
@@ -3049,4 +3051,146 @@ async fn get_payload_attestation_pool_slot_filter() {
         empty_result.data.is_empty(),
         "should have no attestations for non-existent slot"
     );
+}
+
+/// GET v3/validator/blocks/{slot} should produce a valid Gloas block via the HTTP API.
+///
+/// This tests the full block production pipeline through the HTTP endpoint that validators
+/// call every slot: proposer duties lookup → RANDAO computation → block production →
+/// response deserialization. Verifies:
+/// 1. The block is produced successfully (no 400/500 errors)
+/// 2. The metadata reports consensus_version = Gloas and execution_payload_blinded = false
+/// 3. The response is a Full block (not Blinded) with BlockContents
+/// 4. The block body contains a valid ExecutionPayloadBid (the self-build bid)
+/// 5. A self-build execution_payload_envelope is included in the response
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gloas_block_production_via_http_api_v3() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Build a 2-block chain so we have a non-genesis head
+    let all_validators = harness.get_all_validators();
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let (_, state) = harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+    harness
+        .add_attested_block_at_slot(Slot::new(2), state, Hash256::zero(), &all_validators)
+        .await
+        .unwrap();
+
+    // Advance clock to slot 3 where we'll produce a block via the API
+    let target_slot = Slot::new(3);
+    harness.advance_slot();
+
+    // Look up who proposes at target_slot
+    let epoch = target_slot.epoch(E::slots_per_epoch());
+    let proposer_duties = client
+        .get_validator_duties_proposer(epoch)
+        .await
+        .expect("should get proposer duties")
+        .data;
+    let proposer_duty = proposer_duties
+        .iter()
+        .find(|d| d.slot == target_slot)
+        .expect("should have a proposer for target slot");
+    let proposer_pubkey: types::PublicKey = (&proposer_duty.pubkey).try_into().unwrap();
+
+    // Find the proposer's secret key
+    let sk = harness
+        .validator_keypairs
+        .iter()
+        .find(|kp| kp.pk == proposer_pubkey)
+        .map(|kp| kp.sk.clone())
+        .expect("proposer keypair should exist in harness");
+
+    // Compute a valid RANDAO reveal
+    let fork = harness.chain.canonical_head.cached_head().head_fork();
+    let genesis_validators_root = harness.chain.genesis_validators_root;
+    let randao_reveal: SignatureBytes = {
+        let domain = spec.get_domain(epoch, Domain::Randao, &fork, genesis_validators_root);
+        let message = epoch.signing_root(domain);
+        sk.sign(message).into()
+    };
+
+    // Call the v3 block production endpoint
+    let (response, metadata) = client
+        .get_validator_blocks_v3::<E>(target_slot, &randao_reveal, None, None)
+        .await
+        .expect("should produce a Gloas block via HTTP API");
+
+    // Verify metadata
+    assert_eq!(
+        metadata.consensus_version,
+        ForkName::Gloas,
+        "consensus_version should be Gloas"
+    );
+    assert!(
+        !metadata.execution_payload_blinded,
+        "Gloas self-build blocks should not be blinded"
+    );
+
+    // Verify the response is a Full block with BlockContents
+    match response.data {
+        ProduceBlockV3Response::Full(full_contents) => {
+            let block_contents = match full_contents {
+                eth2::types::FullBlockContents::BlockContents(contents) => contents,
+                eth2::types::FullBlockContents::Block(_) => {
+                    panic!(
+                        "Gloas should return BlockContents (with blobs/envelope), not bare Block"
+                    )
+                }
+            };
+
+            // Verify the block is a Gloas block
+            let block = &block_contents.block;
+            assert_eq!(
+                block.slot(),
+                target_slot,
+                "block slot should match target slot"
+            );
+            assert_eq!(
+                block.to_ref().fork_name(&spec).unwrap(),
+                ForkName::Gloas,
+                "block fork should be Gloas"
+            );
+
+            // Verify the block body has a SignedExecutionPayloadBid (Gloas ePBS)
+            let body = block.body();
+            let signed_bid = body
+                .signed_execution_payload_bid()
+                .expect("Gloas block body should have a signed_execution_payload_bid");
+            let bid = &signed_bid.message;
+            // Self-build bid has builder_index = BUILDER_INDEX_SELF_BUILD (u64::MAX)
+            assert_eq!(
+                bid.builder_index,
+                types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
+                "self-build bid should have BUILDER_INDEX_SELF_BUILD"
+            );
+
+            // Verify the self-build envelope is present in the response
+            let envelope = block_contents
+                .execution_payload_envelope
+                .as_ref()
+                .expect("self-build block should include execution_payload_envelope");
+            // The envelope's beacon_block_root is set during block production
+            assert_ne!(
+                envelope.beacon_block_root,
+                Hash256::zero(),
+                "envelope should have a non-zero beacon_block_root"
+            );
+        }
+        ProduceBlockV3Response::Blinded(_) => {
+            panic!("Gloas self-build block should be Full, not Blinded")
+        }
+    }
 }
