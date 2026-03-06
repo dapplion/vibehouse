@@ -18173,3 +18173,167 @@ async fn gloas_self_build_generates_execution_proofs() {
         );
     }
 }
+
+/// Test range sync with a mixed FULL/EMPTY chain: some blocks have envelopes
+/// processed (FULL path) and some don't (EMPTY path, simulating builder withholding).
+///
+/// The chain is built on a single harness using `make_block_with_envelope` with
+/// selective envelope skipping, which naturally produces blocks that reference
+/// the correct `parent_block_hash` for the FULL or EMPTY parent state. The blocks
+/// are then extracted and re-imported on a fresh harness via `process_chain_segment`
+/// (the range sync path).
+///
+/// This test verifies:
+/// - `process_chain_segment` handles mixed FULL/EMPTY parents correctly
+/// - `load_parent` patches `latest_block_hash` only for FULL parents
+/// - Blocks built on EMPTY parents have correct `state_root` for the pre-envelope state
+/// - The chain continues through FULL→EMPTY→FULL transitions
+#[tokio::test]
+async fn gloas_range_sync_mixed_full_empty_chain() {
+    // Harness 1: build a chain with selective envelope skipping.
+    // Blocks 1-2: FULL (with envelopes)
+    // Block 3: EMPTY (no envelope — simulating builder withholding)
+    // Blocks 4-5: FULL (with envelopes, built on the EMPTY block 3)
+    let harness1 = gloas_harness_at_epoch(0);
+
+    // Block indices where envelope is skipped (0-indexed, block 3 = index 2)
+    let skip_envelope_indices: std::collections::HashSet<usize> = [2].into_iter().collect();
+
+    let mut block_roots = Vec::new();
+    for i in 0..5 {
+        let state = harness1.chain.head_beacon_state_cloned();
+        let slot = state.slot() + 1;
+        harness1.advance_slot();
+        let (block_contents, _block_state, envelope) =
+            harness1.make_block_with_envelope(state, slot).await;
+        let block_root = block_contents.0.canonical_root();
+
+        harness1
+            .process_block(slot, block_root, block_contents)
+            .await
+            .unwrap_or_else(|e| {
+                panic!(
+                    "harness1 block {} (slot {}) import should succeed: {:?}",
+                    i + 1,
+                    slot,
+                    e
+                )
+            });
+
+        if !skip_envelope_indices.contains(&i)
+            && let Some(ref signed_envelope) = envelope
+        {
+            harness1
+                .chain
+                .process_self_build_envelope(signed_envelope)
+                .await
+                .unwrap_or_else(|e| panic!("harness1 envelope {} should succeed: {:?}", i + 1, e));
+        }
+        harness1.chain.recompute_head_at_current_slot().await;
+        block_roots.push(block_root);
+    }
+
+    // Extract blocks and envelopes for range sync
+    let mut blocks: Vec<Arc<SignedBeaconBlock<E>>> = Vec::new();
+    let mut envelopes = Vec::new();
+    for root in &block_roots {
+        let full_block = harness1.chain.get_block(root).await.unwrap().unwrap();
+        let envelope = harness1.chain.store.get_payload_envelope(root).unwrap();
+        blocks.push(Arc::new(full_block));
+        envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), 5, "should have 5 blocks");
+
+    // Harness 2: import via process_chain_segment (range sync path)
+    let harness2 = gloas_harness_at_epoch(0);
+
+    for (i, (block, envelope)) in blocks.iter().zip(envelopes.iter()).enumerate() {
+        let rpc_block = beacon_chain::block_verification_types::RpcBlock::new_without_blobs(
+            None,
+            block.clone(),
+        );
+        harness2.set_current_slot(block.slot());
+
+        harness2
+            .chain
+            .process_chain_segment(vec![rpc_block], NotifyExecutionLayer::Yes)
+            .await
+            .into_block_error()
+            .unwrap_or_else(|e| {
+                panic!(
+                    "block {} (slot {}) range sync import should succeed: {:?}",
+                    i + 1,
+                    block.slot(),
+                    e
+                )
+            });
+
+        // Process envelope unless this block's envelope was skipped
+        if !skip_envelope_indices.contains(&i)
+            && let Some(signed_envelope) = envelope
+        {
+            harness2
+                .chain
+                .process_self_build_envelope(signed_envelope)
+                .await
+                .unwrap_or_else(|e| panic!("harness2 envelope {} should succeed: {:?}", i + 1, e));
+        }
+        harness2.chain.recompute_head_at_current_slot().await;
+    }
+
+    // Verify payload_revealed status
+    let fc = harness2.chain.canonical_head.fork_choice_read_lock();
+    for (i, block) in blocks.iter().enumerate() {
+        let root = block.canonical_root();
+        let proto = fc
+            .get_block(&root)
+            .unwrap_or_else(|| panic!("block {} should be in fork choice", i + 1));
+
+        if skip_envelope_indices.contains(&i) {
+            assert!(
+                !proto.payload_revealed,
+                "block {} (skipped envelope) should have payload_revealed=false",
+                i + 1
+            );
+        } else {
+            assert!(
+                proto.payload_revealed,
+                "block {} should have payload_revealed=true",
+                i + 1
+            );
+        }
+    }
+    drop(fc);
+
+    // Verify head state latest_block_hash is from the last FULL block
+    let head = harness2.chain.head_snapshot();
+    let head_latest_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_ne!(
+        head_latest_hash,
+        ExecutionBlockHash::zero(),
+        "latest_block_hash should be non-zero"
+    );
+
+    let last_block_bid = blocks
+        .last()
+        .unwrap()
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas block");
+    assert_eq!(
+        head_latest_hash, last_block_bid.message.block_hash,
+        "latest_block_hash should match the last block's bid hash"
+    );
+
+    // Verify all blocks imported
+    let chain_dump2 = harness2.chain.chain_dump().expect("should dump chain");
+    assert_eq!(
+        chain_dump2.len(),
+        6,
+        "harness 2 should have genesis + 5 blocks"
+    );
+}
