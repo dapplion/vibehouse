@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — spec tracking: 3 merged Gloas PRs reviewed, all already compliant (run 482)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Recently merged spec PRs reviewed** (3 Gloas-labeled merges since run 481):
+  - **PR #4950** (Extend by_root reqresp serve range): merged 2026-03-06. Changes BeaconBlocksByRoot and ExecutionPayloadEnvelopesByRoot serve range from "since finalized epoch" to `[max(FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`. **Already compliant** — vibehouse serves anything in store (more permissive than spec minimum).
+  - **PR #4948** (Reorder PayloadStatus constants): merged 2026-02-26. Changes EMPTY=1/FULL=2 → EMPTY=0/FULL=1/PENDING=2. **Already compliant** — vibehouse's `GloasPayloadStatus` enum already has `Empty=0, Full=1, Pending=2` (proto_array_fork_choice.rs:42-44).
+  - **PR #4947** (Pre-fork proposer_preferences subscription note): merged 2026-02-26. Nodes SHOULD subscribe to proposer_preferences topic 1 epoch before fork. **Already compliant** — vibehouse has `PRE_FORK_SUBSCRIBE_EPOCHS: u64 = 1` (service.rs:51).
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
+  - PR #4892 (Remove impossible branch): 2 approvals, closest to merge. Vibehouse already uses `== node_slot` (not `<=`) in `is_supporting_vote_gloas_at_slot`.
+  - PR #4898 (Remove pending from tiebreaker): 1 approval. Vibehouse already removed PENDING early return in `get_payload_tiebreaker` (commit `101a68380`).
+  - PR #4979 (PTC Lookbehind): 0 approvals, also labeled `heze`. Pre-analysis: would require new BeaconState field (`ptc_lookbehind`), new `compute_ptc` helper (extracting current `get_ptc_committee` logic), refactored `get_ptc` with cache lookup, new `process_ptc_lookbehind` epoch processing, `initialize_ptc_lookbehind` in fork upgrade + genesis. Non-trivial but well-scoped.
+- **Test coverage**: Saturated per run 479 assessment. 700+ Gloas-specific tests covering all reachable code paths.
+- **CI status**: All tests green. 3 CI runs in-progress from recent commits, all recent completions successful. Clippy clean.
+- **No code changes in this run** — all 3 merged PRs were already compliant.
+
 ### 2026-03-06 — stale withdrawal mismatch test, PR #4979 PTC Lookbehind analysis (run 481)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Recently merged spec PRs reviewed**: No new merges since run 480. Latest: #4983, #4972, #4982, #4981, #4980, #4977, #4950 (all CI/tooling/dependency).
