@@ -19454,6 +19454,78 @@ async fn gloas_builder_exit_gossip_accepted() {
     ));
 }
 
+/// End-to-end test: builder exit flows from gossip verification → op pool import →
+/// retrieval via get_slashings_and_exits. This tests that verify_exit correctly
+/// handles builder exits (BUILDER_INDEX_FLAG set) on a Gloas state when the op
+/// pool retrieves exits for block inclusion.
+#[tokio::test]
+async fn gloas_builder_exit_op_pool_retrieval() {
+    let harness = gloas_harness_with_builders(&[(0, 1_000_000_000)]);
+
+    // Build enough chain for finalization (builder must be active)
+    harness
+        .extend_chain(
+            (E::slots_per_epoch() * 5) as usize,
+            beacon_chain::test_utils::BlockStrategy::OnCanonicalHead,
+            AttestationStrategy::AllValidators,
+        )
+        .await;
+
+    let head_state = &harness.chain.head().snapshot.beacon_state;
+    let finalized_epoch = head_state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain must finalize past epoch 0"
+    );
+
+    let builder_index = 0u64;
+    let builder_sk = &BUILDER_KEYPAIRS[0].sk;
+    let genesis_validators_root = harness.chain.genesis_validators_root;
+    let spec = &harness.chain.spec;
+    let current_epoch = harness.chain.epoch().unwrap();
+
+    let signed_exit = make_builder_exit(
+        builder_index,
+        current_epoch,
+        builder_sk,
+        genesis_validators_root,
+        spec,
+    );
+
+    // Step 1: Gossip verification
+    let outcome = harness
+        .chain
+        .verify_voluntary_exit_for_gossip(signed_exit.clone())
+        .expect("gossip verification should succeed");
+
+    let verified_exit = match outcome {
+        ObservationOutcome::New(verified) => verified,
+        ObservationOutcome::AlreadyKnown => panic!("should be New, not AlreadyKnown"),
+    };
+
+    // Step 2: Import to op pool
+    harness.chain.import_voluntary_exit(verified_exit);
+
+    // Step 3: Retrieve from op pool via get_slashings_and_exits
+    let head_state = &harness.chain.head().snapshot.beacon_state;
+    let (_, _, voluntary_exits) = harness
+        .chain
+        .op_pool
+        .get_slashings_and_exits(head_state, spec);
+
+    // The builder exit should be returned for block inclusion
+    assert_eq!(
+        voluntary_exits.len(),
+        1,
+        "op pool should return the builder exit for block inclusion"
+    );
+    assert_eq!(
+        voluntary_exits[0].message.validator_index,
+        builder_index | consts::gloas::BUILDER_INDEX_FLAG,
+        "returned exit should have the builder index with BUILDER_INDEX_FLAG"
+    );
+}
+
 #[tokio::test]
 async fn gloas_builder_exit_gossip_inactive_rejected() {
     // Builder with deposit_epoch=100 — won't be active until finalized_epoch > 100
