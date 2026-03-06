@@ -5015,3 +5015,70 @@ async fn test_gloas_gossip_payload_envelope_el_syncing_stays_optimistic() {
         );
     }
 }
+
+/// When the EL returns Invalid for a gossip envelope's payload (via newPayload),
+/// `process_payload_envelope` returns an error. The gossip handler must NOT update
+/// fork choice (payload_revealed stays false), must NOT call recompute_head, and
+/// must NOT emit SSE events. This exercises the `Err(e)` branch at
+/// gossip_methods.rs:3631 through the full gossip pipeline.
+///
+/// Without this test, a regression that accidentally continues past the error
+/// branch could mark the payload as revealed in fork choice despite the EL
+/// deeming it invalid — promoting an invalid block to head.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_el_invalid_skips_fork_choice() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Produce a new block + envelope
+    let head_state = rig.chain.head_beacon_state_cloned();
+    let next_slot = rig.chain.slot().unwrap();
+    let (block_contents, _state, envelope) = rig
+        ._harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block = &block_contents.0;
+    let block_root = block.canonical_root();
+
+    // Import ONLY the block (no envelope processing)
+    rig._harness
+        .process_block_result(block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Invalid for newPayload
+    rig._harness
+        .mock_execution_layer
+        .as_ref()
+        .unwrap()
+        .server
+        .all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero());
+
+    // Clear observed envelopes so the gossip path accepts the verification step
+    rig.chain.observed_payload_envelopes.lock().clear();
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), signed_envelope)
+        .await;
+
+    // Gossip validation passes (Accept) because the envelope is structurally valid.
+    // The EL rejection happens AFTER gossip validation, during process_payload_envelope.
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // payload_revealed must remain false — the EL rejected the payload
+    {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc
+            .get_block(&block_root)
+            .expect("block should be in fork choice");
+        assert!(
+            !proto_block.payload_revealed,
+            "payload_revealed should be false when EL returns Invalid"
+        );
+    }
+}
