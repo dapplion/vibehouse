@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — dependency security audit, 3 vulnerability fixes (run 485)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
+- **Dependency security audit**: Installed `cargo-audit` and ran first vulnerability scan of all 1080 crate dependencies.
+  - **3 vulnerabilities fixed** (commit `62aa9d447`):
+    - `ruint` 1.14.0 → 1.17.2: RUSTSEC-2025-0137 (unsoundness in `reciprocal_mg10`)
+    - `time` 0.3.44 → 0.3.47: RUSTSEC-2026-0009 (DoS via stack exhaustion, severity 6.8)
+    - `keccak` 0.1.5 → 0.1.6: RUSTSEC-2026-0012 (unsoundness in ARMv8 assembly backend)
+  - **Remaining advisories**: 12 unmaintained-crate warnings (ansi_term, bincode, derivative, filesystem, fxhash, instant, paste, proc-macro-error, rustls-pemfile×2, lru, tokio). All are transitive dependencies from libp2p/alloy ecosystem — no direct vibehouse dep can be changed to resolve these. `lru` (RUSTSEC-2026-0002) is pinned at 0.12.5 by direct dependents; fix requires major version bump.
+- **Dead code audit**: Reviewed all `#[allow(dead_code)]` annotations. All are justified — either error enum variants that carry data but aren't individually destructured (idiomatic Rust), builder-pattern methods for API completeness, or API-visible fields (`service_name` in TaskExecutor) that would require multi-file signature changes to remove. No cleanup warranted.
+- **Build & test verification**: Release build clean (0 warnings). 759/759 beacon_chain tests pass. 2589/2598 workspace tests pass (8 web3signer failures = external service timeout, pre-existing). Full clippy clean via pre-push hook.
+- **CI status**: All CI green. Nightly tests passing (5 consecutive successes).
+
 ### 2026-03-06 — spec tracking, 3 merged Gloas PRs verified compliant, load_parent comment fix, PR #4954 pre-analysis (run 484)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Newly reviewed merged PRs (all already implemented)**:
