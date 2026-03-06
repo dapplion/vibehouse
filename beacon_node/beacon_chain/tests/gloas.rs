@@ -18840,3 +18840,213 @@ async fn gloas_consecutive_empty_blocks_chain_continues() {
         "head should be at the continuation slot"
     );
 }
+
+/// When a block's envelope is withheld (EMPTY parent), `process_withdrawals_gloas`
+/// returns early for the next block, leaving `payload_expected_withdrawals` unchanged.
+/// The next block's self-build envelope must carry the *stale* withdrawals from the
+/// withheld block — not a fresh computation.
+///
+/// This exercises the withdrawal carryover invariant from consensus-specs PR #4962:
+/// block N has withdrawals, payload doesn't arrive, block N+1 (EMPTY parent) skips
+/// withdrawal processing, and N+1's envelope must satisfy N's stale withdrawals.
+///
+/// Flow:
+///   Block W (external bid, withheld): parent FULL → `process_withdrawals_gloas` runs
+///     → computes W_stale, stores in `payload_expected_withdrawals`
+///   Block R (self-build, EMPTY parent): `process_withdrawals_gloas` returns early
+///     → `payload_expected_withdrawals` = W_stale (unchanged)
+///   Envelope R: must carry W_stale to pass `process_execution_payload_envelope` validation
+#[tokio::test]
+async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
+    // Set up with a builder that has a pending withdrawal — this ensures
+    // the withheld block's withdrawal list is non-empty and distinctive.
+    let fee_recipient = Address::repeat_byte(0xCC);
+    let payment_amount = 3_000_000_000u64; // 3 ETH in Gwei
+    let pending_withdrawal = BuilderPendingWithdrawal {
+        fee_recipient,
+        amount: payment_amount,
+        builder_index: 0,
+    };
+
+    let harness = gloas_harness_with_pending_withdrawals(
+        &[(0, 10_000_000_000)], // builder 0: deposit_epoch=0, balance=10 ETH
+        &[pending_withdrawal],
+    );
+
+    // Extend 64 slots: establishes chain, finalizes, activates builder.
+    // The builder pending withdrawal is consumed by the first block's
+    // process_withdrawals_gloas (slot 1, genesis parent is FULL).
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+
+    // Pre-condition: chain is finalized and builder is active
+    assert!(
+        head_state.finalized_checkpoint().epoch >= Epoch::new(1),
+        "should be finalized past epoch 0"
+    );
+
+    // --- Withheld block (external bid, no envelope) ---
+    let withheld_slot = head_slot + 1;
+    let bid = make_external_bid(&head_state, head_root, withheld_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid);
+
+    harness.advance_slot();
+    let ((withheld_block, withheld_blobs), post_withheld_state, withheld_env) = harness
+        .make_block_with_envelope(head_state, withheld_slot)
+        .await;
+    assert!(
+        withheld_env.is_none(),
+        "external bid block should not have self-build envelope"
+    );
+
+    // Record the withheld block's payload_expected_withdrawals — these are the
+    // stale withdrawals that must carry over to the next block's envelope.
+    let w_stale: Vec<Withdrawal> = post_withheld_state
+        .payload_expected_withdrawals()
+        .expect("should have payload_expected_withdrawals")
+        .iter()
+        .cloned()
+        .collect();
+
+    let withheld_root = withheld_block.canonical_root();
+    harness
+        .process_block(
+            withheld_slot,
+            withheld_root,
+            (withheld_block, withheld_blobs),
+        )
+        .await
+        .expect("withheld block should import");
+
+    // Verify: withheld block is EMPTY (payload not revealed)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&withheld_root)
+            .unwrap();
+        assert!(
+            !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "withheld block should have payload_revealed=false"
+        );
+    }
+
+    // --- Recovery block (self-build, EMPTY parent) ---
+    let recovery_slot = withheld_slot + 1;
+    harness.advance_slot();
+    let ((recovery_block, recovery_blobs), post_recovery_state, recovery_env) = harness
+        .make_block_with_envelope(post_withheld_state, recovery_slot)
+        .await;
+    let recovery_envelope =
+        recovery_env.expect("recovery block should be self-build with envelope");
+
+    // Core assertion 1: the recovery block's post-state still has the stale
+    // withdrawals from the withheld block (process_withdrawals_gloas returned
+    // early because parent was EMPTY).
+    let recovery_expected: Vec<Withdrawal> = post_recovery_state
+        .payload_expected_withdrawals()
+        .expect("should have payload_expected_withdrawals")
+        .iter()
+        .cloned()
+        .collect();
+    assert_eq!(
+        w_stale, recovery_expected,
+        "payload_expected_withdrawals should be unchanged after EMPTY parent — \
+         the stale withdrawals from the withheld block must persist"
+    );
+
+    // Core assertion 2: the recovery envelope's actual withdrawals match the
+    // stale withdrawals. This is what process_execution_payload_envelope validates
+    // at envelope_processing.rs:197-206.
+    let envelope_withdrawals: Vec<Withdrawal> = recovery_envelope
+        .message
+        .payload
+        .withdrawals
+        .iter()
+        .cloned()
+        .collect();
+    assert_eq!(
+        w_stale, envelope_withdrawals,
+        "recovery envelope withdrawals must match the stale withdrawals from \
+         the withheld block — the EL must include the carried-over withdrawals"
+    );
+
+    // Import the recovery block and process its envelope to verify the full pipeline
+    let recovery_root = recovery_block.canonical_root();
+    harness
+        .process_block(
+            recovery_slot,
+            recovery_root,
+            (recovery_block, recovery_blobs),
+        )
+        .await
+        .expect("recovery block should import");
+
+    harness
+        .chain
+        .process_self_build_envelope(&recovery_envelope)
+        .await
+        .expect("recovery envelope should process — stale withdrawals must be accepted");
+
+    // Verify: recovery block is FULL after envelope processing
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&recovery_root)
+            .unwrap();
+        assert!(
+            fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "recovery block should have payload_revealed=true after envelope"
+        );
+    }
+
+    // Verify: chain continues (sanity check)
+    let cont_slot = recovery_slot + 1;
+    let cont_state = harness.chain.head_beacon_state_cloned();
+    harness.advance_slot();
+    let ((cont_block, cont_blobs), _cont_post, cont_env) = harness
+        .make_block_with_envelope(cont_state, cont_slot)
+        .await;
+    let cont_envelope = cont_env.expect("continuation should be self-build");
+
+    // The continuation block's withdrawals should be freshly computed (parent FULL)
+    // and should differ from the stale ones if withdrawal indices advanced.
+    let cont_withdrawals: Vec<Withdrawal> = cont_envelope
+        .message
+        .payload
+        .withdrawals
+        .iter()
+        .cloned()
+        .collect();
+
+    let cont_root = cont_block.canonical_root();
+    harness
+        .process_block(cont_slot, cont_root, (cont_block, cont_blobs))
+        .await
+        .expect("continuation block should import");
+    harness
+        .chain
+        .process_self_build_envelope(&cont_envelope)
+        .await
+        .expect("continuation envelope should process");
+
+    // The continuation block's withdrawals prove that normal withdrawal processing
+    // resumed after the EMPTY gap (parent FULL → fresh computation).
+    // We don't assert they differ from w_stale (they might coincidentally match
+    // if the sweep wraps around), but we verify the chain is healthy.
+    let final_head = harness.chain.head_snapshot();
+    assert_eq!(
+        final_head.beacon_block_root, cont_root,
+        "continuation block should be the head"
+    );
+    let _ = cont_withdrawals; // used for clarity, suppress unused warning
+}
