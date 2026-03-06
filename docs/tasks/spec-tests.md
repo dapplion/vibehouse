@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — get_advanced_hot_state blinded envelope fallback test (run 450)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 449 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
+- **Open Gloas PR status**: Same 10 PRs (#4954, #4950, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). No new merges.
+- **Coverage gap analysis**: Deep exploration of `get_advanced_hot_state` (hot_cold_store.rs:1184-1254) identified that the blinded envelope fallback path (lines 1190-1204) was entirely untested. The existing test (`gloas_get_advanced_hot_state_reapplies_envelope_from_db`) exercises the full envelope re-application path, but never the fallback where the full payload has been pruned and only the blinded envelope remains. This fallback is production-critical: after finalization, full payloads are pruned via `DeleteExecutionPayload`, leaving only blinded envelopes. If a node restarts and needs to load a state from this region, it must reconstruct the full envelope from the blinded one using `into_full_with_withdrawals(state.payload_expected_withdrawals())`.
+- **New test** (1, commit `99834d871`):
+  - `gloas_get_advanced_hot_state_blinded_envelope_fallback` — builds 3-block chain, prunes the head block's full payload via `DeleteExecutionPayload` (keeping the blinded envelope), evicts the state cache to force the DB path, then calls `get_advanced_hot_state`. The function must: (1) miss cache, (2) load pre-envelope state from DB, (3) fail to load full envelope (`get_payload_envelope` returns None), (4) fall back to `get_blinded_payload_envelope`, (5) reconstruct via `into_full_with_withdrawals` using `payload_expected_withdrawals`, (6) re-apply the reconstructed envelope. Asserts: `latest_block_hash` matches the bid's block_hash, and `execution_payload_availability` bit is correctly set. This covers the blinded fallback path at hot_cold_store.rs:1192-1204.
+- **CI status**: All 748 beacon_chain tests pass (747→748). Full workspace clippy clean.
+
 ### 2026-03-06 — consecutive EMPTY blocks chain recovery test (run 449)
 - Audited recently merged consensus-specs PRs — no behavioral Gloas changes since v1.7.0-alpha.2 (all CI/tooling)
 - Added `gloas_consecutive_empty_blocks_chain_continues` integration test for two consecutive external builder bid withholdings
