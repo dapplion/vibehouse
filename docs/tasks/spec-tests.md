@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — fix on_execution_bid gossip handler bug, spec PR review (run 463)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4947 (pre-fork proposer_preferences subscription note — already implemented in vibehouse via `PRE_FORK_SUBSCRIBE_EPOCHS`), #4948 (PayloadStatus constant reorder EMPTY=0/FULL=1/PENDING=2 — already implemented, vibehouse enum matches), #4918 (attestation validation: reject index=1 attestations unless payload_states has the block root — already implemented at fork_choice.rs:1198-1206), #4923 (IGNORE beacon block if parent payload unknown — already implemented at block_verification.rs:971-984). All 4 spec changes confirmed already in vibehouse.
+- **Bug found and fixed**: `apply_execution_bid_to_fork_choice` (beacon_chain.rs:2528) passed `bid.message.parent_block_root` as the `beacon_block_root` argument to `on_execution_bid`, but `on_execution_bid` checks `bid.slot != node.slot` — since the parent is at slot N-1 and the bid is for slot N, this ALWAYS fails with `SlotMismatch`. The `on_execution_bid` function is a vibehouse-specific addition (not in the consensus-specs — bids are processed during `on_block` in the spec). The fork choice node's `builder_index` is already set correctly during `on_block` (proto_array_fork_choice.rs:973), making the gossip-time fork choice call redundant. The bid pool insertion (the production-critical path) happened before the failing fork choice call, so block production was unaffected — but every gossip bid logged a spurious warning.
+- **Fix**: Renamed `apply_execution_bid_to_fork_choice` → `import_execution_bid`, removed the fork choice call, kept only the bid pool insertion. Updated gossip handler (gossip_methods.rs) and HTTP API (http_api/lib.rs) callers. Removed 4 integration tests that tested the unreachable fork choice update path with artificial `parent_block_root == head_root` setups, kept `on_execution_bid` unit tests in fork_choice.rs since they test valid fork choice behavior. Added `gloas_import_execution_bid_inserts_into_pool` test.
+- **CI status**: All tests green. Clippy clean. 748 beacon_chain tests (751→748, net -3 from removed unreachable-path tests), 163/163 network tests, 230/230 HTTP API tests.
+
 ### 2026-03-06 — gossip bid pool insertion integration tests (run 462)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 461. No new Gloas behavioral merges.
