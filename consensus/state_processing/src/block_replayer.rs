@@ -463,9 +463,9 @@ mod tests {
     use types::{
         Address, BeaconBlock, BeaconBlockBodyGloas, BeaconBlockGloas, BeaconBlockHeader,
         BeaconStateGloas, Builder, BuilderPendingPayment, BuilderPubkeyCache, CACHED_EPOCHS,
-        Checkpoint, CommitteeCache, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
-        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExitCache, FixedVector, Fork,
-        MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache,
+        Checkpoint, CommitteeCache, DepositRequest, Epoch, ExecutionBlockHash, ExecutionPayloadBid,
+        ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionRequests, ExitCache, FixedVector,
+        Fork, MinimalEthSpec, ProgressiveBalancesCache, PubkeyCache, SignatureBytes,
         SignedBlindedExecutionPayloadEnvelope, SignedExecutionPayloadBid, SlashingsCache,
         SyncAggregate, SyncCommittee, Unsigned, Vector, Withdrawal,
     };
@@ -2014,5 +2014,183 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Build a valid non-anchor envelope that includes the given execution requests.
+    /// The state root is computed to account for the execution request effects.
+    fn make_non_anchor_envelope_with_requests(
+        state: &BeaconState<E>,
+        spec: &ChainSpec,
+        anchor_block: &SignedBeaconBlock<E, BlindedPayload<E>>,
+        non_anchor_block: &SignedBeaconBlock<E, BlindedPayload<E>>,
+        execution_requests: ExecutionRequests<E>,
+    ) -> SignedExecutionPayloadEnvelope<E> {
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state.clone(), spec)
+            .no_signature_verification()
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block.clone(), non_anchor_block.clone()], None)
+            .expect("two-block replay without envelopes should succeed");
+        let post_block_state = replayer.into_state();
+
+        let bid = post_block_state
+            .latest_execution_payload_bid()
+            .unwrap()
+            .clone();
+        let latest_block_hash = *post_block_state.latest_block_hash().unwrap();
+
+        let mut header = post_block_state.latest_block_header().clone();
+        header.state_root = post_block_state.clone().canonical_root().unwrap();
+        let beacon_block_root = header.tree_hash_root();
+
+        let timestamp =
+            compute_timestamp_at_slot(&post_block_state, post_block_state.slot(), spec).unwrap();
+
+        let payload = ExecutionPayloadGloas {
+            parent_hash: latest_block_hash,
+            block_hash: bid.block_hash,
+            prev_randao: bid.prev_randao,
+            gas_limit: bid.gas_limit,
+            timestamp,
+            withdrawals: VariableList::default(),
+            ..Default::default()
+        };
+
+        let mut envelope = SignedExecutionPayloadEnvelope {
+            message: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests,
+                builder_index: bid.builder_index,
+                beacon_block_root,
+                slot: post_block_state.slot(),
+                state_root: Hash256::zero(),
+            },
+            signature: BlsSignature::empty(),
+        };
+        fix_envelope_state_root(&post_block_state, &mut envelope, spec);
+        envelope
+    }
+
+    #[test]
+    fn non_anchor_envelope_with_deposit_request_updates_pending_deposits() {
+        // When a full envelope contains a deposit request, the replayer should
+        // apply process_execution_payload_envelope which runs process_deposit_requests,
+        // adding the deposit to pending_deposits.
+        let (state, spec, anchor_block, non_anchor_block, non_anchor_root) =
+            make_two_block_sequence();
+
+        // Confirm pending_deposits starts empty
+        assert!(
+            state.pending_deposits().unwrap().is_empty(),
+            "pre-condition: pending_deposits should be empty"
+        );
+
+        // Build a deposit request with a fresh pubkey NOT matching any existing
+        // validator (indices 0..7) or builder (empty pubkey). Use keypair index 100.
+        let fresh_keypair = types::test_utils::generate_deterministic_keypairs(101)
+            .pop()
+            .unwrap();
+        let deposit_request = DepositRequest {
+            pubkey: fresh_keypair.pk.compress(),
+            withdrawal_credentials: Hash256::repeat_byte(0x01),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 0,
+        };
+        let mut execution_requests = ExecutionRequests::default();
+        execution_requests.deposits.push(deposit_request).unwrap();
+
+        let envelope = make_non_anchor_envelope_with_requests(
+            &state,
+            &spec,
+            &anchor_block,
+            &non_anchor_block,
+            execution_requests,
+        );
+
+        let mut envelopes = HashMap::new();
+        envelopes.insert(non_anchor_root, envelope);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .envelopes(envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            result_state.pending_deposits().unwrap().len(),
+            1,
+            "envelope deposit request should be added to pending_deposits"
+        );
+        assert_eq!(
+            result_state
+                .pending_deposits()
+                .unwrap()
+                .get(0)
+                .unwrap()
+                .amount,
+            32_000_000_000,
+            "deposit amount should match the request"
+        );
+    }
+
+    #[test]
+    fn non_anchor_blinded_envelope_with_deposit_request_updates_pending_deposits() {
+        // The blinded envelope path (used for cold storage replay after payload pruning)
+        // should also process execution requests, since blinded envelopes retain them.
+        let (state, spec, anchor_block, non_anchor_block, non_anchor_root) =
+            make_two_block_sequence();
+
+        // Use the same fresh pubkey approach as the full envelope test
+        let fresh_keypair = types::test_utils::generate_deterministic_keypairs(101)
+            .pop()
+            .unwrap();
+        let deposit_request = DepositRequest {
+            pubkey: fresh_keypair.pk.compress(),
+            withdrawal_credentials: Hash256::repeat_byte(0x01),
+            amount: 32_000_000_000,
+            signature: SignatureBytes::empty(),
+            index: 0,
+        };
+        let mut execution_requests = ExecutionRequests::default();
+        execution_requests.deposits.push(deposit_request).unwrap();
+
+        let envelope = make_non_anchor_envelope_with_requests(
+            &state,
+            &spec,
+            &anchor_block,
+            &non_anchor_block,
+            execution_requests,
+        );
+
+        let blinded = make_blinded_envelope(&envelope);
+
+        let mut blinded_envelopes = HashMap::new();
+        blinded_envelopes.insert(non_anchor_root, blinded);
+
+        let replayer: BlockReplayer<E> = BlockReplayer::new(state, &spec)
+            .no_signature_verification()
+            .blinded_envelopes(blinded_envelopes)
+            .no_state_root_iter()
+            .apply_blocks(vec![anchor_block, non_anchor_block], None)
+            .unwrap();
+
+        let result_state = replayer.into_state();
+        assert_eq!(
+            result_state.pending_deposits().unwrap().len(),
+            1,
+            "blinded envelope deposit request should be added to pending_deposits"
+        );
+        assert_eq!(
+            result_state
+                .pending_deposits()
+                .unwrap()
+                .get(0)
+                .unwrap()
+                .amount,
+            32_000_000_000,
+            "deposit amount should match the request"
+        );
     }
 }
