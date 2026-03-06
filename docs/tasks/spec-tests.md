@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — empty-parent stale withdrawal persistence test (run 441)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 440. Only CI/tooling PRs: #4978, #4959, #4974, #4967-#4971, #4964, #4709, #4956.
+- **Open Gloas PR status**: Same 10 PRs as run 440. New test PRs #4962 (sanity/blocks missed payload withdrawal interactions) and #4960 (fork choice new validator deposit) are open but not merged. These are test-only PRs, no behavioral spec changes.
+- **Coverage gap analysis**: Deep exploration across per_block_processing/gloas.rs, envelope_processing.rs, beacon_chain.rs, block_verification.rs, hot_cold_store.rs, fork_choice.rs, and gossip_methods.rs. Identified 8 genuine untested paths including: (1) envelope re-application failure in hot_cold_store (warn path), (2) split state root post-envelope re-application, (3) zero-hash parent metric skip verification, (4) latest_block_hash_mut error case in load_parent, (5) full parent patch value change verification, (6) blinded envelope reconstructed with missing withdrawals, (7) already_applied false positive detection, (8) **empty parent stale payload_expected_withdrawals persistence** — inspired by consensus-specs#4962 (potuz's missed payload withdrawal interaction tests).
+- **New test** (1, commit `261e8c6c0`):
+  - `empty_parent_preserves_stale_payload_expected_withdrawals` — creates a FULL parent state with a builder pending withdrawal, calls `process_withdrawals_gloas` to populate `payload_expected_withdrawals`, then makes the parent EMPTY (simulating missed payload delivery by changing `latest_block_hash`), calls `process_withdrawals_gloas` again (which returns early), and asserts `payload_expected_withdrawals` retains its stale value from the FULL block. This verifies the exact behavior from consensus-specs#4962: when a payload is missed, the stale withdrawals persist in state so the next envelope can match them. 548/548 state_processing tests pass (547→548).
+- **CI status**: All tests green. Clippy clean. 548/548 state_processing tests pass.
+
 ### 2026-03-06 — proposer preferences head-behind-wall-clock gossip test (run 440)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4978 (mdformat hidden files), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate), #4709 (pytest plugin for vector generation), #4956 (ssz_generic pytest), #4906 (more deposit_request tests). No new Gloas behavioral merges.
