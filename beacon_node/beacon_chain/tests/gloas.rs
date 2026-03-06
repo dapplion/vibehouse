@@ -7180,22 +7180,11 @@ async fn gloas_blob_quorum_strictly_greater_than_threshold() {
 }
 
 // =============================================================================
-// apply_execution_bid_to_fork_choice integration tests
+// execution bid pool integration tests
 // =============================================================================
 
-/// After a block is imported with a self-build bid, applying an external bid
-/// via verify_execution_bid_for_gossip + apply_execution_bid_to_fork_choice
-/// should both insert into the bid pool AND update fork choice builder_index.
-/// Since constructing a VerifiedExecutionBid requires passing signature checks
-/// against a registered builder (which the minimal test harness doesn't have),
-/// we test the equivalent path: verify that get_best_execution_bid returns
-/// bids that were inserted through apply_execution_bid_to_fork_choice's pool
-/// insertion (bid pool is populated by the same method that updates fork choice).
-/// The fork choice on_execution_bid updates are separately tested via unit tests
-/// in fork_choice.rs.
-///
-/// This test verifies the pool insertion side of apply_execution_bid_to_fork_choice
-/// by directly inserting into the pool (same code path) and checking retrieval.
+/// Verify that get_best_execution_bid returns bids from the pool, selecting
+/// the highest-value bid, and that old-slot bids are pruned on query.
 #[tokio::test]
 async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
     let harness = gloas_harness_at_epoch(0);
@@ -7223,7 +7212,7 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
         signature: Signature::empty(),
     };
 
-    // Insert through the pool (same as apply_execution_bid_to_fork_choice line 2515)
+    // Insert through the pool (same as import_execution_bid)
     {
         let mut pool = harness.chain.execution_bid_pool.lock();
         pool.insert(bid1);
@@ -7250,93 +7239,13 @@ async fn gloas_bid_pool_insertion_and_retrieval_via_chain() {
 }
 
 // =============================================================================
-// apply_execution_bid_to_fork_choice — end-to-end integration tests
+// import_execution_bid integration tests
 // =============================================================================
 
-/// Test that `apply_execution_bid_to_fork_choice` updates fork choice node fields.
-/// When envelope has already been received (self-build), on_execution_bid preserves
-/// payload_revealed/payload_data_available state while updating builder_index.
-/// This exercises the full beacon_chain → fork_choice → proto_array pipeline.
+/// Test that `import_execution_bid` inserts the bid into the execution bid pool,
+/// verifiable via `get_best_execution_bid`.
 #[tokio::test]
-async fn gloas_apply_bid_to_fork_choice_updates_node_fields() {
-    use beacon_chain::gloas_verification::VerifiedExecutionBid;
-
-    let harness = gloas_harness_at_epoch(0);
-    Box::pin(harness.extend_slots(3)).await;
-
-    let head = harness.chain.head_snapshot();
-    let head_root = head.beacon_block_root;
-    let head_slot = head.beacon_block.slot();
-
-    // Before applying an external bid, verify the node has self-build builder_index
-    {
-        let fc = harness.chain.canonical_head.fork_choice_read_lock();
-        let node = fc
-            .get_block(&head_root)
-            .expect("head should be in fork choice");
-        assert_eq!(
-            node.builder_index,
-            Some(u64::MAX),
-            "head should have self-build builder_index before external bid"
-        );
-        // After extend_slots, payload is revealed (self-build envelope processed)
-        assert!(
-            node.payload_revealed,
-            "payload should be revealed after extend_slots"
-        );
-    }
-
-    // Create an external bid targeting the head block
-    let external_builder_index = 42u64;
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
-            slot: head_slot,
-            builder_index: external_builder_index,
-            parent_block_root: head_root,
-            value: 1000,
-            ..Default::default()
-        },
-        signature: Signature::empty(),
-    };
-
-    let verified_bid = VerifiedExecutionBid::__new_for_testing(bid);
-
-    // Apply the bid through the beacon_chain method
-    let result = harness
-        .chain
-        .apply_execution_bid_to_fork_choice(&verified_bid);
-    assert!(
-        result.is_ok(),
-        "apply_execution_bid_to_fork_choice should succeed: {:?}",
-        result.err()
-    );
-
-    // Verify fork choice state was updated by on_execution_bid
-    let fc = harness.chain.canonical_head.fork_choice_read_lock();
-    let node = fc
-        .get_block(&head_root)
-        .expect("head should still be in fork choice");
-
-    assert_eq!(
-        node.builder_index,
-        Some(external_builder_index),
-        "builder_index should be updated to external builder"
-    );
-    // Payload state preserved because envelope was already received (self-build)
-    assert!(
-        node.payload_revealed,
-        "payload_revealed should be preserved (envelope already received)"
-    );
-    assert!(
-        node.payload_data_available,
-        "payload_data_available should be preserved (envelope already received)"
-    );
-}
-
-/// Test that `apply_execution_bid_to_fork_choice` also inserts the bid into the
-/// execution bid pool, verifiable via `get_best_execution_bid`.
-#[tokio::test]
-async fn gloas_apply_bid_to_fork_choice_inserts_into_pool() {
+async fn gloas_import_execution_bid_inserts_into_pool() {
     use beacon_chain::gloas_verification::VerifiedExecutionBid;
 
     let harness = gloas_harness_at_epoch(0);
@@ -7358,10 +7267,7 @@ async fn gloas_apply_bid_to_fork_choice_inserts_into_pool() {
     };
 
     let verified_bid = VerifiedExecutionBid::__new_for_testing(bid);
-    harness
-        .chain
-        .apply_execution_bid_to_fork_choice(&verified_bid)
-        .expect("should succeed");
+    harness.chain.import_execution_bid(&verified_bid);
 
     // Verify bid is retrievable from pool (must pass matching parent_block_root)
     let best = harness
@@ -7370,157 +7276,6 @@ async fn gloas_apply_bid_to_fork_choice_inserts_into_pool() {
         .expect("should have a bid in the pool");
     assert_eq!(best.message.value, 5000);
     assert_eq!(best.message.builder_index, 7);
-}
-
-/// Test that `apply_execution_bid_to_fork_choice` returns an error when the
-/// bid references a beacon block root not in fork choice.
-#[tokio::test]
-async fn gloas_apply_bid_to_fork_choice_rejects_unknown_root() {
-    use beacon_chain::gloas_verification::VerifiedExecutionBid;
-
-    let harness = gloas_harness_at_epoch(0);
-    Box::pin(harness.extend_slots(2)).await;
-
-    let unknown_root = Hash256::from_low_u64_be(0xdeadbeef);
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
-            slot: Slot::new(2),
-            builder_index: 1,
-            parent_block_root: unknown_root,
-            value: 100,
-            ..Default::default()
-        },
-        signature: Signature::empty(),
-    };
-
-    let verified_bid = VerifiedExecutionBid::__new_for_testing(bid);
-    let result = harness
-        .chain
-        .apply_execution_bid_to_fork_choice(&verified_bid);
-    assert!(
-        result.is_err(),
-        "should reject bid with unknown beacon block root"
-    );
-}
-
-/// Test that `apply_execution_bid_to_fork_choice` returns an error when the
-/// bid slot doesn't match the block's slot in fork choice.
-#[tokio::test]
-async fn gloas_apply_bid_to_fork_choice_rejects_slot_mismatch() {
-    use beacon_chain::gloas_verification::VerifiedExecutionBid;
-
-    let harness = gloas_harness_at_epoch(0);
-    Box::pin(harness.extend_slots(3)).await;
-
-    let head = harness.chain.head_snapshot();
-    let head_root = head.beacon_block_root;
-    let head_slot = head.beacon_block.slot();
-
-    // Bid slot doesn't match the block's actual slot
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
-            slot: head_slot + 100,
-            builder_index: 1,
-            parent_block_root: head_root,
-            value: 100,
-            ..Default::default()
-        },
-        signature: Signature::empty(),
-    };
-
-    let verified_bid = VerifiedExecutionBid::__new_for_testing(bid);
-    let result = harness
-        .chain
-        .apply_execution_bid_to_fork_choice(&verified_bid);
-    assert!(result.is_err(), "should reject bid with mismatched slot");
-}
-
-/// Test the full lifecycle: apply external bid → verify fork choice reset →
-/// then apply envelope → verify payload_revealed flips back to true.
-/// This exercises the complete bid→reveal cycle through the beacon_chain layer.
-#[tokio::test]
-async fn gloas_bid_then_envelope_lifecycle_via_beacon_chain() {
-    use beacon_chain::gloas_verification::VerifiedExecutionBid;
-
-    let harness = gloas_harness_at_epoch(0);
-    Box::pin(harness.extend_slots(3)).await;
-
-    let head = harness.chain.head_snapshot();
-    let head_root = head.beacon_block_root;
-    let head_slot = head.beacon_block.slot();
-
-    // Clear envelope_received and payload_revealed so bid triggers payload state reset.
-    // Self-build blocks have envelope_received=true and payload_revealed=true, but this
-    // test verifies the bid→envelope lifecycle when neither has happened yet.
-    {
-        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        let block_index = *fc
-            .proto_array()
-            .core_proto_array()
-            .indices
-            .get(&head_root)
-            .expect("head root should be in fork choice");
-        let node = &mut fc.proto_array_mut().core_proto_array_mut().nodes[block_index];
-        node.envelope_received = false;
-        node.payload_revealed = false;
-    }
-
-    // Step 1: Apply external bid — should reset payload_revealed (envelope not received)
-    let bid = SignedExecutionPayloadBid::<E> {
-        message: ExecutionPayloadBid {
-            slot: head_slot,
-            builder_index: 10,
-            parent_block_root: head_root,
-            value: 3000,
-            ..Default::default()
-        },
-        signature: Signature::empty(),
-    };
-
-    let verified_bid = VerifiedExecutionBid::__new_for_testing(bid);
-    harness
-        .chain
-        .apply_execution_bid_to_fork_choice(&verified_bid)
-        .expect("bid should be applied");
-
-    // Verify payload_revealed is false after bid (envelope not received)
-    {
-        let fc = harness.chain.canonical_head.fork_choice_read_lock();
-        let node = fc.get_block(&head_root).unwrap();
-        assert!(
-            !node.payload_revealed,
-            "payload_revealed should be false after external bid"
-        );
-        assert_eq!(node.builder_index, Some(10));
-    }
-
-    // Step 2: Reveal payload via on_execution_payload in fork choice
-    // (simulates envelope arrival)
-    let payload_hash = ExecutionBlockHash::from_root(Hash256::from_low_u64_be(0xcafe));
-    {
-        let mut fc = harness.chain.canonical_head.fork_choice_write_lock();
-        fc.on_execution_payload(head_root, payload_hash)
-            .expect("on_execution_payload should succeed");
-    }
-
-    // Verify payload_revealed is now true
-    {
-        let fc = harness.chain.canonical_head.fork_choice_read_lock();
-        let node = fc.get_block(&head_root).unwrap();
-        assert!(
-            node.payload_revealed,
-            "payload_revealed should be true after on_execution_payload"
-        );
-        assert!(
-            node.payload_data_available,
-            "payload_data_available should be true after reveal"
-        );
-        assert_eq!(
-            node.execution_status,
-            ExecutionStatus::Optimistic(payload_hash),
-            "execution_status should be Optimistic with the payload hash"
-        );
-    }
 }
 
 // =============================================================================
@@ -11309,17 +11064,13 @@ async fn gloas_payload_absent_attestations_do_not_reveal_payload() {
 // on_execution_bid resets fork choice node fields
 // =============================================================================
 
-/// Test that `apply_execution_bid_to_fork_choice` resets `payload_revealed`,
-/// `ptc_weight`, `ptc_blob_data_available_weight`, and `payload_data_available`
-/// on the fork choice node.
+/// Test that `on_execution_bid` resets `payload_revealed`, `ptc_weight`,
+/// `ptc_blob_data_available_weight`, and `payload_data_available` on the
+/// fork choice node.
 ///
 /// In the ePBS flow, when a new bid arrives for a block, the previous bid's
 /// state should be reset. This is important because if a builder was previously
 /// tracking PTC weight from a prior bid, a new bid should start fresh.
-///
-/// The existing `gloas_apply_bid_to_fork_choice_updates_node_fields` test checks
-/// that builder_index is SET, but doesn't verify the RESET behavior of the
-/// reveal/weight/availability fields.
 #[tokio::test]
 async fn gloas_on_execution_bid_resets_reveal_and_weight_fields() {
     let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);

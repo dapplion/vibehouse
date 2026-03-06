@@ -3434,29 +3434,22 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
         self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Accept);
 
-        // Import to fork choice
-        if let Err(e) = self.chain.apply_execution_bid_to_fork_choice(&verified_bid) {
-            warn!(
-                builder_index,
-                error = ?e,
-                "Failed to import execution bid to fork choice"
-            );
-        } else {
-            debug!(builder_index, "Successfully imported execution bid");
-            metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL);
+        // Import to bid pool for block production
+        self.chain.import_execution_bid(&verified_bid);
+        debug!(builder_index, "Successfully imported execution bid");
+        metrics::inc_counter(&metrics::BEACON_PROCESSOR_EXECUTION_BID_IMPORTED_TOTAL);
 
-            if let Some(event_handler) = self.chain.event_handler.as_ref()
-                && event_handler.has_execution_bid_subscribers()
-            {
-                let bid = verified_bid.bid();
-                event_handler.register(EventKind::ExecutionBid(SseExecutionBid {
-                    slot: bid.message.slot,
-                    block: bid.message.parent_block_root,
-                    builder_index: bid.message.builder_index,
-                    block_hash: bid.message.block_hash.into_root(),
-                    value: bid.message.value,
-                }));
-            }
+        if let Some(event_handler) = self.chain.event_handler.as_ref()
+            && event_handler.has_execution_bid_subscribers()
+        {
+            let bid = verified_bid.bid();
+            event_handler.register(EventKind::ExecutionBid(SseExecutionBid {
+                slot: bid.message.slot,
+                block: bid.message.parent_block_root,
+                builder_index: bid.message.builder_index,
+                block_hash: bid.message.block_hash.into_root(),
+                value: bid.message.value,
+            }));
         }
     }
 

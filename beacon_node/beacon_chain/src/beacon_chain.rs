@@ -2524,21 +2524,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .map_err(Into::into)
     }
 
-    /// Applies a verified execution bid to fork choice and adds it to the bid pool (gloas ePBS).
-    pub fn apply_execution_bid_to_fork_choice(
+    /// Imports a verified execution bid into the bid pool for later block production (gloas ePBS).
+    ///
+    /// The fork choice node's `builder_index` is set during `on_block` when the block
+    /// containing the winning bid is imported — we don't update fork choice here because
+    /// at gossip time the block for this bid's slot doesn't exist yet.
+    pub fn import_execution_bid(
         &self,
         verified_bid: &crate::gloas_verification::VerifiedExecutionBid<T>,
-    ) -> Result<(), Error> {
+    ) {
         let bid = verified_bid.bid();
-        let beacon_block_root = bid.message.parent_block_root;
-
-        // Add to bid pool for later selection during block production.
         self.execution_bid_pool.lock().insert(bid.clone());
-
-        self.canonical_head
-            .fork_choice_write_lock()
-            .on_execution_bid(bid, beacon_block_root)
-            .map_err(Into::into)
     }
 
     /// Returns the best (highest value) external bid for the given slot and parent root, if any.

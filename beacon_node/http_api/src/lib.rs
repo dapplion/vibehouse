@@ -2864,13 +2864,7 @@ pub fn serve<T: BeaconChainTypes>(
                         }
                     };
 
-                    if let Err(e) = chain.apply_execution_bid_to_fork_choice(&verified_bid) {
-                        warn!(
-                            builder_index,
-                            error = ?e,
-                            "Failed to import execution bid to fork choice"
-                        );
-                    }
+                    chain.import_execution_bid(&verified_bid);
 
                     publish_pubsub_message(
                         &network_tx,
