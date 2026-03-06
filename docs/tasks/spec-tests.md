@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — consecutive EMPTY blocks chain recovery test (run 449)
+- Audited recently merged consensus-specs PRs — no behavioral Gloas changes since v1.7.0-alpha.2 (all CI/tooling)
+- Added `gloas_consecutive_empty_blocks_chain_continues` integration test for two consecutive external builder bid withholdings
+- Test verifies: `latest_block_hash` stays at grandparent's EL hash through two EMPTY slots, self-build recovery works, envelope processing restores `payload_revealed=true`, and chain continues with correct `parent_block_hash`
+- Notable finding: `head_beacon_state_cloned()` returns a stale state (grandparent's) after importing an EMPTY block due to state_cache `put_state` returning `Duplicate` without creating a `block_map` entry — test threads production state through consecutive blocks to work around this
+- All 747 beacon_chain tests pass
+- Commit: `dc2e8099e`
+
 ### 2026-03-06 — restore_from_store head_hash recovery test + spec PR audit (run 448)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Spec PR audit** — reviewed 5 recently merged PRs for Gloas impact:
