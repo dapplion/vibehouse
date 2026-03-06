@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — gossip envelope InvalidSignature network handler test (run 455)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 454 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
+- **Open Gloas PR status**: Same 6 open PRs as run 454 (#4962, #4960, #4940, #4939, #4843, #4932). No new merges.
+- **Coverage gap analysis**: Exhaustive exploration across gossip_methods.rs, fork_choice.rs, proto_array.rs, per_block_processing.rs, and single_pass.rs identified 16 untested Gloas code paths. The highest-impact actionable gap was the `PayloadEnvelopeError::InvalidSignature` arm at gossip_methods.rs:3508-3522 — all existing network-level envelope tests use self-build envelopes (builder_index=BUILDER_INDEX_SELF_BUILD), which skip BLS signature verification entirely. The InvalidSignature handler (Reject + LowToleranceError peer penalty) was never exercised at the network handler level. Other notable gaps identified: skip-slot attestation with EMPTY head payload status (medium — consensus-visible `data.index` field, but requires complex fork choice manipulation), `process_gossip_verified_execution_proof` DuplicateFullyImported/MissingComponents/pruned-block branches (low — silent drops), and `process_execution_payload_bid` with `verify_signatures=true` (high at unit level, but orthogonal to network handler testing).
+- **New test** (1, commit `6e1021971`):
+  - `test_gloas_gossip_payload_envelope_invalid_signature_rejected` — creates a builder rig (`gloas_rig_with_builders` with builder 0 active, balance=2B gwei, deposit_epoch=0), inserts an external bid for the next slot into `execution_bid_pool`, produces a block that selects the external bid (builder_index=0, block_hash=zero), imports the block, clears `observed_payload_envelopes`, constructs an envelope with matching builder_index (0) + block_hash (zero) but signed with builder 1's private key (wrong key). Asserts: `MessageAcceptance::Reject` propagated. This exercises the full `InvalidSignature` → Reject + `LowToleranceError` peer penalty path at gossip_methods.rs:3508-3522 that was unreachable with self-build envelopes.
+- **CI status**: All tests green. Clippy clean. 155/155 network tests pass (154→155).
+
 ### 2026-03-06 — stale withdrawal carryover across EMPTY parent test (run 454)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 453 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
