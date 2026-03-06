@@ -5964,3 +5964,71 @@ async fn test_gloas_gossip_block_import_processes_pending_envelope() {
         "pending_gossip_envelopes should be empty after block import drained the buffer"
     );
 }
+
+/// Gloas gossip: when a block is imported via gossip WITHOUT a pending envelope
+/// (simulating the external-builder path or an envelope that hasn't arrived yet),
+/// the block enters fork choice with `payload_revealed = false`. This verifies the
+/// two-phase ePBS model: the block (with the bid) is imported first and the payload
+/// envelope may arrive later.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_gloas_gossip_block_import_no_pending_envelope_stays_unrevealed() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Produce a new block + envelope using the harness.
+    let head_state = rig.chain.head_beacon_state_cloned();
+    let next_slot = rig.chain.slot().unwrap();
+    let (block_contents, _state, _envelope) = rig
+        ._harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+    let block = block_contents.0.clone();
+    let block_root = block.canonical_root();
+
+    // Do NOT buffer any envelope — simulate the scenario where the envelope has
+    // not yet arrived (external builder hasn't revealed, or timing race).
+    assert!(
+        rig.chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "precondition: no pending envelope for this block"
+    );
+
+    // Send the block through the gossip handler.
+    rig.network_beacon_processor
+        .send_gossip_beacon_block(
+            junk_message_id(),
+            junk_peer_id(),
+            Client::default(),
+            block,
+            Duration::from_secs(0),
+        )
+        .unwrap();
+
+    rig.assert_event_journal_completes(&[WorkType::GossipBlock])
+        .await;
+
+    // Verify: block was imported and became head.
+    assert_eq!(
+        rig.head_root(),
+        block_root,
+        "block should be imported and become head"
+    );
+
+    // Verify: payload_revealed is false — no envelope was processed for this block.
+    // In ePBS, the block carries the bid; the payload is revealed separately via the
+    // envelope. Without the envelope, the block stays in the "payload not revealed" state.
+    let fc = rig.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc
+        .get_block(&block_root)
+        .expect("block should be in fork choice after import");
+    assert!(
+        !proto_block.payload_revealed,
+        "payload_revealed should be false when no envelope was processed"
+    );
+}
