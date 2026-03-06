@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — stateless proof unknown root buffering network test (run 453)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 452 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
+- **Open Gloas PR status**: Same 11 PRs as run 452 (#4954, #4960, #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558). No new merges.
+- **Coverage gap analysis**: Run 452 identified three untested stateless execution proof gossip paths and covered (1) the `Imported` branch. This run covers (2): `UnknownBlockRoot` with `stateless_validation = true`. The existing `test_gloas_gossip_execution_proof_unknown_root_ignored` uses a non-stateless rig — it verifies `MessageAcceptance::Ignore` but does NOT verify proof buffering. On stateless nodes, the handler buffers the proof's subnet_id into `pending_execution_proofs` (gossip_methods.rs:4057-4068) so it can be replayed after block import via `process_pending_execution_proofs`. Also attempted a multi-subnet threshold test (threshold=2, two different subnet proofs) but `MAX_EXECUTION_PROOF_SUBNETS = 1` means only subnet 0 exists — multi-subnet accumulation is not testable with current constants.
+- **New test** (1, commit `4e3761600`):
+  - `test_gloas_gossip_execution_proof_stateless_unknown_root_buffered` — creates a stateless gloas rig (2-block chain, `stateless_min_proofs_required = 1`), sends a proof with unknown block_root `0xee..ee`. Asserts: (1) `MessageAcceptance::Ignore` propagated (same as non-stateless), (2) proof subnet_id is buffered in `pending_execution_proofs[unknown_root]` (stateless-only path). This exercises the buffering branch at gossip_methods.rs:4057-4068 that is unreachable on non-stateless nodes and was previously untested at the network handler level.
+- **CI status**: All tests green. Clippy clean. 154/154 network tests pass (153→154).
+
 ### 2026-03-06 — stateless execution proof gossip import integration test (run 452)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 451 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
