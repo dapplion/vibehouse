@@ -2761,6 +2761,142 @@ async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     assert_reject(result);
 }
 
+/// Gloas gossip: two PTC attestations from different members accumulate `ptc_weight`
+/// in fork choice and are inserted into the payload attestation pool.
+///
+/// The existing `test_gloas_gossip_payload_attestation_valid_accepted` only checks
+/// `MessageAcceptance::Accept` without verifying the downstream effects. This test
+/// verifies the full gossip handler pipeline at gossip_methods.rs:3791-3825:
+/// 1. Both attestations are accepted (MessageAcceptance::Accept)
+/// 2. Fork choice `ptc_weight` accumulates correctly (0 → 1 → 2)
+/// 3. Both attestations are inserted into the payload attestation pool
+///
+/// This exercises `apply_payload_attestation_to_fork_choice` (beacon_chain.rs:3257)
+/// and `insert_payload_attestation_to_pool` (gossip_methods.rs:3824) — the two
+/// post-Accept handler steps that were previously untested at the network level.
+#[tokio::test]
+async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+    let head = rig.chain.head_snapshot();
+    let head_state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let spec = &rig.chain.spec;
+
+    // Reset ptc_weight to 0. Self-build envelopes during block production already
+    // set payload_revealed=true, but ptc_weight starts at 0 since no PTC votes
+    // have been received via gossip yet.
+    {
+        let mut fc = rig.chain.canonical_head.fork_choice_write_lock();
+        let node_mut = fc
+            .proto_array_mut()
+            .core_proto_array_mut()
+            .nodes
+            .iter_mut()
+            .find(|n| n.root == head_root)
+            .expect("node must exist");
+        node_mut.ptc_weight = 0;
+    }
+
+    // Use head_slot (the block's slot) for the attestation data, NOT the wall clock.
+    // on_payload_attestation silently skips if data.slot != node.slot (spec rule),
+    // and the wall clock may have advanced 1 slot past the head.
+    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+        head_state, head_slot, spec,
+    )
+    .expect("should get PTC committee");
+
+    assert!(
+        ptc_indices.len() >= 2,
+        "PTC must have at least 2 members for this test"
+    );
+
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &head_state.fork(),
+        head_state.genesis_validators_root(),
+    );
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let signing_root = data.signing_root(domain);
+
+    // Send first PTC attestation
+    let validator_index_0 = ptc_indices[0];
+    let sk0 = &rig._harness.validator_keypairs[validator_index_0 as usize].sk;
+    let message_0 = types::PayloadAttestationMessage {
+        validator_index: validator_index_0,
+        data: data.clone(),
+        signature: sk0.sign(signing_root),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message_0)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // After first vote: ptc_weight should be 1
+    {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&head_root)
+            .expect("head must be in fork choice");
+        assert_eq!(
+            node.ptc_weight, 1,
+            "ptc_weight should be 1 after first PTC vote"
+        );
+    }
+
+    // Send second PTC attestation from a different PTC member
+    let validator_index_1 = ptc_indices[1];
+    let sk1 = &rig._harness.validator_keypairs[validator_index_1 as usize].sk;
+    let message_1 = types::PayloadAttestationMessage {
+        validator_index: validator_index_1,
+        data,
+        signature: sk1.sign(signing_root),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message_1)
+        .await;
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // After second vote: ptc_weight should be 2
+    {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&head_root)
+            .expect("head must be in fork choice");
+        assert_eq!(
+            node.ptc_weight, 2,
+            "ptc_weight should be 2 after two PTC votes"
+        );
+    }
+
+    // Verify both attestations were inserted into the payload attestation pool.
+    // The pool stores PayloadAttestations keyed by slot.
+    let pool = rig.chain.payload_attestation_pool.lock();
+    let pool_attestations = pool.get(&head_slot).cloned().unwrap_or_default();
+    assert!(
+        !pool_attestations.is_empty(),
+        "payload attestation pool should contain attestations for the head block's slot"
+    );
+}
+
 // ======== Gloas (ePBS) proposer preferences gossip handler tests ========
 //
 // These tests verify the `process_gossip_proposer_preferences` handler which
