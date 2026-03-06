@@ -1997,8 +1997,11 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
         // bid.parent_block_hash with the parent block's bid.block_hash.
         //
         // - Parent FULL (child_bid.parent_block_hash == parent_bid.block_hash):
-        //   state.latest_block_hash must equal parent_bid.block_hash. Patch if needed
-        //   (e.g. range sync where envelope isn't stored in DB).
+        //   state.latest_block_hash must equal parent_bid.block_hash. Patch if needed.
+        //   The DB path in get_advanced_hot_state re-applies the full envelope, but
+        //   the cache path may return a pre-envelope state (e.g. from state advance
+        //   timer). This patch ensures latest_block_hash is correct so
+        //   process_execution_payload_bid passes.
         // - Parent EMPTY (child_bid.parent_block_hash != parent_bid.block_hash):
         //   state.latest_block_hash stays at the grandparent's block_hash. Don't patch.
         if state.fork_name_unchecked().gloas_enabled()
@@ -2010,8 +2013,8 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
                 && parent_bid_block_hash != ExecutionBlockHash::zero();
             if is_full_parent {
                 // Parent is FULL: ensure latest_block_hash reflects the parent's
-                // revealed payload. This covers range sync where envelopes aren't
-                // stored but the original chain had them processed.
+                // revealed payload. Defensive patch for the cache-hit path where
+                // the cached state may be pre-envelope.
                 metrics::inc_counter(&metrics::BLOCK_IMPORT_FULL_PARENT_TOTAL);
                 if let Ok(h) = state.latest_block_hash_mut()
                     && *h != parent_bid_block_hash

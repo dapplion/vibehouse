@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — spec tracking, 3 merged Gloas PRs verified compliant, load_parent comment fix, PR #4954 pre-analysis (run 484)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Newly reviewed merged PRs (all already implemented)**:
+  - **#4923 (Ignore beacon block if parent payload unknown)**: Merged Feb 16. Already implemented in `block_verification.rs:970-983` with `GloasParentPayloadUnknown` error → `MessageAcceptance::Ignore` in gossip handler. 3 integration tests cover it.
+  - **#4918 (Only allow attestations for known payload statuses)**: Merged Feb 23. Already implemented in `fork_choice.rs:1198-1206` with `PayloadNotRevealed` error for index=1 attestations. Integration test covers the flow.
+  - **#4948 (Reorder payload status constants)**: Merged Feb 26. Already correct — `GloasPayloadStatus` enum uses `Empty=0, Full=1, Pending=2`.
+- **Open Gloas PR status**: Same 10 tracked PRs, no status changes. All still OPEN.
+- **Code change**: Fixed misleading comment in `load_parent` (block_verification.rs:1994-2001). The comment incorrectly said the `latest_block_hash` patch "covers range sync where envelopes aren't stored". Investigation proved this is insufficient — `StateRootMismatch` occurs because the patch only fixes `latest_block_hash` but not other envelope effects (execution requests, payments, availability bits). The real range sync mechanism is `get_advanced_hot_state`'s DB path which re-applies the full envelope. Updated comment to accurately describe the patch as defensive for the cache-hit path.
+- **PR #4954 (Fork choice ms) pre-analysis**: Changes `store.time` (seconds) to `store.time_ms` (milliseconds), `store.genesis_time` to `store.genesis_time_ms`. Adds `seconds_to_milliseconds`, `milliseconds_to_seconds`, `compute_time_at_slot_ms`, `compute_time_into_slot_ms` helpers. **Low impact for vibehouse** — our fork choice uses `Slot` abstraction (not raw time), and millisecond timing is handled by `SlotClock`. Would require updating spec comments but minimal code changes.
+
 ### 2026-03-06 — spec tracking, PR #4843 (Variable PTC deadline) pre-analysis (run 483)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Recently merged spec PRs reviewed**: No new Gloas merges since run 482. Only CI/tooling/dependency PRs (#4986 renovate, #4984 EIP-6800 removal, #4983 release-drafter, #4982 ruff, #4981 codespell, #4980 python, #4978 mdformat).
