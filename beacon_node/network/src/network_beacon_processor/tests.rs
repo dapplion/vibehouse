@@ -3899,6 +3899,91 @@ async fn test_gloas_gossip_execution_proof_valid_stub_accepted() {
     assert_accept(result);
 }
 
+/// Gloas gossip: execution proof for a finalized block is IGNORED with peer penalty.
+///
+/// Per design: an execution proof referencing a block prior to finalization is stale.
+/// The handler should Ignore the proof (not Reject) and apply a HighToleranceError
+/// peer penalty. This mirrors the payload envelope PriorToFinalization behavior
+/// (tested separately) but exercises the execution proof gossip handler path at
+/// gossip_methods.rs:4083-4098.
+///
+/// The test builds a chain long enough for finalization, finds a block root from
+/// before the finalized slot (still present in proto_array), constructs a valid-looking
+/// proof targeting that root, and verifies Ignore propagation.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_prior_to_finalization_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Build a chain long enough for finalization to occur.
+    let mut rig = gloas_rig(SLOTS_PER_EPOCH * 3).await;
+
+    // Get the finalized checkpoint
+    let head = rig.chain.head_snapshot();
+    let finalized_checkpoint = head.beacon_state.finalized_checkpoint();
+    let finalized_epoch = finalized_checkpoint.epoch;
+    let finalized_slot = finalized_epoch.start_slot(E::slots_per_epoch());
+
+    // Only run if finalization occurred beyond genesis
+    if finalized_epoch.as_u64() == 0 {
+        return;
+    }
+
+    // Find a block root from before finalization that is still in fork choice.
+    // Slot 1 should exist (Gloas from genesis, no skip slots in harness).
+    let early_slot = Slot::new(1);
+    assert!(
+        early_slot < finalized_slot,
+        "slot 1 must be before finalized_slot {finalized_slot}"
+    );
+
+    let early_block_root = rig
+        .chain
+        .block_root_at_slot(early_slot, WhenSlotSkipped::None)
+        .expect("no DB error")
+        .expect("slot 1 must have a block");
+
+    // Verify the block is still in fork choice (proto_array retains finalized blocks)
+    let bid_block_hash = {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&early_block_root)
+            .expect("early block must still be in fork choice");
+        assert!(
+            node.slot < finalized_slot,
+            "block slot {} must be before finalized slot {}",
+            node.slot,
+            finalized_slot
+        );
+        // Use the bid block hash if available, otherwise use a zero hash.
+        // Genesis-era Gloas blocks have bids with zero block_hash.
+        node.bid_block_hash.unwrap_or(ExecutionBlockHash::zero())
+    };
+
+    let proof = Arc::new(ExecutionProof::new(
+        early_block_root,
+        bid_block_hash,
+        ExecutionProofSubnetId::new(0).unwrap(),
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42], // valid stub proof data
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            ExecutionProofSubnetId::new(0).unwrap(),
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    // PriorToFinalization → Ignore + HighToleranceError peer penalty
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
+
 // ======== Gloas (ePBS) execution bid gossip handler tests — builder paths ========
 //
 // These tests exercise execution bid gossip error paths that require a registered
