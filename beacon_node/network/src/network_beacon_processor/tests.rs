@@ -4456,6 +4456,135 @@ async fn test_gloas_gossip_bid_valid_accepted() {
     assert_accept(result);
 }
 
+/// Gloas gossip: after a valid bid is accepted, verify end-to-end downstream effects:
+/// the bid is inserted into the execution_bid_pool and retrievable for block production.
+///
+/// This complements `test_gloas_gossip_bid_valid_accepted` (which only checks gossip
+/// MessageAcceptance) by verifying the complete pipeline: gossip → verification →
+/// pool insertion → block production availability.
+#[tokio::test]
+async fn test_gloas_gossip_bid_valid_inserted_into_pool() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Pre-condition: bid pool is empty
+    assert!(
+        rig.chain
+            .get_best_execution_bid(current_slot, head_root)
+            .is_none(),
+        "bid pool should be empty before gossip"
+    );
+
+    // Insert matching proposer preferences (required for bid validation)
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid,
+    );
+
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Post-condition: bid is now in the pool and retrievable for block production
+    let best_bid = rig
+        .chain
+        .get_best_execution_bid(current_slot, head_root)
+        .expect("bid should be in pool after gossip acceptance");
+    assert_eq!(best_bid.message.builder_index, 0);
+    assert_eq!(best_bid.message.value, 100);
+    assert_eq!(best_bid.message.slot, current_slot);
+    assert_eq!(best_bid.message.parent_block_root, head_root);
+}
+
+/// Gloas gossip: multiple valid bids from different builders are all inserted into the
+/// pool, and the highest-value bid is selected for block production.
+///
+/// Verifies the pool correctly tracks multiple builders and selects the best bid
+/// when queried during block production, exercising the full gossip → pool → selection
+/// pipeline with competing bids.
+#[tokio::test]
+async fn test_gloas_gossip_multiple_bids_best_selected_from_pool() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 2_000_000_000)],
+    )
+    .await;
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let current_slot = rig.chain.slot().unwrap();
+
+    // Insert preferences accepting any builder
+    insert_preferences_for_bid(&rig, current_slot, Address::ZERO, 0);
+
+    // Submit bid from builder 0 with value 100
+    let bid_msg_0 = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let bid_0 = sign_bid(&rig, 0, bid_msg_0);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid_0,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Submit bid from builder 1 with higher value 500
+    let bid_msg_1 = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 500,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let bid_1 = sign_bid(&rig, 1, bid_msg_1);
+
+    rig.network_beacon_processor.process_gossip_execution_bid(
+        junk_message_id(),
+        junk_peer_id(),
+        bid_1,
+    );
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // The highest-value bid (builder 1, value 500) should be selected
+    let best_bid = rig
+        .chain
+        .get_best_execution_bid(current_slot, head_root)
+        .expect("should have bids in pool");
+    assert_eq!(best_bid.message.builder_index, 1);
+    assert_eq!(best_bid.message.value, 500);
+}
+
 /// Gloas gossip: execution bid without proposer preferences is IGNORED.
 ///
 /// Per spec: [IGNORE] SignedProposerPreferences for bid.slot has been seen
