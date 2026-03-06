@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — execution proof gossip verification tests, spec tracking (run 487)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
+- **New tests** (4, commit `82a434107`): Added integration tests for `verify_execution_proof_for_gossip` structural checks 1-3 that were previously only covered at the unit test level:
+  - `gloas_execution_proof_invalid_subnet_id`: Constructs out-of-bounds subnet ID via DerefMut (bypasses `ExecutionProofSubnetId::new()` validation), verifies `InvalidSubnetId` error.
+  - `gloas_execution_proof_invalid_version`: Uses version 0 (unsupported), verifies `InvalidVersion` error.
+  - `gloas_execution_proof_empty_proof_data`: Empty proof data, verifies `ProofDataEmpty` error.
+  - `gloas_execution_proof_oversized_proof_data`: Proof exceeding `MAX_EXECUTION_PROOF_SIZE`, verifies `ProofDataTooLarge` error.
+  - All 4 pass through the full `BeaconChain::verify_execution_proof_for_gossip` chain method, exercising the same code path as real gossip reception.
+- **Test coverage audit**: Identified remaining coverage gaps via codebase analysis: `envelope_processing.rs` defensive checks (`BuilderPaymentIndexOutOfBounds`, `BitFieldError`), `get_ptc_committee` `NoActiveValidators` error, `reconstruct.rs` Gloas empty-path state reconstruction. All are either impossible in practice (defensive assertions) or very unlikely edge cases.
+- **Dependency security**: No new advisories since run 486. Same 11 unmaintained-crate warnings from transitive dependencies.
+- **Build & test verification**: Release build clean (0 warnings). 763/763 beacon_chain tests pass (up from 759). Full clippy clean via pre-push hook.
+- **CI status**: All CI green. Recent runs (483-486) all successful.
+
 ### 2026-03-06 — 3 more dependency upgrades (lru, tokio, discv5), spec tracking (run 486)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
