@@ -5082,3 +5082,70 @@ async fn test_gloas_gossip_payload_envelope_el_invalid_skips_fork_choice() {
         );
     }
 }
+
+/// Verify that when a gossip block arrives whose parent's execution payload has not
+/// been revealed (GloasParentPayloadUnknown), the network handler:
+/// 1. Propagates MessageAcceptance::Ignore (not Reject — the block may be valid)
+/// 2. Dispatches SyncMessage::UnknownParentBlock to queue it for re-processing
+///
+/// The beacon_chain test (`gloas_gossip_rejects_block_with_unrevealed_parent_payload`)
+/// verified the underlying BlockError at the verify_block_for_gossip level. This test
+/// exercises the full network gossip handler path (gossip_methods.rs:1291-1302) to
+/// confirm the handler correctly translates the error into Ignore + sync dispatch,
+/// rather than silently dropping the block or penalizing the peer.
+#[tokio::test]
+async fn test_gloas_gossip_block_parent_payload_unknown_ignored_and_synced() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // The rig's next_block has the chain head as its parent.
+    let parent_root = rig.next_block.message().parent_root();
+
+    // Manipulate fork choice: set the parent block's payload_revealed = false.
+    // This simulates the real scenario where a Gloas block arrived via gossip
+    // but its execution payload envelope hasn't been received yet.
+    {
+        let mut fc = rig.chain.canonical_head.fork_choice_write_lock();
+        let block_index = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&parent_root)
+            .expect("parent root should be in fork choice");
+        // Confirm this is a Gloas block (has bid_block_hash)
+        assert!(
+            fc.proto_array().core_proto_array().nodes[block_index]
+                .bid_block_hash
+                .is_some(),
+            "parent should be a Gloas block with bid_block_hash"
+        );
+        fc.proto_array_mut().core_proto_array_mut().nodes[block_index].payload_revealed = false;
+    }
+
+    // Send the child block through the gossip handler
+    rig.enqueue_gossip_block();
+    rig.assert_event_journal_completes(&[WorkType::GossipBlock])
+        .await;
+
+    // 1. Verify MessageAcceptance::Ignore was propagated (not Reject)
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+
+    // 2. Verify SyncMessage::UnknownParentBlock was dispatched
+    let sync_messages = rig
+        .receive_sync_messages_with_timeout(Duration::from_millis(500), Some(1))
+        .await
+        .expect("should receive sync message for unknown parent payload");
+    assert_eq!(
+        sync_messages.len(),
+        1,
+        "should receive exactly one sync message"
+    );
+    assert!(
+        matches!(&sync_messages[0], SyncMessage::UnknownParentBlock(_, _, root) if *root == rig.next_block.canonical_root()),
+        "sync message should be UnknownParentBlock with the child block's root"
+    );
+}
