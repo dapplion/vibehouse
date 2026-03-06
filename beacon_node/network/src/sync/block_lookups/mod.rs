@@ -650,9 +650,8 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
                         );
                         let peer_group = request_state.on_processing_failure()?;
                         let peers_to_penalize: Vec<_> = match other {
-                            // Note: currenlty only InvalidColumn errors have index granularity,
-                            // but future errors may follow the same pattern. Generalize this
-                            // pattern with https://github.com/sigp/lighthouse/pull/6321
+                            // Note: currently only InvalidColumn errors have index granularity,
+                            // but future errors may follow the same pattern.
                             BlockError::AvailabilityCheck(
                                 AvailabilityCheckError::InvalidColumn((index_opt, _)),
                             ) => {

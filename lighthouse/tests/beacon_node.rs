@@ -2044,7 +2044,7 @@ fn malicious_withhold_count_flag() {
 }
 
 // Tests for Slasher flags.
-// Using `--slasher-max-db-size` to work around https://github.com/sigp/lighthouse/issues/2342
+// Using `--slasher-max-db-size` to work around default DB size issues in test environments.
 #[test]
 fn slasher_flag() {
     CommandLineTest::new()

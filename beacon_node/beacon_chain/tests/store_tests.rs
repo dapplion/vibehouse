@@ -907,7 +907,7 @@ async fn delete_blocks_and_states() {
 }
 
 // Check that we never produce invalid blocks when there is deep forking that changes the shuffling.
-// See https://github.com/sigp/lighthouse/issues/845
+// Regression test: deep forking that changes the shuffling should not produce invalid blocks.
 async fn multi_epoch_fork_valid_blocks_test(
     initial_blocks: usize,
     num_fork1_blocks_: usize,
@@ -1189,7 +1189,7 @@ fn check_shuffling_compatible(
                     // We used to check for false negatives here, but had to remove that check
                     // because `shuffling_is_compatible` does not guarantee their absence.
                     //
-                    // See: https://github.com/sigp/lighthouse/issues/6269
+                    // Known: `shuffling_is_compatible` does not guarantee absence of false negatives.
                     if current_epoch_shuffling_is_compatible {
                         assert_eq!(
                             committee_cache,
@@ -2786,7 +2786,7 @@ async fn weak_subjectivity_sync_unaligned_unadvanced_checkpoint() {
     weak_subjectivity_sync_test(slots, checkpoint_slot, None).await
 }
 
-// Regression test for https://github.com/sigp/lighthouse/issues/4817
+// Regression test: skipping slots immediately after genesis should not break the store.
 // Skip 3 slots immediately after genesis, creating a gap between the genesis block and the first
 // real block.
 #[tokio::test]
@@ -2825,7 +2825,7 @@ async fn weak_subjectivity_sync_test(
     // TODO(das): Run a supernode so the node has full blobs stored.
     // This may not be required in the future if we end up implementing downloading checkpoint
     // blobs from p2p peers:
-    // https://github.com/sigp/lighthouse/issues/6837
+    // TODO: implement downloading checkpoint blobs/columns from p2p peers.
     let harness = get_harness_import_all_data_columns(full_store.clone(), LOW_VALIDATOR_COUNT);
 
     let all_validators = (0..LOW_VALIDATOR_COUNT).collect::<Vec<_>>();
@@ -3101,7 +3101,7 @@ async fn weak_subjectivity_sync_test(
         }
 
         // Corrupt the signature on the 1st block to ensure that the backfill processor is checking
-        // signatures correctly. Regression test for https://github.com/sigp/lighthouse/pull/5120.
+        // signatures correctly.
         let mut batch_with_invalid_first_block =
             available_blocks.iter().map(clone_block).collect::<Vec<_>>();
         batch_with_invalid_first_block[0] = {
@@ -3146,7 +3146,7 @@ async fn weak_subjectivity_sync_test(
 
             // We should be able to load the block root at the `oldest_block_slot`.
             //
-            // This is a regression test for: https://github.com/sigp/lighthouse/issues/7690
+            // Regression test: block root at oldest_block_slot should be loadable after backfill.
             let oldest_block_imported = &batch[0];
             let (oldest_block_slot, oldest_block_root) =
                 if oldest_block_imported.block().parent_root() == beacon_chain.genesis_block_root {
@@ -3284,7 +3284,7 @@ async fn weak_subjectivity_sync_test(
 
     // Anchor slot is still set to the slot of the checkpoint block.
     // Note: since hot tree states the anchor slot is set to the aligned ws state slot
-    // https://github.com/sigp/lighthouse/pull/6750
+    // Note: with hot tree states, anchor slot is set to the aligned ws state slot.
     let wss_aligned_slot = if checkpoint_slot % E::slots_per_epoch() == 0 {
         checkpoint_slot
     } else {

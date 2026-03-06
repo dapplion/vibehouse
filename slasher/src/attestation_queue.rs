@@ -23,9 +23,7 @@ pub type SimpleBatch<E> = Vec<Arc<IndexedAttesterRecord<E>>>;
 pub struct AttestationBatch<E: EthSpec> {
     /// Map from (`validator_index`, `attestation_data_hash`) to indexed attester record.
     ///
-    /// This mapping is used for de-duplication, see:
-    ///
-    /// <https://github.com/sigp/lighthouse/issues/2112>
+    /// This mapping is used for de-duplication.
     pub attesters: BTreeMap<(u64, Hash256), Arc<IndexedAttesterRecord<E>>>,
 
     /// Vec of all unique indexed attester records.

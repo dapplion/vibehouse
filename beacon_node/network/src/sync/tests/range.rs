@@ -458,8 +458,7 @@ fn build_rpc_block(
 
 #[test]
 fn head_chain_removed_while_finalized_syncing() {
-    // NOTE: this is a regression test.
-    // Added in PR https://github.com/sigp/lighthouse/pull/2821
+    // Regression test: head chain should be removed when finalized sync starts.
     let mut rig = TestRig::test_setup();
 
     // Get a peer with an advanced head
@@ -483,8 +482,7 @@ fn head_chain_removed_while_finalized_syncing() {
 
 #[tokio::test]
 async fn state_update_while_purging() {
-    // NOTE: this is a regression test.
-    // Added in PR https://github.com/sigp/lighthouse/pull/2827
+    // Regression test: state update should not panic while purging chains.
     // Gloas (ePBS): cross-harness block import fails due to bid parent_block_hash mismatch
     if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
         return;

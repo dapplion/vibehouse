@@ -79,7 +79,7 @@ impl ValidatorDir {
         }
 
         // Lock the keystore file that *might* be in this directory.
-        // This is not ideal, see: https://github.com/sigp/lighthouse/issues/1978
+        // This is not ideal — we should lock the directory, not just the keystore file.
         let lockfile_path = dir.join(format!("{}.lock", VOTING_KEYSTORE_FILE));
         let lockfile = Lockfile::new(lockfile_path).map_err(Error::LockfileError)?;
 

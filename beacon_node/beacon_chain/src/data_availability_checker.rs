@@ -1086,7 +1086,7 @@ mod test {
         )
     }
 
-    /// Regression test for KZG verification truncation bug (https://github.com/sigp/lighthouse/pull/7927)
+    /// Regression test for KZG verification truncation bug.
     #[test]
     fn verify_kzg_for_rpc_blocks_should_not_truncate_data_columns() {
         let spec = Arc::new(ForkName::Fulu.make_genesis_spec(E::default_spec()));

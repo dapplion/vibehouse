@@ -1566,7 +1566,7 @@ fn test_delayed_rpc_response() {
                                 // The second and subsequent responses are delayed due to the response rate-limiter on the receiver side.
                                 // Adding a slight margin to the elapsed time check to account for potential timing issues caused by system
                                 // scheduling or execution delays during testing.
-                                // https://github.com/sigp/lighthouse/issues/7466
+                                // Known timing sensitivity in response rate-limiter tests.
                                 let margin = 500;
                                 assert!(
                                     request_sent_at.elapsed()

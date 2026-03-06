@@ -1032,7 +1032,7 @@ async fn pseudo_finalize_test_generic(
     // In the case that we did not process the true finalization migration (due to
     // epochs_per_migration), check that the chain finalized *despite* the absence of the split
     // block in fork choice.
-    // This is a regression test for https://github.com/sigp/lighthouse/pull/7105
+    // Regression test: chain should finalize even when split block is absent from fork choice.
     if !expect_true_finalization_migration {
         assert_eq!(expected_split_slot, pseudo_finalized_slot);
         assert!(

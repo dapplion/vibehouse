@@ -1543,9 +1543,9 @@ fn test_parent_lookup_too_deep_grow_ancestor() {
     rig.assert_ignored_chain(chain_hash);
 }
 
-// Regression test for https://github.com/sigp/lighthouse/pull/7118
-// 8042 UPDATE: block was previously added to the failed_chains cache, now it's inserted into the
-// ignored chains cache. The regression test still applies as the chaild lookup is not created
+// Regression test: child lookup should not be created for ignored chain parent after processing.
+// Block was previously added to the failed_chains cache, now it's inserted into the
+// ignored chains cache. The regression test still applies as the child lookup is not created.
 #[test]
 fn test_child_lookup_not_created_for_ignored_chain_parent_after_processing() {
     // GIVEN: A parent chain longer than PARENT_DEPTH_TOLERANCE.

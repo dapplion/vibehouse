@@ -1875,8 +1875,7 @@ async fn add_altair_block_to_base_chain() {
     ));
 }
 
-// This is a regression test for this bug:
-// https://github.com/sigp/lighthouse/issues/4332#issuecomment-1565092279
+// Regression test: duplicate block import should not corrupt unrealized justification.
 #[tokio::test]
 async fn import_duplicate_block_unrealized_justification() {
     let spec = MainnetEthSpec::default_spec();

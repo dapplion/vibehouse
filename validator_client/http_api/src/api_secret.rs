@@ -17,12 +17,7 @@ pub const PK_LEN: usize = 33;
 ///  - Verification of proof-of-knowledge of the public key in `self` for incoming HTTP requests,
 ///    via the `Authorization` header.
 ///
-///  The aforementioned scheme was first defined here:
-///
-///  <https://github.com/sigp/lighthouse/issues/1269#issuecomment-649879855>
-///
-///  This scheme has since been tweaked to remove VC response signing and secp256k1 key generation.
-///  <https://github.com/sigp/lighthouse/issues/5423>
+///  This scheme has been simplified to remove VC response signing and secp256k1 key generation.
 pub struct ApiSecret {
     pk: String,
     pk_path: PathBuf,

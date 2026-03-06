@@ -1056,8 +1056,7 @@ mod tests {
         );
     }
 
-    // Regression test for issue #5504.
-    // See: https://github.com/sigp/lighthouse/issues/5504#issuecomment-2050930045
+    // Regression test: failed backfill schedule should reschedule correctly.
     #[tokio::test]
     async fn backfill_schedule_failed_should_reschedule() {
         create_test_tracing_subscriber();
@@ -1147,8 +1146,7 @@ mod tests {
         ReprocessQueue::new(ready_work_tx, reprocess_work_rx, slot_clock)
     }
 
-    // This is a regression test for a memory leak in `awaiting_attestations_per_root`.
-    // See: https://github.com/sigp/lighthouse/pull/8065
+    // Regression test for a memory leak in `awaiting_attestations_per_root`.
     #[tokio::test]
     async fn prune_awaiting_attestations_per_root() {
         create_test_tracing_subscriber();
@@ -1187,8 +1185,7 @@ mod tests {
         assert!(queue.awaiting_attestations_per_root.is_empty());
     }
 
-    // This is a regression test for a memory leak in `awaiting_lc_updates_per_parent_root`.
-    // See: https://github.com/sigp/lighthouse/pull/8065
+    // Regression test for a memory leak in `awaiting_lc_updates_per_parent_root`.
     #[tokio::test]
     async fn prune_awaiting_lc_updates_per_parent_root() {
         create_test_tracing_subscriber();

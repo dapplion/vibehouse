@@ -2539,8 +2539,7 @@ mod tests {
         assert!(!connected_peers.contains(&peers[7]));
     }
 
-    /// This test is for reproducing the issue:
-    /// <https://github.com/sigp/lighthouse/pull/3236#issue-1256432659>
+    /// Regression test for peer pruning order sensitivity.
     ///
     /// Whether the issue happens depends on `custody_subnet_to_peers` (HashMap), since HashMap doesn't
     /// guarantee a particular order of iteration. So we repeat the test case to try to reproduce

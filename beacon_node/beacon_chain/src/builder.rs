@@ -506,9 +506,8 @@ where
                 // Blobs expected for this block, but the checkpoint server is not able to serve them.
                 // This is expected from Fulu, as only supernodes are able to serve blobs.
                 // We can consider using backfill to retrieve the data columns from the p2p network,
-                // but we can ignore this fow now until we have validator custody backfill
+                // but we can ignore this for now until we have validator custody backfill
                 // implemented as we'll likely be able to reuse the logic.
-                // https://github.com/sigp/lighthouse/issues/6837
             } else {
                 let commitments = weak_subj_block
                     .message()

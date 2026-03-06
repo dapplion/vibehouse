@@ -5320,7 +5320,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // states, which will delete their temporary flags.
         // If the write fails, revert fork choice to the version from disk, else we can
         // end up with blocks in fork choice that are missing from disk.
-        // See https://github.com/sigp/lighthouse/issues/2028
         let (_, signed_block, block_data) = signed_block.deconstruct();
 
         match self.get_blobs_or_columns_store_op(block_root, signed_block.slot(), block_data) {
@@ -8771,8 +8770,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// given `epoch`.
     pub fn validator_seen_at_epoch(&self, validator_index: usize, epoch: Epoch) -> bool {
         // It's necessary to assign these checks to intermediate variables to avoid a deadlock.
-        //
-        // See: https://github.com/sigp/lighthouse/pull/2230#discussion_r620013993
         let gossip_attested = self
             .observed_gossip_attesters
             .read()

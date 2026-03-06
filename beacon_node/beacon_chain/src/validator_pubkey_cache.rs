@@ -120,7 +120,6 @@ impl<T: BeaconChainTypes> ValidatorPubkeyCache<T> {
             // Stage the new validator key for writing to disk.
             // It will be committed atomically when the block that introduced it is written to disk.
             // Notably it is NOT written while the write lock on the cache is held.
-            // See: https://github.com/sigp/lighthouse/issues/2327
             store_ops.push(StoreOp::KeyValueOp(
                 DatabasePubkey::from_pubkey(&pubkey)
                     .as_kv_store_op(DatabasePubkey::key_for_index(i)),

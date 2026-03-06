@@ -112,9 +112,7 @@ impl GenericExecutionEngine for GethEngine {
             .arg("--authrpc.jwtsecret")
             .arg(jwt_secret_path.as_path().to_str().unwrap())
             // This flag is required to help Geth perform reliably when feeding it blocks
-            // one-by-one. For more information, see:
-            //
-            // https://github.com/sigp/lighthouse/pull/3382#issuecomment-1197680345
+            // Use full sync mode to avoid snap sync state inconsistencies.
             .arg("--syncmode=full")
             .stdout(build_utils::build_stdio())
             .stderr(build_utils::build_stdio())

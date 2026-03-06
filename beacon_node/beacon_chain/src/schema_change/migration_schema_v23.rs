@@ -152,13 +152,7 @@ pub struct SszHeadTracker {
 
 #[derive(Clone, Encode, Decode)]
 pub struct PersistedBeaconChainV22 {
-    /// This value is ignored to resolve the issue described here:
-    ///
-    /// <https://github.com/sigp/lighthouse/pull/1639>
-    ///
-    /// Its removal is tracked here:
-    ///
-    /// <https://github.com/sigp/lighthouse/issues/1784>
+    /// This value is ignored (legacy field, kept for SSZ backwards compatibility).
     pub _canonical_head_block_root: Hash256,
     pub genesis_block_root: Hash256,
     /// DEPRECATED

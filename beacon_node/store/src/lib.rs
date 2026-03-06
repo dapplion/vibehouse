@@ -230,7 +230,6 @@ pub trait ItemStore<E: EthSpec>: KeyValueStore<E> + Sync + Send + Sized + 'stati
 }
 
 /// Reified key-value storage operation.  Helps in modifying the storage atomically.
-/// See also <https://github.com/sigp/lighthouse/issues/692>
 #[derive(Clone)]
 pub enum StoreOp<'a, E: EthSpec> {
     PutBlock(Hash256, Arc<SignedBeaconBlock<E>>),

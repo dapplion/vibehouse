@@ -69,9 +69,7 @@ impl CommitteeCache {
     ) -> Result<Arc<CommitteeCache>, Error> {
         // Check that the cache is being built for an in-range epoch.
         //
-        // We allow caches to be constructed for historic epochs, per:
-        //
-        // https://github.com/sigp/lighthouse/issues/3270
+        // We allow caches to be constructed for historic epochs.
         let reqd_randao_epoch = epoch
             .saturating_sub(spec.min_seed_lookahead)
             .saturating_sub(1u64);

@@ -41,7 +41,7 @@ fn get_harness(
     harness
 }
 
-// Regression test for https://github.com/sigp/lighthouse/issues/7650
+// Regression test: RPC blobs with invalid header signature should be rejected.
 #[tokio::test]
 async fn rpc_blobs_with_invalid_header_signature() {
     let spec = Arc::new(test_spec::<E>());

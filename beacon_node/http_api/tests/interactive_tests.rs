@@ -28,7 +28,7 @@ use types::{
 type E = MainnetEthSpec;
 
 // Test that the deposit_contract endpoint returns the correct chain_id and address.
-// Regression test for https://github.com/sigp/lighthouse/issues/2657
+// Regression test: deposit_contract endpoint should return correct chain_id and address.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn deposit_contract_custom_network() {
     let validator_count = 24;
@@ -993,8 +993,7 @@ async fn proposer_duties_with_gossip_tolerance() {
     let head_block_root = harness.head_block_root();
     let tolerant_current_epoch = next_epoch_start_slot.epoch(E::slots_per_epoch());
 
-    // This is a regression test for the bug described here:
-    // https://github.com/sigp/lighthouse/pull/8130/files#r2386594566
+    // Regression test: proposer shuffling cache should not return stale entries across epochs.
     //
     // To trigger it, we need to prime the proposer shuffling cache with an incorrect entry which
     // the previous code would be liable to lookup due to the bugs in its decision root calculation.

@@ -22,7 +22,6 @@ pub const CONFIG_FILENAME: &str = "validator_definitions.yml";
 /// The temporary file name for the serialized `ValidatorDefinitions` struct.
 ///
 /// This is used to achieve an atomic update of the contents on disk, without truncation.
-/// See: <https://github.com/sigp/lighthouse/issues/2159>
 pub const CONFIG_TEMP_FILENAME: &str = ".validator_definitions.yml.tmp";
 
 #[derive(Debug)]
