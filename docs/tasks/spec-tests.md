@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — builder exit op pool test, test gap analysis (run 474)
+- No new consensus-specs releases or Gloas behavioral merges (quick check, nothing since run 473)
+- **Deep test gap analysis** across 4 areas (operation pool, store, HTTP API, network):
+  - **Operation pool**: No end-to-end test for builder exit op pool → block inclusion retrieval. `get_slashings_and_exits` never called on a Gloas state. Schema migration tests skip under Gloas.
+  - **Store**: Zero Gloas-specific unit tests. `payload_envelope_exists` untested. Schema downgrade/upgrade completely untested under Gloas.
+  - **HTTP API**: Comprehensive coverage (47 Gloas tests). Gaps: no `post_execution_payload_envelope_invalid_signature` test, no `post_payload_attestation` unknown block root test, broadcast validation tests all skip under Gloas.
+  - **Network**: Very thorough coverage. Only gap: `NotGloasBlock` envelope error and generic `Err(e)` catch-all not tested at network layer (covered at beacon_chain level).
+- **New test** (1, commit `28d92822d`): `gloas_builder_exit_op_pool_retrieval` — end-to-end integration test verifying a builder voluntary exit (with BUILDER_INDEX_FLAG) flows correctly from gossip verification → `import_voluntary_exit` → `get_slashings_and_exits` retrieval on a Gloas state. This closes the gap where `verify_exit`'s builder exit handling was only tested at the gossip verification level, not through the full op pool → block inclusion retrieval path.
+- **CI status**: All tests green. Full workspace clippy clean.
+
 ### 2026-03-06 — payload attestation pool tests, spec tracking (run 473)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4950 (extend by_root serve range, merged today — already confirmed compliant in run 467, no code change needed). No other Gloas behavioral merges.
