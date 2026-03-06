@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — block replayer execution request processing tests, spec tracking (run 477)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4983, #4982, #4981, #4980, #4978, #4977 — all CI/tooling/dependency updates. #4977 removes EIP-7441 (SSLE) specs entirely (stagnant feature). No Gloas behavioral changes.
+- **Open Gloas PR status**: All 7 tracked PRs unchanged (#4979, #4954, #4898, #4892, #4843, #4747, #4939). None merged.
+- **Deep test gap analysis**: Comprehensive audit of 5 areas (block replayer, per-slot processing, single-pass epoch processing, process_operations dispatch, attestation verification). Found that per-slot processing, attestation verification (same-slot constraint), and epoch processing are all well-tested. The genuinely untested path was the block replayer's envelope processing with non-empty execution requests — all 33 existing replayer tests used `execution_requests: Default::default()`.
+- **New tests** (2, commit `e48c95e20`): Block replayer execution request processing tests, closing the gap where envelope-carried deposit requests were never exercised during block replay:
+  - `non_anchor_envelope_with_deposit_request_updates_pending_deposits` — creates a full envelope with a deposit request for a fresh pubkey (not an existing validator or builder), replays through the block replayer, asserts `pending_deposits` grows to 1 with correct amount (32 ETH)
+  - `non_anchor_blinded_envelope_with_deposit_request_updates_pending_deposits` — same test via the blinded envelope path (cold storage replay after payload pruning), verifying that execution requests survive the blinding/reconstruction cycle and are correctly processed during historical state reconstruction
+- **Gap closure**: The block replayer now has test coverage for non-empty execution requests in both full and blinded envelope paths. This matters for long-range sync correctness: when nodes reconstruct historical states from pruned data, deposit requests in envelopes must be processed to produce correct state roots. The remaining replayer gaps (mixed full+blinded multi-block sequence) are low-value.
+- **CI status**: All tests green. 550/550 state_processing tests pass. Clippy clean (full workspace lint via pre-push hook).
+
 ### 2026-03-06 — external builder envelope invalid signature HTTP API test, spec tracking (run 476)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4972 (py_arkworks_bls12381 update), #4982 (ruff update), #4981 (codespell update), #4980 (python version). All CI/tooling or dependency updates — no Gloas behavioral changes.
