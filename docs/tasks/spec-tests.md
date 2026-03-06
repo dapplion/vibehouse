@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — gossip envelope EL Syncing optimistic path test (run 444)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same set as run 443 — all CI/tooling, no Gloas behavioral changes.
+- **Open Gloas PR status**: Unchanged from run 443 (10 open PRs).
+- **Coverage gap analysis**: Continuing from run 443's gap list. The `process_gossip_execution_payload` handler in gossip_methods.rs has a critical branch at line 3599: `if el_valid { on_valid_execution_payload(...) }`. When the EL returns Syncing, `el_valid=false` so `on_valid_execution_payload` is skipped — the block stays Optimistic but `payload_revealed=true`. The beacon_chain-level test (`gloas_gossip_envelope_el_syncing_stays_optimistic`) calls `process_payload_envelope` + `apply_payload_envelope_to_fork_choice` directly, but doesn't exercise the gossip handler's `el_valid` guard. No network-level test covered this path.
+- **New test** (1, commit `9cec88dd3`):
+  - `test_gloas_gossip_payload_envelope_el_syncing_stays_optimistic` — creates a gloas_rig (2-block chain), produces a new block+envelope via `make_block_with_envelope`, imports ONLY the block, configures mock EL to return Syncing for newPayload (`all_payloads_syncing_on_new_payload(false)`), clears observed envelopes, then submits the envelope via `process_gossip_execution_payload`. Asserts: (1) gossip validation returns Accept, (2) `payload_revealed=true` in fork choice, (3) `execution_status` is `Optimistic` (NOT `Valid`). This verifies the `el_valid` guard at gossip_methods.rs:3599 that prevents premature execution-validity marking when the EL is still syncing.
+- **CI status**: All tests green. Clippy clean. 150/150 network tests pass (149→150).
+
 ### 2026-03-06 — ExecutionPayload SSE event integration test (run 443)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4978 (mdformat hidden files), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest vector gen plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
