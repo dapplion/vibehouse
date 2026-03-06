@@ -705,7 +705,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         crit!(
                             error = ?err,
                             "Internal error when verifying column sidecar"
-                        )
+                        );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
                     }
                     GossipDataColumnError::ProposalSignatureInvalid
                     | GossipDataColumnError::UnknownValidator(_)
@@ -742,13 +747,17 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     GossipDataColumnError::PriorKnown { .. } => {
                         // Data column is available via either the EL or reconstruction.
                         // Do not penalise the peer.
-                        // Gossip filter should filter any duplicates received after this.
                         debug!(
                             %slot,
                             %block_root,
                             %index,
                             "Received already available column sidecar. Ignoring the column sidecar"
-                        )
+                        );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
                     }
                     GossipDataColumnError::FutureSlot { .. }
                     | GossipDataColumnError::PastFinalizedSlot { .. } => {
@@ -865,7 +874,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         crit!(
                             error = ?err,
                             "Internal error when verifying blob sidecar"
-                        )
+                        );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
                     }
                     GossipBlobError::ProposalSignatureInvalid
                     | GossipBlobError::UnknownValidator(_)
@@ -897,13 +911,17 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     }
                     GossipBlobError::RepeatBlob { .. } => {
                         // We may have received the blob from the EL. Do not penalise the peer.
-                        // Gossip filter should filter any duplicates received after this.
                         debug!(
                             %slot,
                             %root,
                             %index,
                             "Received already available blob sidecar. Ignoring the blob sidecar"
-                        )
+                        );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
                     }
                     GossipBlobError::FutureSlot { .. } => {
                         debug!(
@@ -1281,6 +1299,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     PeerAction::MidToleranceError,
                     "gossip_block_mid",
                 );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
                 return None;
             }
             Err(BlockError::ParentUnknown { .. }) => {
@@ -1387,11 +1406,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             // as we do not do availability checks here.
             Err(e @ BlockError::AvailabilityCheck(_)) => {
                 crit!(error = %e, "Internal block gossip validation error. Availability check during gossip validation");
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return None;
             }
             // BlobNotRequired is unreachable. Only constructed in `process_gossip_blob`
             Err(e @ BlockError::InternalError(_)) | Err(e @ BlockError::BlobNotRequired(_)) => {
                 error!(error = %e, "Internal block gossip validation error");
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return None;
             }
         };
@@ -4119,6 +4140,11 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     crit!(
                         error = ?err,
                         "Internal error when verifying execution proof"
+                    );
+                    self.propagate_validation_result(
+                        message_id,
+                        peer_id,
+                        MessageAcceptance::Ignore,
                     );
                 }
             },
