@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — GloasParentPayloadUnknown network gossip handler test (run 451)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 450 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
+- **Open Gloas PR status**: 11 open PRs with Gloas relevance (#4954, #4960, #4950, #4940, #4939, #4932, #4892, #4840, #4747, #4630, #4558). No new merges.
+- **Coverage gap analysis**: Deep exploration across gossip_methods.rs, block_verification.rs, beacon_chain tests, and network tests. The `GloasParentPayloadUnknown` error path (gossip_methods.rs:1291-1302) was tested at the beacon_chain level (`gloas_gossip_rejects_block_with_unrevealed_parent_payload` verifies the `BlockError`), but no network-level test exercised the full gossip handler flow: the handler must propagate `MessageAcceptance::Ignore` (not Reject — the block may be valid once the parent's envelope arrives) and dispatch `SyncMessage::UnknownParentBlock` to queue re-processing. This distinction matters: Ignore prevents the peer from being penalized for a timing-dependent condition (envelope hasn't arrived yet), while UnknownParentBlock queues the block for re-processing via sync lookup.
+- **New test** (1, commit `fa5af9e9e`):
+  - `test_gloas_gossip_block_parent_payload_unknown_ignored_and_synced` — creates a gloas_rig (2-block chain), manipulates fork choice to set the parent block's `payload_revealed = false` (simulating envelope not yet received), sends the child block through the gossip handler via `enqueue_gossip_block`, then asserts: (1) `MessageAcceptance::Ignore` is propagated on `network_rx` (not Reject), (2) `SyncMessage::UnknownParentBlock` is dispatched on `sync_rx` with the child block's root. This exercises the full network handler path at gossip_methods.rs:1291-1302 that was previously only tested at the beacon_chain `verify_block_for_gossip` level.
+- **CI status**: All tests green. Clippy clean. 152/152 network tests pass (151→152).
+
 ### 2026-03-06 — get_advanced_hot_state blinded envelope fallback test (run 450)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 449 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
