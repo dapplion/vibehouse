@@ -5857,3 +5857,110 @@ async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_reject(result);
 }
+
+/// Verify that when a gossip envelope arrives before its block (a timing race),
+/// the envelope is buffered in `pending_gossip_envelopes`, and when the block is
+/// subsequently imported via the gossip handler, `process_pending_envelope` is called
+/// to drain the buffer and process the envelope.
+///
+/// The beacon_chain-level test (`gloas_process_pending_envelope_self_build_succeeds`)
+/// calls `process_pending_envelope` directly. This test exercises the same flow through
+/// the full gossip handler (`process_gossip_verified_block` at gossip_methods.rs:1567),
+/// which calls `process_pending_envelope` automatically after successful block import.
+///
+/// This is production-critical: in a real network, envelopes and blocks propagate
+/// independently on separate gossip topics. The envelope often arrives first.
+#[tokio::test]
+async fn test_gloas_gossip_block_import_processes_pending_envelope() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Produce a new block + envelope using the harness.
+    let head_state = rig.chain.head_beacon_state_cloned();
+    let next_slot = rig.chain.slot().unwrap();
+    let (block_contents, _state, envelope) = rig
+        ._harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block = block_contents.0.clone();
+    let block_root = block.canonical_root();
+
+    // Verify preconditions: the block is not yet in fork choice.
+    assert!(
+        rig.chain
+            .canonical_head
+            .fork_choice_read_lock()
+            .get_block(&block_root)
+            .is_none(),
+        "block should not be in fork choice before import"
+    );
+
+    // Buffer the envelope in pending_gossip_envelopes — simulating the real scenario
+    // where the envelope arrived via gossip before its block.
+    rig.chain
+        .pending_gossip_envelopes
+        .lock()
+        .insert(block_root, Arc::new(signed_envelope));
+
+    // Verify the envelope is buffered.
+    assert!(
+        rig.chain
+            .pending_gossip_envelopes
+            .lock()
+            .contains_key(&block_root),
+        "envelope should be buffered before block import"
+    );
+
+    // Send the block through the gossip handler. This triggers:
+    // 1. Gossip verification (passes — valid block, proposer not seen)
+    // 2. process_block (state transition + EL notification)
+    // 3. process_pending_envelope (drains buffer, re-verifies, processes envelope)
+    // 4. recompute_head
+    rig.network_beacon_processor
+        .send_gossip_beacon_block(
+            junk_message_id(),
+            junk_peer_id(),
+            Client::default(),
+            block,
+            Duration::from_secs(0),
+        )
+        .unwrap();
+
+    rig.assert_event_journal_completes(&[WorkType::GossipBlock])
+        .await;
+
+    // Verify: block was imported and became head.
+    assert_eq!(
+        rig.head_root(),
+        block_root,
+        "block should be imported and become head after gossip processing"
+    );
+
+    // Verify: payload_revealed is true — this can ONLY happen if process_pending_envelope
+    // was called and successfully processed the buffered envelope. The gossip block handler
+    // does NOT call process_self_build_envelope, so the pending envelope path is the only
+    // way for payload_revealed to transition from false to true.
+    let fc = rig.chain.canonical_head.fork_choice_read_lock();
+    let proto_block = fc
+        .get_block(&block_root)
+        .expect("block should be in fork choice after import");
+    assert!(
+        proto_block.payload_revealed,
+        "payload_revealed should be true — process_pending_envelope must have processed the buffered envelope"
+    );
+    drop(fc);
+
+    // Verify: pending_gossip_envelopes buffer was drained.
+    assert!(
+        rig.chain
+            .pending_gossip_envelopes
+            .lock()
+            .get(&block_root)
+            .is_none(),
+        "pending_gossip_envelopes should be empty after block import drained the buffer"
+    );
+}
