@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — range sync mixed FULL/EMPTY chain test (run 447)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Coverage gap analysis**: Exhaustive search across beacon_chain.rs, fork_choice.rs, gloas_verification.rs, gossip_methods.rs, block_verification.rs, canonical_head.rs, hot_cold_store.rs, and http_api tests. Found extremely thorough existing coverage (18175+ lines of Gloas tests). Identified one genuine remaining gap: `process_chain_segment` (range sync import path) had no test exercising a chain with mixed FULL/EMPTY parents — blocks where some envelopes are processed and some are withheld (simulating builder withholding during range sync).
+- **New test** (1, commit `3804fd84a`):
+  - `gloas_range_sync_mixed_full_empty_chain` — builds a 5-block chain on harness1 using `make_block_with_envelope` with selective envelope skipping (block 3 has its envelope withheld, creating an EMPTY parent for block 4). This naturally produces blocks with correct `state_root` for the EMPTY parent case (referencing pre-envelope state). Extracts all blocks and envelopes, then re-imports on a fresh harness2 via `process_chain_segment` (the range sync path) with the same envelope skip pattern. Asserts: (1) all 5 blocks import successfully via range sync, (2) `payload_revealed` is `true` for FULL blocks and `false` for the skipped block in fork choice, (3) head state `latest_block_hash` matches the last FULL envelope's block hash, (4) chain continues correctly through FULL→EMPTY→FULL transitions. This covers the `load_parent` path in block_verification.rs that patches `latest_block_hash` only for FULL parents, verifying range sync handles mixed chains correctly.
+- **CI status**: All 745 beacon_chain tests pass (744→745). Full workspace clippy clean.
+
 ### 2026-03-06 — fix clippy result_large_err for rust 1.94.0 (run 446)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **CI was broken**: Rust stable updated from 1.93.1 to 1.94.0 (released 2026-03-02). The new version expanded the `result_large_err` clippy lint to catch closures returning `Result` types where the `Err` variant is >= 128 bytes. `BeaconChainError` is 128+ bytes (largest variant: `BadPreState` with 3 `Hash256` + 2 `Slot` = 112 bytes data).
