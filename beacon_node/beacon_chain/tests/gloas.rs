@@ -14705,6 +14705,147 @@ async fn gloas_get_advanced_hot_state_reapplies_envelope_from_db() {
     );
 }
 
+/// Verify that `get_advanced_hot_state`'s blinded envelope fallback path
+/// (hot_cold_store.rs:1190-1204) correctly reconstructs and re-applies the
+/// envelope when the full payload has been pruned but the blinded envelope
+/// remains.
+///
+/// This simulates a scenario after finalization where full payloads are pruned
+/// to save disk space:
+/// 1. Build a chain with blocks + envelopes (all stored to DB)
+/// 2. Prune the full payload via `DeleteExecutionPayload` (blinded envelope stays)
+/// 3. Evict the state cache
+/// 4. Call `get_advanced_hot_state` — it should:
+///    a. Miss the cache → load pre-envelope state from DB
+///    b. Try `get_payload_envelope` → None (payload pruned)
+///    c. Fall back to `get_blinded_payload_envelope` → Some(blinded)
+///    d. Reconstruct full envelope via `into_full_with_withdrawals` using
+///       `state.payload_expected_withdrawals()`
+///    e. Re-apply the reconstructed envelope → correct `latest_block_hash`
+/// 5. Returned state has correct `latest_block_hash`
+///
+/// Without the blinded fallback, the returned state would be pre-envelope and
+/// subsequent block processing would fail.
+#[tokio::test]
+async fn gloas_get_advanced_hot_state_blinded_envelope_fallback() {
+    // Build 3 blocks with envelopes
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let head_block = harness.chain.head_snapshot().beacon_block.clone();
+    let head_root = head_block.canonical_root();
+
+    // Get the expected latest_block_hash (post-envelope)
+    let head_bid_hash = head_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .block_hash;
+    let head_latest_hash = *head_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        head_latest_hash, head_bid_hash,
+        "pre-condition: head state should have post-envelope latest_block_hash"
+    );
+
+    // Verify full envelope exists before pruning
+    assert!(
+        harness
+            .chain
+            .store
+            .get_payload_envelope(&head_root)
+            .expect("should not error")
+            .is_some(),
+        "full envelope should exist before pruning"
+    );
+
+    // Prune the full payload — only the blinded envelope remains
+    harness
+        .chain
+        .store
+        .do_atomically_with_block_and_blobs_cache(vec![store::StoreOp::DeleteExecutionPayload(
+            head_root,
+        )])
+        .unwrap();
+
+    // Verify: full envelope is gone, blinded envelope survives
+    assert!(
+        harness
+            .chain
+            .store
+            .get_payload_envelope(&head_root)
+            .expect("should not error")
+            .is_none(),
+        "full envelope should be None after payload pruning"
+    );
+    assert!(
+        harness
+            .chain
+            .store
+            .get_blinded_payload_envelope(&head_root)
+            .expect("should not error")
+            .is_some(),
+        "blinded envelope should survive payload pruning"
+    );
+
+    // Evict the state from cache to force the DB path
+    let block_state_root = head_block.message().state_root();
+    {
+        let mut cache = harness.chain.store.state_cache.lock();
+        cache.delete_state(&block_state_root);
+    }
+
+    // Verify cache miss
+    assert!(
+        harness
+            .chain
+            .store
+            .get_advanced_hot_state_from_cache(head_root, head_state.slot())
+            .is_none(),
+        "state should NOT be in cache after eviction"
+    );
+
+    // Call get_advanced_hot_state — it should:
+    // 1. Miss the cache
+    // 2. Load pre-envelope state from DB
+    // 3. get_payload_envelope returns None (payload pruned)
+    // 4. Fall back to get_blinded_payload_envelope
+    // 5. Reconstruct via into_full_with_withdrawals
+    // 6. Re-apply the reconstructed envelope
+    let (_, reloaded_state) = harness
+        .chain
+        .store
+        .get_advanced_hot_state(head_root, head_state.slot(), block_state_root)
+        .expect("should not error")
+        .expect("should find state in DB via blinded envelope fallback");
+
+    // Verify the state has correct latest_block_hash after blinded envelope reconstruction
+    let reloaded_latest_hash = *reloaded_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_eq!(
+        reloaded_latest_hash, head_bid_hash,
+        "after DB reload with blinded envelope fallback, latest_block_hash \
+         should match the bid's block_hash"
+    );
+
+    // Verify envelope effects: execution_payload_availability bit should be set
+    let availability_index =
+        head_state.slot().as_usize() % <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+    let availability = reloaded_state
+        .execution_payload_availability()
+        .expect("should have availability");
+    assert!(
+        availability.get(availability_index).unwrap_or(false),
+        "after blinded envelope re-application, availability bit at index {} should be set",
+        availability_index
+    );
+}
+
 // =============================================================================
 // get_payload_attestation_data: past slot with block not in fork choice
 // =============================================================================
