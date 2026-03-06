@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — Gloas block production HTTP API integration test (run 464)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4950 (Extend by_root reqresp serve range to match by_range — changes `BeaconBlocksByRoot` and `ExecutionPayloadEnvelopesByRoot` serve range from "since finalized epoch" to `[max(FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`). vibehouse by-root handlers don't enforce range limits — they serve whatever is in the store, which is already compliant with the new relaxed spec. No code change needed.
+- **Open Gloas PR status**: Same 6 open PRs (#4962, #4960, #4940, #4939, #4843, #4932). No new merges.
+- **Coverage gap analysis**: Comprehensive audit of the block production pipeline identified that the `/eth/v3/validator/blocks/{slot}` HTTP API endpoint — the critical path validators call every slot — had ZERO integration tests during a Gloas epoch. All existing block production API tests run on the default fork (Fulu). The beacon_chain-level tests (`gloas_external_bid_block_production`, etc.) exercise the internal `make_block` harness path but never the full HTTP API stack: route dispatch → `produce_block_v3()` → `produce_block_with_verification()` → bid selection → self-build fallback → response serialization with metadata headers → JSON deserialization including envelope.
+- **New test** (1, commit `35e11ec0c`):
+  - `gloas_block_production_via_http_api_v3` — creates an InteractiveTester with Gloas from genesis (32 validators), builds a 2-block chain, advances clock to slot 3. Looks up proposer duties via the HTTP API, computes a valid RANDAO reveal, calls `get_validator_blocks_v3`. Asserts: (1) block production succeeds (no 400/500), (2) metadata reports `consensus_version=Gloas` and `execution_payload_blinded=false`, (3) response is `Full(BlockContents)` not `Blinded`, (4) block body contains `signed_execution_payload_bid` with `builder_index=BUILDER_INDEX_SELF_BUILD` (self-build path), (5) `execution_payload_envelope` is present with non-zero `beacon_block_root`. This exercises the full production path through the HTTP API for the first time during Gloas.
+- **CI status**: All tests green. Clippy clean. 231/231 HTTP API tests pass (230→231).
+
 ### 2026-03-06 — fix on_execution_bid gossip handler bug, spec PR review (run 463)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4947 (pre-fork proposer_preferences subscription note — already implemented in vibehouse via `PRE_FORK_SUBSCRIBE_EPOCHS`), #4948 (PayloadStatus constant reorder EMPTY=0/FULL=1/PENDING=2 — already implemented, vibehouse enum matches), #4918 (attestation validation: reject index=1 attestations unless payload_states has the block root — already implemented at fork_choice.rs:1198-1206), #4923 (IGNORE beacon block if parent payload unknown — already implemented at block_verification.rs:971-984). All 4 spec changes confirmed already in vibehouse.
