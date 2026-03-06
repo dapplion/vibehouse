@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — spec conformance audit, new PR tracking, devnet validation (run 466)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4906 (add more tests for `process_deposit_request` — test-only, no spec change, new vectors will ship with next release), #4709 (pytest plugin for vector generation — infra), #4956 (port ssz_generic to pytest — infra). No new Gloas behavioral merges.
+- **New open Gloas PR**: #4979 "Add a PTC Lookbehind slice in the state" (potuz, 2026-03-06). Significant behavioral change: adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` to BeaconState, new `compute_ptc` helper (current `get_ptc` logic), modified `get_ptc` to read from cache, new `process_ptc_lookbehind` epoch processing function. Fixes a bug where PTC computed at epoch N+1 could differ from PTC at epoch N due to effective balance changes. Impact on vibehouse when merged: new state field + type, `upgrade_to_gloas` init, genesis init, epoch processing addition (after `process_proposer_lookahead`), `get_ptc_committee` refactor to cache lookup, SSZ changes. ~60 call sites use `get_ptc_committee` but the function signature won't change — only the internals.
+- **Open Gloas PR status**: 13 open PRs total. Previous 6 (#4962, #4960, #4940, #4939, #4843, #4932) unchanged. New additions tracked: #4979 (PTC lookbehind), #4954 (fork choice milliseconds — jtraglia), #4892 (remove impossible branch in forkchoice), #4898 (remove pending status from tiebreaker). Also noted: #4747 (fast confirmation rule), #4558 (cell dissemination), #4630 (EIP-7688 forward compatible SSZ), #4840 (EIP-7843).
+- **Spec conformance audit**: Full review of vibehouse's Gloas implementation against consensus-specs v1.7.0-alpha.2. All 4 critical functions verified conformant: `get_ptc` (balance-weighted selection), `process_execution_payload_envelope` (14 validation steps), `is_valid_indexed_payload_attestation` (signature domain), `process_payload_attestation` (PTC quorum). Both PR #4918 (index=1 attestation validation) and PR #4923 (parent payload availability check) confirmed implemented and tested. Epoch processing call order verified against spec: `process_pending_consolidations` → `process_builder_pending_payments` → `process_effective_balance_updates` → ... → `process_proposer_lookahead` matches exactly.
+- **Devnet validation**: Ran full 4-node devnet (`scripts/kurtosis-run.sh`). Result: finalized_epoch=8, chain healthy through Gloas fork transition. No stalls, no regressions.
+- **CI status**: All tests green. Clippy clean (workspace-wide `cargo clippy --workspace --tests -- -D warnings` passed). Nightly tests green (26/26 jobs, all forks phase0-fulu).
+
 ### 2026-03-06 — devnet validation, stale comment fix (run 465)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 464. Only CI/tooling PRs.
