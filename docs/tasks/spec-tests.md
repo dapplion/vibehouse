@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — payload attestation pool tests, spec tracking (run 473)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4950 (extend by_root serve range, merged today — already confirmed compliant in run 467, no code change needed). No other Gloas behavioral merges.
+- **Open Gloas PR status**: All 7 tracked PRs unchanged. #4979 (PTC lookbehind) still actively discussed today (jtraglia, potuz). #4898 and #4892 both approved but stalled (~1 month). #4954, #4843, #4747, #4939 unchanged.
+- **New tests** (5, commit `bea7c47c4`): payload attestation pool retrieval and aggregation integration tests covering the REST API-facing `get_all_payload_attestations` method (previously zero tests) and the block production `get_payload_attestations_for_block` aggregation path:
+  - `gloas_get_all_payload_attestations_unfiltered` — imports two PTC attestations, verifies `get_all_payload_attestations(None)` returns them all
+  - `gloas_get_all_payload_attestations_filtered_by_slot` — verifies `get_all_payload_attestations(Some(slot))` returns matching-slot attestations and empty for non-matching slot
+  - `gloas_get_all_payload_attestations_empty_pool` — verifies empty pool returns empty vec for both filtered and unfiltered queries
+  - `gloas_get_payload_attestations_for_block_aggregates` — imports two attestations with same data from different PTC members, verifies they are aggregated into a single attestation with both bits set (critical block production path)
+  - `gloas_get_payload_attestations_for_block_filters_by_root` — verifies attestations are filtered by `parent_block_root` parameter (matching root returns results, non-matching returns empty)
+- **CI status**: All tests green. Full workspace clippy clean (lint-full passed on push).
+
 ### 2026-03-06 — remove all stale upstream references, spec tracking (run 472)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 471. Only CI/tooling PRs.
