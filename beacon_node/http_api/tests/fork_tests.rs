@@ -1446,6 +1446,154 @@ async fn post_execution_payload_envelope_block_hash_mismatch() {
     }
 }
 
+/// POST beacon/execution_payload_envelope with an external builder envelope that has an
+/// invalid BLS signature should return 400 with InvalidSignature.
+///
+/// This exercises the BLS signature verification path in `verify_payload_envelope_for_gossip`,
+/// which is only reached when `builder_index != BUILDER_INDEX_SELF_BUILD`. Self-build envelopes
+/// skip signature verification, so this test uses an external builder bid to trigger the check.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_payload_envelope_invalid_signature() {
+    use types::{
+        ExecutionPayloadBid, ExecutionPayloadEnvelope, ProposerPreferences,
+        SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
+    };
+
+    let validator_count = 32;
+    // Builder with deposit_epoch=0, large balance so it's active after finalization
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+    let spec = &harness.chain.spec;
+
+    // Build enough chain for finalization (MinimalEthSpec: 8 slots/epoch, ~4 epochs)
+    harness.extend_slots(32).await;
+
+    let finalized_epoch = harness
+        .chain
+        .head_snapshot()
+        .beacon_state
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain should have finalized, got epoch {finalized_epoch}"
+    );
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let next_slot = harness.chain.slot().unwrap() + 1;
+
+    // Insert proposer preferences for the next slot (required for bid validation)
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+    let preferences = ProposerPreferences {
+        proposal_slot: next_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    harness
+        .chain
+        .insert_proposer_preferences(SignedProposerPreferences {
+            message: preferences,
+            signature: Signature::empty(),
+        });
+
+    // Create and insert an external bid into the pool
+    let gloas_state = state.as_gloas().expect("should be Gloas state");
+    let randao_mix = *state
+        .get_randao_mix(state.current_epoch())
+        .expect("should get randao mix");
+
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: next_slot,
+        builder_index: 0,
+        value: 100,
+        execution_payment: 100,
+        parent_block_hash: gloas_state.latest_block_hash,
+        parent_block_root: head_root,
+        prev_randao: randao_mix,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        next_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg.clone(),
+        signature: bid_signature,
+    };
+    harness
+        .chain
+        .execution_bid_pool
+        .lock()
+        .insert(signed_bid.clone());
+
+    // Produce a block that selects the external bid
+    harness.advance_slot();
+    let (block_contents, _post_state) = harness
+        .make_block(harness.chain.head_beacon_state_cloned(), next_slot)
+        .await;
+    let (signed_block, blobs) = block_contents;
+    let block_root = signed_block.canonical_root();
+
+    // Verify the block uses the external bid
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("block should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, 0,
+        "block should use external builder (index 0), not self-build"
+    );
+
+    // Import the block (without envelope — we'll POST the envelope separately)
+    harness
+        .process_block(next_slot, block_root, (signed_block, blobs))
+        .await
+        .expect("block import should succeed");
+
+    // Construct an envelope with matching fields but WRONG signature
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = block_root;
+    envelope_msg.slot = next_slot;
+    envelope_msg.builder_index = bid_msg.builder_index;
+    envelope_msg.payload.block_hash = bid_msg.block_hash;
+
+    // Use an empty (invalid) signature instead of the real builder signature
+    let bad_envelope = SignedExecutionPayloadEnvelope {
+        message: envelope_msg,
+        signature: Signature::empty(),
+    };
+
+    let result = client
+        .post_beacon_execution_payload_envelope(&bad_envelope)
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject envelope with invalid signature"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("InvalidSignature"),
+            "expected InvalidSignature error, got: {}",
+            msg.message
+        );
+    }
+}
+
 /// POST beacon/execution_payload_envelope with a slot prior to finalization should return 200 OK.
 /// The `PriorToFinalization` error is treated as "stale but not invalid" and returns 200 to avoid
 /// builders retrying indefinitely on envelopes for already-finalized blocks.
