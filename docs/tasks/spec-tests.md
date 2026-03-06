@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — EL PayloadStatus::Accepted envelope processing tests (run 460)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 458 — #4978, #4974, #4971-4966, #4964, #4961, #4959, #4957, #4956, #4955, #4953. No new Gloas behavioral merges.
+- **Open Gloas PR status**: Same 6 open PRs as run 458 (#4962, #4960, #4940, #4939, #4843, #4932). No new merges.
+- **Coverage gap analysis**: Comprehensive audit of beacon_chain integration tests identified `PayloadStatus::Accepted` as a completely untested EL response code for envelope processing. Both `process_self_build_envelope` (line 3046) and `process_payload_envelope` (line 2667) handle `Accepted` in the same branch as `Syncing`, but only `Syncing` was tested (`gloas_self_build_envelope_el_syncing_stays_optimistic` and `gloas_gossip_envelope_el_syncing_stays_optimistic`). The `Accepted` status indicates the EL acknowledges the payload but hasn't fully validated it — semantically identical to Syncing but a distinct engine API response code (EIP-7685). A regression breaking this branch would silently change how partially-validated payloads are handled.
+- **Infrastructure**: Added `accepted_status()`, `accepted_new_payload_response()` private helpers and `all_payloads_accepted_on_new_payload()` public method to the mock execution layer server (`execution_layer/src/test_utils/mod.rs`).
+- **New tests** (2, commit `2fd06a165`):
+  - `gloas_self_build_envelope_el_accepted_stays_optimistic` — creates a harness, extends 2 slots, produces a block+envelope, imports the block, configures mock EL to return Accepted for newPayload, processes the self-build envelope. Asserts: (1) `process_self_build_envelope` succeeds (Accepted is not an error), (2) block remains Optimistic in fork choice (not promoted to Valid), (3) `payload_revealed = true` (fork choice is updated regardless of EL status).
+  - `gloas_gossip_envelope_el_accepted_stays_optimistic` — same setup but uses the gossip verification path: `verify_payload_envelope_for_gossip` → `process_payload_envelope` → `apply_payload_envelope_to_fork_choice`. Asserts: (1) processing succeeds and returns `el_valid = false`, (2) block remains Optimistic, (3) `payload_revealed = true`, (4) envelope is persisted to the store with correct block_hash.
+- **CI status**: All tests green. Clippy clean. 751/751 beacon_chain tests pass (749→751).
+
 ### 2026-03-06 — pending envelope drain on gossip block import network test (run 458)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 457 — #4978, #4974, #4971-4966, #4964, #4961, #4959, #4957, #4956, #4955, #4953. No new Gloas behavioral merges.
