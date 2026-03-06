@@ -3734,8 +3734,9 @@ async fn gloas_self_build_envelope_stateless_mode_stays_optimistic() {
 
 /// When the EL returns Invalid for the envelope's newPayload, process_self_build_envelope
 /// should return an error. The block should remain Optimistic in fork choice (not marked Valid)
-/// because the payload was rejected. However, payload_revealed should still be true because
-/// on_execution_payload runs before the EL call in process_self_build_envelope.
+/// because the payload was rejected. payload_revealed should be false because fork choice
+/// is updated LAST — after EL validation and state transition — so the early return on
+/// Invalid means on_execution_payload never runs.
 #[tokio::test]
 async fn gloas_self_build_envelope_el_invalid_returns_error() {
     let harness = gloas_harness_at_epoch(0);
