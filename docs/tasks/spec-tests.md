@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — self-build execution proof generation integration test (run 442)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Coverage gap analysis**: Exhaustive search across all major Gloas components. Withdrawal processing (process_withdrawals_gloas, get_expected_withdrawals_gloas) confirmed comprehensively tested: builder index wrapping (7 tests), validator index wrapping (5 tests), truncation (6+ tests), empty builders edge case (2 tests). Fork upgrade (upgrade_to_gloas) also comprehensively tested (20+ tests). Found 3 confirmed untested integration paths: (1) execution proof generation via `generate_execution_proofs` flag — unit tests exist for the generator itself but no integration test sets the flag on a real chain; (2) GET envelope SSZ accept header path (http_api:2911-2920) — only JSON path tested; (3) PayloadAttributes SSE skip for Gloas (beacon_chain.rs:7592-7612) — no test verifies the conditional skip.
+- **New test** (1, commit `fe27050e8`):
+  - `gloas_self_build_generates_execution_proofs` — creates a harness with `chain_config.generate_execution_proofs = true`, verifies the `execution_proof_generator` is instantiated, takes the `proof_receiver` channel, produces a Gloas block (self-build), then asserts: (1) one proof per subnet appears on the receiver (currently MAX_EXECUTION_PROOF_SUBNETS=1), (2) each proof's `block_root` matches the produced block, (3) each proof's `block_hash` matches the envelope payload's block_hash, (4) each proof is structurally valid. This exercises the integration path at beacon_chain.rs:3088-3091 where `process_self_build_envelope` calls `generator.generate_proof(...)` after the EL validates the payload — previously only tested at the unit level.
+- **CI status**: All tests green. Clippy clean. 744 beacon_chain tests pass (743→744).
+
 ### 2026-03-06 — empty-parent stale withdrawal persistence test (run 441)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 440. Only CI/tooling PRs: #4978, #4959, #4974, #4967-#4971, #4964, #4709, #4956.
