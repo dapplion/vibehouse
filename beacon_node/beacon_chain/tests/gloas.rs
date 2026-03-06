@@ -2700,6 +2700,134 @@ async fn gloas_fork_choice_transition_properties() {
 }
 
 // =============================================================================
+// Execution proof verification — structural checks (1, 2, 3) via chain method
+// =============================================================================
+
+/// Check 1: verify_execution_proof_for_gossip rejects proofs with out-of-bounds subnet ID.
+///
+/// ExecutionProofSubnetId::new() validates bounds, but DerefMut allows mutation
+/// to an invalid value. This exercises the bounds check in the verification function.
+#[tokio::test]
+async fn gloas_execution_proof_invalid_subnet_id() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&block_root)
+        .unwrap()
+        .expect("envelope should exist");
+    let block_hash = envelope.message.payload.block_hash;
+
+    let proof = make_stub_execution_proof(block_root, block_hash);
+
+    // Create an out-of-bounds subnet ID by mutating a valid one via DerefMut.
+    let mut bad_subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+    *bad_subnet_id = execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS;
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, bad_subnet_id);
+
+    match result {
+        Err(GossipExecutionProofError::InvalidSubnetId { received })
+            if received == execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS => {}
+        Err(other) => panic!("expected InvalidSubnetId, got: {:?}", other),
+        Ok(_) => panic!("expected error for out-of-bounds subnet ID"),
+    }
+}
+
+/// Check 2: verify_execution_proof_for_gossip rejects proofs with unsupported version.
+#[tokio::test]
+async fn gloas_execution_proof_invalid_version() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Create a proof with unsupported version 0.
+    let proof = Arc::new(ExecutionProof::new(
+        block_root,
+        ExecutionBlockHash::zero(),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        0, // unsupported version
+        b"some-data".to_vec(),
+    ));
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    match result {
+        Err(GossipExecutionProofError::InvalidVersion { version: 0 }) => {}
+        Err(other) => panic!("expected InvalidVersion, got: {:?}", other),
+        Ok(_) => panic!("expected error for unsupported version"),
+    }
+}
+
+/// Check 3a: verify_execution_proof_for_gossip rejects proofs with empty proof_data.
+#[tokio::test]
+async fn gloas_execution_proof_empty_proof_data() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Create a proof with empty proof_data.
+    let proof = Arc::new(ExecutionProof::new(
+        block_root,
+        ExecutionBlockHash::zero(),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        1,      // valid stub version
+        vec![], // empty proof data
+    ));
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    match result {
+        Err(GossipExecutionProofError::ProofDataEmpty) => {}
+        Err(other) => panic!("expected ProofDataEmpty, got: {:?}", other),
+        Ok(_) => panic!("expected error for empty proof data"),
+    }
+}
+
+/// Check 3b: verify_execution_proof_for_gossip rejects proofs with oversized proof_data.
+#[tokio::test]
+async fn gloas_execution_proof_oversized_proof_data() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+
+    // Create a proof that exceeds MAX_EXECUTION_PROOF_SIZE.
+    let proof = Arc::new(ExecutionProof::new(
+        block_root,
+        ExecutionBlockHash::zero(),
+        ExecutionProofSubnetId::new(0).unwrap(),
+        1, // valid stub version
+        vec![0u8; execution_proof::MAX_EXECUTION_PROOF_SIZE + 1],
+    ));
+
+    let result = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, ExecutionProofSubnetId::new(0).unwrap());
+
+    match result {
+        Err(GossipExecutionProofError::ProofDataTooLarge { size })
+            if size == execution_proof::MAX_EXECUTION_PROOF_SIZE + 1 => {}
+        Err(other) => panic!("expected ProofDataTooLarge, got: {:?}", other),
+        Ok(_) => panic!("expected error for oversized proof data"),
+    }
+}
+
+// =============================================================================
 // Execution proof verification — chain-dependent checks (4, 5, 6)
 // =============================================================================
 
