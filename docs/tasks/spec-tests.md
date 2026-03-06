@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — gossip envelope EL Invalid fork choice skip test (run 445)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same set as run 444 — all CI/tooling (#4978, #4974, #4971, #4970, #4969, #4968, #4967, #4966, #4964, #4961, #4959, #4957, #4956, #4955, #4953), no Gloas behavioral changes.
+- **Open Gloas PR status**: Reduced from 10 to 8 relevant PRs. Still open: #4954 (millisecond store), #4950 (by_root serve range), #4939 (envelope request on index-1 attestation), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch), #4843 (variable PTC deadline), #4840 (EIP-7843), #4747 (fast confirmation rule). New test-only PRs: #4960 (fork choice deposit test), #4940 (Gloas fork choice tests), #4932 (Gloas sanity/blocks tests). #4630 and #4558 still open.
+- **Coverage gap analysis**: Exhaustive search across gossip_methods.rs, beacon_chain.rs, canonical_head.rs, execution_payload.rs, block_verification.rs, per_block_processing/gloas.rs, per_slot_processing.rs, upgrade/gloas.rs, hot_cold_store.rs, proto_array_fork_choice.rs, fork_choice.rs, and gloas_verification.rs. Found extremely thorough coverage: 11 proposer preferences gossip tests, 15 bid gossip tests, 8 envelope gossip tests, 21+ upgrade tests, 6 per_slot tests. The key remaining gap: when the EL returns Invalid for a gossip envelope's payload, the gossip handler at gossip_methods.rs:3631 must NOT update fork choice and must NOT call recompute_head. The beacon_chain test (`gloas_gossip_envelope_el_invalid_returns_error`) verifies the error at `process_payload_envelope` level, and the EL Syncing test (`test_gloas_gossip_payload_envelope_el_syncing_stays_optimistic`) exercises the success path through the gossip handler. But no network-level test exercised the `Err(e)` branch where the handler skips fork choice updates.
+- **New test** (1, commit `8ed04ab87`):
+  - `test_gloas_gossip_payload_envelope_el_invalid_skips_fork_choice` — creates a gloas_rig (2-block chain), produces a new block+envelope via `make_block_with_envelope`, imports ONLY the block, configures mock EL to return Invalid for newPayload (`all_payloads_invalid_on_new_payload(ExecutionBlockHash::zero())`), clears observed envelopes, then submits the envelope via `process_gossip_execution_payload`. Asserts: (1) gossip validation returns Accept (structurally valid), (2) `payload_revealed` is still `false` in fork choice (EL rejected the payload). This covers the `Err(e)` branch at gossip_methods.rs:3631 where the handler logs a warning and skips fork choice + head recompute, ensuring an EL-rejected payload never gets promoted to head.
+- **CI status**: All tests green. Clippy clean. 151/151 network tests pass (150→151).
+
 ### 2026-03-06 — gossip envelope EL Syncing optimistic path test (run 444)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same set as run 443 — all CI/tooling, no Gloas behavioral changes.
