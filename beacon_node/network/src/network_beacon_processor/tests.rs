@@ -5494,3 +5494,145 @@ async fn test_gloas_gossip_execution_proof_stateless_unknown_root_buffered() {
         "buffered subnet id must match"
     );
 }
+
+/// Gloas gossip: payload envelope from an external builder with an invalid BLS
+/// signature is REJECTED with a peer penalty.
+///
+/// All existing envelope gossip tests use self-build envelopes (builder_index =
+/// BUILDER_INDEX_SELF_BUILD), which skip signature verification entirely. This test
+/// exercises the `PayloadEnvelopeError::InvalidSignature` arm of
+/// `process_gossip_execution_payload` (gossip_methods.rs:3508-3522) through the full
+/// network handler: gossip verification rejects the envelope, the handler propagates
+/// `MessageAcceptance::Reject`, and the peer is penalized with `LowToleranceError`.
+///
+/// To trigger this path, we need a block in the chain whose committed bid has an
+/// external `builder_index` (not BUILDER_INDEX_SELF_BUILD). The test:
+/// 1. Creates a rig with a registered builder (builder 0)
+/// 2. Inserts an external bid into the pool for the next slot
+/// 3. Produces a block that selects the external bid
+/// 4. Imports the block (envelope=None since builder provides it separately)
+/// 5. Sends an envelope with matching builder_index + block_hash but WRONG signature
+/// 6. Asserts MessageAcceptance::Reject
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_invalid_signature_rejected() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Builder 0: deposit_epoch=0, balance=2B gwei. Active after finalization.
+    let mut rig = gloas_rig_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
+
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let next_slot = rig.chain.slot().unwrap();
+
+    // Build an external bid for the next slot from builder 0.
+    let state = &head.beacon_state;
+    let gloas_state = state.as_gloas().expect("should be gloas state");
+    let current_epoch = state.current_epoch();
+    let randao_mix = *state
+        .get_randao_mix(current_epoch)
+        .expect("should get randao mix");
+
+    let bid_msg = ExecutionPayloadBid {
+        slot: next_slot,
+        builder_index: 0,
+        value: 5000,
+        parent_block_hash: gloas_state.latest_block_hash,
+        parent_block_root: head_root,
+        prev_randao: randao_mix,
+        block_hash: ExecutionBlockHash::zero(),
+        fee_recipient: Address::ZERO,
+        gas_limit: 30_000_000,
+        execution_payment: 5000,
+        blob_kzg_commitments: Default::default(),
+    };
+    let bid = sign_bid(&rig, 0, bid_msg);
+
+    // Insert bid into pool so block production selects it
+    rig.chain.execution_bid_pool.lock().insert(bid.clone());
+
+    // Produce a block using the harness — it should select the external bid
+    let head_state = rig.chain.head_beacon_state_cloned();
+    let (block_contents, _state, envelope) = rig
+        ._harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    // Verify the block uses the external builder's bid
+    let block_bid = block_contents
+        .0
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        block_bid.message.builder_index, 0,
+        "block should use external builder bid (builder_index=0)"
+    );
+    assert!(
+        envelope.is_none(),
+        "external builder blocks should not produce a self-build envelope"
+    );
+
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block into the chain (no envelope — builder provides it separately)
+    rig._harness
+        .process_block_result(block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Clear observed envelopes so gossip verification doesn't short-circuit with DuplicateEnvelope
+    rig.chain.observed_payload_envelopes.lock().clear();
+
+    // Construct an envelope with matching builder_index + block_hash but WRONG signature.
+    // Sign with builder 1's key instead of builder 0's key.
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: ExecutionPayloadEnvelope {
+            payload: ExecutionPayloadGloas {
+                block_hash: bid.message.block_hash, // zero — matches committed bid
+                ..Default::default()
+            },
+            execution_requests: <_>::default(),
+            builder_index: 0, // matches committed bid
+            beacon_block_root: block_root,
+            slot: next_slot,
+            state_root: Hash256::ZERO,
+        },
+        // Sign with WRONG key (builder 1's key for builder 0's envelope)
+        signature: {
+            let spec = &rig.chain.spec;
+            let head = rig.chain.head_snapshot();
+            let state = &head.beacon_state;
+            let domain = spec.get_domain(
+                next_slot.epoch(E::slots_per_epoch()),
+                Domain::BeaconBuilder,
+                &state.fork(),
+                state.genesis_validators_root(),
+            );
+            let msg = ExecutionPayloadEnvelope::<E> {
+                payload: ExecutionPayloadGloas {
+                    block_hash: bid.message.block_hash,
+                    ..Default::default()
+                },
+                execution_requests: <_>::default(),
+                builder_index: 0,
+                beacon_block_root: block_root,
+                slot: next_slot,
+                state_root: Hash256::ZERO,
+            };
+            let signing_root = msg.signing_root(domain);
+            // Use builder 1's key — wrong key for builder 0's envelope
+            BUILDER_KEYPAIRS[1].sk.sign(signing_root)
+        },
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), envelope)
+        .await;
+
+    // InvalidSignature → Reject + LowToleranceError peer penalty
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_reject(result);
+}
