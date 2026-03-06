@@ -2944,7 +2944,7 @@ async fn weak_subjectivity_sync_test(
         .unwrap();
 
     assert_eq!(store_wss_block, wss_block);
-    // TODO(fulu): Remove this condition once #6760 (PeerDAS checkpoint sync) is merged.
+    // TODO(fulu): Remove this condition once PeerDAS checkpoint sync is implemented.
     if !beacon_chain.spec.is_peer_das_scheduled() {
         assert_eq!(store_wss_blobs_opt, wss_blobs_opt);
     }

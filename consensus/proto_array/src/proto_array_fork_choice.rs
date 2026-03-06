@@ -1477,10 +1477,9 @@ impl ProtoArrayForkChoice {
             match node.payload_status {
                 GloasPayloadStatus::Pending => true,
                 GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
-                    // Spec: if message.slot <= block.slot: return False
-                    // The validate_on_attestation check guarantees slot >= block.slot,
-                    // so this is equivalent to ==, but use <= to match spec exactly.
-                    if vote.current_slot <= node_slot {
+                    // Spec: assert message.slot >= block.slot (validated by on_attestation)
+                    // If message.slot == block.slot: return False
+                    if vote.current_slot == node_slot {
                         return false;
                     }
                     if vote.current_payload_present {
@@ -8250,16 +8249,10 @@ mod test_gloas_fork_choice {
 
     // ─────── same-slot vote behavior (spec: vote.slot == block.slot) ───────
     //
-    // Per the current spec's is_supporting_vote, when vote.slot <= block.slot
-    // (and validate_on_attestation guarantees slot >= block.slot, so this means
-    // vote.slot == block.slot), the vote returns false for both EMPTY and FULL
-    // nodes. Only PENDING is supported.
-    //
-    // This behavior is documented by spec PR #4892 as "the impossible branch" —
-    // the spec currently returns false for same-slot EMPTY/FULL even with
-    // payload_present set. If #4892 merges, same-slot votes with payload_present
-    // would support FULL (and without payload_present would support EMPTY).
-    // These tests document the CURRENT behavior as a regression baseline.
+    // Per the spec's is_supporting_vote, when vote.slot == block.slot
+    // (validate_on_attestation guarantees slot >= block.slot, so the < case
+    // is impossible), the vote returns false for both EMPTY and FULL nodes.
+    // Only PENDING is supported.
 
     #[test]
     fn same_slot_vote_with_payload_present_does_not_support_full() {
