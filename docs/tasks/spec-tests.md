@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — external builder envelope invalid signature HTTP API test, spec tracking (run 476)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4972 (py_arkworks_bls12381 update), #4982 (ruff update), #4981 (codespell update), #4980 (python version). All CI/tooling or dependency updates — no Gloas behavioral changes.
+- **Open Gloas PR status**: All 7 tracked PRs unchanged (#4979, #4954, #4898, #4892, #4843, #4747, #4939). #4979 (PTC lookbehind) and #4747 (fast confirmation rule) both actively discussed today. #4898 and #4892 both approved, idle ~1 month. New PR #4558 (Cell Dissemination via Partial Messages) has `fulu, gloas` labels but is a P2P extension for gossipsub partial messages, not core consensus — no action needed.
+- **New test** (1, commit `b057d740e`): `post_execution_payload_envelope_invalid_signature` — HTTP API integration test exercising the external builder envelope BLS signature verification path through the REST API. This was identified as a gap in run 474: all prior envelope POST tests used self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD), which skip BLS verification. This test:
+  - Sets up a Gloas tester with 1 builder via `gloas_tester_with_builders`
+  - Extends chain for finalization (builder becomes active)
+  - Inserts proposer preferences and an external builder bid into the execution bid pool
+  - Produces a block that selects the external bid (builder_index=0, not self-build)
+  - Imports the block without envelope
+  - Constructs an envelope with matching fields (block_root, slot, builder_index, block_hash) but with an empty (invalid) BLS signature
+  - POSTs the envelope and asserts: 400 response with "InvalidSignature" error message
+- **Gap closure**: The only remaining HTTP API envelope gap is broadcast_validation tests (which are skipped under Gloas by design — Gloas uses a fundamentally different builder path).
+- **CI status**: All tests green. Clippy clean (full workspace lint via pre-push hook).
+
 ### 2026-03-06 — slashing op pool Gloas integration tests, spec tracking (run 475)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4982 (ruff update), #4981 (codespell update), #4980 (python version). All CI/tooling — no Gloas behavioral changes.
