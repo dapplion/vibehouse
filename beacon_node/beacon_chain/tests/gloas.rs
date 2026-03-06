@@ -18438,3 +18438,264 @@ async fn gloas_range_sync_mixed_full_empty_chain() {
         "harness 2 should have genesis + 5 blocks"
     );
 }
+
+/// When TWO consecutive external builder bids are withheld (both payloads never
+/// revealed), the chain must navigate through two consecutive EMPTY-path slots.
+/// This exercises:
+///
+/// 1. First EMPTY slot: `latest_block_hash` stays at the grandparent's EL hash,
+///    `is_parent_block_full` returns false for the next block
+/// 2. Second EMPTY slot: built on top of the first EMPTY-path block, where
+///    `latest_block_hash` is STILL the grandparent's EL hash (two slots stale)
+/// 3. Recovery: the third block is self-built on top of the second EMPTY slot,
+///    still references the grandparent's EL hash as parent_block_hash
+///
+/// This is harder than single withholding because the state used for the third
+/// block has been through TWO `process_block` calls without any envelope processing.
+/// The `load_parent` patch in block_verification.rs must correctly identify BOTH
+/// parents as EMPTY and use pre-envelope state throughout.
+///
+/// Note: we thread the production state through consecutive blocks rather than
+/// using `head_beacon_state_cloned()`, because after importing an EMPTY block
+/// the head snapshot may not contain the post-block state (the state cache can
+/// return a stale state when the state_root collides with an existing entry).
+#[allow(clippy::large_stack_frames)]
+#[tokio::test]
+async fn gloas_consecutive_empty_blocks_chain_continues() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Extend long enough for builder activation
+    Box::pin(harness.extend_slots(64)).await;
+
+    let head = harness.chain.head_snapshot();
+    let grandparent_root = head.beacon_block_root;
+    let grandparent_slot = head.beacon_block.slot();
+    let grandparent_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+    assert_ne!(
+        grandparent_hash,
+        ExecutionBlockHash::zero(),
+        "pre-condition: grandparent should have non-zero latest_block_hash"
+    );
+
+    // --- First withheld block ---
+    let empty1_slot = grandparent_slot + 1;
+    let state1 = harness.chain.head_beacon_state_cloned();
+    let bid1 = make_external_bid(&state1, grandparent_root, empty1_slot, 0, 5000);
+    harness.chain.execution_bid_pool.lock().insert(bid1);
+
+    harness.advance_slot();
+    let ((block1, blobs1), post_block1_state, env1) =
+        harness.make_block_with_envelope(state1, empty1_slot).await;
+    assert!(
+        env1.is_none(),
+        "external bid block should not have self-build envelope"
+    );
+    let empty1_root = block1.canonical_root();
+    harness
+        .process_block(empty1_slot, empty1_root, (block1, blobs1))
+        .await
+        .expect("first withheld block should import");
+
+    // Verify: payload_revealed=false
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&empty1_root)
+            .unwrap();
+        assert!(
+            !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "first withheld block should have payload_revealed=false"
+        );
+    }
+    // Verify: latest_block_hash unchanged (use production state, not head snapshot)
+    assert_eq!(
+        *post_block1_state.latest_block_hash().unwrap(),
+        grandparent_hash,
+        "latest_block_hash should still be grandparent's after first EMPTY"
+    );
+
+    // --- Second withheld block ---
+    // Use the production state from block 1 (not head_beacon_state_cloned) to
+    // ensure correct block_roots entries for bid pool parent_root matching.
+    let empty2_slot = empty1_slot + 1;
+    let bid2 = make_external_bid(&post_block1_state, empty1_root, empty2_slot, 0, 6000);
+    harness.chain.execution_bid_pool.lock().insert(bid2);
+
+    harness.advance_slot();
+    let ((block2, blobs2), post_block2_state, env2) = harness
+        .make_block_with_envelope(post_block1_state, empty2_slot)
+        .await;
+    assert!(
+        env2.is_none(),
+        "second external bid block should not have self-build envelope"
+    );
+
+    // The second bid should reference the grandparent's EL hash (not the first
+    // withheld bid's block_hash), because the first block's envelope was never revealed
+    let bid2_msg = block2
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        bid2_msg.message.parent_block_hash, grandparent_hash,
+        "second withheld bid.parent_block_hash should be grandparent's EL hash \
+         (first EMPTY block's payload was never revealed)"
+    );
+
+    let empty2_root = block2.canonical_root();
+    harness
+        .process_block(empty2_slot, empty2_root, (block2, blobs2))
+        .await
+        .expect("second withheld block should import");
+
+    // Verify: second block also EMPTY
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&empty2_root)
+            .unwrap();
+        assert!(
+            !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "second withheld block should have payload_revealed=false"
+        );
+    }
+    assert_eq!(
+        *post_block2_state.latest_block_hash().unwrap(),
+        grandparent_hash,
+        "latest_block_hash should STILL be grandparent's after two consecutive EMPTY slots"
+    );
+
+    // --- Recovery block (self-build) ---
+    let recovery_slot = empty2_slot + 1;
+    harness.advance_slot();
+    let ((block3, blobs3), _s3, env3) = harness
+        .make_block_with_envelope(post_block2_state, recovery_slot)
+        .await;
+    let recovery_envelope = env3.expect("recovery block should be self-build with envelope");
+
+    // The recovery bid should reference the grandparent's EL hash (two EMPTY parents back)
+    let recovery_bid = block3
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        recovery_bid.message.parent_block_hash, grandparent_hash,
+        "recovery bid.parent_block_hash should be grandparent's EL hash \
+         (two consecutive EMPTY slots mean latest_block_hash is two slots stale)"
+    );
+
+    let recovery_root = block3.canonical_root();
+    harness
+        .process_block(recovery_slot, recovery_root, (block3, blobs3))
+        .await
+        .expect("recovery block should import");
+
+    // Process the self-build envelope
+    harness
+        .chain
+        .process_self_build_envelope(&recovery_envelope)
+        .await
+        .expect("recovery envelope should process");
+
+    // Verify: recovery block has payload_revealed=true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let idx = *fc
+            .proto_array()
+            .core_proto_array()
+            .indices
+            .get(&recovery_root)
+            .unwrap();
+        assert!(
+            fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+            "recovery block should have payload_revealed=true after envelope"
+        );
+    }
+
+    // latest_block_hash should now be the recovery envelope's block_hash
+    let state_after_recovery = harness.chain.head_beacon_state_cloned();
+    let recovery_payload_hash = recovery_envelope.message.payload.block_hash;
+    assert_ne!(
+        recovery_payload_hash,
+        ExecutionBlockHash::zero(),
+        "recovery payload should have non-zero block_hash"
+    );
+    assert_eq!(
+        *state_after_recovery.latest_block_hash().unwrap(),
+        recovery_payload_hash,
+        "latest_block_hash should now be the recovery envelope's block_hash \
+         (jumping from grandparent's hash, skipping the two EMPTY slots)"
+    );
+
+    // Both withheld blocks should remain unrevealed
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        for (label, root) in [("first", empty1_root), ("second", empty2_root)] {
+            let idx = *fc
+                .proto_array()
+                .core_proto_array()
+                .indices
+                .get(&root)
+                .unwrap();
+            assert!(
+                !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+                "{} withheld block should remain unrevealed",
+                label
+            );
+        }
+    }
+
+    // Verify chain can continue beyond recovery
+    let cont_slot = recovery_slot + 1;
+    let state4 = harness.chain.head_beacon_state_cloned();
+    harness.advance_slot();
+    let ((block4, blobs4), _s4, env4) = harness.make_block_with_envelope(state4, cont_slot).await;
+    let cont_envelope = env4.expect("continuation should be self-build");
+
+    // The continuation bid should reference the recovery envelope's block_hash
+    // (FULL path: recovery block's payload was revealed)
+    let cont_bid = block4
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should have bid");
+    assert_eq!(
+        cont_bid.message.parent_block_hash, recovery_payload_hash,
+        "continuation bid.parent_block_hash should be recovery's EL hash \
+         (FULL path: recovery payload was revealed)"
+    );
+
+    let cont_root = block4.canonical_root();
+    harness
+        .process_block(cont_slot, cont_root, (block4, blobs4))
+        .await
+        .expect("continuation block should import");
+
+    harness
+        .chain
+        .process_self_build_envelope(&cont_envelope)
+        .await
+        .expect("continuation envelope should process");
+
+    // Final verification: chain is healthy
+    let final_head = harness.chain.head_snapshot();
+    assert_eq!(
+        final_head.beacon_block_root, cont_root,
+        "continuation block should be the head"
+    );
+    assert_eq!(
+        final_head.beacon_block.slot(),
+        cont_slot,
+        "head should be at the continuation slot"
+    );
+}
