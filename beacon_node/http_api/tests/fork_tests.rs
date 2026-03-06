@@ -3342,3 +3342,83 @@ async fn gloas_block_production_via_http_api_v3() {
         }
     }
 }
+
+/// POST payload attestation referencing an unknown beacon_block_root should fail.
+///
+/// The gossip verification path checks that the attestation's beacon_block_root
+/// exists in fork choice. A fabricated root should produce a 400 error with an
+/// "UnknownBeaconBlockRoot" failure message.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_payload_attestation_unknown_block_root() {
+    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block so we have a head with a PTC committee
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Find a PTC member for the head slot
+    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    assert!(!ptc.is_empty(), "PTC committee should not be empty");
+    let validator_index = ptc[0];
+
+    // Use a fabricated block root that does NOT exist in fork choice
+    let unknown_root = Hash256::repeat_byte(0xFF);
+
+    let data = PayloadAttestationData {
+        beacon_block_root: unknown_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let message_root = data.signing_root(domain);
+    let keypair = generate_deterministic_keypair(validator_index as usize);
+    let signature = keypair.sk.sign(message_root);
+
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+
+    let result = client
+        .post_beacon_pool_payload_attestations(&[message])
+        .await;
+    assert!(
+        result.is_err(),
+        "should reject payload attestation with unknown block root"
+    );
+
+    // Verify the error message references the unknown root
+    let err_str = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_str.contains("UnknownBeaconBlockRoot"),
+        "error should mention UnknownBeaconBlockRoot, got: {err_str}"
+    );
+}
