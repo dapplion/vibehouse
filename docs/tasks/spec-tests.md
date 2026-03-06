@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — remove all stale upstream references, spec tracking (run 472)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 471. Only CI/tooling PRs.
+- **Open Gloas PR status**: All 7 tracked PRs unchanged (#4979, #4954, #4898, #4892, #4843, #4747, #4939). #4979 (PTC lookbehind) and #4747 (fast confirmation rule) both updated today (active discussion/review). #4898 and #4892 appear stale (~1 month since last update).
+- **Codebase cleanup** (48 stale references removed across 35 files): Comprehensive removal of all `sigp/lighthouse` issue/PR URLs from the codebase. vibehouse is an independent project — upstream references are noise. Each reference was replaced with a self-contained description of *why* the code exists (regression test context, design rationale, known limitations) rather than pointing to an external repo. Categories cleaned:
+  - 17 source files: store, network/sync, discovery, client config, execution_layer, beacon_chain (beacon_chain.rs, block_verification.rs, builder.rs, migrate.rs, validator_monitor.rs, validator_pubkey_cache.rs, data_availability_checker.rs, schema_change), bls, validator_dir, warp_utils, account_utils, committee_cache, slasher, api_secret
+  - 18 test files: store_tests, block_verification, blob_verification, column_verification, tests.rs, interactive_tests, rpc_tests, lookups, range, work_reprocessing_queue, ef_tests, sanity_blocks, beacon_node, geth, peer_manager
+  - Also fixed typos: "currenlty" → "currently", "fow" → "for", "VerifyIndiviual" → "VerifyIndividual", "chaild" → "child"
+- **Sync test skip analysis**: Investigated the two Gloas test skips in sync module:
+  - `state_update_while_purging` (range.rs:488): Cross-harness block import fails because Gloas blocks contain a `signed_execution_payload_bid` whose `parent_block_hash` must match the importing chain's state history. Two separate TestRig harnesses have different state histories, making cross-harness import fundamentally incompatible. This is a design difference, not a bug — fixing would require implementing envelope-aware sync (a feature, not a test fix).
+  - `custody_lookup_happy_path` (lookups.rs:1902): Gloas data columns come via execution payload envelopes, not block body sidecars. The custody lookup RPC flow (request columns by root) doesn't apply to Gloas architecture. Same conclusion: design difference, not a test gap.
+- **CI status**: All tests green. Clippy clean. Workspace compiles. Formatting clean.
+
 ### 2026-03-06 — gossip handler audit, missing validation result fix (run 471)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4980 (update python version requirements — infra only), #4977 (remove specs for EIP-7441 Whisk SSLE — separate feature, not Gloas), #4978 (ignore hidden files in mdformat — infra only). No Gloas behavioral changes.
