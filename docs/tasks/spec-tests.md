@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — spec tracking, FOCIL analysis, builder exit gossip tests (run 470)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4931 (rebase FOCIL/EIP-7805 onto Gloas — separate feature under `specs/_features/eip7805/`, NOT part of core Gloas spec. Adds inclusion list committee, `inclusion_list_bits` field on `ExecutionPayloadBid`, `payload_inclusion_list_satisfaction` store field, and `should_extend_payload` IL check. vibehouse does NOT need to implement this until FOCIL is merged into the main Gloas fork definition), #4921 (ckzg test default — CI/tooling only), #4920 (section heading consistency — docs only), #4914 (pubkey→validator_index in `SignedExecutionProof` — EIP-8025 feature, not Gloas), #4908 (builder voluntary exit tests — test-only, no spec change), #4903 (fix random block test field for Gloas — confirms `ExecutionPayloadBid.blob_kzg_commitments` is a full list, vibehouse already matches), #4900 (Gloas randomized block tests — test-only).
+- **Open Gloas PR status**: Same tracked PRs as run 469. No new merges since run 469. Key status:
+  - **#4898** (remove pending from tiebreaker) and **#4892** (remove impossible branch) — both approved, still not merged. Already proactively implemented in vibehouse.
+  - **#4979** (PTC lookbehind) — still open, active discussion between jtraglia and potuz. Will implement when merged.
+  - **#4954** (fork choice milliseconds), **#4843** (variable PTC deadline), **#4747** (fast confirmation rule), **#4939** (missing envelope by-root) — unchanged.
+- **New tests** (3, commit `9f0229e92`): builder voluntary exit gossip verification tests exercising `verify_voluntary_exit_for_gossip` with builder-flagged exits (`BUILDER_INDEX_FLAG | builder_index`):
+  - `gloas_builder_exit_gossip_accepted` — active builder exit accepted as New, duplicate detected as AlreadyKnown
+  - `gloas_builder_exit_gossip_inactive_rejected` — inactive builder (deposit_epoch not yet finalized) correctly rejected with BuilderNotActive
+  - `gloas_builder_exit_gossip_duplicate_different_epoch` — same builder, different epoch still detected as duplicate by observation layer
+- **Devnet validation**: Full 4-node devnet. finalized_epoch=8 at slot 81 (epoch 10). No stalls, no missed slots, chain healthy through Gloas fork transition.
+- **CI status**: All tests green. Clippy clean. Nightly tests green (5-day streak).
+
 ### 2026-03-06 — implement spec PR #4898, spec tracking (run 469)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4926 (replace `SECONDS_PER_SLOT` with `SLOT_DURATION_MS` in specs/configs — pure rename, `Store.time` still in seconds, no behavioral change, no vibehouse code change needed until new EF test vectors drop), #4930 (rename `execution_payload_states` → `payload_states` — vibehouse already uses `payload_states` naming, no change needed), #4950 (extend by_root serve range — already confirmed compliant in run 467). No new Gloas behavioral merges beyond what was tracked in run 468.
