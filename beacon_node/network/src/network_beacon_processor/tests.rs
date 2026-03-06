@@ -4858,3 +4858,82 @@ async fn test_gloas_gossip_proposer_preferences_head_behind_wall_clock_ignored()
     let result = drain_validation_result(&mut rig.network_rx).await;
     assert_ignore(result);
 }
+
+/// Verifies that an ExecutionPayload SSE event is emitted when a valid execution
+/// payload envelope is processed via gossip. The event should contain the slot,
+/// beacon_block_root, builder_index, and block_hash from the envelope.
+///
+/// This parallels `test_gloas_sse_event_execution_bid` and
+/// `test_gloas_sse_event_payload_attestation` which cover the other two ePBS gossip
+/// SSE topics. Without this test, the `EventKind::ExecutionPayload` emission at the
+/// end of `process_gossip_execution_payload` is entirely untested — wrong field values
+/// or a missing emit would silently break the `/eth/v1/events?topics=execution_payload`
+/// SSE stream.
+///
+/// The test builds a chain, produces a new block+envelope via `make_block_with_envelope`,
+/// imports ONLY the block (not the envelope), then submits the envelope via the gossip
+/// handler. This ensures the full pipeline succeeds (gossip validation → EL newPayload
+/// → state transition → fork choice → SSE emit).
+#[tokio::test]
+async fn test_gloas_sse_event_execution_payload() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Produce a new block + envelope using the harness
+    let head_state = rig.chain.head_beacon_state_cloned();
+    let next_slot = rig.chain.slot().unwrap();
+    let (block_contents, _state, envelope) = rig
+        ._harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block = &block_contents.0;
+    let block_root = block.canonical_root();
+
+    // Import ONLY the block (no envelope processing) — this leaves the payload
+    // un-revealed in fork choice so the gossip envelope can be fully processed.
+    rig._harness
+        .process_block_result(block_contents)
+        .await
+        .expect("block import should succeed");
+
+    let expected_slot = signed_envelope.message.slot;
+    let expected_builder_index = signed_envelope.message.builder_index;
+    let expected_block_hash = signed_envelope.message.payload.block_hash;
+
+    // Subscribe to execution payload events before processing
+    let event_handler = rig.chain.event_handler.as_ref().unwrap();
+    let mut payload_rx = event_handler.subscribe_execution_payload();
+
+    // Clear observed envelopes — process_block_result calls process_self_build_envelope
+    // which records the envelope as observed. Clear it so the gossip path accepts ours.
+    rig.chain.observed_payload_envelopes.lock().clear();
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), signed_envelope)
+        .await;
+
+    // Verify the gossip was accepted
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Verify SSE event was emitted with correct data
+    let event = payload_rx
+        .try_recv()
+        .expect("should receive execution payload SSE event");
+    match event {
+        EventKind::ExecutionPayload(sse_payload) => {
+            assert_eq!(sse_payload.slot, expected_slot);
+            assert_eq!(sse_payload.beacon_block_root, block_root);
+            assert_eq!(sse_payload.builder_index, expected_builder_index);
+            assert_eq!(sse_payload.block_hash, expected_block_hash.into_root());
+        }
+        other => panic!(
+            "expected ExecutionPayload event, got {:?}",
+            other.topic_name()
+        ),
+    }
+}
