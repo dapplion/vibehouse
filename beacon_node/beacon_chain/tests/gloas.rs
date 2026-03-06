@@ -19627,3 +19627,146 @@ async fn gloas_builder_exit_gossip_duplicate_different_epoch() {
         ObservationOutcome::AlreadyKnown
     ));
 }
+
+/// End-to-end test: proposer slashing flows from gossip verification → op pool import →
+/// retrieval via get_slashings_and_exits on a Gloas state. Verifies the full pipeline for
+/// including proposer slashings in Gloas blocks.
+#[tokio::test]
+async fn gloas_proposer_slashing_op_pool_retrieval() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build enough chain for the slashing to reference a valid head
+    harness
+        .extend_chain(
+            E::slots_per_epoch() as usize,
+            beacon_chain::test_utils::BlockStrategy::OnCanonicalHead,
+            AttestationStrategy::AllValidators,
+        )
+        .await;
+
+    // Pick a validator to slash (not the next proposer, to avoid complications)
+    let slashed_validator = 1u64;
+
+    // Step 1: Create proposer slashing via harness helper
+    let slashing = harness.make_proposer_slashing(slashed_validator);
+
+    // Step 2: Gossip verification
+    let outcome = harness
+        .chain
+        .verify_proposer_slashing_for_gossip(slashing.clone())
+        .expect("gossip verification should succeed");
+
+    let verified = match outcome {
+        ObservationOutcome::New(verified) => verified,
+        ObservationOutcome::AlreadyKnown => panic!("should be New, not AlreadyKnown"),
+    };
+
+    // Step 3: Import to op pool
+    harness.chain.import_proposer_slashing(verified);
+
+    // Step 4: Retrieve from op pool via get_slashings_and_exits on Gloas state
+    let head_state = &harness.chain.head().snapshot.beacon_state;
+    assert!(head_state.as_gloas().is_ok(), "head state should be Gloas");
+
+    let spec = &harness.chain.spec;
+    let (proposer_slashings, _, _) = harness
+        .chain
+        .op_pool
+        .get_slashings_and_exits(head_state, spec);
+
+    assert_eq!(
+        proposer_slashings.len(),
+        1,
+        "op pool should return the proposer slashing for block inclusion"
+    );
+    assert_eq!(
+        proposer_slashings[0].signed_header_1.message.proposer_index, slashed_validator,
+        "returned slashing should target the correct validator"
+    );
+
+    // Verify duplicate is detected
+    let slashing_dup = harness.make_proposer_slashing(slashed_validator);
+    assert!(matches!(
+        harness
+            .chain
+            .verify_proposer_slashing_for_gossip(slashing_dup)
+            .unwrap(),
+        ObservationOutcome::AlreadyKnown
+    ));
+}
+
+/// End-to-end test: attester slashing flows from gossip verification → op pool import →
+/// retrieval via get_slashings_and_exits on a Gloas state. Verifies the full pipeline for
+/// including attester slashings in Gloas blocks.
+#[tokio::test]
+async fn gloas_attester_slashing_op_pool_retrieval() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build enough chain for the slashing to reference a valid head
+    harness
+        .extend_chain(
+            E::slots_per_epoch() as usize,
+            beacon_chain::test_utils::BlockStrategy::OnCanonicalHead,
+            AttestationStrategy::AllValidators,
+        )
+        .await;
+
+    // Pick validators to slash
+    let slashed_validators = vec![2u64, 3u64];
+
+    // Step 1: Create attester slashing via harness helper
+    let slashing = harness.make_attester_slashing(slashed_validators.clone());
+
+    // Step 2: Gossip verification
+    let outcome = harness
+        .chain
+        .verify_attester_slashing_for_gossip(slashing.clone())
+        .expect("gossip verification should succeed");
+
+    let verified = match outcome {
+        ObservationOutcome::New(verified) => verified,
+        ObservationOutcome::AlreadyKnown => panic!("should be New, not AlreadyKnown"),
+    };
+
+    // Step 3: Import to op pool
+    harness.chain.import_attester_slashing(verified);
+
+    // Step 4: Retrieve from op pool via get_slashings_and_exits on Gloas state
+    let head_state = &harness.chain.head().snapshot.beacon_state;
+    assert!(head_state.as_gloas().is_ok(), "head state should be Gloas");
+
+    let spec = &harness.chain.spec;
+    let (_, attester_slashings, _) = harness
+        .chain
+        .op_pool
+        .get_slashings_and_exits(head_state, spec);
+
+    assert_eq!(
+        attester_slashings.len(),
+        1,
+        "op pool should return the attester slashing for block inclusion"
+    );
+
+    // Verify both validators are in the slashing's attesting indices
+    let slashing_indices: Vec<u64> = match &attester_slashings[0] {
+        AttesterSlashing::Base(s) => s.attestation_1.attesting_indices.to_vec(),
+        AttesterSlashing::Electra(s) => s.attestation_1.attesting_indices.to_vec(),
+    };
+    for idx in &slashed_validators {
+        assert!(
+            slashing_indices.contains(idx),
+            "returned slashing should include validator {}",
+            idx
+        );
+    }
+
+    // Verify duplicate is detected
+    let slashing_dup = harness.make_attester_slashing(slashed_validators);
+    assert!(matches!(
+        harness
+            .chain
+            .verify_attester_slashing_for_gossip(slashing_dup)
+            .unwrap(),
+        ObservationOutcome::AlreadyKnown
+    ));
+}
