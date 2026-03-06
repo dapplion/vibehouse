@@ -1796,6 +1796,248 @@ async fn gloas_import_payload_attestation_message_unknown_block_root() {
     );
 }
 
+// =============================================================================
+// get_all_payload_attestations pool retrieval tests
+// =============================================================================
+
+/// get_all_payload_attestations(None) returns all attestations across all slots.
+#[tokio::test]
+async fn gloas_get_all_payload_attestations_unfiltered() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Import two attestations from different PTC members at the head slot
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(ptc.len() >= 2, "need at least 2 PTC members");
+
+    for &validator_index in &ptc[..2] {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        };
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+        harness
+            .chain
+            .import_payload_attestation_message(message)
+            .expect("should import payload attestation");
+    }
+
+    // Unfiltered retrieval should return all attestations
+    let all = harness.chain.get_all_payload_attestations(None);
+    assert!(
+        !all.is_empty(),
+        "unfiltered pool should contain attestations"
+    );
+    // All returned attestations should target the head slot
+    for att in &all {
+        assert_eq!(att.data.slot, head_slot);
+        assert_eq!(att.data.beacon_block_root, head_root);
+    }
+}
+
+/// get_all_payload_attestations(Some(slot)) returns only attestations for that slot,
+/// and returns an empty vec for slots with no attestations.
+#[tokio::test]
+async fn gloas_get_all_payload_attestations_filtered_by_slot() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Import one attestation at the head slot
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+    harness
+        .chain
+        .import_payload_attestation_message(message)
+        .expect("should import");
+
+    // Filtered by head_slot should return the attestation
+    let filtered = harness.chain.get_all_payload_attestations(Some(head_slot));
+    assert!(
+        !filtered.is_empty(),
+        "should find attestations at head slot"
+    );
+    assert_eq!(filtered[0].data.slot, head_slot);
+
+    // Filtered by a different slot should return empty
+    let other_slot = head_slot + 1;
+    let empty = harness.chain.get_all_payload_attestations(Some(other_slot));
+    assert!(
+        empty.is_empty(),
+        "should return empty for slot with no attestations"
+    );
+}
+
+/// get_payload_attestations_for_block aggregates attestations with the same data,
+/// combining aggregation_bits and signatures. This tests the critical block
+/// production path where multiple individual PTC attestations must be merged.
+#[tokio::test]
+async fn gloas_get_payload_attestations_for_block_aggregates() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Import attestations from the first two PTC members with identical data
+    let ptc =
+        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    assert!(ptc.len() >= 2, "need at least 2 PTC members");
+
+    for &validator_index in &ptc[..2] {
+        let data = PayloadAttestationData {
+            beacon_block_root: head_root,
+            slot: head_slot,
+            payload_present: true,
+            blob_data_available: true,
+        };
+        let signature =
+            sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+        let message = PayloadAttestationMessage {
+            validator_index,
+            data,
+            signature,
+        };
+        harness
+            .chain
+            .import_payload_attestation_message(message)
+            .expect("should import");
+    }
+
+    // get_payload_attestations_for_block targets slot-1, so query with head_slot+1
+    let block_slot = head_slot + 1;
+    let aggregated = harness
+        .chain
+        .get_payload_attestations_for_block(block_slot, head_root);
+
+    // Should return exactly 1 aggregated attestation (both had same data)
+    assert_eq!(
+        aggregated.len(),
+        1,
+        "attestations with same data should be aggregated into one"
+    );
+
+    let agg = &aggregated[0];
+    assert_eq!(agg.data.beacon_block_root, head_root);
+    assert_eq!(agg.data.slot, head_slot);
+
+    // Both bits 0 and 1 should be set (aggregated from two PTC members)
+    assert!(
+        agg.aggregation_bits.get(0).unwrap_or(false),
+        "bit 0 should be set after aggregation"
+    );
+    assert!(
+        agg.aggregation_bits.get(1).unwrap_or(false),
+        "bit 1 should be set after aggregation"
+    );
+}
+
+/// get_payload_attestations_for_block filters by parent_block_root — attestations
+/// for a different block root should be excluded.
+#[tokio::test]
+async fn gloas_get_payload_attestations_for_block_filters_by_root() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    // Import one attestation at head_slot
+    let validator_index = first_ptc_member(state, head_slot, &harness.spec);
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: true,
+    };
+    let signature =
+        sign_payload_attestation_data(&data, validator_index as usize, state, &harness.spec);
+    let message = PayloadAttestationMessage {
+        validator_index,
+        data,
+        signature,
+    };
+    harness
+        .chain
+        .import_payload_attestation_message(message)
+        .expect("should import");
+
+    // Query with the correct parent root — should find it
+    let block_slot = head_slot + 1;
+    let found = harness
+        .chain
+        .get_payload_attestations_for_block(block_slot, head_root);
+    assert!(
+        !found.is_empty(),
+        "should find attestation with matching block root"
+    );
+
+    // Query with a wrong parent root — should return empty
+    let wrong_root = Hash256::repeat_byte(0xff);
+    let empty = harness
+        .chain
+        .get_payload_attestations_for_block(block_slot, wrong_root);
+    assert!(
+        empty.is_empty(),
+        "should return empty for non-matching block root"
+    );
+}
+
+/// get_all_payload_attestations on an empty pool returns an empty vec.
+#[tokio::test]
+async fn gloas_get_all_payload_attestations_empty_pool() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Don't import any attestations — the pool should be empty
+    let all = harness.chain.get_all_payload_attestations(None);
+    assert!(
+        all.is_empty(),
+        "empty pool should return empty vec for unfiltered query"
+    );
+
+    let head_slot = harness.chain.head_snapshot().beacon_block.slot();
+    let filtered = harness.chain.get_all_payload_attestations(Some(head_slot));
+    assert!(
+        filtered.is_empty(),
+        "empty pool should return empty vec for filtered query"
+    );
+}
+
 // ── Envelope storage and retrieval tests ──
 
 /// After producing Gloas blocks, envelopes should be persisted in the store.
