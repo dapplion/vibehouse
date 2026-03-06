@@ -18066,3 +18066,110 @@ async fn gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choic
         err
     );
 }
+
+// =============================================================================
+// Execution proof generation integration
+// =============================================================================
+
+/// When `generate_execution_proofs` is enabled, self-build envelope processing should
+/// trigger stub proof generation. The proofs should appear on the proof_receiver channel.
+///
+/// This exercises the integration path in beacon_chain.rs:3088-3091 where
+/// `process_self_build_envelope` calls `generator.generate_proof(...)` after
+/// the execution layer validates the payload.
+#[tokio::test]
+async fn gloas_self_build_generates_execution_proofs() {
+    let mut spec = E::default_spec();
+    spec.altair_fork_epoch = Some(Epoch::new(0));
+    spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    spec.capella_fork_epoch = Some(Epoch::new(0));
+    spec.deneb_fork_epoch = Some(Epoch::new(0));
+    spec.electra_fork_epoch = Some(Epoch::new(0));
+    spec.fulu_fork_epoch = Some(Epoch::new(0));
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+
+    let chain_config = ChainConfig {
+        generate_execution_proofs: true,
+        ..ChainConfig::default()
+    };
+
+    let harness = BeaconChainHarness::builder(E::default())
+        .spec(spec.into())
+        .deterministic_keypairs(VALIDATOR_COUNT)
+        .fresh_ephemeral_store()
+        .mock_execution_layer()
+        .chain_config(chain_config)
+        .build();
+
+    harness.advance_slot();
+
+    // The generator should be present when the flag is enabled.
+    assert!(
+        harness.chain.execution_proof_generator.is_some(),
+        "execution_proof_generator should be Some when generate_execution_proofs is enabled"
+    );
+
+    // Take the proof receiver before producing any blocks.
+    let mut proof_rx = harness
+        .chain
+        .proof_receiver
+        .lock()
+        .take()
+        .expect("proof_receiver should be available");
+
+    // Produce a Gloas block (self-build: block + envelope processed together).
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators: Vec<usize> = (0..VALIDATOR_COUNT).collect();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    // Allow the spawned proof generation task to complete.
+    tokio::task::yield_now().await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Collect all proofs from the channel.
+    let mut proofs = vec![];
+    while let Ok(proof) = proof_rx.try_recv() {
+        proofs.push(proof);
+    }
+
+    let expected_count = types::execution_proof_subnet_id::MAX_EXECUTION_PROOF_SUBNETS as usize;
+    assert_eq!(
+        proofs.len(),
+        expected_count,
+        "should generate one proof per subnet ({expected_count}), got {}",
+        proofs.len()
+    );
+
+    // Get the block root and block_hash for the produced block.
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let envelope = harness
+        .chain
+        .get_payload_envelope(&head_root)
+        .unwrap()
+        .expect("self-build envelope should exist");
+    let expected_block_hash = envelope.message.payload.block_hash;
+
+    for proof in &proofs {
+        assert_eq!(
+            proof.block_root, head_root,
+            "proof block_root should match the produced block"
+        );
+        assert_eq!(
+            proof.block_hash, expected_block_hash,
+            "proof block_hash should match the envelope payload"
+        );
+        assert!(
+            proof.is_structurally_valid(),
+            "generated proof should be structurally valid"
+        );
+    }
+}
