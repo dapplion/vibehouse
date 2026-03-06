@@ -1539,7 +1539,7 @@ impl ProtoArrayForkChoice {
 
     /// Tiebreaker between EMPTY and FULL payload statuses.
     ///
-    /// For PENDING nodes or non-previous-slot nodes: use payload_status ordinal.
+    /// For non-previous-slot nodes: use payload_status ordinal.
     /// For previous-slot EMPTY: 1 (favored).
     /// For previous-slot FULL: 2 if should extend payload, else 0.
     fn get_payload_tiebreaker(
@@ -1550,11 +1550,6 @@ impl ProtoArrayForkChoice {
         proposer_boost_root: Hash256,
     ) -> u8 {
         let pa = &self.proto_array;
-
-        // Spec: if PENDING or not from the previous slot, return the ordinal status value.
-        if node.payload_status == GloasPayloadStatus::Pending {
-            return node.payload_status as u8;
-        }
 
         let is_previous_slot = pa
             .indices
@@ -4072,7 +4067,7 @@ mod test_gloas_fork_choice {
 
     #[test]
     fn tiebreaker_pending_not_previous_slot_returns_ordinal() {
-        // PENDING status at a non-previous-slot returns its ordinal value (2)
+        // Non-previous-slot nodes always return their ordinal value (PENDING=2)
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
@@ -4287,11 +4282,11 @@ mod test_gloas_fork_choice {
     }
 
     #[test]
-    fn tiebreaker_pending_at_previous_slot_returns_ordinal() {
-        // Per spec: PENDING nodes always return their ordinal value regardless
-        // of slot. This is unreachable in practice (PENDING nodes are unique per
-        // root so the root comparison breaks the tie first), but matches the spec
-        // condition: `if payload_status == PENDING or slot+1 != current_slot`.
+    fn tiebreaker_pending_at_previous_slot_falls_through() {
+        // Per spec PR #4898: PENDING no longer has a special early return.
+        // At the previous slot, PENDING falls through to should_extend_payload
+        // (same as FULL). This is unreachable in practice (PENDING nodes are
+        // unique per root so the root comparison breaks the tie first).
         let (mut fc, _spec) = new_gloas_fc();
         let block_root = root(1);
         insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
@@ -4302,7 +4297,7 @@ mod test_gloas_fork_choice {
         };
 
         // Block at slot 1, current_slot = 2 (previous slot).
-        // PENDING always returns ordinal (2) per spec, regardless of slot.
+        // No proposer boost → should_extend_payload returns true → 2.
         assert_eq!(
             fc.get_payload_tiebreaker(
                 &gloas_node,
@@ -4310,7 +4305,7 @@ mod test_gloas_fork_choice {
                 MINIMAL_PTC_THRESHOLD,
                 fc.proto_array.previous_proposer_boost.root
             ),
-            GloasPayloadStatus::Pending as u8
+            2
         );
     }
 
