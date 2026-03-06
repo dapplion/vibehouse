@@ -8,6 +8,7 @@ use crate::{
     service::NetworkMessage,
     sync::{SyncMessage, manager::BlockProcessType},
 };
+use beacon_chain::ExecutionStatus;
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::custody_context::NodeCustodyType;
 use beacon_chain::data_column_verification::validate_data_column_sidecar_for_gossip;
@@ -4935,5 +4936,82 @@ async fn test_gloas_sse_event_execution_payload() {
             "expected ExecutionPayload event, got {:?}",
             other.topic_name()
         ),
+    }
+}
+
+/// Verifies that when the EL returns Syncing for an envelope's newPayload, the gossip
+/// handler still accepts the envelope and marks `payload_revealed=true` in fork choice,
+/// but does NOT transition `execution_status` to Valid (it stays Optimistic).
+///
+/// This is the normal optimistic sync path: a gossip envelope arrives, the EL is still
+/// catching up, so it returns Syncing instead of Valid. The block must be marked as
+/// having its payload revealed (so fork choice can select it) but must NOT be marked
+/// as execution-valid (to prevent the VC from building on an unverified head).
+///
+/// The beacon_chain-level test (`gloas_gossip_envelope_el_syncing_stays_optimistic`)
+/// calls `process_payload_envelope` directly. This test exercises the same path through
+/// the full gossip handler (`process_gossip_execution_payload`), which has additional
+/// logic: it calls `on_valid_execution_payload` only when `el_valid=true`.
+#[tokio::test]
+async fn test_gloas_gossip_payload_envelope_el_syncing_stays_optimistic() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Produce a new block + envelope
+    let head_state = rig.chain.head_beacon_state_cloned();
+    let next_slot = rig.chain.slot().unwrap();
+    let (block_contents, _state, envelope) = rig
+        ._harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let block = &block_contents.0;
+    let block_root = block.canonical_root();
+
+    // Import ONLY the block (no envelope processing)
+    rig._harness
+        .process_block_result(block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Syncing for newPayload
+    rig._harness
+        .mock_execution_layer
+        .as_ref()
+        .unwrap()
+        .server
+        .all_payloads_syncing_on_new_payload(false);
+
+    // Clear observed envelopes so the gossip path accepts
+    rig.chain.observed_payload_envelopes.lock().clear();
+
+    rig.network_beacon_processor
+        .process_gossip_execution_payload(junk_message_id(), junk_peer_id(), signed_envelope)
+        .await;
+
+    // Verify gossip was accepted
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // Verify payload_revealed is true (fork choice updated)
+    {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc
+            .get_block(&block_root)
+            .expect("block should be in fork choice");
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true after EL Syncing"
+        );
+
+        // execution_status should be Optimistic (NOT Valid)
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "execution_status should be Optimistic when EL returns Syncing, got {:?}",
+            proto_block.execution_status
+        );
     }
 }
