@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — 3 more dependency upgrades (lru, tokio, discv5), spec tracking (run 486)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
+- **Dependency upgrades** (3 crates):
+  - `lru` 0.12 → 0.16.3: RUSTSEC-2026-0002 (unsoundness in `IterMut` — Stacked Borrows violation via invalidated internal pointer). Direct vibehouse dependency upgraded. Note: discv5 0.10.2 still transitively pulls lru 0.12.5, but discv5 never calls `iter_mut()` on LruCache so the vulnerability is not exploitable through that path.
+  - `tokio` 1.44.0 → 1.50.0: RUSTSEC-2025-0023 (broadcast channel calls `clone` in parallel without requiring `Sync` — potential memory corruption with non-Sync types).
+  - `discv5` 0.10.1 → 0.10.2: Patch release, keeps lru 0.12 pinning but picks up latest discv5 fixes.
+- **Remaining advisories**: 11 warnings (down from 12 in run 485 — tokio advisory resolved). All remaining are unmaintained-crate warnings from transitive dependencies (ansi_term, bincode, derivative, filesystem, fxhash, instant, paste, proc-macro-error, rustls-pemfile×2) plus the non-exploitable lru 0.12.5 from discv5.
+- **Build & test verification**: Release build clean (0 warnings). 759/759 beacon_chain tests pass. 27/27 slasher tests pass. 24/24 store tests pass. 46/46 execution_layer tests pass. Full clippy clean via pre-push hook.
+- **CI status**: All CI green. Nightly tests passing.
+
 ### 2026-03-06 — dependency security audit, 3 vulnerability fixes (run 485)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
