@@ -1883,6 +1883,71 @@ mod tests {
         assert!(state_gloas.payload_expected_withdrawals.is_empty());
     }
 
+    /// When a block processes with FULL parent, `payload_expected_withdrawals` is populated.
+    /// If the payload is then missed (envelope never arrives) and the next block processes
+    /// with EMPTY parent (hashes mismatch), `process_withdrawals_gloas` returns early WITHOUT
+    /// clearing `payload_expected_withdrawals`. The field retains its stale value from the
+    /// previous FULL-parent block. This is correct spec behavior: the next envelope must
+    /// carry these stale withdrawals. Tests the scenario from consensus-specs#4962.
+    #[test]
+    fn empty_parent_preserves_stale_payload_expected_withdrawals() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Add a builder pending withdrawal so process_withdrawals_gloas produces output
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .builder_pending_withdrawals
+            .push(BuilderPendingWithdrawal {
+                fee_recipient: Address::repeat_byte(0xDD),
+                amount: 5_000_000_000,
+                builder_index: 0,
+            })
+            .unwrap();
+
+        // Step 1: FULL parent → process_withdrawals_gloas populates payload_expected_withdrawals
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        let stale_withdrawals: Vec<_> = state
+            .as_gloas()
+            .unwrap()
+            .payload_expected_withdrawals
+            .iter()
+            .cloned()
+            .collect();
+        assert!(
+            !stale_withdrawals.is_empty(),
+            "FULL parent should have produced withdrawals"
+        );
+
+        // Step 2: Simulate missed payload — make parent EMPTY by changing latest_block_hash
+        // to a value that doesn't match latest_execution_payload_bid.block_hash
+        state.as_gloas_mut().unwrap().latest_block_hash = ExecutionBlockHash::repeat_byte(0xFF);
+        assert!(
+            !is_parent_block_full::<E>(&state).unwrap(),
+            "parent should now be EMPTY"
+        );
+
+        // Step 3: EMPTY parent → process_withdrawals_gloas returns early
+        process_withdrawals_gloas::<E>(&mut state, &spec).unwrap();
+
+        // Step 4: Verify payload_expected_withdrawals retains its stale value
+        let after_empty: Vec<_> = state
+            .as_gloas()
+            .unwrap()
+            .payload_expected_withdrawals
+            .iter()
+            .cloned()
+            .collect();
+        assert_eq!(
+            stale_withdrawals, after_empty,
+            "EMPTY parent should NOT clear payload_expected_withdrawals — \
+             the stale withdrawals from the previous FULL block must persist \
+             so the next envelope can match them"
+        );
+    }
+
     #[test]
     fn withdrawals_builder_pending_withdrawals() {
         let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
