@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — slashing op pool Gloas integration tests, spec tracking (run 475)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4982 (ruff update), #4981 (codespell update), #4980 (python version). All CI/tooling — no Gloas behavioral changes.
+- **Open Gloas PR status**: All 7 tracked PRs unchanged (#4979, #4954, #4898, #4892, #4843, #4747, #4939). #4979 (PTC lookbehind) actively discussed today. #4747 (fast confirmation rule) also updated today (80+ comments, intense review). #4898 and #4892 both approved, idle ~1 month. No new merges.
+- **New tests** (2, commit `5b5068ad7`): proposer slashing and attester slashing end-to-end op pool integration tests on Gloas state, closing the gap where `get_slashings_and_exits` was never called with proposer/attester slashings on a Gloas state:
+  - `gloas_proposer_slashing_op_pool_retrieval` — creates a Gloas harness, builds 1 epoch, creates a proposer slashing for validator 1, gossip-verifies it, imports to op pool, calls `get_slashings_and_exits` on Gloas head state. Asserts: (1) exactly 1 proposer slashing returned, (2) correct proposer_index, (3) duplicate detection returns AlreadyKnown.
+  - `gloas_attester_slashing_op_pool_retrieval` — creates a Gloas harness, builds 1 epoch, creates an attester slashing for validators 2+3 (Electra-format IndexedAttestation), gossip-verifies it, imports to op pool, calls `get_slashings_and_exits` on Gloas head state. Asserts: (1) exactly 1 attester slashing returned, (2) both validator indices present in attesting_indices, (3) duplicate detection returns AlreadyKnown.
+- **Gap closure progress**: Run 474 identified that `get_slashings_and_exits` was never tested on Gloas state for slashings (only builder exits). These 2 tests now exercise the proposer slashing and attester slashing retrieval paths. The remaining op pool gap is schema migration tests under Gloas.
+- **CI status**: All tests green. Clippy clean (beacon_chain --tests, -D warnings).
+
 ### 2026-03-06 — builder exit op pool test, test gap analysis (run 474)
 - No new consensus-specs releases or Gloas behavioral merges (quick check, nothing since run 473)
 - **Deep test gap analysis** across 4 areas (operation pool, store, HTTP API, network):
