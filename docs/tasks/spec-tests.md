@@ -28,6 +28,32 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — deep spec conformance audit, all functions verified correct (run 480)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors since v1.6.0-beta.0)
+- **Recently merged spec PRs reviewed**: #4983 (release-drafter), #4972 (py_arkworks_bls12381), #4982 (ruff), #4981 (codespell), #4980 (python version), #4977 (remove EIP-7441 SSLE), #4950 (extend by_root reqresp serve range). All CI/tooling/dependency updates except #4950 which extends BeaconBlocksByRoot and ExecutionPayloadEnvelopesByRoot serve range to MIN_EPOCHS_FOR_BLOCK_REQUESTS — vibehouse is already compliant (serves anything in store, more permissive than spec minimum).
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. PR #4979 (PTC Lookbehind) actively discussed. PR #4747 (Fast Confirmation Rule) has 87+ review comments.
+- **Deep spec conformance audit**: Line-by-line comparison of vibehouse implementation against consensus-specs master for all critical Gloas functions:
+  - `process_execution_payload_bid`: all 10 assertions match spec exactly (builder validation, blob commitment limit, slot/parent/randao checks, payment recording, bid caching)
+  - `process_execution_payload` (envelope processing): all 14 checks verified (signature, state root caching, beacon block root, slot, builder index, prev_randao, withdrawals hash, gas limit, block hash, parent hash, timestamp, execution requests, payment queueing, availability bit)
+  - `process_builder_pending_payments`: quorum calculation and rotation logic matches
+  - `can_builder_cover_bid`: balance check formula matches (min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals)
+  - `process_payload_attestation`: parent root, slot+1, signature verification all match
+  - `get_ptc_committee`: seed construction, committee concatenation, balance-weighted selection all match spec's `compute_balance_weighted_selection(shuffle_indices=False)`
+  - `compute_proposer_index`: uses `compute_shuffled_index` + balance-weighted acceptance matching spec's `compute_balance_weighted_selection(shuffle_indices=True, size=1)`
+  - `get_next_sync_committee_indices`: shuffle + 2-byte random matching spec
+  - `get_expected_withdrawals`: all 4 withdrawal phases (builder pending, partial, builder sweep, validator sweep) with correct limits (MAX_WITHDRAWALS_PER_PAYLOAD - 1 reserved, full limit for validator sweep)
+  - `get_weight`: non-PENDING nodes from previous slot correctly return 0; attestation score + proposer boost formula matches
+  - `is_supporting_vote_gloas`: PR #4892 alignment already applied (== instead of <=)
+  - `should_extend_payload`: all 4 conditions verified (timely AND data_available, no boost root, different parent, parent full)
+  - `should_apply_proposer_boost_gloas`: parent weak check, equivocation detection, PTC_TIMELINESS_INDEX usage all match
+  - `record_block_timeliness`: dual-deadline (ATTESTATION_TIMELINESS_INDEX, PTC_TIMELINESS_INDEX) correctly implemented
+  - `process_deposit_request_gloas`: builder/validator routing, is_pending_validator BLS verification, apply_deposit_for_builder all match
+  - `validate_on_attestation`: Gloas index constraints (index < 2, same-slot → index=0, index=1 → payload_states required) all verified
+  - Slot timing functions: epoch-dependent branching for attestation/aggregate/sync/contribution due ms matches spec
+- **Unwrap/expect audit**: No dangerous bare `.unwrap()` calls in production consensus paths. All runtime unwraps are in test code, safe vector initializations, or `.unwrap_or()` patterns.
+- **No code changes in this run** — audit confirmed complete spec conformance.
+- **CI status**: All tests green. Nightly tests passing for all forks (phase0 through fulu).
+
 ### 2026-03-06 — comprehensive test gap audit, test coverage saturation confirmed (run 479)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 478. Only CI/dependency PRs (#4983 release-drafter, already reviewed).
