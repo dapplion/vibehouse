@@ -8,6 +8,7 @@ use crate::{
     service::NetworkMessage,
     sync::{SyncMessage, manager::BlockProcessType},
 };
+use beacon_chain::ChainConfig;
 use beacon_chain::ExecutionStatus;
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::custody_context::NodeCustodyType;
@@ -5148,4 +5149,276 @@ async fn test_gloas_gossip_block_parent_payload_unknown_ignored_and_synced() {
         matches!(&sync_messages[0], SyncMessage::UnknownParentBlock(_, _, root) if *root == rig.next_block.canonical_root()),
         "sync message should be UnknownParentBlock with the child block's root"
     );
+}
+
+/// Helper: create a Gloas-enabled stateless TestRig where the node uses ZK proof
+/// validation instead of EL execution. `min_proofs_required` controls how many
+/// proof subnets must be received before marking a block execution-valid.
+///
+/// Stateless nodes skip EL proposer preparation, so blocks can't be produced
+/// directly. Instead, blocks are produced on a normal (non-stateless) harness
+/// and imported into the stateless harness via `process_block`.
+async fn gloas_rig_stateless(chain_length: u64, min_proofs_required: usize) -> TestRig {
+    let mut spec = test_spec::<E>();
+    spec.shard_committee_period = 2;
+    spec.gloas_fork_epoch = Some(Epoch::new(0));
+    let spec_arc = Arc::new(spec);
+
+    // Build a normal producer harness to generate blocks
+    let producer = BeaconChainHarness::builder(MainnetEthSpec)
+        .spec(spec_arc.clone())
+        .deterministic_keypairs(VALIDATOR_COUNT)
+        .fresh_ephemeral_store()
+        .mock_execution_layer()
+        .chain_config(ChainConfig::default())
+        .build();
+
+    // Build the stateless harness with the same genesis
+    let chain_config = ChainConfig {
+        stateless_validation: true,
+        stateless_min_proofs_required: min_proofs_required,
+        ..ChainConfig::default()
+    };
+    let harness = BeaconChainHarness::builder(MainnetEthSpec)
+        .spec(spec_arc.clone())
+        .deterministic_keypairs(VALIDATOR_COUNT)
+        .fresh_ephemeral_store()
+        .mock_execution_layer()
+        .chain_config(chain_config)
+        .build();
+
+    // Produce blocks on the normal harness and import into the stateless harness
+    for _ in 0..chain_length {
+        producer.advance_slot();
+        harness.advance_slot();
+        let head_state = producer.chain.head_beacon_state_cloned();
+        let next_slot = head_state.slot() + 1;
+        let (block_contents, _state, envelope) = producer
+            .make_block_with_envelope(head_state, next_slot)
+            .await;
+
+        let envelope = envelope.expect("Gloas should produce envelope");
+        let block_root = block_contents.0.canonical_root();
+
+        // Import block + envelope on producer so it can produce subsequent blocks
+        producer
+            .process_block(next_slot, block_root, block_contents.clone())
+            .await
+            .unwrap_or_else(|e| panic!("producer import failed: {:?}", e));
+        producer
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .unwrap_or_else(|e| panic!("producer envelope failed: {:?}", e));
+
+        // Import into stateless harness via harness helper (builds RpcBlock internally)
+        harness
+            .process_block(next_slot, block_root, block_contents)
+            .await
+            .unwrap_or_else(|e| panic!("stateless import failed: {:?}", e));
+
+        // Process envelope on stateless harness (skips EL, runs state transition)
+        harness
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .unwrap_or_else(|e| panic!("stateless envelope failed: {:?}", e));
+    }
+
+    // Build the TestRig manually — can't use new_from_harness because it calls
+    // make_block which requires EL preparation that stateless nodes skip.
+    let beacon_processor_config = BeaconProcessorConfig::default();
+    let chain = harness.chain.clone();
+
+    let (network_tx, network_rx) = mpsc::unbounded_channel();
+
+    let BeaconProcessorChannels {
+        beacon_processor_tx,
+        beacon_processor_rx,
+    } = BeaconProcessorChannels::new(&beacon_processor_config);
+
+    let (sync_tx, sync_rx) = mpsc::unbounded_channel();
+
+    let meta_data = if spec_arc.is_peer_das_scheduled() {
+        MetaData::V3(MetaDataV3 {
+            seq_number: SEQ_NUMBER,
+            attnets: EnrAttestationBitfield::<MainnetEthSpec>::default(),
+            syncnets: EnrSyncCommitteeBitfield::<MainnetEthSpec>::default(),
+            custody_group_count: spec_arc.custody_requirement,
+        })
+    } else {
+        MetaData::V2(MetaDataV2 {
+            seq_number: SEQ_NUMBER,
+            attnets: EnrAttestationBitfield::<MainnetEthSpec>::default(),
+            syncnets: EnrSyncCommitteeBitfield::<MainnetEthSpec>::default(),
+        })
+    };
+
+    let enr_key = CombinedKey::generate_secp256k1();
+    let enr = enr::Enr::builder().build(&enr_key).unwrap();
+    let network_config = Arc::new(NetworkConfig::default());
+    let network_globals = Arc::new(NetworkGlobals::new(
+        enr,
+        meta_data,
+        vec![],
+        false,
+        network_config,
+        spec_arc,
+    ));
+
+    let executor = harness.runtime.task_executor.clone();
+
+    let (work_journal_tx, work_journal_rx) = mpsc::channel(16_364);
+
+    let duplicate_cache = DuplicateCache::default();
+    let network_beacon_processor = NetworkBeaconProcessor {
+        beacon_processor_send: beacon_processor_tx.clone(),
+        duplicate_cache: duplicate_cache.clone(),
+        chain: harness.chain.clone(),
+        network_tx,
+        sync_tx,
+        network_globals: network_globals.clone(),
+        invalid_block_storage: InvalidBlockStorage::Disabled,
+        executor: executor.clone(),
+    };
+    let network_beacon_processor = Arc::new(network_beacon_processor);
+
+    let beacon_processor = BeaconProcessor {
+        network_globals: network_globals.clone(),
+        executor,
+        current_workers: 0,
+        config: beacon_processor_config,
+    }
+    .spawn_manager(
+        beacon_processor_rx,
+        Some(work_journal_tx),
+        harness.chain.slot_clock.clone(),
+        chain.spec.maximum_gossip_clock_disparity(),
+        BeaconProcessorQueueLengths::from_state(
+            &chain.canonical_head.cached_head().snapshot.beacon_state,
+            &chain.spec,
+        )
+        .unwrap(),
+    );
+
+    assert!(beacon_processor.is_ok());
+
+    // Dummy next_block — use the head block since we can't produce on stateless nodes.
+    let head = harness.chain.head_snapshot();
+    let attester_slashing = harness.make_attester_slashing(vec![0, 1]);
+    let proposer_slashing = harness.make_proposer_slashing(2);
+    let voluntary_exit = harness.make_voluntary_exit(3, harness.chain.epoch().unwrap());
+
+    TestRig {
+        chain,
+        next_block: head.beacon_block.clone(),
+        next_blobs: None,
+        next_data_columns: None,
+        attestations: vec![],
+        next_block_attestations: vec![],
+        next_block_aggregate_attestations: vec![],
+        attester_slashing,
+        proposer_slashing,
+        voluntary_exit,
+        beacon_processor_tx,
+        work_journal_rx,
+        network_rx,
+        sync_rx,
+        duplicate_cache,
+        network_beacon_processor,
+        _harness: harness,
+    }
+}
+
+/// Gloas gossip: on a stateless node, a valid execution proof that reaches the
+/// proof threshold triggers block import and notifies sync.
+///
+/// This tests the `AvailabilityProcessingStatus::Imported` branch in
+/// `process_gossip_verified_execution_proof` (gossip_methods.rs:4166-4205)
+/// which is only reachable on stateless nodes. When enough proof subnets are
+/// received for a block:
+/// 1. `on_valid_execution_payload` marks the block execution-valid in fork choice
+/// 2. `recompute_head_at_current_slot()` runs to update the head
+/// 3. `SyncMessage::GossipBlockProcessResult { imported: true }` is dispatched
+///
+/// This path was previously only tested at the beacon_chain level
+/// (`gloas_stateless_proof_threshold_marks_block_valid`), but the network handler
+/// has additional logic (head recompute + sync notification) that was untested.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_stateless_import_notifies_sync() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Create a stateless rig with threshold=1 (one proof subnet triggers import)
+    let mut rig = gloas_rig_stateless(SMALL_CHAIN, 1).await;
+
+    // Verify precondition: stateless_validation is enabled
+    assert!(
+        rig.chain.config.stateless_validation,
+        "precondition: node must be stateless"
+    );
+
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Get the bid block_hash from fork choice for constructing a valid proof
+    let bid_block_hash = {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&head_root)
+            .expect("head must be in fork choice");
+        node.bid_block_hash
+            .expect("Gloas head must have bid_block_hash")
+    };
+
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+    let proof = Arc::new(ExecutionProof::new(
+        head_root,
+        bid_block_hash,
+        subnet_id,
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42],
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            subnet_id,
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    // 1. Verify MessageAcceptance::Accept was propagated
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // 2. Verify SyncMessage::GossipBlockProcessResult { imported: true } was dispatched
+    let sync_messages = rig
+        .receive_sync_messages_with_timeout(Duration::from_millis(500), Some(1))
+        .await
+        .expect("should receive sync message after proof import");
+    assert_eq!(
+        sync_messages.len(),
+        1,
+        "should receive exactly one sync message"
+    );
+    match &sync_messages[0] {
+        SyncMessage::GossipBlockProcessResult {
+            block_root: msg_block_root,
+            imported,
+        } => {
+            assert_eq!(
+                *msg_block_root, head_root,
+                "sync notification block root should match"
+            );
+            assert!(
+                *imported,
+                "block should be marked as imported after proof threshold reached"
+            );
+        }
+        other => panic!("expected GossipBlockProcessResult, got {:?}", other),
+    }
 }
