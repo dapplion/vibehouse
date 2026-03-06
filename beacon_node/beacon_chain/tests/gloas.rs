@@ -19199,3 +19199,187 @@ async fn gloas_stale_withdrawal_carryover_across_empty_parent() {
     );
     let _ = cont_withdrawals; // used for clarity, suppress unused warning
 }
+
+/// Verify that block production after a reorg correctly filters stale external bids.
+///
+/// In ePBS, external builders submit bids referencing a specific `parent_block_root`.
+/// After a reorg, bids targeting the old fork's head become stale because their
+/// `parent_block_root` no longer matches the new head. The bid pool's `get_best_bid`
+/// filters by `parent_block_root` to prevent selecting these stale bids.
+///
+/// Uses two separate builders: builder 0 bids on fork A, builder 1 bids on fork B.
+/// This avoids the equivocation guard (one bid per builder per slot) while testing
+/// that the parent_block_root filter selects the correct builder's bid.
+///
+/// This test:
+/// 1. Builds a finalized chain with two active builders
+/// 2. Creates fork A (minority) and inserts builder 0's bid targeting fork A
+/// 3. Creates fork B (majority) and inserts builder 1's bid targeting fork B
+/// 4. Reorgs to fork B
+/// 5. Produces a block on fork B's head
+/// 6. Asserts: block uses builder 1's bid (fork B), not builder 0's stale bid (fork A)
+#[tokio::test]
+async fn gloas_reorg_filters_stale_external_bids_in_block_production() {
+    // Two builders: builder 0 and builder 1, both active from epoch 0 with 2 ETH
+    let harness = gloas_harness_with_builders(&[(0, 2_000_000_000), (0, 2_000_000_000)]);
+
+    // Build enough for finalization (8 epochs × 8 slots = 64 slots)
+    Box::pin(harness.extend_slots(64)).await;
+
+    let shared_head = harness.chain.head_snapshot();
+    let shared_slot = shared_head.beacon_block.slot();
+    let (shared_state, _) = harness.get_current_state_and_root();
+
+    // Split validators: 25% fork A, 75% fork B
+    let fork_a_validators: Vec<usize> = (0..8).collect();
+    let fork_b_validators: Vec<usize> = (8..VALIDATOR_COUNT).collect();
+
+    // --- Fork A: block at slot shared+1 ---
+    harness.advance_slot();
+    let fork_slot = shared_slot + 1;
+
+    let (fork_a_contents, fork_a_state, fork_a_envelope) =
+        Box::pin(harness.make_block_with_envelope(shared_state.clone(), fork_slot)).await;
+    let fork_a_envelope = fork_a_envelope.expect("fork A should have envelope");
+    let fork_a_root = fork_a_contents.0.canonical_root();
+
+    Box::pin(harness.process_block(fork_slot, fork_a_root, fork_a_contents))
+        .await
+        .expect("fork A block import should succeed");
+    Box::pin(harness.chain.process_self_build_envelope(&fork_a_envelope))
+        .await
+        .expect("fork A envelope should succeed");
+    harness.chain.recompute_head_at_current_slot().await;
+
+    // Attest fork A with minority
+    let mut fork_a_state_for_attest = fork_a_state.clone();
+    let fork_a_state_root = fork_a_state_for_attest.update_tree_hash_cache().unwrap();
+    let fork_a_attestations = harness.make_attestations(
+        &fork_a_validators,
+        &fork_a_state_for_attest,
+        fork_a_state_root,
+        fork_a_root.into(),
+        fork_slot,
+    );
+    harness.process_attestations(fork_a_attestations, &fork_a_state_for_attest);
+
+    // Insert builder 0's bid for fork A. Use the post-envelope state (head state after
+    // envelope processing updated latest_block_hash) so the bid is valid.
+    let fork_a_post_envelope_state = harness.chain.head_beacon_state_cloned();
+    let fork_a_bid_value = 500u64;
+    let fork_a_bid = make_external_bid(
+        &fork_a_post_envelope_state,
+        fork_a_root,
+        fork_slot + 1,
+        0, // builder 0
+        fork_a_bid_value,
+    );
+    harness.chain.execution_bid_pool.lock().insert(fork_a_bid);
+
+    // --- Fork B: block at same slot (from shared state) ---
+    let (fork_b_contents, fork_b_state, fork_b_envelope) =
+        Box::pin(harness.make_block_with_envelope(shared_state, fork_slot)).await;
+    let fork_b_envelope = fork_b_envelope.expect("fork B should have envelope");
+    let fork_b_root = fork_b_contents.0.canonical_root();
+    assert_ne!(
+        fork_a_root, fork_b_root,
+        "forks should produce distinct blocks"
+    );
+
+    Box::pin(harness.process_block(fork_slot, fork_b_root, fork_b_contents))
+        .await
+        .expect("fork B block import should succeed");
+    Box::pin(harness.chain.process_self_build_envelope(&fork_b_envelope))
+        .await
+        .expect("fork B envelope should succeed");
+
+    // Attest fork B with majority
+    let mut fork_b_state_for_attest = fork_b_state.clone();
+    let fork_b_state_root = fork_b_state_for_attest.update_tree_hash_cache().unwrap();
+    let fork_b_attestations = harness.make_attestations(
+        &fork_b_validators,
+        &fork_b_state_for_attest,
+        fork_b_state_root,
+        fork_b_root.into(),
+        fork_slot,
+    );
+    harness.process_attestations(fork_b_attestations, &fork_b_state_for_attest);
+
+    // Insert builder 1's bid for fork B. Must use the post-envelope state (which has
+    // latest_block_hash updated by envelope processing) so the bid's parent_block_hash
+    // matches the state used during block production.
+    // Recompute head to pick up fork B's attestation weight, then load post-envelope state.
+    harness.chain.recompute_head_at_current_slot().await;
+    let fork_b_post_envelope_state = harness.chain.head_beacon_state_cloned();
+    let fork_b_bid_value = 1000u64;
+    let fork_b_bid = make_external_bid(
+        &fork_b_post_envelope_state,
+        fork_b_root,
+        fork_slot + 1,
+        1, // builder 1
+        fork_b_bid_value,
+    );
+    harness.chain.execution_bid_pool.lock().insert(fork_b_bid);
+
+    // --- Reorg: fork B wins (majority weight) ---
+    harness.advance_slot();
+    harness.chain.recompute_head_at_current_slot().await;
+
+    let head = harness.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block_root, fork_b_root,
+        "head should be fork B (majority weight)"
+    );
+
+    // --- Produce block at fork_slot+1 on fork B's head ---
+    let produce_slot = fork_slot + 1;
+    let produce_state = harness.chain.head_beacon_state_cloned();
+    let ((signed_block, _blobs), _state, envelope) =
+        Box::pin(harness.make_block_with_envelope(produce_state, produce_slot)).await;
+
+    let block_bid = signed_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid");
+
+    // The block should use builder 1's bid (parent_block_root matches fork B's root),
+    // NOT builder 0's stale bid (parent_block_root matches fork A's root).
+    assert_eq!(
+        block_bid.message.builder_index, 1,
+        "block should use builder 1's bid (fork B), not builder 0's stale bid (fork A)"
+    );
+    assert_eq!(
+        block_bid.message.value, fork_b_bid_value,
+        "block should use fork B's bid value ({}), not fork A's ({})",
+        fork_b_bid_value, fork_a_bid_value
+    );
+    assert_eq!(
+        block_bid.message.parent_block_root, fork_b_root,
+        "block's bid should reference fork B's root as parent"
+    );
+
+    // External bid path: no self-build envelope returned
+    assert!(
+        envelope.is_none(),
+        "external bid block should not return a self-build envelope"
+    );
+
+    // Import the produced block to verify it's valid
+    let produced_root = signed_block.canonical_root();
+    Box::pin(harness.process_block(produce_slot, produced_root, (signed_block, _blobs)))
+        .await
+        .expect("block produced after reorg with correct bid should import");
+
+    // Verify the block is in fork choice (it imported successfully)
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let proto = fc
+        .get_block(&produced_root)
+        .expect("produced block should be in fork choice");
+    // External bid block: payload_revealed is false until builder reveals the envelope.
+    // This is expected — the builder hasn't sent the envelope yet.
+    assert!(
+        !proto.payload_revealed,
+        "external bid block should not have payload_revealed (no envelope)"
+    );
+}
