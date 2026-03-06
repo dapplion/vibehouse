@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — stale withdrawal mismatch test, PR #4979 PTC Lookbehind analysis (run 481)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Recently merged spec PRs reviewed**: No new merges since run 480. Latest: #4983, #4972, #4982, #4981, #4980, #4977, #4950 (all CI/tooling/dependency).
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged.
+  - PR #4979 (PTC Lookbehind): **actively discussed** — adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` to BeaconState, refactors `get_ptc` to use cached values for previous/current epoch and compute-on-demand for next epoch, adds `process_ptc_lookbehind` epoch processing step. Pre-analyzed: when merged, will require new BeaconState field, new epoch processing function, fork upgrade initialization, and `get_ptc_committee` refactor to use cache.
+  - PR #4962 (sanity/blocks tests for missed payload withdrawal interactions): **test-only PR**, exercises 4 combinations of block with/without withdrawals after missed payload. Vibehouse already handles all 4 correctly — existing integration test `gloas_stale_withdrawal_carryover_across_empty_parent` covers combination 1 (satisfying), unit test `empty_parent_preserves_stale_payload_expected_withdrawals` covers persistence.
+  - PR #4960 (fork choice test for new validator deposit): **test-only PR**, adds Gloas fork choice deposit test with envelope handling.
+- **New test** (1, commit `58f3568f8`): `stale_withdrawal_mismatch_after_missed_payload_rejected` — envelope processing unit test that exercises the missed-payload withdrawal interaction from consensus-specs PR #4962. Sets up state with non-empty `payload_expected_withdrawals` (simulating stale withdrawals from EMPTY path), then verifies: (1) envelope with correct stale withdrawals is accepted, (2) envelope with different fresh withdrawals is rejected with `WithdrawalsRootMismatch`, (3) envelope with empty withdrawals is rejected. Closes the "wrong withdrawal rejection" gap in unit test coverage.
+- **CI status**: All tests green. 551/551 state_processing tests pass. Clippy clean (full workspace lint via pre-push hook).
+
 ### 2026-03-06 — deep spec conformance audit, all functions verified correct (run 480)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors since v1.6.0-beta.0)
 - **Recently merged spec PRs reviewed**: #4983 (release-drafter), #4972 (py_arkworks_bls12381), #4982 (ruff), #4981 (codespell), #4980 (python version), #4977 (remove EIP-7441 SSLE), #4950 (extend by_root reqresp serve range). All CI/tooling/dependency updates except #4950 which extends BeaconBlocksByRoot and ExecutionPayloadEnvelopesByRoot serve range to MIN_EPOCHS_FOR_BLOCK_REQUESTS — vibehouse is already compliant (serves anything in store, more permissive than spec minimum).
