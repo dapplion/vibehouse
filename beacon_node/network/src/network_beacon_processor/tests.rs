@@ -4800,3 +4800,61 @@ async fn test_gloas_sse_event_execution_proof_received() {
         ),
     }
 }
+
+/// Gloas gossip: proposer preferences are IGNORED when head state epoch is behind wall clock.
+///
+/// When a node is syncing, the head state may be in an earlier epoch than the wall clock.
+/// The handler cannot validate the proposer_lookahead against the next wall-clock epoch
+/// because the lookahead only covers [head_epoch, head_epoch+1]. If the handler tried to
+/// validate, it would incorrectly reject valid preference messages. Instead it must IGNORE
+/// them (not REJECT) to avoid penalizing honest peers.
+#[tokio::test]
+async fn test_gloas_gossip_proposer_preferences_head_behind_wall_clock_ignored() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    let mut rig = gloas_rig(SMALL_CHAIN).await;
+
+    // Precondition: head is in epoch 0 (SMALL_CHAIN = 2 blocks, slot 2, epoch 0)
+    let head = rig.chain.head_snapshot();
+    let head_epoch = head.beacon_state.current_epoch();
+    assert_eq!(head_epoch, Epoch::new(0), "head should be in epoch 0");
+
+    // Advance the slot clock to epoch 1 WITHOUT importing any blocks.
+    // This simulates a syncing node whose head is behind the wall clock.
+    let epoch_1_start = Epoch::new(1).start_slot(E::slots_per_epoch());
+    rig.chain.slot_clock.set_slot(epoch_1_start.as_u64());
+
+    // Verify precondition: wall clock epoch is now 1, head epoch is still 0
+    let current_slot = rig.chain.slot().unwrap();
+    let current_epoch = current_slot.epoch(E::slots_per_epoch());
+    assert_eq!(
+        current_epoch,
+        Epoch::new(1),
+        "wall clock should be in epoch 1"
+    );
+    assert_eq!(head_epoch, Epoch::new(0), "head should still be in epoch 0");
+
+    // Create a preferences message for the next epoch relative to wall clock (epoch 2).
+    // This is a valid proposal_epoch from the wall clock's perspective (next_epoch = 2).
+    let next_wall_epoch = current_epoch.saturating_add(1u64);
+    let proposal_slot = next_wall_epoch.start_slot(E::slots_per_epoch());
+
+    let signed_preferences = SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: proposal_slot.as_u64(),
+            validator_index: 0,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    rig.network_beacon_processor
+        .process_gossip_proposer_preferences(junk_message_id(), junk_peer_id(), signed_preferences);
+
+    // Handler should IGNORE (not REJECT) because head_epoch != current_epoch
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_ignore(result);
+}
