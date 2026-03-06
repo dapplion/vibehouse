@@ -28,7 +28,8 @@ use beacon_chain::test_utils::{
 };
 use execution_layer::test_utils::generate_genesis_header;
 use fork_choice::{
-    ExecutionStatus, ForkchoiceUpdateParameters, InvalidationOperation, PayloadVerificationStatus,
+    ExecutionStatus, ForkChoiceStore, ForkchoiceUpdateParameters, InvalidationOperation,
+    PayloadVerificationStatus,
 };
 use state_processing::per_block_processing::gloas::get_ptc_committee;
 use std::sync::Arc;
@@ -11726,6 +11727,106 @@ async fn gloas_persist_load_fork_choice_preserves_head_hash() {
     assert_eq!(
         head_hash_after, head_hash_before,
         "head_hash should survive persist + load + CanonicalHead::new"
+    );
+}
+
+/// Verify that the node restart path correctly recovers `head_hash` when the state
+/// is loaded from the database (not from an in-memory snapshot).
+///
+/// The previous test (`gloas_persist_load_fork_choice_preserves_head_hash`) reuses
+/// the existing in-memory snapshot. This test exercises the full `restore_from_store`
+/// data path: persist fork choice, evict state cache, load fork choice + block + state
+/// all from the database. The state is loaded via `get_advanced_hot_state` which must
+/// re-apply the stored envelope so that `latest_block_hash` is correct for the Gloas
+/// `head_hash` fallback.
+#[tokio::test]
+async fn gloas_restore_from_store_recovers_head_hash_from_db() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(4)).await;
+
+    // Capture head_hash before simulated restart
+    let cached_head_before = harness.chain.canonical_head.cached_head();
+    let head_hash_before = cached_head_before.forkchoice_update_parameters().head_hash;
+    assert!(
+        head_hash_before.is_some(),
+        "pre-condition: head_hash should be Some before persist"
+    );
+
+    let head_block_root = cached_head_before.head_block_root();
+    drop(cached_head_before);
+
+    // Persist fork choice to the store
+    harness
+        .chain
+        .persist_fork_choice()
+        .expect("should persist fork choice");
+
+    // Evict the state cache to force the DB path in get_advanced_hot_state
+    let head_block = harness
+        .chain
+        .store
+        .get_full_block(&head_block_root)
+        .expect("should not error")
+        .expect("head block should be in store");
+    let block_state_root = head_block.message().state_root();
+
+    {
+        let mut cache = harness.chain.store.state_cache.lock();
+        cache.delete_state(&block_state_root);
+    }
+
+    // Verify cache miss
+    let head_slot = head_block.slot();
+    assert!(
+        harness
+            .chain
+            .store
+            .get_advanced_hot_state_from_cache(head_block_root, head_slot)
+            .is_none(),
+        "state should NOT be in cache after eviction"
+    );
+
+    // Load fork choice from the store (simulating node restart)
+    let loaded_fork_choice =
+        beacon_chain::BeaconChain::<EphemeralHarnessType<E>>::load_fork_choice(
+            harness.chain.store.clone(),
+            fork_choice::ResetPayloadStatuses::OnlyWithInvalidPayload,
+            &harness.spec,
+        )
+        .expect("should load fork choice")
+        .expect("fork choice should be present");
+
+    let fork_choice_view = loaded_fork_choice.cached_fork_choice_view();
+    let loaded_head_root = fork_choice_view.head_block_root;
+    assert_eq!(loaded_head_root, head_block_root);
+
+    // Load the head state from DB via get_advanced_hot_state (same as restore_from_store)
+    let current_slot = loaded_fork_choice.fc_store().get_current_slot();
+    let (_, loaded_state) = harness
+        .chain
+        .store
+        .get_advanced_hot_state(loaded_head_root, current_slot, block_state_root)
+        .expect("should not error")
+        .expect("state should be loadable from DB");
+
+    // Build snapshot from DB-loaded values (same as restore_from_store)
+    let snapshot = Arc::new(beacon_chain::BeaconSnapshot {
+        beacon_block_root: loaded_head_root,
+        beacon_block: Arc::new(head_block),
+        beacon_state: loaded_state,
+    });
+
+    // Construct CanonicalHead using the DB-loaded snapshot
+    let new_canonical_head: beacon_chain::CanonicalHead<EphemeralHarnessType<E>> =
+        beacon_chain::CanonicalHead::new(loaded_fork_choice, snapshot);
+
+    // Verify head_hash is correctly derived via the Gloas fallback
+    let new_cached_head = new_canonical_head.cached_head();
+    let head_hash_after = new_cached_head.forkchoice_update_parameters().head_hash;
+    assert_eq!(
+        head_hash_after, head_hash_before,
+        "head_hash should survive persist + DB reload + CanonicalHead::new \
+         (exercises restore_from_store data path with envelope re-application)"
     );
 }
 
