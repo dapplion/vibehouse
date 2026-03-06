@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — payload attestation unknown root HTTP API test, spec tracking (run 478)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4983 (release-drafter update). All CI/dependency. No Gloas behavioral changes.
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged.
+- **Deep test gap analysis**: Comprehensive audit across beacon_chain, state_processing, operation_pool, store, and HTTP API. Found the codebase extremely well-tested (550+ state_processing tests, 233 http_api tests, 461+ beacon_chain tests). The builder deposit routing area (process_deposit_request_gloas, apply_deposit_for_builder, is_pending_validator) has 27+ dedicated unit tests covering all routing paths, signature validation, slot reuse, cache consistency, and frontrunning edge cases. process_withdrawals_gloas has 60+ dedicated tests. Epoch processing has 41 tests.
+- **New test** (1, commit `d00766c5e`): `post_payload_attestation_unknown_block_root` — HTTP API integration test verifying that a POST to `/eth/v1/beacon/pool/payload_attestations` with a fabricated `beacon_block_root` that doesn't exist in fork choice returns a 400 error with "UnknownBeaconBlockRoot" in the failure message. This closes the gap identified in run 474 where no HTTP API test exercised the unknown-root rejection path for payload attestations.
+- **Gap closure**: The only remaining HTTP API payload attestation gap is the `post_payload_attestation` unknown block root test — now closed. Remaining gaps are: broadcast_validation tests (skipped by design under Gloas), and schema migration tests under Gloas (low value).
+- **CI status**: All tests green. 233/233 http_api tests pass. Clippy clean (full workspace lint via pre-push hook).
+
 ### 2026-03-06 — block replayer execution request processing tests, spec tracking (run 477)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4983, #4982, #4981, #4980, #4978, #4977 — all CI/tooling/dependency updates. #4977 removes EIP-7441 (SSLE) specs entirely (stagnant feature). No Gloas behavioral changes.
