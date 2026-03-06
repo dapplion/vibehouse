@@ -28,6 +28,74 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — spec tracking, PR #4843 (Variable PTC deadline) pre-analysis (run 483)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Recently merged spec PRs reviewed**: No new Gloas merges since run 482. Only CI/tooling/dependency PRs (#4986 renovate, #4984 EIP-6800 removal, #4983 release-drafter, #4982 ruff, #4981 codespell, #4980 python, #4978 mdformat).
+- **Open Gloas PR status**: Same 10 tracked PRs (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
+  - **PR #4843 (Variable PTC deadline)**: APPROVED (11 reviews). This is the most impactful approved PR. Pre-analysis below.
+  - **PR #4898 (Remove pending from tiebreaker)**: APPROVED. Already compliant (commit `101a68380`).
+  - **PR #4892 (Remove impossible branch)**: APPROVED. Already compliant (uses `== node_slot` not `<=`).
+  - PR #4979 (PTC Lookbehind): REVIEW_REQUIRED. Actively discussed. Also labeled `heze`.
+  - PR #4954 (Fork choice ms): REVIEW_REQUIRED.
+  - PR #4747 (Fast Confirmation Rule): REVIEW_REQUIRED. 87+ review comments.
+- **CI status**: All CI green. Nightly tests passing (5 consecutive successes). 4 CI runs from recent commits in-progress, all prior completions successful.
+- **No code changes in this run** — pre-analysis only.
+
+#### PR #4843 Pre-Analysis: What vibehouse needs when it merges
+
+**Summary**: Renames `payload_present` → `payload_timely` in PTC attestations, adds size-based variable deadline for payload arrival, stores envelopes in fork choice store, renames `is_payload_timely` → `has_payload_quorum`.
+
+**Changes needed** (447 occurrences of `payload_present` across 24 files):
+
+1. **Types layer** (`consensus/types/`):
+   - `PayloadAttestationData.payload_present` → `payload_timely` (field + 14 test refs in payload_attestation_data.rs)
+   - `PayloadAttestation` empty() + 12 test refs
+   - `PayloadAttestationMessage` empty() + 10 test refs
+   - `IndexedPayloadAttestation` empty() + 7 test refs
+   - `Attestation` signing logic + 13 refs (attestation.rs: `payload_present` determines index == 1)
+   - **SSZ breaking change**: `PayloadAttestationData` field rename is SSZ-wire-compatible (bool at same offset) but changes field name in JSON/API
+
+2. **Proto array** (`consensus/proto_array/`):
+   - `VoteTracker.current_payload_present` → `current_payload_timely` (+ `next_payload_present` → `next_payload_timely`)
+   - `process_attestation` parameter rename (53 refs total)
+   - Comment updates for `is_payload_timely` → `has_payload_quorum` (3 refs)
+   - `ProtoNode.ptc_weight` doc comment update
+
+3. **Fork choice** (`consensus/fork_choice/`):
+   - `process_attestation` local variable + parameter (47 refs total)
+   - `on_payload_attestation_message` — `payload_present` field access (line 1460)
+
+4. **State processing** (`consensus/state_processing/`):
+   - `process_payload_attestation` — 12 refs in gloas.rs
+   - Signature sets — 10 refs
+
+5. **Beacon chain** (`beacon_node/beacon_chain/`):
+   - `beacon_chain.rs` — 9 refs (get_payload_attestation_data, produce_payload_attestation)
+   - `attestation_verification.rs` — 1 ref
+   - `gloas_verification.rs` — 4 refs
+   - `early_attester_cache.rs` — 12 refs
+   - `observed_payload_attestations.rs` — 29 refs
+   - Tests: gloas.rs (140 refs), gloas_verification.rs (20 refs), attestation_production.rs (1 ref)
+
+6. **HTTP API** (`beacon_node/http_api/`):
+   - `common/eth2/src/types.rs` — 5 refs (API types)
+   - Fork tests — 18 refs
+
+7. **Network** (`beacon_node/network/`):
+   - gossip_methods.rs — 1 ref
+   - tests.rs — 14 refs
+
+8. **Validator client** (`validator_client/`):
+   - `payload_attestation_service.rs` — 11 refs (payload presence → timeliness logic change)
+   - `lighthouse_validator_store/src/lib.rs` — 3 refs
+
+9. **New config constant**: `MIN_PAYLOAD_DUE_BPS: 3000` in ChainSpec
+10. **New helper functions**: `get_payload_due_ms(payload_size)`, `get_payload_size(envelope)`
+11. **New store field**: `payload_envelopes: Dict[Root, SignedExecutionPayloadEnvelope]` in fork choice (set during `on_execution_payload`)
+12. **New validator logic**: `is_payload_timely(store, root, payload_arrival_time)` — determines timeliness based on payload size vs. arrival time, and `get_payload_attestation_message()` function
+
+**Implementation estimate**: ~2 hours. Mostly mechanical rename (replace_all), plus new config/helpers/store field.
+
 ### 2026-03-06 — spec tracking: 3 merged Gloas PRs reviewed, all already compliant (run 482)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Recently merged spec PRs reviewed** (3 Gloas-labeled merges since run 481):
