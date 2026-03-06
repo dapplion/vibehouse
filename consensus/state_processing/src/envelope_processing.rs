@@ -779,6 +779,119 @@ mod tests {
         );
     }
 
+    /// When a block's payload is missed (EMPTY path), `payload_expected_withdrawals`
+    /// retains the stale value from the previous FULL-parent block. The next envelope
+    /// must carry those exact stale withdrawals. This test verifies:
+    /// 1. An envelope with the correct stale withdrawals is accepted.
+    /// 2. An envelope with different (fresh) withdrawals is rejected.
+    /// 3. An envelope with empty withdrawals is rejected.
+    ///
+    /// Exercises the scenario described in consensus-specs PR #4962.
+    #[test]
+    fn stale_withdrawal_mismatch_after_missed_payload_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Inject stale withdrawals into payload_expected_withdrawals, simulating
+        // the state after a block processed with FULL parent followed by a missed
+        // payload (EMPTY path), where process_withdrawals_gloas returned early
+        // without clearing the field.
+        let stale_withdrawal = types::Withdrawal {
+            index: 42,
+            validator_index: 3,
+            address: Address::repeat_byte(0xCC),
+            amount: 5_000_000_000,
+        };
+        state
+            .as_gloas_mut()
+            .unwrap()
+            .payload_expected_withdrawals
+            .push(stale_withdrawal.clone())
+            .unwrap();
+
+        // Case 1: Envelope with correct stale withdrawals → accepted
+        {
+            let mut envelope = make_valid_envelope(&state);
+            envelope
+                .message
+                .payload
+                .withdrawals
+                .push(stale_withdrawal.clone())
+                .unwrap();
+
+            let result = process_execution_payload_envelope(
+                &mut state.clone(),
+                None,
+                &envelope,
+                VerifySignatures::False,
+                &spec,
+            );
+            assert!(
+                result.is_ok(),
+                "envelope with correct stale withdrawals should be accepted: {:?}",
+                result,
+            );
+        }
+
+        // Case 2: Envelope with different (fresh) withdrawals → rejected
+        {
+            let mut envelope = make_valid_envelope(&state);
+            let fresh_withdrawal = types::Withdrawal {
+                index: 99,
+                validator_index: 7,
+                address: Address::repeat_byte(0xDD),
+                amount: 1_000_000_000,
+            };
+            envelope
+                .message
+                .payload
+                .withdrawals
+                .push(fresh_withdrawal)
+                .unwrap();
+
+            let result = process_execution_payload_envelope(
+                &mut state.clone(),
+                None,
+                &envelope,
+                VerifySignatures::False,
+                &spec,
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(EnvelopeProcessingError::WithdrawalsRootMismatch { .. })
+                ),
+                "envelope with wrong withdrawals should fail: {:?}",
+                result,
+            );
+        }
+
+        // Case 3: Envelope with empty withdrawals → rejected (stale withdrawals required)
+        {
+            let envelope = make_valid_envelope(&state);
+            // make_valid_envelope creates empty withdrawals, but state expects stale ones
+            assert!(
+                envelope.message.payload.withdrawals.is_empty(),
+                "make_valid_envelope should produce empty withdrawals by default"
+            );
+
+            let result = process_execution_payload_envelope(
+                &mut state.clone(),
+                None,
+                &envelope,
+                VerifySignatures::False,
+                &spec,
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(EnvelopeProcessingError::WithdrawalsRootMismatch { .. })
+                ),
+                "empty envelope withdrawals should fail when stale withdrawals are expected: {:?}",
+                result,
+            );
+        }
+    }
+
     // ── State root ─────────────────────────────────────────────
 
     #[test]
