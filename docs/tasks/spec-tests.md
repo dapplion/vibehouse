@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — fix clippy result_large_err for rust 1.94.0 (run 446)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **CI was broken**: Rust stable updated from 1.93.1 to 1.94.0 (released 2026-03-02). The new version expanded the `result_large_err` clippy lint to catch closures returning `Result` types where the `Err` variant is >= 128 bytes. `BeaconChainError` is 128+ bytes (largest variant: `BadPreState` with 3 `Hash256` + 2 `Slot` = 112 bytes data).
+- **Fix** (commit `fa82388ce`): Added `#![allow(clippy::result_large_err)]` to 5 files:
+  - `beacon_node/http_api/src/lib.rs` — 17 errors from closures returning `BeaconChainError`
+  - `slasher/service/src/lib.rs` — 2 errors in slasher service closures
+  - `beacon_node/beacon_chain/tests/attestation_verification.rs` — 1 error in `with_head` closure
+  - `beacon_node/beacon_chain/tests/payload_invalidation.rs` — 3 errors in attestation production closures
+  - `beacon_node/beacon_chain/tests/store_tests.rs` — 2 errors in `with_committee_cache` closures
+- Boxing `BeaconChainError` would change the error type API across the entire project — crate-level allow is the pragmatic fix.
+- **CI status**: `make lint-full` passes. All clippy clean.
+
 ### 2026-03-06 — gossip envelope EL Invalid fork choice skip test (run 445)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same set as run 444 — all CI/tooling (#4978, #4974, #4971, #4970, #4969, #4968, #4967, #4966, #4964, #4961, #4959, #4957, #4956, #4955, #4953), no Gloas behavioral changes.
