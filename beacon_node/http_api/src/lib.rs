@@ -4,6 +4,10 @@
 //!
 //! There are also some additional, non-standard endpoints behind the `/lighthouse/` path which are
 //! used for development.
+// BeaconChainError is returned from closures throughout this crate.
+// Its size (128+ bytes) triggers result_large_err but boxing it would
+// change the error type API across the entire project.
+#![allow(clippy::result_large_err)]
 
 mod aggregate_attestation;
 mod attestation_performance;
