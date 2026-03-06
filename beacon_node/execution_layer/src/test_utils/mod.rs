@@ -314,6 +314,21 @@ impl<E: EthSpec> MockServer<E> {
         }
     }
 
+    fn accepted_status() -> PayloadStatusV1 {
+        PayloadStatusV1 {
+            status: PayloadStatusV1Status::Accepted,
+            latest_valid_hash: None,
+            validation_error: None,
+        }
+    }
+
+    fn accepted_new_payload_response() -> StaticNewPayloadResponse {
+        StaticNewPayloadResponse {
+            status: Self::accepted_status(),
+            should_import: false,
+        }
+    }
+
     fn invalid_status(latest_valid_hash: ExecutionBlockHash) -> PayloadStatusV1 {
         PayloadStatusV1 {
             status: PayloadStatusV1Status::Invalid,
@@ -387,6 +402,10 @@ impl<E: EthSpec> MockServer<E> {
 
     pub fn all_payloads_syncing_on_forkchoice_updated(&self) {
         self.set_forkchoice_updated_response(Self::syncing_status());
+    }
+
+    pub fn all_payloads_accepted_on_new_payload(&self) {
+        self.set_new_payload_response(Self::accepted_new_payload_response());
     }
 
     pub fn all_payloads_invalid(&self, latest_valid_hash: ExecutionBlockHash) {

@@ -3917,6 +3917,65 @@ async fn gloas_self_build_envelope_el_syncing_stays_optimistic() {
     }
 }
 
+/// When the EL returns Accepted for the envelope's newPayload,
+/// process_self_build_envelope should succeed (not error), but the block
+/// should remain Optimistic (not promoted to Valid). Accepted indicates the
+/// EL acknowledges the payload but hasn't fully validated it — semantically
+/// identical to Syncing but a distinct engine API response code.
+#[tokio::test]
+async fn gloas_self_build_envelope_el_accepted_stays_optimistic() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("should have envelope");
+    let block_root = block_contents.0.canonical_root();
+
+    // Import block
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Configure mock EL to return Accepted for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el.server.all_payloads_accepted_on_new_payload();
+
+    // Process self-build envelope — should succeed (Accepted is not an error)
+    harness
+        .chain
+        .process_self_build_envelope(&signed_envelope)
+        .await
+        .expect("Accepted response should not cause an error");
+
+    // Block should still be Optimistic (not Valid since EL said Accepted, not Valid)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns Accepted, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // payload_revealed should still be true
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true regardless of EL response"
+        );
+    }
+}
+
 /// When the EL has a transport-level error (connection dropped, RPC error) for
 /// the envelope's newPayload, process_self_build_envelope should return an error.
 /// Unlike payload status errors (Invalid/InvalidBlockHash), this simulates the
@@ -11489,6 +11548,96 @@ async fn gloas_gossip_envelope_el_syncing_stays_optimistic() {
         assert!(
             matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
             "block should remain Optimistic when EL returns Syncing, got {:?}",
+            proto_block.execution_status
+        );
+    }
+
+    // payload_revealed should be true (fork choice updated after successful processing)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            proto_block.payload_revealed,
+            "payload_revealed should be true after successful processing"
+        );
+    }
+
+    // The envelope SHOULD be persisted to the store (processing succeeded)
+    let stored = harness
+        .chain
+        .store
+        .get_payload_envelope(&block_root)
+        .expect("store read should not error")
+        .expect("envelope should be persisted after successful processing");
+    assert_eq!(
+        stored.message.payload.block_hash, envelope_block_hash,
+        "stored envelope should have correct block hash"
+    );
+}
+
+/// When the EL returns `Accepted` for a gossip-received envelope's `newPayload`,
+/// `process_payload_envelope` should succeed (Accepted is not an error) but the
+/// block should remain Optimistic (not promoted to Valid). Accepted indicates the
+/// EL acknowledges the payload but hasn't fully validated it — semantically
+/// identical to Syncing but a distinct engine API response code.
+///
+/// This is the gossip-path counterpart of
+/// `gloas_self_build_envelope_el_accepted_stays_optimistic`.
+#[tokio::test]
+async fn gloas_gossip_envelope_el_accepted_stays_optimistic() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Produce a block and its self-build envelope
+    harness.advance_slot();
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let next_slot = head_state.slot() + 1;
+    let (block_contents, _state, envelope) = harness
+        .make_block_with_envelope(head_state, next_slot)
+        .await;
+
+    let signed_envelope = envelope.expect("Gloas block should produce an envelope");
+    let envelope_block_hash = signed_envelope.message.payload.block_hash;
+    let block_root = block_contents.0.canonical_root();
+
+    // Import the block only
+    harness
+        .process_block(next_slot, block_root, block_contents)
+        .await
+        .expect("block import should succeed");
+
+    // Step 1: Gossip verification
+    let verified = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope))
+        .expect("gossip verification should pass");
+
+    // Configure mock EL to return Accepted for newPayload
+    let mock_el = harness.mock_execution_layer.as_ref().unwrap();
+    mock_el.server.all_payloads_accepted_on_new_payload();
+
+    // Step 2: process_payload_envelope should succeed (Accepted is not an error)
+    let el_valid = harness
+        .chain
+        .process_payload_envelope(&verified)
+        .await
+        .expect("Accepted response should not cause an error");
+
+    assert!(!el_valid, "EL returned Accepted, not Valid");
+
+    // Step 3: Apply to fork choice after successful processing
+    harness
+        .chain
+        .apply_payload_envelope_to_fork_choice(&verified)
+        .expect("should apply to fork choice");
+
+    // Block should remain Optimistic (EL said Accepted, not Valid)
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        let proto_block = fc.get_block(&block_root).unwrap();
+        assert!(
+            matches!(proto_block.execution_status, ExecutionStatus::Optimistic(_)),
+            "block should remain Optimistic when EL returns Accepted, got {:?}",
             proto_block.execution_status
         );
     }
