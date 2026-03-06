@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — stateless execution proof gossip import integration test (run 452)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 451 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
+- **Open Gloas PR status**: Same PRs as run 451. No new merges.
+- **Coverage gap analysis**: Deep exploration of `process_gossip_verified_execution_proof` (gossip_methods.rs:4136-4206) identified three untested paths, all on stateless validation nodes: (1) `AvailabilityProcessingStatus::Imported` branch — when enough proof subnets reach threshold, the handler calls `recompute_head_at_current_slot()` and dispatches `SyncMessage::GossipBlockProcessResult { imported: true }`. Previously tested at beacon_chain level (`gloas_stateless_proof_threshold_marks_block_valid`) but the network handler's head recompute + sync notification was never exercised. (2) `UnknownBlockRoot` with `stateless_validation = true` — proof buffering into `pending_execution_proofs`. (3) `PriorToFinalization` — peer penalty + Ignore propagation.
+- **Infrastructure**: Created `gloas_rig_stateless(chain_length, min_proofs_required)` helper that builds a two-harness setup: a normal producer harness creates blocks, which are imported into a stateless harness via `process_block` + `process_self_build_envelope`. This is needed because stateless nodes skip EL proposer preparation, so blocks can't be produced directly. The helper inlines the TestRig construction (can't use `new_from_harness` which also calls `make_block`).
+- **New test** (1, commit `8c9812e99`):
+  - `test_gloas_gossip_execution_proof_stateless_import_notifies_sync` — creates a stateless gloas rig (2-block chain, `stateless_min_proofs_required = 1`), constructs a valid stub execution proof with correct block_root and bid_block_hash, submits through `process_gossip_execution_proof`. Asserts: (1) `MessageAcceptance::Accept` propagated, (2) `SyncMessage::GossipBlockProcessResult { block_root, imported: true }` dispatched on `sync_rx`. This exercises the `Imported` branch at gossip_methods.rs:4166-4205 (head recompute + sync notification) that was previously untested at the network handler level.
+- **CI status**: All tests green. Clippy clean. 153/153 network tests pass (152→153).
+
 ### 2026-03-06 — GloasParentPayloadUnknown network gossip handler test (run 451)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 450 — #4978 (mdformat), #4959 (pytest-sugar), #4974 (upload-artifact v7), #4967-#4971 (dependency bumps), #4964 (renovate→dependabot), #4709 (pytest plugin), #4956 (ssz_generic pytest). No new Gloas behavioral merges.
