@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — spec cleanup, PR tracking, devnet validation (run 468)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 467. Only CI/tooling PRs.
+- **Open Gloas PR status**: 13 open PRs total. Key updates:
+  - **#4892** (remove impossible branch in forkchoice, 2 approvals) — **proactively implemented**: changed `is_supporting_vote` same-slot check from `<=` to `==` in proto_array_fork_choice.rs. The `<` case is impossible (validate_on_attestation guarantees slot >= block.slot). All 135 Gloas fork choice tests + 114 fork_choice tests + 8 EF fork_choice categories pass. Behavior is identical; this is a spec clarification, not a behavioral change.
+  - **#4898** (remove pending from tiebreaker, 1 approval) — analyzed: would require removing the PENDING early-return in `get_payload_tiebreaker` and updating 1 test. The removed branch is unreachable in practice (PENDING nodes are unique per root, so the tiebreaker never compares PENDING against another same-root node). Will implement when merged.
+  - **#4843** (variable PTC deadline) — deep analysis: adds size-dependent payload timeliness deadlines (small payloads must arrive earlier). Renames `payload_present` → `payload_timely` across ~20 files. Still under active design debate (potuz raised concerns about store dependency). NOT ready to implement.
+  - **#4747** (fast confirmation rule) — deep analysis: replaces the `safe` block algorithm with a much faster confirmation rule (~1-3 slots vs ~1-2 epochs). +5,487 lines, 21 files, no formal approvals yet (80+ review comments). Adds 6 new Store fields, `on_fast_confirmation` handler, Gloas-specific `get_latest_message_epoch` override. NOT ready to implement.
+  - **#4979** (PTC lookbehind), **#4954** (fork choice milliseconds), **#4939** (missing envelope by-root) — unchanged.
+- **Code cleanup** (commit `ce96f3f8e`): Removed stale sigp/lighthouse issue URLs from TODO comments (chain.rs, store_tests.rs). vibehouse is independent — upstream issue references are noise. Updated `is_supporting_vote` test comments to remove #4892 PR speculation (now implemented).
+- **Devnet validation**: Ran full 4-node devnet. Chain healthy through epoch 8 (finalized_epoch=6, justified=7 at slot 64). Script reported timeout because the beacon API became unreachable after slot 64 (kurtosis/docker infrastructure flake, not a code issue — the chain was finalizing perfectly with no stalls or missed slots). Previous 3 runs all reached finalized_epoch=8.
+- **CI status**: All tests green. Clippy clean (full workspace lint passed on push). Nightly tests green (26/26 jobs, 5-day streak).
+
 ### 2026-03-06 — PTC lookbehind analysis, devnet validation (run 467)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4950 (extend by_root serve range to match by_range — changes `ExecutionPayloadEnvelopesByRoot` serve range from "since finalized epoch" to `[max(FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`). vibehouse's by-root handlers serve whatever is in the store without enforcing range limits, which is already compliant (the spec says "MUST support requesting" — meaning serve at least this range, serving more is fine). No code change needed. No other Gloas behavioral merges.
