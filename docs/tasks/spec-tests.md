@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — gossip handler audit, missing validation result fix (run 471)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4980 (update python version requirements — infra only), #4977 (remove specs for EIP-7441 Whisk SSLE — separate feature, not Gloas), #4978 (ignore hidden files in mdformat — infra only). No Gloas behavioral changes.
+- **Open Gloas PR status**: All 7 tracked PRs unchanged. #4979 (PTC lookbehind) and #4954 (fork choice milliseconds) now also labeled `heze` (post-Gloas fork). Still waiting on merges for #4898 and #4892 (both already implemented in vibehouse).
+- **Bug fix** (commit `91bb78b16`): Comprehensive audit of all gossip handler error paths found 8 match arms missing `propagate_validation_result` calls. When these error paths were hit, the gossip message was left in limbo — gossipsub never received Accept/Reject/Ignore, potentially causing message handling leaks and peer scoring issues. Fixed:
+  - `GossipExecutionProofError::BeaconChainError` — now propagates Ignore (new Gloas code)
+  - `GossipDataColumnError::PubkeyCacheTimeout|BeaconChainError` — now propagates Ignore (inherited)
+  - `GossipDataColumnError::PriorKnown` — now propagates Ignore (inherited)
+  - `GossipBlobError::PubkeyCacheTimeout|BeaconChainError` — now propagates Ignore (inherited)
+  - `GossipBlobError::RepeatBlob` — now propagates Ignore (inherited)
+  - `BlockError::Slashable` — now propagates Reject (equivocating blocks) (inherited)
+  - `BlockError::AvailabilityCheck` — now propagates Ignore (unreachable path) (inherited)
+  - `BlockError::InternalError|BlobNotRequired` — now propagates Ignore (unreachable paths) (inherited)
+- **Devnet validation**: Full 4-node devnet. finalized_epoch=8 at slot 80 (epoch 10). No stalls, no missed slots, chain healthy through Gloas fork transition.
+- **CI status**: All tests green. 161/161 network tests pass. Clippy clean (full workspace lint). Nightly tests green (5-day streak).
+
 ### 2026-03-06 — spec tracking, FOCIL analysis, builder exit gossip tests (run 470)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: #4931 (rebase FOCIL/EIP-7805 onto Gloas — separate feature under `specs/_features/eip7805/`, NOT part of core Gloas spec. Adds inclusion list committee, `inclusion_list_bits` field on `ExecutionPayloadBid`, `payload_inclusion_list_satisfaction` store field, and `should_extend_payload` IL check. vibehouse does NOT need to implement this until FOCIL is merged into the main Gloas fork definition), #4921 (ckzg test default — CI/tooling only), #4920 (section heading consistency — docs only), #4914 (pubkey→validator_index in `SignedExecutionProof` — EIP-8025 feature, not Gloas), #4908 (builder voluntary exit tests — test-only, no spec change), #4903 (fix random block test field for Gloas — confirms `ExecutionPayloadBid.blob_kzg_commitments` is a full list, vibehouse already matches), #4900 (Gloas randomized block tests — test-only).
