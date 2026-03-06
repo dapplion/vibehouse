@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — gossip bid pool insertion integration tests (run 462)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 461. No new Gloas behavioral merges.
+- **Open Gloas PR status**: Same 6 open PRs (#4962, #4960, #4940, #4939, #4843, #4932). No new merges.
+- **Coverage gap analysis**: Exhaustive audit of all Gloas test coverage (200+ beacon_chain tests, 63+ network tests, extensive HTTP API tests) found the remaining gaps are increasingly narrow. The `test_gloas_gossip_bid_valid_accepted` (tests.rs:4427) only checks `MessageAcceptance::Accept` without verifying that the bid actually enters the `execution_bid_pool` for later block production use. The `apply_execution_bid_to_fork_choice` call (gossip_methods.rs:3438) also updates fork choice, but discovered that the fork choice import path has a slot mismatch issue: `on_execution_bid` (fork_choice.rs:1336) checks `bid.slot != node.slot` where the node is looked up by `parent_block_root` (which is at slot N-1, while bid.slot is N) — this always fails for gossip bids. The bid pool insertion at beacon_chain.rs:2536 happens BEFORE the fork choice call, so bids still reach the pool correctly. The pool insertion is the production-critical path since block production uses `get_best_execution_bid` → `execution_bid_pool.get_best_bid`.
+- **New tests** (2, commit `91ba55dfa`):
+  - `test_gloas_gossip_bid_valid_inserted_into_pool` — creates a gloas_rig with 1 active builder, verifies bid pool is empty pre-gossip, submits a valid signed bid through `process_gossip_execution_bid`, asserts MessageAcceptance::Accept, then verifies the bid is retrievable from `get_best_execution_bid(current_slot, head_root)` with correct builder_index (0), value (100), slot, and parent_block_root.
+  - `test_gloas_gossip_multiple_bids_best_selected_from_pool` — creates a gloas_rig with 2 active builders, submits two valid bids through the gossip handler (builder 0 with value 100, builder 1 with value 500), asserts both are accepted, then verifies `get_best_execution_bid` returns builder 1's bid (highest value). Exercises the full competing-bids pipeline: gossip → verification → pool insertion → best-bid selection.
+- **CI status**: All tests green. Clippy clean. 163/163 network tests pass (161→163).
+
 ### 2026-03-06 — reorg external bid filtering integration test (run 461)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: Same CI/tooling PRs as run 460 — #4978, #4974, #4971-4966, #4964, #4961, #4959, #4957, #4956, #4955, #4953. No new Gloas behavioral merges.
