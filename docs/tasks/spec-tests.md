@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-06 — implement spec PR #4898, spec tracking (run 469)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
+- **Recently merged spec PRs reviewed**: #4926 (replace `SECONDS_PER_SLOT` with `SLOT_DURATION_MS` in specs/configs — pure rename, `Store.time` still in seconds, no behavioral change, no vibehouse code change needed until new EF test vectors drop), #4930 (rename `execution_payload_states` → `payload_states` — vibehouse already uses `payload_states` naming, no change needed), #4950 (extend by_root serve range — already confirmed compliant in run 467). No new Gloas behavioral merges beyond what was tracked in run 468.
+- **Open Gloas PR status**: 13 open PRs. Key updates:
+  - **#4898** (remove pending from tiebreaker, 1 approval) — **proactively implemented** (commit `101a68380`): removed the `PAYLOAD_STATUS_PENDING` early-return guard from `get_payload_tiebreaker`. The PENDING check was redundant because PENDING nodes are unique per root, so the tiebreaker is always decided by weight or root comparison before reaching this function. Updated test `tiebreaker_pending_at_previous_slot_returns_ordinal` → `tiebreaker_pending_at_previous_slot_falls_through` with correct assertions. All 161 proto_array tests, 114 fork_choice tests, and 8 EF fork_choice categories pass. No behavioral change in practice.
+  - **#4979** (PTC lookbehind) — actively discussed today, consensus bug fix. Still open. Will implement when merged.
+  - **#4954** (fork choice milliseconds) — prerequisite #4926 now merged. No reviews yet. Wide impact but mechanical.
+  - **#4843** (variable PTC deadline), **#4747** (fast confirmation rule) — unchanged, not close to merge.
+  - **#4939** (missing envelope by-root) — dependency #4918 merged, design feedback pending.
+- **CI status**: All tests green. Clippy clean (full workspace lint passed on push). 3 CI runs in progress at start of run (all proceeding normally). Nightly tests green (3-day streak, 26/26 jobs).
+
 ### 2026-03-06 — spec cleanup, PR tracking, devnet validation (run 468)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release)
 - **Recently merged spec PRs reviewed**: No new Gloas behavioral merges since run 467. Only CI/tooling PRs.
