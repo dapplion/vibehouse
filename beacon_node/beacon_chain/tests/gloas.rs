@@ -22,6 +22,7 @@ use beacon_chain::execution_proof_verification::GossipExecutionProofError;
 use beacon_chain::gloas_verification::{
     ExecutionBidError, PayloadAttestationError, PayloadEnvelopeError,
 };
+use beacon_chain::observed_operations::ObservationOutcome;
 use beacon_chain::test_utils::{
     AttestationStrategy, BeaconChainHarness, DEFAULT_ETH1_BLOCK_HASH, EphemeralHarnessType,
     HARNESS_GENESIS_TIME, InteropGenesisBuilder,
@@ -19134,4 +19135,181 @@ async fn gloas_reorg_filters_stale_external_bids_in_block_production() {
         !proto.payload_revealed,
         "external bid block should not have payload_revealed (no envelope)"
     );
+}
+
+// =============================================================================
+// Builder voluntary exit — gossip verification
+// =============================================================================
+
+/// Helper: create a signed builder voluntary exit.
+fn make_builder_exit(
+    builder_index: u64,
+    epoch: Epoch,
+    builder_sk: &SecretKey,
+    genesis_validators_root: Hash256,
+    spec: &ChainSpec,
+) -> SignedVoluntaryExit {
+    let exit = VoluntaryExit {
+        epoch,
+        validator_index: builder_index | consts::gloas::BUILDER_INDEX_FLAG,
+    };
+    exit.sign(builder_sk, genesis_validators_root, spec)
+}
+
+#[tokio::test]
+async fn gloas_builder_exit_gossip_accepted() {
+    // Builder at index 0, deposit_epoch=0, balance=1 ETH
+    let harness = gloas_harness_with_builders(&[(0, 1_000_000_000)]);
+
+    // Build enough chain so finalized_epoch > deposit_epoch=0.
+    // Minimal preset: 8 slots/epoch, finalization needs ~4 justified epochs.
+    harness
+        .extend_chain(
+            (E::slots_per_epoch() * 5) as usize,
+            beacon_chain::test_utils::BlockStrategy::OnCanonicalHead,
+            AttestationStrategy::AllValidators,
+        )
+        .await;
+
+    // Sanity check: finalized_epoch must be > 0 for builder to be active
+    let head_state = &harness.chain.head().snapshot.beacon_state;
+    let finalized_epoch = head_state.finalized_checkpoint().epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0),
+        "chain must have finalized past epoch 0 for builder to be active, got finalized_epoch={finalized_epoch}"
+    );
+
+    let builder_index = 0u64;
+    let builder_sk = &BUILDER_KEYPAIRS[0].sk;
+    let genesis_validators_root = harness.chain.genesis_validators_root;
+    let spec = &harness.chain.spec;
+    let current_epoch = harness.chain.epoch().unwrap();
+
+    let signed_exit = make_builder_exit(
+        builder_index,
+        current_epoch,
+        builder_sk,
+        genesis_validators_root,
+        spec,
+    );
+
+    // First submission should be accepted as New
+    assert!(matches!(
+        harness
+            .chain
+            .verify_voluntary_exit_for_gossip(signed_exit.clone())
+            .unwrap(),
+        ObservationOutcome::New(_)
+    ));
+
+    // Second submission should be detected as AlreadyKnown
+    assert!(matches!(
+        harness
+            .chain
+            .verify_voluntary_exit_for_gossip(signed_exit)
+            .unwrap(),
+        ObservationOutcome::AlreadyKnown
+    ));
+}
+
+#[tokio::test]
+async fn gloas_builder_exit_gossip_inactive_rejected() {
+    // Builder with deposit_epoch=100 — won't be active until finalized_epoch > 100
+    let harness = gloas_harness_with_builders(&[(100, 1_000_000_000)]);
+
+    // Build a short chain (finalized_epoch will be ~1, far below deposit_epoch=100)
+    harness
+        .extend_chain(
+            (E::slots_per_epoch() * 3) as usize,
+            beacon_chain::test_utils::BlockStrategy::OnCanonicalHead,
+            AttestationStrategy::AllValidators,
+        )
+        .await;
+
+    let builder_index = 0u64;
+    let builder_sk = &BUILDER_KEYPAIRS[0].sk;
+    let genesis_validators_root = harness.chain.genesis_validators_root;
+    let spec = &harness.chain.spec;
+    let current_epoch = harness.chain.epoch().unwrap();
+
+    let signed_exit = make_builder_exit(
+        builder_index,
+        current_epoch,
+        builder_sk,
+        genesis_validators_root,
+        spec,
+    );
+
+    let err = harness
+        .chain
+        .verify_voluntary_exit_for_gossip(signed_exit)
+        .unwrap_err();
+
+    assert!(
+        matches!(
+            err,
+            BeaconChainError::ExitValidationError(
+                state_processing::per_block_processing::errors::BlockOperationError::Invalid(
+                    state_processing::per_block_processing::errors::ExitInvalid::BuilderNotActive(
+                        _
+                    )
+                )
+            )
+        ),
+        "inactive builder exit should be rejected, got: {:?}",
+        err
+    );
+}
+
+#[tokio::test]
+async fn gloas_builder_exit_gossip_duplicate_different_epoch() {
+    // Builder at index 0, deposit_epoch=0, balance=1 ETH
+    let harness = gloas_harness_with_builders(&[(0, 1_000_000_000)]);
+
+    harness
+        .extend_chain(
+            (E::slots_per_epoch() * 5) as usize,
+            beacon_chain::test_utils::BlockStrategy::OnCanonicalHead,
+            AttestationStrategy::AllValidators,
+        )
+        .await;
+
+    let builder_index = 0u64;
+    let builder_sk = &BUILDER_KEYPAIRS[0].sk;
+    let genesis_validators_root = harness.chain.genesis_validators_root;
+    let spec = &harness.chain.spec;
+    let current_epoch = harness.chain.epoch().unwrap();
+
+    let exit1 = make_builder_exit(
+        builder_index,
+        current_epoch,
+        builder_sk,
+        genesis_validators_root,
+        spec,
+    );
+
+    // First should be New
+    assert!(matches!(
+        harness
+            .chain
+            .verify_voluntary_exit_for_gossip(exit1)
+            .unwrap(),
+        ObservationOutcome::New(_)
+    ));
+
+    // Same builder, different epoch — should still be detected as duplicate
+    let exit2 = make_builder_exit(
+        builder_index,
+        current_epoch.saturating_sub(1u64),
+        builder_sk,
+        genesis_validators_root,
+        spec,
+    );
+    assert!(matches!(
+        harness
+            .chain
+            .verify_voluntary_exit_for_gossip(exit2)
+            .unwrap(),
+        ObservationOutcome::AlreadyKnown
+    ));
 }
