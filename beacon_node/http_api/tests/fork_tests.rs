@@ -3842,6 +3842,474 @@ async fn bid_submission_rejected_invalid_signature() {
     }
 }
 
+/// POST builder/bids with an inactive builder (deposit_epoch too recent) should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_inactive_builder() {
+    let validator_count = 32;
+    // Builder with deposit_epoch=100 — chain won't finalize that far, so builder is inactive
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(100, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let finalized_epoch = harness
+        .chain
+        .head_snapshot()
+        .beacon_state
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        finalized_epoch > Epoch::new(0) && finalized_epoch < Epoch::new(100),
+        "finalized epoch should be >0 but <100 for inactive builder test"
+    );
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let bid_msg = types::ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = types::SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid from inactive builder should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("InactiveBuilder"),
+            "expected InactiveBuilder error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with insufficient balance should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_insufficient_balance() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    // Builder with very low balance (1 gwei) — can't cover min_deposit_amount + bid value
+    let (tester, builder_keypairs) = gloas_tester_with_builders(validator_count, &[(0, 1)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Insert proposer preferences
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    // Bid with value that exceeds builder's available balance
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 999_999_999_999,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid with insufficient balance should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("InsufficientBuilderBalance"),
+            "expected InsufficientBuilderBalance error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with mismatched fee_recipient should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_fee_recipient_mismatch() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Submit proposer preferences with one fee_recipient
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    // Create bid with DIFFERENT fee_recipient
+    let wrong_fee_recipient = Address::repeat_byte(0x99);
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        fee_recipient: wrong_fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid with mismatched fee_recipient should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("FeeRecipientMismatch"),
+            "expected FeeRecipientMismatch error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with mismatched gas_limit should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_gas_limit_mismatch() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Submit proposer preferences with gas_limit=30M
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    // Create bid with DIFFERENT gas_limit
+    let wrong_gas_limit = 50_000_000u64;
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit: wrong_gas_limit,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid with mismatched gas_limit should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("GasLimitMismatch"),
+            "expected GasLimitMismatch error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with a lower value than existing bid should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_not_highest_value() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    // Two builders so we can submit bids from different builders without equivocation
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000), (0, 10_000_000_000)])
+            .await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    // Submit proposer preferences
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    // Submit first bid with HIGH value from builder 0
+    let bid_msg_high: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 1000,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg_high.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid_high = SignedExecutionPayloadBid {
+        message: bid_msg_high,
+        signature: bid_signature,
+    };
+    client
+        .post_builder_bids(&signed_bid_high)
+        .await
+        .expect("first (high value) bid should be accepted");
+
+    // Submit second bid with LOWER value from builder 1
+    let bid_msg_low: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 50, // lower than 1000
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    let bid_signing_root = bid_msg_low.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[1].sk.sign(bid_signing_root);
+
+    let signed_bid_low = SignedExecutionPayloadBid {
+        message: bid_msg_low,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid_low).await;
+    assert!(
+        result.is_err(),
+        "bid with lower value than existing should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("NotHighestValue"),
+            "expected NotHighestValue error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
 /// POST vibehouse/execution_proofs with an unknown block root returns 400.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_execution_proof_unknown_block_root_rejected() {
