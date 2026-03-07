@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check (run 513)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still 10 COMMENTED reviews, no approvals, design discussion ongoing (2-epoch cache vs alternatives). #4954 (store time milliseconds) awaiting review. #4747 (Fast Confirmation Rule) last updated Mar 6. No new Gloas PRs.
+- **Recent non-Gloas merges**: No new merges since run 512. #4988 (fix sampling config test) still the most recent.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. 2 CI runs in progress, 3 most recent completed successfully. Nightly tests green for 6 consecutive days.
+- **Clippy**: Clean across all key packages (state_processing, beacon_chain, proto_array, fork_choice, network, http_api) — zero warnings.
+- **Result**: No bugs found. No spec changes to implement. CI green. Project in maintenance mode — monitoring spec PRs for changes.
+
 ### 2026-03-07 — spec tracking, maintenance check (run 512)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (10 COMMENTED reviews, no approvals). Latest discussion (Mar 7): potuz/nflaig on slot-0 duty fetch problem and cache size trade-offs. #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit tests), #4962 (withdrawal tests) all unchanged with 0 approvals.
