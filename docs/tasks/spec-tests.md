@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — deep correctness audit, spec tracking (run 509)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs unchanged. #4979 (PTC Lookbehind) still open with active discussion (4 new review comments from potuz/nflaig on Mar 7 about alternative approaches: size-2 cache vs full-epoch cache vs per-slot on process_block). #4954 (store time milliseconds) still open. #4747 (Fast Confirmation Rule) still open, updated Mar 6. No new Gloas merges.
+- **Recent non-Gloas merges**: Same as run 508 (#4988, #4986, #4985, #4984, etc.) — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Last 5 completed CI runs succeeded. Nightly tests green for 8 consecutive days.
+- **Clippy**: Clean across all packages — zero warnings.
+- **Deep correctness audit — withdrawal processing**: Exhaustively verified all 4 phases of `process_withdrawals_gloas` against ePBS spec: (1) builder pending withdrawals with reserved_limit, (2) validator partial withdrawals with proper limit calculation, (3) builder sweep with wrap-around modular arithmetic, (4) validator sweep with full max_withdrawals limit. `next_withdrawal_builder_index` update verified correct. Genesis zero-hash case verified (both hashes zero → FULL). State mutations verified correct (balance decrements, queue pop_front, index updates). `get_expected_withdrawals_gloas` read-only path verified identical to process path. No issues found.
+- **Deep correctness audit — fork choice**: Verified Gloas fork choice edge cases: (1) `on_payload_attestation` correctly accumulates ptc_weight after envelope, (2) `find_head_gloas` correctly handles all-EMPTY children (terminates at leaf), (3) `should_apply_proposer_boost_gloas` correctly uses ptc_timely (not payload_revealed) for equivocation check, (4) no race condition between `on_execution_bid` reset and `on_payload_attestation` — safeguard preserves quorum when payload_revealed=true. No issues found.
+- **Deep correctness audit — panic safety**: Verified all Gloas production code (gloas.rs, envelope_processing.rs, single_pass.rs, beacon_chain.rs envelope paths, gloas_verification.rs) — zero `.unwrap()`, zero `.expect()`, zero unsafe array indexing. All use `?` operator, `SafeArith`, and `.get()` with bounds checks. Test code properly segregated under `#[cfg(test)]`.
+- **PR #4884 implementation verification**: Confirmed dual-vote PTC system correctly implemented — `payload_present` and `blob_data_available` tracked independently, both thresholds use `PTC_SIZE / 2` with strict `>` comparison matching spec's `PAYLOAD_TIMELY_THRESHOLD` and `DATA_AVAILABILITY_TIMELY_THRESHOLD`, `should_extend_payload` requires both conditions via AND.
+- **Result**: No bugs found across three deep audits (withdrawals, fork choice, panic safety). No spec changes to implement. Project in maintenance mode — monitoring spec PRs for changes.
+
 ### 2026-03-07 — spec tracking, test coverage audit (run 508)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 12 tracked PRs unchanged: #4979 (PTC Lookbehind, 7 commits, 10 review comments, still open), #4962, #4960, #4954, #4940, #4939, #4898, #4892, #4843, #4840, #4747 (Fast Confirmation Rule, updated Mar 6), #4630. Additional PRs tracked: #4558 (cell dissemination, draft), #4484 (6s slots), #4704 (remove old deposit mechanism). No new Gloas merges.
