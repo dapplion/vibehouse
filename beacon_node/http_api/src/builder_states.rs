@@ -2,6 +2,7 @@ use crate::StateId;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use safe_arith::SafeArith;
 use state_processing::per_block_processing::get_expected_withdrawals;
+use state_processing::per_block_processing::gloas::get_expected_withdrawals_gloas;
 use state_processing::state_advance::partial_state_advance;
 use std::sync::Arc;
 use types::{BeaconState, EthSpec, Slot, Withdrawals};
@@ -31,12 +32,25 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
         )));
     }
 
-    match get_expected_withdrawals(&state, &chain.spec) {
-        Ok((withdrawals, _)) => Ok(withdrawals),
-        Err(e) => Err(warp_utils::reject::custom_server_error(format!(
-            "failed to get expected withdrawal: {:?}",
-            e
-        ))),
+    if state.fork_name_unchecked().gloas_enabled() {
+        // Gloas uses a different withdrawal computation that includes builder
+        // pending withdrawals and uses the builder sweep alongside validator
+        // withdrawals. Using the pre-Gloas function would miss builder withdrawals.
+        match get_expected_withdrawals_gloas(&state, &chain.spec) {
+            Ok(withdrawals) => Ok(withdrawals.into()),
+            Err(e) => Err(warp_utils::reject::custom_server_error(format!(
+                "failed to get expected withdrawal: {:?}",
+                e
+            ))),
+        }
+    } else {
+        match get_expected_withdrawals(&state, &chain.spec) {
+            Ok((withdrawals, _)) => Ok(withdrawals),
+            Err(e) => Err(warp_utils::reject::custom_server_error(format!(
+                "failed to get expected withdrawal: {:?}",
+                e
+            ))),
+        }
     }
 }
 

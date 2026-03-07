@@ -2450,6 +2450,106 @@ async fn expected_withdrawals_gloas() {
     let _withdrawals = &response.data;
 }
 
+/// GET expected_withdrawals with Gloas state should include builder pending withdrawals.
+///
+/// This tests that the endpoint uses `get_expected_withdrawals_gloas` (not the pre-Gloas
+/// `get_expected_withdrawals`) for Gloas states. The Gloas function includes builder
+/// pending withdrawals in the response; the pre-Gloas function does not.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn expected_withdrawals_gloas_includes_builder_withdrawals() {
+    use types::{Builder, BuilderPendingWithdrawal};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let validator_keypairs = generate_deterministic_keypairs(validator_count);
+
+    let header = generate_genesis_header::<E>(&spec, false);
+    let builder_fee_recipient = Address::repeat_byte(0xBB);
+    let builder_withdrawal_amount = 1_000_000u64;
+
+    let mut state = InteropGenesisBuilder::default()
+        .set_alternating_eth1_withdrawal_credentials()
+        .set_opt_execution_payload_header(header)
+        .build_genesis_state(
+            &validator_keypairs,
+            HARNESS_GENESIS_TIME,
+            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            &spec,
+        )
+        .expect("should generate interop state");
+
+    // Inject a builder and a builder pending withdrawal into genesis state.
+    let builder_keypair = generate_deterministic_keypair(validator_count);
+    let gloas_state = state.as_gloas_mut().expect("should be gloas state");
+    gloas_state
+        .builders
+        .push(Builder {
+            pubkey: builder_keypair.pk.into(),
+            version: 0,
+            execution_address: Address::ZERO,
+            balance: 10_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        })
+        .expect("should push builder");
+    gloas_state
+        .builder_pending_withdrawals
+        .push(BuilderPendingWithdrawal {
+            fee_recipient: builder_fee_recipient,
+            amount: builder_withdrawal_amount,
+            builder_index: 0,
+        })
+        .expect("should push builder pending withdrawal");
+
+    state.drop_all_caches().expect("should drop caches");
+
+    let keypairs = validator_keypairs.clone();
+    let tester = InteractiveTester::<E>::new_with_initializer_and_mutator(
+        Some(spec),
+        validator_count,
+        Some(Box::new(move |harness_builder| {
+            harness_builder
+                .keypairs(keypairs)
+                .genesis_state_ephemeral_store(state)
+        })),
+        None,
+        Default::default(),
+        true,
+        NodeCustodyType::Fullnode,
+    )
+    .await;
+    let client = &tester.client;
+
+    // Query the genesis state. The builder pending withdrawal is in the genesis state
+    // and hasn't been consumed by block processing yet. The proposal_slot defaults to
+    // state.slot() + 1 = 1.
+    let response = client
+        .get_expected_withdrawals(&StateId::Head)
+        .await
+        .expect("expected_withdrawals should succeed for Gloas state with builders");
+
+    let withdrawals = &response.data;
+
+    // The builder pending withdrawal should appear with BUILDER_INDEX_FLAG set.
+    let builder_withdrawals: Vec<_> = withdrawals
+        .iter()
+        .filter(|w| w.validator_index & (1u64 << 40) != 0)
+        .collect();
+
+    assert!(
+        !builder_withdrawals.is_empty(),
+        "expected_withdrawals should include builder pending withdrawals for Gloas states"
+    );
+    assert_eq!(
+        builder_withdrawals[0].address, builder_fee_recipient,
+        "builder withdrawal fee_recipient should match"
+    );
+    assert_eq!(
+        builder_withdrawals[0].amount, builder_withdrawal_amount,
+        "builder withdrawal amount should match"
+    );
+}
+
 /// PTC duties should return consistent dependent_root across calls for same epoch.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ptc_duties_dependent_root_consistent() {
