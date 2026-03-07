@@ -19898,3 +19898,209 @@ async fn gloas_attester_slashing_op_pool_retrieval() {
         ObservationOutcome::AlreadyKnown
     ));
 }
+
+/// Test range sync (process_chain_segment) across the Fulu→Gloas fork boundary.
+///
+/// A node joining the network after the Gloas fork must sync through the transition
+/// point: Fulu blocks (with data columns for DA) followed by Gloas blocks (with bids
+/// and envelopes). This test verifies that:
+/// - Fulu blocks import with their data columns (PeerDAS data availability)
+/// - The first Gloas block (at the fork slot) imports correctly after the transition
+/// - Gloas blocks have `payload_revealed=true` after envelope processing
+/// - The head state has correct `latest_block_hash` matching the head bid
+/// - Epoch processing across the fork boundary works correctly
+#[tokio::test]
+async fn gloas_range_sync_across_fulu_to_gloas_fork_boundary() {
+    use beacon_chain::data_column_verification::CustodyDataColumn;
+
+    let gloas_fork_epoch = Epoch::new(2);
+
+    // Harness 1: build a chain that crosses the Fulu→Gloas fork boundary.
+    // With minimal spec (8 slots/epoch), fork at epoch 2 = slot 16.
+    // Build 20 slots total: slots 1-15 are Fulu, slots 16-20 are Gloas.
+    let harness1 = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+    Box::pin(harness1.extend_slots(20)).await;
+
+    // Extract blocks, data columns (for Fulu), and envelopes (for Gloas)
+    let chain_dump = harness1.chain.chain_dump().expect("should dump chain");
+    let mut blocks: Vec<Arc<SignedBeaconBlock<E>>> = Vec::new();
+    let mut data_columns: Vec<Option<Vec<CustodyDataColumn<E>>>> = Vec::new();
+    let mut envelopes = Vec::new();
+    for snapshot in chain_dump.iter().skip(1) {
+        let full_block = harness1
+            .chain
+            .get_block(&snapshot.beacon_block_root)
+            .await
+            .unwrap()
+            .unwrap();
+
+        // Extract data columns for Fulu blocks (needed for PeerDAS DA check)
+        let columns = if full_block.fork_name_unchecked() == ForkName::Fulu {
+            harness1
+                .chain
+                .get_data_columns(&snapshot.beacon_block_root)
+                .unwrap()
+                .map(|cols| {
+                    cols.into_iter()
+                        .map(CustodyDataColumn::from_asserted_custody)
+                        .collect()
+                })
+        } else {
+            None
+        };
+
+        let envelope = harness1
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap();
+        blocks.push(Arc::new(full_block));
+        data_columns.push(columns);
+        envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), 20, "should have 20 blocks");
+
+    // Verify block fork variants in the source chain
+    let fulu_count = blocks
+        .iter()
+        .filter(|b| b.fork_name_unchecked() == ForkName::Fulu)
+        .count();
+    let gloas_count = blocks
+        .iter()
+        .filter(|b| b.fork_name_unchecked() == ForkName::Gloas)
+        .count();
+    assert_eq!(fulu_count, 15, "should have 15 Fulu blocks (slots 1-15)");
+    assert_eq!(gloas_count, 5, "should have 5 Gloas blocks (slots 16-20)");
+
+    // Verify Fulu blocks have no envelopes, Gloas blocks do
+    for (i, (block, envelope)) in blocks.iter().zip(envelopes.iter()).enumerate() {
+        if block.fork_name_unchecked() == ForkName::Fulu {
+            assert!(
+                envelope.is_none(),
+                "Fulu block {} (slot {}) should have no envelope",
+                i + 1,
+                block.slot()
+            );
+        } else {
+            assert!(
+                envelope.is_some(),
+                "Gloas block {} (slot {}) should have an envelope",
+                i + 1,
+                block.slot()
+            );
+        }
+    }
+
+    // Harness 2: import via process_chain_segment (range sync path)
+    let harness2 = gloas_harness_at_epoch(gloas_fork_epoch.as_u64());
+
+    for (i, ((block, columns), envelope)) in blocks
+        .iter()
+        .zip(data_columns.iter())
+        .zip(envelopes.iter())
+        .enumerate()
+    {
+        // Build RPC block: include data columns for Fulu blocks (PeerDAS DA),
+        // no blobs needed for Gloas blocks (DA handled via envelopes)
+        let rpc_block = if let Some(cols) = columns {
+            beacon_chain::block_verification_types::RpcBlock::<E>::new_with_custody_columns(
+                None,
+                block.clone(),
+                cols.clone(),
+            )
+            .unwrap_or_else(|e| {
+                panic!(
+                    "RpcBlock construction for block {} (slot {}) should succeed: {:?}",
+                    i + 1,
+                    block.slot(),
+                    e
+                )
+            })
+        } else {
+            beacon_chain::block_verification_types::RpcBlock::new_without_blobs(None, block.clone())
+        };
+        harness2.set_current_slot(block.slot());
+
+        harness2
+            .chain
+            .process_chain_segment(vec![rpc_block], NotifyExecutionLayer::Yes)
+            .await
+            .into_block_error()
+            .unwrap_or_else(|e| {
+                panic!(
+                    "block {} (slot {}, {:?}) range sync import should succeed: {:?}",
+                    i + 1,
+                    block.slot(),
+                    block.fork_name_unchecked(),
+                    e
+                )
+            });
+
+        // Process envelope for Gloas blocks
+        if let Some(signed_envelope) = envelope {
+            harness2
+                .chain
+                .process_self_build_envelope(signed_envelope)
+                .await
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "envelope {} (slot {}) processing should succeed: {:?}",
+                        i + 1,
+                        block.slot(),
+                        e
+                    )
+                });
+        }
+        harness2.chain.recompute_head_at_current_slot().await;
+    }
+
+    // Verify all Gloas blocks have payload_revealed=true in fork choice
+    let fc = harness2.chain.canonical_head.fork_choice_read_lock();
+    for (i, block) in blocks.iter().enumerate() {
+        let root = block.canonical_root();
+        if block.fork_name_unchecked() == ForkName::Gloas {
+            let proto = fc
+                .get_block(&root)
+                .unwrap_or_else(|| panic!("Gloas block {} should be in fork choice", i + 1));
+            assert!(
+                proto.payload_revealed,
+                "Gloas block {} (slot {}) should have payload_revealed=true",
+                i + 1,
+                block.slot()
+            );
+        }
+    }
+    drop(fc);
+
+    // Verify head state consistency
+    let head = harness2.chain.head_snapshot();
+    assert!(
+        head.beacon_block.fork_name_unchecked() == ForkName::Gloas,
+        "head should be a Gloas block after range sync"
+    );
+
+    let head_bid_hash = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas head should have a bid")
+        .message
+        .block_hash;
+    let head_latest_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    assert_eq!(
+        head_latest_hash, head_bid_hash,
+        "after range sync across fork boundary, latest_block_hash should match head bid"
+    );
+
+    // Verify the chain processed epoch transitions correctly
+    // (fork transition at epoch 2 + epoch 2→3 boundary if we reached it)
+    let head_epoch = head.beacon_block.slot().epoch(E::slots_per_epoch());
+    assert!(
+        head_epoch >= gloas_fork_epoch,
+        "head should be at or past the Gloas fork epoch"
+    );
+}
