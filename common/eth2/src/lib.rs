@@ -18,7 +18,7 @@ use self::mixin::{RequestAccept, ResponseOptional};
 use self::types::{Error as ResponseError, *};
 use ::types::beacon_response::ExecutionOptimisticFinalizedBeaconResponse;
 use ::types::{
-    PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
+    ExecutionProof, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
     SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
 };
 use derivative::Derivative;
@@ -3122,6 +3122,43 @@ impl BeaconNodeHttpClient {
 
         self.post_with_timeout_and_response(path, &selections, self.timeouts.sync_aggregators)
             .await
+    }
+
+    /// `GET vibehouse/execution_proof_status/{block_id}`
+    ///
+    /// Returns the execution proof status for a given block (received subnet IDs, threshold).
+    pub async fn get_vibehouse_execution_proof_status(
+        &self,
+        block_id: BlockId,
+    ) -> Result<GenericResponse<ExecutionProofStatus>, Error> {
+        let mut path = self.server.full.clone();
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("vibehouse")
+            .push("execution_proof_status")
+            .push(&block_id.to_string());
+
+        self.get(path).await
+    }
+
+    /// `POST vibehouse/execution_proofs`
+    ///
+    /// Submits an execution proof for import. Used for testing stateless validation.
+    pub async fn post_vibehouse_execution_proofs(
+        &self,
+        proof: &ExecutionProof,
+    ) -> Result<(), Error> {
+        let mut path = self.server.full.clone();
+
+        path.path_segments_mut()
+            .map_err(|()| Error::InvalidUrl(self.server.clone()))?
+            .push("vibehouse")
+            .push("execution_proofs");
+
+        self.post(path, proof).await?;
+
+        Ok(())
     }
 }
 

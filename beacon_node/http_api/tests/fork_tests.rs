@@ -3422,3 +3422,152 @@ async fn post_payload_attestation_unknown_block_root() {
         "error should mention UnknownBeaconBlockRoot, got: {err_str}"
     );
 }
+
+// ── Vibehouse execution proof endpoint tests ─────────────────────────
+
+/// GET vibehouse/execution_proof_status for a known block returns empty proof status.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_proof_status_known_block() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a Gloas block
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // GET proof status for the head block
+    let result = client
+        .get_vibehouse_execution_proof_status(BlockId::Root(head_root))
+        .await;
+    let response = result.expect("should return proof status for known block");
+    let status = response.data;
+
+    assert_eq!(status.block_root, head_root, "block root should match");
+    assert!(
+        status.received_proof_subnet_ids.is_empty(),
+        "no proofs submitted yet, should be empty"
+    );
+    // stateless_validation is false by default, so required_proofs = 0
+    assert_eq!(status.required_proofs, 0, "stateless not enabled");
+    assert!(status.is_fully_proven, "0 required = fully proven");
+}
+
+/// GET vibehouse/execution_proof_status for an unknown block root returns an error.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_proof_status_unknown_block() {
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    // Use a random non-existent block root
+    let unknown_root = Hash256::repeat_byte(0xab);
+    let result = client
+        .get_vibehouse_execution_proof_status(BlockId::Root(unknown_root))
+        .await;
+
+    assert!(
+        result.is_err(),
+        "should return error for unknown block root"
+    );
+}
+
+/// POST vibehouse/execution_proofs with empty proof_data returns 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_proof_empty_data_rejected() {
+    use types::{ExecutionBlockHash, ExecutionProof, ExecutionProofSubnetId};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a block so we have a known root
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head_root = harness.chain.head_snapshot().beacon_block_root;
+
+    // Construct a proof with empty proof_data (invalid)
+    let proof = ExecutionProof {
+        block_root: head_root,
+        block_hash: ExecutionBlockHash::zero(),
+        subnet_id: ExecutionProofSubnetId::new(0).unwrap(),
+        version: 1, // PROOF_VERSION_STUB
+        proof_data: vec![],
+    };
+
+    let result = client.post_vibehouse_execution_proofs(&proof).await;
+    assert!(result.is_err(), "should reject proof with empty data");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400, "should return 400");
+        assert!(
+            msg.message.contains("ProofDataEmpty"),
+            "expected ProofDataEmpty error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST vibehouse/execution_proofs with an unknown block root returns 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn post_execution_proof_unknown_block_root_rejected() {
+    use types::{ExecutionBlockHash, ExecutionProof, ExecutionProofSubnetId};
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec), validator_count).await;
+    let client = &tester.client;
+
+    // Construct a proof referencing a non-existent block
+    let proof = ExecutionProof {
+        block_root: Hash256::repeat_byte(0xde),
+        block_hash: ExecutionBlockHash::zero(),
+        subnet_id: ExecutionProofSubnetId::new(0).unwrap(),
+        version: 1,
+        proof_data: vec![0x42], // non-empty but block root is unknown
+    };
+
+    let result = client.post_vibehouse_execution_proofs(&proof).await;
+    assert!(
+        result.is_err(),
+        "should reject proof with unknown block root"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400, "should return 400");
+        assert!(
+            msg.message.contains("UnknownBlockRoot"),
+            "expected UnknownBlockRoot error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
