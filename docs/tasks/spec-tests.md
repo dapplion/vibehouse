@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — fix DB error swallowing in envelope loading, spec tracking (run 503)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 9 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4932 (sanity/blocks with payload attestation coverage), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4630 (forward-compat SSZ). No new merges since run 502.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **Bug fix** (commit `04ae49181`): Found and fixed 2 remaining instances of the same DB error swallowing bug class fixed in commit `39f9b50` (run 494). Both used wildcard `_` match arms that silently caught `Err(e)` from `get_payload_envelope()` alongside `Ok(None)`, treating database errors as "no envelope found":
+  1. `replay_blocks` (hot_cold_store.rs:2606-2616): Used in state replay for block rewards, state loading, and historic state access. Wildcard `_` caught DB errors and silently fell through to blinded envelope fallback. Inner `if let Ok(Some(blinded))` also swallowed `get_blinded_payload_envelope` errors. **Fix**: Explicit `Ok(None)` / `Err(e)` arms; both DB errors now propagated via `return Err(e)` (function returns Result).
+  2. `load_envelopes_for_blocks` (beacon_chain.rs:1315-1326): Used by HTTP API block_rewards endpoint. Same wildcard pattern. Since this function returns `(HashMap, HashMap)` not `Result`, DB errors are now logged as warnings instead of silently swallowed.
+- **Coverage gap analysis**: Systematic audit of all `get_payload_envelope` / `get_blinded_payload_envelope` call sites across the codebase. All other sites (reconstruct.rs, get_advanced_hot_state, HTTP API endpoints, test code) already use proper error handling. These were the last two sites with the wildcard swallowing pattern.
+- **Build & test verification**: Release build clean (0 warnings). 95/95 Gloas envelope/replay tests pass. 82/82 store tests pass. 2/2 block rewards HTTP API tests pass. Full clippy clean.
+
 ### 2026-03-07 — bid verification check ordering tests, spec tracking (run 502)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 6 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4954 (fork choice ms), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4747 (Fast Confirmation Rule, Mar 6), #4558 (Cell Dissemination, draft). No new merges since run 501.
