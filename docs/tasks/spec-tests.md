@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — CI paths-ignore, maintenance check (run 544)
+- v1.7.0-alpha.2 still latest, no new test vectors, no new Gloas consensus PRs merged
+- All tracked open PRs unchanged: #4979 (PTC Lookbehind, 7 commits, active debate on vector size — potuz favors full 2*SLOTS_PER_EPOCH, ensi321 proposed size 2, nflaig raised lookahead concern), #4962, #4960, #4940, #4932 (test PRs), #4843, #4840, #4630, #4939 (request missing envelopes for index-1 attestations)
+- Recently merged upstream: all CI/tooling/dependency — no Gloas consensus
+- `cargo clippy --workspace --release -- -D warnings`: clean
+- `cargo audit`: clean (10 unmaintained warnings, no vulnerabilities)
+- CI: 5 queued runs from doc-only commits — added `paths-ignore` to ci.yml to skip CI for markdown/docs changes (saves GitHub Actions minutes)
+- **Result**: CI improvement shipped. No spec changes to implement. Project in maintenance mode.
+
 ### 2026-03-08 — maintenance check (run 543)
 - v1.7.0-alpha.2 still latest, no new test vectors, no new Gloas consensus PRs merged
 - All tracked open PRs unchanged: #4979 (PTC Lookbehind, 7 commits, latest 2026-03-06), #4962, #4960, #4940, #4932 (test PRs), #4843, #4840, #4630
