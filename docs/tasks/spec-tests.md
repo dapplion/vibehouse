@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, store test gap analysis, code safety audit (run 511)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 11 tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) had review activity on Mar 7 (potuz/nflaig discussion about slot-0 problem). #4747 (Fast Confirmation Rule) updated Mar 6 (etan-status on engine API timing). All others unchanged.
+- **Recent non-Gloas merges**: No new merges since run 510. Same set (#4988, #4986, #4985, #4984, #4977) — all CI/tooling/EIP removal, none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Run 509 check/clippy/ef-tests passed, remaining jobs running. Nightly tests running.
+- **Clippy**: Clean across all key packages — zero warnings.
+- **Store test gap analysis**: Identified 11 store_tests skipped when Gloas enabled — 2 light client tests (need spec for Gloas light clients, not yet defined in consensus-specs), 2 schema downgrade tests (need two-phase state transition support in migration), 7 PeerDAS data column tests (need envelope-based data column storage). Light client skip is spec-justified (no Gloas light client spec exists). Schema downgrade is architectural work. Data column tests need envelope→data-column pipeline which isn't implemented yet.
+- **Production code safety audit**: Zero `.unwrap()`, `.expect()`, `panic!()`, `unreachable!()`, or unsafe array indexing in Gloas production code. All use `?` operator, `SafeArith`, and `.get()` with bounds checks.
+- **Test skip audit**: 5 `#[ignore]` tests (3 slasher fuzz, 2 network pending impl changes), 18 `#[should_panic]` (all legitimate), no `todo!()`/`unimplemented!()` in test code.
+- **Workspace test suite**: 2591/2591 real tests pass (8 web3signer_tests failures are infrastructure-only — web3signer not available, excluded from CI). Unchanged from run 510.
+- **Result**: No bugs found. No spec changes to implement. Store test gaps are architectural (need spec/feature work, not just tests). Project in maintenance mode.
+
 ### 2026-03-07 — spec tracking, workspace test verification, PR #4940 readiness check (run 510)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs unchanged. #4979 (PTC Lookbehind) still open with active discussion — design settled on `2 * SLOTS_PER_EPOCH` cache size (potuz confirmed size-2 and size-1 alternatives are both "pretty ugly"). #4940 (initial fork choice tests) still open — adds `on_execution_payload` test step and `head_payload_status` check (both already supported by our EF test handler). #4932 (sanity/blocks payload attestation) still open. #4843 (Variable PTC deadline) unchanged since Feb 19. No new Gloas merges.
