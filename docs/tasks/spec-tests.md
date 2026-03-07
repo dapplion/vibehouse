@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, PTC Lookbehind implementation plan (run 507)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 13 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch in forkchoice), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4747 (Fast Confirmation Rule), #4630 (forward-compat SSZ), #4558 (cell dissemination, draft). No new Gloas merges since run 506.
+- **Newly tracked PRs**: #4898 (vibehouse already compliant — tiebreaker omits Pending short-circuit), #4892 (vibehouse already compliant — uses `==` not `<=` in is_supporting_vote), #4558 (draft, blocked on upstream libp2p partial messages spec, future networking-only change)
+- **Recent non-Gloas merges**: #4988 (fix sampling config test), #4985 (clean up deps), #4984 (remove EIP-6800), #4977 (remove EIP-7441), #4972/#4982/#4981/#4980 (dep updates) — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Last 3 completed CI runs succeeded. Nightly tests green for 6 consecutive days.
+- **PR #4979 (PTC Lookbehind) detailed implementation plan prepared**: 12 files need changes when this PR merges. Key changes: (1) add `ptc_lookbehind: Vector<Vector<u64, PtcSize>, 2*SLOTS_PER_EPOCH>` to BeaconState Gloas variant (~256KB mainnet), (2) rename `get_ptc_committee` → `compute_ptc`, add new `get_ptc` with cache lookup for prev/current epoch + on-demand compute for next epoch, (3) new `process_ptc_lookbehind` epoch processing function (shift + fill), (4) `initialize_ptc_lookbehind` for genesis/fork transition (compute from pre-state before struct construction to avoid committee cache ordering issues), (5) wire into SinglePassConfig, (6) add EF test handler, (7) rename call sites in gloas_verification, network tests, http_api tests. PR still open with review discussion about alternative approaches (2-slot cache vs full epoch cache). Not implementing yet — waiting for merge.
+- **Result**: No bugs found. No spec changes to implement. Implementation plan ready for #4979 when it merges.
+
 ### 2026-03-07 — spec tracking, comprehensive codebase audit (run 506)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 10 tracked PRs: #4979 (PTC Lookbehind, most active, updated Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4747 (Fast Confirmation Rule), #4630 (forward-compat SSZ). No new merges since run 505. PR #4906 (deposit request tests) merged Mar 4 — test-only, no spec changes.
