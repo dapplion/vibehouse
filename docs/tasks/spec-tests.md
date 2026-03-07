@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, dependency audit (run 496)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) still most active. PR #4747 (Fast Confirmation Rule) updated Mar 6. No newly merged Gloas PRs since run 495.
+- **Merged spec PR conformance review**: Reviewed all 6 Gloas-labeled PRs merged since v1.7.0-alpha.2:
+  - **#4948** (PayloadStatus reorder: EMPTY=0, FULL=1, PENDING=2): vibehouse already uses `Empty = 0, Full = 1, Pending = 2` ordinals — **no change needed**
+  - **#4926** (SECONDS_PER_SLOT → SLOT_DURATION_MS): vibehouse already tracks both `seconds_per_slot` and `slot_duration_ms` in ChainSpec with forward-compat comment referencing this PR — **no change needed**
+  - **#4947** (pre-fork proposer_preferences subscription): vibehouse already subscribes one epoch before fork (network/service.rs) and VC broadcasts preferences one epoch before (duties_service.rs) — **no change needed**
+  - **#4950** (by_root serve range): reviewed in run 492, no change needed
+  - **#4918** (reject attestations for PENDING payload): reviewed in run 491, already implemented
+  - **#4920** (constructing sections consistency): editorial, no code impact
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **Dependency update attempt**: `cc` 1.2.30→1.2.56 and `cmake` 0.1.54→0.1.57 available, but cc 1.2.56 breaks the leveldb cmake build (gmake error in leveldb-sys). Rolled back both. Build deps pinned at current versions until leveldb-sys compatibility is fixed upstream.
+- **Build & test verification**: Release build clean (0 warnings). CI green (4/6 passed, 2 still running).
+
 ### 2026-03-07 — fix silent DB error swallowing in envelope loading, spec tracking (run 495)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) most active (updated today). No newly merged Gloas PRs since run 494.
