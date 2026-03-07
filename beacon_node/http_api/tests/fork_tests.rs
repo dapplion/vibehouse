@@ -4310,6 +4310,357 @@ async fn bid_submission_rejected_not_highest_value() {
     }
 }
 
+/// POST builder/bids with a slot that is neither current nor next should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_slot_not_current_or_next() {
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Use a stale slot (far in the past) — neither current nor next
+    let stale_slot = Slot::new(1);
+    assert!(
+        stale_slot != current_slot && stale_slot != current_slot + 1,
+        "stale slot should not be current or next"
+    );
+
+    let bid_msg = types::ExecutionPayloadBid::<E> {
+        slot: stale_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        stale_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = types::SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(result.is_err(), "bid with stale slot should be rejected");
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("SlotNotCurrentOrNext"),
+            "expected SlotNotCurrentOrNext error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with an unknown parent_block_root should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_invalid_parent_root() {
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Use a random parent_block_root that is NOT in fork choice
+    let unknown_root = Hash256::repeat_byte(0xde);
+
+    let bid_msg = types::ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: unknown_root,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = types::SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid with unknown parent root should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("InvalidParentRoot"),
+            "expected InvalidParentRoot error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with an unknown parent_block_hash should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_unknown_parent_block_hash() {
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Valid parent_block_root (in fork choice) but unknown parent_block_hash
+    let unknown_block_hash = types::ExecutionBlockHash::from_root(Hash256::repeat_byte(0xab));
+
+    let bid_msg = types::ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        parent_block_hash: unknown_block_hash,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = types::SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid with unknown parent block hash should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("UnknownParentBlockHash"),
+            "expected UnknownParentBlockHash error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids without prior proposer preferences should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_proposer_preferences_not_seen() {
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Do NOT submit proposer preferences — bid should fail at preferences check
+    let bid_msg = types::ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head.beacon_block_root,
+        ..Default::default()
+    };
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let bid_signature = builder_keypairs[0].sk.sign(bid_signing_root);
+
+    let signed_bid = types::SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bid_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid without proposer preferences should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("ProposerPreferencesNotSeen"),
+            "expected ProposerPreferencesNotSeen error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
+/// POST builder/bids with a second different bid from the same builder/slot should return 400.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_builder_equivocation() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    let (tester, builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    // Submit proposer preferences
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // Submit first valid bid
+    let bid_msg_1: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+    let bid_signing_root_1 = bid_msg_1.signing_root(bid_domain);
+    let bid_signature_1 = builder_keypairs[0].sk.sign(bid_signing_root_1);
+    let signed_bid_1 = SignedExecutionPayloadBid {
+        message: bid_msg_1,
+        signature: bid_signature_1,
+    };
+    client
+        .post_builder_bids(&signed_bid_1)
+        .await
+        .expect("first bid should be accepted");
+
+    // Submit second bid from SAME builder, same slot, but different block_hash
+    // This produces a different tree hash root → equivocation
+    let bid_msg_2: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 200, // different value → different tree hash root
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+    let bid_signing_root_2 = bid_msg_2.signing_root(bid_domain);
+    let bid_signature_2 = builder_keypairs[0].sk.sign(bid_signing_root_2);
+    let signed_bid_2 = SignedExecutionPayloadBid {
+        message: bid_msg_2,
+        signature: bid_signature_2,
+    };
+
+    let result = client.post_builder_bids(&signed_bid_2).await;
+    assert!(
+        result.is_err(),
+        "second bid from same builder/slot should be rejected as equivocation"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400);
+        assert!(
+            msg.message.contains("BuilderEquivocation"),
+            "expected BuilderEquivocation error, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
 /// POST vibehouse/execution_proofs with an unknown block root returns 400.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_execution_proof_unknown_block_root_rejected() {
