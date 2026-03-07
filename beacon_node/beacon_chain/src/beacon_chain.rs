@@ -1316,12 +1316,28 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     Ok(Some(envelope)) => {
                         envelopes.insert(block_root, envelope);
                     }
-                    _ => {
-                        if let Ok(Some(blinded)) =
-                            self.store.get_blinded_payload_envelope(&block_root)
-                        {
-                            blinded_envelopes.insert(block_root, blinded);
+                    Ok(None) => {
+                        // Full payload may be pruned — try blinded envelope.
+                        match self.store.get_blinded_payload_envelope(&block_root) {
+                            Ok(Some(blinded)) => {
+                                blinded_envelopes.insert(block_root, blinded);
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                warn!(
+                                    ?e,
+                                    ?block_root,
+                                    "DB error loading blinded envelope for block replay"
+                                );
+                            }
                         }
+                    }
+                    Err(e) => {
+                        warn!(
+                            ?e,
+                            ?block_root,
+                            "DB error loading envelope for block replay"
+                        );
                     }
                 }
             }

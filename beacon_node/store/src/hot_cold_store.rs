@@ -2607,12 +2607,19 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                     Ok(Some(envelope)) => {
                         envelopes.insert(block_root, envelope);
                     }
-                    _ => {
+                    Ok(None) => {
                         // Full payload may be pruned — try blinded envelope
-                        if let Ok(Some(blinded)) = self.get_blinded_payload_envelope(&block_root) {
-                            blinded_envelopes.insert(block_root, blinded);
+                        match self.get_blinded_payload_envelope(&block_root) {
+                            Ok(Some(blinded)) => {
+                                blinded_envelopes.insert(block_root, blinded);
+                            }
+                            Ok(None) => {
+                                // No envelope at all — EMPTY path (builder withheld payload).
+                            }
+                            Err(e) => return Err(e),
                         }
                     }
+                    Err(e) => return Err(e),
                 }
             }
         }
