@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, spec monitoring (run 529)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) last updated 2026-03-07T01:09:08Z, debate ongoing but no resolution. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
+- **Recently merged PRs**: #4988 (fix sampling config test) merged 2026-03-07. No Gloas files touched. Only CI/tooling merges since last check.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. 5 consecutive CI runs success (524-528). 6 consecutive nightly successes. Clippy zero warnings workspace-wide.
+- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
+- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, spec monitoring (run 528)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) debate continues — potuz acknowledges his per-slot `process_block` approach doesn't allow lookahead; nflaig notes JIT next-epoch computation is fine since PTC acts later in slot. ensi321's minimal `Vector[..., 2]` option still on the table. No consensus yet. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
