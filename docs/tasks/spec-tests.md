@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — fix expected_withdrawals endpoint for Gloas, spec tracking (run 501)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **Bug fix + test** (commit `8745f17d3`): Found and fixed a real bug in `builder_states.rs:get_next_withdrawals` during systematic coverage gap analysis. The function called `get_expected_withdrawals` (pre-Gloas, validator-only) for ALL fork states, including Gloas. For Gloas states, this missed builder pending withdrawals and the builder sweep entirely — the endpoint would return only validator withdrawals, omitting builder withdrawals that the execution layer needs. Fix dispatches to `get_expected_withdrawals_gloas` when the state has Gloas enabled.
+  - New test `expected_withdrawals_gloas_includes_builder_withdrawals` (http_api fork_tests.rs): Sets up a Gloas genesis state with a builder and an injected `BuilderPendingWithdrawal`, queries the expected_withdrawals endpoint, and asserts builder withdrawals (identified by `BUILDER_INDEX_FLAG` on `validator_index`) appear in the response with correct `fee_recipient` and `amount`. This test would fail without the fix.
+- **Coverage search scope**: Exhaustively checked 30+ Gloas production code paths across beacon_chain, http_api, state_processing, operation_pool, network, and store. All except this bug were already well-tested (700+ Gloas tests). Paths checked include: `can_builder_cover_bid` (10 tests), envelope processing (55 tests), `process_pending_envelope`, `get_payload_attestation_data`, `get_payload_attestations_for_block`, `validate_execution_payload_for_gossip` Gloas skip, EarlyAttesterCache, `process_self_build_envelope`, `try_update_head_state`, payload attestation pool API, proposer lookahead API, proposer preferences API, network gossip handlers (70+ tests), ObservedPayloadEnvelopes, per_slot_processing Gloas, builder exits, block replayer Gloas.
+- **Build & test verification**: Release build clean (0 warnings). 5/5 expected_withdrawals tests pass (including new test). 241/241 http_api tests pass (up from 240). Full clippy clean.
+
 ### 2026-03-07 — bid submission invalid signature test, spec tracking (run 500)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
