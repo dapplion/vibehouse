@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — bid submission invalid signature test, spec tracking (run 500)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **New test** (1, commit `17bf71173`): Targeted untested HTTP API error path identified by systematic coverage gap analysis:
+  1. `bid_submission_rejected_invalid_signature` (http_api fork_tests.rs): First test exercising the BLS signature verification check (check 5 of 9) in `verify_execution_bid_for_gossip`. Creates a valid `SignedExecutionPayloadBid` that passes all preceding checks (slot, payment, builder existence/activity, balance, parent root, proposer preferences match) but is signed with validator key 0 instead of builder key 0, resulting in a 400 "invalid execution bid" response. Previously, all 4 bid submission tests used correctly-signed bids, leaving the signature rejection path untested.
+- **Build & test verification**: Release build clean (0 warnings). 240/240 http_api tests pass (up from 239). Full clippy clean.
+
 ### 2026-03-07 — prune boundary and OOB builder exit tests, spec tracking (run 499)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 10 open PRs tracked: #4979 (PTC Lookbehind, most active, updated Mar 7), #4747 (Fast Confirmation Rule, Mar 6), #4558 (Cell Dissemination, Mar 5), #4954 (fork choice ms), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4898, #4892, #4840, #4630. No new merges since PR #4950 (reviewed in run 492).
