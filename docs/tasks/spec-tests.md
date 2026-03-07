@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, spec monitoring (run 524)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) active today — potuz/nflaig/ensi321 debating approach: ensi321 proposed minimal `Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` (2 entries, per-epoch shift), potuz proposed per-slot update in `process_block` but nflaig noted it wouldn't allow lookahead. Discussion converging but no consensus. #4892 and #4898 unchanged (still awaiting final merge). New Gloas test vector PRs tracked: #4940 (initial fork choice tests), #4960 (deposit+reorg fork choice test), #4932 (sanity/blocks with payload attestation) — all OPEN, will generate new EF vectors when merged.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. 4 completed (success), 1 in progress (run 523 push). No failures.
+- **Clippy/warnings**: Clean across all packages — zero warnings, zero clippy issues (`clippy --workspace --release -W clippy::all`).
+- **Code coverage audit**: Deep audit of all major Gloas code paths (beacon_chain.rs, block_verification.rs, execution_payload.rs, gloas_verification.rs) — all critical paths have dedicated tests. No untested code paths found.
+- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
+
 ### 2026-03-07 — mixed FULL/EMPTY chain finalization test, spec monitoring (run 523)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (potuz/nflaig/jtraglia/ensi321 debating approach — per-slot update vs full 2-epoch vector). #4892 (Remove impossible FC branch) has 2 approvals, near merge but no impact on vibehouse (already implemented). #4898 (Remove pending tiebreaker) has 1 approval, also no vibehouse impact (already compatible). No new Gloas PRs. No new Gloas-relevant merges — recent upstream merges are all CI/tooling/dependency updates.
