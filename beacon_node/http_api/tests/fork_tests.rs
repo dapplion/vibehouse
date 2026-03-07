@@ -1911,6 +1911,107 @@ async fn get_execution_payload_envelope_self_build_fields() {
     );
 }
 
+/// GET beacon/execution_payload_envelope with Accept: application/octet-stream should return
+/// SSZ-encoded envelope with correct Content-Type and Eth-Consensus-Version headers.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_execution_payload_envelope_ssz() {
+    use eth2::mixin::{RequestAccept, ResponseForkName};
+    use eth2::types::Accept;
+    use ssz::Decode;
+    use types::SignedExecutionPayloadEnvelope;
+
+    let validator_count = 32;
+    let spec = gloas_spec(Epoch::new(0));
+    let tester = InteractiveTester::<E>::new(Some(spec.clone()), validator_count).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Produce a Gloas block (self-build produces block + envelope)
+    let (genesis_state, genesis_state_root) = harness.get_current_state_and_root();
+    let all_validators = harness.get_all_validators();
+    harness
+        .add_attested_block_at_slot(
+            Slot::new(1),
+            genesis_state,
+            genesis_state_root,
+            &all_validators,
+        )
+        .await
+        .unwrap();
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    // Get the envelope via JSON first (for comparison)
+    let json_response = client
+        .get_beacon_execution_payload_envelope::<E>(BlockId::Root(head_root))
+        .await
+        .expect("JSON request should succeed")
+        .expect("envelope should exist");
+
+    // Build the URL by modifying a known-good path (get_beacon_blocks_path gives
+    // .../eth/v2/beacon/blocks/{id}, we need .../eth/v1/beacon/execution_payload_envelope/{id})
+    let blocks_url = client
+        .get_beacon_blocks_path(BlockId::Root(head_root))
+        .unwrap();
+    let url_str = blocks_url.as_str().replace(
+        "/eth/v2/beacon/blocks/",
+        "/eth/v1/beacon/execution_payload_envelope/",
+    );
+    let url: eth2::reqwest::Url = url_str.parse().unwrap();
+
+    // Request with Accept: application/octet-stream
+    let response = client
+        .get_response(url, |b| b.accept(Accept::Ssz))
+        .await
+        .expect("SSZ request should succeed");
+
+    // Verify Eth-Consensus-Version header is "gloas"
+    let fork_name = response
+        .fork_name_from_header()
+        .expect("should parse fork name header")
+        .expect("fork name header should be present");
+    assert_eq!(
+        fork_name,
+        ForkName::Gloas,
+        "consensus version should be gloas"
+    );
+
+    // Verify Content-Type is application/octet-stream
+    let content_type = response
+        .headers()
+        .get("content-type")
+        .expect("content-type header should be present")
+        .to_str()
+        .unwrap();
+    assert_eq!(
+        content_type, "application/octet-stream",
+        "content-type should be SSZ"
+    );
+
+    // Decode SSZ body and verify it matches the JSON response
+    let body_bytes = response.bytes().await.unwrap();
+    let decoded = SignedExecutionPayloadEnvelope::<E>::from_ssz_bytes(&body_bytes)
+        .expect("should decode SSZ envelope");
+
+    assert_eq!(
+        decoded.message.beacon_block_root, json_response.data.message.beacon_block_root,
+        "SSZ envelope beacon_block_root should match JSON"
+    );
+    assert_eq!(
+        decoded.message.slot, json_response.data.message.slot,
+        "SSZ envelope slot should match JSON"
+    );
+    assert_eq!(
+        decoded.message.builder_index, json_response.data.message.builder_index,
+        "SSZ envelope builder_index should match JSON"
+    );
+    assert_eq!(
+        decoded.message.state_root, json_response.data.message.state_root,
+        "SSZ envelope state_root should match JSON"
+    );
+}
+
 /// GET beacon/states/{state_id}/proposer_lookahead should return 400 for pre-Fulu state.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn proposer_lookahead_rejected_pre_fulu() {

@@ -8729,6 +8729,111 @@ async fn fulu_early_cache_uses_committee_index_not_payload_present() {
     );
 }
 
+/// On a non-stateless node, `check_gossip_execution_proof_availability_and_import` uses the
+/// DA checker path (put_gossip_verified_execution_proofs + process_availability), NOT the
+/// stateless tracker path. This exercises the production code path for the overwhelming
+/// majority of nodes that receive execution proofs via gossip.
+///
+/// Since a normally-imported Gloas block bypasses the DA checker (it's already execution-valid
+/// via newPayload), the proof returns MissingComponents — the DA checker doesn't have the
+/// block's PendingComponents cached, so it holds the proof.
+#[tokio::test]
+async fn gloas_non_stateless_execution_proof_uses_da_checker_path() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let head = harness.chain.head_snapshot();
+    let block_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    // Get the block hash from the bid
+    let block_hash = head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("Gloas block should have bid")
+        .message
+        .block_hash;
+
+    // Verify this is NOT a stateless harness
+    assert!(
+        !harness.chain.config.stateless_validation,
+        "this test requires a non-stateless harness"
+    );
+
+    // Create and verify an execution proof
+    let proof = make_stub_execution_proof(block_root, block_hash);
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+
+    let verified = harness
+        .chain
+        .verify_execution_proof_for_gossip(proof, subnet_id)
+        .expect("proof should pass gossip verification");
+
+    // Call the availability import — this should take the non-stateless (DA checker) path
+    let result = harness
+        .chain
+        .check_gossip_execution_proof_availability_and_import(head_slot, block_root, verified)
+        .await
+        .expect("should not error");
+
+    // The block was already fully imported via self-build, so it's not in the DA checker cache.
+    // The DA checker returns MissingComponents because it has no PendingComponents for this root.
+    assert_eq!(
+        result,
+        AvailabilityProcessingStatus::MissingComponents(head_slot, block_root),
+        "non-stateless proof should go through DA checker and return MissingComponents"
+    );
+
+    // Crucially, the execution_proof_tracker (stateless path) should NOT have been touched
+    let tracker = harness.chain.execution_proof_tracker.lock();
+    assert!(
+        !tracker.contains_key(&block_root),
+        "stateless proof tracker should not contain the block root on a non-stateless node"
+    );
+}
+
+/// On a Gloas chain, `prepare_beacon_proposer` should NOT emit a `PayloadAttributes` SSE event.
+///
+/// Pre-Gloas forks emit `EventKind::PayloadAttributes` so relays/builders can start building
+/// payloads via the MEV pipeline. In Gloas (ePBS), builders use the bid/envelope protocol
+/// instead, so the event is deliberately skipped. This test verifies the skip guard at
+/// beacon_chain.rs:7591 (`!prepare_slot_fork.gloas_enabled()`).
+#[tokio::test]
+async fn gloas_prepare_beacon_proposer_skips_payload_attributes_sse() {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(2)).await;
+
+    // Subscribe to PayloadAttributes events BEFORE calling prepare_beacon_proposer.
+    // This creates a receiver, which means `has_payload_attributes_subscribers()` returns true.
+    let event_handler = harness
+        .chain
+        .event_handler
+        .as_ref()
+        .expect("event handler should exist");
+    let mut rx = event_handler.subscribe_payload_attributes();
+
+    // Advance clock and call prepare_beacon_proposer for the current slot.
+    // This prepares for current_slot + 1, which is a Gloas slot.
+    let current_slot = harness.chain.slot().unwrap();
+    harness.advance_to_slot_lookahead(
+        current_slot + 1,
+        harness.chain.config.prepare_payload_lookahead,
+    );
+    harness
+        .chain
+        .prepare_beacon_proposer(current_slot)
+        .await
+        .expect("prepare_beacon_proposer should succeed");
+
+    // No PayloadAttributes event should have been emitted for a Gloas slot
+    assert!(
+        rx.try_recv().is_err(),
+        "PayloadAttributes SSE event should NOT be emitted for Gloas slots"
+    );
+}
+
 // =============================================================================
 // Canonical head Gloas-specific branch tests
 // =============================================================================
