@@ -28,6 +28,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, comprehensive codebase audit (run 506)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 10 tracked PRs: #4979 (PTC Lookbehind, most active, updated Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4747 (Fast Confirmation Rule), #4630 (forward-compat SSZ). No new merges since run 505. PR #4906 (deposit request tests) merged Mar 4 — test-only, no spec changes.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **PR #4979 analysis** (PTC Lookbehind): Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` to BeaconState. New epoch processing function `process_ptc_lookbehind` (shift + recompute). New `compute_ptc` helper extracts PTC computation from `get_ptc`. `get_ptc` becomes a cache lookup (previous/current epoch) + on-demand compute (next epoch). `initialize_ptc_lookbehind` for genesis and fork transition. Still **OPEN**, not merged — no implementation needed yet. Tracked for when it merges.
+- **Comprehensive codebase audit**: Verified all major subsystems are correct and well-tested:
+  - `process_builder_pending_payments`: 20+ unit tests covering quorum calculation, rotation, sparse patterns, multi-builder scenarios, minimum active balance, u64::MAX weight, double-processing. Ordering in `single_pass.rs` matches spec (before effective_balance_updates, after pending_consolidations).
+  - `process_proposer_lookahead`: 8 unit tests covering shift + fill mechanics. Correctly placed after effective_balance_updates.
+  - `ExecutionBidPool`: 15 unit tests covering selection, pruning, parent_block_root filtering, reorg scenarios. Block production correctly selects by parent_block_root.
+  - `ObservedExecutionBids`: 14 unit tests covering equivocation detection, highest value tracking, pruning.
+  - `process_pending_envelope`: 8 integration tests covering all paths (success, re-verify failure, unknown root, EL Invalid, EL Syncing, external builder). Race condition analysis: `remove()` under lock makes duplicate processing impossible.
+  - CI green, nightly tests green (5 consecutive days).
+- **Result**: No bugs found. No spec changes to implement. Project in maintenance mode — monitoring spec PRs for changes.
+
 ### 2026-03-07 — exhaustive coverage gap search, spec boundary audit (run 505)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 10 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4932 (sanity/blocks with payload attestation coverage), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4630 (forward-compat SSZ). PR #4950 (by_root serve range) merged Mar 6 (already reviewed in run 504). No new Gloas-specific merges.
