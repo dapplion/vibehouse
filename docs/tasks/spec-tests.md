@@ -28,6 +28,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — should_extend_payload coverage tests, spec conformance audit (run 504)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 10 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4747 (Fast Confirmation Rule, 89 comments), #4630 (forward-compat SSZ). No new merges since run 503.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **Spec conformance audit**: Exhaustively checked all 10 Gloas-relevant spec PRs merged since v1.7.0-alpha.2 against vibehouse implementation:
+  - PR #4948 (PayloadStatus reorder EMPTY=0, FULL=1, PENDING=2): Already matches
+  - PR #4923 (ignore blocks with unknown parent payload): Already implemented
+  - PR #4918 (attestations for known payload statuses): Already implemented
+  - PR #4884 (payload_data_availability_vote + blob_data_available): Already implemented
+  - PR #4897 (pending deposit check before builder): Already implemented with `is_pending_validator`
+  - PR #4930 (execution_payload_states → payload_states rename): Spec naming only, not applicable
+  - PR #4947 (pre-fork proposer_preferences subscription): Documentation guidance
+  - PR #4950 (by_root serve range extended): Already noted in prior run
+  - PR #4926 (SLOT_DURATION_MS replaces SECONDS_PER_SLOT): Already using ms-based timing
+  - PR #4916 (refactor builder deposit lazy evaluation): Already matches optimized pattern
+  - **Result**: All merged spec changes are already implemented. No code changes needed.
+- **New tests** (2): Targeted `should_extend_payload` coverage gaps in the `is_payload_timely AND is_payload_data_available` combined check (spec PR #4884):
+  1. `should_extend_payload_data_available_but_not_timely` (proto_array_fork_choice.rs): Verifies that when blob data availability weight exceeds threshold but payload timeliness weight does NOT, the combined check fails (AND semantics). Falls through to proposer boost checks.
+  2. `should_extend_payload_envelope_not_received_despite_quorum` (proto_array_fork_choice.rs): Verifies that even with both PTC weight and blob weight above threshold, if the envelope was never received (i.e., `root NOT in store.payload_states`), the combined check fails. With proposer boost to a child building on EMPTY parent, should NOT extend — returns false.
+- **Coverage gap analysis**: Systematic audit of gossip handler error paths (gossip_methods.rs), validator client Gloas paths (block_service, payload_attestation_service, validator_store), proto_array fork choice, and block replayer. Most error paths already well-tested. Remaining gaps are defensive catch-all handlers and hard-to-trigger race conditions.
+- **Build & test verification**: Release build clean (0 warnings). 163/163 proto_array tests pass (up from 161). 114/114 fork_choice tests pass. Full clippy clean.
+
 ### 2026-03-07 — fix DB error swallowing in envelope loading, spec tracking (run 503)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 9 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4932 (sanity/blocks with payload attestation coverage), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4630 (forward-compat SSZ). No new merges since run 502.
