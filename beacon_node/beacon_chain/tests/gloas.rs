@@ -17483,6 +17483,104 @@ async fn gloas_prune_gloas_pools_buffer_cap_enforcement() {
     }
 }
 
+/// `prune_gloas_pools` retains slot-keyed entries at exactly the boundary
+/// slot (`current_slot - MAX_GLOAS_POOL_SLOTS`) and prunes entries one slot
+/// before it. This tests the `>= earliest_slot` predicate in the retain
+/// closure for both `payload_attestation_pool` and `proposer_preferences_pool`.
+///
+/// With MAX_GLOAS_POOL_SLOTS=4 and current_slot=10:
+///   earliest_slot = 10 - 4 = 6
+///   slot 5: PRUNED (5 < 6)
+///   slot 6: RETAINED (6 >= 6, exact boundary)
+///   slot 10: RETAINED (10 >= 6, current)
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gloas_prune_gloas_pools_slot_boundary_retention() {
+    let harness = gloas_harness_at_epoch(0);
+    // Extend to slot 9, then advance_slot moves clock to 10
+    Box::pin(harness.extend_slots(9)).await;
+
+    let current_slot = harness.chain.slot().unwrap();
+    assert!(
+        current_slot.as_u64() >= 9,
+        "need sufficient slots for boundary test"
+    );
+
+    // earliest_slot = current_slot + 1 (after advance_slot) - 4
+    // With current_slot=9, after advance_slot clock=10, earliest_slot=6
+    let after_advance_slot = current_slot + 1;
+    let earliest_slot = Slot::new(after_advance_slot.as_u64().saturating_sub(4));
+    let one_before = earliest_slot - 1;
+
+    let dummy_prefs = |slot_num: u64| SignedProposerPreferences {
+        message: ProposerPreferences {
+            proposal_slot: slot_num,
+            validator_index: 0,
+            fee_recipient: Address::ZERO,
+            gas_limit: 30_000_000,
+        },
+        signature: Signature::empty(),
+    };
+
+    // Insert entries at: one_before (should be pruned), earliest_slot (boundary, retained),
+    // and current_slot (recent, retained)
+    {
+        let mut pool = harness.chain.payload_attestation_pool.lock();
+        pool.insert(one_before, vec![]);
+        pool.insert(earliest_slot, vec![]);
+        pool.insert(after_advance_slot, vec![]);
+    }
+    {
+        let mut pool = harness.chain.proposer_preferences_pool.lock();
+        pool.insert(one_before, dummy_prefs(one_before.as_u64()));
+        pool.insert(earliest_slot, dummy_prefs(earliest_slot.as_u64()));
+        pool.insert(after_advance_slot, dummy_prefs(after_advance_slot.as_u64()));
+    }
+
+    // Trigger pruning
+    harness.advance_slot();
+    harness.chain.per_slot_task().await;
+
+    // Verify payload_attestation_pool
+    {
+        let pool = harness.chain.payload_attestation_pool.lock();
+        assert!(
+            !pool.contains_key(&one_before),
+            "payload_attestation_pool: slot {} (one before boundary) should be pruned",
+            one_before
+        );
+        assert!(
+            pool.contains_key(&earliest_slot),
+            "payload_attestation_pool: slot {} (exact boundary) should be RETAINED",
+            earliest_slot
+        );
+        assert!(
+            pool.contains_key(&after_advance_slot),
+            "payload_attestation_pool: slot {} (current) should be retained",
+            after_advance_slot
+        );
+    }
+
+    // Verify proposer_preferences_pool
+    {
+        let pool = harness.chain.proposer_preferences_pool.lock();
+        assert!(
+            !pool.contains_key(&one_before),
+            "proposer_preferences_pool: slot {} (one before boundary) should be pruned",
+            one_before
+        );
+        assert!(
+            pool.contains_key(&earliest_slot),
+            "proposer_preferences_pool: slot {} (exact boundary) should be RETAINED",
+            earliest_slot
+        );
+        assert!(
+            pool.contains_key(&after_advance_slot),
+            "proposer_preferences_pool: slot {} (current) should be retained",
+            after_advance_slot
+        );
+    }
+}
+
 /// `prune_gloas_pools` does NOT clear root-keyed buffers at exactly the cap (16 entries).
 /// Only buffers strictly exceeding the cap are cleared.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

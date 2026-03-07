@@ -2274,4 +2274,116 @@ mod release_tests {
             );
         }
     }
+
+    /// Test that builder exits with out-of-bounds builder indices are retained
+    /// by `prune_voluntary_exits` when the builder index exceeds the builders list.
+    ///
+    /// In Gloas, `builders.get(builder_index as usize)` returns `None` when the
+    /// index is beyond the list. The code falls through to `true` (keep the exit).
+    /// This prevents valid exits from being incorrectly pruned before the builder
+    /// is registered (e.g., deposit pending) or after a state snapshot where the
+    /// builder count is lower than expected.
+    #[cfg(feature = "fork_from_env")]
+    #[tokio::test]
+    async fn prune_builder_voluntary_exits_oob_index_retained() {
+        use types::consts::gloas::BUILDER_INDEX_FLAG;
+
+        let mut spec = test_spec::<MainnetEthSpec>();
+        spec.shard_committee_period = 0;
+        let harness = get_harness::<MainnetEthSpec>(32, Some(spec.clone()));
+
+        let op_pool = OperationPool::<MainnetEthSpec>::new();
+
+        // Create a valid exit to get a SigVerifiedOp
+        let exit = harness.make_voluntary_exit(0, Epoch::new(0));
+        let head = harness.chain.canonical_head.cached_head().snapshot;
+
+        let verified_exit = exit
+            .clone()
+            .validate(&head.beacon_state, &harness.chain.spec)
+            .unwrap();
+
+        // Insert under a builder-flagged key with index 99 — way beyond the
+        // builders list (which has 0 or 1 entries in the test state).
+        let oob_builder_key = BUILDER_INDEX_FLAG | 99;
+        op_pool
+            .voluntary_exits
+            .write()
+            .insert(oob_builder_key, verified_exit.clone());
+
+        // Also insert a normal builder exit for index 0 (in-bounds, active)
+        let builder_0_key = BUILDER_INDEX_FLAG;
+        op_pool
+            .voluntary_exits
+            .write()
+            .insert(builder_0_key, verified_exit);
+
+        assert_eq!(op_pool.voluntary_exits.read().len(), 2);
+
+        let mut state = head.beacon_state.clone();
+
+        if state.fork_name_unchecked().gloas_enabled() {
+            // Add one active builder at index 0
+            let active_builder = types::Builder {
+                pubkey: types::PublicKeyBytes::empty(),
+                version: 0,
+                execution_address: types::Address::ZERO,
+                balance: 32_000_000_000,
+                deposit_epoch: Epoch::new(0),
+                withdrawable_epoch: spec.far_future_epoch,
+            };
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .push(active_builder)
+                .unwrap();
+
+            // Prune — builder 0 is active (kept), builder 99 is OOB (also kept)
+            op_pool.prune_voluntary_exits(&state, &spec);
+            assert_eq!(
+                op_pool.voluntary_exits.read().len(),
+                2,
+                "both exits should be retained: index 0 is active, index 99 is OOB"
+            );
+            assert!(
+                op_pool
+                    .voluntary_exits
+                    .read()
+                    .contains_key(&oob_builder_key),
+                "OOB builder exit should be retained (not pruned)"
+            );
+            assert!(
+                op_pool.voluntary_exits.read().contains_key(&builder_0_key),
+                "active builder exit should be retained"
+            );
+
+            // Now mark builder 0 as exited — it should be pruned, but OOB stays
+            state
+                .as_gloas_mut()
+                .unwrap()
+                .builders
+                .get_mut(0)
+                .unwrap()
+                .withdrawable_epoch = Epoch::new(10);
+
+            op_pool.prune_voluntary_exits(&state, &spec);
+            assert_eq!(
+                op_pool.voluntary_exits.read().len(),
+                1,
+                "exited builder 0 should be pruned, OOB builder 99 retained"
+            );
+            assert!(
+                op_pool
+                    .voluntary_exits
+                    .read()
+                    .contains_key(&oob_builder_key),
+                "OOB builder exit should still be retained after pruning exited builder"
+            );
+            assert!(
+                !op_pool.voluntary_exits.read().contains_key(&builder_0_key),
+                "exited builder exit should be removed"
+            );
+        }
+    }
 }
