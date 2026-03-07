@@ -6815,6 +6815,57 @@ impl ApiTester {
         }
         self
     }
+
+    /// Test block rewards API on a Gloas chain.
+    ///
+    /// Exercises both:
+    /// 1. The standard `GET /eth/v1/beacon/rewards/blocks/{block_id}` endpoint
+    /// 2. The lighthouse `GET /lighthouse/analysis/block_rewards` endpoint which
+    ///    uses `load_envelopes_for_blocks` + `BlockReplayer.envelopes()` — a code
+    ///    path only reached for Gloas blocks.
+    async fn test_beacon_block_rewards_gloas(self) -> Self {
+        for _ in 0..E::slots_per_epoch() {
+            let state = self.harness.get_current_state();
+            let slot = state.slot() + Slot::new(1);
+            let ((signed_block, _maybe_blob_sidecars), mut state) =
+                self.harness.make_block_return_pre_state(state, slot).await;
+
+            let beacon_block_reward = self
+                .harness
+                .chain
+                .compute_beacon_block_reward(signed_block.message(), &mut state)
+                .unwrap();
+            self.harness.extend_slots(1).await;
+
+            // Standard API: GET /eth/v1/beacon/rewards/blocks/{block_id}
+            let api_beacon_block_reward = self.test_get_beacon_rewards_blocks_at_head().await;
+            assert_eq!(beacon_block_reward, api_beacon_block_reward);
+        }
+
+        // Lighthouse analysis endpoint: exercises load_envelopes_for_blocks +
+        // BlockReplayer.envelopes() for Gloas blocks across multiple slots.
+        let head_slot = self.harness.chain.head_snapshot().beacon_block.slot();
+        let analysis_rewards = self
+            .client
+            .get_lighthouse_analysis_block_rewards(Slot::new(1), head_slot)
+            .await
+            .expect("lighthouse block_rewards analysis should succeed for Gloas chain");
+
+        assert!(
+            !analysis_rewards.is_empty(),
+            "should return rewards for Gloas blocks"
+        );
+        // All returned rewards should have non-zero proposer indices (they're real validators)
+        for reward in &analysis_rewards {
+            assert!(
+                reward.meta.proposer_index < VALIDATOR_COUNT as u64,
+                "proposer_index {} out of range",
+                reward.meta.proposer_index
+            );
+        }
+
+        self
+    }
 }
 
 async fn poll_events<S: Stream<Item = Result<EventKind<E>, eth2::Error>> + Unpin, E: EthSpec>(
@@ -8081,5 +8132,21 @@ async fn get_beacon_rewards_blocks_electra() {
     ApiTester::new_from_config(config)
         .await
         .test_beacon_block_rewards_electra()
+        .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn get_beacon_rewards_blocks_gloas() {
+    let mut config = ApiTesterConfig::default();
+    config.spec.altair_fork_epoch = Some(Epoch::new(0));
+    config.spec.bellatrix_fork_epoch = Some(Epoch::new(0));
+    config.spec.capella_fork_epoch = Some(Epoch::new(0));
+    config.spec.deneb_fork_epoch = Some(Epoch::new(0));
+    config.spec.electra_fork_epoch = Some(Epoch::new(0));
+    config.spec.fulu_fork_epoch = Some(Epoch::new(0));
+    config.spec.gloas_fork_epoch = Some(Epoch::new(0));
+    ApiTester::new_from_config(config)
+        .await
+        .test_beacon_block_rewards_gloas()
         .await;
 }
