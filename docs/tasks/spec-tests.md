@@ -28,6 +28,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — HTTP API bid error path tests, maintenance check (run 519)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (10 reviews, no approvals). No new Gloas PRs. No new Gloas-relevant merges.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Clippy clean across all key packages.
+- **New tests shipped (5 HTTP API bid submission error path integration tests)**:
+  - `bid_submission_rejected_inactive_builder` — builder with deposit_epoch=100 (higher than finalized epoch) correctly rejected with `InactiveBuilder` error via HTTP 400
+  - `bid_submission_rejected_insufficient_balance` — builder with 1 gwei balance submitting high-value bid correctly rejected with `InsufficientBuilderBalance` error via HTTP 400
+  - `bid_submission_rejected_fee_recipient_mismatch` — bid with fee_recipient different from proposer preferences correctly rejected with `FeeRecipientMismatch` error via HTTP 400
+  - `bid_submission_rejected_gas_limit_mismatch` — bid with gas_limit different from proposer preferences correctly rejected with `GasLimitMismatch` error via HTTP 400
+  - `bid_submission_rejected_not_highest_value` — second bid with lower value than existing bid correctly rejected with `NotHighestValue` error via HTTP 400 (uses 2 builders to avoid equivocation)
+- **Full http_api test suite**: 246/246 pass. Zero failures.
+- **Previously tested bid errors**: ZeroExecutionPayment, UnknownBuilder, InvalidSignature, DuplicateBid. Now 9/15 error variants have HTTP API integration test coverage.
+- **Remaining untested bid error variants** (require more complex setup or are edge cases):
+  - `SlotNotCurrentOrNext` — requires manipulating slot clock relative to bid
+  - `BuilderEquivocation` — requires two different valid bids from same builder same slot (need different parent_block_hash)
+  - `ProposerPreferencesNotSeen` — bid before preferences (partially covered by existing tests that skip preferences)
+  - `InvalidParentRoot` — bid with unknown parent root in fork choice
+  - `UnknownParentBlockHash` — bid with unknown execution block hash
+- **Result**: 5 new tests shipped. CI green.
+
 ### 2026-03-07 — gossip proof path tests, spec monitoring (run 518)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 7 tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review. #4962, #4960, #4940, #4932, #4954, #4747 unchanged. Three new Gloas-relevant PRs identified: #4979 (PTC Lookbehind — significant spec change, adds state field), #4939 (request missing envelopes for index-1 attestations), #4892 (remove impossible FC branch).
