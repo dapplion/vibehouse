@@ -15,18 +15,28 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 - 3 altair proposer_boost tests now pass (were skipped, sigp/lighthouse#8689 — fixed by implementing PR #4807)
 
 ### Tasks
-- [ ] Audit spec test runner — understand download, cache, run flow
-- [ ] Check which spec test version is currently pinned
-- [ ] Update to latest spec test release when new ones drop
-- [ ] Ensure all existing fork tests pass (phase0 through fulu)
-- [ ] Add gloas test scaffolding: register fork, add handlers, wire new test types
-- [ ] Set up CI job: download latest vectors, run all tests, fail on regression
+- [x] Audit spec test runner — understand download, cache, run flow
+- [x] Check which spec test version is currently pinned (v1.7.0-alpha.2)
+- [x] Update to latest spec test release when new ones drop
+- [x] Ensure all existing fork tests pass (phase0 through fulu)
+- [x] Add gloas test scaffolding: register fork, add handlers, wire new test types
+- [x] Set up CI job: download latest vectors, run all tests, fail on regression
 - [ ] Create automated PR bot for new spec test releases
 
 ### Test categories
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### 2026-03-08 — maintenance check (run 543)
+- v1.7.0-alpha.2 still latest, no new test vectors, no new Gloas consensus PRs merged
+- All tracked open PRs unchanged: #4979 (PTC Lookbehind, 7 commits, latest 2026-03-06), #4962, #4960, #4940, #4932 (test PRs), #4843, #4840, #4630
+- Recently merged upstream: all CI/tooling/dependency (#4988, #4986-#4969) — no Gloas consensus
+- `cargo clippy --workspace --release -- -D warnings`: clean
+- `cargo audit`: clean (10 unmaintained warnings, no vulnerabilities)
+- CI: green (completed runs all success), 8 queued runs from doc-only commits working through
+- Updated stale task checkboxes (6/7 done, only automated PR bot remains)
+- **Result**: No spec changes to implement. Project in maintenance mode.
 
 ### 2026-03-07 — maintenance checks (runs 524-542, consolidated)
 - **18 consecutive maintenance runs with no spec changes to implement.** All runs confirmed:
