@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, spec monitoring (run 527)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) debate continues — potuz argues per-slot update in process_block could work with size-1 vector, nflaig agrees JIT next-epoch computation is fine since PTC acts later in slot. No consensus yet. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
+- **Recently merged PRs**: Only CI/tooling/dependency merges since last check (#4988 fix sampling config, #4985-#4977 deps/cleanup). No Gloas consensus changes merged.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. 2 runs in progress, 3 most recent completed all success. Clippy zero warnings workspace-wide.
+- **Withdrawal carryover coverage audit**: Analyzed coverage of PR #4962's 4 test scenarios (block with withdrawals → payload withheld → next block with/without new withdrawals → envelope satisfies/doesn't satisfy). All 4 are covered: scenarios 1-2 by `stale_withdrawal_mismatch_after_missed_payload_rejected()` (unit) + `gloas_stale_withdrawal_carryover_across_empty_parent()` (integration), scenario 3 by `empty_parent_preserves_stale_payload_expected_withdrawals()` + `gloas_multi_epoch_mixed_full_empty_chain_finalizes()`, scenario 4 by unit-level rejection in `envelope_processing.rs`. No gaps.
+- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
+- **Result**: No spec changes to implement. All tests passing. All withdrawal edge cases covered. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, spec monitoring (run 526)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active debate (potuz wants per-slot update in process_block, nflaig notes that wouldn't allow lookahead, ensi321 proposed minimal 2-entry vector). No consensus yet on approach. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
