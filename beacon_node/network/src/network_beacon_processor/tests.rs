@@ -5845,6 +5845,92 @@ async fn test_gloas_gossip_execution_proof_stateless_unknown_root_buffered() {
     );
 }
 
+/// On a stateless node with threshold > 1, a single execution proof that does NOT
+/// reach the threshold is accepted at the gossip layer but results in
+/// `MissingComponents` — no sync notification is dispatched and no head recompute
+/// is triggered.
+///
+/// This tests the `Ok(AvailabilityProcessingStatus::MissingComponents(..))` branch
+/// in `process_gossip_verified_execution_proof` (gossip_methods.rs:4192-4198).
+/// Unlike the `Imported` path (tested in
+/// `test_gloas_gossip_execution_proof_stateless_import_notifies_sync`), this branch
+/// simply logs and returns — it does NOT call `recompute_head_at_current_slot()` and
+/// does NOT send `SyncMessage::GossipBlockProcessResult`.
+#[tokio::test]
+async fn test_gloas_gossip_execution_proof_stateless_missing_components_no_sync() {
+    if test_spec::<E>().gloas_fork_epoch.is_none() {
+        return;
+    }
+
+    // Threshold=2 means a single proof won't trigger import
+    let mut rig = gloas_rig_stateless(SMALL_CHAIN, 2).await;
+
+    assert!(
+        rig.chain.config.stateless_validation,
+        "precondition: node must be stateless"
+    );
+    assert_eq!(
+        rig.chain.config.stateless_min_proofs_required, 2,
+        "precondition: threshold must be 2"
+    );
+
+    let head = rig.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+
+    let bid_block_hash = {
+        let fc = rig.chain.canonical_head.fork_choice_read_lock();
+        let node = fc
+            .get_block(&head_root)
+            .expect("head must be in fork choice");
+        node.bid_block_hash
+            .expect("Gloas head must have bid_block_hash")
+    };
+
+    let subnet_id = ExecutionProofSubnetId::new(0).unwrap();
+    let proof = Arc::new(ExecutionProof::new(
+        head_root,
+        bid_block_hash,
+        subnet_id,
+        types::execution_proof::PROOF_VERSION_STUB,
+        vec![0x42],
+    ));
+
+    rig.network_beacon_processor
+        .process_gossip_execution_proof(
+            junk_message_id(),
+            junk_peer_id(),
+            subnet_id,
+            proof,
+            Duration::ZERO,
+        )
+        .await;
+
+    // Gossip-layer: proof is valid, should be Accepted
+    let result = drain_validation_result(&mut rig.network_rx).await;
+    assert_accept(result);
+
+    // MissingComponents branch: NO sync notification should be dispatched
+    let sync_msgs = rig
+        .receive_sync_messages_with_timeout(Duration::from_millis(100), None)
+        .await;
+    assert!(
+        sync_msgs.is_none(),
+        "MissingComponents should NOT dispatch any sync message, got: {:?}",
+        sync_msgs
+    );
+
+    // Verify the proof was tracked in the execution_proof_tracker (one subnet recorded)
+    let tracker = rig.chain.execution_proof_tracker.lock();
+    let subnets = tracker
+        .get(&head_root)
+        .expect("proof must be tracked after MissingComponents");
+    assert_eq!(
+        subnets.len(),
+        1,
+        "exactly one subnet should be tracked after one proof"
+    );
+}
+
 /// Gloas gossip: payload envelope from an external builder with an invalid BLS
 /// signature is REJECTED with a peer penalty.
 ///
