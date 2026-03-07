@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, spec monitoring (run 526)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active debate (potuz wants per-slot update in process_block, nflaig notes that wouldn't allow lookahead, ensi321 proposed minimal 2-entry vector). No consensus yet on approach. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
+- **Recently merged PRs**: Only CI/tooling/dependency merges since last check (#4988 fix sampling config, #4985-#4977 deps/cleanup). No Gloas consensus changes merged.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Latest completed run success. One run still in progress (from run 525 push). Clippy zero warnings workspace-wide.
+- **Spec compatibility audit**: Verified vibehouse's `get_payload_tiebreaker` and `is_supporting_vote_gloas_at_slot` are compatible with both current spec AND pending PRs #4892 (remove impossible FC branch) and #4898 (remove pending tiebreaker). Our implementation already uses the simplified logic that both PRs move toward.
+- **Error handling audit**: Deep audit of process_pending_envelope, process_self_build_envelope, and load_parent. Found warn-and-continue pattern for `on_valid_execution_payload` failures — confirmed this is correct (block stays Optimistic but self-heals on next FCU cycle). No bugs found.
+- **Open vibehouse issues**: #27 (private messages — feature request), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
+- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, cleanup stale uncommitted changes (run 525)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) updated today (still under active debate). Full open PR list: #4979 (PTC Lookbehind), #4747 (Fast Confirmation Rule), #4558 (Cell Dissemination), #4954 (Store time ms), #4939 (Request missing envelopes), #4843 (Variable PTC deadline), #4892 (Remove impossible FC branch), #4898 (Remove pending tiebreaker), #4630 (EIP-7688 SSZ), #4840 (EIP-7843). Test PRs #4940, #4960, #4932, #4962 all still open.
