@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — mixed FULL/EMPTY chain finalization test, spec monitoring (run 523)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (potuz/nflaig/jtraglia/ensi321 debating approach — per-slot update vs full 2-epoch vector). #4892 (Remove impossible FC branch) has 2 approvals, near merge but no impact on vibehouse (already implemented). #4898 (Remove pending tiebreaker) has 1 approval, also no vibehouse impact (already compatible). No new Gloas PRs. No new Gloas-relevant merges — recent upstream merges are all CI/tooling/dependency updates.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: 5 runs in progress (from runs 520-522 pushes), most recent completed run (520) green. Run 518 failure was the race condition fixed in run 521.
+- **Clippy/warnings**: Clean across all packages — zero warnings, zero clippy issues.
+- **New test shipped (1 multi-epoch integration test)**:
+  - `gloas_multi_epoch_mixed_full_empty_chain_finalizes` (beacon_chain): Exercises interleaved self-build (FULL) and external-bid (EMPTY) blocks across 3 epochs (24 slots) with full attestation coverage. Verifies: (a) finalization advances despite 33% EMPTY blocks (8 EMPTY, 16 FULL), (b) fork choice correctly tracks payload_revealed=true/false for each block, (c) latest_block_hash consistency at the head (FULL → matches bid.block_hash, EMPTY → parent's hash), (d) block production succeeds after EMPTY parents (stale withdrawal carryover via state.payload_expected_withdrawals), (e) envelope processing completes for all FULL blocks.
+- **Full beacon_chain test suite**: 771/771 pass. Zero failures. (Up from 770 — 1 new test added.)
+- **PTC Lookbehind PR analysis**: Analyzed #4979 diff. Would require: new state field `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]`, extracted `compute_ptc` helper, modified `get_ptc` accessor with cached lookups, new `process_ptc_lookbehind` epoch processing, `initialize_ptc_lookbehind` for fork upgrade/genesis. PR still under active debate — approach not settled. No implementation needed yet.
+- **Result**: 1 new test shipped. All spec changes tracked. Project in maintenance mode.
+
 ### 2026-03-07 — spec monitoring, merged PR audit, code audit (run 522)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (potuz/nflaig/jtraglia/ensi321 debating approach — full 256KB cache vs single-slot lookbehind). No new Gloas PRs.
