@@ -28,6 +28,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — broad dependency update, spec tracking (run 489)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
+- **Merged spec PR reviewed**: PR #4926 (Replace `SECONDS_PER_SLOT` with `SLOT_DURATION_MS`) merged Mar 2. Config-level rename — vibehouse already compliant (uses `ChainSpec::seconds_per_slot` internally, `SLOT_DURATION_MS` is the millisecond equivalent). This is a precursor to PR #4954 (fork choice ms) which would do the deeper `store.time` → `store.time_ms` change.
+- **Dependency updates** (commit `1353a48ac`): 109 semver-compatible crate updates via targeted `cargo update`:
+  - `alloy-primitives` 1.0.0 → 1.5.7, `alloy-rlp` 0.3.11 → 0.3.13
+  - `hyper` 1.6.0 → 1.8.1, `reqwest` 0.12.15 → 0.12.28
+  - `redb` 2.4.0 → 2.6.3, `parking_lot` 0.12.3 → 0.12.5
+  - `clap` 4.5.32 → 4.5.60, `indexmap` 2.8.0 → 2.13.0
+  - `rayon` 1.10.0 → 1.11.0, `smallvec` 1.14.0 → 1.15.1
+  - `tracing` 0.1.41 → 0.1.44, `tracing-subscriber` 0.3.20 → 0.3.22
+  - `superstruct` 0.10.0 → 0.10.1, `ethereum_ssz` 0.9.0 → 0.9.1
+  - `sp1-verifier` 6.0.1 → 6.0.2, `yamux` 0.13.4 → 0.13.9
+  - `tempfile` 3.18.0 → 3.26.0 — required fixing `TempDir::into_path()` → `keep()` deprecation in 2 files (graffiti_file, lighthouse_network tests)
+  - `regex` 1.11.1 → 1.12.3, `uuid` 1.15.1 → 1.22.0, `rand` 0.9.0 → 0.9.2
+  - `quickcheck` 1.0.3 → 1.1.0, `quickcheck_macros` 1.0.0 → 1.2.0
+  - Note: still avoiding full `cargo update` due to `leveldb-sys` cmake incompatibility (see run 488).
+- **Remaining advisories**: Same 11 unmaintained-crate warnings from transitive dependencies. No new vulnerabilities.
+- **Build & test verification**: Release build clean (0 warnings). 763/763 beacon_chain tests pass. 138/138 EF spec tests pass (fake_crypto, minimal). 2589/2598 workspace tests pass (8 web3signer = external service timeout, pre-existing). Full clippy clean via pre-push hook.
+- **CI status**: All CI green (run 488 in-progress at start, all prior completions successful).
+
 ### 2026-03-07 — dependency updates, spec tracking (run 488)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. PR #4979 (PTC Lookbehind) opened Mar 6, actively discussed. PR #4747 (Fast Confirmation Rule) updated Mar 6.
