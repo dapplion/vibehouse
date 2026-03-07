@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — execution proof HTTP API tests, spec conformance audit (run 491)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Merged Gloas spec PRs reviewed for conformance**:
+  - PR #4923 (ignore blocks with unknown parent payload): **Already implemented** in `GossipVerifiedBlock::new` → `GloasParentPayloadUnknown` error → `MessageAcceptance::Ignore` + `SyncMessage::UnknownParentBlock`. Tested by `test_gloas_gossip_block_parent_payload_unknown_ignored_and_synced`.
+  - PR #4918 (reject attestations for PENDING payload status): **Already implemented** in `validate_on_attestation` → `PayloadNotRevealed` error when `index == 1 && !block.payload_revealed`. This is fork-choice layer, matching spec placement. Tested by `gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choice`.
+- **Open Gloas PR status**: PR #4979 (PTC Lookbehind) updated today (Mar 7), adds `ptc_lookbehind` field to BeaconState — would require schema change if merged. All other tracked PRs unchanged.
+- **New tests** (4, commit `f73b29e06`): Added HTTP API integration tests for vibehouse-specific execution proof endpoints (the only Gloas-related HTTP API paths with zero test coverage):
+  - `get_execution_proof_status_known_block`: GET with known block root → empty proof status, `required_proofs=0`, `is_fully_proven=true`
+  - `get_execution_proof_status_unknown_block`: GET with unknown root → error
+  - `post_execution_proof_empty_data_rejected`: POST with empty `proof_data` → 400 `ProofDataEmpty`
+  - `post_execution_proof_unknown_block_root_rejected`: POST with unknown block root → 400 `UnknownBlockRoot`
+  - Also added `get_vibehouse_execution_proof_status` and `post_vibehouse_execution_proofs` client methods to `eth2` crate.
+- **Build & test verification**: Release build clean (0 warnings). 237/237 http_api tests pass (up from 233). Full clippy clean.
+- **CI status**: All CI green.
+
 ### 2026-03-07 — full cargo update, cc/cmake root cause analysis, spec tracking (run 490)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened. PR #4979 (PTC Lookbehind) most active (6 reviews, still COMMENTED). PR #4843 (Variable PTC deadline) approved by jtraglia — renames `payload_present` to `payload_timely` and adds variable deadline based on payload size.
