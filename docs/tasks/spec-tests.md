@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — bid verification check ordering tests, spec tracking (run 502)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 6 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4954 (fork choice ms), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4747 (Fast Confirmation Rule, Mar 6), #4558 (Cell Dissemination, draft). No new merges since run 501.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **New tests** (2, commit `a098e4656`): Targeted bid verification check ordering invariants identified by systematic coverage gap analysis of `verify_execution_bid_for_gossip` interaction paths:
+  1. `bid_invalid_signature_does_not_poison_equivocation_tracker` (gloas_verification.rs): Verifies the spec-mandated ordering: equivocation detection happens AFTER signature verification, so invalid-signature bids don't occupy the builder's slot in the tracker. Submits a bad-sig bid from builder 0, then submits a valid bid with a different message from the same builder. The valid bid must be accepted (not rejected as Duplicate or Equivocation). Protects against regressions where `observe_bid()` is moved before the signature check.
+  2. `bid_equivocation_short_circuits_before_highest_value` (gloas_verification.rs): Verifies that equivocation detection (check 5b) fires before the highest-value filter (check 6). Builder 0 submits bid A (value=500, accepted), then bid B (value=100, different message) — must return `BuilderEquivocation`, not `NotHighestValue`. Also verifies the equivocating bid does NOT update `highest_bid_values`: builder 1 then submits a bid (value=600) which must be accepted because the tracker still shows 500 (not polluted by the equivocating bid's value of 100).
+- **Coverage gap analysis**: Exhaustively analyzed `verify_execution_bid_for_gossip` checks 1-6 and their interactions. Individual checks all well-tested (59 tests). The interaction/ordering between sequential checks was the gap — now covered by these 2 tests.
+- **Build & test verification**: Release build clean (0 warnings). 59/59 gloas_verification tests pass (up from 57). Full clippy clean.
+
 ### 2026-03-07 — fix expected_withdrawals endpoint for Gloas, spec tracking (run 501)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
