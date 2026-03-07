@@ -3494,7 +3494,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     ?beacon_block_root,
                     builder_index,
                     peer = %peer_id,
-                    "Ignoring payload envelope for unknown block root"
+                    "Buffered payload envelope for unknown block root (will process after block import)"
                 );
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
