@@ -1,0 +1,44 @@
+name: spec-test-version-check
+
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: check for new spec test releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check for newer consensus-specs release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT=$(grep 'CONSENSUS_SPECS_TEST_VERSION' testing/ef_tests/Makefile | head -1 | sed 's/.*?= //')
+          echo "Current pinned version: $CURRENT"
+
+          LATEST=$(gh api repos/ethereum/consensus-specs/releases --jq '.[0].tag_name')
+          echo "Latest release: $LATEST"
+
+          if [ "$CURRENT" = "$LATEST" ]; then
+            echo "Up to date."
+            exit 0
+          fi
+
+          echo "New release available: $LATEST (currently pinned: $CURRENT)"
+
+          EXISTING=$(gh issue list --search "spec test update $LATEST" --json number --jq 'length')
+          if [ "$EXISTING" -gt 0 ]; then
+            echo "Issue already exists for $LATEST, skipping."
+            exit 0
+          fi
+
+          gh issue create \
+            --title "spec tests: update to $LATEST" \
+            --body "A new consensus-specs release is available: **$LATEST** (currently pinned: **$CURRENT**).
+
+          Update \`testing/ef_tests/Makefile\` and verify all tests pass.
+
+          Release: https://github.com/ethereum/consensus-specs/releases/tag/$LATEST"

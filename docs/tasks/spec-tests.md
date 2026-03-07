@@ -3,7 +3,7 @@
 ## Objective
 Run the latest consensus spec tests at all times. Track and fix failures.
 
-## Status: IN PROGRESS
+## Status: DONE
 
 ### Current results
 - **78/78 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
@@ -21,12 +21,21 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 - [x] Ensure all existing fork tests pass (phase0 through fulu)
 - [x] Add gloas test scaffolding: register fork, add handlers, wire new test types
 - [x] Set up CI job: download latest vectors, run all tests, fail on regression
-- [ ] Create automated PR bot for new spec test releases
+- [x] Create automated check for new spec test releases
 
 ### Test categories
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### 2026-03-08 — automated spec release check, CI concurrency fix (run 545)
+- v1.7.0-alpha.2 still latest, no new test vectors, no new Gloas consensus PRs merged
+- All tracked open PRs unchanged: #4979 (PTC Lookbehind), #4962, #4960, #4940, #4932 (test PRs), #4843, #4840, #4630, #4939
+- Recently merged upstream: #4988 (sampling config), #4985/#4986/#4984/#4983/#4982/#4981/#4980 (CI/tooling/dependency) — no Gloas consensus
+- **Shipped**: `spec-test-check.yml` — daily GitHub Actions workflow that checks for new consensus-specs releases and opens an issue if a newer version exists (completes the last unchecked task)
+- **Shipped**: CI concurrency fix — changed group from `github.sha` (unique per push, never cancels) to `github.ref` (same branch cancels stale runs). Cancelled 15 stale queued runs from doc-only commits.
+- Nightly tests: 5 consecutive green runs
+- **Result**: All spec-tests tasks complete (7/7). Status → DONE.
 
 ### 2026-03-08 — CI paths-ignore, maintenance check (run 544)
 - v1.7.0-alpha.2 still latest, no new test vectors, no new Gloas consensus PRs merged
