@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, spec monitoring (run 531)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged (last update 2026-03-07T01:09:08Z). Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
+- **Recently merged PRs**: No new merges since run 530. #4988 (fix sampling config test) remains the last merge (2026-03-07T04:35:55Z). Only CI/tooling/dependency merges — no Gloas consensus changes.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: Runs 529-530 in progress. Runs 526-528 all success. No failures.
+- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
+- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, spec monitoring (run 530)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged since last check (last update 2026-03-07T01:09:08Z, debate ongoing — potuz prefers size-1 vector, nflaig notes JIT next-epoch is fine). Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
