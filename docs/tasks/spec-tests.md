@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, maintenance check (run 512)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (10 COMMENTED reviews, no approvals). Latest discussion (Mar 7): potuz/nflaig on slot-0 duty fetch problem and cache size trade-offs. #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit tests), #4962 (withdrawal tests) all unchanged with 0 approvals.
+- **Recent non-Gloas merges**: #4988 (fix sampling config test, Mar 7) only new merge since run 511. All others same CI/tooling set — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Latest CI run in progress. Nightly tests green for 5 consecutive days.
+- **Clippy**: Clean across all packages — zero warnings. `cargo check` clean.
+- **Code survey**: Verified all `unimplemented!()` calls (16 in validator_client/validator_services/src/ptc.rs) are exclusively in `#[cfg(test)]` mock trait implementations — zero in production code. All FIXME/XXX comments are in inherited test infrastructure code (mock_builder, broadcast_validation_tests), not Gloas code.
+- **Result**: No bugs found. No spec changes to implement. CI green. Project in maintenance mode — monitoring spec PRs for changes.
+
 ### 2026-03-07 — spec tracking, store test gap analysis, code safety audit (run 511)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 11 tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) had review activity on Mar 7 (potuz/nflaig discussion about slot-0 problem). #4747 (Fast Confirmation Rule) updated Mar 6 (etan-status on engine API timing). All others unchanged.
