@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — fix silent DB error swallowing in envelope loading, spec tracking (run 495)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) most active (updated today). No newly merged Gloas PRs since run 494.
+- **Merged spec PRs reviewed**: No new Gloas-relevant merges since PR #4950 (reviewed in run 492). Recent merges were maintenance/CI (#4984, #4977, #4985, #4986 — Verkle/EIP-7441 removal, CI tooling).
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **Bug fix** (commit `39f9b5018`): Fixed silent DB error swallowing in envelope loading in both `reconstruct_historic_states` (reconstruct.rs) and `get_advanced_hot_state` (hot_cold_store.rs). Both functions used `if let Ok(Some(...))` patterns that silently dropped `Err` results from `get_payload_envelope` and `get_blinded_payload_envelope`, treating DB read errors as "no envelope found" (EMPTY path). This could cause silent state corruption: a DB error during historic reconstruction would skip envelope processing (producing wrong `latest_block_hash`), and a DB error during head state loading would skip envelope re-application. Fixed by replacing with explicit `match` arms that propagate errors via `return Err(e)` and `?`.
+- **Build & test verification**: Release build clean (0 warnings). 764/764 beacon_chain tests pass. Full clippy clean.
+
 ### 2026-03-07 — Fulu→Gloas fork boundary range sync test, spec tracking (run 494)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) actively discussed. No newly merged Gloas PRs since run 493.
