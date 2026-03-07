@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — prune boundary and OOB builder exit tests, spec tracking (run 499)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 10 open PRs tracked: #4979 (PTC Lookbehind, most active, updated Mar 7), #4747 (Fast Confirmation Rule, Mar 6), #4558 (Cell Dissemination, Mar 5), #4954 (fork choice ms), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4898, #4892, #4840, #4630. No new merges since PR #4950 (reviewed in run 492).
+- **Merged spec PRs**: No new Gloas-relevant merges since run 498.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **New tests** (2, commit `96a0fc593`): Targeted 2 untested production boundary conditions identified by systematic coverage gap analysis:
+  1. `prune_builder_voluntary_exits_oob_index_retained` (operation_pool lib.rs): First test exercising the `builders.get(builder_index as usize)` → `None` fallthrough path in `prune_voluntary_exits`. When a builder-flagged exit has an index beyond the builders list (e.g., index 99 with only 1 builder registered), the code falls through to `true` (retain). Previously, all prune tests used in-bounds builder index 0. This test verifies: OOB exit retained alongside active builder, OOB exit survives after the in-bounds builder is pruned (exited).
+  2. `gloas_prune_gloas_pools_slot_boundary_retention` (beacon_chain gloas.rs): First test verifying the `>= earliest_slot` boundary predicate in `prune_gloas_pools` for BOTH `payload_attestation_pool` and `proposer_preferences_pool`. With MAX_GLOAS_POOL_SLOTS=4 and current_slot=10: entries at slot 5 (one before boundary) are pruned, entries at slot 6 (exact boundary) are retained, entries at current slot are retained. Previously, existing tests only checked that very old entries (slot 0) were pruned, never the exact boundary.
+- **Build & test verification**: Release build clean (0 warnings). 33/33 operation_pool tests pass (up from 32). 767/767 beacon_chain tests pass (up from 766). Full clippy clean.
+
 ### 2026-03-07 — 3 untested production code path tests, spec tracking (run 498)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 6 open PRs tracked: #4979 (PTC Lookbehind, most active, Mar 7), #4747 (Fast Confirmation Rule, Mar 6), #4558 (Cell Dissemination, Mar 5), #4954 (fork choice ms), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline). No new merges.
