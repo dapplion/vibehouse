@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — Fulu→Gloas fork boundary range sync test, spec tracking (run 494)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) actively discussed. No newly merged Gloas PRs since run 493.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **New test** (1, commit `f7967c7e4`): Added `gloas_range_sync_across_fulu_to_gloas_fork_boundary` integration test — the first range sync test that imports across the actual Fulu→Gloas fork transition:
+  1. Builds 20-slot chain on harness1 (15 Fulu + 5 Gloas, fork at epoch 2 = slot 16)
+  2. Extracts blocks with data columns (Fulu PeerDAS DA) and envelopes (Gloas ePBS)
+  3. Imports via `process_chain_segment` on fresh harness2 (simulating a syncing node)
+  4. Verifies: Fulu blocks import with data columns, Gloas blocks import with envelopes, all Gloas blocks have `payload_revealed=true`, head state `latest_block_hash` matches head bid, epoch transitions processed correctly
+  - Key insight: Fulu blocks need data columns (from `get_data_columns`) passed via `RpcBlock::new_with_custody_columns` even though the mock EL may produce blocks with 0 blob commitments (the DA checker randomly gets non-zero blobs). Gloas blocks skip DA entirely (line 4556-4568 in beacon_chain.rs).
+  - This is a real production scenario: late-joining nodes must sync through the fork boundary.
+- **Build & test verification**: Release build clean (0 warnings). 764/764 beacon_chain tests pass (up from 763). Full clippy clean via pre-push hook.
+
 ### 2026-03-07 — envelope-before-block gossip pipeline test, spec tracking (run 493)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) actively discussed. PR #4558 (Cell Dissemination) had fresh commits Mar 3-5. No newly merged Gloas PRs.
