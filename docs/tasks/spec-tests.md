@@ -28,172 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### 2026-03-07 — maintenance check, spec monitoring (run 541)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged (last update 2026-03-07T01:09:08Z, 10 reviews, 0 comments). Full open PR list unchanged: #4979, #4843, #4840, #4630. Test PRs #4940, #4960, #4932 all still open.
-- **Recently merged PRs**: No new merges since run 540. Only CI/tooling/dependency merges (#4988, #4986, #4985, #4984, #4983, #4982, #4981, #4980, #4978, #4977) — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: 7 queued, 3 in progress. Last 5 completed runs (524-528) all success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 540)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged (last update 2026-03-07T01:09:08Z). Full open PR list unchanged: #4979, #4843, #4840, #4630. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 539. Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: Recent completed runs all success. Queued runs in progress. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 539)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged (last update 2026-03-07T01:09:08Z, 10 reviews, 0 comments). Full open PR list unchanged: #4979, #4843, #4840, #4630. Test PRs #4940, #4960, #4932 all still open.
-- **Recently merged PRs**: No new merges since run 538. Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: Recent runs queued. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 538)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) has 7 commits from Mar 6, active review discussion but no approvals yet. Full open PR list unchanged: #4979, #4843, #4840, #4630. Test PRs #4940, #4960, #4932 all still open.
-- **Recently merged PRs**: No new merges since run 537. Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Code quality**: `cargo clippy --workspace --release -- -D warnings` passes clean. `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities).
-- **CI status**: Recent completed runs all success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 537)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. Full open PR list unchanged: #4979, #4843, #4840, #4630. Test PRs #4940, #4960, #4932 all still open.
-- **Recently merged PRs**: No new merges since run 536. Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: 8 runs queued/in progress. Last 5 completed runs all success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 536)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. Full open PR list unchanged: #4979, #4939, #4843, #4840, #4630. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 535. Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: 4 runs queued/in progress (529-532). Last 3 completed runs (526-528) all success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 535)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. Full open PR list unchanged: #4979, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 534. Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: 3 runs queued, 3 in progress. Last 2 completed runs both success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 534)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932 all still open.
-- **Recently merged PRs**: Recent merges all CI/tooling/dependency — #4984 (remove EIP-6800 specs), #4985 (clean up deps), #4980 (python version), #4982 (ruff update), #4981 (codespell), #4972 (py_arkworks). No Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: 5 runs in progress/queued. Last 5 completed runs all success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 533)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 532. #4988 (fix sampling config test) remains the last merge (2026-03-07T04:35:55Z). Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: Runs 529-532 in progress/queued. Runs 525-528 all success (4+ consecutive). No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 532)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged (last update 2026-03-07T01:09:08Z). Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 531. #4988 (fix sampling config test) remains the last merge (2026-03-07T04:35:55Z). Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: Runs 529-531 in progress. Runs 526-528 all success (5+ consecutive). No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 531)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged (last update 2026-03-07T01:09:08Z). Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 530. #4988 (fix sampling config test) remains the last merge (2026-03-07T04:35:55Z). Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: Runs 529-530 in progress. Runs 526-528 all success. No failures.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 530)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) unchanged since last check (last update 2026-03-07T01:09:08Z, debate ongoing — potuz prefers size-1 vector, nflaig notes JIT next-epoch is fine). Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: No new merges since run 529. #4988 (fix sampling config test) was the last merge (2026-03-07T04:35:55Z). Only CI/tooling/dependency merges — no Gloas consensus changes.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: Run 529 in progress (all 6 jobs running). Last 4 completed runs all success (525-528). 5 consecutive nightly successes.
-- **Open vibehouse issues**: #27 (private messages — speculative/discussion), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 529)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. No new Gloas PRs. #4979 (PTC Lookbehind) last updated 2026-03-07T01:09:08Z, debate ongoing but no resolution. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: #4988 (fix sampling config test) merged 2026-03-07. No Gloas files touched. Only CI/tooling merges since last check.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: All green. 5 consecutive CI runs success (524-528). 6 consecutive nightly successes. Clippy zero warnings workspace-wide.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 528)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) debate continues — potuz acknowledges his per-slot `process_block` approach doesn't allow lookahead; nflaig notes JIT next-epoch computation is fine since PTC acts later in slot. ensi321's minimal `Vector[..., 2]` option still on the table. No consensus yet. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: Only CI/tooling/dependency merges since last check (#4988 sampling config, #4986-#4977 deps/cleanup/EIP removals). #4984 (Remove EIP-6800) and #4977 (Remove EIP-7441) do not touch any Gloas files. No Gloas consensus changes merged.
-- **Recent Gloas file commits**: 5 commits touched `specs/gloas/` since Feb 21 — all previously tracked: #4950 (by_root serve range), #4926 (SLOT_DURATION_MS rename), #4947 (proposer_preferences note), #4948 (payload status reorder), #4918 (attestation payload status). Vibehouse already handles all of these — #4926's SLOT_DURATION_MS config support verified in `chain_spec.rs` with tests.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: 3 runs in progress (from runs 525-527 pushes), run 524 and nightly both green. 5 consecutive nightly successes.
-- **Clippy/warnings**: Clean across all packages — zero warnings, zero clippy issues.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 527)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) debate continues — potuz argues per-slot update in process_block could work with size-1 vector, nflaig agrees JIT next-epoch computation is fine since PTC acts later in slot. No consensus yet. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: Only CI/tooling/dependency merges since last check (#4988 fix sampling config, #4985-#4977 deps/cleanup). No Gloas consensus changes merged.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: All green. 2 runs in progress, 3 most recent completed all success. Clippy zero warnings workspace-wide.
-- **Withdrawal carryover coverage audit**: Analyzed coverage of PR #4962's 4 test scenarios (block with withdrawals → payload withheld → next block with/without new withdrawals → envelope satisfies/doesn't satisfy). All 4 are covered: scenarios 1-2 by `stale_withdrawal_mismatch_after_missed_payload_rejected()` (unit) + `gloas_stale_withdrawal_carryover_across_empty_parent()` (integration), scenario 3 by `empty_parent_preserves_stale_payload_expected_withdrawals()` + `gloas_multi_epoch_mixed_full_empty_chain_finalizes()`, scenario 4 by unit-level rejection in `envelope_processing.rs`. No gaps.
-- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. All withdrawal edge cases covered. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 526)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active debate (potuz wants per-slot update in process_block, nflaig notes that wouldn't allow lookahead, ensi321 proposed minimal 2-entry vector). No consensus yet on approach. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Recently merged PRs**: Only CI/tooling/dependency merges since last check (#4988 fix sampling config, #4985-#4977 deps/cleanup). No Gloas consensus changes merged.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: All green. Latest completed run success. One run still in progress (from run 525 push). Clippy zero warnings workspace-wide.
-- **Spec compatibility audit**: Verified vibehouse's `get_payload_tiebreaker` and `is_supporting_vote_gloas_at_slot` are compatible with both current spec AND pending PRs #4892 (remove impossible FC branch) and #4898 (remove pending tiebreaker). Our implementation already uses the simplified logic that both PRs move toward.
-- **Error handling audit**: Deep audit of process_pending_envelope, process_self_build_envelope, and load_parent. Found warn-and-continue pattern for `on_valid_execution_payload` failures — confirmed this is correct (block stays Optimistic but self-heals on next FCU cycle). No bugs found.
-- **Open vibehouse issues**: #27 (private messages — feature request), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, cleanup stale uncommitted changes (run 525)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) updated today (still under active debate). Full open PR list: #4979 (PTC Lookbehind), #4747 (Fast Confirmation Rule), #4558 (Cell Dissemination), #4954 (Store time ms), #4939 (Request missing envelopes), #4843 (Variable PTC deadline), #4892 (Remove impossible FC branch), #4898 (Remove pending tiebreaker), #4630 (EIP-7688 SSZ), #4840 (EIP-7843). Test PRs #4940, #4960, #4932, #4962 all still open.
-- **Stale uncommitted changes cleaned**: Previous run left uncommitted changes in 3 files: `beacon_block.rs` (speculative `empty_for_fork` method with no callers), `fork_choice.rs` (Gloas BPS override for EF tests — not needed, all 8 fork choice tests pass without it), `test_utils.rs` (extra blank line). Verified fork choice tests pass without changes, then discarded all uncommitted work.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: All green. Last 5 runs all succeeded. Clippy zero warnings workspace-wide.
-- **Test coverage audit**: Explored remaining untested error variants in envelope_processing.rs. Only `BitFieldError` and `BuilderPaymentIndexOutOfBounds` lack direct tests — both are internal consistency errors only reachable with structurally corrupt state. Not practically testable or useful targets.
-- **Result**: Cleaned stale changes. No spec changes to implement. All tests passing. Project in maintenance mode.
-
-### 2026-03-07 — maintenance check, spec monitoring (run 524)
-- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
-- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) active today — potuz/nflaig/ensi321 debating approach: ensi321 proposed minimal `Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` (2 entries, per-epoch shift), potuz proposed per-slot update in `process_block` but nflaig noted it wouldn't allow lookahead. Discussion converging but no consensus. #4892 and #4898 unchanged (still awaiting final merge). New Gloas test vector PRs tracked: #4940 (initial fork choice tests), #4960 (deposit+reorg fork choice test), #4932 (sanity/blocks with payload attestation) — all OPEN, will generate new EF vectors when merged.
-- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
-- **CI status**: All green. 4 completed (success), 1 in progress (run 523 push). No failures.
-- **Clippy/warnings**: Clean across all packages — zero warnings, zero clippy issues (`clippy --workspace --release -W clippy::all`).
-- **Code coverage audit**: Deep audit of all major Gloas code paths (beacon_chain.rs, block_verification.rs, execution_payload.rs, gloas_verification.rs) — all critical paths have dedicated tests. No untested code paths found.
-- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
+### 2026-03-07 — maintenance checks (runs 524-542, consolidated)
+- **18 consecutive maintenance runs with no spec changes to implement.** All runs confirmed:
+  - v1.7.0-alpha.2 still latest consensus-specs release, no new test vectors
+  - All tracked Gloas PRs remain OPEN: #4979 (PTC Lookbehind, active review debate), #4843 (Variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 SSZ). Test PRs #4940, #4960, #4932 open.
+  - Only CI/tooling/dependency merges upstream (no Gloas consensus changes)
+  - `cargo audit` clean — 10 unmaintained-crate warnings (transitive, no vulnerabilities)
+  - `cargo clippy --workspace --release -- -D warnings` clean
+  - All CI runs passing (no failures across runs 524-541)
+  - Open vibehouse issues unchanged: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority)
+- **Run 525 notable**: Cleaned stale uncommitted changes from previous run (speculative `empty_for_fork` method, unused Gloas BPS override, extra blank line). Verified fork choice tests pass without them.
+- **Run 524 notable**: Deep code coverage audit of all major Gloas code paths (beacon_chain.rs, block_verification.rs, execution_payload.rs, gloas_verification.rs) — all critical paths have dedicated tests. Only `BitFieldError` and `BuilderPaymentIndexOutOfBounds` in envelope_processing.rs lack tests (internal consistency errors, not practically testable).
+- **Run 526 notable**: Spec compatibility audit — vibehouse's `get_payload_tiebreaker` and `is_supporting_vote_gloas_at_slot` already use the simplified logic that pending PRs #4892/#4898 move toward. Error handling audit of `process_pending_envelope`, `process_self_build_envelope`, `load_parent` — warn-and-continue pattern for `on_valid_execution_payload` failures confirmed correct (self-heals on next FCU).
+- **Run 527 notable**: Withdrawal carryover coverage audit — all 4 scenarios from test PR #4962 covered by existing tests (stale_withdrawal_mismatch + carryover + multi-epoch mixed chain tests).
+- **Run 528 notable**: All 5 recent Gloas file commits (#4950, #4926, #4947, #4948, #4918) already handled by vibehouse.
+- **Result**: Project in maintenance mode. All tests passing. No spec changes to implement.
 
 ### 2026-03-07 — mixed FULL/EMPTY chain finalization test, spec monitoring (run 523)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
