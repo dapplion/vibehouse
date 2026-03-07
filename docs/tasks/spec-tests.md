@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — Gloas block rewards HTTP API test, spec tracking (run 497)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 8 open PRs tracked. PR #4979 (PTC Lookbehind) most active (updated Mar 7), adds `ptc_lookbehind` state field — tagged both "gloas" and "heze". PR #4960 (fork choice test for deposits, Mar 4). PRs #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4630 (forward-compat SSZ), #4840 (EIP-7843 support) still open. PRs #4898, #4892, #4954, #4747, #4558 no longer appear in top-50 open or may have been closed/renumbered.
+- **Merged spec PRs**: No new Gloas-relevant merges since run 496. Recent merges (#4985, #4986, #4984, #4983, #4982, #4981, #4980, #4978, #4977) are all maintenance/CI.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **New test** (1): `get_beacon_rewards_blocks_gloas` — first test exercising the block rewards HTTP API endpoints on a Gloas ePBS chain:
+  - Sets up `ApiTester` with all forks through Gloas at genesis (epoch 0)
+  - Builds one full epoch of Gloas blocks (with envelopes)
+  - **Standard API**: Calls `GET /eth/v1/beacon/rewards/blocks/{head}` for each block, cross-checks computed reward against direct `compute_beacon_block_reward` calculation
+  - **Lighthouse analysis endpoint**: Calls `GET /lighthouse/analysis/block_rewards?start_slot=1&end_slot=head` — exercises the previously untested `load_envelopes_for_blocks` + `BlockReplayer.envelopes()` code path in `block_rewards::get_block_rewards` (lines 59-94 of block_rewards.rs)
+  - Verifies: rewards are non-empty, all proposer indices within validator range, all computed rewards match API responses
+- **Build & test verification**: Release build clean (0 warnings). 238/238 http_api tests pass (up from 237). Full clippy clean.
+
 ### 2026-03-07 — spec tracking, dependency audit (run 496)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) still most active. PR #4747 (Fast Confirmation Rule) updated Mar 6. No newly merged Gloas PRs since run 495.
