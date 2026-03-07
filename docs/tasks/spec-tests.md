@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — fix flaky CI test, maintenance check (run 521)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review. No new Gloas PRs. No new Gloas-relevant merges. Recent upstream merges are all CI/tooling (#4988 fix sampling config, #4986/#4985/#4984/#4983/#4982/#4981/#4980/#4978/#4977 dependency updates and EIP removals) — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: beacon_chain tests (gloas) job was failing — `gloas_gossip_envelope_generates_execution_proofs` panicked with "block import alone should NOT generate proofs". Root cause: race condition in test setup. `generate_proof()` spawns async tasks via `task_executor.spawn()`, and the non-blocking drain (`try_recv` loop) after `extend_slots(2)` could miss late-arriving proofs from the self-build path. These stale proofs then appeared on the channel after the block-only import, causing the false positive assertion.
+- **Fix**: Added `yield_now()` + 100ms sleep before the drain (letting spawned proof tasks complete) and before the no-proof assertion (confirming no new tasks were spawned). Commit `49c1b4bef`.
+- **Clippy**: Clean across all packages — zero warnings.
+- **Full beacon_chain test suite**: 770/770 pass. Zero failures.
+- **Result**: CI fix shipped. No spec changes to implement. Project in maintenance mode.
+
 ### 2026-03-07 — remaining bid error path tests, maintenance check (run 520)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review. No new Gloas PRs. No new Gloas-relevant merges since #4950 (by_root serve range, already noted in run 519).
