@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, workspace test verification, PR #4940 readiness check (run 510)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs unchanged. #4979 (PTC Lookbehind) still open with active discussion — design settled on `2 * SLOTS_PER_EPOCH` cache size (potuz confirmed size-2 and size-1 alternatives are both "pretty ugly"). #4940 (initial fork choice tests) still open — adds `on_execution_payload` test step and `head_payload_status` check (both already supported by our EF test handler). #4932 (sanity/blocks payload attestation) still open. #4843 (Variable PTC deadline) unchanged since Feb 19. No new Gloas merges.
+- **Recent non-Gloas merges**: Same as run 509 (#4988, #4986, #4985, #4984, etc.) — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Last 5 completed CI runs succeeded. Nightly tests green for 4+ consecutive days (5th running).
+- **Clippy**: Clean across all packages (state_processing, beacon_chain, proto_array, fork_choice, network, http_api) — zero warnings.
+- **Workspace test suite**: 2591/2591 real tests pass (8 web3signer_tests failures are infrastructure-only — web3signer not available, excluded from CI). All Gloas code tests pass.
+- **PR #4940 readiness check**: Reviewed the full diff for "Add initial fork choice tests for Gloas". New test format features: `on_execution_payload` step (envelope processing), `execution_payload_envelope_*.ssz_snappy` file format, `head_payload_status` check. Verified our fork choice EF test handler (`testing/ef_tests/src/cases/fork_choice.rs`) already supports ALL of these: `Step::OnExecutionPayload` deserialization, `process_execution_payload()` method, `check_head_payload_status()` method. When this PR merges and test vectors are released, our handler should work without modifications.
+- **PR #4979 detailed diff review update**: Full spec now clear: `compute_ptc` extracted as pure computation, `get_ptc` becomes cache lookup (prev/current from `ptc_lookbehind`) + on-demand compute (next epoch), `process_ptc_lookbehind` shifts and fills the 2-epoch window, `initialize_ptc_lookbehind` zeroes previous epoch and computes current. Implementation plan from run 507 remains valid. Also adds `get_ptc_assignment` in validator spec (not yet in our codebase — will be added with PTC lookbehind).
+- **Result**: No bugs found. No spec changes to implement. Project in maintenance mode — monitoring spec PRs for changes.
+
 ### 2026-03-07 — deep correctness audit, spec tracking (run 509)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs unchanged. #4979 (PTC Lookbehind) still open with active discussion (4 new review comments from potuz/nflaig on Mar 7 about alternative approaches: size-2 cache vs full-epoch cache vs per-slot on process_block). #4954 (store time milliseconds) still open. #4747 (Fast Confirmation Rule) still open, updated Mar 6. No new Gloas merges.
