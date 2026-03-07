@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — payload attestation error path tests, maintenance check (run 516)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) design discussion continues: potuz prefers full 2*SLOTS_PER_EPOCH cache for spec simplicity, nflaig confirmed JIT next-epoch computation is acceptable. #4747 (Fast Confirmation Rule) stale for ~1 month (last activity Feb 5). No new Gloas PRs.
+- **Recent non-Gloas merges**: No new merges since run 515. #4988 (fix sampling config test) still most recent.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Nightly tests green for 9+ consecutive days.
+- **Clippy**: Clean across all packages — zero warnings.
+- **Test coverage gap identified and fixed**: Systematic search found `process_payload_attestation` error paths (WrongBeaconBlockRoot, WrongSlot) were tested at gossip verification layer but NOT at block-level state transition layer. Added 6 tests:
+  - `process_payload_attestation_wrong_beacon_block_root` — wrong root rejected
+  - `process_payload_attestation_wrong_slot_too_old` — stale slot rejected
+  - `process_payload_attestation_wrong_slot_too_new` — future slot rejected
+  - `process_payload_attestation_wrong_slot_zero` — slot 0 rejected
+  - `process_payload_attestation_correct_root_wrong_slot_rejected` — validates WrongSlot error fields
+  - `process_payload_attestation_root_check_runs_first` — spec check ordering (root before slot)
+- **Result**: 6 new tests shipped. CI green. All pass.
+
 ### 2026-03-07 — maintenance check, dependency audit (run 515)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still actively debated: ensi321 proposed slimmer `Vector[..., 2]` representation (~2 PTC entries vs full 2*SLOTS_PER_EPOCH cache); potuz prefers full cache for spec simplicity despite ~256KB state bloat; nflaig confirmed JIT next-epoch computation is acceptable since PTC acts later in slot. No convergence yet. #4747 (Fast Confirmation Rule) unchanged. No new Gloas PRs.
