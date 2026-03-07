@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, cleanup stale uncommitted changes (run 525)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) updated today (still under active debate). Full open PR list: #4979 (PTC Lookbehind), #4747 (Fast Confirmation Rule), #4558 (Cell Dissemination), #4954 (Store time ms), #4939 (Request missing envelopes), #4843 (Variable PTC deadline), #4892 (Remove impossible FC branch), #4898 (Remove pending tiebreaker), #4630 (EIP-7688 SSZ), #4840 (EIP-7843). Test PRs #4940, #4960, #4932, #4962 all still open.
+- **Stale uncommitted changes cleaned**: Previous run left uncommitted changes in 3 files: `beacon_block.rs` (speculative `empty_for_fork` method with no callers), `fork_choice.rs` (Gloas BPS override for EF tests — not needed, all 8 fork choice tests pass without it), `test_utils.rs` (extra blank line). Verified fork choice tests pass without changes, then discarded all uncommitted work.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Last 5 runs all succeeded. Clippy zero warnings workspace-wide.
+- **Test coverage audit**: Explored remaining untested error variants in envelope_processing.rs. Only `BitFieldError` and `BuilderPaymentIndexOutOfBounds` lack direct tests — both are internal consistency errors only reachable with structurally corrupt state. Not practically testable or useful targets.
+- **Result**: Cleaned stale changes. No spec changes to implement. All tests passing. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, spec monitoring (run 524)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) active today — potuz/nflaig/ensi321 debating approach: ensi321 proposed minimal `Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` (2 entries, per-epoch shift), potuz proposed per-slot update in `process_block` but nflaig noted it wouldn't allow lookahead. Discussion converging but no consensus. #4892 and #4898 unchanged (still awaiting final merge). New Gloas test vector PRs tracked: #4940 (initial fork choice tests), #4960 (deposit+reorg fork choice test), #4932 (sanity/blocks with payload attestation) — all OPEN, will generate new EF vectors when merged.
