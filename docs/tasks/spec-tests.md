@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, full workspace test pass (run 514)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still 10 COMMENTED reviews, no approvals — latest discussion (potuz/nflaig) on slot-0 duty fetch problem and 3-epoch vs 2-epoch cache. No new Gloas PRs opened since run 513.
+- **Recent non-Gloas merges**: No new merges since run 513. #4988 (fix sampling config test) still the most recent.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Last 4 completed CI runs succeeded. Nightly tests green (26/26 jobs, all forks phase0-fulu).
+- **Clippy**: Clean across key packages (state_processing, beacon_chain, proto_array, fork_choice) — zero warnings.
+- **Full workspace tests**: 2591/2591 pass, 1 skipped. Zero compiler warnings workspace-wide.
+- **TODO audit**: Surveyed all TODO/FIXME/HACK/XXX in Gloas-relevant production code. Found 0 actionable Gloas bugs. All TODOs are inherited PeerDAS sync issues (11 items), post-Gloas cleanup notes (5 items in types), and design questions in inherited code. Zero `unimplemented!()` or `todo!()` in production code.
+- **Result**: No bugs found. No spec changes to implement. CI green. Project in maintenance mode — monitoring spec PRs for changes.
+
 ### 2026-03-07 — maintenance check (run 513)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still 10 COMMENTED reviews, no approvals, design discussion ongoing (2-epoch cache vs alternatives). #4954 (store time milliseconds) awaiting review. #4747 (Fast Confirmation Rule) last updated Mar 6. No new Gloas PRs.
