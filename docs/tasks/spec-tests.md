@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — full cargo update, cc/cmake root cause analysis, spec tracking (run 490)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened. PR #4979 (PTC Lookbehind) most active (6 reviews, still COMMENTED). PR #4843 (Variable PTC deadline) approved by jtraglia — renames `payload_present` to `payload_timely` and adds variable deadline based on payload size.
+- **New Gloas test PRs reviewed (all open, not merged)**:
+  - PR #4962 (missed payload withdrawal interactions): Tests 4 combinations of withheld payload + next block with/without withdrawals. Already covered by vibehouse tests (`stale_withdrawal_mismatch_after_missed_payload_rejected` in envelope_processing.rs, `gloas_stale_withdrawal_carryover_across_empty_parent` integration test).
+  - PR #4960 (fork choice deposit with reorg for Gloas): Gloas version of deposit_with_reorg test. Already covered by EF fork_choice deposit_with_reorg tests.
+  - PR #4940 (initial Gloas fork choice tests): Only genesis + on_execution_payload. Our integration tests cover much more.
+- **Dependency updates** (commit `af61d5757`): Full `cargo update` of semver-compatible dependencies (~200 crate updates).
+  - `cc` 1.2.27 → 1.2.30: Pinned at 1.2.30. **Root cause analysis**: `cc` 1.2.56 adds `-w` to `CMAKE_CXX_FLAGS`, which causes cmake's `check_cxx_source_compiles` to false-positive `HAVE_CLANG_THREAD_SAFETY=1` on g++ (because `-w` suppresses the "unrecognized option" diagnostic during the check phase, but g++ still rejects `-Wthread-safety` during actual compilation). This breaks `leveldb-sys` builds.
+  - `cmake` pinned to 0.1.54 (0.1.57 also has `-w` handling issues with leveldb-sys)
+  - `libp2p-mplex` 0.43.0 → 0.43.1: Fixed `MplexConfig` → `Config` deprecation in lighthouse_network/src/service/utils.rs
+  - Notable transitive updates: `backtrace` 0.3.74→0.3.76, `bumpalo` 3.17→3.20, `const-hex` 1.14→1.18, `colored` 3.0→3.1, many more
+- **Test coverage audit**: Reviewed all Gloas verification error paths. 29/38 error variants have direct tests (76%). Untested: `BeaconChainError`/`BeaconStateError`/`ArithError` wrapper variants (internal errors, hard to trigger), `InvalidAggregationBits` (unreachable with correctly-typed BitVector), `PtcCommitteeError` (requires no active validators). All gaps are defensive checks for impossible-in-practice scenarios.
+- **Remaining advisories**: Same 11 unmaintained-crate warnings from transitive dependencies. No new vulnerabilities.
+- **Build & test verification**: Release build clean (0 warnings). 763/763 beacon_chain tests pass. 138/138 EF spec tests pass (fake_crypto, minimal). 2589/2598 workspace tests pass (8 web3signer = external service timeout, pre-existing). Full clippy clean.
+- **CI status**: All CI green. Nightly tests passing.
+
 ### 2026-03-07 — broad dependency update, spec tracking (run 489)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). None merged. No new Gloas PRs opened.
