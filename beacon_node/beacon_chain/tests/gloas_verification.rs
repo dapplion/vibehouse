@@ -2653,3 +2653,195 @@ async fn bid_equal_value_rejected() {
         err
     );
 }
+
+/// Invalid-signature bids must NOT poison the equivocation tracker.
+///
+/// The spec says: equivocation detection happens AFTER signature verification so
+/// that invalid-signature bids don't block later valid bids from the same builder.
+/// If `observe_bid` were called before signature verification, a bad-sig bid would
+/// occupy the builder's slot, causing a subsequent valid bid to be rejected as
+/// Duplicate or Equivocation.
+///
+/// This test submits a bad-sig bid from builder 0, then submits a valid bid with
+/// a different message from the same builder. The valid bid must be accepted.
+#[tokio::test]
+async fn bid_invalid_signature_does_not_poison_equivocation_tracker() {
+    let harness = gloas_harness_with_builders(BLOCKS_TO_FINALIZE, &[(0, 2_000_000_000)]).await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    // Insert proposer preferences matching the default bid fields.
+    let fee_recipient = Address::zero();
+    let gas_limit = 0;
+    insert_preferences_for_bid(&harness.chain, current_slot, fee_recipient, gas_limit);
+
+    // Step 1: Submit a bid with an invalid signature (Signature::empty()).
+    let bad_sig_bid = SignedExecutionPayloadBid {
+        message: ExecutionPayloadBid::<E> {
+            slot: current_slot,
+            execution_payment: 1,
+            builder_index: 0,
+            value: 100,
+            parent_block_root: head_root,
+            ..Default::default()
+        },
+        signature: bls::Signature::empty(),
+    };
+
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bad_sig_bid),
+        "bad-sig bid should be rejected",
+    );
+    assert!(
+        matches!(err, ExecutionBidError::InvalidSignature),
+        "expected InvalidSignature, got {:?}",
+        err
+    );
+
+    // Step 2: Submit a valid bid from the SAME builder with a different message
+    // (different value → different tree_hash_root). If the equivocation tracker
+    // was poisoned by the bad-sig bid, this would return Equivocation or Duplicate.
+    let valid_bid_msg = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 2,
+        builder_index: 0,
+        value: 200,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let valid_sig = BUILDER_KEYPAIRS[0]
+        .sk
+        .sign(valid_bid_msg.signing_root(domain));
+    let valid_bid = SignedExecutionPayloadBid {
+        message: valid_bid_msg,
+        signature: valid_sig,
+    };
+
+    let result = harness.chain.verify_execution_bid_for_gossip(valid_bid);
+    assert!(
+        result.is_ok(),
+        "valid bid after bad-sig bid should pass (tracker not poisoned): {:?}",
+        result.err()
+    );
+}
+
+/// Equivocation detection must short-circuit BEFORE the highest-value check.
+///
+/// When a builder submits a second bid (equivocation), it should be rejected
+/// with BuilderEquivocation regardless of its value. Specifically:
+/// - Builder 0 submits bid A (value=500) → accepted
+/// - Builder 0 submits bid B (value=100, different message) → should return
+///   BuilderEquivocation, NOT NotHighestValue
+///
+/// This also verifies that the equivocating bid does NOT update the
+/// highest_bid_values tracker, so a subsequent legitimate bid from another
+/// builder can still be accepted against the original value (500).
+#[tokio::test]
+async fn bid_equivocation_short_circuits_before_highest_value() {
+    let harness = gloas_harness_with_builders(
+        BLOCKS_TO_FINALIZE,
+        &[(0, 2_000_000_000), (0, 3_000_000_000)],
+    )
+    .await;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let state = &head.beacon_state;
+
+    let domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    insert_preferences_for_bid(&harness.chain, current_slot, Address::zero(), 0);
+
+    // Step 1: Builder 0 submits bid A (value=500) → accepted, highest_bid_values = 500
+    let bid_msg_a = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 500,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let sig_a = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_a.signing_root(domain));
+    let bid_a = SignedExecutionPayloadBid {
+        message: bid_msg_a,
+        signature: sig_a,
+    };
+    let result_a = harness.chain.verify_execution_bid_for_gossip(bid_a);
+    assert!(
+        result_a.is_ok(),
+        "first bid should pass: {:?}",
+        result_a.err()
+    );
+
+    // Step 2: Builder 0 submits bid B (value=100, different message) → equivocation.
+    // This must return BuilderEquivocation, NOT NotHighestValue.
+    let bid_msg_b = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 2,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let sig_b = BUILDER_KEYPAIRS[0].sk.sign(bid_msg_b.signing_root(domain));
+    let bid_b = SignedExecutionPayloadBid {
+        message: bid_msg_b,
+        signature: sig_b,
+    };
+    let err = unwrap_err(
+        harness.chain.verify_execution_bid_for_gossip(bid_b),
+        "equivocating bid should be rejected",
+    );
+    assert!(
+        matches!(
+            err,
+            ExecutionBidError::BuilderEquivocation {
+                builder_index: 0,
+                ..
+            }
+        ),
+        "expected BuilderEquivocation (not NotHighestValue), got {:?}",
+        err
+    );
+
+    // Step 3: Builder 1 submits bid (value=600) → should be accepted because the
+    // equivocating bid B (value=100) did NOT update highest_bid_values.
+    // The tracker still shows 500 from bid A, and 600 > 500.
+    let bid_msg_c = ExecutionPayloadBid::<E> {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 1,
+        value: 600,
+        parent_block_root: head_root,
+        ..Default::default()
+    };
+    let sig_c = BUILDER_KEYPAIRS[1].sk.sign(bid_msg_c.signing_root(domain));
+    let bid_c = SignedExecutionPayloadBid {
+        message: bid_msg_c,
+        signature: sig_c,
+    };
+    let result_c = harness.chain.verify_execution_bid_for_gossip(bid_c);
+    assert!(
+        result_c.is_ok(),
+        "builder 1's higher bid should pass (equivocation didn't pollute tracker): {:?}",
+        result_c.err()
+    );
+}
