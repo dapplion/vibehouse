@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec tracking, test coverage audit (run 508)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 12 tracked PRs unchanged: #4979 (PTC Lookbehind, 7 commits, 10 review comments, still open), #4962, #4960, #4954, #4940, #4939, #4898, #4892, #4843, #4840, #4747 (Fast Confirmation Rule, updated Mar 6), #4630. Additional PRs tracked: #4558 (cell dissemination, draft), #4484 (6s slots), #4704 (remove old deposit mechanism). No new Gloas merges.
+- **Recent non-Gloas merges**: #4988 (fix sampling config test), #4986 (disable dep dashboard), #4985 (clean up deps), #4984 (remove EIP-6800), #4983/#4982/#4981/#4980/#4978/#4977/#4974/#4972/#4971/#4970/#4969 (dep/CI updates) — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities: ansi_term, bincode, derivative, filesystem, fxhash, instant, paste, proc-macro-error, 2x rustls-pemfile). No new advisories.
+- **CI status**: All green. Last completed CI run succeeded. Nightly tests green for 7 consecutive days.
+- **Comprehensive test coverage audit**: Systematically searched for every listed backlog item in PLAN.md. Result: ALL items verified as implemented. 304 tests in gloas.rs alone. Specific checks: load_parent state patching (FULL/EMPTY/genesis — all tested), builder exit lifecycle interactions (pending payments, pending withdrawals, multi-builder — all tested), process_epoch_single_pass Gloas paths (builder payments, proposer lookahead, mixed quorum, full config — all tested), prune_voluntary_exits OOB builder index (tested), abandoned fork envelope pruning (tested), SSE events (tested), envelope dedup (tested), state reconstruction with EMPTY path (tested).
+- **PR #4979 diff review**: Latest diff confirms spec shape: new `ptc_lookbehind` field, `compute_ptc` extracted from `get_ptc`, `process_ptc_lookbehind` epoch processing, `initialize_ptc_lookbehind` for genesis/fork. Also touches Heze fork (pass-through). New EF tests: `test_process_ptc_lookbehind_rotates_to_next_epoch` and 5 `test_get_ptc_assignment` tests. PR still under review (10 COMMENTED reviews, no approvals yet). Implementation plan from run 507 remains valid.
+- **Clippy**: Clean across all packages (state_processing, beacon_chain, proto_array, fork_choice).
+- **Result**: No bugs found. No spec changes to implement. Test coverage is comprehensive — all backlog items verified as implemented. Project in maintenance mode.
+
 ### 2026-03-07 — spec tracking, PTC Lookbehind implementation plan (run 507)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 13 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4898 (remove pending from tiebreaker), #4892 (remove impossible branch in forkchoice), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4747 (Fast Confirmation Rule), #4630 (forward-compat SSZ), #4558 (cell dissemination, draft). No new Gloas merges since run 506.
