@@ -4063,6 +4063,74 @@ mod test_gloas_fork_choice {
         ));
     }
 
+    #[test]
+    fn should_extend_payload_data_available_but_not_timely() {
+        // blob_data_available weight above threshold but ptc_weight (payload timeliness)
+        // NOT above threshold → is_timely_and_available is false.
+        // Spec PR #4884: should_extend_payload requires BOTH is_payload_timely AND
+        // is_payload_data_available. Without timeliness, falls through to proposer
+        // boost checks. No proposer boost → true.
+        let (mut fc, _spec) = new_gloas_fc();
+        let block_root = root(1);
+        insert_external_builder_block(&mut fc, 1, block_root, root(0), 42);
+
+        let node = get_node_mut(&mut fc, &block_root);
+        node.envelope_received = true;
+        node.ptc_weight = 0; // payload NOT timely
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1; // data IS available
+
+        let gloas_node = GloasForkChoiceNode {
+            root: block_root,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        // Falls through to proposer boost — no boost → true
+        assert!(fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
+    }
+
+    #[test]
+    fn should_extend_payload_envelope_not_received_despite_quorum() {
+        // Both ptc_weight and blob weight above threshold, but envelope_received=false
+        // → is_timely_and_available is false (spec: root NOT in store.payload_states).
+        // Falls through to proposer boost checks. With boost pointing to a child that
+        // builds on EMPTY parent → should NOT extend.
+        let (mut fc, _spec) = new_gloas_fc();
+        let parent_block = root(1);
+        let child_block = root(2);
+        insert_external_builder_block(&mut fc, 1, parent_block, root(0), 42);
+        insert_external_builder_block(&mut fc, 2, child_block, parent_block, 42);
+
+        // High PTC + blob weights, but envelope NOT received
+        let node = get_node_mut(&mut fc, &parent_block);
+        node.envelope_received = false;
+        node.ptc_weight = MINIMAL_PTC_THRESHOLD + 1;
+        node.ptc_blob_data_available_weight = MINIMAL_PTC_THRESHOLD + 1;
+
+        // Child builds on EMPTY parent (bid_parent_block_hash is None, doesn't match
+        // parent's bid_block_hash)
+        assert!(get_node(&fc, &child_block).bid_parent_block_hash.is_none());
+
+        // Set proposer boost to child_block
+        fc.proto_array.previous_proposer_boost = ProposerBoost {
+            root: child_block,
+            score: 100,
+        };
+
+        let gloas_node = GloasForkChoiceNode {
+            root: parent_block,
+            payload_status: GloasPayloadStatus::Full,
+        };
+        // Envelope not received → not timely+available. Boost child builds on EMPTY → false
+        assert!(!fc.should_extend_payload(
+            &gloas_node,
+            MINIMAL_PTC_THRESHOLD,
+            fc.proto_array.previous_proposer_boost.root
+        ));
+    }
+
     // ──────── get_payload_tiebreaker tests ────────────────────
 
     #[test]
