@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, dependency audit (run 515)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still actively debated: ensi321 proposed slimmer `Vector[..., 2]` representation (~2 PTC entries vs full 2*SLOTS_PER_EPOCH cache); potuz prefers full cache for spec simplicity despite ~256KB state bloat; nflaig confirmed JIT next-epoch computation is acceptable since PTC acts later in slot. No convergence yet. #4747 (Fast Confirmation Rule) unchanged. No new Gloas PRs.
+- **Recent non-Gloas merges**: No new merges since run 514. All recent merges are CI/tooling (#4988, #4986, etc.).
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Latest completed run succeeded.
+- **Clippy**: Clean across all key packages — zero warnings.
+- **Full workspace tests**: 2591/2591 pass, 1 skipped. 8 web3signer failures (infrastructure, expected).
+- **Dependency update attempt**: `cc` 1.2.30→1.2.56 breaks leveldb-sys build (adds `-Wthread-safety` flag unsupported by GCC). Reverted. `cmake` 0.1.54→0.1.57 depends on new `cc`. No safe updates available.
+- **Production code safety audit**: Zero `.unwrap()` calls in Gloas production code paths (gloas_verification.rs, envelope_processing.rs, per_block_processing/gloas.rs, per_epoch_processing/gloas.rs, upgrade/gloas.rs, gossip_methods.rs). All use `?` operator with proper error types.
+- **Result**: No bugs found. No spec changes to implement. CI green. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, full workspace test pass (run 514)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still 10 COMMENTED reviews, no approvals — latest discussion (potuz/nflaig) on slot-0 duty fetch problem and 3-epoch vs 2-epoch cache. No new Gloas PRs opened since run 513.
