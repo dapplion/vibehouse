@@ -20440,3 +20440,219 @@ async fn gloas_gossip_envelope_generates_execution_proofs() {
         );
     }
 }
+
+// =============================================================================
+// Multi-epoch mixed FULL/EMPTY chain finalization
+// =============================================================================
+
+/// Build a multi-epoch chain with interleaved FULL (self-build) and EMPTY (external
+/// bid, no envelope) blocks and verify that:
+///
+/// 1. Finalization continues despite periodic EMPTY blocks
+/// 2. `latest_block_hash` consistency is maintained across the mixed chain
+/// 3. Block production succeeds after EMPTY parents (stale withdrawal carryover)
+/// 4. Fork choice correctly tracks payload_revealed status
+///
+/// This exercises a realistic production scenario where some builders withhold
+/// their payloads but the chain must continue to finalize.
+#[tokio::test]
+async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
+    let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
+    // Extend 64 slots: finalizes, activates builder.
+    Box::pin(harness.extend_slots(64)).await;
+
+    let initial_finalized = harness
+        .chain
+        .head_snapshot()
+        .beacon_state
+        .finalized_checkpoint()
+        .epoch;
+    assert!(
+        initial_finalized >= Epoch::new(1),
+        "pre-condition: should be finalized past epoch 0, got {}",
+        initial_finalized
+    );
+
+    // Build 24 more slots (3 epochs on minimal) with every 3rd block being EMPTY
+    // (external bid with no envelope). Slots at indices 0, 3, 6, 9, ... are EMPTY.
+    let mut full_count = 0u32;
+    let mut empty_count = 0u32;
+
+    // Track the post-block state from each iteration, passing it to the next.
+    // This mirrors how `extend_chain` works — each block is built on the
+    // production state of the previous block, not the head snapshot.
+    let (init_state, init_state_root) = harness.get_current_state_and_root();
+    let mut current_state = init_state;
+    let mut current_head_root = harness.chain.head_snapshot().beacon_block_root;
+    let all_validators = harness.get_all_validators();
+
+    for i in 0..24u64 {
+        let slot = current_state.slot() + 1;
+        let is_empty = i % 3 == 0;
+
+        if is_empty {
+            // External bid: inject bid, produce block, skip envelope
+            let bid = make_external_bid(&current_state, current_head_root, slot, 0, 5000 + i);
+            harness.chain.execution_bid_pool.lock().insert(bid);
+
+            harness.advance_slot();
+            let ((block, blobs), post_state, env) =
+                harness.make_block_with_envelope(current_state, slot).await;
+            assert!(
+                env.is_none(),
+                "external bid block at slot {} should not have self-build envelope",
+                slot
+            );
+            let block_root = block.canonical_root();
+            let block_ref = block.clone();
+            harness
+                .process_block(slot, block_root, (block, blobs))
+                .await
+                .unwrap_or_else(|e| panic!("EMPTY block at slot {} should import: {:?}", slot, e));
+
+            // Verify payload_revealed=false
+            {
+                let fc = harness.chain.canonical_head.fork_choice_read_lock();
+                let idx = *fc
+                    .proto_array()
+                    .core_proto_array()
+                    .indices
+                    .get(&block_root)
+                    .expect("block should be in fork choice");
+                assert!(
+                    !fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+                    "EMPTY block at slot {} should have payload_revealed=false",
+                    slot
+                );
+            }
+
+            // Produce attestations so finalization can continue
+            harness.attest_block(
+                &post_state,
+                init_state_root,
+                block_root.into(),
+                &block_ref,
+                &all_validators,
+            );
+
+            current_state = post_state;
+            current_head_root = block_root;
+            empty_count += 1;
+        } else {
+            // Self-build: produce block + envelope
+            harness.advance_slot();
+            let ((block, blobs), _post_block_state, env) =
+                harness.make_block_with_envelope(current_state, slot).await;
+            let signed_envelope = env.unwrap_or_else(|| {
+                panic!("self-build block at slot {} should have envelope", slot)
+            });
+            let block_root = block.canonical_root();
+            let block_state_root = block.message().state_root();
+            let block_ref = block.clone();
+            harness
+                .process_block(slot, block_root, (block, blobs))
+                .await
+                .unwrap_or_else(|e| panic!("FULL block at slot {} should import: {:?}", slot, e));
+            harness
+                .chain
+                .process_self_build_envelope(&signed_envelope)
+                .await
+                .unwrap_or_else(|e| panic!("envelope at slot {} should process: {:?}", slot, e));
+
+            // Verify payload_revealed=true
+            {
+                let fc = harness.chain.canonical_head.fork_choice_read_lock();
+                let idx = *fc
+                    .proto_array()
+                    .core_proto_array()
+                    .indices
+                    .get(&block_root)
+                    .expect("block should be in fork choice");
+                assert!(
+                    fc.proto_array().core_proto_array().nodes[idx].payload_revealed,
+                    "FULL block at slot {} should have payload_revealed=true",
+                    slot
+                );
+            }
+
+            // After envelope processing, fetch the post-envelope state from the
+            // state cache. The post-envelope state has updated latest_block_hash
+            // which is needed for the next block's bid parent_block_hash.
+            let post_envelope_state = harness
+                .chain
+                .get_state(&block_state_root, Some(slot), false)
+                .ok()
+                .flatten()
+                .unwrap_or(_post_block_state);
+
+            // Produce attestations so finalization can continue
+            harness.attest_block(
+                &post_envelope_state,
+                init_state_root,
+                block_root.into(),
+                &block_ref,
+                &all_validators,
+            );
+
+            current_state = post_envelope_state;
+            current_head_root = block_root;
+            full_count += 1;
+        }
+
+        harness.chain.recompute_head_at_current_slot().await;
+    }
+
+    assert_eq!(empty_count, 8, "should have 8 EMPTY blocks");
+    assert_eq!(full_count, 16, "should have 16 FULL blocks");
+
+    // Verify finalization advanced despite EMPTY blocks
+    let final_head = harness.chain.head_snapshot();
+    let final_finalized = final_head.beacon_state.finalized_checkpoint().epoch;
+    assert!(
+        final_finalized > initial_finalized,
+        "finalization should advance despite EMPTY blocks: \
+         initial={}, final={}",
+        initial_finalized,
+        final_finalized
+    );
+
+    // Verify latest_block_hash consistency at the head
+    let head_bid = final_head
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas block")
+        .message
+        .clone();
+    let head_latest_hash = *final_head
+        .beacon_state
+        .latest_block_hash()
+        .expect("should have latest_block_hash");
+
+    // If the head is a FULL block, latest_block_hash should match the bid's block_hash.
+    // If the head is an EMPTY block, latest_block_hash should match the parent's revealed hash.
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    let head_idx = *fc
+        .proto_array()
+        .core_proto_array()
+        .indices
+        .get(&final_head.beacon_block_root)
+        .expect("head should be in fork choice");
+    let head_revealed = fc.proto_array().core_proto_array().nodes[head_idx].payload_revealed;
+    drop(fc);
+
+    if head_revealed {
+        assert_eq!(
+            head_latest_hash, head_bid.block_hash,
+            "FULL head: latest_block_hash should match bid.block_hash"
+        );
+    } else {
+        // EMPTY head: latest_block_hash is the parent's revealed hash (unchanged)
+        assert_ne!(
+            head_latest_hash,
+            ExecutionBlockHash::zero(),
+            "EMPTY head: latest_block_hash should be non-zero (parent's hash)"
+        );
+    }
+}
