@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — spec monitoring, merged PR audit, code audit (run 522)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (potuz/nflaig/jtraglia/ensi321 debating approach — full 256KB cache vs single-slot lookbehind). No new Gloas PRs.
+- **Merged PR audit**: Checked all recently merged Gloas-relevant PRs for vibehouse compatibility:
+  - **#4918** (attestation validation: index=1 requires payload in payload_states) — Already implemented in `fork_choice.rs:1177-1207` with `PayloadNotRevealed` check. EF test tolerance in place for pre-#4918 test vectors.
+  - **#4923** (gossip IGNORE: block parent payload unknown) — Already implemented in `block_verification.rs:970-983` with `GloasParentPayloadUnknown` error. Network handler queues for sync.
+  - **#4948** (reorder PayloadStatus constants EMPTY=0,FULL=1,PENDING=2) — Already implemented. `GloasPayloadStatus` enum matches.
+  - **#4947** (pre-fork subscription note for proposer_preferences) — Documentation only, no code needed.
+  - **#4931** (rebase FOCIL/EIP-7805 onto Gloas) — Not core Gloas, promoted to Heze fork. No implementation needed.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Nightly tests passing (5 consecutive green runs). Race condition fix from run 521 in CI pipeline.
+- **Clippy/warnings**: Clean across all packages — zero warnings, zero clippy issues.
+- **Code audit**: Audited builder withdrawal processing for correctness. Verified pending partial withdrawal removal behavior (always increments `processed_count` even when ineligible) matches Electra spec `get_expected_withdrawals` semantics — spec intentionally consumes non-eligible requests. No bugs found.
+- **Result**: All spec changes tracked. No new work needed. Project in maintenance mode — all major features complete, all tests passing, all spec PRs either already implemented or not applicable.
+
 ### 2026-03-07 — fix flaky CI test, maintenance check (run 521)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review. No new Gloas PRs. No new Gloas-relevant merges. Recent upstream merges are all CI/tooling (#4988 fix sampling config, #4986/#4985/#4984/#4983/#4982/#4981/#4980/#4978/#4977 dependency updates and EIP removals) — none affect Gloas consensus.
