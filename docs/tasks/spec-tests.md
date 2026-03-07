@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — maintenance check, spec monitoring (run 528)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) debate continues — potuz acknowledges his per-slot `process_block` approach doesn't allow lookahead; nflaig notes JIT next-epoch computation is fine since PTC acts later in slot. ensi321's minimal `Vector[..., 2]` option still on the table. No consensus yet. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
+- **Recently merged PRs**: Only CI/tooling/dependency merges since last check (#4988 sampling config, #4986-#4977 deps/cleanup/EIP removals). #4984 (Remove EIP-6800) and #4977 (Remove EIP-7441) do not touch any Gloas files. No Gloas consensus changes merged.
+- **Recent Gloas file commits**: 5 commits touched `specs/gloas/` since Feb 21 — all previously tracked: #4950 (by_root serve range), #4926 (SLOT_DURATION_MS rename), #4947 (proposer_preferences note), #4948 (payload status reorder), #4918 (attestation payload status). Vibehouse already handles all of these — #4926's SLOT_DURATION_MS config support verified in `chain_spec.rs` with tests.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: 3 runs in progress (from runs 525-527 pushes), run 524 and nightly both green. 5 consecutive nightly successes.
+- **Clippy/warnings**: Clean across all packages — zero warnings, zero clippy issues.
+- **Open vibehouse issues**: #27 (private messages), #28 (ZK proofs — done), #29 (ROCQ formal proofs — lowest priority). No new issues.
+- **Result**: No spec changes to implement. All tests passing. Project in maintenance mode.
+
 ### 2026-03-07 — maintenance check, spec monitoring (run 527)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) debate continues — potuz argues per-slot update in process_block could work with size-1 vector, nflaig agrees JIT next-epoch computation is fine since PTC acts later in slot. No consensus yet. Full open PR list unchanged: #4979, #4747, #4558, #4954, #4939, #4843, #4892, #4898, #4630, #4840. Test PRs #4940, #4960, #4932, #4962 all still open.
