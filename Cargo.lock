@@ -960,7 +960,7 @@ dependencies = [
  "lighthouse_tracing",
  "lighthouse_version",
  "logging",
- "lru 0.16.3",
+ "lru",
  "maplit",
  "merkle_proof",
  "metrics",
@@ -2692,8 +2692,7 @@ dependencies = [
 [[package]]
 name = "discv5"
 version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f170f4f6ed0e1df52bf43b403899f0081917ecf1500bfe312505cc3b515a8899"
+source = "git+https://github.com/sigp/discv5?rev=0dc2bda028bbcf05af466c5b1f6958bddbc1eaea#0dc2bda028bbcf05af466c5b1f6958bddbc1eaea"
 dependencies = [
  "aes 0.8.4",
  "aes-gcm",
@@ -2704,18 +2703,17 @@ dependencies = [
  "enr",
  "fnv",
  "futures",
- "hashlink 0.9.1",
+ "hashlink 0.11.0",
  "hex",
  "hkdf",
  "lazy_static",
  "libp2p-identity",
- "lru 0.12.5",
  "more-asserts",
  "multiaddr",
  "parking_lot 0.12.5",
  "rand 0.8.5",
  "smallvec",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "tokio",
  "tracing",
  "uint 0.10.0",
@@ -3685,7 +3683,7 @@ dependencies = [
  "kzg",
  "lighthouse_version",
  "logging",
- "lru 0.16.3",
+ "lru",
  "metrics",
  "parking_lot 0.12.5",
  "pretty_reqwest_error",
@@ -4402,8 +4400,6 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
- "allocator-api2",
- "equivalent",
  "foldhash 0.1.5",
 ]
 
@@ -4427,15 +4423,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2bca93b15ea5a746f220e56587f71e73c6165eab783df9e26590069953e3c30"
 dependencies = [
  "fxhash",
-]
-
-[[package]]
-name = "hashlink"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ba4ff7128dee98c7dc9794b6a411377e1404dba1c97deb8d1a55297bd25d8af"
-dependencies = [
- "hashbrown 0.14.5",
 ]
 
 [[package]]
@@ -4700,7 +4687,7 @@ dependencies = [
  "lighthouse_tracing",
  "lighthouse_version",
  "logging",
- "lru 0.16.3",
+ "lru",
  "metrics",
  "network",
  "network_utils",
@@ -6045,7 +6032,7 @@ dependencies = [
  "lighthouse_version",
  "local-ip-address",
  "logging",
- "lru 0.16.3",
+ "lru",
  "lru_cache",
  "metrics",
  "network_utils",
@@ -6221,15 +6208,6 @@ dependencies = [
  "flate2",
  "regex",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "lru"
-version = "0.12.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234cf4f4a04dc1f57e24b96cc0cd600cf2af460d4161ac5ecdd0af8e1f3b2a38"
-dependencies = [
- "hashbrown 0.15.5",
 ]
 
 [[package]]
@@ -9632,7 +9610,7 @@ dependencies = [
  "libmdbx",
  "lmdb-rkv",
  "lmdb-rkv-sys",
- "lru 0.16.3",
+ "lru",
  "maplit",
  "metrics",
  "parking_lot 0.12.5",
@@ -10454,7 +10432,7 @@ dependencies = [
  "itertools 0.10.5",
  "leveldb",
  "logging",
- "lru 0.16.3",
+ "lru",
  "metrics",
  "parking_lot 0.12.5",
  "rand 0.9.2",

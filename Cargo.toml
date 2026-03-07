@@ -134,7 +134,7 @@ deposit_contract = { path = "common/deposit_contract" }
 derivative = "2"
 directory = { path = "common/directory" }
 dirs = "3"
-discv5 = { version = "0.10", features = ["libp2p"] }
+discv5 = { git = "https://github.com/sigp/discv5", rev = "0dc2bda028bbcf05af466c5b1f6958bddbc1eaea", features = ["libp2p"] }
 doppelganger_service = { path = "validator_client/doppelganger_service" }
 eip_3076 = { path = "common/eip_3076" }
 either = "1.9"
