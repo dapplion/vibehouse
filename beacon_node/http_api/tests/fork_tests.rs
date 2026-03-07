@@ -3637,6 +3637,111 @@ async fn post_execution_proof_empty_data_rejected() {
     }
 }
 
+/// POST builder/bids with an invalid BLS signature returns 400.
+///
+/// This test exercises the signature verification check in
+/// `verify_execution_bid_for_gossip` (check 5). The bid passes all
+/// preceding checks (slot, payment, builder existence, activity, balance,
+/// parent root, proposer preferences) but fails at BLS signature
+/// verification because it's signed with the wrong key (validator 0's key
+/// instead of the builder's key).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn bid_submission_rejected_invalid_signature() {
+    use types::{
+        Domain, ExecutionPayloadBid, ProposerPreferences, SignedExecutionPayloadBid,
+        SignedProposerPreferences, SignedRoot,
+    };
+
+    let validator_count = 32;
+    let (tester, _builder_keypairs) =
+        gloas_tester_with_builders(validator_count, &[(0, 10_000_000_000)]).await;
+    let harness = &tester.harness;
+    let client = &tester.client;
+
+    // Build enough chain for finalization
+    harness.extend_slots(32).await;
+
+    let head = harness.chain.head_snapshot();
+    let state = &head.beacon_state;
+    let head_root = head.beacon_block_root;
+    let current_slot = harness.chain.slot().unwrap();
+    let spec = &harness.chain.spec;
+
+    // Insert proposer preferences (required for bid validation)
+    let fee_recipient = Address::repeat_byte(0x42);
+    let gas_limit = 30_000_000u64;
+
+    let preferences = ProposerPreferences {
+        proposal_slot: current_slot.as_u64(),
+        validator_index: 0,
+        fee_recipient,
+        gas_limit,
+    };
+
+    let pref_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::ProposerPreferences,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let pref_signing_root = preferences.signing_root(pref_domain);
+    let pref_keypair = generate_deterministic_keypair(0);
+    let pref_signature = pref_keypair.sk.sign(pref_signing_root);
+
+    let signed_prefs = SignedProposerPreferences {
+        message: preferences,
+        signature: pref_signature,
+    };
+    client
+        .post_beacon_pool_proposer_preferences(&signed_prefs)
+        .await
+        .expect("should accept proposer preferences");
+
+    // Create the bid message — all fields valid
+    let bid_msg: ExecutionPayloadBid<E> = ExecutionPayloadBid {
+        slot: current_slot,
+        execution_payment: 1,
+        builder_index: 0,
+        value: 100,
+        parent_block_root: head_root,
+        fee_recipient,
+        gas_limit,
+        ..Default::default()
+    };
+
+    // Sign with the WRONG key (validator 0 instead of builder 0)
+    let bid_domain = spec.get_domain(
+        current_slot.epoch(E::slots_per_epoch()),
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let bid_signing_root = bid_msg.signing_root(bid_domain);
+    let wrong_keypair = generate_deterministic_keypair(0); // validator key, not builder key
+    let bad_signature = wrong_keypair.sk.sign(bid_signing_root);
+
+    let signed_bid = SignedExecutionPayloadBid {
+        message: bid_msg,
+        signature: bad_signature,
+    };
+
+    let result = client.post_builder_bids(&signed_bid).await;
+    assert!(
+        result.is_err(),
+        "bid with invalid signature should be rejected"
+    );
+    if let Err(eth2::Error::ServerMessage(msg)) = &result {
+        assert_eq!(msg.code, 400, "should return 400 for bad signature");
+        assert!(
+            msg.message.contains("invalid execution bid"),
+            "expected error about invalid bid, got: {}",
+            msg.message
+        );
+    } else {
+        panic!("expected ServerMessage error, got: {:?}", result);
+    }
+}
+
 /// POST vibehouse/execution_proofs with an unknown block root returns 400.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_execution_proof_unknown_block_root_rejected() {
