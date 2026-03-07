@@ -28,6 +28,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — remaining bid error path tests, maintenance check (run 520)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review. No new Gloas PRs. No new Gloas-relevant merges since #4950 (by_root serve range, already noted in run 519).
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. Recent network+op_pool failure on run 519 commit was CI infra flake (moonrepo/setup-rust failed to install), not a code issue. Subsequent runs passed.
+- **Clippy**: Clean across all packages — zero warnings.
+- **New tests shipped (5 HTTP API bid submission error path integration tests)**:
+  - `bid_submission_rejected_slot_not_current_or_next` — bid with stale slot (far in the past) correctly rejected with `SlotNotCurrentOrNext` error via HTTP 400
+  - `bid_submission_rejected_invalid_parent_root` — bid with unknown parent_block_root (not in fork choice) correctly rejected with `InvalidParentRoot` error via HTTP 400
+  - `bid_submission_rejected_unknown_parent_block_hash` — bid with non-zero unknown parent_block_hash (not in fork choice) correctly rejected with `UnknownParentBlockHash` error via HTTP 400
+  - `bid_submission_rejected_proposer_preferences_not_seen` — bid submitted without prior proposer preferences correctly rejected with `ProposerPreferencesNotSeen` error via HTTP 400
+  - `bid_submission_rejected_builder_equivocation` — second different bid from same builder/slot (different value → different tree hash root) correctly rejected with `BuilderEquivocation` error via HTTP 400
+- **Full http_api test suite**: 251/251 pass. Zero failures. (Up from 246 — 5 new tests added.)
+- **Bid error coverage now 14/15**: Previously 9/15. Now only `BeaconChainError`/`BeaconStateError`/`ArithError` (internal error wrappers, not directly testable via HTTP) remain untested. All user-facing bid validation error variants have HTTP API integration test coverage.
+- **Result**: 5 new tests shipped. All 15 user-facing bid error variants now have integration tests. CI green.
+
 ### 2026-03-07 — HTTP API bid error path tests, maintenance check (run 519)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (10 reviews, no approvals). No new Gloas PRs. No new Gloas-relevant merges.
