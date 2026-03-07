@@ -8636,4 +8636,147 @@ mod tests {
             assert_eq!(exp.amount, proc.amount, "withdrawal {}: amount mismatch", i);
         }
     }
+
+    // ── process_payload_attestation error path tests ──────────────
+
+    /// Helper to create a payload attestation with arbitrary root and slot.
+    fn make_payload_attestation_raw(
+        beacon_block_root: Hash256,
+        slot: Slot,
+    ) -> PayloadAttestation<E> {
+        PayloadAttestation {
+            aggregation_bits: BitVector::new(),
+            data: types::PayloadAttestationData {
+                beacon_block_root,
+                slot,
+                payload_present: true,
+                blob_data_available: true,
+            },
+            signature: bls::AggregateSignature::empty(),
+        }
+    }
+
+    #[test]
+    fn process_payload_attestation_wrong_beacon_block_root() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        // Use a different beacon_block_root than the parent_root
+        let wrong_root = Hash256::repeat_byte(0xFF);
+        assert_ne!(wrong_root, parent_root);
+
+        let att = make_payload_attestation_raw(wrong_root, prev_slot);
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongBeaconBlockRoot
+                ))
+            ),
+            "expected WrongBeaconBlockRoot, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_wrong_slot_too_old() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Attestation for slot 5 when state.slot = 8, so expected slot would be 7
+        let wrong_slot = Slot::new(5);
+        let att = make_payload_attestation_raw(parent_root, wrong_slot);
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongSlot { .. }
+                ))
+            ),
+            "expected WrongSlot, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_wrong_slot_too_new() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Attestation for slot 8 (same as state.slot), when expected is slot 7
+        let att = make_payload_attestation_raw(parent_root, state.slot());
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongSlot { .. }
+                ))
+            ),
+            "expected WrongSlot, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_wrong_slot_zero() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Attestation for slot 0 when state.slot = 8
+        let att = make_payload_attestation_raw(parent_root, Slot::new(0));
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongSlot { .. }
+                ))
+            ),
+            "expected WrongSlot, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_correct_root_wrong_slot_rejected() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Correct root but wrong slot — slot check runs after root check
+        let att = make_payload_attestation_raw(parent_root, Slot::new(3));
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongSlot { expected, actual }
+                )) if expected == state.slot() && actual == Slot::new(3)
+            ),
+            "expected WrongSlot with correct expected/actual, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_root_check_runs_first() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Both root and slot are wrong — root check should fire first per spec ordering
+        let att = make_payload_attestation_raw(Hash256::repeat_byte(0xDE), Slot::new(3));
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongBeaconBlockRoot
+                ))
+            ),
+            "root check should fire before slot check, got {:?}",
+            result,
+        );
+    }
 }
