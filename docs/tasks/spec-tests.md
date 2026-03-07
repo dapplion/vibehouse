@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — envelope-before-block gossip pipeline test, spec tracking (run 493)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged (#4979, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630, #4558). PR #4979 (PTC Lookbehind) actively discussed. PR #4558 (Cell Dissemination) had fresh commits Mar 3-5. No newly merged Gloas PRs.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories since run 492.
+- **New test** (1, commit `819a0c42a`): Added end-to-end integration test `test_gloas_envelope_before_block_full_gossip_pipeline` that exercises the full production-critical timing race through the gossip handler pipeline:
+  1. Sends envelope via `process_gossip_execution_payload` before block exists → `BlockRootUnknown` → envelope buffered by verification function
+  2. Verifies envelope is in `pending_gossip_envelopes` buffer
+  3. Sends block via `send_gossip_beacon_block` → triggers `process_pending_envelope` → drains buffer
+  4. Verifies `payload_revealed=true` and buffer empty
+  - Unlike the existing `test_gloas_gossip_block_import_processes_pending_envelope` which manually inserts into the buffer, this test proves the full pipeline from gossip reception through buffering to block-triggered drain.
+- **Log message fix**: Changed misleading "Ignoring payload envelope for unknown block root" → "Buffered payload envelope for unknown block root (will process after block import)" in gossip handler. The envelope IS stored (by `verify_payload_envelope_for_gossip`), not discarded.
+- **Build & test verification**: Release build clean (0 warnings). 162/162 network tests pass (up from 161). Full clippy clean via pre-push hook.
+
 ### 2026-03-07 — fix lru unsound advisory, spec tracking (run 492)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All 10 tracked PRs unchanged. PR #4979 (PTC Lookbehind) actively discussed (10 review comments today), no approvals yet. PR #4843 (Variable PTC deadline) approved by jtraglia but still open.
