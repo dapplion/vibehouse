@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — fix lru unsound advisory, spec tracking (run 492)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 10 tracked PRs unchanged. PR #4979 (PTC Lookbehind) actively discussed (10 review comments today), no approvals yet. PR #4843 (Variable PTC deadline) approved by jtraglia but still open.
+- **Merged spec PRs reviewed**: PR #4950 (Extend by_root reqresp serve range) merged Mar 6. Changes `ExecutionPayloadEnvelopesByRoot` serve range from "since finalized epoch" to `[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`. This is a MAY (not MUST) — servers MAY respond with `ResourceUnavailable` for old data. Our implementation serves whatever is in the store, which naturally prunes old data. No code change needed.
+- **Spec conformance audit**: Reviewed fork choice spec against vibehouse implementation. All core functions confirmed correct: `is_supporting_vote`, `get_gloas_children`, `should_extend_payload`, `find_head_gloas`, `on_payload_attestation`, `validate_on_attestation`. `notify_ptc_messages` confirmed implemented (beacon_chain.rs:5169). Dual state stores (`block_states`/`payload_states`) correctly handled via `load_parent` patching approach rather than literal dual stores.
+- **Security fix** (commit TBD): Fixed RUSTSEC-2026-0002 (lru `IterMut` unsoundness). Upgraded `discv5` from crates.io 0.10.2 to git master (`0dc2bda`), which replaces `lru` with `hashlink` (sigp/discv5#294). This removes `lru 0.12.5` entirely from the dependency tree. Only 10 unmaintained-crate warnings remain (all transitive, no vulnerabilities).
+- **Build & test verification**: Release build clean (0 warnings). 161/161 network tests pass. 2589/2598 workspace tests pass (8 web3signer = external service timeout, pre-existing). Full clippy clean.
+
 ### 2026-03-07 — execution proof HTTP API tests, spec conformance audit (run 491)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Merged Gloas spec PRs reviewed for conformance**:
