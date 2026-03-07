@@ -116,10 +116,8 @@ where
                     //
                     // Try full envelope first, then fall back to blinded envelope
                     // (payload may have been pruned on finalization).
-                    let envelope_result = if let Ok(Some(signed_envelope)) =
-                        self.get_payload_envelope(&block_root)
-                    {
-                        Some(
+                    let envelope_result = match self.get_payload_envelope(&block_root) {
+                        Ok(Some(signed_envelope)) => Some(
                             state_processing::envelope_processing::process_execution_payload_envelope(
                                 &mut state,
                                 Some(block.state_root()),
@@ -127,25 +125,32 @@ where
                                 state_processing::VerifySignatures::False,
                                 &self.spec,
                             ),
-                        )
-                    } else if let Ok(Some(blinded)) = self.get_blinded_payload_envelope(&block_root)
-                    {
-                        let withdrawals = state
-                            .payload_expected_withdrawals()
-                            .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
-                            .unwrap_or_default();
-                        let reconstructed = blinded.into_full_with_withdrawals(withdrawals);
-                        Some(
-                            state_processing::envelope_processing::process_execution_payload_envelope(
-                                &mut state,
-                                Some(block.state_root()),
-                                &reconstructed,
-                                state_processing::VerifySignatures::False,
-                                &self.spec,
-                            ),
-                        )
-                    } else {
-                        None
+                        ),
+                        Ok(None) => {
+                            // Full payload pruned — try blinded envelope fallback.
+                            match self.get_blinded_payload_envelope(&block_root) {
+                                Ok(Some(blinded)) => {
+                                    let withdrawals = state
+                                        .payload_expected_withdrawals()
+                                        .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                                        .unwrap_or_default();
+                                    let reconstructed =
+                                        blinded.into_full_with_withdrawals(withdrawals);
+                                    Some(
+                                        state_processing::envelope_processing::process_execution_payload_envelope(
+                                            &mut state,
+                                            Some(block.state_root()),
+                                            &reconstructed,
+                                            state_processing::VerifySignatures::False,
+                                            &self.spec,
+                                        ),
+                                    )
+                                }
+                                Ok(None) => None,
+                                Err(e) => return Err(e),
+                            }
+                        }
+                        Err(e) => return Err(e),
                     };
                     match envelope_result {
                         Some(Err(e)) => {

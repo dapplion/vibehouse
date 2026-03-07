@@ -1189,11 +1189,10 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             // Try full envelope first, then blinded (payload may be pruned).
             let envelope_to_apply = match self.get_payload_envelope(&block_root) {
                 Ok(Some(env)) => Some(env),
-                _ => {
-                    // Fall back to blinded envelope + state's expected withdrawals
-                    self.get_blinded_payload_envelope(&block_root)
-                        .ok()
-                        .flatten()
+                Ok(None) => {
+                    // Full payload pruned — fall back to blinded envelope +
+                    // state's expected withdrawals.
+                    self.get_blinded_payload_envelope(&block_root)?
                         .map(|blinded| {
                             let withdrawals = state
                                 .payload_expected_withdrawals()
@@ -1202,6 +1201,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                             blinded.into_full_with_withdrawals(withdrawals)
                         })
                 }
+                Err(e) => return Err(e),
             };
             if let Some(signed_envelope) = envelope_to_apply {
                 // Skip re-application if envelope was already applied (e.g. WSS
