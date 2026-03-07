@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — 3 untested production code path tests, spec tracking (run 498)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 6 open PRs tracked: #4979 (PTC Lookbehind, most active, Mar 7), #4747 (Fast Confirmation Rule, Mar 6), #4558 (Cell Dissemination, Mar 5), #4954 (fork choice ms), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline). No new merges.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **New tests** (3, commit `ad4a137e1`): Targeted 3 high-value untested production code paths identified by systematic coverage gap analysis:
+  1. `get_execution_payload_envelope_ssz` (http_api fork_tests.rs): First test exercising the SSZ Accept header branch of the GET envelope endpoint. Verifies: SSZ response body decodes to valid `SignedExecutionPayloadEnvelope`, `Content-Type: application/octet-stream`, `Eth-Consensus-Version: gloas` header. Previously only JSON responses were tested (all 6 existing envelope tests used default/JSON Accept).
+  2. `gloas_non_stateless_execution_proof_uses_da_checker_path` (beacon_chain gloas.rs): First test exercising the non-stateless DA checker path in `check_gossip_execution_proof_availability_and_import`. All prior execution proof tests used `gloas_stateless_harness(stateless_validation=true)`, which takes the early-return stateless tracker path. This test uses the default (non-stateless) harness, verifying: proof goes through `put_gossip_verified_execution_proofs`, returns `MissingComponents` (block already imported, not in DA cache), and stateless `execution_proof_tracker` is NOT touched.
+  3. `gloas_prepare_beacon_proposer_skips_payload_attributes_sse` (beacon_chain gloas.rs): First test verifying the `!prepare_slot_fork.gloas_enabled()` guard in `prepare_beacon_proposer`. Subscribes to `payload_attributes` broadcast channel, calls `prepare_beacon_proposer` on a Gloas chain, verifies no `PayloadAttributes` SSE event was emitted. This guard prevents pre-ePBS MEV pipeline events on Gloas (builders use bid/envelope instead).
+- **Build & test verification**: Release build clean (0 warnings). 766/766 beacon_chain tests pass (up from 764). 239/239 http_api tests pass (up from 238). Full clippy clean.
+
 ### 2026-03-07 — Gloas block rewards HTTP API test, spec tracking (run 497)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 8 open PRs tracked. PR #4979 (PTC Lookbehind) most active (updated Mar 7), adds `ptc_lookbehind` state field — tagged both "gloas" and "heze". PR #4960 (fork choice test for deposits, Mar 4). PRs #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4932 (sanity/blocks tests), #4630 (forward-compat SSZ), #4840 (EIP-7843 support) still open. PRs #4898, #4892, #4954, #4747, #4558 no longer appear in top-50 open or may have been closed/renumbered.
