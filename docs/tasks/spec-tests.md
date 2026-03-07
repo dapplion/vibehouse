@@ -28,6 +28,30 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — exhaustive coverage gap search, spec boundary audit (run 505)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: 10 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4932 (sanity/blocks with payload attestation coverage), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4630 (forward-compat SSZ). PR #4950 (by_root serve range) merged Mar 6 (already reviewed in run 504). No new Gloas-specific merges.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **Exhaustive coverage gap search**: Systematically audited ALL Gloas ePBS production code paths across 11 major subsystems:
+  1. **Fork choice** (proto_array, fork_choice.rs): `on_payload_attestation` quorum paths (payload_present, blob_data_available, bid_block_hash interaction), `on_execution_bid` PTC state reset, `on_execution_payload` reveal path, `should_apply_proposer_boost_gloas` equivocation check, `is_supporting_vote_gloas` FULL/EMPTY/Pending matching, `find_head_gloas` all variants — ALL tested (163+ proto_array tests, 114+ fork_choice tests)
+  2. **Block verification** (block_verification.rs): `load_parent` FULL/EMPTY parent patching, genesis zero hash skip, fork boundary skip — ALL tested
+  3. **Envelope processing** (envelope_processing.rs): All 12+ verification checks, payment index computation (first/mid/last slot of epoch), payment blanking with adjacent slot preservation, execution request processing, availability bitfield, state root verification — ALL tested (55+ envelope tests)
+  4. **Per-block processing** (gloas.rs): `process_withdrawals_gloas` 4-phase withdrawal limits, builder sweep wrap-around, `payload_expected_withdrawals` stale value scenario (PR #4962), builder exit lifecycle — ALL tested (15+ withdrawal tests)
+  5. **Per-epoch processing** (gloas.rs, single_pass.rs): `process_builder_pending_payments` quorum checks, rotation, multi-builder scenarios, `process_proposer_lookahead` shift mechanics — ALL tested (20+ epoch processing tests)
+  6. **Beacon chain integration** (beacon_chain.rs): `process_payload_envelope` all EL responses (Valid, Syncing, Invalid, InvalidBlockHash, transport error), `process_self_build_envelope` all paths, `process_pending_envelope` buffer drain (success, reverify failure, unknown root, EL invalid, EL syncing), `try_update_head_state`, `prune_gloas_pools` boundary conditions — ALL tested (767+ beacon_chain tests)
+  7. **Gossip verification** (gloas_verification.rs): `verify_execution_bid_for_gossip` 7-point check ordering invariants, `verify_payload_attestation_for_gossip` equivocation/signature ordering, `verify_payload_envelope_for_gossip` external builder signature verification — ALL tested (59+ gossip verification tests)
+  8. **HTTP API** (fork_tests.rs): All Gloas endpoints (bid submission, envelope POST, payload attestation pool GET/POST, expected withdrawals, PTC duties, proposer lookahead, payload attestation data) — ALL tested (241+ http_api tests)
+  9. **Network handlers** (gossip_methods.rs): All Gloas gossip topic handlers — ALL tested
+  10. **Validator client** (payload_attestation_service.rs, duties_service.rs): `produce_payload_attestations`, `broadcast_proposer_preferences`, `sign_proposer_preferences` — ALL tested
+  11. **Store layer** (hot_cold_store.rs): `get_advanced_hot_state` envelope re-application, blinded fallback, `replay_blocks` envelope loading with proper error propagation — ALL tested
+- **Spec boundary condition audit**: Verified all 5 critical boundary operators against the consensus-specs:
+  - PTC quorum: `>` (strictly greater than threshold) — CORRECT
+  - Builder payment quorum: `>=` (at or above threshold) — CORRECT
+  - Withdrawal phase limits: `>=` with correct reserved/full limits per phase — CORRECT
+  - Block timeliness (proposer boost): `<` (strictly before deadline) — CORRECT
+  - PTC timeliness: `<` (strictly before PTC deadline) — CORRECT
+- **Result**: No untested production code paths found. The remaining untested paths are defensive error handlers for state corruption (ProposerLookaheadOutOfBounds, latest_block_hash_mut Err case) that would require artificially corrupted states to trigger. Test coverage is considered comprehensive.
+
 ### 2026-03-07 — should_extend_payload coverage tests, spec conformance audit (run 504)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: 10 tracked PRs: #4979 (PTC Lookbehind, most active, Mar 7), #4962 (sanity/blocks missed payload withdrawal interactions), #4960 (fork choice new validator deposit), #4954 (store time milliseconds), #4940 (initial fork choice tests), #4939 (envelope request for index-1 att), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4747 (Fast Confirmation Rule, 89 comments), #4630 (forward-compat SSZ). No new merges since run 503.
