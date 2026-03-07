@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — deep audit of unreleased spec changes (run 546)
+- v1.7.0-alpha.2 still latest tagged release
+- **Diff'd consensus-specs master vs v1.7.0-alpha.2**: found changes in 4 Gloas files (beacon-chain.md, fork-choice.md, p2p-interface.md, validator.md)
+- Key changes: PayloadAttestationData.blob_data_available, PayloadStatus reorder (EMPTY=0/FULL=1/PENDING=2), dual PTC votes (timeliness + data availability), is_pending_validator, should_extend_payload data availability check, validate_on_attestation index=1 check
+- **All changes already implemented** in vibehouse — codebase was tracking spec PRs ahead of release tag
+- Created `docs/tasks/spec-update-post-alpha2.md` documenting audit results
+- Config changes (SECONDS_PER_SLOT removal, Heze renaming, MAX_REQUEST_* removals) not relevant to vibehouse
+- Open PRs tracked: #4979 (PTC Lookbehind — still open, active debate)
+- **Result**: No code changes needed. vibehouse is spec-current with consensus-specs master.
+
 ### 2026-03-08 — automated spec release check, CI concurrency fix (run 545)
 - v1.7.0-alpha.2 still latest, no new test vectors, no new Gloas consensus PRs merged
 - All tracked open PRs unchanged: #4979 (PTC Lookbehind), #4962, #4960, #4940, #4932 (test PRs), #4843, #4840, #4630, #4939
