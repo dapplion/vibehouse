@@ -28,6 +28,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — gossip proof path tests, spec monitoring (run 518)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All 7 tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review. #4962, #4960, #4940, #4932, #4954, #4747 unchanged. Three new Gloas-relevant PRs identified: #4979 (PTC Lookbehind — significant spec change, adds state field), #4939 (request missing envelopes for index-1 attestations), #4892 (remove impossible FC branch).
+- **Recently merged**: PR #4950 (dapplion) — extends by_root serve range to match by_range for BeaconBlocksByRoot and ExecutionPayloadEnvelopesByRoot. P2P formalization, not consensus-critical. Vibehouse implicitly complies (serves everything in store).
+- **Security audit**: `cargo audit` clean — no vulnerabilities.
+- **CI status**: All green. Clippy clean.
+- **New tests shipped (2 tests covering previously untested code paths)**:
+  - `test_gloas_gossip_execution_proof_stateless_missing_components_no_sync` (network): Exercises the `MissingComponents` branch in `process_gossip_verified_execution_proof` — stateless node with threshold=2 receives one proof, verifies Accept at gossip layer but NO sync notification dispatched, proof tracked in `execution_proof_tracker`.
+  - `gloas_gossip_envelope_generates_execution_proofs` (beacon_chain): Exercises proof generation from the gossip envelope path (`process_payload_envelope`). Previously only the self-build path was tested. Verifies `verify_payload_envelope_for_gossip` → `process_payload_envelope` triggers stub proof generation on the `proof_receiver` channel.
+- **Remaining untested branches** (from run 517/518 audit):
+  - `DuplicateFullyImported` in `process_gossip_verified_execution_proof` — only reachable via non-stateless DA checker path
+  - `apply_payload_envelope_to_fork_choice` failure in `process_gossip_execution_payload` — race condition (FC pruned between EL validation and FC update)
+  - "block not in FC" in `process_gossip_verified_execution_proof` — race condition (FC pruned between gossip verify and import)
+  - General `Err` + peer penalty in `process_gossip_verified_execution_proof` — requires DA checker internal failure
+  - All remaining gaps are race conditions or require internal error injection; not practically testable without mocking
+- **Result**: 2 new tests shipped. CI green.
+
 ### 2026-03-07 — comprehensive test coverage audit, maintenance check (run 517)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (potuz/nflaig/jtraglia/ensi321 discussion on cache size, slot-0 problem). #4962 (missed payload withdrawal tests), #4960 (fork choice deposit test), #4940 (initial fork choice tests), #4932 (sanity/blocks payload attestation tests) all unchanged. No new Gloas PRs.
