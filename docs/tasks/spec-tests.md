@@ -28,6 +28,33 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-07 — comprehensive test coverage audit, maintenance check (run 517)
+- No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
+- **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) still under active review (potuz/nflaig/jtraglia/ensi321 discussion on cache size, slot-0 problem). #4962 (missed payload withdrawal tests), #4960 (fork choice deposit test), #4940 (initial fork choice tests), #4932 (sanity/blocks payload attestation tests) all unchanged. No new Gloas PRs.
+- **Recent non-Gloas merges**: No new Gloas-relevant merges. Recent merges (#4988, #4985, #4986, #4984, #4977, #4950) are all CI/tooling/dependency/EIP removals — none affect Gloas consensus.
+- **Security audit**: `cargo audit` clean — 10 unmaintained-crate warnings (all transitive, no vulnerabilities). No new advisories.
+- **CI status**: All green. 3 CI runs in progress from recent commits. Latest completed run succeeded.
+- **Clippy**: Clean across all key packages (state_processing, beacon_chain, proto_array, fork_choice) — zero warnings.
+- **Rust toolchain**: rustc 1.94.0 (2026-03-02) — current stable.
+- **Comprehensive test coverage audit**: Systematically reviewed all Gloas-specific production code paths for test gaps:
+  - `envelope_processing.rs`: 25+ unit tests covering all error paths (signature, slot, beacon_block_root, builder_index, prev_randao, gas_limit, block_hash, parent_hash, timestamp, withdrawals, state_root), state mutations (latest_block_hash, availability bit, builder payments), and edge cases (parent_state_root override, zero payment, append to existing withdrawals, nonzero header state_root, self-build signatures)
+  - `per_block_processing/gloas.rs`: 175+ tests across 10 public functions (process_execution_payload_bid, can_builder_cover_bid, process_payload_attestation, get_ptc_committee, is_parent_block_full, process_withdrawals_gloas, get_expected_withdrawals_gloas, get_pending_balance_to_withdraw_for_builder, initiate_builder_exit, get_indexed_payload_attestation)
+  - `per_epoch_processing/gloas.rs`: 20+ tests for process_builder_pending_payments (quorum threshold, rotation, multi-builder, edge cases)
+  - `per_slot_processing.rs`: 10+ tests for Gloas availability bit clearing, dependent root stability proof, RANDAO independence
+  - `block_replayer.rs`: 25+ tests for Gloas envelope replay (anchor block patching, blinded envelope reconstruction, EMPTY path, state root fix)
+  - `verify_attestation.rs`: Tests for Gloas committee index validation (data.index < 2)
+  - `fork_choice.rs`: 50+ tests for Gloas fork choice (on_execution_bid, on_execution_payload, on_payload_attestation, quorum transitions, proposer boost timing, find_head_gloas)
+  - `proto_array`: 20+ tests for Gloas viability, PTC timely, tiebreaker, reorg resistance
+  - `gloas_verification.rs`: Comprehensive integration tests via external test file
+- **Test suite results**: state_processing 557/557, fork_choice + proto_array 277/277, types 715/715 — all pass.
+- **Identified remaining gaps** (all in integration-level beacon_chain code, not unit-testable without full chain harness):
+  - `prune_gloas_pools()`: no isolated tests (tested implicitly via devnet long-running tests)
+  - `build_self_build_envelope()`: private helper, tested via process_self_build_envelope integration tests
+  - `get_payload_attestation_data()`: no isolated tests (tested via VC integration tests)
+  - `load_parent()` envelope state patching: tested via chain import integration tests but no isolated unit test for cache miss scenarios
+- **Conclusion**: Test coverage is comprehensive. All consensus-critical code paths have targeted tests. Remaining gaps are integration-level methods requiring full BeaconChain infrastructure. No spec changes to implement. Project in maintenance mode.
+- **Result**: No bugs found. No spec changes to implement. CI green.
+
 ### 2026-03-07 — payload attestation error path tests, maintenance check (run 516)
 - No new consensus-specs releases (v1.7.0-alpha.2 still latest pre-release, no new test vectors)
 - **Open Gloas PR status**: All tracked PRs remain OPEN — none merged or closed. #4979 (PTC Lookbehind) design discussion continues: potuz prefers full 2*SLOTS_PER_EPOCH cache for spec simplicity, nflaig confirmed JIT next-epoch computation is acceptable. #4747 (Fast Confirmation Rule) stale for ~1 month (last activity Feb 5). No new Gloas PRs.
