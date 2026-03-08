@@ -185,7 +185,6 @@ pub enum BeaconChainError {
     },
     RuntimeShutdown,
     TokioJoin(tokio::task::JoinError),
-    ProcessInvalidExecutionPayload(JoinError),
     ForkChoiceSignalOutOfOrder {
         current: Slot,
         latest: Slot,
@@ -206,7 +205,6 @@ pub enum BeaconChainError {
     AvailabilityCheckError(AvailabilityCheckError),
     LightClientUpdateError(LightClientUpdateError),
     LightClientBootstrapError(String),
-    UnsupportedFork,
     MilhouseError(MilhouseError),
     AttestationError(AttestationError),
     AttestationCommitteeIndexNotSet,

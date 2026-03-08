@@ -362,15 +362,6 @@ pub enum AttestationInvalid {
         attestation: Box<Checkpoint>,
         is_current: bool,
     },
-    /// The aggregation bitfield length is not the smallest possible size to represent the committee.
-    BadAggregationBitfieldLength {
-        committee_len: usize,
-        bitfield_len: usize,
-    },
-    /// The attestation was not disjoint compared to already seen attestations.
-    NotDisjoint,
-    /// The validator index was unknown.
-    UnknownValidator(u64),
     /// The attestation signature verification failed.
     BadSignature,
     /// The indexed attestation created from this attestation was found to be invalid.
@@ -403,13 +394,8 @@ pub enum IndexedAttestationInvalid {
     ///
     /// The error occurred between the given `index` and `index + 1`
     BadValidatorIndicesOrdering(usize),
-    /// The validator index is unknown. One cannot slash one who does not exist.
-    UnknownValidator(u64),
     /// The indexed attestation aggregate signature was not valid.
     BadSignature,
-    /// There was an error whilst attempting to get a set of signatures. The signatures may have
-    /// been invalid or an internal error occurred.
-    SignatureSetError(SignatureSetError),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -431,8 +417,6 @@ pub enum ExitInvalid {
     ValidatorUnknown(u64),
     /// The specified validator has a non-maximum exit epoch.
     AlreadyExited(u64),
-    /// The specified validator has already initiated exit.
-    AlreadyInitiatedExit(u64),
     /// The exit is for a future epoch.
     FutureEpoch {
         state: Epoch,
@@ -471,8 +455,6 @@ pub enum BlsExecutionChangeInvalid {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SyncAggregateInvalid {
-    /// One or more of the aggregate public keys is invalid.
-    PubkeyInvalid,
     /// The signature is invalid.
     SignatureInvalid,
 }
