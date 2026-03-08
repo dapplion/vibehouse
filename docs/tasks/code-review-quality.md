@@ -817,3 +817,11 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 - Spec PR status: all 9 tracked PRs still OPEN (#4979, #4940, #4932, #4960, #4898, #4954, #4843, #4840, #4630)
 - No new spec test release after v1.7.0-alpha.2
 - Gloas test coverage: comprehensive (all public functions in state_processing, envelope_processing, gloas_verification have unit/integration tests)
+
+### Run 593 — reqwest 0.11 → 0.12 upgrade (2026-03-08)
+- Upgraded workspace reqwest from 0.11 to 0.12, eliminating duplicate reqwest versions for workspace crates
+- reqwest 0.11 remains only as a transitive dep from ethers (in execution_engine_integration test crate)
+- Simplified deposit_contract build script: removed reqwest/serde_json build-deps, now just verifies checksums of committed contract files
+- Added local `serde_warp_status_code` module in http_api since warp 0.3 still uses http 0.2 (different StatusCode type from reqwest 0.12's http 1.x)
+- Fixed broadcast_validation_tests to handle dual StatusCode types (warp's http 0.2 for function args, reqwest's http 1.x for response checking)
+- Remaining duplicate deps are all transitive from external crates (ethers, warp, libp2p, criterion) — not fixable without replacing those crates
