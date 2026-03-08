@@ -172,7 +172,7 @@ http_api = { path = "beacon_node/http_api" }
 hyper = "1"
 initialized_validators = { path = "validator_client/initialized_validators" }
 int_to_bytes = { path = "consensus/int_to_bytes" }
-itertools = "0.10"
+itertools = "0.14"
 kzg = { path = "crypto/kzg" }
 libsecp256k1 = "0.7"
 lighthouse_network = { path = "beacon_node/lighthouse_network" }
