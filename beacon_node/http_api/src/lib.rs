@@ -142,6 +142,26 @@ pub struct Context<T: BeaconChainTypes> {
     pub sse_logging_components: Option<SSELoggingComponents>,
 }
 
+mod serde_warp_status_code {
+    use serde::{Deserialize, Serialize, de::Error};
+    use warp::http::StatusCode;
+
+    pub fn serialize<S>(status_code: &StatusCode, ser: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        status_code.as_u16().serialize(ser)
+    }
+
+    pub fn deserialize<'de, D>(de: D) -> Result<StatusCode, D::Error>
+    where
+        D: serde::de::Deserializer<'de>,
+    {
+        let status_code = u16::deserialize(de)?;
+        StatusCode::from_u16(status_code).map_err(D::Error::custom)
+    }
+}
+
 /// Configuration for the HTTP server.
 #[derive(PartialEq, Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -153,7 +173,7 @@ pub struct Config {
     pub data_dir: PathBuf,
     pub sse_capacity_multiplier: usize,
     pub enable_beacon_processor: bool,
-    #[serde(with = "eth2::types::serde_status_code")]
+    #[serde(with = "serde_warp_status_code")]
     pub duplicate_block_status_code: StatusCode,
     pub target_peers: usize,
 }
@@ -4663,7 +4683,7 @@ pub fn serve<T: BeaconChainTypes>(
                 convert_rejection(rx.await.unwrap_or_else(|_| {
                     Ok(warp::reply::with_status(
                         warp::reply::json(&"No response from channel"),
-                        eth2::StatusCode::INTERNAL_SERVER_ERROR,
+                        StatusCode::INTERNAL_SERVER_ERROR,
                     )
                     .into_response())
                 }))

@@ -428,7 +428,7 @@ pub async fn consensus_partial_pass_only_consensus() {
         tester.harness.chain.clone(),
         &channel.0,
         validation_level,
-        StatusCode::ACCEPTED,
+        warp::http::StatusCode::ACCEPTED,
     )
     .await;
 
@@ -752,7 +752,7 @@ pub async fn equivocation_consensus_late_equivocation() {
         tester.harness.chain,
         &channel.0,
         validation_level,
-        StatusCode::ACCEPTED,
+        warp::http::StatusCode::ACCEPTED,
     )
     .await;
 
@@ -1547,7 +1547,7 @@ pub async fn blinded_equivocation_consensus_late_equivocation() {
             tester.harness.chain,
             &channel.0,
             validation_level,
-            StatusCode::ACCEPTED,
+            warp::http::StatusCode::ACCEPTED,
         )
         .await;
 
@@ -2009,7 +2009,7 @@ pub async fn duplicate_block_status_code() {
     // `validator_count // 32`.
     let validator_count = 64;
     let num_initial: u64 = 31;
-    let duplicate_block_status_code = StatusCode::IM_A_TEAPOT;
+    let duplicate_block_status_code = warp::http::StatusCode::IM_A_TEAPOT;
     let tester = InteractiveTester::<E>::new_with_initializer_and_mutator(
         None,
         validator_count,
@@ -2065,7 +2065,10 @@ pub async fn duplicate_block_status_code() {
         .post_beacon_blocks_v2_ssz(&block_request, validation_level)
         .await;
     let err = duplicate_response.unwrap_err();
-    assert_eq!(err.status().unwrap(), duplicate_block_status_code);
+    assert_eq!(
+        err.status().unwrap().as_u16(),
+        duplicate_block_status_code.as_u16()
+    );
 }
 
 fn assert_server_message_error(error_response: eth2::Error, expected_message: String) {
