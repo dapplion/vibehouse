@@ -64,9 +64,6 @@ pub enum BeaconChainError {
     EpochProcessingError(EpochProcessingError),
     StateAdvanceError(StateAdvanceError),
     UnableToAdvanceState(String),
-    NoStateForAttestation {
-        beacon_block_root: Hash256,
-    },
     CannotAttestToFutureState,
     AttestationValidationError(AttestationValidationError),
     SyncCommitteeMessageValidationError(SyncCommitteeMessageValidationError),
@@ -76,11 +73,6 @@ pub enum BeaconChainError {
     BlsExecutionChangeValidationError(BlsExecutionChangeValidationError),
     MissingFinalizedStateRoot(Slot),
     SszTypesError(SszTypesError),
-    NoProposerForSlot(Slot),
-    CanonicalHeadLockTimeout,
-    AttestationCacheLockTimeout,
-    ValidatorPubkeyCacheLockTimeout,
-    SnapshotCacheLockTimeout,
     IncorrectStateForAttestation(RelativeEpochError),
     InvalidValidatorPubkeyBytes(bls::Error),
     ValidatorPubkeyCacheIncomplete(usize),
@@ -202,7 +194,6 @@ pub enum BeaconChainError {
         current: Slot,
         latest: Slot,
     },
-    ForkchoiceUpdateParamsMissing,
     HeadHasInvalidPayload {
         block_root: Hash256,
         execution_status: ExecutionStatus,
@@ -222,7 +213,6 @@ pub enum BeaconChainError {
     LightClientBootstrapError(String),
     UnsupportedFork,
     MilhouseError(MilhouseError),
-    EmptyRpcCustodyColumns,
     AttestationError(AttestationError),
     AttestationCommitteeIndexNotSet,
     InsufficientColumnsToReconstructBlobs {
@@ -323,7 +313,6 @@ pub enum BlockProductionError {
     InvalidPayloadFork,
     InvalidBlockVariant(String),
     KzgError(kzg::Error),
-    FailedToBuildBlobSidecars(String),
     MissingExecutionRequests,
     EnvelopeConstructionFailed(String),
 }

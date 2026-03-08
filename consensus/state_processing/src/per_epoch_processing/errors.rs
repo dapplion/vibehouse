@@ -2,22 +2,9 @@ use types::{BeaconStateError, EpochCacheError, InconsistentFork, milhouse};
 
 #[derive(Debug, PartialEq)]
 pub enum EpochProcessingError {
-    UnableToDetermineProducer,
-    NoBlockRoots,
-    BaseRewardQuotientIsZero,
-    NoRandaoSeed,
-    PreviousTotalBalanceIsZero,
-    InclusionDistanceZero,
     ValidatorStatusesInconsistent,
-    DeltasInconsistent,
     DeltaOutOfBounds(usize),
-    /// Unable to get the inclusion distance for a validator that should have an inclusion
-    /// distance. This indicates an internal inconsistency.
-    ///
-    /// (validator_index)
-    InclusionSlotsInconsistent(usize),
     BeaconStateError(BeaconStateError),
-    InclusionError(InclusionError),
     SszTypesError(ssz_types::Error),
     BitfieldError(ssz::BitfieldError),
     ArithError(safe_arith::ArithError),
@@ -31,12 +18,6 @@ pub enum EpochProcessingError {
     MissingExitBalanceToConsume,
     PendingDepositsLogicError,
     ProposerLookaheadOutOfBounds(usize),
-}
-
-impl From<InclusionError> for EpochProcessingError {
-    fn from(e: InclusionError) -> EpochProcessingError {
-        EpochProcessingError::InclusionError(e)
-    }
 }
 
 impl From<BeaconStateError> for EpochProcessingError {
@@ -72,18 +53,5 @@ impl From<milhouse::Error> for EpochProcessingError {
 impl From<EpochCacheError> for EpochProcessingError {
     fn from(e: EpochCacheError) -> Self {
         EpochProcessingError::EpochCache(e)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum InclusionError {
-    /// The validator did not participate in an attestation in this period.
-    NoAttestationsForValidator,
-    BeaconStateError(BeaconStateError),
-}
-
-impl From<BeaconStateError> for InclusionError {
-    fn from(e: BeaconStateError) -> InclusionError {
-        InclusionError::BeaconStateError(e)
     }
 }
