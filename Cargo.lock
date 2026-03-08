@@ -1036,7 +1036,6 @@ dependencies = [
  "clap",
  "eth2",
  "futures",
- "itertools 0.10.5",
  "sensitive_url",
  "serde",
  "slot_clock",
@@ -1678,7 +1677,6 @@ checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 name = "clap_utils"
 version = "0.1.0"
 dependencies = [
- "alloy-primitives",
  "clap",
  "dirs 3.0.2",
  "eth2_network_config",
@@ -3184,7 +3182,6 @@ version = "0.1.0"
 dependencies = [
  "derivative",
  "eip_3076",
- "either",
  "enr",
  "eth2_keystore",
  "ethereum_serde_utils",
@@ -6068,11 +6065,8 @@ name = "lighthouse_validator_store"
 version = "0.1.0"
 dependencies = [
  "account_utils",
- "beacon_node_fallback",
  "bls",
  "doppelganger_service",
- "either",
- "environment",
  "eth2",
  "eth2_keystore",
  "futures",
@@ -11781,7 +11775,6 @@ version = "0.1.0"
 dependencies = [
  "beacon_node_fallback",
  "bls",
- "either",
  "eth2",
  "futures",
  "graffiti_file",
