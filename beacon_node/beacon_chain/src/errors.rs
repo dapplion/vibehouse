@@ -63,7 +63,6 @@ pub enum BeaconChainError {
     SlotProcessingError(SlotProcessingError),
     EpochProcessingError(EpochProcessingError),
     StateAdvanceError(StateAdvanceError),
-    UnableToAdvanceState(String),
     CannotAttestToFutureState,
     AttestationValidationError(AttestationValidationError),
     SyncCommitteeMessageValidationError(SyncCommitteeMessageValidationError),
@@ -80,7 +79,6 @@ pub enum BeaconChainError {
     BlockSignatureVerifierError(state_processing::block_signature_verifier::Error),
     BlockReplayError(BlockReplayError),
     DuplicateValidatorPublicKey,
-    ValidatorPubkeyCacheError(String),
     ValidatorIndexUnknown(usize),
     ValidatorPubkeyUnknown(PublicKeyBytes),
     OpPoolError(OpPoolError),
@@ -138,7 +136,6 @@ pub enum BeaconChainError {
     ExecutionLayerErrorPayloadReconstruction(ExecutionBlockHash, Box<execution_layer::Error>),
     EngineGetCapabilititesFailed(Box<execution_layer::Error>),
     ExecutionLayerGetBlockByNumberFailed(Box<execution_layer::Error>),
-    ExecutionLayerGetBlockByHashFailed(Box<execution_layer::Error>),
     BlockHashMissingFromExecutionLayer(ExecutionBlockHash),
     InconsistentPayloadReconstructed {
         slot: Slot,
@@ -160,7 +157,6 @@ pub enum BeaconChainError {
     SyncCommitteeRewardsSyncError,
     AttestationRewardsError,
     HeadMissingFromForkChoice(Hash256),
-    FinalizedBlockMissingFromForkChoice(Hash256),
     HeadBlockMissingFromForkChoice(Hash256),
     InvalidFinalizedPayload {
         finalized_root: Hash256,
@@ -207,7 +203,6 @@ pub enum BeaconChainError {
     InconsistentFork(InconsistentFork),
     ProposerHeadForkChoiceError(fork_choice::Error<proto_array::Error>),
     UnableToPublish,
-    UnableToBuildColumnSidecar(String),
     AvailabilityCheckError(AvailabilityCheckError),
     LightClientUpdateError(LightClientUpdateError),
     LightClientBootstrapError(String),
@@ -222,10 +217,6 @@ pub enum BeaconChainError {
     ProposerCacheIncorrectState {
         state_decision_block_root: Hash256,
         requested_decision_block_root: Hash256,
-    },
-    ProposerCacheAccessorFailure {
-        decision_block_root: Hash256,
-        proposal_epoch: Epoch,
     },
     ProposerCacheOutOfBounds {
         slot: Slot,
@@ -296,12 +287,9 @@ pub enum BlockProductionError {
         state_slot: Slot,
     },
     ExecutionLayerMissing,
-    BlockingFailed(execution_layer::Error),
     TerminalPoWBlockLookupFailed(execution_layer::Error),
     GetPayloadFailed(execution_layer::Error),
-    FailedToReadFinalizedBlock(store::Error),
     FailedToLoadState(store::Error),
-    MissingFinalizedBlock(Hash256),
     BlockTooLarge(usize),
     ShuttingDown,
     MissingBlobs,
@@ -312,7 +300,6 @@ pub enum BlockProductionError {
     BeaconChain(Box<BeaconChainError>),
     InvalidPayloadFork,
     InvalidBlockVariant(String),
-    KzgError(kzg::Error),
     MissingExecutionRequests,
     EnvelopeConstructionFailed(String),
 }

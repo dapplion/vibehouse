@@ -11,7 +11,6 @@ use eth2::types::{
     BlobsBundle, SsePayloadAttributes, SsePayloadAttributesV1, SsePayloadAttributesV2,
     SsePayloadAttributesV3,
 };
-use http::deposit_methods::RpcError;
 pub use json_structures::{JsonWithdrawal, TransitionConfigurationV1};
 use pretty_reqwest_error::PrettyReqwestError;
 use reqwest::StatusCode;
@@ -51,27 +50,19 @@ pub enum Error {
     HttpClient(PrettyReqwestError),
     Auth(auth::Error),
     BadResponse(String),
-    RequestFailed(String),
-    InvalidExecutePayloadResponse(&'static str),
-    JsonRpc(RpcError),
     Json(serde_json::Error),
     ServerMessage { code: i64, message: String },
     Eip155Failure,
     IsSyncing,
     ExecutionBlockNotFound(ExecutionBlockHash),
     ExecutionHeadBlockNotFound,
-    ParentHashEqualsBlockHash(ExecutionBlockHash),
     PayloadIdUnavailable,
     SszError(ssz_types::Error),
-    DeserializeWithdrawals(ssz_types::Error),
-    DeserializeDepositRequests(ssz_types::Error),
-    DeserializeWithdrawalRequests(ssz_types::Error),
     BuilderApi(builder_client::Error),
     IncorrectStateVariant,
     RequiredMethodUnsupported(&'static str),
     UnsupportedForkVariant(String),
     InvalidClientVersion(String),
-    TooManyConsolidationRequests(usize),
 }
 
 impl From<reqwest::Error> for Error {
