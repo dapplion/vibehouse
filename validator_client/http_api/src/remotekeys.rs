@@ -1,4 +1,5 @@
 //! Implementation of the standard remotekey management API.
+use crate::api_error::ApiError;
 use account_utils::validator_definitions::{
     SigningDefinition, ValidatorDefinition, Web3SignerDefinition,
 };
@@ -16,8 +17,6 @@ use tokio::runtime::Handle;
 use tracing::{info, warn};
 use types::{EthSpec, PublicKeyBytes};
 use url::Url;
-use warp::Rejection;
-use warp_utils::reject::custom_server_error;
 
 pub fn list<T: SlotClock + 'static, E: EthSpec>(
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
@@ -52,7 +51,7 @@ pub fn import<T: SlotClock + 'static, E: EthSpec>(
     request: ImportRemotekeysRequest,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
-) -> Result<ImportRemotekeysResponse, Rejection> {
+) -> Result<ImportRemotekeysResponse, ApiError> {
     info!(
         count = request.remote_keys.len(),
         "Importing remotekeys via standard HTTP API"
@@ -149,7 +148,7 @@ pub fn delete<T: SlotClock + 'static, E: EthSpec>(
     request: DeleteRemotekeysRequest,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
-) -> Result<DeleteRemotekeysResponse, Rejection> {
+) -> Result<DeleteRemotekeysResponse, ApiError> {
     info!(
         count = request.pubkeys.len(),
         "Deleting remotekeys via standard HTTP API"
@@ -186,7 +185,7 @@ pub fn delete<T: SlotClock + 'static, E: EthSpec>(
     if let Some(handle) = task_executor.handle() {
         handle
             .block_on(initialized_validators.update_validators())
-            .map_err(|e| custom_server_error(format!("unable to update key cache: {:?}", e)))?;
+            .map_err(|e| ApiError::ServerError(format!("unable to update key cache: {:?}", e)))?;
     }
 
     Ok(DeleteRemotekeysResponse { data: statuses })

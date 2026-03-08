@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use account_utils::validator_definitions::{PasswordStorage, ValidatorDefinition};
 use account_utils::{
     eth2_keystore::Keystore,
@@ -31,7 +32,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
     secrets_dir: Option<PathBuf>,
     validator_store: &LighthouseValidatorStore<T, E>,
     spec: &ChainSpec,
-) -> Result<(Vec<api_types::CreatedValidator>, Mnemonic), warp::Rejection> {
+) -> Result<(Vec<api_types::CreatedValidator>, Mnemonic), ApiError> {
     let mnemonic = mnemonic_opt.unwrap_or_else(random_mnemonic);
 
     let wallet_password = random_password();
@@ -39,18 +40,12 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
         WalletBuilder::from_mnemonic(&mnemonic, wallet_password.as_bytes(), String::new())
             .and_then(|builder| builder.build())
             .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "unable to create EIP-2386 wallet: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("unable to create EIP-2386 wallet: {:?}", e))
             })?;
 
     if let Some(nextaccount) = key_derivation_path_offset {
         wallet.set_nextaccount(nextaccount).map_err(|e| {
-            warp_utils::reject::custom_server_error(format!(
-                "unable to set wallet nextaccount: {:?}",
-                e
-            ))
+            ApiError::ServerError(format!("unable to set wallet nextaccount: {:?}", e))
         })?;
     }
 
@@ -61,10 +56,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
         let withdrawal_password = random_password();
         let voting_password_string = Zeroizing::from(
             String::from_utf8(voting_password.as_bytes().to_vec()).map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "locally generated password is not utf8: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("locally generated password is not utf8: {:?}", e))
             })?,
         );
 
@@ -75,10 +67,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
                 withdrawal_password.as_bytes(),
             )
             .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "unable to create validator keys: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("unable to create validator keys: {:?}", e))
             })?;
 
         keystores
@@ -90,12 +79,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
 
         let voting_pubkey = format!("0x{}", keystores.voting.pubkey())
             .parse()
-            .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "created invalid public key: {:?}",
-                    e
-                ))
-            })?;
+            .map_err(|e| ApiError::ServerError(format!("created invalid public key: {:?}", e)))?;
 
         let voting_password_storage =
             get_voting_password_storage(&secrets_dir, &keystores.voting, &voting_password_string)?;
@@ -108,28 +92,20 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
             .store_withdrawal_keystore(false)
             .build()
             .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "failed to build validator directory: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("failed to build validator directory: {:?}", e))
             })?;
 
         let eth1_deposit_data = validator_dir
             .eth1_deposit_data()
             .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "failed to read local deposit data: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("failed to read local deposit data: {:?}", e))
             })?
             .ok_or_else(|| {
-                warp_utils::reject::custom_server_error(
-                    "failed to create local deposit data: {:?}".to_string(),
-                )
+                ApiError::ServerError("failed to create local deposit data: {:?}".to_string())
             })?;
 
         if eth1_deposit_data.deposit_data.amount != request.deposit_gwei {
-            return Err(warp_utils::reject::custom_server_error(format!(
+            return Err(ApiError::ServerError(format!(
                 "invalid deposit_gwei {}, expected {}",
                 eth1_deposit_data.deposit_data.amount, request.deposit_gwei
             )));
@@ -153,10 +129,7 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
             )
             .await
             .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "failed to initialize validator: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("failed to initialize validator: {:?}", e))
             })?;
 
         validators.push(api_types::CreatedValidator {
@@ -178,16 +151,13 @@ pub async fn create_validators_mnemonic<P: AsRef<Path>, T: 'static + SlotClock, 
 pub async fn create_validators_web3signer<T: 'static + SlotClock, E: EthSpec>(
     validators: Vec<ValidatorDefinition>,
     validator_store: &LighthouseValidatorStore<T, E>,
-) -> Result<(), warp::Rejection> {
+) -> Result<(), ApiError> {
     for validator in validators {
         validator_store
             .add_validator(validator)
             .await
             .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!(
-                    "failed to initialize validator: {:?}",
-                    e
-                ))
+                ApiError::ServerError(format!("failed to initialize validator: {:?}", e))
             })?;
     }
 
@@ -200,11 +170,11 @@ pub fn get_voting_password_storage(
     secrets_dir: &Option<PathBuf>,
     voting_keystore: &Keystore,
     voting_password_string: &Zeroizing<String>,
-) -> Result<PasswordStorage, warp::Rejection> {
+) -> Result<PasswordStorage, ApiError> {
     if let Some(secrets_dir) = &secrets_dir {
         let password_path = keystore_password_path(secrets_dir, voting_keystore);
         if password_path.exists() {
-            Err(warp_utils::reject::custom_server_error(
+            Err(ApiError::ServerError(
                 "Duplicate keystore password path".to_string(),
             ))
         } else {

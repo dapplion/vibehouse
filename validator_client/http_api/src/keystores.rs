@@ -1,4 +1,5 @@
 //! Implementation of the standard keystore management API.
+use crate::api_error::ApiError;
 use account_utils::validator_definitions::PasswordStorage;
 use eth2::lighthouse_vc::{
     std_types::{
@@ -20,8 +21,6 @@ use tokio::runtime::Handle;
 use tracing::{info, warn};
 use types::{EthSpec, PublicKeyBytes};
 use validator_dir::{Builder as ValidatorDirBuilder, keystore_password_path};
-use warp::Rejection;
-use warp_utils::reject::{custom_bad_request, custom_server_error};
 use zeroize::Zeroizing;
 
 pub fn list<T: SlotClock + 'static, E: EthSpec>(
@@ -64,10 +63,10 @@ pub fn import<T: SlotClock + 'static, E: EthSpec>(
     secrets_dir: Option<PathBuf>,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
-) -> Result<ImportKeystoresResponse, Rejection> {
+) -> Result<ImportKeystoresResponse, ApiError> {
     // Check request validity. This is the only cases in which we should return a 4xx code.
     if request.keystores.len() != request.passwords.len() {
-        return Err(custom_bad_request(format!(
+        return Err(ApiError::BadRequest(format!(
             "mismatched numbers of keystores ({}) and passwords ({})",
             request.keystores.len(),
             request.passwords.len(),
@@ -236,7 +235,7 @@ pub fn delete<T: SlotClock + 'static, E: EthSpec>(
     request: DeleteKeystoresRequest,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
-) -> Result<DeleteKeystoresResponse, Rejection> {
+) -> Result<DeleteKeystoresResponse, ApiError> {
     let export_response = export(request, validator_store, task_executor)?;
 
     // Check the status is Deleted to confirm deletion is successful, then only display the log
@@ -267,7 +266,7 @@ pub fn export<T: SlotClock + 'static, E: EthSpec>(
     request: DeleteKeystoresRequest,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     task_executor: TaskExecutor,
-) -> Result<ExportKeystoresResponse, Rejection> {
+) -> Result<ExportKeystoresResponse, ApiError> {
     // Remove from initialized validators.
     let initialized_validators_rwlock = validator_store.initialized_validators();
     let mut initialized_validators = initialized_validators_rwlock.write();
@@ -304,14 +303,14 @@ pub fn export<T: SlotClock + 'static, E: EthSpec>(
     if let Some(handle) = task_executor.handle() {
         handle
             .block_on(initialized_validators.update_validators())
-            .map_err(|e| custom_server_error(format!("unable to update key cache: {:?}", e)))?;
+            .map_err(|e| ApiError::ServerError(format!("unable to update key cache: {:?}", e)))?;
     }
 
     // Export the slashing protection data.
     let slashing_protection = validator_store
         .export_slashing_protection_for_keys(&request.pubkeys)
         .map_err(|e| {
-            custom_server_error(format!("error exporting slashing protection: {:?}", e))
+            ApiError::ServerError(format!("error exporting slashing protection: {:?}", e))
         })?;
 
     // Update stasuses based on availability of slashing protection data.

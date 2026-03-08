@@ -46,8 +46,9 @@ url = { workspace = true }
 validator_dir = { workspace = true }
 validator_services = { workspace = true }
 validator_store = { workspace = true }
-warp = { workspace = true }
-warp_utils = { workspace = true }
+axum = { workspace = true }
+futures-core = "0.3"
+tower-http = { workspace = true }
 zeroize = { workspace = true }
 
 [dev-dependencies]

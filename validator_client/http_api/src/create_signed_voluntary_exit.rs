@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use bls::{PublicKey, PublicKeyBytes};
 use eth2::types::GenericResponse;
 use lighthouse_validator_store::LighthouseValidatorStore;
@@ -12,17 +13,17 @@ pub async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: Eth
     maybe_epoch: Option<Epoch>,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     slot_clock: T,
-) -> Result<GenericResponse<SignedVoluntaryExit>, warp::Rejection> {
+) -> Result<GenericResponse<SignedVoluntaryExit>, ApiError> {
     let epoch = match maybe_epoch {
         Some(epoch) => epoch,
         None => get_current_epoch::<T, E>(slot_clock).ok_or_else(|| {
-            warp_utils::reject::custom_server_error("Unable to determine current epoch".to_string())
+            ApiError::ServerError("Unable to determine current epoch".to_string())
         })?,
     };
 
     let pubkey_bytes = PublicKeyBytes::from(pubkey);
     if !validator_store.has_validator(&pubkey_bytes) {
-        return Err(warp_utils::reject::custom_not_found(format!(
+        return Err(ApiError::NotFound(format!(
             "{} is disabled or not managed by this validator client",
             pubkey_bytes.as_hex_string()
         )));
@@ -31,7 +32,7 @@ pub async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: Eth
     let validator_index = validator_store
         .validator_index(&pubkey_bytes)
         .ok_or_else(|| {
-            warp_utils::reject::custom_not_found(format!(
+            ApiError::NotFound(format!(
                 "The validator index for {} is not known. The validator client \
                 may still be initializing or the validator has not yet had a \
                 deposit processed.",
@@ -53,12 +54,7 @@ pub async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: Eth
     let signed_voluntary_exit = validator_store
         .sign_voluntary_exit(pubkey_bytes, voluntary_exit)
         .await
-        .map_err(|e| {
-            warp_utils::reject::custom_server_error(format!(
-                "Failed to sign voluntary exit: {:?}",
-                e
-            ))
-        })?;
+        .map_err(|e| ApiError::ServerError(format!("Failed to sign voluntary exit: {:?}", e)))?;
 
     Ok(GenericResponse::from(signed_voluntary_exit))
 }

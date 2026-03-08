@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use bls::PublicKey;
 use lighthouse_validator_store::LighthouseValidatorStore;
 use slot_clock::SlotClock;
@@ -8,16 +9,16 @@ pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
     graffiti_flag: Option<Graffiti>,
-) -> Result<Graffiti, warp::Rejection> {
+) -> Result<Graffiti, ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
     let initialized_validators = initialized_validators_rw_lock.read();
     match initialized_validators.validator(&validator_pubkey.compress()) {
-        None => Err(warp_utils::reject::custom_not_found(
+        None => Err(ApiError::NotFound(
             "The key was not found on the server".to_string(),
         )),
         Some(_) => {
             let Some(graffiti) = initialized_validators.graffiti(&validator_pubkey.into()) else {
-                return graffiti_flag.ok_or(warp_utils::reject::custom_server_error(
+                return graffiti_flag.ok_or(ApiError::ServerError(
                     "No graffiti found, unable to return the process-wide default".to_string(),
                 ));
             };
@@ -30,11 +31,11 @@ pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     graffiti: GraffitiString,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
-) -> Result<(), warp::Rejection> {
+) -> Result<(), ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
     let mut initialized_validators = initialized_validators_rw_lock.write();
     match initialized_validators.validator(&validator_pubkey.compress()) {
-        None => Err(warp_utils::reject::custom_not_found(
+        None => Err(ApiError::NotFound(
             "The key was not found on the server, nothing to update".to_string(),
         )),
         Some(initialized_validator) => {
@@ -44,7 +45,7 @@ pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
                 initialized_validators
                     .set_graffiti(&validator_pubkey, graffiti)
                     .map_err(|_| {
-                        warp_utils::reject::custom_server_error(
+                        ApiError::ServerError(
                             "A graffiti was found, but failed to be updated.".to_string(),
                         )
                     })
@@ -56,11 +57,11 @@ pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
 pub fn delete_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     validator_store: Arc<LighthouseValidatorStore<T, E>>,
-) -> Result<(), warp::Rejection> {
+) -> Result<(), ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
     let mut initialized_validators = initialized_validators_rw_lock.write();
     match initialized_validators.validator(&validator_pubkey.compress()) {
-        None => Err(warp_utils::reject::custom_not_found(
+        None => Err(ApiError::NotFound(
             "The key was not found on the server, nothing to delete".to_string(),
         )),
         Some(initialized_validator) => {
@@ -70,7 +71,7 @@ pub fn delete_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
                 initialized_validators
                     .delete_graffiti(&validator_pubkey)
                     .map_err(|_| {
-                        warp_utils::reject::custom_server_error(
+                        ApiError::ServerError(
                             "A graffiti was found, but failed to be removed.".to_string(),
                         )
                     })

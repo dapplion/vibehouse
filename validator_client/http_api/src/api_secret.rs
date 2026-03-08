@@ -3,7 +3,6 @@ use rand::distr::Alphanumeric;
 use rand::{Rng, rng};
 use std::fs;
 use std::path::{Path, PathBuf};
-use warp::Filter;
 
 /// The default name of the file which stores the API token.
 pub const PK_FILENAME: &str = "api-token.txt";
@@ -96,28 +95,10 @@ impl ApiSecret {
     /// For backwards-compatibility we accept the token in a basic authentication style, but this is
     /// technically invalid according to RFC 7617 because the token is not a base64-encoded username
     /// and password. As such, bearer authentication should be preferred.
-    fn auth_header_values(&self) -> Vec<String> {
+    pub fn auth_header_values(&self) -> Vec<String> {
         vec![
             format!("Basic {}", self.api_token()),
             format!("Bearer {}", self.api_token()),
         ]
-    }
-
-    /// Returns a `warp` header which filters out request that have a missing or inaccurate
-    /// `Authorization` header.
-    pub fn authorization_header_filter(&self) -> warp::filters::BoxedFilter<()> {
-        let expected = self.auth_header_values();
-        warp::any()
-            .map(move || expected.clone())
-            .and(warp::filters::header::header("Authorization"))
-            .and_then(move |expected: Vec<String>, header: String| async move {
-                if expected.contains(&header) {
-                    Ok(())
-                } else {
-                    Err(warp_utils::reject::invalid_auth(header))
-                }
-            })
-            .untuple_one()
-            .boxed()
     }
 }

@@ -11079,6 +11079,7 @@ name = "validator_http_api"
 version = "0.1.0"
 dependencies = [
  "account_utils",
+ "axum 0.8.8",
  "beacon_node_fallback",
  "bls",
  "deposit_contract",
@@ -11090,6 +11091,7 @@ dependencies = [
  "ethereum_serde_utils",
  "filesystem",
  "futures",
+ "futures-core",
  "graffiti_file",
  "health_metrics",
  "initialized_validators",
@@ -11111,14 +11113,13 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-stream",
+ "tower-http",
  "tracing",
  "types",
  "url",
  "validator_dir",
  "validator_services",
  "validator_store",
- "warp",
- "warp_utils",
  "zeroize",
 ]
 
