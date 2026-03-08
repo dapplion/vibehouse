@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — gossip message leak fix, maintenance check (run 547)
+- v1.7.0-alpha.2 still latest, no new spec changes, all tracked PRs (#4979, #4940, #4932, #4960) still open
+- CI green (5 consecutive nightly passes), clippy clean, cargo audit clean (10 unmaintained warnings only)
+- **Found and fixed**: batch attestation verification failure paths (`process_gossip_attestation_batch`, `process_gossip_aggregate_batch`) were missing `propagate_validation_result` calls — same class of bug as the ParentUnknown fix in ade5f8c3b. When batch crypto verification fails entirely, all message_ids in the batch were dropped without notifying gossipsub, leaving messages in pending validation state until timeout. Now properly reports Reject for each message.
+- Audited all other gossip handlers: no remaining gaps. Optimistic update requeue is by design (message_id captured in closure for deferred handling).
+- **Result**: Gossip resource leak fix shipped. No spec changes to implement.
+
 ### 2026-03-08 — deep audit of unreleased spec changes (run 546)
 - v1.7.0-alpha.2 still latest tagged release
 - **Diff'd consensus-specs master vs v1.7.0-alpha.2**: found changes in 4 Gloas files (beacon-chain.md, fork-choice.md, p2p-interface.md, validator.md)
