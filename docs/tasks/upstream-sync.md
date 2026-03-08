@@ -94,6 +94,18 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 597)
+- Checked consensus-specs: no new Gloas PRs merged since run 595 (v1.7.0-alpha.2 still latest release, no new releases).
+- Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Dependency upgrades shipped**:
+  - dirs 3 → 6: only uses `home_dir()`, drop-in compatible
+  - prometheus 0.13 → 0.14: fixed deprecated `get_name()` → `name()` in monitoring_api and beacon_chain tests
+  - criterion 0.5 → 0.8: fixed deprecated `criterion::black_box` → `std::hint::black_box` in 3 benchmark files. Eliminated duplicate itertools 0.10.
+  - **Replaced ethabi with alloy-sol-types** in deposit_contract: deposit ABI encoding/decoding now uses alloy `sol!` macro instead of ethabi JSON ABI loading. Eliminated ethabi, ethereum-types, ethbloom crates. Lockfile: 1039 → 1032 packages (-7). Duplicate count: 84 → 81.
+  - Removed obsolete `small_rng` feature flags from store and validator_http_api (feature no longer exists in rand 0.9)
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 595)
 - **Eliminated ethers dependency entirely**: migrated `execution_engine_integration` from ethers to alloy (alloy-provider, alloy-signer-local, alloy-network, alloy-rpc-types). Removed all 6 ethers crates and their transitive deps. Lockfile: 1074 → 1039 packages (-35). Eliminated duplicate k256 (was 0.11.6 + 0.13.4, now just 0.13.4).
 - **Spec status**: stable, fully compliant — PTC lookbehind PR #4979 still open, no new merges
