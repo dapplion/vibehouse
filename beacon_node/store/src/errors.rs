@@ -50,7 +50,6 @@ pub enum Error {
     MissingState(Hash256),
     MissingHotStateSummary(Hash256),
     MissingHotStateSnapshot(Hash256, Slot),
-    MissingGenesisState,
     MissingSnapshot(Slot),
     LoadingHotHdiffBufferError(String, Hash256, Box<Error>),
     LoadingHotStateError(String, Hash256, Box<Error>),
