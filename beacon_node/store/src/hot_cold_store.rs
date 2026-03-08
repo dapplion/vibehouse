@@ -4131,15 +4131,19 @@ pub struct BytesKey {
     pub key: Vec<u8>,
 }
 
-impl db_key::Key for BytesKey {
-    fn from_u8(key: &[u8]) -> Self {
+impl<'a> From<&'a [u8]> for BytesKey {
+    fn from(key: &'a [u8]) -> Self {
         Self { key: key.to_vec() }
     }
+}
 
-    fn as_slice<T, F: Fn(&[u8]) -> T>(&self, f: F) -> T {
-        f(self.key.as_slice())
+impl AsRef<[u8]> for BytesKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.key
     }
 }
+
+impl<'a> db_key::Key<'a> for BytesKey {}
 
 impl BytesKey {
     pub fn starts_with(&self, prefix: &Self) -> bool {
