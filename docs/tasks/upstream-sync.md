@@ -94,6 +94,13 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 583)
+- Checked consensus-specs: no new Gloas PRs merged since run 582 (v1.7.0-alpha.2 still latest release, no new releases)
+- Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Removed leveldb backend entirely**: vibehouse uses redb exclusively. Removed 299-line leveldb_impl.rs, all cfg feature gates, `leveldb` C dependency, `beacon-node-leveldb` feature. Simplified `BeaconNodeBackend` from enum dispatch to direct wrapper. Net: -540 lines, -1 C dependency.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 582)
 - Checked consensus-specs: no new Gloas PRs merged since last check (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged

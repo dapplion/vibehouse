@@ -755,3 +755,22 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 - `rand_xorshift` 0.4 → 0.5: still blocked by rand_core version mismatch (needs rand 0.10, we have 0.9)
 
 **Verification**: 80/80 eth2 + execution_layer tests, 64/64 targeted itertools-using tests, full workspace clippy clean, full lint clean.
+
+### Run 583 — remove leveldb backend (2026-03-08)
+
+**Scope**: Remove the optional leveldb database backend entirely. vibehouse is independent and uses redb exclusively (switched in run 572). leveldb was never compiled by default, but its code and C dependency added maintenance burden.
+
+**Changes**:
+1. Deleted `beacon_node/store/src/database/leveldb_impl.rs` (299 lines)
+2. Simplified `BeaconNodeBackend` from cfg-gated enum to direct `struct(Redb<E>)` wrapper
+3. Removed `leveldb` dependency from store/Cargo.toml (C dependency eliminated)
+4. Removed `beacon-node-leveldb` and `beacon-node-redb` features from lighthouse/Cargo.toml
+5. Removed all `#[cfg(feature = "leveldb")]` and `#[cfg(feature = "redb")]` gates in errors.rs, config.rs, database.rs
+6. Removed cfg-gated test `beacon_node_backend_override` from lighthouse tests
+7. Updated Makefile: removed `beacon-node-redb` from CROSS_FEATURES and lint-full
+8. Updated book/installation_source.md: removed leveldb feature documentation
+9. Updated comments referencing LevelDB in 4 files
+
+**Net**: -540 lines, -1 C dependency (`leveldb` crate + `leveldb-sys`).
+
+**Verification**: 30/30 store tests, full workspace build clean, full workspace clippy clean, pre-push lint-full passes.
