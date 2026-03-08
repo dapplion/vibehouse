@@ -7,10 +7,10 @@ use crate::json_keystore::{
     Aes128Ctr, ChecksumModule, Cipher, CipherModule, Crypto, EmptyMap, EmptyString, JsonKeystore,
     Kdf, KdfModule, Scrypt, Sha256Checksum, Version,
 };
-use aes::Aes128Ctr as AesCtr;
-use aes::cipher::generic_array::GenericArray;
-use aes::cipher::{NewCipher, StreamCipher};
+use aes::Aes128;
+use aes::cipher::{KeyIvInit, StreamCipher};
 use bls::{Keypair, PublicKey, SecretKey, ZeroizeHash};
+use ctr::Ctr128BE;
 use eth2_key_derivation::PlainText;
 use hmac::Hmac;
 use pbkdf2::pbkdf2;
@@ -348,9 +348,11 @@ pub fn encrypt(
             validate_aes_iv(params.iv.as_bytes())?;
 
             // AES Encrypt
-            let key = GenericArray::from_slice(&derived_key.as_bytes()[0..16]);
-            let nonce = GenericArray::from_slice(params.iv.as_bytes());
-            let mut cipher = AesCtr::new(key, nonce);
+            let mut cipher = Ctr128BE::<Aes128>::new_from_slices(
+                &derived_key.as_bytes()[0..16],
+                params.iv.as_bytes(),
+            )
+            .expect("AES key/IV length validated");
             cipher.apply_keystream(&mut cipher_text);
         }
     };
@@ -394,9 +396,11 @@ pub fn decrypt(password: &[u8], crypto: &Crypto) -> Result<PlainText, Error> {
             validate_aes_iv(params.iv.as_bytes())?;
 
             // AES Decrypt
-            let key = GenericArray::from_slice(&derived_key.as_bytes()[0..16]);
-            let nonce = GenericArray::from_slice(params.iv.as_bytes());
-            let mut cipher = AesCtr::new(key, nonce);
+            let mut cipher = Ctr128BE::<Aes128>::new_from_slices(
+                &derived_key.as_bytes()[0..16],
+                params.iv.as_bytes(),
+            )
+            .expect("AES key/IV length validated");
             cipher.apply_keystream(plain_text.as_mut_bytes());
         }
     };
@@ -444,13 +448,14 @@ fn derive_key(password: &[u8], kdf: &Kdf) -> Result<DerivedKey, Error> {
                 params.salt.as_bytes(),
                 params.c,
                 dk.as_mut_bytes(),
-            );
+            )
+            .map_err(|_| Error::InvalidPbkdf2Param)?;
         }
         Kdf::Scrypt(params) => {
             scrypt(
                 password,
                 params.salt.as_bytes(),
-                &ScryptParams::new(log2_int(params.n) as u8, params.r, params.p)
+                &ScryptParams::new(log2_int(params.n) as u8, params.r, params.p, DKLEN as usize)
                     .map_err(Error::ScryptInvalidParams)?,
                 dk.as_mut_bytes(),
             )

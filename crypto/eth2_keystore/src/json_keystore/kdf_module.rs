@@ -5,7 +5,7 @@
 
 use super::hex_bytes::HexBytes;
 use crate::DKLEN;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
