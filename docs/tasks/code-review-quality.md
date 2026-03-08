@@ -598,3 +598,33 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
    - `KzgError(kzg::Error)` — 0 constructions
 
 **Verification**: 557/557 state_processing tests, 16/16 store tests, 35/35 EF spec tests. Full workspace lint passes.
+
+### Run 565 — Dead error variants in block processing, attestation, and network errors
+
+**Scope**: Continue dead code cleanup across state_processing errors, BeaconChainError, and network sync errors.
+
+**Changes**:
+
+1. **BeaconChainError** (2 variants removed):
+   - `ProcessInvalidExecutionPayload(JoinError)` — 0 constructions
+   - `UnsupportedFork` — 0 constructions
+
+2. **AttestationInvalid** (3 variants removed):
+   - `BadAggregationBitfieldLength { committee_len, bitfield_len }` — 0 constructions
+   - `NotDisjoint` — 0 constructions
+   - `UnknownValidator(u64)` — 0 constructions
+
+3. **ExitInvalid** (1 variant removed):
+   - `AlreadyInitiatedExit(u64)` — 0 constructions
+
+4. **IndexedAttestationInvalid** (2 variants removed):
+   - `UnknownValidator(u64)` — 0 constructions
+   - `SignatureSetError(SignatureSetError)` — 0 constructions
+
+5. **SyncAggregateInvalid** (1 variant removed):
+   - `PubkeyInvalid` — 0 constructions
+
+6. **LookupVerifyError** (1 variant removed):
+   - `TooManyResponses` — 0 constructions
+
+**Verification**: 557/557 state_processing tests, 35/35 EF spec tests, 163/163 network tests. Full workspace clippy clean.
