@@ -94,6 +94,9 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 601)
+- **Migrated validator_client/http_api from warp to axum**: complete rewrite of the validator client HTTP API (7 source files, ~1200 lines changed). New `ApiError` type replaces warp rejections. Axum Router with State extractor and tower middleware for auth. All 54 tests pass, clippy clean. Remaining warp users: beacon_node/http_api, beacon_node/execution_layer (test mock), common/warp_utils.
+
 ### 2026-03-08 (run 600)
 - Checked consensus-specs: no new Gloas PRs merged since run 599 (v1.7.0-alpha.2 still latest release). Recent merges are all tooling/cleanup (EIP-6800/7441 removal, renovate, ruff, codespell, python versions).
 - Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
