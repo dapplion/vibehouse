@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — upgrade ethabi 16→18, dep audit complete (run 578)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
+- EIP-7688 PR #4630 also tracked (forward-compatible SSZ types in Gloas) — still open
+- **Upgraded `ethabi` 16→18** in deposit_contract: API-compatible, no code changes needed, reduced transitive deps by ~200 lines in Cargo.lock
+- **Remaining outdated deps — all blocked**:
+  - `reqwest-eventsource` 0.5→0.6: blocked by `http` 0.2 vs 1.x conflict (warp pins http 0.2)
+  - `hash-db` 0.15→0.16 + `keccak-hash` 0.10→0.12: blocked by `triehash` 0.8.4 which depends on hash-db 0.15
+  - `rand_xorshift` 0.4→0.5: blocked by workspace `rand` 0.8 (needs rand_core 0.10)
+  - `tiny-bip39` 1→2: large API rewrite, low value
+  - `headers` 0.3→0.4: blocked by warp's `http` 0.2
+  - `db-key` 0.0.5→0.1.0: blocked by `leveldb` crate (optional feature only)
+  - `rand`/`rand_chacha` dev-deps in network: blocked by workspace `rand` 0.8
+- All 138/138 EF spec tests pass, lint-full clean
+
 ### 2026-03-08 — upgrade 7 dependencies (run 577)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
