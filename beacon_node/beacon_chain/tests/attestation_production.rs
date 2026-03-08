@@ -86,13 +86,13 @@ async fn produces_attestations_from_attestation_simulator_service() {
     let expected_hit_metrics_count =
         num_blocks_produced - UNAGGREGATED_ATTESTATION_LAG_SLOTS as u64;
     metrics::gather().iter().for_each(|mf| {
-        if hit_prometheus_metrics.contains(&mf.get_name()) {
+        if hit_prometheus_metrics.contains(&mf.name()) {
             assert_eq!(
                 mf.get_metric()[0].get_counter().get_value() as u64,
                 expected_hit_metrics_count
             );
         }
-        if miss_prometheus_metrics.contains(&mf.get_name()) {
+        if miss_prometheus_metrics.contains(&mf.name()) {
             assert_eq!(
                 mf.get_metric()[0].get_counter().get_value() as u64,
                 expected_miss_metrics_count
