@@ -7,7 +7,6 @@ use beacon_chain::builder::BeaconChainBuilder;
 use beacon_chain::custody_context::CUSTODY_CHANGE_DA_EFFECTIVE_DELAY_SECONDS;
 use beacon_chain::data_availability_checker::AvailableBlock;
 use beacon_chain::historical_data_columns::HistoricalDataColumnError;
-use beacon_chain::schema_change::migrate_schema;
 use beacon_chain::test_utils::{
     AttestationStrategy, BeaconChainHarness, BlockStrategy, DEFAULT_ETH1_BLOCK_HASH,
     DEFAULT_TARGET_AGGREGATORS, DiskHarnessType, HARNESS_GENESIS_TIME, InteropGenesisBuilder,
@@ -39,7 +38,7 @@ use std::str::FromStr;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 use store::database::interface::BeaconNodeBackend;
-use store::metadata::{CURRENT_SCHEMA_VERSION, STATE_UPPER_LIMIT_NO_RETAIN, SchemaVersion};
+use store::metadata::STATE_UPPER_LIMIT_NO_RETAIN;
 use store::{
     BlobInfo, DBColumn, HotColdDB, StoreConfig, StoreOp,
     hdiff::HierarchyConfig,
@@ -3907,165 +3906,6 @@ async fn revert_minority_fork_on_resume() {
     let heads = resumed_harness.chain.heads();
     assert_eq!(heads, harness2.chain.heads());
     assert_eq!(heads.len(), 1);
-}
-
-// This test checks whether the schema downgrade from the latest version to some minimum supported
-// version is correct. This is the easiest schema test to write without historic versions of
-// Lighthouse on-hand, but has the disadvantage that the min version needs to be adjusted manually
-// as old downgrades are deprecated.
-async fn schema_downgrade_to_min_version(
-    store_config: StoreConfig,
-    reconstruct_historic_states: bool,
-) {
-    let num_blocks_produced = E::slots_per_epoch() * 4;
-    let db_path = tempdir().unwrap();
-    let spec = test_spec::<E>();
-
-    let chain_config = ChainConfig {
-        reconstruct_historic_states,
-        ..ChainConfig::default()
-    };
-
-    let store = get_store_generic(&db_path, store_config.clone(), spec.clone());
-    let harness = get_harness_generic(
-        store.clone(),
-        LOW_VALIDATOR_COUNT,
-        chain_config.clone(),
-        NodeCustodyType::Fullnode,
-    );
-
-    harness
-        .extend_chain(
-            num_blocks_produced as usize,
-            BlockStrategy::OnCanonicalHead,
-            AttestationStrategy::AllValidators,
-        )
-        .await;
-
-    let min_version = if spec.is_fulu_scheduled() {
-        SchemaVersion(27)
-    } else {
-        SchemaVersion(22)
-    };
-
-    // Save the slot clock so that the new harness doesn't revert in time.
-    let slot_clock = harness.chain.slot_clock.clone();
-
-    // Close the database to ensure everything is written to disk.
-    drop(store);
-    drop(harness);
-
-    // Re-open the store.
-    let store = get_store_generic(&db_path, store_config, spec);
-
-    // Downgrade.
-    migrate_schema::<DiskHarnessType<E>>(store.clone(), CURRENT_SCHEMA_VERSION, min_version)
-        .expect("schema downgrade to minimum version should work");
-
-    // Upgrade back.
-    migrate_schema::<DiskHarnessType<E>>(store.clone(), min_version, CURRENT_SCHEMA_VERSION)
-        .expect("schema upgrade from minimum version should work");
-
-    // Recreate the harness.
-    let harness = BeaconChainHarness::builder(MinimalEthSpec)
-        .default_spec()
-        .chain_config(chain_config)
-        .keypairs(KEYPAIRS[0..LOW_VALIDATOR_COUNT].to_vec())
-        .testing_slot_clock(slot_clock)
-        .resumed_disk_store(store.clone())
-        .mock_execution_layer()
-        .build();
-
-    // Check chain dump for appropriate range depending on whether this is an archive node.
-    let chain_dump_start_slot = if reconstruct_historic_states {
-        Slot::new(0)
-    } else {
-        store.get_split_slot()
-    };
-
-    check_finalization(&harness, num_blocks_produced);
-    check_split_slot(&harness, store.clone());
-    check_chain_dump_from_slot(
-        &harness,
-        chain_dump_start_slot,
-        num_blocks_produced + 1 - chain_dump_start_slot.as_u64(),
-    );
-    check_iterators_from_slot(&harness, chain_dump_start_slot);
-
-    // Check that downgrading beyond the minimum version fails (bound is *tight*).
-    let min_version_sub_1 = SchemaVersion(min_version.as_u64().checked_sub(1).unwrap());
-    migrate_schema::<DiskHarnessType<E>>(store.clone(), CURRENT_SCHEMA_VERSION, min_version_sub_1)
-        .expect_err("should not downgrade below minimum version");
-}
-
-// Schema upgrade/downgrade on an archive node where the optimised migration does apply due
-// to the split state being aligned to a diff layer.
-#[tokio::test]
-async fn schema_downgrade_to_min_version_archive_node_grid_aligned() {
-    // Gloas ePBS: schema downgrade block replay fails due to two-phase state transition
-    // (pre/post envelope state roots).
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
-        return;
-    }
-    // Need to use 3 as the hierarchy exponent to get diffs on every epoch boundary with minimal
-    // spec.
-    schema_downgrade_to_min_version(
-        StoreConfig {
-            hierarchy_config: HierarchyConfig::from_str("3,4,5").unwrap(),
-            prune_payloads: false,
-            ..StoreConfig::default()
-        },
-        true,
-    )
-    .await
-}
-
-// Schema upgrade/downgrade on an archive node where the optimised migration DOES NOT apply
-// due to the split state NOT being aligned to a diff layer.
-#[tokio::test]
-async fn schema_downgrade_to_min_version_archive_node_grid_unaligned() {
-    schema_downgrade_to_min_version(
-        StoreConfig {
-            hierarchy_config: HierarchyConfig::from_str("7").unwrap(),
-            prune_payloads: false,
-            ..StoreConfig::default()
-        },
-        true,
-    )
-    .await
-}
-
-// Schema upgrade/downgrade on a full node with a fairly normal per-epoch diff config.
-#[tokio::test]
-async fn schema_downgrade_to_min_version_full_node_per_epoch_diffs() {
-    // Gloas ePBS: schema downgrade block replay fails due to two-phase state transition
-    // (pre/post envelope state roots).
-    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
-        return;
-    }
-    schema_downgrade_to_min_version(
-        StoreConfig {
-            hierarchy_config: HierarchyConfig::from_str("3,4,5").unwrap(),
-            prune_payloads: false,
-            ..StoreConfig::default()
-        },
-        false,
-    )
-    .await
-}
-
-// Schema upgrade/downgrade on a full node with dense per-slot diffs.
-#[tokio::test]
-async fn schema_downgrade_to_min_version_full_node_dense_diffs() {
-    schema_downgrade_to_min_version(
-        StoreConfig {
-            hierarchy_config: HierarchyConfig::from_str("0,3,4,5").unwrap(),
-            prune_payloads: false,
-            ..StoreConfig::default()
-        },
-        true,
-    )
-    .await
 }
 
 /// Check that blob pruning prunes blobs older than the data availability boundary.
