@@ -420,3 +420,33 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - Deprecated DB column enum variants — harmless, needed for `key_size()` match exhaustiveness
 
 **Verification**: 293/293 proto_array + fork_choice + store tests, 8/8 EF fork choice tests. Full workspace clippy clean (lint-full passed).
+
+### Run 559 — Dead error variants and orphaned schema_change README
+
+**Scope**: Continue dead code cleanup from runs 556-558. Remove never-constructed error enum variants and orphaned documentation.
+
+**Changes**:
+
+1. **proto_array error.rs** — removed 4 never-constructed variants:
+   - `InvalidFinalizedRootChange` — 0 uses
+   - `MissingJustifiedCheckpoint` — 0 uses
+   - `MissingFinalizedCheckpoint` — 0 uses
+   - `UnknownLatestValidAncestorHash` — 0 uses
+
+2. **fork_choice error enum** — removed 2 dead variants:
+   - `InvalidLegacyProtoArrayBytes` — V17 format removed in run 557, variant became dead
+   - `AttemptToRevertJustification` — never constructed
+
+3. **store errors.rs** — removed 3 never-constructed variants:
+   - `RandaoMixOutOfBounds` — 0 uses
+   - `GenesisStateUnknown` — 0 uses
+   - `LoadHotStateSummaryForSplit` — 0 uses
+
+4. **schema_change/README.md** — deleted orphaned README describing the old migration system removed in run 557. The `schema_change.rs` file (identity-check safety function) remains.
+
+**Not changed (intentional)**:
+- `OnDiskStoreConfig` V22 / `HDiff` V0 single-variant superstructs — SSZ union encoding with version byte for forward compatibility (run 558 decision)
+- Deprecated `DBColumn` variants — needed for `key_size()` match exhaustiveness
+- `BeaconChainError` variants — many appear unused but are constructed via `From` impls and `?` operator
+
+**Verification**: 277/277 proto_array + fork_choice tests, 8/8 EF fork choice tests, 16/16 store tests. Full workspace clippy clean (lint-full passed).
