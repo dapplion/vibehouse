@@ -57,7 +57,19 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 **vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when PR merges.
 
+## Upcoming Spec Test PRs (not yet merged)
+
+- **PR #4940** — "Add initial fork choice tests for Gloas": tests `on_execution_payload` (EMPTY→FULL transition), basic head tracking. Our `ForkChoiceHandler` already supports `on_execution_payload` steps and `head_payload_status` checks — ready to pass when merged.
+- **PR #4932** — "Add Gloas sanity/blocks tests with payload attestation coverage": tests `process_payload_attestation` during full block processing. Our `SanityBlocksHandler` runs all forks — ready to pass when merged.
+- **PR #4960** — "Add Gloas fork choice test for new validator deposit": extends fork choice tests with deposit scenarios. Already supported by our handler.
+
 ## Progress log
+
+### 2026-03-08 — reviewed upcoming spec test PRs
+- Checked open Gloas-related spec PRs: #4940 (fork choice), #4932 (sanity/blocks), #4960 (fork choice + deposit)
+- All test formats already supported by our EF test handlers (ForkChoiceHandler, SanityBlocksHandler)
+- PTC Lookbehind (PR #4979) still open, no new changes since last check
+- No Gloas-related spec changes merged since last audit (all recent merges are dep updates/tooling)
 
 ### 2026-03-08 — second scan: two new merged PRs, one upcoming
 - PR #4950 (by_root serve range extension): no code change needed, our handler is compliant
