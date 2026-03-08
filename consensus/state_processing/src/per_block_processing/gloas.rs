@@ -962,7 +962,7 @@ pub fn get_expected_withdrawals_gloas<E: EthSpec>(
 /// for the given `builder_index`.
 ///
 /// Spec: `get_pending_balance_to_withdraw_for_builder`
-pub fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
+pub(crate) fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
     state: &BeaconState<E>,
     builder_index: u64,
 ) -> Result<u64, BeaconStateError> {
@@ -987,7 +987,7 @@ pub fn get_pending_balance_to_withdraw_for_builder<E: EthSpec>(
 /// Does nothing if the builder has already initiated exit.
 ///
 /// Spec: `initiate_builder_exit`
-pub fn initiate_builder_exit<E: EthSpec>(
+pub(crate) fn initiate_builder_exit<E: EthSpec>(
     state: &mut BeaconState<E>,
     builder_index: u64,
     spec: &ChainSpec,
