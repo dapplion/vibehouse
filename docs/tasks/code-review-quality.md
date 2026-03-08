@@ -565,3 +565,36 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - Same items as run 562
 
 **Verification**: 557/557 state_processing tests, 35/35 EF spec tests (epoch processing + operations + sanity). Full workspace lint-full passes.
+
+### Run 564 — Dead error variants in engine_api, BeaconChainError, and BlockProductionError
+
+**Scope**: Continue dead code cleanup across three error enums.
+
+**Changes**:
+
+1. **engine_api::Error** (beacon_node/execution_layer/src/engine_api.rs, 8 variants + 1 import removed):
+   - `RequestFailed(String)` — 0 constructions within execution_layer
+   - `InvalidExecutePayloadResponse(&'static str)` — 0 constructions
+   - `JsonRpc(RpcError)` — 0 constructions (no From<RpcError> impl either)
+   - `ParentHashEqualsBlockHash(ExecutionBlockHash)` — 0 constructions
+   - `DeserializeWithdrawals(ssz_types::Error)` — 0 constructions (SszError variant used instead)
+   - `DeserializeDepositRequests(ssz_types::Error)` — 0 constructions
+   - `DeserializeWithdrawalRequests(ssz_types::Error)` — 0 constructions
+   - `TooManyConsolidationRequests(usize)` — 0 constructions
+   - Removed unused `use http::deposit_methods::RpcError` import
+
+2. **BeaconChainError** (beacon_node/beacon_chain/src/errors.rs, 6 variants removed):
+   - `UnableToAdvanceState(String)` — 0 constructions
+   - `ValidatorPubkeyCacheError(String)` — 0 constructions
+   - `ExecutionLayerGetBlockByHashFailed(Box<execution_layer::Error>)` — 0 constructions
+   - `FinalizedBlockMissingFromForkChoice(Hash256)` — 0 constructions
+   - `UnableToBuildColumnSidecar(String)` — 0 constructions
+   - `ProposerCacheAccessorFailure { decision_block_root, proposal_epoch }` — 0 constructions
+
+3. **BlockProductionError** (same file, 4 variants removed):
+   - `BlockingFailed(execution_layer::Error)` — 0 constructions
+   - `FailedToReadFinalizedBlock(store::Error)` — 0 constructions
+   - `MissingFinalizedBlock(Hash256)` — 0 constructions
+   - `KzgError(kzg::Error)` — 0 constructions
+
+**Verification**: 557/557 state_processing tests, 16/16 store tests, 35/35 EF spec tests. Full workspace lint passes.
