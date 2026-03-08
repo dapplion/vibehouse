@@ -110,7 +110,7 @@ alloy-sol-types = "1"
 anyhow = "1"
 arbitrary = { version = "1", features = ["derive"] }
 async-channel = "2"
-axum = "0.7.7"
+axum = { version = "0.8", features = ["tokio"] }
 beacon_chain = { path = "beacon_node/beacon_chain" }
 beacon_node = { path = "beacon_node" }
 beacon_node_fallback = { path = "validator_client/beacon_node_fallback" }
@@ -259,6 +259,7 @@ tokio = { version = "1", features = [
 ] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tokio-util = { version = "0.7", features = ["codec", "compat", "time"] }
+tower-http = { version = "0.6", features = ["cors", "set-header"] }
 tracing = "0.1.40"
 tracing-appender = "0.2"
 tracing-core = "0.1"

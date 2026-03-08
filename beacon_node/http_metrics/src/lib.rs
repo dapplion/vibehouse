@@ -13,17 +13,20 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
-use warp::{Filter, http::Response};
+
+use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::set_header::SetResponseHeaderLayer;
 
 #[derive(Debug)]
 pub enum Error {
-    Warp(warp::Error),
-    Other(String),
+    Io(#[allow(dead_code)] std::io::Error),
+    Other(#[allow(dead_code)] String),
 }
 
-impl From<warp::Error> for Error {
-    fn from(e: warp::Error) -> Self {
-        Error::Warp(e)
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Io(e)
     }
 }
 
@@ -87,19 +90,6 @@ pub fn serve<T: BeaconChainTypes>(
 ) -> Result<(SocketAddr, impl Future<Output = ()>), Error> {
     let config = &ctx.config;
 
-    // Configure CORS.
-    let cors_builder = {
-        let builder = warp::cors()
-            .allow_method("GET")
-            .allow_headers(vec!["Content-Type"]);
-
-        warp_utils::cors::set_builder_origins(
-            builder,
-            config.allow_origin.as_deref(),
-            (config.listen_addr, config.listen_port),
-        )?
-    };
-
     // Sanity check.
     if !config.enabled {
         crit!("Cannot start disabled metrics HTTP server");
@@ -108,39 +98,34 @@ pub fn serve<T: BeaconChainTypes>(
         ));
     }
 
-    let inner_ctx = ctx.clone();
-    let routes = warp::get()
-        .and(warp::path("metrics"))
-        .map(move || inner_ctx.clone())
-        .and_then(|ctx: Arc<Context<T>>| async move {
-            Ok::<_, warp::Rejection>(
-                metrics::gather_prometheus_metrics(&ctx)
-                    .map(|body| {
-                        Response::builder()
-                            .status(200)
-                            .header("Content-Type", "text/plain")
-                            .body(body)
-                            .unwrap()
-                    })
-                    .unwrap_or_else(|e| {
-                        Response::builder()
-                            .status(500)
-                            .header("Content-Type", "text/plain")
-                            .body(format!("Unable to gather metrics: {:?}", e))
-                            .unwrap()
-                    }),
-            )
-        })
-        // Add a `Server` header.
-        .map(|reply| warp::reply::with_header(reply, "Server", &version_with_platform()))
-        .with(cors_builder.build());
-
-    let (listening_socket, server) = warp::serve(routes).try_bind_with_graceful_shutdown(
-        SocketAddr::new(config.listen_addr, config.listen_port),
-        async {
-            shutdown.await;
-        },
+    // Configure CORS.
+    let cors_layer = build_cors_layer(
+        config.allow_origin.as_deref(),
+        config.listen_addr,
+        config.listen_port,
     )?;
+
+    let app = Router::new()
+        .route("/metrics", get(metrics_handler::<T>))
+        .layer(SetResponseHeaderLayer::overriding(
+            axum::http::header::SERVER,
+            axum::http::HeaderValue::from_str(&version_with_platform())
+                .unwrap_or_else(|_| axum::http::HeaderValue::from_static("vibehouse")),
+        ))
+        .layer(cors_layer)
+        .with_state(ctx.clone());
+
+    let listen_addr = SocketAddr::new(config.listen_addr, config.listen_port);
+    let listener = std::net::TcpListener::bind(listen_addr).map_err(Error::Io)?;
+    listener.set_nonblocking(true).map_err(Error::Io)?;
+    let listening_socket = listener.local_addr().map_err(Error::Io)?;
+
+    let server = async move {
+        let listener = tokio::net::TcpListener::from_std(listener).expect("valid std listener");
+        let _ = axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown)
+            .await;
+    };
 
     info!(
         listen_address = listening_socket.to_string(),
@@ -148,4 +133,50 @@ pub fn serve<T: BeaconChainTypes>(
     );
 
     Ok((listening_socket, server))
+}
+
+async fn metrics_handler<T: BeaconChainTypes>(
+    State(ctx): State<Arc<Context<T>>>,
+) -> impl IntoResponse {
+    match metrics::gather_prometheus_metrics(&ctx) {
+        Ok(body) => (StatusCode::OK, [("Content-Type", "text/plain")], body),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            [("Content-Type", "text/plain")],
+            format!("Unable to gather metrics: {:?}", e),
+        ),
+    }
+}
+
+fn build_cors_layer(
+    allow_origin: Option<&str>,
+    listen_addr: IpAddr,
+    listen_port: u16,
+) -> Result<CorsLayer, String> {
+    let layer = CorsLayer::new()
+        .allow_methods([axum::http::Method::GET])
+        .allow_headers([axum::http::header::CONTENT_TYPE]);
+
+    if let Some(allow_origin) = allow_origin {
+        let origins: Vec<&str> = allow_origin.split(',').collect();
+        if origins.contains(&"*") {
+            Ok(layer.allow_origin(AllowOrigin::any()))
+        } else {
+            let parsed: Result<Vec<axum::http::HeaderValue>, _> = origins
+                .iter()
+                .map(|o| o.trim().parse::<axum::http::HeaderValue>())
+                .collect();
+            let parsed = parsed.map_err(|e| format!("Invalid CORS origin: {e}"))?;
+            Ok(layer.allow_origin(parsed))
+        }
+    } else {
+        let origin = match listen_addr {
+            IpAddr::V4(_) => format!("http://{}:{}", listen_addr, listen_port),
+            IpAddr::V6(_) => format!("http://[{}]:{}", listen_addr, listen_port),
+        };
+        let header_value: axum::http::HeaderValue = origin
+            .parse()
+            .map_err(|e| format!("Invalid default origin: {e}"))?;
+        Ok(layer.allow_origin(header_value))
+    }
 }
