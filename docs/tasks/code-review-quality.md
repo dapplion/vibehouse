@@ -825,3 +825,17 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 - Added local `serde_warp_status_code` module in http_api since warp 0.3 still uses http 0.2 (different StatusCode type from reqwest 0.12's http 1.x)
 - Fixed broadcast_validation_tests to handle dual StatusCode types (warp's http 0.2 for function args, reqwest's http 1.x for response checking)
 - Remaining duplicate deps are all transitive from external crates (ethers, warp, libp2p, criterion) — not fixable without replacing those crates
+
+### Run 596 — strum 0.24 → 0.27, uuid 0.8 → 1.x (2026-03-08)
+
+**Scope**: Upgrade two direct workspace dependencies to eliminate duplicate crate versions.
+
+**Changes**:
+1. `strum` 0.24 → 0.27: renamed deprecated `EnumVariantNames` derive to `VariantNames` in 3 files (database_manager, slasher, beacon_node_fallback). All other strum derives (`AsRefStr`, `IntoStaticStr`, `EnumString`, `Display`, `EnumIter`, `IntoEnumIterator`) unchanged.
+2. `uuid` 0.8 → 1.x: zero code changes needed — `Uuid::new_v4()`, `parse_str()`, `from_u128()` all API-compatible.
+
+**Result**: Lockfile 1039 → 1035 packages (-4). Eliminated strum 0.24 + strum_macros 0.24 + uuid 0.8 duplicates. Remaining duplicates are all transitive (warp http 0.2 stack, libp2p, criterion, etc.).
+
+**Spec status**: stable, no new Gloas merges since run 595. PR #4979 (PTC Lookbehind) still open. PR #4950 (by_root serve range) merged Mar 6 — already assessed as no-change-needed.
+
+**Verification**: 98/98 targeted tests (eth2_keystore, eth2_wallet, eth2_wallet_manager, slasher, database_manager, beacon_node_fallback), full workspace clippy clean, full lint-full clean (pre-push hook).
