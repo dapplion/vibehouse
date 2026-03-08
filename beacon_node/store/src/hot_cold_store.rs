@@ -275,7 +275,7 @@ impl<E: EthSpec> HotColdDB<E, BeaconNodeBackend<E>, BeaconNodeBackend<E>> {
         let hierarchy = config.hierarchy_config.to_moduli()?;
 
         debug!(?hot_path, "Opening database");
-        let hot_db = BeaconNodeBackend::open(&config, hot_path)?;
+        let hot_db = BeaconNodeBackend::open(hot_path)?;
 
         let anchor_info = RwLock::new(Self::load_anchor_info(&hot_db)?);
         debug!(?anchor_info, "Loaded anchor info");
@@ -285,8 +285,8 @@ impl<E: EthSpec> HotColdDB<E, BeaconNodeBackend<E>, BeaconNodeBackend<E>> {
             anchor_info,
             blob_info: RwLock::new(BlobInfo::default()),
             data_column_info: RwLock::new(DataColumnInfo::default()),
-            blobs_db: BeaconNodeBackend::open(&config, blobs_db_path)?,
-            cold_db: BeaconNodeBackend::open(&config, cold_path)?,
+            blobs_db: BeaconNodeBackend::open(blobs_db_path)?,
+            cold_db: BeaconNodeBackend::open(cold_path)?,
             hot_db,
             block_cache: NonZeroUsize::new(config.block_cache_size)
                 .map(BlockCache::new)

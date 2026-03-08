@@ -1,6 +1,6 @@
+use crate::KeyValueStoreOp;
 use crate::database::redb_impl;
 use crate::{ColumnIter, ColumnKeyIter, DBColumn, Error, ItemStore, Key, KeyValueStore, metrics};
-use crate::{KeyValueStoreOp, StoreConfig};
 use std::collections::HashSet;
 use std::path::Path;
 use types::EthSpec;
@@ -78,8 +78,7 @@ impl<E: EthSpec> KeyValueStore<E> for BeaconNodeBackend<E> {
 }
 
 impl<E: EthSpec> BeaconNodeBackend<E> {
-    pub fn open(config: &StoreConfig, path: &Path) -> Result<Self, Error> {
-        let _ = config; // backend field removed, always redb
+    pub fn open(path: &Path) -> Result<Self, Error> {
         metrics::inc_counter_vec(&metrics::DISK_DB_TYPE, &["redb"]);
         redb_impl::Redb::open(path).map(BeaconNodeBackend)
     }

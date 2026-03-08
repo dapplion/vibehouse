@@ -6,12 +6,9 @@ use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
-use strum::{Display, EnumString, EnumVariantNames};
 use types::EthSpec;
 use types::non_zero_usize::new_non_zero_usize;
 use zstd::{Decoder, Encoder};
-
-pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Redb;
 
 pub const PREV_DEFAULT_SLOTS_PER_RESTORE_POINT: u64 = 2048;
 pub const DEFAULT_SLOTS_PER_RESTORE_POINT: u64 = 8192;
@@ -50,8 +47,6 @@ pub struct StoreConfig {
     pub compact_on_prune: bool,
     /// Whether to prune payloads on initialization and finalization.
     pub prune_payloads: bool,
-    /// Database backend to use.
-    pub backend: DatabaseBackend,
     /// State diff hierarchy.
     pub hierarchy_config: HierarchyConfig,
     /// Whether to prune blobs older than the blob data availability boundary.
@@ -112,7 +107,6 @@ impl Default for StoreConfig {
             compact_on_init: false,
             compact_on_prune: true,
             prune_payloads: true,
-            backend: DEFAULT_BACKEND,
             hierarchy_config: HierarchyConfig::default(),
             prune_blobs: true,
             epochs_per_blob_prune: DEFAULT_EPOCHS_PER_BLOB_PRUNE,
@@ -261,12 +255,4 @@ mod test {
         let config_out = OnDiskStoreConfig::from_store_bytes(&bytes).unwrap();
         assert_eq!(config_out, config);
     }
-}
-
-#[derive(
-    Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Display, EnumString, EnumVariantNames,
-)]
-#[strum(serialize_all = "lowercase")]
-pub enum DatabaseBackend {
-    Redb,
 }

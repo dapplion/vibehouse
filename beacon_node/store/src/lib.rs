@@ -519,7 +519,7 @@ mod tests {
     fn simplediskdb() {
         let dir = tempdir().unwrap();
         let path = dir.path();
-        let store = BeaconNodeBackend::open(&StoreConfig::default(), path).unwrap();
+        let store = BeaconNodeBackend::open(path).unwrap();
 
         test_impl(store);
     }
@@ -559,7 +559,7 @@ mod tests {
         let dir = tempdir().unwrap();
         // Leak the dir so it doesn't get cleaned up while the store is open.
         let path = Box::leak(Box::new(dir)).path().to_path_buf();
-        BeaconNodeBackend::open(&StoreConfig::default(), &path).unwrap()
+        BeaconNodeBackend::open(&path).unwrap()
     }
 
     #[test]

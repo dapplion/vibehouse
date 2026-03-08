@@ -1638,15 +1638,6 @@ pub fn cli_app() -> Command {
                 .display_order(0)
         )
         .arg(
-            Arg::new("beacon-node-backend")
-                .long("beacon-node-backend")
-                .value_name("DATABASE")
-                .value_parser(store::config::DatabaseBackend::VARIANTS.to_vec())
-                .help("Set the database backend to be used by the beacon node.")
-                .action(ArgAction::Set)
-                .display_order(0)
-        )
-        .arg(
             Arg::new("delay-block-publishing")
                 .long("delay-block-publishing")
                 .value_name("SECONDS")
