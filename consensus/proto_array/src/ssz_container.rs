@@ -1,7 +1,7 @@
 use crate::proto_array::ProposerBoost;
 use crate::{
     Error, JustifiedBalances,
-    proto_array::{ProtoArray, ProtoNodeV17},
+    proto_array::{ProtoArray, ProtoNode},
     proto_array_fork_choice::{ElasticList, ProtoArrayForkChoice, VoteTracker},
 };
 use ssz_derive::{Decode, Encode};
@@ -14,7 +14,7 @@ pub struct SszContainer {
     pub prune_threshold: usize,
     pub justified_checkpoint: Checkpoint,
     pub finalized_checkpoint: Checkpoint,
-    pub nodes: Vec<ProtoNodeV17>,
+    pub nodes: Vec<ProtoNode>,
     pub indices: Vec<(Hash256, usize)>,
     pub previous_proposer_boost: ProposerBoost,
 }

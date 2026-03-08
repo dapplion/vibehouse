@@ -8146,7 +8146,6 @@ dependencies = [
  "safe_arith",
  "serde",
  "serde_yaml",
- "superstruct",
  "types",
 ]
 

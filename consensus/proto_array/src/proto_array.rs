@@ -5,7 +5,6 @@ use ssz::Encode;
 use ssz::four_byte_option_impl;
 use ssz_derive::{Decode, Encode};
 use std::collections::{HashMap, HashSet};
-use superstruct::superstruct;
 use types::{
     AttestationShufflingId, BuilderIndex, ChainSpec, Checkpoint, Epoch, EthSpec,
     ExecutionBlockHash, FixedBytesExtended, Hash256, Slot,
@@ -68,13 +67,7 @@ impl InvalidationOperation {
     }
 }
 
-pub type ProtoNode = ProtoNodeV17;
-
-#[superstruct(
-    variants(V17),
-    variant_attributes(derive(Clone, PartialEq, Debug, Encode, Decode, Serialize, Deserialize)),
-    no_enum
-)]
+#[derive(Clone, PartialEq, Debug, Encode, Decode, Serialize, Deserialize)]
 pub struct ProtoNode {
     /// The `slot` is not necessary for `ProtoArray`, it just exists so external components can
     /// easily query the block slot. This is useful for upstream fork choice logic.
@@ -93,9 +86,7 @@ pub struct ProtoNode {
     pub root: Hash256,
     #[ssz(with = "four_byte_option_usize")]
     pub parent: Option<usize>,
-    #[superstruct(only(V17))]
     pub justified_checkpoint: Checkpoint,
-    #[superstruct(only(V17))]
     pub finalized_checkpoint: Checkpoint,
     pub weight: u64,
     #[ssz(with = "four_byte_option_usize")]
