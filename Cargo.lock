@@ -667,17 +667,6 @@ dependencies = [
 
 [[package]]
 name = "async-channel"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81953c529336010edd6d8e358f886d9581267795c61b19475b71314bffa46d35"
-dependencies = [
- "concurrent-queue",
- "event-listener 2.5.3",
- "futures-core",
-]
-
-[[package]]
-name = "async-channel"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "924ed96dd52d1b75e9c1a3e6275715fd320f5f9439fb5a4a11fa51f4221158d2"
@@ -3080,7 +3069,7 @@ dependencies = [
 name = "environment"
 version = "0.1.2"
 dependencies = [
- "async-channel 1.9.0",
+ "async-channel",
  "clap",
  "ctrlc",
  "eth2_config",
@@ -3513,12 +3502,6 @@ dependencies = [
 
 [[package]]
 name = "event-listener"
-version = "2.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
-
-[[package]]
-name = "event-listener"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13b66accf52311f30a0db42147dadea9850cb48cd070028831ae5f5d4b856ab"
@@ -3534,7 +3517,7 @@ version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
- "event-listener 5.4.1",
+ "event-listener",
  "pin-project-lite",
 ]
 
@@ -3553,7 +3536,7 @@ dependencies = [
 name = "execution_engine_integration"
 version = "0.1.0"
 dependencies = [
- "async-channel 1.9.0",
+ "async-channel",
  "deposit_contract",
  "ethers-core",
  "ethers-middleware",
@@ -5470,7 +5453,7 @@ name = "libp2p-gossipsub"
 version = "0.50.0"
 source = "git+https://github.com/sigp/rust-libp2p.git?rev=5acdf89a65d64098f9346efa5769e57bcd19dea9#5acdf89a65d64098f9346efa5769e57bcd19dea9"
 dependencies = [
- "async-channel 2.5.0",
+ "async-channel",
  "asynchronous-codec",
  "base64 0.22.1",
  "byteorder",
@@ -5836,7 +5819,7 @@ name = "lighthouse_network"
 version = "0.2.0"
 dependencies = [
  "alloy-rlp",
- "async-channel 1.9.0",
+ "async-channel",
  "delay_map",
  "directory",
  "dirs 3.0.2",
@@ -6507,7 +6490,7 @@ version = "0.2.0"
 dependencies = [
  "alloy-rlp",
  "anyhow",
- "async-channel 1.9.0",
+ "async-channel",
  "beacon_chain",
  "beacon_processor",
  "bls",
@@ -10417,7 +10400,7 @@ dependencies = [
 name = "task_executor"
 version = "0.1.0"
 dependencies = [
- "async-channel 1.9.0",
+ "async-channel",
  "futures",
  "metrics",
  "num_cpus",
@@ -11776,7 +11759,7 @@ name = "web3signer_tests"
 version = "0.1.0"
 dependencies = [
  "account_utils",
- "async-channel 1.9.0",
+ "async-channel",
  "environment",
  "eth2",
  "eth2_keystore",

@@ -104,7 +104,7 @@ alloy-primitives = { version = "1.0", features = ["rlp", "getrandom"] }
 alloy-rlp = "0.3.4"
 anyhow = "1"
 arbitrary = { version = "1", features = ["derive"] }
-async-channel = "1.9.0"
+async-channel = "2"
 axum = "0.7.7"
 beacon_chain = { path = "beacon_node/beacon_chain" }
 beacon_node = { path = "beacon_node" }
