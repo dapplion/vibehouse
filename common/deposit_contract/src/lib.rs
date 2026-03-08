@@ -1,24 +1,10 @@
-use ethabi::{Contract, Token};
+use alloy_sol_types::{SolCall, sol};
 use ssz::{Decode, DecodeError as SszDecodeError, Encode};
 use tree_hash::TreeHash;
 use types::{DepositData, Hash256, PublicKeyBytes, SignatureBytes};
 
-pub use ethabi::Error;
-
-#[derive(Debug)]
-pub enum DecodeError {
-    EthabiError(ethabi::Error),
-    SszDecodeError(SszDecodeError),
-    MissingField,
-    UnableToGetBytes,
-    MissingToken,
-    InadequateBytes,
-}
-
-impl From<ethabi::Error> for DecodeError {
-    fn from(e: ethabi::Error) -> DecodeError {
-        DecodeError::EthabiError(e)
-    }
+sol! {
+    function deposit(bytes pubkey, bytes withdrawal_credentials, bytes signature, bytes32 deposit_data_root);
 }
 
 pub const CONTRACT_DEPLOY_GAS: usize = 4_000_000;
@@ -34,49 +20,43 @@ pub mod testnet {
         include_bytes!("../contracts/v0.12.1_testnet_validator_registration.bytecode");
 }
 
-pub fn encode_eth1_tx_data(deposit_data: &DepositData) -> Result<Vec<u8>, Error> {
-    let params = vec![
-        Token::Bytes(deposit_data.pubkey.as_ssz_bytes()),
-        Token::Bytes(deposit_data.withdrawal_credentials.as_ssz_bytes()),
-        Token::Bytes(deposit_data.signature.as_ssz_bytes()),
-        Token::FixedBytes(deposit_data.tree_hash_root().as_ssz_bytes()),
-    ];
-
-    // Here we make an assumption that the `crate::testnet::ABI` has a superset of the features of
-    // the crate::ABI`.
-    let abi = Contract::load(ABI)?;
-    let function = abi.function("deposit")?;
-    function.encode_input(&params)
+#[derive(Debug)]
+pub enum Error {
+    AlloyError(alloy_sol_types::Error),
+    SszDecodeError(SszDecodeError),
+    MissingField,
+    InadequateBytes,
 }
 
-pub fn decode_eth1_tx_data(
-    bytes: &[u8],
-    amount: u64,
-) -> Result<(DepositData, Hash256), DecodeError> {
-    let abi = Contract::load(ABI)?;
-    let function = abi.function("deposit")?;
-    let mut tokens = function.decode_input(bytes.get(4..).ok_or(DecodeError::InadequateBytes)?)?;
-
-    macro_rules! decode_token {
-        ($type: ty, $to_fn: ident) => {
-            <$type>::from_ssz_bytes(
-                &tokens
-                    .pop()
-                    .ok_or_else(|| DecodeError::MissingToken)?
-                    .$to_fn()
-                    .ok_or_else(|| DecodeError::UnableToGetBytes)?,
-            )
-            .map_err(DecodeError::SszDecodeError)?
-        };
+impl From<alloy_sol_types::Error> for Error {
+    fn from(e: alloy_sol_types::Error) -> Error {
+        Error::AlloyError(e)
     }
+}
 
-    let root = decode_token!(Hash256, into_fixed_bytes);
+pub fn encode_eth1_tx_data(deposit_data: &DepositData) -> Result<Vec<u8>, Error> {
+    let call = depositCall {
+        pubkey: deposit_data.pubkey.as_ssz_bytes().into(),
+        withdrawal_credentials: deposit_data.withdrawal_credentials.as_ssz_bytes().into(),
+        signature: deposit_data.signature.as_ssz_bytes().into(),
+        deposit_data_root: deposit_data.tree_hash_root().0.into(),
+    };
+    Ok(call.abi_encode())
+}
+
+pub fn decode_eth1_tx_data(bytes: &[u8], amount: u64) -> Result<(DepositData, Hash256), Error> {
+    let call = depositCall::abi_decode_raw(bytes.get(4..).ok_or(Error::InadequateBytes)?)
+        .map_err(Error::AlloyError)?;
+
+    let root = Hash256::from_slice(call.deposit_data_root.as_slice());
 
     let deposit_data = DepositData {
         amount,
-        signature: decode_token!(SignatureBytes, into_bytes),
-        withdrawal_credentials: decode_token!(Hash256, into_bytes),
-        pubkey: decode_token!(PublicKeyBytes, into_bytes),
+        signature: SignatureBytes::from_ssz_bytes(&call.signature)
+            .map_err(Error::SszDecodeError)?,
+        withdrawal_credentials: Hash256::from_ssz_bytes(&call.withdrawal_credentials)
+            .map_err(Error::SszDecodeError)?,
+        pubkey: PublicKeyBytes::from_ssz_bytes(&call.pubkey).map_err(Error::SszDecodeError)?,
     };
 
     Ok((deposit_data, root))

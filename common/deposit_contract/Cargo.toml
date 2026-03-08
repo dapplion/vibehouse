@@ -7,7 +7,7 @@ edition = { workspace = true }
 build = "build.rs"
 
 [dependencies]
-ethabi = "18.0.0"
+alloy-sol-types = { workspace = true }
 ethereum_ssz = { workspace = true }
 tree_hash = { workspace = true }
 types = { workspace = true }

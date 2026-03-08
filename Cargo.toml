@@ -106,6 +106,7 @@ alloy-provider = { version = "1", default-features = false, features = ["reqwest
 alloy-rlp = "0.3.4"
 alloy-rpc-types = { version = "1", default-features = false, features = ["eth"] }
 alloy-signer-local = "1"
+alloy-sol-types = "1"
 anyhow = "1"
 arbitrary = { version = "1", features = ["derive"] }
 async-channel = "2"
