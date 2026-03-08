@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — upgrade RustCrypto suite + sha2 (run 576)
+- v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests latest: v1.5.0)
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
+- **Upgraded RustCrypto suite in eth2_keystore**: aes 0.7→0.8, hmac 0.11→0.12, pbkdf2 0.8→0.12, scrypt 0.7→0.11
+  - Added `ctr` 0.9 crate (CTR mode split from aes in 0.8): `Aes128Ctr` → `Ctr128BE<Aes128>`
+  - `NewCipher` → `KeyIvInit`, `GenericArray::from_slice` → `new_from_slices`
+  - `ScryptParams::new` now takes output length parameter
+  - `pbkdf2()` now returns `Result` (was infallible)
+  - `NewMac` removed from hmac (methods moved to `Mac` trait)
+- **Upgraded workspace sha2 0.9 → 0.10**: eliminates sha2 0.9 duplicate (was 3 versions, now 2)
+- All 33 eth2_keystore tests pass (including EIP-2335 reference vectors), full workspace clippy clean
+- CI: lint-full clean on push
+
 ### 2026-03-08 — upgrade redb 2.x to 3.1.0 (run 575)
 - v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests latest: v1.5.0)
 - All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
