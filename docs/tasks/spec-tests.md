@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — switch default DB to redb, unblock dep updates (run 572)
+- v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests latest: v1.6.0-beta.0)
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960 (test PRs), #4898, #4954, #4843, #4840
+- **Switched default DB backend from leveldb to redb** — eliminates C/C++ leveldb-sys dependency that blocked cc/cmake updates
+  - Root cause: cc >= 1.2.31 emits `-w` flag → leaks into CMAKE_CXX_FLAGS → breaks leveldb's -Wthread-safety feature detection on GCC
+  - Fix: redb (pure Rust) as default, leveldb remains as optional `beacon-node-leveldb` feature
+  - Also fixed redb not creating database directory on open (caused 2 overflow_lru_cache test failures)
+  - Updated: cc 1.2.30→1.2.56, cmake 0.1.54→0.1.57
+- **Tests**: 16/16 store, 1549/1549 consensus, 767/767 beacon_chain (gloas), 138/138 EF spec (fake_crypto), lint-full clean
+- Zero clippy warnings, zero compiler warnings
+
 ### 2026-03-08 — spec check + cleanup (run 570)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - PTC Lookbehind PR #4979 still OPEN (last updated Mar 7)
