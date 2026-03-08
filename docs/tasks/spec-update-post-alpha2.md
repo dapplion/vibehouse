@@ -32,7 +32,37 @@ Implement Gloas spec changes merged to consensus-specs master after v1.7.0-alpha
 ### 7. Config removals
 - Not blocking: vibehouse already uses `SLOT_DURATION_MS`, doesn't implement Heze forks
 
+### 8. ExecutionPayloadEnvelopesByRoot serve range (PR #4950, merged Mar 6)
+- Extends required serve range from "since latest finalized epoch" to `[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+- Our handler (`rpc_methods.rs:519`) serves whatever is in the store, skips missing — compliant via MAY clause
+- Blinded envelopes are never pruned, full payloads are pruned but only for finalized blocks well within the range
+- No code change needed
+
+### 9. Pre-fork proposer_preferences subscription (PR #4947, merged Feb 26)
+- Documentation note: nodes SHOULD subscribe to `proposer_preferences` topic ≥1 epoch before fork activation
+- Already implemented: `PRE_FORK_SUBSCRIBE_EPOCHS=1` in `network/src/service.rs`
+- No code change needed
+
+## Upcoming: PTC Lookbehind (PR #4979, OPEN — not yet merged)
+
+Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` to BeaconState to cache PTC committees for previous + current epochs. Fixes a real bug: when processing payload attestations at epoch boundaries (e.g., slot 32 validating PTC of slot 31), effective balance changes from epoch processing can cause `get_ptc` to return a different committee than what was valid when the attestation was created.
+
+**Changes required when merged:**
+1. New BeaconState field: `ptc_lookbehind` (Vector of Vectors, ~256KB)
+2. New helper: `compute_ptc` (current `get_ptc` logic extracted)
+3. Refactored `get_ptc`: lookup from cache for prev/current epoch, compute on demand for next epoch
+4. New epoch processing: `process_ptc_lookbehind` — shift window and pre-compute next epoch
+5. Fork upgrade: `upgrade_to_gloas` initializes `ptc_lookbehind` via `initialize_ptc_lookbehind`
+6. New spec tests: `test_process_ptc_lookbehind`, `test_get_ptc_assignment` variants
+
+**vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when PR merges.
+
 ## Progress log
+
+### 2026-03-08 — second scan: two new merged PRs, one upcoming
+- PR #4950 (by_root serve range extension): no code change needed, our handler is compliant
+- PR #4947 (pre-fork proposer_preferences subscription): already implemented
+- PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
 ### 2026-03-08 — audit found all changes already implemented
 - Compared consensus-specs master against v1.7.0-alpha.2 tag

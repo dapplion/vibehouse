@@ -9,6 +9,8 @@ jobs:
   check:
     name: check for new spec test releases
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - uses: actions/checkout@v5
 
@@ -16,7 +18,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CURRENT=$(grep 'CONSENSUS_SPECS_TEST_VERSION' testing/ef_tests/Makefile | head -1 | sed 's/.*?= //')
+          CURRENT=$(grep '^CONSENSUS_SPECS_TEST_VERSION' testing/ef_tests/Makefile | sed 's/.*?= //')
           echo "Current pinned version: $CURRENT"
 
           LATEST=$(gh api repos/ethereum/consensus-specs/releases --jq '.[0].tag_name')
