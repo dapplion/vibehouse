@@ -3921,7 +3921,6 @@ dependencies = [
  "proto_array",
  "state_processing",
  "store",
- "superstruct",
  "tokio",
  "tracing",
  "types",
@@ -6181,7 +6180,6 @@ dependencies = [
  "chrono",
  "logroller",
  "metrics",
- "serde",
  "serde_json",
  "tokio",
  "tracing",
@@ -9653,7 +9651,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "tracing",
  "types",
 ]
 
@@ -10386,7 +10383,6 @@ dependencies = [
  "safe_arith",
  "smallvec",
  "ssz_types",
- "swap_or_not_shuffle",
  "test_random_derive",
  "tokio",
  "tracing",
