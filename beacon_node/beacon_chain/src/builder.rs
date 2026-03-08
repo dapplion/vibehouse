@@ -285,13 +285,6 @@ where
                 .get_item::<PersistedOperationPool<E>>(&OP_POOL_DB_KEY)
                 .map_err(|e| format!("DB error whilst reading persisted op pool: {:?}", e))?
                 .map(PersistedOperationPool::into_operation_pool)
-                .transpose()
-                .map_err(|e| {
-                    format!(
-                        "Error while creating the op pool from the persisted op pool: {:?}",
-                        e
-                    )
-                })?
                 .unwrap_or_else(OperationPool::new),
         );
 

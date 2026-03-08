@@ -142,7 +142,6 @@ fn check_op_pool(store: &Store<E>) {
         .get_item::<PersistedOperationPool<E>>(&Hash256::ZERO)
         .unwrap()
         .unwrap();
-    assert!(matches!(op_pool, PersistedOperationPool::V20(_)));
     assert_eq!(op_pool.ssz_bytes_len(), 28);
     assert_eq!(op_pool.as_store_bytes().len(), 28);
 }

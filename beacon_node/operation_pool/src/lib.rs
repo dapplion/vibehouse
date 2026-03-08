@@ -12,9 +12,7 @@ pub use crate::bls_to_execution_changes::ReceivedPreCapella;
 pub use attestation::{AttMaxCover, PROPOSER_REWARD_DENOMINATOR, earliest_attestation_validators};
 pub use attestation_storage::{CompactAttestationRef, SplitAttestation};
 pub use max_cover::MaxCover;
-pub use persistence::{
-    PersistedOperationPool, PersistedOperationPoolV15, PersistedOperationPoolV20,
-};
+pub use persistence::PersistedOperationPool;
 pub use reward_cache::RewardCache;
 use state_processing::epoch_cache::is_epoch_cache_initialized;
 use types::EpochCacheError;
@@ -75,7 +73,6 @@ pub enum OpPoolError {
     RewardCacheWrongEpoch,
     RewardCacheValidatorUnknown(BeaconStateError),
     RewardCacheOutOfBounds,
-    IncorrectOpPoolVariant,
     EpochCacheNotInitialized,
     EpochCacheError(EpochCacheError),
 }

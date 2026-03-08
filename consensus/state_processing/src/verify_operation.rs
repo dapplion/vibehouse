@@ -16,9 +16,9 @@ use ssz_derive::{Decode, Encode};
 use std::marker::PhantomData;
 use test_random_derive::TestRandom;
 use types::{
-    AttesterSlashing, AttesterSlashingBase, AttesterSlashingOnDisk, AttesterSlashingRefOnDisk,
-    BeaconState, ChainSpec, Epoch, EthSpec, Fork, ForkVersion, ProposerSlashing,
-    SignedBlsToExecutionChange, SignedVoluntaryExit, test_utils::TestRandom,
+    AttesterSlashing, AttesterSlashingOnDisk, AttesterSlashingRefOnDisk, BeaconState, ChainSpec,
+    Epoch, EthSpec, Fork, ForkVersion, ProposerSlashing, SignedBlsToExecutionChange,
+    SignedVoluntaryExit, test_utils::TestRandom,
 };
 
 const MAX_FORKS_VERIFIED_AGAINST: usize = 2;
@@ -348,49 +348,6 @@ impl<E: EthSpec> TransformPersist for AttesterSlashing<E> {
 
     fn from_persistable(persistable: Self::Persistable) -> Self {
         persistable.into()
-    }
-}
-
-// TODO: Remove this once we no longer support DB schema version 17
-impl<E: EthSpec> TransformPersist for types::AttesterSlashingBase<E> {
-    type Persistable = Self;
-    type PersistableRef<'a> = &'a Self;
-
-    fn as_persistable_ref(&self) -> Self::PersistableRef<'_> {
-        self
-    }
-
-    fn from_persistable(persistable: Self::Persistable) -> Self {
-        persistable
-    }
-}
-// TODO: Remove this once we no longer support DB schema version 17
-impl<E: EthSpec> From<SigVerifiedOp<AttesterSlashingBase<E>, E>>
-    for SigVerifiedOp<AttesterSlashing<E>, E>
-{
-    fn from(base: SigVerifiedOp<AttesterSlashingBase<E>, E>) -> Self {
-        SigVerifiedOp {
-            op: AttesterSlashing::Base(base.op),
-            verified_against: base.verified_against,
-            _phantom: PhantomData,
-        }
-    }
-}
-// TODO: Remove this once we no longer support DB schema version 17
-impl<E: EthSpec> TryFrom<SigVerifiedOp<AttesterSlashing<E>, E>>
-    for SigVerifiedOp<AttesterSlashingBase<E>, E>
-{
-    type Error = String;
-
-    fn try_from(slashing: SigVerifiedOp<AttesterSlashing<E>, E>) -> Result<Self, Self::Error> {
-        match slashing.op {
-            AttesterSlashing::Base(base) => Ok(SigVerifiedOp {
-                op: base,
-                verified_against: slashing.verified_against,
-                _phantom: PhantomData,
-            }),
-            AttesterSlashing::Electra(_) => Err("non-base attester slashing".to_string()),
-        }
     }
 }
 
