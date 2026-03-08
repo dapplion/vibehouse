@@ -94,6 +94,16 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 590)
+- Checked consensus-specs: no new Gloas PRs merged since run 589 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open (updated Mar 7).
+- Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Dependency upgrade shipped**: zip 0.6 → 2.x: eliminated duplicate zstd (was pulling in both 0.11.2 and 0.13.3). API was drop-in compatible — only used for ZipArchive read in build.rs and web3signer tests.
+- **Dependency audit**: 150 duplicate dependency versions remain (down from 158 at start of run 589). Remaining duplicates are all transitive (reqwest 0.11 vs 0.12, rustls 0.21/0.22/0.23, hyper 0.14 vs 1.x, ethers→auto_impl 0.5, etc.). None actionable without major rewrites (reqwest→0.12 would be the highest-impact but requires hyper 0.14→1.x migration).
+- **Codebase audit**: zero clippy warnings, zero compiler warnings, zero dead code in Gloas-specific code, all `#[allow(dead_code)]` annotations justified (error Debug fields, platform-specific code, test infrastructure).
+- **CI status**: run 589 push still in progress (all 6 jobs running). Nightly tests: 5 consecutive successes.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 589)
 - Checked consensus-specs: no new Gloas PRs merged since run 588 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open.
 - Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
