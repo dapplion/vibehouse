@@ -94,6 +94,18 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 589)
+- Checked consensus-specs: no new Gloas PRs merged since run 588 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open.
+- Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Dependency upgrades shipped**:
+  - alloy-consensus 0.14 → 1.7: eliminated duplicate alloy-trie (was pulling in both 0.8.1 and 0.9.4). API was drop-in compatible — only used in `versioned_hashes.rs` for `TxEnvelope` decoding.
+  - async-channel 1.9 → 2.x: only used in `environment` crate for shutdown signal channel. Drop-in compatible.
+- **Dependency audit**: 158 duplicate dependency versions remain, all transitive (criterion→itertools 0.10, bindgen→itertools 0.12, blstrs→rand_xorshift 0.3, reqwest 0.11 vs 0.12 across many crates, ethers→uuid 0.8, etc.). None actionable without major rewrites.
+- **Security audit**: cargo-audit shows same rsa RUSTSEC-2023-0071 (not applicable — transitive dep via jsonwebtoken, we use HS256).
+- **CI status**: previous push green. Workspace tests 2602/2610 pass (8 web3signer timeouts — pre-existing infrastructure issue).
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 585)
 - Checked consensus-specs: no new Gloas PRs merged since run 584 (v1.7.0-alpha.2 still latest release, no new releases). No Gloas spec file changes in the last week — all recent merges are infrastructure/tooling.
 - Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
