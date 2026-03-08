@@ -556,4 +556,298 @@ mod tests {
         let col = get_col_from_key(&key).unwrap();
         assert_eq!(col, "blk");
     }
+
+    fn open_disk_store() -> BeaconNodeBackend<MinimalEthSpec> {
+        let dir = tempdir().unwrap();
+        // Leak the dir so it doesn't get cleaned up while the store is open.
+        let path = Box::leak(Box::new(dir)).path().to_path_buf();
+        BeaconNodeBackend::open(&StoreConfig::default(), &path).unwrap()
+    }
+
+    #[test]
+    fn disk_overwrite_value() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key = &[1u8; 32];
+
+        store.put_bytes(col, key, b"first").unwrap();
+        assert_eq!(store.get_bytes(col, key).unwrap().unwrap(), b"first");
+
+        store.put_bytes(col, key, b"second").unwrap();
+        assert_eq!(store.get_bytes(col, key).unwrap().unwrap(), b"second");
+    }
+
+    #[test]
+    fn disk_do_atomically_commits_all() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key_a = [2u8; 32];
+        let key_b = [3u8; 32];
+
+        let ops = vec![
+            KeyValueStoreOp::PutKeyValue(col, key_a.to_vec(), b"val_a".to_vec()),
+            KeyValueStoreOp::PutKeyValue(col, key_b.to_vec(), b"val_b".to_vec()),
+        ];
+        store.do_atomically(ops).unwrap();
+
+        assert_eq!(store.get_bytes(col, &key_a).unwrap().unwrap(), b"val_a");
+        assert_eq!(store.get_bytes(col, &key_b).unwrap().unwrap(), b"val_b");
+    }
+
+    #[test]
+    fn disk_do_atomically_with_deletes() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key_a = [4u8; 32];
+        let key_b = [5u8; 32];
+
+        store.put_bytes(col, &key_a, b"val_a").unwrap();
+        store.put_bytes(col, &key_b, b"val_b").unwrap();
+
+        let ops = vec![
+            KeyValueStoreOp::DeleteKey(col, key_a.to_vec()),
+            KeyValueStoreOp::PutKeyValue(col, key_b.to_vec(), b"val_b_updated".to_vec()),
+        ];
+        store.do_atomically(ops).unwrap();
+
+        assert!(store.get_bytes(col, &key_a).unwrap().is_none());
+        assert_eq!(
+            store.get_bytes(col, &key_b).unwrap().unwrap(),
+            b"val_b_updated"
+        );
+    }
+
+    #[test]
+    fn disk_delete_batch() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key_a = [6u8; 32];
+        let key_b = [7u8; 32];
+        let key_c = [8u8; 32];
+
+        store.put_bytes(col, &key_a, b"a").unwrap();
+        store.put_bytes(col, &key_b, b"b").unwrap();
+        store.put_bytes(col, &key_c, b"c").unwrap();
+
+        let to_delete: HashSet<&[u8]> = HashSet::from([key_a.as_slice(), key_c.as_slice()]);
+        store.delete_batch(col, to_delete).unwrap();
+
+        assert!(store.get_bytes(col, &key_a).unwrap().is_none());
+        assert_eq!(store.get_bytes(col, &key_b).unwrap().unwrap(), b"b");
+        assert!(store.get_bytes(col, &key_c).unwrap().is_none());
+    }
+
+    #[test]
+    fn disk_delete_if() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key_a = [9u8; 32];
+        let key_b = [10u8; 32];
+
+        store.put_bytes(col, &key_a, b"delete_me").unwrap();
+        store.put_bytes(col, &key_b, b"keep_me").unwrap();
+
+        store
+            .delete_if(col, |value| Ok(value == b"delete_me"))
+            .unwrap();
+
+        assert!(store.get_bytes(col, &key_a).unwrap().is_none());
+        assert_eq!(store.get_bytes(col, &key_b).unwrap().unwrap(), b"keep_me");
+    }
+
+    #[test]
+    fn disk_iter_column() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+
+        let mut keys: Vec<[u8; 32]> = (0..5)
+            .map(|i| {
+                let mut k = [0u8; 32];
+                k[0] = i;
+                k
+            })
+            .collect();
+        keys.sort();
+
+        for k in &keys {
+            store.put_bytes(col, k, &[k[0]]).unwrap();
+        }
+
+        let items: Vec<(Hash256, Vec<u8>)> = store
+            .iter_column::<Hash256>(col)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        assert!(items.len() >= 5);
+        for k in &keys {
+            let hash = Hash256::from_slice(k);
+            assert!(items.iter().any(|(h, v)| *h == hash && v == &[k[0]]));
+        }
+    }
+
+    #[test]
+    fn disk_iter_column_from() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+
+        let keys: Vec<[u8; 32]> = (0u8..5)
+            .map(|i| {
+                let mut k = [0u8; 32];
+                k[0] = 100 + i;
+                k
+            })
+            .collect();
+
+        for k in &keys {
+            store.put_bytes(col, k, &[k[0]]).unwrap();
+        }
+
+        // Iterate from key with first byte 102 — should get keys 102, 103, 104
+        let from = {
+            let mut k = [0u8; 32];
+            k[0] = 102;
+            k
+        };
+        let items: Vec<(Hash256, Vec<u8>)> = store
+            .iter_column_from::<Hash256>(col, &from)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        assert!(items.len() >= 3);
+        for expected_first_byte in [102u8, 103, 104] {
+            let mut expected_key = [0u8; 32];
+            expected_key[0] = expected_first_byte;
+            let hash = Hash256::from_slice(&expected_key);
+            assert!(
+                items.iter().any(|(h, _)| *h == hash),
+                "missing key starting with {expected_first_byte}"
+            );
+        }
+    }
+
+    #[test]
+    fn disk_iter_column_keys() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key = [42u8; 32];
+
+        store.put_bytes(col, &key, b"value").unwrap();
+
+        let all_keys: Vec<Hash256> = store
+            .iter_column_keys::<Hash256>(col)
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        let hash = Hash256::from_slice(&key);
+        assert!(all_keys.contains(&hash));
+    }
+
+    #[test]
+    fn disk_put_bytes_sync() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key = [50u8; 32];
+
+        store.put_bytes_sync(col, &key, b"synced").unwrap();
+        assert_eq!(store.get_bytes(col, &key).unwrap().unwrap(), b"synced");
+    }
+
+    #[test]
+    fn disk_sync() {
+        let store = open_disk_store();
+        store.sync().unwrap();
+    }
+
+    #[test]
+    fn disk_compact() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+
+        // Write and delete some data to create compaction opportunity
+        for i in 0u8..10 {
+            let mut key = [0u8; 32];
+            key[0] = i;
+            store.put_bytes(col, &key, &[i; 100]).unwrap();
+        }
+        for i in 0u8..5 {
+            let mut key = [0u8; 32];
+            key[0] = i;
+            store.key_delete(col, &key).unwrap();
+        }
+
+        store.compact().unwrap();
+
+        // Verify remaining keys survived compaction
+        for i in 5u8..10 {
+            let mut key = [0u8; 32];
+            key[0] = i;
+            assert!(store.get_bytes(col, &key).unwrap().is_some());
+        }
+    }
+
+    #[test]
+    fn disk_multiple_columns() {
+        let store = open_disk_store();
+        let key = [60u8; 32];
+
+        store
+            .put_bytes(DBColumn::BeaconBlock, &key, b"block")
+            .unwrap();
+        store
+            .put_bytes(DBColumn::BeaconState, &key, b"state")
+            .unwrap();
+
+        assert_eq!(
+            store
+                .get_bytes(DBColumn::BeaconBlock, &key)
+                .unwrap()
+                .unwrap(),
+            b"block"
+        );
+        assert_eq!(
+            store
+                .get_bytes(DBColumn::BeaconState, &key)
+                .unwrap()
+                .unwrap(),
+            b"state"
+        );
+
+        // Delete from one column doesn't affect the other
+        store.key_delete(DBColumn::BeaconBlock, &key).unwrap();
+        assert!(
+            store
+                .get_bytes(DBColumn::BeaconBlock, &key)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            store
+                .get_bytes(DBColumn::BeaconState, &key)
+                .unwrap()
+                .unwrap(),
+            b"state"
+        );
+    }
+
+    #[test]
+    fn disk_delete_nonexistent_key() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key = [70u8; 32];
+
+        // Should not error when deleting a key that doesn't exist
+        store.key_delete(col, &key).unwrap();
+        assert!(!store.key_exists(col, &key).unwrap());
+    }
+
+    #[test]
+    fn disk_empty_value() {
+        let store = open_disk_store();
+        let col = DBColumn::BeaconBlock;
+        let key = [80u8; 32];
+
+        store.put_bytes(col, &key, b"").unwrap();
+        assert!(store.key_exists(col, &key).unwrap());
+        assert_eq!(store.get_bytes(col, &key).unwrap().unwrap(), b"");
+    }
 }
