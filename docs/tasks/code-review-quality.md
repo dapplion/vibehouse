@@ -803,3 +803,17 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 **Fix**: Modified `Redb::compact()` to silently skip compaction when `TransactionInProgress` is returned. Compaction is an optimization (space reclamation), not a correctness requirement — it can safely be skipped and retried later.
 
 **Verification**: `prune_historic_states` test passes, 30/30 store tests pass, full clippy clean, pre-push lint-full passes.
+
+### Run 588 — CI verification + codebase health check (2026-03-08)
+
+**CI result**: All 6 jobs pass (check+clippy, ef-tests, unit-tests, beacon_chain, http_api, network+op_pool). The redb 3.x compaction fix (647292d28) resolves the `prune_historic_states` TransactionInProgress failure.
+
+**Health checks performed**:
+- `cargo clippy --workspace`: zero warnings
+- `cargo build --workspace`: zero warnings
+- `cargo sort --workspace --check`: all Cargo.toml deps sorted
+- `cargo audit`: 1 known unfixed advisory (RUSTSEC-2023-0071 rsa crate via jsonwebtoken — no fix available upstream), 10 allowed warnings
+- Nightly tests: all green (last 3 days)
+- Spec PR status: all 9 tracked PRs still OPEN (#4979, #4940, #4932, #4960, #4898, #4954, #4843, #4840, #4630)
+- No new spec test release after v1.7.0-alpha.2
+- Gloas test coverage: comprehensive (all public functions in state_processing, envelope_processing, gloas_verification have unit/integration tests)
