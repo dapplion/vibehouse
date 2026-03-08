@@ -5,8 +5,6 @@ use beacon_node::beacon_chain::chain_config::{
     DisallowedReOrgOffsets,
 };
 use beacon_node::beacon_chain::custody_context::NodeCustodyType;
-#[cfg(feature = "beacon-node-leveldb")]
-use beacon_node::beacon_chain::store::config::DatabaseBackend as BeaconNodeBackend;
 use beacon_node::{ClientConfig as Config, beacon_chain::graffiti_calculator::GraffitiOrigin};
 use beacon_processor::BeaconProcessorConfig;
 use lighthouse_network::PeerId;
@@ -2748,17 +2746,6 @@ fn genesis_state_url_value() {
                 Some("http://genesis.com")
             );
             assert_eq!(config.genesis_state_url_timeout, Duration::from_secs(42));
-        });
-}
-
-#[test]
-#[cfg(feature = "beacon-node-leveldb")]
-fn beacon_node_backend_override() {
-    CommandLineTest::new()
-        .flag("beacon-node-backend", Some("leveldb"))
-        .run_with_zero_port()
-        .with_config(|config| {
-            assert_eq!(config.store.backend, BeaconNodeBackend::LevelDb);
         });
 }
 

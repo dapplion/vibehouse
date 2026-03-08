@@ -156,7 +156,7 @@ You can customise the features that Lighthouse is built with using the `FEATURES
 variable. E.g.
 
 ```
-FEATURES=gnosis,slasher-lmdb,beacon-node-leveldb make
+FEATURES=gnosis,slasher-lmdb make
 ```
 
 Commonly used features include:
@@ -165,12 +165,11 @@ Commonly used features include:
 - `portable`: the default feature as Lighthouse now uses runtime detection of hardware CPU features.
 - `slasher-lmdb`: support for the LMDB slasher backend. Enabled by default.
 - `slasher-mdbx`: support for the MDBX slasher backend.
-- `beacon-node-leveldb`: support for the leveldb backend. Enabled by default.
 - `sysmalloc`: use the system memory allocator rather than jemalloc. This is always enabled on
   Windows.
 - `spec-minimal`: support for the minimal preset (useful for testing).
 
-Default features (e.g. `slasher-lmdb`, `beacon-node-leveldb`) may be opted out of using the `--no-default-features`
+Default features (e.g. `slasher-lmdb`) may be opted out of using the `--no-default-features`
 argument for `cargo`, which can be plumbed in via the `CARGO_INSTALL_EXTRA_FLAGS` environment variable.
 E.g.
 

@@ -4,11 +4,6 @@ version = "0.2.0"
 authors = ["Paul Hauner <paul@paulhauner.com>"]
 edition = { workspace = true }
 
-[features]
-default = ["redb"]
-leveldb = ["dep:leveldb"]
-redb = ["dep:redb"]
-
 [dependencies]
 bls = { workspace = true }
 db-key = "0.1.0"
@@ -16,11 +11,10 @@ directory = { workspace = true }
 ethereum_ssz = { workspace = true }
 ethereum_ssz_derive = { workspace = true }
 itertools = { workspace = true }
-leveldb = { version = "0.8.6", optional = true, default-features = false }
 lru = { workspace = true }
 metrics = { workspace = true }
 parking_lot = { workspace = true }
-redb = { version = "3.1.0", optional = true }
+redb = "3.1.0"
 safe_arith = { workspace = true }
 serde = { workspace = true }
 ssz_types = { workspace = true }

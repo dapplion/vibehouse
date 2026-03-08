@@ -373,7 +373,7 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub spec: Arc<ChainSpec>,
     /// Configuration for `BeaconChain` runtime behaviour.
     pub config: ChainConfig,
-    /// Persistent storage for blocks, states, etc. Typically an on-disk store, such as LevelDB.
+    /// Persistent storage for blocks, states, etc. Backed by redb on-disk.
     pub store: BeaconStore<T>,
     /// Used for spawning async and blocking tasks.
     pub task_executor: TaskExecutor,

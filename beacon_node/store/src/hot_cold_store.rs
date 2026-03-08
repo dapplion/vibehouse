@@ -274,7 +274,7 @@ impl<E: EthSpec> HotColdDB<E, BeaconNodeBackend<E>, BeaconNodeBackend<E>> {
 
         let hierarchy = config.hierarchy_config.to_moduli()?;
 
-        debug!(?hot_path, "Opening LevelDB");
+        debug!(?hot_path, "Opening database");
         let hot_db = BeaconNodeBackend::open(&config, hot_path)?;
 
         let anchor_info = RwLock::new(Self::load_anchor_info(&hot_db)?);

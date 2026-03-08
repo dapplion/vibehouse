@@ -1,8 +1,6 @@
 use crate::config::StoreConfigError;
 use crate::hot_cold_store::{HotColdDBError, StateSummaryIteratorError};
 use crate::{DBColumn, hdiff};
-#[cfg(feature = "leveldb")]
-use leveldb::error::Error as LevelDBError;
 use ssz::DecodeError;
 use state_processing::BlockReplayError;
 use types::{BeaconStateError, EpochCacheError, Hash256, InconsistentFork, Slot, milhouse};
@@ -58,9 +56,6 @@ pub enum Error {
     InvalidKey(String),
     InvalidBytes,
     InconsistentFork(InconsistentFork),
-    #[cfg(feature = "leveldb")]
-    LevelDbError(LevelDBError),
-    #[cfg(feature = "redb")]
     RedbError(Box<redb::Error>),
     CacheBuildError(EpochCacheError),
     MilhouseError(milhouse::Error),
@@ -173,63 +168,48 @@ impl From<InconsistentFork> for Error {
     }
 }
 
-#[cfg(feature = "leveldb")]
-impl From<LevelDBError> for Error {
-    fn from(e: LevelDBError) -> Error {
-        Error::LevelDbError(e)
-    }
-}
-
-#[cfg(feature = "redb")]
 impl From<redb::Error> for Error {
     fn from(e: redb::Error) -> Self {
         Error::RedbError(Box::new(e))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::TableError> for Error {
     fn from(e: redb::TableError) -> Self {
         Error::RedbError(Box::new(e.into()))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::TransactionError> for Error {
     fn from(e: redb::TransactionError) -> Self {
         Error::RedbError(Box::new(e.into()))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::DatabaseError> for Error {
     fn from(e: redb::DatabaseError) -> Self {
         Error::RedbError(Box::new(e.into()))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::StorageError> for Error {
     fn from(e: redb::StorageError) -> Self {
         Error::RedbError(Box::new(e.into()))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::CommitError> for Error {
     fn from(e: redb::CommitError) -> Self {
         Error::RedbError(Box::new(e.into()))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::CompactionError> for Error {
     fn from(e: redb::CompactionError) -> Self {
         Error::RedbError(Box::new(e.into()))
     }
 }
 
-#[cfg(feature = "redb")]
 impl From<redb::SetDurabilityError> for Error {
     fn from(e: redb::SetDurabilityError) -> Self {
         Error::RedbError(Box::new(e.into()))

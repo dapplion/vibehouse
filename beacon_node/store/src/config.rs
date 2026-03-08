@@ -11,10 +11,7 @@ use types::EthSpec;
 use types::non_zero_usize::new_non_zero_usize;
 use zstd::{Decoder, Encoder};
 
-#[cfg(all(feature = "redb", not(feature = "leveldb")))]
 pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::Redb;
-#[cfg(feature = "leveldb")]
-pub const DEFAULT_BACKEND: DatabaseBackend = DatabaseBackend::LevelDb;
 
 pub const PREV_DEFAULT_SLOTS_PER_RESTORE_POINT: u64 = 2048;
 pub const DEFAULT_SLOTS_PER_RESTORE_POINT: u64 = 8192;
@@ -271,8 +268,5 @@ mod test {
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum DatabaseBackend {
-    #[cfg(feature = "leveldb")]
-    LevelDb,
-    #[cfg(feature = "redb")]
     Redb,
 }

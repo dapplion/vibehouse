@@ -2,7 +2,7 @@
 //!
 //! Provides the following stores:
 //!
-//! - `HotColdDB`: an on-disk store backed by leveldb. Used in production.
+//! - `HotColdDB`: an on-disk store backed by redb. Used in production.
 //! - `MemoryStore`: an in-memory store backed by a hash-map. Used for testing.
 //!
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
@@ -57,9 +57,7 @@ pub trait KeyValueStore<E: EthSpec>: Sync + Send + Sized + 'static {
     /// Same as put_bytes() but also force a flush to disk
     fn put_bytes_sync(&self, column: DBColumn, key: &[u8], value: &[u8]) -> Result<(), Error>;
 
-    /// Flush to disk.  See
-    /// <https://chromium.googlesource.com/external/leveldb/+/HEAD/doc/index.md#synchronous-writes>
-    /// for details.
+    /// Flush to disk.
     fn sync(&self) -> Result<(), Error>;
 
     /// Return `true` if `key` exists in `column`.

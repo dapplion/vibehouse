@@ -716,7 +716,7 @@ impl HierarchyModuli {
     /// layer must already have been stored.
     ///
     /// In future we may be able to handle this differently (with proper transaction semantics
-    /// rather than LevelDB's "write batches").
+    /// rather than write batches).
     pub fn should_commit_immediately(&self, slot: Slot) -> Result<bool, Error> {
         // If there's only 1 layer of snapshots, then commit only when writing a snapshot.
         self.moduli.get(1).map_or_else(
