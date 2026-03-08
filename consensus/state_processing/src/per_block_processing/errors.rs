@@ -102,8 +102,6 @@ pub enum BlockProcessingError {
     },
     PayloadAttestationInvalid(PayloadAttestationInvalid),
     EnvelopeProcessingError(Box<EnvelopeProcessingError>),
-    InvalidSlot(u64),
-    InvalidSlotIndex(usize),
 }
 
 impl From<BeaconStateError> for BlockProcessingError {

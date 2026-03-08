@@ -44,14 +44,12 @@ macro_rules! easy_from_to {
 
 #[derive(Debug)]
 pub enum BeaconChainError {
-    InsufficientValidators,
     UnableToReadSlot,
     UnableToComputeTimeAtSlot,
     RevertedFinalizedEpoch {
         old: Checkpoint,
         new: Checkpoint,
     },
-    SlotClockDidNotStart,
     NoStateForSlot(Slot),
     BeaconStateError(BeaconStateError),
     EpochCacheError(EpochCacheError),
@@ -303,9 +301,6 @@ pub enum BlockProductionError {
     BeaconStateError(BeaconStateError),
     StateAdvanceError(StateAdvanceError),
     OpPoolError(OpPoolError),
-    /// The `BeaconChain` was explicitly configured _without_ a connection to eth1, therefore it
-    /// cannot produce blocks.
-    NoEth1ChainConnection,
     StateSlotTooHigh {
         produce_at_slot: Slot,
         state_slot: Slot,
@@ -330,7 +325,6 @@ pub enum BlockProductionError {
     KzgError(kzg::Error),
     FailedToBuildBlobSidecars(String),
     MissingExecutionRequests,
-    MissingExecutionBlockHash,
     EnvelopeConstructionFailed(String),
 }
 
