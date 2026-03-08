@@ -774,3 +774,22 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 **Net**: -540 lines, -1 C dependency (`leveldb` crate + `leveldb-sys`).
 
 **Verification**: 30/30 store tests, full workspace build clean, full workspace clippy clean, pre-push lint-full passes.
+
+### Run 586 — remove unused deps from 3 more crates, sort execution_layer (2026-03-08)
+
+**Scope**: Continue dependency cleanup using cargo-machete with manual verification.
+
+**Changes**:
+1. `beacon_node/genesis` — removed unused `tracing` (no tracing macros in source)
+2. `boot_node` — removed unused `log` (uses `tracing` directly, not `log` crate)
+3. `lcli` — removed unused `log` (same reason)
+4. `beacon_node/execution_layer` — sorted Cargo.toml deps (`alloy-trie` was out of alphabetical order)
+
+**Not removed** (false positives):
+- `eth2` `rand` — needed by TestRandom derive macro
+- `state_processing` `rand` — same (TestRandom derive)
+- `merkle_proof` `alloy-primitives` — feature forwarding (`arbitrary = ["alloy-primitives/arbitrary"]`)
+- `lcli` `bls` — feature forwarding (`portable = ["bls/supranational-portable"]`, `fake_crypto = ["bls/fake_crypto"]`)
+- All `ethereum_ssz`/`ethereum_serde_utils` — derive macros
+
+**Verification**: 2/2 genesis tests, full workspace build clean, full clippy clean, pre-push lint-full passes.
