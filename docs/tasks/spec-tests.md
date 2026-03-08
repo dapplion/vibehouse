@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — maintenance check (run 548)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- All tracked PRs still OPEN: #4979 (PTC Lookbehind), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit fork choice test)
+- Two Gloas PRs merged since last deep audit: #4950 (by_root serve range — no code change needed, compliant via MAY clause), #4926 (SECONDS_PER_SLOT deprecation — already handled)
+- #4954 (fork choice store milliseconds) still open, 0 reviews
+- CI in progress for run 547's gossip leak fix (6/6 jobs running), all nightly runs green (3 consecutive)
+- Clippy clean, cargo audit clean (10 unmaintained warnings only)
+- **Result**: No spec changes to implement. Monitoring open PRs.
+
 ### 2026-03-08 — gossip message leak fix, maintenance check (run 547)
 - v1.7.0-alpha.2 still latest, no new spec changes, all tracked PRs (#4979, #4940, #4932, #4960) still open
 - CI green (5 consecutive nightly passes), clippy clean, cargo audit clean (10 unmaintained warnings only)
