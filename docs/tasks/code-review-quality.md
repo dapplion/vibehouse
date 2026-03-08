@@ -721,3 +721,20 @@ False positives from cargo-machete (kept): `rand` (used by TestRandom derive mac
 - `hash-db` 0.15 → 0.16 + `keccak-hash` 0.10 → 0.12: blocked by `triehash` 0.8.4 pinning `hash-db` 0.15
 
 **Verification**: 32/32 store + warp_utils tests, full workspace build clean, full lint clean.
+
+### Run 580 — replace deprecated Parity trie libs with alloy-trie (2026-03-08)
+
+**Spec status**: v1.7.0-alpha.2 still latest release. PR #4979 (PTC lookbehind) still open/unmerged. No new Gloas spec changes.
+
+**Replaced 4 deprecated Parity crates** with alloy-trie (already a transitive dependency):
+- Removed: `hash-db` 0.15.2, `hash256-std-hasher` 0.15.2, `keccak-hash` 0.10.0, `triehash` 0.8.4
+- Replaced `triehash::ordered_trie_root::<KeccakHasher, _>()` with `alloy_trie::root::ordered_trie_root_with_encoder()`
+- Replaced `keccak_hash::KECCAK_EMPTY_LIST_RLP` with local `const` (same bytes)
+- Removed `KeccakHasher` struct and `hash_db::Hasher` impl (no longer needed)
+- Simplified `keccak.rs` to just the `keccak256()` helper
+
+Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-trie was already in tree).
+
+**Remaining blocked upgrades**: rand_xorshift 0.5 (needs rand_core 0.10, we have 0.9), reqwest-eventsource 0.6 (needs reqwest 0.12).
+
+**Verification**: 10/10 block_hash + execution_layer tests pass, full workspace build clean, full lint clean.
