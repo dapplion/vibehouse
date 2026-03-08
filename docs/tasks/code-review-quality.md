@@ -398,3 +398,25 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 9. Removed 4 schema downgrade/upgrade round-trip tests (tested dead migration paths)
 
 **Verification**: 277/277 proto_array + fork_choice tests, 8/8 EF fork choice tests, 31/31 operation_pool tests, schema_stability test passes. Full workspace clippy clean (lint-full passed).
+
+### Run 558 — ProtoNode superstruct simplification + dead storage module removal
+
+**ProtoNode simplification** (consensus/proto_array):
+- `ProtoNode` used `#[superstruct(variants(V17), no_enum)]` with only one variant — all fields always present
+- Converted to plain struct with `#[derive(Clone, PartialEq, Debug, Encode, Decode, Serialize, Deserialize)]`
+- Renamed `ProtoNodeV17` references to `ProtoNode` in ssz_container.rs
+- Removed `superstruct` dependency from proto_array crate
+
+**Dead storage modules removal** (beacon_node/store, 1,549 lines removed):
+- `partial_beacon_state.rs` (510 lines) — pre-v22 format where beacon state vector fields were loaded lazily from chunked DB columns. Not imported by any production code.
+- `chunked_vector.rs` (919 lines) — chunked storage format for state vectors (block_roots, state_roots, randao_mixes, etc.). Only used by partial_beacon_state.rs and chunked_iter.rs.
+- `chunked_iter.rs` (120 lines) — iterator over chunked vector storage. Only used internally.
+- Removed dead error types: `ChunkError`, `VectorChunkError`, `PartialBeaconStateError`
+- Updated `compact()` and leveldb `compact_column()` to use active DB columns instead of deprecated `BeaconState`/`BeaconStateSummary`
+
+**Not removed** (intentional design):
+- `OnDiskStoreConfig` (V22 superstruct) — uses SSZ union encoding with version byte for forward-compatible serialization
+- `HDiff` (V0 superstruct) — same SSZ union versioning pattern
+- Deprecated DB column enum variants — harmless, needed for `key_size()` match exhaustiveness
+
+**Verification**: 293/293 proto_array + fork_choice + store tests, 8/8 EF fork choice tests. Full workspace clippy clean (lint-full passed).
