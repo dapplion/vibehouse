@@ -98,6 +98,15 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-08 — spec conformance deep audit (run 555)
+- Verified `process_execution_payload_bid` against latest spec: all 9 validation checks in exact order, state mutations correct
+- Verified `process_execution_payload_envelope` against latest spec: all 10 checks + state mutations match
+- Verified helpers: `is_active_builder`, `can_builder_cover_bid`, `get_pending_balance_to_withdraw_for_builder` all correct
+- Verified `is_supporting_vote_gloas_at_slot` already handles the "impossible branch" from PR #4892 correctly
+- EIP-7843 (SLOTNUM opcode, PR #4840): adds `slot_number` field to `PayloadAttributes` — NOT YET MERGED, will need implementation when it lands
+- PR #4939 (request missing envelopes for index-1 attestation): P2P guidance, still open
+- No discrepancies found between vibehouse implementation and spec
+
 ### 2026-03-08 — reviewed upcoming spec test PRs
 - Checked open Gloas-related spec PRs: #4940 (fork choice), #4932 (sanity/blocks), #4960 (fork choice + deposit)
 - All test formats already supported by our EF test handlers (ForkChoiceHandler, SanityBlocksHandler)
