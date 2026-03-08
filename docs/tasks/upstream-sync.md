@@ -94,6 +94,16 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 591)
+- Checked consensus-specs: no new Gloas PRs merged since run 590 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open.
+- Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- Recently merged non-code PRs reviewed: #4906 (more deposit_request tests — test-only, no code impact), #4947 (pre-fork subscription note for proposer_preferences topic — SHOULD recommendation only, no code change needed)
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Code quality audit**: verified zero unwrap() calls in production consensus code (all 2575 unwraps in consensus/ are in test modules). Critical paths (block_verification.rs, hot_cold_store.rs, beacon_chain.rs main logic) are unwrap-free.
+- **CI status**: run 590 CI in progress (all 6 jobs running). Run 586 (redb compaction fix) passed all 6 jobs. `prune_historic_states` test confirmed passing locally. Nightly: 5 consecutive successes.
+- **Spec status**: stable, fully compliant — no code changes needed
+- **Dependency status**: 150 transitive duplicates remain, no actionable upgrades. All root deps current.
+
 ### 2026-03-08 (run 590)
 - Checked consensus-specs: no new Gloas PRs merged since run 589 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open (updated Mar 7).
 - Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
