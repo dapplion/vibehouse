@@ -450,3 +450,25 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - `BeaconChainError` variants — many appear unused but are constructed via `From` impls and `?` operator
 
 **Verification**: 277/277 proto_array + fork_choice tests, 8/8 EF fork choice tests, 16/16 store tests. Full workspace clippy clean (lint-full passed).
+
+### Run 560 — Unused dependency removal
+
+**Scope**: Remove unused Cargo.toml dependencies identified by cargo-machete, with manual verification to filter out false positives (derive macros, feature forwarding, etc.).
+
+**Changes** (6 dependencies removed across 5 crates):
+1. `common/clap_utils` — removed `alloy-primitives` (no usage in crate)
+2. `common/eth2` — removed `either` (no usage in crate). Kept `rand` (needed by `TestRandom` derive macro — cargo-machete false positive)
+3. `validator_client/beacon_node_fallback` — removed `itertools` (no usage in crate)
+4. `validator_client/lighthouse_validator_store` — removed `beacon_node_fallback`, `either`, `environment` (none used in crate)
+5. `validator_client/validator_services` — removed `either` (no usage in crate)
+
+**Also fixed**: pre-existing `cargo sort` issues in `beacon_chain/Cargo.toml` and `state_processing/Cargo.toml`.
+
+**Not removed** (false positives):
+- `consensus/merkle_proof` `alloy-primitives` — needed for feature forwarding (`arbitrary = ["alloy-primitives/arbitrary"]`)
+- `common/eth2` `rand` — used by `TestRandom` derive macro
+- All `ethereum_ssz`/`ethereum_ssz_derive`/`ethereum_serde_utils` — used by derive macros
+- `lighthouse` `lighthouse_tracing`/`store` — actually imported in main.rs / used transitively
+- `environment` `tracing-log` — used indirectly via logging crate
+
+**Verification**: 98/98 tests across affected crates. Full workspace compiles clean, lint-full passes.
