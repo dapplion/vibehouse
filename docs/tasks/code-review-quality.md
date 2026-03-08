@@ -490,3 +490,38 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - `eth2_wallet` `tiny-bip39` — used via `bip39::` import
 
 **Verification**: 724/724 tests across affected crates. Full workspace compiles clean, lint passes.
+
+### Run 562 — Dead V22 compat code, orphaned file, dead error variants
+
+**Scope**: Continue dead code cleanup. Remove code made dead by schema migration removal (run 557) and other never-used items.
+
+**Changes**:
+
+1. **Dead V22 state summary compat** (beacon_node/store/src/hot_cold_store.rs, 70 lines removed):
+   - Removed `HotStateSummaryV22` struct + `StoreItem` impl (only used by dead fallback path)
+   - Removed `load_hot_state_summary_v22()` function
+   - Removed `load_block_root_from_summary_any_version()` function (V22 fallback path dead since migrations removed in run 557)
+   - Simplified `load_split()` to use `load_hot_state_summary()` directly
+   - Removed obsolete V22↔V24 migration scenario comment
+
+2. **Orphaned file** (beacon_node/beacon_chain/src/otb_verification_service.rs, 369 lines removed):
+   - File was never declared as `mod` in lib.rs — completely dead code
+   - Contained `OptimisticTransitionBlock` verification service (deprecated feature)
+
+3. **Dead error variants** (8 lines removed across 2 files):
+   - `BeaconChainError::InsufficientValidators` — 0 constructions
+   - `BeaconChainError::SlotClockDidNotStart` — 0 constructions
+   - `BlockProductionError::NoEth1ChainConnection` — 0 constructions
+   - `BlockProductionError::MissingExecutionBlockHash` — 0 constructions
+   - `BlockProcessingError::InvalidSlot` — 0 constructions
+   - `BlockProcessingError::InvalidSlotIndex` — 0 constructions
+
+4. **Cargo.lock sync** — updated for dependency removals from runs 560-561
+
+**Not changed (intentional)**:
+- `OnDiskStoreConfig::V22` superstruct — SSZ union encoding for forward compatibility (run 558 decision)
+- Deprecated `DBColumn` variants — needed for `key_size()` match exhaustiveness
+- `#[allow(dead_code)]` on error enum fields used in Debug impls — standard Rust pattern
+- `GossipCacheBuilder` dead_code allow — builder pattern, methods available for future use
+
+**Verification**: 557/557 state_processing tests, 16/16 store tests. Full workspace lint-full passes.
