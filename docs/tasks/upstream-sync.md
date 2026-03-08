@@ -94,6 +94,9 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 602)
+- **Migrated execution_layer test mocks from warp to axum**: both MockServer (mock EL JSON-RPC) and MockBuilder (mock builder API) now use axum 0.8. Auth middleware via `axum::middleware::from_fn_with_state`. Handled axum's `Handler` trait constraint — `EndpointVersion` only implements `FromStr` not `Deserialize`, so used `Path<String>` with manual parsing. All 46 execution_layer tests + 251 http_api tests pass. Remaining warp users: beacon_node/http_api, common/warp_utils.
+
 ### 2026-03-08 (run 601)
 - **Migrated validator_client/http_api from warp to axum**: complete rewrite of the validator client HTTP API (7 source files, ~1200 lines changed). New `ApiError` type replaces warp rejections. Axum Router with State extractor and tower middleware for auth. All 54 tests pass, clippy clean. Remaining warp users: beacon_node/http_api, beacon_node/execution_layer (test mock), common/warp_utils.
 
