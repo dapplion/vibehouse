@@ -17,7 +17,7 @@ ethereum_ssz = { workspace = true }
 ethers-core = { workspace = true }
 fixed_bytes = { workspace = true }
 fork_choice = { workspace = true }
-alloy-trie = { version = "0.8", default-features = false }
+alloy-trie = { version = "0.9", default-features = false }
 hex = { workspace = true }
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 kzg = { workspace = true }

@@ -121,7 +121,7 @@ impl Error {
             Error::HttpClient(error) => error.inner().status(),
             Error::SseClient(error) => {
                 if let reqwest_eventsource::Error::InvalidStatusCode(status, _) = error.as_ref() {
-                    Some(*status)
+                    StatusCode::from_u16(status.as_u16()).ok()
                 } else {
                     None
                 }
