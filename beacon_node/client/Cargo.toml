@@ -12,7 +12,6 @@ dirs = { workspace = true }
 environment = { workspace = true }
 eth2 = { workspace = true }
 eth2_config = { workspace = true }
-ethereum_ssz = { workspace = true }
 execution_layer = { workspace = true }
 futures = { workspace = true }
 genesis = { workspace = true }
