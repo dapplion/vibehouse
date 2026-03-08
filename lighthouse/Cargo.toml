@@ -49,7 +49,6 @@ environment = { workspace = true }
 eth2_network_config = { workspace = true }
 ethereum_hashing = { workspace = true }
 futures = { workspace = true }
-lighthouse_tracing = { workspace = true }
 lighthouse_version = { workspace = true }
 logging = { workspace = true }
 metrics = { workspace = true }
@@ -61,7 +60,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 slasher = { workspace = true }
-store = { workspace = true }
 task_executor = { workspace = true }
 tracing = { workspace = true }
 tracing-opentelemetry = { workspace = true }
