@@ -1,7 +1,8 @@
+use crate::api_error::ApiError;
 use beacon_chain::{BeaconBlockResponse, BeaconBlockResponseWrapper, BlockProductionError};
 use eth2::types::{BlockContents, FullBlockContents, ProduceBlockV3Response};
 use types::{EthSpec, ForkName};
-type Error = warp::reject::Rejection;
+type Error = ApiError;
 
 pub fn build_block_contents<E: EthSpec>(
     fork_name: ForkName,
@@ -29,7 +30,7 @@ pub fn build_block_contents<E: EthSpec>(
                     blob_items.unwrap_or_default()
                 } else {
                     let Some(items) = blob_items else {
-                        return Err(warp_utils::reject::unhandled_error(
+                        return Err(ApiError::unhandled_error(
                             BlockProductionError::MissingBlobs,
                         ));
                     };

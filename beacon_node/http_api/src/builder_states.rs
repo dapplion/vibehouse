@@ -1,4 +1,5 @@
 use crate::StateId;
+use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use safe_arith::SafeArith;
 use state_processing::per_block_processing::get_expected_withdrawals;
@@ -16,7 +17,7 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
     mut state: BeaconState<T::EthSpec>,
     state_id: StateId,
     proposal_slot: Slot,
-) -> Result<Withdrawals<T::EthSpec>, warp::Rejection> {
+) -> Result<Withdrawals<T::EthSpec>, ApiError> {
     get_next_withdrawals_sanity_checks(chain, &state, proposal_slot)?;
 
     // advance the state to the epoch of the proposal slot.
@@ -26,7 +27,7 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
         && let Err(e) =
             partial_state_advance(&mut state, Some(state_root), proposal_slot, &chain.spec)
     {
-        return Err(warp_utils::reject::custom_server_error(format!(
+        return Err(ApiError::server_error(format!(
             "failed to advance to the epoch of the proposal slot: {:?}",
             e
         )));
@@ -38,7 +39,7 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
         // withdrawals. Using the pre-Gloas function would miss builder withdrawals.
         match get_expected_withdrawals_gloas(&state, &chain.spec) {
             Ok(withdrawals) => Ok(withdrawals.into()),
-            Err(e) => Err(warp_utils::reject::custom_server_error(format!(
+            Err(e) => Err(ApiError::server_error(format!(
                 "failed to get expected withdrawal: {:?}",
                 e
             ))),
@@ -46,7 +47,7 @@ pub fn get_next_withdrawals<T: BeaconChainTypes>(
     } else {
         match get_expected_withdrawals(&state, &chain.spec) {
             Ok((withdrawals, _)) => Ok(withdrawals),
-            Err(e) => Err(warp_utils::reject::custom_server_error(format!(
+            Err(e) => Err(ApiError::server_error(format!(
                 "failed to get expected withdrawal: {:?}",
                 e
             ))),
@@ -58,9 +59,9 @@ fn get_next_withdrawals_sanity_checks<T: BeaconChainTypes>(
     chain: &BeaconChain<T>,
     state: &BeaconState<T::EthSpec>,
     proposal_slot: Slot,
-) -> Result<(), warp::Rejection> {
+) -> Result<(), ApiError> {
     if proposal_slot <= state.slot() {
-        return Err(warp_utils::reject::custom_bad_request(
+        return Err(ApiError::bad_request(
             "proposal slot must be greater than the pre-state slot".to_string(),
         ));
     }
@@ -68,16 +69,16 @@ fn get_next_withdrawals_sanity_checks<T: BeaconChainTypes>(
     let fork = chain.spec.fork_name_at_slot::<T::EthSpec>(proposal_slot);
 
     if !fork.capella_enabled() {
-        return Err(warp_utils::reject::custom_bad_request(
+        return Err(ApiError::bad_request(
             "the specified state is a pre-capella state.".to_string(),
         ));
     }
 
     let look_ahead_limit = MAX_EPOCH_LOOKAHEAD
         .safe_mul(T::EthSpec::slots_per_epoch())
-        .map_err(warp_utils::reject::arith_error)?;
+        .map_err(ApiError::arith_error)?;
     if proposal_slot >= state.slot() + look_ahead_limit {
-        return Err(warp_utils::reject::custom_bad_request(format!(
+        return Err(ApiError::bad_request(format!(
             "proposal slot is greater than or equal to the look ahead limit: {look_ahead_limit}"
         )));
     }

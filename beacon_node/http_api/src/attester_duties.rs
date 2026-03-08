@@ -1,5 +1,6 @@
 //! Contains the handler for the `GET validator/duties/attester/{epoch}` endpoint.
 
+use crate::api_error::ApiError;
 use crate::state_id::StateId;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
 use eth2::types::{self as api_types};
@@ -15,13 +16,13 @@ pub fn attester_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     request_indices: &[u64],
     chain: &BeaconChain<T>,
-) -> Result<ApiDuties, warp::reject::Rejection> {
+) -> Result<ApiDuties, ApiError> {
     let current_epoch = chain
         .slot_clock
         .now_or_genesis()
         .map(|slot| slot.epoch(T::EthSpec::slots_per_epoch()))
         .ok_or(BeaconChainError::UnableToReadSlot)
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     // Determine what the current epoch would be if we fast-forward our system clock by
     // `MAXIMUM_GOSSIP_CLOCK_DISPARITY`.
@@ -35,9 +36,7 @@ pub fn attester_duties<T: BeaconChainTypes>(
         chain
             .slot_clock
             .now_with_future_tolerance(chain.spec.maximum_gossip_clock_disparity())
-            .ok_or_else(|| {
-                warp_utils::reject::custom_server_error("unable to read slot clock".into())
-            })?
+            .ok_or_else(|| ApiError::server_error("unable to read slot clock"))?
             .epoch(T::EthSpec::slots_per_epoch())
     };
 
@@ -47,7 +46,7 @@ pub fn attester_duties<T: BeaconChainTypes>(
     {
         cached_attestation_duties(request_epoch, request_indices, chain)
     } else if request_epoch > current_epoch + 1 {
-        Err(warp_utils::reject::custom_bad_request(format!(
+        Err(ApiError::bad_request(format!(
             "request epoch {} is more than one epoch past the current epoch {}",
             request_epoch, current_epoch
         )))
@@ -61,12 +60,12 @@ fn cached_attestation_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     request_indices: &[u64],
     chain: &BeaconChain<T>,
-) -> Result<ApiDuties, warp::reject::Rejection> {
+) -> Result<ApiDuties, ApiError> {
     let head_block_root = chain.canonical_head.cached_head().head_block_root();
 
     let (duties, dependent_root, execution_status) = chain
         .validator_attestation_duties(request_indices, request_epoch, head_block_root)
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     convert_to_api_response(
         duties,
@@ -83,7 +82,7 @@ fn compute_historic_attester_duties<T: BeaconChainTypes>(
     request_epoch: Epoch,
     request_indices: &[u64],
     chain: &BeaconChain<T>,
-) -> Result<ApiDuties, warp::reject::Rejection> {
+) -> Result<ApiDuties, ApiError> {
     // If the head is quite old then it might still be relevant for a historical request.
     //
     // Avoid holding the `cached_head` longer than necessary.
@@ -91,7 +90,7 @@ fn compute_historic_attester_duties<T: BeaconChainTypes>(
         let (cached_head, execution_status) = chain
             .canonical_head
             .head_and_execution_status()
-            .map_err(warp_utils::reject::unhandled_error)?;
+            .map_err(ApiError::unhandled_error)?;
         let head = &cached_head.snapshot;
 
         if head.beacon_state.current_epoch() <= request_epoch {
@@ -125,28 +124,26 @@ fn compute_historic_attester_duties<T: BeaconChainTypes>(
 
     // Sanity-check the state lookup.
     if !(state.current_epoch() == request_epoch || state.current_epoch() + 1 == request_epoch) {
-        return Err(warp_utils::reject::custom_server_error(format!(
+        return Err(ApiError::server_error(format!(
             "state epoch {} not suitable for request epoch {}",
             state.current_epoch(),
             request_epoch
         )));
     }
 
-    let relative_epoch =
-        RelativeEpoch::from_epoch(state.current_epoch(), request_epoch).map_err(|e| {
-            warp_utils::reject::custom_server_error(format!("invalid epoch for state: {:?}", e))
-        })?;
+    let relative_epoch = RelativeEpoch::from_epoch(state.current_epoch(), request_epoch)
+        .map_err(|e| ApiError::server_error(format!("invalid epoch for state: {:?}", e)))?;
 
     state
         .build_committee_cache(relative_epoch, &chain.spec)
         .map_err(BeaconChainError::from)
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     let dependent_root = state
         // The only block which decides its own shuffling is the genesis block.
         .attester_shuffling_decision_root(chain.genesis_block_root, relative_epoch)
         .map_err(BeaconChainError::from)
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     let duties = request_indices
         .iter()
@@ -156,7 +153,7 @@ fn compute_historic_attester_duties<T: BeaconChainTypes>(
                 .map_err(BeaconChainError::from)
         })
         .collect::<Result<_, _>>()
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     convert_to_api_response(
         duties,
@@ -172,10 +169,10 @@ fn ensure_state_knows_attester_duties_for_epoch<E: EthSpec>(
     state_root: Hash256,
     target_epoch: Epoch,
     spec: &ChainSpec,
-) -> Result<(), warp::reject::Rejection> {
+) -> Result<(), ApiError> {
     // Protect against an inconsistent slot clock.
     if state.current_epoch() > target_epoch {
-        return Err(warp_utils::reject::custom_server_error(format!(
+        return Err(ApiError::server_error(format!(
             "state epoch {} is later than target epoch {}",
             state.current_epoch(),
             target_epoch
@@ -190,7 +187,7 @@ fn ensure_state_knows_attester_duties_for_epoch<E: EthSpec>(
         // A "partial" state advance is adequate since attester duties don't rely on state roots.
         partial_state_advance(state, Some(state_root), target_slot, spec)
             .map_err(BeaconChainError::from)
-            .map_err(warp_utils::reject::unhandled_error)?;
+            .map_err(ApiError::unhandled_error)?;
     }
 
     Ok(())
@@ -204,10 +201,10 @@ fn convert_to_api_response<T: BeaconChainTypes>(
     dependent_root: Hash256,
     execution_optimistic: bool,
     chain: &BeaconChain<T>,
-) -> Result<ApiDuties, warp::reject::Rejection> {
+) -> Result<ApiDuties, ApiError> {
     // Protect against an inconsistent slot clock.
     if duties.len() != indices.len() {
-        return Err(warp_utils::reject::custom_server_error(format!(
+        return Err(ApiError::server_error(format!(
             "duties length {} does not match indices length {}",
             duties.len(),
             indices.len()
@@ -217,7 +214,7 @@ fn convert_to_api_response<T: BeaconChainTypes>(
     let usize_indices = indices.iter().map(|i| *i as usize).collect::<Vec<_>>();
     let index_to_pubkey_map = chain
         .validator_pubkey_bytes_many(&usize_indices)
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     let data = duties
         .into_iter()

@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use crate::api_types::EndpointVersion;
 use eth2::{
     CONSENSUS_BLOCK_VALUE_HEADER, CONSENSUS_VERSION_HEADER, CONTENT_TYPE_HEADER,
@@ -47,7 +48,7 @@ pub fn execution_optimistic_finalized_beacon_response<T: Serialize>(
     execution_optimistic: bool,
     finalized: bool,
     data: T,
-) -> Result<ExecutionOptimisticFinalizedBeaconResponse<T>, warp::reject::Rejection> {
+) -> Result<ExecutionOptimisticFinalizedBeaconResponse<T>, ApiError> {
     let metadata = ExecutionOptimisticFinalizedMetadata {
         execution_optimistic: Some(execution_optimistic),
         finalized: Some(finalized),
@@ -116,10 +117,10 @@ pub fn add_consensus_block_value_header<T: Reply>(
     .into_response()
 }
 
-pub fn inconsistent_fork_rejection(error: InconsistentFork) -> warp::reject::Rejection {
-    warp_utils::reject::custom_server_error(format!("wrong fork: {:?}", error))
+pub fn inconsistent_fork_rejection(error: InconsistentFork) -> ApiError {
+    ApiError::server_error(format!("wrong fork: {:?}", error))
 }
 
-pub fn unsupported_version_rejection(version: EndpointVersion) -> warp::reject::Rejection {
-    warp_utils::reject::custom_bad_request(format!("Unsupported endpoint version: {}", version))
+pub fn unsupported_version_rejection(version: EndpointVersion) -> ApiError {
+    ApiError::bad_request(format!("Unsupported endpoint version: {}", version))
 }

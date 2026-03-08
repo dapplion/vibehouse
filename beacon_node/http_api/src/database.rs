@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use beacon_chain::store::metadata::CURRENT_SCHEMA_VERSION;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use serde::Serialize;
@@ -13,9 +14,7 @@ pub struct DatabaseInfo {
     pub blob_info: BlobInfo,
 }
 
-pub fn info<T: BeaconChainTypes>(
-    chain: Arc<BeaconChain<T>>,
-) -> Result<DatabaseInfo, warp::Rejection> {
+pub fn info<T: BeaconChainTypes>(chain: Arc<BeaconChain<T>>) -> Result<DatabaseInfo, ApiError> {
     let store = &chain.store;
     let split = store.get_split_info();
     let config = store.get_config().clone();

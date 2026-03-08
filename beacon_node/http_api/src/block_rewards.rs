@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes, WhenSlotSkipped};
 use eth2::lighthouse::{BlockReward, BlockRewardsQuery};
 use lru::LruCache;
@@ -7,7 +8,6 @@ use std::sync::Arc;
 use tracing::{debug, warn};
 use types::beacon_block::BlindedBeaconBlock;
 use types::non_zero_usize::new_non_zero_usize;
-use warp_utils::reject::{beacon_state_error, custom_bad_request, unhandled_error};
 
 const STATE_CACHE_SIZE: NonZeroUsize = new_non_zero_usize(2);
 
@@ -15,13 +15,13 @@ const STATE_CACHE_SIZE: NonZeroUsize = new_non_zero_usize(2);
 pub fn get_block_rewards<T: BeaconChainTypes>(
     query: BlockRewardsQuery,
     chain: Arc<BeaconChain<T>>,
-) -> Result<Vec<BlockReward>, warp::Rejection> {
+) -> Result<Vec<BlockReward>, ApiError> {
     let start_slot = query.start_slot;
     let end_slot = query.end_slot;
     let prior_slot = start_slot - 1;
 
     if start_slot > end_slot || start_slot == 0 {
-        return Err(custom_bad_request(format!(
+        return Err(ApiError::bad_request(format!(
             "invalid start and end: {}, {}",
             start_slot, end_slot
         )));
@@ -29,29 +29,31 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 
     let end_block_root = chain
         .block_root_at_slot(end_slot, WhenSlotSkipped::Prev)
-        .map_err(unhandled_error)?
-        .ok_or_else(|| custom_bad_request(format!("block at end slot {} unknown", end_slot)))?;
+        .map_err(ApiError::unhandled_error)?
+        .ok_or_else(|| ApiError::bad_request(format!("block at end slot {} unknown", end_slot)))?;
 
     let blocks = chain
         .store
         .load_blocks_to_replay(start_slot, end_slot, end_block_root)
-        .map_err(|e| unhandled_error(BeaconChainError::from(e)))?;
+        .map_err(|e| ApiError::unhandled_error(BeaconChainError::from(e)))?;
 
     let state_root = chain
         .state_root_at_slot(prior_slot)
-        .map_err(unhandled_error)?
-        .ok_or_else(|| custom_bad_request(format!("prior state at slot {} unknown", prior_slot)))?;
+        .map_err(ApiError::unhandled_error)?
+        .ok_or_else(|| {
+            ApiError::bad_request(format!("prior state at slot {} unknown", prior_slot))
+        })?;
 
     // This branch is reached from the HTTP API. We assume the user wants
     // to cache states so that future calls are faster.
     let mut state = chain
         .get_state(&state_root, Some(prior_slot), true)
         .and_then(|maybe_state| maybe_state.ok_or(BeaconChainError::MissingBeaconState(state_root)))
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     state
         .build_caches(&chain.spec)
-        .map_err(beacon_state_error)?;
+        .map_err(ApiError::beacon_state_error)?;
 
     let mut reward_cache = Default::default();
     let mut block_rewards = Vec::with_capacity(blocks.len());
@@ -78,7 +80,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
         .state_root_iter(
             chain
                 .forwards_iter_state_roots_until(prior_slot, end_slot)
-                .map_err(unhandled_error)?,
+                .map_err(ApiError::unhandled_error)?,
         )
         .no_signature_verification()
         .minimal_block_root_verification();
@@ -92,7 +94,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 
     let block_replayer = block_replayer
         .apply_blocks(blocks, None)
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     if block_replayer.state_root_miss() {
         warn!(%start_slot, %end_slot, "Block reward state root miss");
@@ -107,7 +109,7 @@ pub fn get_block_rewards<T: BeaconChainTypes>(
 pub fn compute_block_rewards<T: BeaconChainTypes>(
     blocks: Vec<BlindedBeaconBlock<T::EthSpec>>,
     chain: Arc<BeaconChain<T>>,
-) -> Result<Vec<BlockReward>, warp::Rejection> {
+) -> Result<Vec<BlockReward>, ApiError> {
     let mut block_rewards = Vec::with_capacity(blocks.len());
     let mut state_cache = LruCache::new(STATE_CACHE_SIZE);
     let mut reward_cache = Default::default();
@@ -131,9 +133,9 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
             );
             let parent_block = chain
                 .get_blinded_block(&parent_root)
-                .map_err(unhandled_error)?
+                .map_err(ApiError::unhandled_error)?
                 .ok_or_else(|| {
-                    custom_bad_request(format!(
+                    ApiError::bad_request(format!(
                         "parent block not known or not canonical: {:?}",
                         parent_root
                     ))
@@ -143,20 +145,23 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
             // to cache states so that future calls are faster.
             let parent_state = chain
                 .get_state(&parent_block.state_root(), Some(parent_block.slot()), true)
-                .map_err(unhandled_error)?
+                .map_err(ApiError::unhandled_error)?
                 .ok_or_else(|| {
-                    custom_bad_request(format!(
+                    ApiError::bad_request(format!(
                         "no state known for parent block: {:?}",
                         parent_root
                     ))
                 })?;
 
-            let block_replayer = BlockReplayer::new(parent_state, &chain.spec)
-                .no_signature_verification()
-                .state_root_iter([Ok((parent_block.state_root(), parent_block.slot()))].into_iter())
-                .minimal_block_root_verification()
-                .apply_blocks(vec![], Some(block.slot()))
-                .map_err(unhandled_error::<BeaconChainError>)?;
+            let block_replayer = BlockReplayer::<_, beacon_chain::BeaconChainError, _>::new(
+                parent_state,
+                &chain.spec,
+            )
+            .no_signature_verification()
+            .state_root_iter([Ok((parent_block.state_root(), parent_block.slot()))].into_iter())
+            .minimal_block_root_verification()
+            .apply_blocks(vec![], Some(block.slot()))
+            .map_err(ApiError::unhandled_error)?;
 
             if block_replayer.state_root_miss() {
                 warn!(
@@ -169,7 +174,7 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
             let mut state = block_replayer.into_state();
             state
                 .build_all_committee_caches(&chain.spec)
-                .map_err(beacon_state_error)?;
+                .map_err(ApiError::beacon_state_error)?;
 
             state_cache.get_or_insert((parent_root, block.slot()), || state)
         };
@@ -183,7 +188,7 @@ pub fn compute_block_rewards<T: BeaconChainTypes>(
                 &mut reward_cache,
                 true,
             )
-            .map_err(unhandled_error)?;
+            .map_err(ApiError::unhandled_error)?;
         block_rewards.push(block_reward);
     }
 

@@ -1,6 +1,7 @@
 use crate::metrics;
 use std::future::Future;
 
+use crate::api_error::ApiError;
 use beacon_chain::blob_verification::{GossipBlobError, GossipVerifiedBlob};
 use beacon_chain::block_verification_types::{AsBlock, RpcBlock};
 use beacon_chain::data_column_verification::GossipVerifiedDataColumn;
@@ -34,7 +35,7 @@ use types::{
     SignedExecutionPayloadEnvelope,
 };
 use warp::http::StatusCode;
-use warp::{Rejection, Reply, reply::Response};
+use warp::reply::{Reply, Response};
 
 pub type UnverifiedBlobs<T> = Option<(
     KzgProofs<<T as BeaconChainTypes>::EthSpec>,
@@ -97,7 +98,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
     network_tx: &UnboundedSender<NetworkMessage<T::EthSpec>>,
     validation_level: BroadcastValidation,
     duplicate_status_code: StatusCode,
-) -> Result<Response, Rejection> {
+) -> Result<Response, ApiError> {
     let seen_timestamp = timestamp_now();
     let block_publishing_delay_for_testing = chain.config.block_publishing_delay;
     let data_column_publishing_delay_for_testing = chain.config.data_column_publishing_delay;
@@ -177,7 +178,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
             tokio::time::sleep(block_publishing_delay).await;
         }
         publish_block_p2p(block.clone(), sender_clone.clone(), seen_timestamp)
-            .map_err(|_| warp_utils::reject::custom_server_error("unable to publish".into()))?;
+            .map_err(|_| ApiError::server_error("unable to publish"))?;
     }
 
     let publish_fn_completed = Arc::new(AtomicBool::new(false));
@@ -210,16 +211,15 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
     let (gossip_verified_blobs, gossip_verified_columns) = build_sidecar_task_handle.await?;
 
     for blob in gossip_verified_blobs.into_iter().flatten() {
-        publish_blob_sidecars(network_tx, &blob).map_err(|_| {
-            warp_utils::reject::custom_server_error("unable to publish blob sidecars".into())
-        })?;
+        publish_blob_sidecars(network_tx, &blob)
+            .map_err(|_| ApiError::server_error("unable to publish blob sidecars"))?;
         if let Err(e) = Box::pin(chain.process_gossip_blob(blob)).await {
             let msg = format!("Invalid blob: {e}");
             return if let BroadcastValidation::Gossip = validation_level {
-                Err(warp_utils::reject::broadcast_without_import(msg))
+                Err(ApiError::BroadcastWithoutImport(msg))
             } else {
                 error!(reason = &msg, "Invalid blob provided to HTTP API");
-                Err(warp_utils::reject::custom_bad_request(msg))
+                Err(ApiError::bad_request(msg))
             };
         }
     }
@@ -241,9 +241,8 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 tokio::time::sleep(delay).await;
             }
         }
-        publish_column_sidecars(network_tx, &gossip_verified_columns, &chain).map_err(|_| {
-            warp_utils::reject::custom_server_error("unable to publish data column sidecars".into())
-        })?;
+        publish_column_sidecars(network_tx, &gossip_verified_columns, &chain)
+            .map_err(|_| ApiError::server_error("unable to publish data column sidecars"))?;
         let epoch = block.slot().epoch(T::EthSpec::slots_per_epoch());
         let sampling_columns_indices = chain.sampling_columns_for_epoch(epoch);
         let sampling_columns = gossip_verified_columns
@@ -259,13 +258,13 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
             {
                 let msg = format!("Invalid data column: {e}");
                 return if let BroadcastValidation::Gossip = validation_level {
-                    Err(warp_utils::reject::broadcast_without_import(msg))
+                    Err(ApiError::BroadcastWithoutImport(msg))
                 } else {
                     error!(
                         reason = &msg,
                         "Invalid data column during block publication"
                     );
-                    Err(warp_utils::reject::custom_bad_request(msg))
+                    Err(ApiError::bad_request(msg))
                 };
             }
         }
@@ -353,7 +352,7 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 error = %e,
                 "Not publishing block - not gossip verified"
             );
-            Err(warp_utils::reject::custom_bad_request(e.to_string()))
+            Err(ApiError::bad_request(e.to_string()))
         }
     }
 }
@@ -363,7 +362,7 @@ type BuildDataSidecarTaskResult<T> = Result<
         Vec<Option<GossipVerifiedBlob<T>>>,
         Vec<GossipVerifiedDataColumn<T>>,
     ),
-    Rejection,
+    ApiError,
 >;
 
 /// Convert blobs to either:
@@ -375,7 +374,7 @@ fn spawn_build_data_sidecar_task<T: BeaconChainTypes>(
     block: Arc<SignedBeaconBlock<T::EthSpec, FullPayload<T::EthSpec>>>,
     proofs_and_blobs: UnverifiedBlobs<T>,
     current_span: Span,
-) -> Result<impl Future<Output = BuildDataSidecarTaskResult<T>>, Rejection> {
+) -> Result<impl Future<Output = BuildDataSidecarTaskResult<T>>, ApiError> {
     chain
         .clone()
         .task_executor
@@ -406,11 +405,9 @@ fn spawn_build_data_sidecar_task<T: BeaconChainTypes>(
             },
             "build_data_sidecars",
         )
-        .ok_or(warp_utils::reject::custom_server_error(
-            "runtime shutdown".to_string(),
-        ))
+        .ok_or(ApiError::server_error("runtime shutdown".to_string()))
         .map(|r| {
-            r.map_err(|_| warp_utils::reject::custom_server_error("join error".to_string()))
+            r.map_err(|_| ApiError::server_error("join error".to_string()))
                 .and_then(|output| async move { output })
         })
 }
@@ -424,7 +421,7 @@ fn build_data_columns<T: BeaconChainTypes>(
     block: &SignedBeaconBlock<T::EthSpec, FullPayload<T::EthSpec>>,
     blobs: BlobsList<T::EthSpec>,
     kzg_cell_proofs: KzgProofs<T::EthSpec>,
-) -> Result<Vec<GossipVerifiedDataColumn<T>>, Rejection> {
+) -> Result<Vec<GossipVerifiedDataColumn<T>>, ApiError> {
     let slot = block.slot();
     let data_column_sidecars =
         build_blob_data_column_sidecars(chain, block, blobs, kzg_cell_proofs).map_err(|e| {
@@ -433,7 +430,7 @@ fn build_data_columns<T: BeaconChainTypes>(
                 %slot,
                 "Invalid data column - not publishing data columns"
             );
-            warp_utils::reject::custom_bad_request(format!("{e:?}"))
+            ApiError::bad_request(format!("{e:?}"))
         })?;
 
     let gossip_verified_data_columns = data_column_sidecars
@@ -451,7 +448,7 @@ fn build_gossip_verified_blobs<T: BeaconChainTypes>(
     block: &SignedBeaconBlock<T::EthSpec, FullPayload<T::EthSpec>>,
     blobs: BlobsList<T::EthSpec>,
     kzg_proofs: KzgProofs<T::EthSpec>,
-) -> Result<Vec<Option<GossipVerifiedBlob<T>>>, Rejection> {
+) -> Result<Vec<Option<GossipVerifiedBlob<T>>>, ApiError> {
     let slot = block.slot();
     let gossip_verified_blobs = kzg_proofs
         .into_iter()
@@ -470,7 +467,7 @@ fn build_gossip_verified_blobs<T: BeaconChainTypes>(
                         %slot,
                         "Invalid blob - not publishing block"
                     );
-                    warp_utils::reject::custom_bad_request(format!("{e:?}"))
+                    ApiError::bad_request(format!("{e:?}"))
                 })?;
             drop(timer);
 
@@ -498,11 +495,11 @@ fn build_gossip_verified_blobs<T: BeaconChainTypes>(
                         error = ?e,
                         "Blob for publication is gossip-invalid"
                     );
-                    Err(warp_utils::reject::custom_bad_request(e.to_string()))
+                    Err(ApiError::bad_request(e.to_string()))
                 }
             }
         })
-        .collect::<Result<Vec<_>, Rejection>>()?;
+        .collect::<Result<Vec<_>, ApiError>>()?;
 
     Ok(gossip_verified_blobs)
 }
@@ -559,7 +556,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
     seen_timestamp: Duration,
     chain: &Arc<BeaconChain<T>>,
     network_tx: &UnboundedSender<NetworkMessage<T::EthSpec>>,
-) -> Result<Response, Rejection> {
+) -> Result<Response, ApiError> {
     match result {
         // The `DuplicateFullyImported` case here captures the case where the block finishes
         // being imported after gossip verification. It could be that it finished imported as a
@@ -636,33 +633,31 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
         Ok(AvailabilityProcessingStatus::MissingComponents(_, block_root)) => {
             let msg = format!("Missing parts of block with root {:?}", block_root);
             if let BroadcastValidation::Gossip = validation_level {
-                Err(warp_utils::reject::broadcast_without_import(msg))
+                Err(ApiError::BroadcastWithoutImport(msg))
             } else {
                 error!(reason = &msg, "Invalid block provided to HTTP API");
-                Err(warp_utils::reject::custom_bad_request(msg))
+                Err(ApiError::bad_request(msg))
             }
         }
         Err(BlockError::BeaconChainError(e))
             if matches!(e.as_ref(), BeaconChainError::UnableToPublish) =>
         {
-            Err(warp_utils::reject::custom_server_error(
+            Err(ApiError::server_error(
                 "unable to publish to network channel".to_string(),
             ))
         }
-        Err(BlockError::Slashable) => Err(warp_utils::reject::custom_bad_request(
+        Err(BlockError::Slashable) => Err(ApiError::bad_request(
             "proposal for this slot and proposer has already been seen".to_string(),
         )),
         Err(e) => {
             if let BroadcastValidation::Gossip = validation_level {
-                Err(warp_utils::reject::broadcast_without_import(format!("{e}")))
+                Err(ApiError::BroadcastWithoutImport(format!("{e}")))
             } else {
                 error!(
                     reason = ?e,
                     "Invalid block provided to HTTP API"
                 );
-                Err(warp_utils::reject::custom_bad_request(format!(
-                    "Invalid block: {e}"
-                )))
+                Err(ApiError::bad_request(format!("Invalid block: {e}")))
             }
         }
     }
@@ -676,7 +671,7 @@ pub async fn publish_blinded_block<T: BeaconChainTypes>(
     network_tx: &UnboundedSender<NetworkMessage<T::EthSpec>>,
     validation_level: BroadcastValidation,
     duplicate_status_code: StatusCode,
-) -> Result<Response, Rejection> {
+) -> Result<Response, ApiError> {
     let block_root = blinded_block.canonical_root();
     let full_block_opt = reconstruct_block(chain.clone(), block_root, blinded_block).await?;
 
@@ -708,11 +703,12 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_root: Hash256,
     block: Arc<SignedBlindedBeaconBlock<T::EthSpec>>,
-) -> Result<Option<ProvenancedBlock<T, Arc<SignedBeaconBlock<T::EthSpec>>>>, Rejection> {
+) -> Result<Option<ProvenancedBlock<T, Arc<SignedBeaconBlock<T::EthSpec>>>>, ApiError> {
     let full_payload_opt = if let Ok(payload_header) = block.message().body().execution_payload() {
-        let el = chain.execution_layer.as_ref().ok_or_else(|| {
-            warp_utils::reject::custom_server_error("Missing execution layer".to_string())
-        })?;
+        let el = chain
+            .execution_layer
+            .as_ref()
+            .ok_or_else(|| ApiError::server_error("Missing execution layer".to_string()))?;
 
         // If the execution block hash is zero, use an empty payload.
         let full_payload_contents = if payload_header.block_hash() == ExecutionBlockHash::zero() {
@@ -723,7 +719,7 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
                 let payload: FullPayload<T::EthSpec> = FullPayloadBellatrix::default().into();
                 ProvenancedPayload::Local(FullPayloadContents::Payload(payload.into()))
             } else {
-                Err(warp_utils::reject::custom_server_error(
+                Err(ApiError::server_error(
                     "Failed to construct full payload - block hash must be non-zero after Bellatrix.".to_string()
                 ))?
             }
@@ -752,10 +748,7 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
                 .propose_blinded_beacon_block(block_root, &block, &chain.spec)
                 .await
                 .map_err(|e| {
-                    warp_utils::reject::custom_server_error(format!(
-                        "Blind block proposal failed: {:?}",
-                        e
-                    ))
+                    ApiError::server_error(format!("Blind block proposal failed: {:?}", e))
                 })? {
                 SubmitBlindedBlockResponse::V1(full_payload) => {
                     info!(block_root = ?block_root, "Successfully published a block to the builder network");
@@ -794,9 +787,7 @@ pub async fn reconstruct_block<T: BeaconChainTypes>(
         }
     }
     .map(Some)
-    .map_err(|e| {
-        warp_utils::reject::custom_server_error(format!("Unable to add payload to block: {e:?}"))
-    })
+    .map_err(|e| ApiError::server_error(format!("Unable to add payload to block: {e:?}")))
 }
 
 /// If the `seen_timestamp` is some time after the start of the slot for

@@ -1,24 +1,21 @@
+use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use eth2::lighthouse::CustodyInfo;
 use std::sync::Arc;
 use types::EthSpec;
-use warp_utils::reject::{custom_bad_request, custom_server_error};
 
-pub fn info<T: BeaconChainTypes>(
-    chain: Arc<BeaconChain<T>>,
-) -> Result<CustodyInfo, warp::Rejection> {
+pub fn info<T: BeaconChainTypes>(chain: Arc<BeaconChain<T>>) -> Result<CustodyInfo, ApiError> {
     if !chain.spec.is_fulu_scheduled() {
-        return Err(custom_bad_request("Fulu is not scheduled".to_string()));
+        return Err(ApiError::bad_request("Fulu is not scheduled".to_string()));
     }
 
-    let opt_data_column_custody_info = chain
-        .store
-        .get_data_column_custody_info()
-        .map_err(|e| custom_server_error(format!("error reading DataColumnCustodyInfo: {e:?}")))?;
+    let opt_data_column_custody_info = chain.store.get_data_column_custody_info().map_err(|e| {
+        ApiError::server_error(format!("error reading DataColumnCustodyInfo: {e:?}"))
+    })?;
 
     let column_data_availability_boundary = chain
         .column_data_availability_boundary()
-        .ok_or_else(|| custom_server_error("unreachable: Fulu should be enabled".to_string()))?;
+        .ok_or_else(|| ApiError::server_error("unreachable: Fulu should be enabled".to_string()))?;
 
     let earliest_custodied_data_column_slot = opt_data_column_custody_info
         .and_then(|info| info.earliest_data_column_slot)

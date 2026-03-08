@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
 use eth2::lighthouse::{
     AttestationPerformance, AttestationPerformanceQuery, AttestationPerformanceStatistics,
@@ -7,7 +8,6 @@ use state_processing::{
 };
 use std::sync::Arc;
 use types::{BeaconState, BeaconStateError, EthSpec, Hash256};
-use warp_utils::reject::{custom_bad_request, custom_server_error, unhandled_error};
 
 const MAX_REQUEST_RANGE_EPOCHS: usize = 100;
 const BLOCK_ROOT_CHUNK_SIZE: usize = 100;
@@ -36,7 +36,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     target: String,
     query: AttestationPerformanceQuery,
     chain: Arc<BeaconChain<T>>,
-) -> Result<Vec<AttestationPerformance>, warp::Rejection> {
+) -> Result<Vec<AttestationPerformance>, ApiError> {
     let spec = &chain.spec;
     // We increment by 2 here so that when we build the state from the `prior_slot` it is
     // still 1 epoch ahead of the first epoch we want to analyse.
@@ -50,9 +50,9 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     let end_slot = end_epoch.end_slot(T::EthSpec::slots_per_epoch());
 
     // Ensure end_epoch is smaller than the current epoch - 1.
-    let current_epoch = chain.epoch().map_err(unhandled_error)?;
+    let current_epoch = chain.epoch().map_err(ApiError::unhandled_error)?;
     if query.end_epoch >= current_epoch - 1 {
-        return Err(custom_bad_request(format!(
+        return Err(ApiError::bad_request(format!(
             "end_epoch must be less than the current epoch - 1. current: {}, end: {}",
             current_epoch, query.end_epoch
         )));
@@ -60,7 +60,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
 
     // Check query is valid.
     if start_epoch > end_epoch {
-        return Err(custom_bad_request(format!(
+        return Err(ApiError::bad_request(format!(
             "start_epoch must not be larger than end_epoch. start: {}, end: {}",
             query.start_epoch, query.end_epoch
         )));
@@ -69,7 +69,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     // The response size can grow exceptionally large therefore we should check that the
     // query is within permitted bounds to prevent potential OOM errors.
     if (end_epoch - start_epoch).as_usize() > MAX_REQUEST_RANGE_EPOCHS {
-        return Err(custom_bad_request(format!(
+        return Err(ApiError::bad_request(format!(
             "end_epoch must not exceed start_epoch by more than {} epochs. start: {}, end: {}",
             MAX_REQUEST_RANGE_EPOCHS, query.start_epoch, query.end_epoch
         )));
@@ -82,11 +82,15 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     // `false`.
     let index_range = if target.to_lowercase() == "global" {
         chain
-            .with_head(|head| Ok((0..head.beacon_state.validators().len() as u64).collect()))
-            .map_err(unhandled_error::<BeaconChainError>)?
+            .with_head(|head| {
+                Ok::<_, beacon_chain::BeaconChainError>(
+                    (0..head.beacon_state.validators().len() as u64).collect(),
+                )
+            })
+            .map_err(ApiError::unhandled_error)?
     } else {
         vec![target.parse::<u64>().map_err(|_| {
-            custom_bad_request(format!(
+            ApiError::bad_request(format!(
                 "Invalid validator index: {:?}",
                 target.to_lowercase()
             ))
@@ -96,15 +100,15 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     // Load block roots.
     let mut block_roots: Vec<Hash256> = chain
         .forwards_iter_block_roots_until(start_slot, end_slot)
-        .map_err(unhandled_error)?
+        .map_err(ApiError::unhandled_error)?
         .map(|res| res.map(|(root, _)| root))
         .collect::<Result<Vec<Hash256>, _>>()
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
     block_roots.dedup();
 
     // Load first block so we can get its parent.
     let first_block_root = block_roots.first().ok_or_else(|| {
-        custom_server_error(
+        ApiError::server_error(
             "No blocks roots could be loaded. Ensure the beacon node is synced.".to_string(),
         )
     })?;
@@ -113,7 +117,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
         .and_then(|maybe_block| {
             maybe_block.ok_or(BeaconChainError::MissingBeaconBlock(*first_block_root))
         })
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     // Load the block of the prior slot which will be used to build the starting state.
     let prior_block = chain
@@ -122,7 +126,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
             maybe_block
                 .ok_or_else(|| BeaconChainError::MissingBeaconBlock(first_block.parent_root()))
         })
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     // Load state for block replay.
     let state_root = prior_block.state_root();
@@ -132,7 +136,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
     let state = chain
         .get_state(&state_root, Some(prior_slot), true)
         .and_then(|maybe_state| maybe_state.ok_or(BeaconChainError::MissingBeaconState(state_root)))
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     // Allocate an AttestationPerformance vector for each validator in the range.
     let mut perfs: Vec<AttestationPerformance> =
@@ -201,7 +205,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
                     .and_then(|maybe_block| {
                         maybe_block.ok_or(BeaconChainError::MissingBeaconBlock(*root))
                     })
-                    .map_err(unhandled_error)
+                    .map_err(ApiError::unhandled_error)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -216,7 +220,7 @@ pub fn get_attestation_performance<T: BeaconChainTypes>(
 
         replayer = replayer
             .apply_blocks(blocks, None)
-            .map_err(|e| custom_server_error(format!("{:?}", e)))?;
+            .map_err(|e| ApiError::server_error(format!("{:?}", e)))?;
     }
 
     drop(replayer);

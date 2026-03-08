@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use crate::{BlockId, ExecutionOptimistic};
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
 use eth2::types::{SyncCommitteeReward, ValidatorId};
@@ -5,20 +6,19 @@ use state_processing::BlockReplayer;
 use std::sync::Arc;
 use tracing::debug;
 use types::{BeaconState, SignedBlindedBeaconBlock};
-use warp_utils::reject::{custom_not_found, unhandled_error};
 
 pub fn compute_sync_committee_rewards<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_id: BlockId,
     validators: Vec<ValidatorId>,
-) -> Result<(Option<Vec<SyncCommitteeReward>>, ExecutionOptimistic, bool), warp::Rejection> {
+) -> Result<(Option<Vec<SyncCommitteeReward>>, ExecutionOptimistic, bool), ApiError> {
     let (block, execution_optimistic, finalized) = block_id.blinded_block(&chain)?;
 
     let mut state = get_state_before_applying_block(chain.clone(), &block)?;
 
     let reward_payload = chain
         .compute_sync_committee_rewards(block.message(), &mut state)
-        .map_err(unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     let data = if reward_payload.is_empty() {
         debug!("compute_sync_committee_rewards returned empty");
@@ -48,13 +48,13 @@ pub fn compute_sync_committee_rewards<T: BeaconChainTypes>(
 pub fn get_state_before_applying_block<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block: &SignedBlindedBeaconBlock<T::EthSpec>,
-) -> Result<BeaconState<T::EthSpec>, warp::reject::Rejection> {
+) -> Result<BeaconState<T::EthSpec>, ApiError> {
     let parent_block: SignedBlindedBeaconBlock<T::EthSpec> = chain
         .get_blinded_block(&block.parent_root())
         .and_then(|maybe_block| {
             maybe_block.ok_or_else(|| BeaconChainError::MissingBeaconBlock(block.parent_root()))
         })
-        .map_err(|e| custom_not_found(format!("Parent block is not available! {:?}", e)))?;
+        .map_err(|e| ApiError::not_found(format!("Parent block is not available! {:?}", e)))?;
 
     // We are about to apply a new block to the chain. It's parent state
     // is a useful/recent state, we elect to cache it.
@@ -64,14 +64,15 @@ pub fn get_state_before_applying_block<T: BeaconChainTypes>(
             maybe_state
                 .ok_or_else(|| BeaconChainError::MissingBeaconState(parent_block.state_root()))
         })
-        .map_err(|e| custom_not_found(format!("Parent state is not available! {:?}", e)))?;
+        .map_err(|e| ApiError::not_found(format!("Parent state is not available! {:?}", e)))?;
 
-    let replayer = BlockReplayer::new(parent_state, &chain.spec)
-        .no_signature_verification()
-        .state_root_iter([Ok((parent_block.state_root(), parent_block.slot()))].into_iter())
-        .minimal_block_root_verification()
-        .apply_blocks(vec![], Some(block.slot()))
-        .map_err(unhandled_error::<BeaconChainError>)?;
+    let replayer =
+        BlockReplayer::<_, beacon_chain::BeaconChainError, _>::new(parent_state, &chain.spec)
+            .no_signature_verification()
+            .state_root_iter([Ok((parent_block.state_root(), parent_block.slot()))].into_iter())
+            .minimal_block_root_verification()
+            .apply_blocks(vec![], Some(block.slot()))
+            .map_err(ApiError::unhandled_error)?;
 
     Ok(replayer.into_state())
 }

@@ -4547,6 +4547,7 @@ dependencies = [
 name = "http_api"
 version = "0.1.0"
 dependencies = [
+ "axum 0.8.8",
  "beacon_chain",
  "beacon_processor",
  "bs58",
@@ -4584,6 +4585,7 @@ dependencies = [
  "task_executor",
  "tokio",
  "tokio-stream",
+ "tower-http",
  "tracing",
  "tree_hash",
  "types",

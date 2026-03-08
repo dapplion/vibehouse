@@ -1,4 +1,5 @@
 use crate::{
+    api_error::ApiError,
     build_block_contents,
     version::{
         ResponseIncludesVersion, add_consensus_block_value_header, add_consensus_version_header,
@@ -15,10 +16,7 @@ use ssz::Encode;
 use std::sync::Arc;
 use tracing::instrument;
 use types::{payload::BlockProductionVersion, *};
-use warp::{
-    Reply,
-    hyper::{Body, Response},
-};
+use warp::reply::{Reply, Response};
 
 /// If default boost factor is provided in validator/blocks v3 request, we will skip the calculation
 /// to keep the precision.
@@ -27,11 +25,11 @@ const DEFAULT_BOOST_FACTOR: u64 = 100;
 pub fn get_randao_verification(
     query: &api_types::ValidatorBlocksQuery,
     randao_reveal_infinity: bool,
-) -> Result<ProduceBlockVerification, warp::Rejection> {
+) -> Result<ProduceBlockVerification, ApiError> {
     let randao_verification = if query.skip_randao_verification == SkipRandaoVerification::Yes {
         if !randao_reveal_infinity {
-            return Err(warp_utils::reject::custom_bad_request(
-                "randao_reveal must be point-at-infinity if verification is skipped".into(),
+            return Err(ApiError::bad_request(
+                "randao_reveal must be point-at-infinity if verification is skipped",
             ));
         }
         ProduceBlockVerification::NoVerification
@@ -52,16 +50,15 @@ pub async fn produce_block_v3<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     slot: Slot,
     query: api_types::ValidatorBlocksQuery,
-) -> Result<Response<Body>, warp::Rejection> {
-    // Stateless nodes have no EL connection and cannot produce execution payloads.
+) -> Result<Response, ApiError> {
     if chain.config.stateless_validation {
-        return Err(warp_utils::reject::custom_bad_request(
-            "stateless validation nodes cannot produce blocks".into(),
+        return Err(ApiError::bad_request(
+            "stateless validation nodes cannot produce blocks",
         ));
     }
 
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
-        warp_utils::reject::custom_bad_request(format!(
+        ApiError::bad_request(format!(
             "randao reveal is not a valid BLS signature: {:?}",
             e
         ))
@@ -84,9 +81,7 @@ pub async fn produce_block_v3<T: BeaconChainTypes>(
             BlockProductionVersion::V3,
         )
         .await
-        .map_err(|e| {
-            warp_utils::reject::custom_bad_request(format!("failed to fetch a block: {:?}", e))
-        })?;
+        .map_err(|e| ApiError::bad_request(format!("failed to fetch a block: {:?}", e)))?;
 
     build_response_v3(chain, block_response_type, accept_header)
 }
@@ -95,7 +90,7 @@ pub fn build_response_v3<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_response: BeaconBlockResponseWrapper<T::EthSpec>,
     accept_header: Option<api_types::Accept>,
-) -> Result<Response<Body>, warp::Rejection> {
+) -> Result<Response, ApiError> {
     let fork_name = block_response
         .fork_name(&chain.spec)
         .map_err(inconsistent_fork_rejection)?;
@@ -113,26 +108,21 @@ pub fn build_response_v3<T: BeaconChainTypes>(
     let block_contents = build_block_contents::build_block_contents(fork_name, block_response)?;
 
     match accept_header {
-        Some(api_types::Accept::Ssz) => Response::builder()
+        Some(api_types::Accept::Ssz) => warp::http::Response::builder()
             .status(200)
             .body(block_contents.as_ssz_bytes().into())
-            .map(|res: Response<Body>| add_ssz_content_type_header(res))
-            .map(|res: Response<Body>| add_consensus_version_header(res, fork_name))
+            .map(|res: Response| add_ssz_content_type_header(res))
+            .map(|res| add_consensus_version_header(res, fork_name))
             .map(|res| add_execution_payload_blinded_header(res, execution_payload_blinded))
-            .map(|res: Response<Body>| {
-                add_execution_payload_value_header(res, execution_payload_value)
-            })
+            .map(|res| add_execution_payload_value_header(res, execution_payload_value))
             .map(|res| add_consensus_block_value_header(res, consensus_block_value))
-            .map_err(|e| -> warp::Rejection {
-                warp_utils::reject::custom_server_error(format!("failed to create response: {}", e))
-            }),
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
         _ => Ok(warp::reply::json(&ForkVersionedResponse {
             version: fork_name,
             metadata,
             data: block_contents,
         })
         .into_response())
-        .map(|res| res.into_response())
         .map(|res| add_consensus_version_header(res, fork_name))
         .map(|res| add_execution_payload_blinded_header(res, execution_payload_blinded))
         .map(|res| add_execution_payload_value_header(res, execution_payload_value))
@@ -145,15 +135,15 @@ pub async fn produce_blinded_block_v2<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     slot: Slot,
     query: api_types::ValidatorBlocksQuery,
-) -> Result<Response<Body>, warp::Rejection> {
+) -> Result<Response, ApiError> {
     if chain.config.stateless_validation {
-        return Err(warp_utils::reject::custom_bad_request(
-            "stateless validation nodes cannot produce blocks".into(),
+        return Err(ApiError::bad_request(
+            "stateless validation nodes cannot produce blocks",
         ));
     }
 
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
-        warp_utils::reject::custom_bad_request(format!(
+        ApiError::bad_request(format!(
             "randao reveal is not a valid BLS signature: {:?}",
             e
         ))
@@ -170,7 +160,7 @@ pub async fn produce_blinded_block_v2<T: BeaconChainTypes>(
             BlockProductionVersion::BlindedV2,
         )
         .await
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     build_response_v2(chain, block_response_type, accept_header)
 }
@@ -185,15 +175,15 @@ pub async fn produce_block_v2<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     slot: Slot,
     query: api_types::ValidatorBlocksQuery,
-) -> Result<Response<Body>, warp::Rejection> {
+) -> Result<Response, ApiError> {
     if chain.config.stateless_validation {
-        return Err(warp_utils::reject::custom_bad_request(
-            "stateless validation nodes cannot produce blocks".into(),
+        return Err(ApiError::bad_request(
+            "stateless validation nodes cannot produce blocks",
         ));
     }
 
     let randao_reveal = query.randao_reveal.decompress().map_err(|e| {
-        warp_utils::reject::custom_bad_request(format!(
+        ApiError::bad_request(format!(
             "randao reveal is not a valid BLS signature: {:?}",
             e
         ))
@@ -211,7 +201,7 @@ pub async fn produce_block_v2<T: BeaconChainTypes>(
             BlockProductionVersion::FullV2,
         )
         .await
-        .map_err(warp_utils::reject::unhandled_error)?;
+        .map_err(ApiError::unhandled_error)?;
 
     build_response_v2(chain, block_response_type, accept_header)
 }
@@ -220,7 +210,7 @@ pub fn build_response_v2<T: BeaconChainTypes>(
     chain: Arc<BeaconChain<T>>,
     block_response: BeaconBlockResponseWrapper<T::EthSpec>,
     accept_header: Option<api_types::Accept>,
-) -> Result<Response<Body>, warp::Rejection> {
+) -> Result<Response, ApiError> {
     let fork_name = block_response
         .fork_name(&chain.spec)
         .map_err(inconsistent_fork_rejection)?;
@@ -228,14 +218,12 @@ pub fn build_response_v2<T: BeaconChainTypes>(
     let block_contents = build_block_contents::build_block_contents(fork_name, block_response)?;
 
     match accept_header {
-        Some(api_types::Accept::Ssz) => Response::builder()
+        Some(api_types::Accept::Ssz) => warp::http::Response::builder()
             .status(200)
             .body(block_contents.as_ssz_bytes().into())
-            .map(|res: Response<Body>| add_ssz_content_type_header(res))
-            .map(|res: Response<Body>| add_consensus_version_header(res, fork_name))
-            .map_err(|e| {
-                warp_utils::reject::custom_server_error(format!("failed to create response: {}", e))
-            }),
+            .map(|res: Response| add_ssz_content_type_header(res))
+            .map(|res| add_consensus_version_header(res, fork_name))
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
         _ => Ok(warp::reply::json(&beacon_response(
             ResponseIncludesVersion::Yes(fork_name),
             block_contents,

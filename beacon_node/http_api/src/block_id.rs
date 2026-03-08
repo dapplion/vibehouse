@@ -1,3 +1,4 @@
+use crate::api_error::ApiError;
 use crate::version::inconsistent_fork_rejection;
 use crate::{ExecutionOptimistic, state_id::checkpoint_slot_and_execution_optimistic};
 use beacon_chain::kzg_utils::reconstruct_blobs;
@@ -13,7 +14,6 @@ use types::{
     SignedBeaconBlock, SignedBlindedBeaconBlock, Slot, UnversionedResponse,
     beacon_response::ExecutionOptimisticFinalizedMetadata,
 };
-use warp::Rejection;
 
 /// Wraps `eth2::types::BlockId` and provides a simple way to obtain a block or root for a given
 /// `BlockId`.
@@ -42,13 +42,13 @@ impl BlockId {
     pub fn root<T: BeaconChainTypes>(
         &self,
         chain: &BeaconChain<T>,
-    ) -> Result<(Hash256, ExecutionOptimistic, Finalized), warp::Rejection> {
+    ) -> Result<(Hash256, ExecutionOptimistic, Finalized), ApiError> {
         match &self.0 {
             CoreBlockId::Head => {
                 let (cached_head, execution_status) = chain
                     .canonical_head
                     .head_and_execution_status()
-                    .map_err(warp_utils::reject::unhandled_error)?;
+                    .map_err(ApiError::unhandled_error)?;
                 Ok((
                     cached_head.head_block_root(),
                     execution_status.is_optimistic_or_invalid(),
@@ -73,16 +73,13 @@ impl BlockId {
             CoreBlockId::Slot(slot) => {
                 let execution_optimistic = chain
                     .is_optimistic_or_invalid_head()
-                    .map_err(warp_utils::reject::unhandled_error)?;
+                    .map_err(ApiError::unhandled_error)?;
                 let root = chain
                     .block_root_at_slot(*slot, WhenSlotSkipped::None)
-                    .map_err(warp_utils::reject::unhandled_error)
+                    .map_err(ApiError::unhandled_error)
                     .and_then(|root_opt| {
                         root_opt.ok_or_else(|| {
-                            warp_utils::reject::custom_not_found(format!(
-                                "beacon block at slot {}",
-                                slot
-                            ))
+                            ApiError::not_found(format!("beacon block at slot {}", slot))
                         })
                     })?;
                 let finalized = *slot
@@ -97,7 +94,7 @@ impl BlockId {
             CoreBlockId::Root(root) => {
                 // This matches the behaviour of other consensus clients (e.g. Teku).
                 if root == &Hash256::zero() {
-                    return Err(warp_utils::reject::custom_not_found(format!(
+                    return Err(ApiError::not_found(format!(
                         "beacon block with root {}",
                         root
                     )));
@@ -106,30 +103,27 @@ impl BlockId {
                     .store
                     .block_exists(root)
                     .map_err(BeaconChainError::DBError)
-                    .map_err(warp_utils::reject::unhandled_error)?
+                    .map_err(ApiError::unhandled_error)?
                 {
                     let execution_optimistic = chain
                         .canonical_head
                         .fork_choice_read_lock()
                         .is_optimistic_or_invalid_block(root)
                         .map_err(BeaconChainError::ForkChoiceError)
-                        .map_err(warp_utils::reject::unhandled_error)?;
+                        .map_err(ApiError::unhandled_error)?;
                     let blinded_block = chain
                         .get_blinded_block(root)
-                        .map_err(warp_utils::reject::unhandled_error)?
+                        .map_err(ApiError::unhandled_error)?
                         .ok_or_else(|| {
-                            warp_utils::reject::custom_not_found(format!(
-                                "beacon block with root {}",
-                                root
-                            ))
+                            ApiError::not_found(format!("beacon block with root {}", root))
                         })?;
                     let block_slot = blinded_block.slot();
                     let finalized = chain
                         .is_finalized_block(root, block_slot)
-                        .map_err(warp_utils::reject::unhandled_error)?;
+                        .map_err(ApiError::unhandled_error)?;
                     Ok((*root, execution_optimistic, finalized))
                 } else {
-                    Err(warp_utils::reject::custom_not_found(format!(
+                    Err(ApiError::not_found(format!(
                         "beacon block with root {}",
                         root
                     )))
@@ -141,10 +135,10 @@ impl BlockId {
     pub fn blinded_block_by_root<T: BeaconChainTypes>(
         root: &Hash256,
         chain: &BeaconChain<T>,
-    ) -> Result<Option<SignedBlindedBeaconBlock<T::EthSpec>>, warp::Rejection> {
+    ) -> Result<Option<SignedBlindedBeaconBlock<T::EthSpec>>, ApiError> {
         chain
             .get_blinded_block(root)
-            .map_err(warp_utils::reject::unhandled_error)
+            .map_err(ApiError::unhandled_error)
     }
 
     /// Return the `SignedBeaconBlock` identified by `self`.
@@ -157,14 +151,14 @@ impl BlockId {
             ExecutionOptimistic,
             Finalized,
         ),
-        warp::Rejection,
+        ApiError,
     > {
         match &self.0 {
             CoreBlockId::Head => {
                 let (cached_head, execution_status) = chain
                     .canonical_head
                     .head_and_execution_status()
-                    .map_err(warp_utils::reject::unhandled_error)?;
+                    .map_err(ApiError::unhandled_error)?;
                 Ok((
                     cached_head.snapshot.beacon_block.clone_as_blinded(),
                     execution_status.is_optimistic_or_invalid(),
@@ -176,14 +170,11 @@ impl BlockId {
                 BlockId::blinded_block_by_root(&root, chain).and_then(|block_opt| match block_opt {
                     Some(block) => {
                         if block.slot() != *slot {
-                            return Err(warp_utils::reject::custom_not_found(format!(
-                                "slot {} was skipped",
-                                slot
-                            )));
+                            return Err(ApiError::not_found(format!("slot {} was skipped", slot)));
                         }
                         Ok((block, execution_optimistic, finalized))
                     }
-                    None => Err(warp_utils::reject::custom_not_found(format!(
+                    None => Err(ApiError::not_found(format!(
                         "beacon block with root {}",
                         root
                     ))),
@@ -193,10 +184,7 @@ impl BlockId {
                 let (root, execution_optimistic, finalized) = self.root(chain)?;
                 let block = BlockId::blinded_block_by_root(&root, chain).and_then(|root_opt| {
                     root_opt.ok_or_else(|| {
-                        warp_utils::reject::custom_not_found(format!(
-                            "beacon block with root {}",
-                            root
-                        ))
+                        ApiError::not_found(format!("beacon block with root {}", root))
                     })
                 })?;
                 Ok((block, execution_optimistic, finalized))
@@ -214,14 +202,14 @@ impl BlockId {
             ExecutionOptimistic,
             Finalized,
         ),
-        warp::Rejection,
+        ApiError,
     > {
         match &self.0 {
             CoreBlockId::Head => {
                 let (cached_head, execution_status) = chain
                     .canonical_head
                     .head_and_execution_status()
-                    .map_err(warp_utils::reject::unhandled_error)?;
+                    .map_err(ApiError::unhandled_error)?;
                 Ok((
                     cached_head.snapshot.beacon_block.clone(),
                     execution_status.is_optimistic_or_invalid(),
@@ -233,18 +221,18 @@ impl BlockId {
                 chain
                     .get_block(&root)
                     .await
-                    .map_err(warp_utils::reject::unhandled_error)
+                    .map_err(ApiError::unhandled_error)
                     .and_then(|block_opt| match block_opt {
                         Some(block) => {
                             if block.slot() != *slot {
-                                return Err(warp_utils::reject::custom_not_found(format!(
+                                return Err(ApiError::not_found(format!(
                                     "slot {} was skipped",
                                     slot
                                 )));
                             }
                             Ok((Arc::new(block), execution_optimistic, finalized))
                         }
-                        None => Err(warp_utils::reject::custom_not_found(format!(
+                        None => Err(ApiError::not_found(format!(
                             "beacon block with root {}",
                             root
                         ))),
@@ -255,15 +243,12 @@ impl BlockId {
                 chain
                     .get_block(&root)
                     .await
-                    .map_err(warp_utils::reject::unhandled_error)
+                    .map_err(ApiError::unhandled_error)
                     .and_then(|block_opt| {
                         block_opt
                             .map(|block| (Arc::new(block), execution_optimistic, finalized))
                             .ok_or_else(|| {
-                                warp_utils::reject::custom_not_found(format!(
-                                    "beacon block with root {}",
-                                    root
-                                ))
+                                ApiError::not_found(format!("beacon block with root {}", root))
                             })
                     })
             }
@@ -274,14 +259,13 @@ impl BlockId {
         &self,
         query: DataColumnIndicesQuery,
         chain: &BeaconChain<T>,
-    ) -> Result<DataColumnsResponse<T>, Rejection> {
+    ) -> Result<DataColumnsResponse<T>, ApiError> {
         let (root, execution_optimistic, finalized) = self.root(chain)?;
-        let block = BlockId::blinded_block_by_root(&root, chain)?.ok_or_else(|| {
-            warp_utils::reject::custom_not_found(format!("beacon block with root {}", root))
-        })?;
+        let block = BlockId::blinded_block_by_root(&root, chain)?
+            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {}", root)))?;
 
         if !chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
-            return Err(warp_utils::reject::custom_bad_request(
+            return Err(ApiError::bad_request(
                 "block is pre-Fulu and has no data columns".to_string(),
             ));
         }
@@ -291,11 +275,11 @@ impl BlockId {
                 .iter()
                 .filter_map(|index| chain.get_data_column(&root, index).transpose())
                 .collect::<Result<DataColumnSidecarList<T::EthSpec>, _>>()
-                .map_err(warp_utils::reject::unhandled_error)?
+                .map_err(ApiError::unhandled_error)?
         } else {
             chain
                 .get_data_columns(&root)
-                .map_err(warp_utils::reject::unhandled_error)?
+                .map_err(ApiError::unhandled_error)?
                 .unwrap_or_default()
         };
 
@@ -323,18 +307,15 @@ impl BlockId {
             ExecutionOptimistic,
             Finalized,
         ),
-        warp::Rejection,
+        ApiError,
     > {
         let (root, execution_optimistic, finalized) = self.root(chain)?;
-        let block = BlockId::blinded_block_by_root(&root, chain)?.ok_or_else(|| {
-            warp_utils::reject::custom_not_found(format!("beacon block with root {}", root))
-        })?;
+        let block = BlockId::blinded_block_by_root(&root, chain)?
+            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {}", root)))?;
 
         // Error if the block is pre-Deneb and lacks blobs.
         let blob_kzg_commitments = block.message().body().blob_kzg_commitments().map_err(|_| {
-            warp_utils::reject::custom_bad_request(
-                "block is pre-Deneb and has no blobs".to_string(),
-            )
+            ApiError::bad_request("block is pre-Deneb and has no blobs".to_string())
         })?;
 
         // Return the `BlobSidecarList` identified by `self`.
@@ -347,7 +328,7 @@ impl BlockId {
             }
         } else {
             BlobSidecarList::new(vec![], max_blobs_per_block)
-                .map_err(|e| warp_utils::reject::custom_server_error(format!("{:?}", e)))?
+                .map_err(|e| ApiError::server_error(format!("{:?}", e)))?
         };
 
         Ok((block, blob_sidecar_list, execution_optimistic, finalized))
@@ -360,18 +341,15 @@ impl BlockId {
         chain: &BeaconChain<T>,
     ) -> Result<
         UnversionedResponse<Vec<BlobWrapper<T::EthSpec>>, ExecutionOptimisticFinalizedMetadata>,
-        warp::Rejection,
+        ApiError,
     > {
         let (root, execution_optimistic, finalized) = self.root(chain)?;
-        let block = BlockId::blinded_block_by_root(&root, chain)?.ok_or_else(|| {
-            warp_utils::reject::custom_not_found(format!("beacon block with root {}", root))
-        })?;
+        let block = BlockId::blinded_block_by_root(&root, chain)?
+            .ok_or_else(|| ApiError::not_found(format!("beacon block with root {}", root)))?;
 
         // Error if the block is pre-Deneb and lacks blobs.
         let blob_kzg_commitments = block.message().body().blob_kzg_commitments().map_err(|_| {
-            warp_utils::reject::custom_bad_request(
-                "block is pre-Deneb and has no blobs".to_string(),
-            )
+            ApiError::bad_request("block is pre-Deneb and has no blobs".to_string())
         })?;
 
         let blob_indices_opt = query.versioned_hashes.map(|versioned_hashes| {
@@ -396,7 +374,7 @@ impl BlockId {
             }
         } else {
             BlobSidecarList::new(vec![], max_blobs_per_block)
-                .map_err(|e| warp_utils::reject::custom_server_error(format!("{:?}", e)))?
+                .map_err(|e| ApiError::server_error(format!("{:?}", e)))?
         };
 
         let blobs = blob_sidecar_list
@@ -420,15 +398,13 @@ impl BlockId {
         root: Hash256,
         indices: Option<Vec<u64>>,
         max_blobs_per_block: usize,
-    ) -> Result<BlobSidecarList<T::EthSpec>, Rejection> {
+    ) -> Result<BlobSidecarList<T::EthSpec>, ApiError> {
         let blob_sidecar_list = chain
             .store
             .get_blobs(&root)
-            .map_err(|e| warp_utils::reject::unhandled_error(BeaconChainError::from(e)))?
+            .map_err(|e| ApiError::unhandled_error(BeaconChainError::from(e)))?
             .blobs()
-            .ok_or_else(|| {
-                warp_utils::reject::custom_not_found(format!("no blobs stored for block {root}"))
-            })?;
+            .ok_or_else(|| ApiError::not_found(format!("no blobs stored for block {root}")))?;
 
         let blob_sidecar_list_filtered = match indices {
             Some(vec) => {
@@ -438,7 +414,7 @@ impl BlockId {
                     .collect();
 
                 BlobSidecarList::new(list, max_blobs_per_block)
-                    .map_err(|e| warp_utils::reject::custom_server_error(format!("{:?}", e)))?
+                    .map_err(|e| ApiError::server_error(format!("{:?}", e)))?
             }
             None => blob_sidecar_list,
         };
@@ -451,11 +427,9 @@ impl BlockId {
         root: Hash256,
         blob_indices: Option<Vec<u64>>,
         block: &SignedBlindedBeaconBlock<<T as BeaconChainTypes>::EthSpec>,
-    ) -> Result<BlobSidecarList<T::EthSpec>, Rejection> {
+    ) -> Result<BlobSidecarList<T::EthSpec>, ApiError> {
         let column_indices = chain.store.get_data_column_keys(root).map_err(|e| {
-            warp_utils::reject::custom_server_error(format!(
-                "Error fetching data columns keys: {e:?}"
-            ))
+            ApiError::server_error(format!("Error fetching data columns keys: {e:?}"))
         })?;
 
         let num_found_column_keys = column_indices.len();
@@ -469,20 +443,16 @@ impl BlockId {
                     |column_index| match chain.get_data_column(&root, &column_index) {
                         Ok(Some(data_column)) => Some(Ok(data_column)),
                         Ok(None) => None,
-                        Err(e) => Some(Err(warp_utils::reject::unhandled_error(e))),
+                        Err(e) => Some(Err(ApiError::unhandled_error(e))),
                     },
                 )
                 .collect::<Result<Vec<_>, _>>()?;
 
             reconstruct_blobs(&chain.kzg, &data_columns, blob_indices, block, &chain.spec).map_err(
-                |e| {
-                    warp_utils::reject::custom_server_error(format!(
-                        "Error reconstructing data columns: {e:?}"
-                    ))
-                },
+                |e| ApiError::server_error(format!("Error reconstructing data columns: {e:?}")),
             )
         } else {
-            Err(warp_utils::reject::custom_server_error(format!(
+            Err(ApiError::server_error(format!(
                 "Insufficient data columns to reconstruct blobs: required {num_required_columns}, but only {num_found_column_keys} were found."
             )))
         }

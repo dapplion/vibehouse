@@ -6,6 +6,7 @@ use beacon_chain::{
 };
 use eth2::reqwest::{Response, StatusCode};
 use eth2::types::{BroadcastValidation, PublishBlockRequest};
+use http_api::api_error::ApiError;
 use http_api::test_utils::InteractiveTester;
 use http_api::{Config, ProvenancedBlock, publish_blinded_block, publish_block, reconstruct_block};
 use std::collections::HashSet;
@@ -13,8 +14,6 @@ use std::sync::Arc;
 use types::{
     ColumnIndex, Epoch, EthSpec, FixedBytesExtended, ForkName, Hash256, MainnetEthSpec, Slot,
 };
-use warp::Rejection;
-use warp_utils::reject::CustomBadRequest;
 
 type E = MainnetEthSpec;
 
@@ -760,12 +759,15 @@ pub async fn equivocation_consensus_late_equivocation() {
 
     let publication_error = publication_result.unwrap_err();
 
-    assert!(publication_error.find::<CustomBadRequest>().is_some());
-
-    assert_eq!(
-        publication_error.find::<CustomBadRequest>().unwrap().0,
-        "proposal for this slot and proposer has already been seen"
-    );
+    match &publication_error {
+        ApiError::BadRequest(msg) => {
+            assert_eq!(
+                msg,
+                "proposal for this slot and proposer has already been seen"
+            );
+        }
+        other => panic!("Expected BadRequest, got {:?}", other),
+    }
 }
 
 /// This test checks that a block that is valid from both a gossip and consensus perspective (and does not equivocate) is accepted when using `broadcast_validation=consensus_and_equivocation`.
@@ -1553,9 +1555,9 @@ pub async fn blinded_equivocation_consensus_late_equivocation() {
 
         assert!(publication_result.is_err());
 
-        let publication_error: Rejection = publication_result.unwrap_err();
+        let publication_error = publication_result.unwrap_err();
 
-        assert!(publication_error.find::<CustomBadRequest>().is_some());
+        assert!(matches!(publication_error, ApiError::BadRequest(_)));
     }
 }
 
