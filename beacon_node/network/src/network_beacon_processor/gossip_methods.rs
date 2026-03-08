@@ -695,6 +695,11 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             %parent_root,
                             "Unknown parent hash for column"
                         );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
                         self.send_sync_message(SyncMessage::UnknownParentDataColumn(
                             peer_id,
                             column_sidecar,
@@ -864,6 +869,11 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                             parent_root = %parent_root,
                             %commitment,
                             "Unknown parent hash for blob"
+                        );
+                        self.propagate_validation_result(
+                            message_id,
+                            peer_id,
+                            MessageAcceptance::Ignore,
                         );
                         self.send_sync_message(SyncMessage::UnknownParentBlob(
                             peer_id,
@@ -1304,6 +1314,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             Err(BlockError::ParentUnknown { .. }) => {
                 debug!(?block_root, "Unknown parent for gossip block");
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 self.send_sync_message(SyncMessage::UnknownParentBlock(peer_id, block, block_root));
                 return None;
             }
