@@ -8,8 +8,6 @@
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
 //! tests for implementation examples.
 pub mod blob_sidecar_list_from_root;
-pub mod chunked_iter;
-pub mod chunked_vector;
 pub mod config;
 pub mod consensus_context;
 pub mod errors;
@@ -21,7 +19,6 @@ mod impls;
 mod memory_store;
 pub mod metadata;
 pub mod metrics;
-pub mod partial_beacon_state;
 pub mod reconstruct;
 pub mod state_cache;
 
@@ -81,11 +78,7 @@ pub trait KeyValueStore<E: EthSpec>: Sync + Send + Sized + 'static {
     fn compact(&self) -> Result<(), Error> {
         // Compact state and block related columns as they are likely to have the most churn,
         // i.e. entries being created and deleted.
-        for column in [
-            DBColumn::BeaconState,
-            DBColumn::BeaconStateHotSummary,
-            DBColumn::BeaconBlock,
-        ] {
+        for column in [DBColumn::BeaconStateHotSummary, DBColumn::BeaconBlock] {
             self.compact_column(column)?;
         }
         Ok(())

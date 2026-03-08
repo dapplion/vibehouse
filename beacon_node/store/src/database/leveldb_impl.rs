@@ -186,8 +186,8 @@ impl<E: EthSpec> LevelDB<E> {
         };
 
         for (start_key, end_key) in [
-            endpoints(DBColumn::BeaconState),
-            endpoints(DBColumn::BeaconStateSummary),
+            endpoints(DBColumn::BeaconStateHotSummary),
+            endpoints(DBColumn::BeaconBlock),
         ] {
             self.db.compact(&start_key, &end_key);
         }
