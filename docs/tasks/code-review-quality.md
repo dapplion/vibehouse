@@ -735,6 +735,23 @@ False positives from cargo-machete (kept): `rand` (used by TestRandom derive mac
 
 Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-trie was already in tree).
 
-**Remaining blocked upgrades**: rand_xorshift 0.5 (needs rand_core 0.10, we have 0.9), reqwest-eventsource 0.6 (needs reqwest 0.12).
+**Remaining blocked upgrades**: rand_xorshift 0.5 (needs rand_core 0.10, we have 0.9).
 
 **Verification**: 10/10 block_hash + execution_layer tests pass, full workspace build clean, full lint clean.
+
+### Run 581 — dependency upgrades: itertools 0.14, reqwest-eventsource 0.6, alloy-trie 0.9 (2026-03-08)
+
+**Spec status**: v1.7.0-alpha.2 still latest release. No new Gloas spec changes merged. Recent consensus-specs PRs (#4977-#4988) are all infrastructure/tooling changes unrelated to Gloas.
+
+**CI status**: all green on latest push.
+
+**Dependency upgrades shipped**:
+1. `itertools` 0.10 → 0.14 (workspace-wide) — eliminates one duplicate version, API-compatible
+2. `reqwest-eventsource` 0.5 → 0.6 — adapted `InvalidStatusCode` handling for `http` 1.x `StatusCode` type (convert via `as_u16()`)
+3. `alloy-trie` 0.8 → 0.9 — API-compatible, no code changes needed
+
+**Remaining duplicate versions** (all transitive, not actionable):
+- `itertools`: 0.10 (criterion), 0.12 (bindgen), 0.13 (ethereum_ssz/milhouse), 0.14 (our code + superstruct)
+- `rand_xorshift` 0.4 → 0.5: still blocked by rand_core version mismatch (needs rand 0.10, we have 0.9)
+
+**Verification**: 80/80 eth2 + execution_layer tests, 64/64 targeted itertools-using tests, full workspace clippy clean, full lint clean.
