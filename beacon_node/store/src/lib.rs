@@ -292,10 +292,8 @@ pub enum DBColumn {
     BeaconStateDiff,
     /// DEPRECATED
     ///
-    /// Mapping from state root to `HotStateSummaryV22` in the hot DB.
-    ///
-    /// Previously this column also served a role in the freezer DB, mapping state roots to
-    /// `ColdStateSummary`. However that role is now filled by `BeaconColdStateSummary`.
+    /// Previously used for hot state summaries (V22 and before) and cold state summaries.
+    /// Superseded by `BeaconStateHotSummary` and `BeaconColdStateSummary`.
     #[strum(serialize = "bss")]
     BeaconStateSummary,
     /// Mapping from state root to `HotStateSummaryV23` in the hot DB.
