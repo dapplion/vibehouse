@@ -1,4 +1,8 @@
-use ethers_providers::{Http, Provider};
+use alloy_provider::ProviderBuilder;
+use alloy_provider::fillers::{
+    BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller,
+};
+use alloy_provider::network::Ethereum;
 use execution_layer::DEFAULT_JWT_FILE;
 use network_utils::unused_port::unused_tcp4_port;
 use sensitive_url::SensitiveUrl;
@@ -25,6 +29,15 @@ pub trait GenericExecutionEngine: Clone {
     ) -> Child;
 }
 
+pub type HttpProvider = FillProvider<
+    JoinFill<
+        alloy_provider::Identity,
+        JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
+    >,
+    alloy_provider::RootProvider,
+    Ethereum,
+>;
+
 /// Holds handle to a running EE process, plus some other metadata.
 pub struct ExecutionEngine<E> {
     #[allow(dead_code)]
@@ -34,7 +47,7 @@ pub struct ExecutionEngine<E> {
     http_port: u16,
     http_auth_port: u16,
     child: Child,
-    pub provider: Provider<Http>,
+    pub provider: HttpProvider,
 }
 
 impl<E> Drop for ExecutionEngine<E> {
@@ -53,8 +66,10 @@ impl<E: GenericExecutionEngine> ExecutionEngine<E> {
         let http_port = unused_tcp4_port().unwrap();
         let http_auth_port = unused_tcp4_port().unwrap();
         let child = E::start_client(&datadir, http_port, http_auth_port, jwt_secret_path);
-        let provider = Provider::<Http>::try_from(format!("http://localhost:{}", http_port))
-            .expect("failed to instantiate ethers provider");
+        let url: reqwest::Url = format!("http://localhost:{}", http_port)
+            .parse()
+            .expect("failed to parse provider URL");
+        let provider = ProviderBuilder::new().connect_http(url);
         Self {
             engine,
             datadir,

@@ -94,6 +94,10 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 595)
+- **Eliminated ethers dependency entirely**: migrated `execution_engine_integration` from ethers to alloy (alloy-provider, alloy-signer-local, alloy-network, alloy-rpc-types). Removed all 6 ethers crates and their transitive deps. Lockfile: 1074 → 1039 packages (-35). Eliminated duplicate k256 (was 0.11.6 + 0.13.4, now just 0.13.4).
+- **Spec status**: stable, fully compliant — PTC lookbehind PR #4979 still open, no new merges
+
 ### 2026-03-08 (run 594)
 - Checked consensus-specs: no new Gloas PRs merged since run 592 (v1.7.0-alpha.2 still latest release, no new releases).
 - Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged. #4843 (Variable PTC deadline) now has approval but still open. #4962 is new (sanity/blocks tests for missed payload withdrawal interactions).
