@@ -20,7 +20,7 @@ fork_choice = { workspace = true }
 hash-db = "0.15.2"
 hash256-std-hasher = "0.15.2"
 hex = { workspace = true }
-jsonwebtoken = "9"
+jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 keccak-hash = "0.10.0"
 kzg = { workspace = true }
 lighthouse_version = { workspace = true }

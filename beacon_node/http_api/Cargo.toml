@@ -8,7 +8,7 @@ autotests = false                               # using a single test binary com
 [dependencies]
 beacon_chain = { workspace = true }
 beacon_processor = { workspace = true }
-bs58 = "0.4.0"
+bs58 = "0.5.1"
 bytes = { workspace = true }
 directory = { workspace = true }
 eth2 = { workspace = true }

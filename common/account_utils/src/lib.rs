@@ -139,11 +139,10 @@ pub fn strip_off_newlines(mut bytes: Vec<u8>) -> Vec<u8> {
 /// Reads a password from TTY or stdin if `use_stdin == true`.
 pub fn read_password_from_user(use_stdin: bool) -> Result<Zeroizing<String>, String> {
     let result = if use_stdin {
-        rpassword::prompt_password_stderr("")
+        rpassword::read_password_from_bufread(&mut std::io::stdin().lock())
             .map_err(|e| format!("Error reading from stdin: {}", e))
     } else {
-        rpassword::read_password_from_tty(None)
-            .map_err(|e| format!("Error reading from tty: {}", e))
+        rpassword::read_password().map_err(|e| format!("Error reading from tty: {}", e))
     };
 
     result.map(Zeroizing::from)
