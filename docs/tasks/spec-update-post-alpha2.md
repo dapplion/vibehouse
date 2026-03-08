@@ -57,6 +57,39 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 **vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when PR merges.
 
+**Detailed implementation plan (from PR #4979 diff analysis):**
+
+1. **New EthSpec type**: `PtcLookbehindLength` = `2 * SlotsPerEpoch` (mainnet: 64, minimal: 16)
+
+2. **BeaconState field** (`consensus/types/src/beacon_state.rs`):
+   ```rust
+   #[superstruct(only(Gloas))]
+   pub ptc_lookbehind: Vector<Vector<u64, E::PtcSize>, E::PtcLookbehindLength>,
+   ```
+
+3. **Rename current `get_ptc_committee` → `compute_ptc`** (`consensus/state_processing/src/per_block_processing/gloas.rs:377`):
+   - Same logic, just extracted as the "compute from scratch" path
+
+4. **New `get_ptc` function** (cache-aware wrapper):
+   ```
+   epoch < state_epoch → lookup ptc_lookbehind[slot % SLOTS_PER_EPOCH] (previous epoch)
+   epoch == state_epoch → lookup ptc_lookbehind[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH] (current epoch)
+   epoch == state_epoch + 1 → compute_ptc(state, slot) on demand (next epoch)
+   ```
+
+5. **New epoch processing `process_ptc_lookbehind`** (`consensus/state_processing/src/per_epoch_processing/`):
+   - Shift: `ptc_lookbehind[0..SLOTS_PER_EPOCH] = ptc_lookbehind[SLOTS_PER_EPOCH..]`
+   - Fill: compute PTC for each slot in next epoch, store in `ptc_lookbehind[SLOTS_PER_EPOCH..]`
+   - Called at end of `process_epoch`, after `process_proposer_lookahead`
+
+6. **Fork upgrade `initialize_ptc_lookbehind`** (`consensus/state_processing/src/upgrade/gloas.rs`):
+   - Previous epoch slots: all zeros (empty — no previous epoch PTC at fork boundary)
+   - Current epoch slots: `compute_ptc(state, slot)` for each slot in current epoch
+
+7. **SSZ/tree-hash**: Vector<Vector<u64>> needs proper tree-hash support; verify ssz_static tests handle it
+
+8. **Update callers**: `process_payload_attestation`, `get_indexed_payload_attestation`, `validator_ptc_duties` — all call current `get_ptc_committee`, redirect to new `get_ptc`
+
 ## Upcoming Spec Test PRs (not yet merged)
 
 - **PR #4940** — "Add initial fork choice tests for Gloas": tests `on_execution_payload` (EMPTY→FULL transition), basic head tracking. Our `ForkChoiceHandler` already supports `on_execution_payload` steps and `head_payload_status` checks — ready to pass when merged.
