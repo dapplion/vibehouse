@@ -647,3 +647,24 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - Consensus-specs still at v1.7.0-alpha.2, PTC Lookbehind PR #4979 still open, no spec logic changes merged
 
 **Verification**: 16/16 store tests, full workspace build + clippy clean.
+
+### Run 567 — Visibility audit: pub → pub(crate) downgrades
+
+**Scope**: Audit all Gloas-specific `pub` items across state_processing and beacon_chain crates for unnecessary visibility.
+
+**Method**: Grep every Gloas `pub fn`/`pub struct`/`pub enum` → check if used outside its crate (including integration tests in `tests/`).
+
+**Changes** (2 functions downgraded):
+1. `get_pending_balance_to_withdraw_for_builder` (gloas.rs:965) — `pub` → `pub(crate)`, only used within state_processing (verify_exit.rs, gloas.rs)
+2. `initiate_builder_exit` (gloas.rs:990) — `pub` → `pub(crate)`, only used within state_processing (process_operations.rs)
+
+**Investigated but kept as `pub`** (legitimately cross-crate):
+- `process_execution_payload_bid` — used by beacon_chain, ef_tests
+- `can_builder_cover_bid`, `get_ptc_committee`, `is_parent_block_full`, `get_expected_withdrawals_gloas`, `process_withdrawals_gloas` — all used by beacon_chain or ef_tests
+- `process_builder_pending_payments` — used by ef_tests
+- `VerifiedExecutionBid`, `VerifiedPayloadAttestation`, `VerifiedPayloadEnvelope` — used by network crate
+- `ExecutionBidError`, `PayloadAttestationError`, `PayloadEnvelopeError` — used by http_api and network
+- `ObservedExecutionBids`, `ObservedPayloadAttestations`, `ObservedPayloadEnvelopes`, `ExecutionBidPool` — exposed via `pub` fields on `BeaconChain`, accessed from http_api/network tests
+- `BidObservationOutcome`, `AttestationObservationOutcome` — used within beacon_chain verification
+
+**Verification**: 557/557 state_processing tests, zero warnings, clippy clean.
