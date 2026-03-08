@@ -94,6 +94,14 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 600)
+- Checked consensus-specs: no new Gloas PRs merged since run 599 (v1.7.0-alpha.2 still latest release). Recent merges are all tooling/cleanup (EIP-6800/7441 removal, renovate, ruff, codespell, python versions).
+- Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Migrated http_metrics crates from warp to axum**: both `beacon_node/http_metrics` and `validator_client/http_metrics` now use axum 0.8 + tower-http 0.6 for CORS and response headers. First step toward removing the warp dependency entirely (warp pulls hyper 0.14, h2 0.3, http 0.2, headers 0.3, rustls 0.22, etc.). Remaining warp users: beacon_node/http_api, validator_client/http_api, beacon_node/execution_layer (test mock), common/warp_utils.
+- **CI status**: run 599 passed all 6 jobs. Nightly: 6+ consecutive successes.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 599)
 - Checked consensus-specs: no new Gloas PRs merged since run 598 (v1.7.0-alpha.2 still latest release, no new releases).
 - Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
