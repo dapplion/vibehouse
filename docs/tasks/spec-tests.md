@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — maintenance + TODO cleanup (run 551)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- PTC Lookbehind PR #4979 still OPEN (active review discussion by jtraglia, potuz, ensi321, nflaig)
+- No new Gloas consensus changes merged
+- CI run 550 (reprocess try_send fix): all 6 jobs passed (check+clippy 8m, ef-tests 11m, network+op_pool 17m, http_api 29m, beacon_chain 37m, unit tests 44m)
+- Resolved all 3 `TODO(EIP-7732)` comments in types crate — blinded block conversions are required by superstruct machinery, not removable. Replaced with explanatory comments.
+- Audited consensus production code: no unwrap/expect in production paths, no unsafe blocks, all arithmetic uses safe_add/saturating_add
+- **Result**: Code quality cleanup shipped. CI green.
+
 ### 2026-03-08 — maintenance check (run 550)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - All tracked Gloas PRs still OPEN: #4979 (PTC Lookbehind, 10 review comments, mergeable_state=blocked), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit fork choice test), #4939 (envelope request), #4962 (missed payload withdrawal tests)
