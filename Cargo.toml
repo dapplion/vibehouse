@@ -242,7 +242,7 @@ sp1-verifier = { version = "6.0.1", default-features = false }
 ssz_types = "0.11.0"
 state_processing = { path = "consensus/state_processing" }
 store = { path = "beacon_node/store" }
-strum = { version = "0.24", features = ["derive"] }
+strum = { version = "0.27", features = ["derive"] }
 superstruct = "0.10"
 swap_or_not_shuffle = { path = "consensus/swap_or_not_shuffle" }
 syn = "1"
@@ -268,7 +268,7 @@ tree_hash = "0.10.0"
 tree_hash_derive = "0.10.0"
 types = { path = "consensus/types" }
 url = "2"
-uuid = { version = "0.8", features = ["serde", "v4"] }
+uuid = { version = "1", features = ["serde", "v4"] }
 validator_client = { path = "validator_client" }
 validator_dir = { path = "common/validator_dir" }
 validator_http_api = { path = "validator_client/http_api" }

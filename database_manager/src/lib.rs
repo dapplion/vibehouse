@@ -21,7 +21,7 @@ use store::{
     errors::Error,
     metadata::{CURRENT_SCHEMA_VERSION, SchemaVersion},
 };
-use strum::{EnumString, EnumVariantNames};
+use strum::{EnumString, VariantNames};
 use tracing::{info, warn};
 use types::{BeaconState, EthSpec, Slot};
 
@@ -79,7 +79,7 @@ pub fn display_db_version<E: EthSpec>(
 }
 
 #[derive(
-    Debug, PartialEq, Eq, Clone, EnumString, Deserialize, Serialize, EnumVariantNames, ValueEnum,
+    Debug, PartialEq, Eq, Clone, EnumString, Deserialize, Serialize, VariantNames, ValueEnum,
 )]
 pub enum InspectTarget {
     #[strum(serialize = "sizes")]
