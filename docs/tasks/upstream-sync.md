@@ -1,22 +1,16 @@
 # Upstream Sync
 
-## Objective
-Stay current with upstream lighthouse fixes and improvements.
+## Status: CLOSED — vibehouse is fully independent
 
-## Status: ONGOING
+vibehouse does not sync from upstream. This task doc is historical.
 
-### Process
-1. `git fetch upstream` — check for new commits
-2. Categorize: security fix (immediate), bug fix (cherry-pick), feature (evaluate), refactor (if clean)
-3. Test after every cherry-pick batch
-4. Push and verify
+As stated in PLAN.md: "NEVER look at, reference, cherry-pick, merge, or pull any code from sigp/lighthouse. We write ALL our own code from the Ethereum specs directly."
 
-### Upstream PRs to watch
-- [#8806 - Gloas payload processing](https://github.com/sigp/lighthouse/pull/8806)
-- [#8815 - Proposer lookahead](https://github.com/sigp/lighthouse/pull/8815)
-- [#8807 - Inactivity scores ef tests](https://github.com/sigp/lighthouse/pull/8807)
-- [#8793 - Process health observation](https://github.com/sigp/lighthouse/pull/8793)
-- [#8786 - HTTP client user-agent](https://github.com/sigp/lighthouse/pull/8786)
+The entries below are historical records from before the independence policy was established. No further upstream syncing will occur.
+
+---
+
+## Historical records
 
 ### Recent spec changes (consensus-specs) needing attention
 - consensus-specs PR #4807 — `update_proposer_boost_root` proposer index check — **DONE**: only apply proposer boost if block's proposer matches canonical chain's expected proposer for the slot. Added `canonical_head_proposer_index: Option<u64>` param to `on_block`, computed from cached head state before fork choice lock. All 8/8 fork choice EF tests pass (real + fake crypto), 34/34 fork_choice unit tests, 18/18 proto_array tests. Fixed 2026-02-18.
