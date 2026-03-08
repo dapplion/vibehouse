@@ -681,7 +681,8 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> EmptyBlock for BeaconBlockGloa
     }
 }
 
-// TODO(EIP-7732) Look into whether we can remove this in the future since no blinded blocks post-gloas
+// Gloas blocks have no execution payload (only bids), so BlindedPayload/FullPayload are phantom
+// types. This conversion is a no-op but required by the superstruct From/Into machinery.
 impl<E: EthSpec> From<BeaconBlockGloas<E, BlindedPayload<E>>>
     for BeaconBlockGloas<E, FullPayload<E>>
 {

@@ -504,8 +504,8 @@ impl<E: EthSpec> From<BeaconBlockBodyAltair<E, BlindedPayload<E>>>
     }
 }
 
-// Post-Fulu block bodies without payloads can be converted into block bodies with payloads
-// TODO(EIP-7732) Look into whether we can remove this in the future since no blinded blocks post-gloas
+// Gloas block bodies have no execution payload (only bids), so BlindedPayload/FullPayload are
+// phantom types. This conversion is a no-op but required by the superstruct From/Into machinery.
 impl<E: EthSpec> From<BeaconBlockBodyGloas<E, BlindedPayload<E>>>
     for BeaconBlockBodyGloas<E, FullPayload<E>>
 {

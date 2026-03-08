@@ -648,8 +648,8 @@ impl<E: EthSpec> SignedBeaconBlockFulu<E, BlindedPayload<E>> {
     }
 }
 
-// We can convert gloas blocks without payloads into blocks "with" payloads.
-// TODO(EIP-7732) Look into whether we can remove this in the future since no blinded blocks post-gloas
+// Gloas blocks have no execution payload (only bids), so BlindedPayload/FullPayload are phantom
+// types. This conversion is a no-op but required by the superstruct From/Into machinery.
 impl<E: EthSpec> From<SignedBeaconBlockGloas<E, BlindedPayload<E>>>
     for SignedBeaconBlockGloas<E, FullPayload<E>>
 {
