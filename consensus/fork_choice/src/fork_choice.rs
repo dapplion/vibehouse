@@ -29,7 +29,6 @@ pub enum Error<T> {
     ProtoArrayStringError(String),
     ProtoArrayError(proto_array::Error),
     InvalidProtoArrayBytes(String),
-    InvalidLegacyProtoArrayBytes(String),
     FailedToProcessInvalidExecutionPayload(String),
     FailedToProcessValidExecutionPayload(String),
     MissingProtoArrayBlock(Hash256),
@@ -42,10 +41,6 @@ pub enum Error<T> {
         time: Slot,
     },
     BeaconStateError(BeaconStateError),
-    AttemptToRevertJustification {
-        store: Slot,
-        state: Slot,
-    },
     ForkChoiceStoreError(T),
     UnableToSetJustifiedCheckpoint(T),
     AfterBlockFailed(T),

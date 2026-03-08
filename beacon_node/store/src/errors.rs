@@ -64,7 +64,6 @@ pub enum Error {
     #[cfg(feature = "redb")]
     RedbError(Box<redb::Error>),
     CacheBuildError(EpochCacheError),
-    RandaoMixOutOfBounds,
     MilhouseError(milhouse::Error),
     SszTypesError(ssz_types::Error),
     Compression(std::io::Error),
@@ -79,7 +78,6 @@ pub enum Error {
     ForwardsIterGap(DBColumn, Slot, Slot),
     StateShouldNotBeRequired(Slot),
     MissingBlock(Hash256),
-    GenesisStateUnknown,
     ArithError(safe_arith::ArithError),
     MismatchedDiffBaseState {
         expected_slot: Slot,
@@ -94,7 +92,6 @@ pub enum Error {
     LoadDataColumnInfo(Box<Error>),
     LoadConfig(Box<Error>),
     LoadHotStateSummary(Hash256, Box<Error>),
-    LoadHotStateSummaryForSplit(Box<Error>),
     StateSummaryIteratorError {
         error: StateSummaryIteratorError,
         from_state_root: Hash256,

@@ -6,7 +6,6 @@ pub enum Error {
     FinalizedNodeUnknown(Hash256),
     JustifiedNodeUnknown(Hash256),
     NodeUnknown(Hash256),
-    InvalidFinalizedRootChange,
     InvalidNodeIndex(usize),
     InvalidParentIndex(usize),
     InvalidBestChildIndex(usize),
@@ -14,8 +13,6 @@ pub enum Error {
     InvalidBestDescendant(usize),
     InvalidParentDelta(usize),
     InvalidNodeDelta(usize),
-    MissingJustifiedCheckpoint,
-    MissingFinalizedCheckpoint,
     DeltaOverflow(usize),
     ProposerBoostOverflow(usize),
     ReOrgThresholdOverflow,
@@ -40,10 +37,6 @@ pub enum Error {
     },
     InvalidJustifiedCheckpointExecutionStatus {
         justified_root: Hash256,
-    },
-    UnknownLatestValidAncestorHash {
-        block_root: Hash256,
-        latest_valid_ancestor_hash: Option<ExecutionBlockHash>,
     },
     IrrelevantDescendant {
         block_root: Hash256,
