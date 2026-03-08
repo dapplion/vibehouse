@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — spec check + cleanup (run 570)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- PTC Lookbehind PR #4979 still OPEN (last updated Mar 7)
+- No new Gloas spec PRs merged since last check
+- Open Gloas PRs tracked: #4898 (remove pending from tiebreaker), #4954 (ms-based fork choice time), #4843 (variable PTC deadline) — all still open, no action needed
+- Removed stale `#[allow(dead_code)]` from `StateSummaryIteratorError` (was actively used, annotation unnecessary)
+- Investigated `cc` 1.2.30→1.2.56 update — blocked by `-Wthread-safety` GCC incompatibility in leveldb-sys build
+- 557/557 state_processing tests pass, zero clippy warnings, zero compiler warnings
+- CI green on all completed jobs (run 567)
+- **Result**: Codebase clean, spec tracked, minor cleanup committed
+
 ### 2026-03-08 — spec & housekeeping check (run 568)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - PTC Lookbehind PR #4979 still OPEN
