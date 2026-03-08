@@ -1321,7 +1321,7 @@ dependencies = [
  "clap_utils",
  "client",
  "directory",
- "dirs 3.0.2",
+ "dirs 6.0.0",
  "environment",
  "eth2_config",
  "execution_layer",
@@ -1943,7 +1943,7 @@ name = "clap_utils"
 version = "0.1.0"
 dependencies = [
  "clap",
- "dirs 3.0.2",
+ "dirs 6.0.0",
  "eth2_network_config",
  "ethereum_ssz",
  "hex",
@@ -1960,7 +1960,7 @@ dependencies = [
  "beacon_chain",
  "beacon_processor",
  "directory",
- "dirs 3.0.2",
+ "dirs 6.0.0",
  "environment",
  "eth2",
  "eth2_config",
@@ -2807,15 +2807,6 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "3.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30baa043103c9d0c2a57cf537cc2f35623889dc0d405e6c3cccfadbc81c71309"
-dependencies = [
- "dirs-sys 0.3.7",
-]
-
-[[package]]
-name = "dirs"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44c45a9d03d6676652bcb5e724c7e988de1acad23a711b5217ab9cbecbec2225"
@@ -2824,14 +2815,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "dirs-sys"
-version = "0.3.7"
+name = "dirs"
+version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
+checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
 dependencies = [
- "libc",
- "redox_users",
- "winapi",
+ "dirs-sys 0.5.0",
 ]
 
 [[package]]
@@ -2842,8 +2831,20 @@ checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
 dependencies = [
  "libc",
  "option-ext",
- "redox_users",
+ "redox_users 0.4.6",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users 0.5.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5798,7 +5799,7 @@ dependencies = [
  "async-channel",
  "delay_map",
  "directory",
- "dirs 3.0.2",
+ "dirs 6.0.0",
  "discv5",
  "either",
  "eth2",
@@ -8155,6 +8156,17 @@ dependencies = [
  "getrandom 0.2.17",
  "libredox",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "redox_users"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
+dependencies = [
+ "getrandom 0.2.17",
+ "libredox",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -11006,7 +11018,7 @@ dependencies = [
  "clap",
  "clap_utils",
  "directory",
- "dirs 3.0.2",
+ "dirs 6.0.0",
  "doppelganger_service",
  "environment",
  "eth2",
@@ -11059,7 +11071,7 @@ dependencies = [
  "bls",
  "deposit_contract",
  "directory",
- "dirs 3.0.2",
+ "dirs 6.0.0",
  "doppelganger_service",
  "eth2",
  "eth2_keystore",

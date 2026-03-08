@@ -137,7 +137,7 @@ delay_map = "0.4"
 deposit_contract = { path = "common/deposit_contract" }
 derivative = "2"
 directory = { path = "common/directory" }
-dirs = "3"
+dirs = "6"
 discv5 = { git = "https://github.com/sigp/discv5", rev = "0dc2bda028bbcf05af466c5b1f6958bddbc1eaea", features = ["libp2p"] }
 doppelganger_service = { path = "validator_client/doppelganger_service" }
 eip_3076 = { path = "common/eip_3076" }
