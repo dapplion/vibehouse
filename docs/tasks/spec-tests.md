@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — redb backend test coverage (run 573)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
+- **Added 14 redb backend tests**: atomicity (do_atomically with puts + deletes), iteration (iter_column, iter_column_from, iter_column_keys), batch delete, delete_if, overwrite, sync, compact, column isolation, empty values, delete-nonexistent
+- Store tests: 30/30 pass (was 16/16), lint-full clean
+- CI green: nightly passed, previous CI run green on all 5 completed jobs
+
 ### 2026-03-08 — switch default DB to redb, unblock dep updates (run 572)
 - v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests latest: v1.6.0-beta.0)
 - All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960 (test PRs), #4898, #4954, #4843, #4840
