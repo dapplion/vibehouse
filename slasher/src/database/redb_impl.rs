@@ -96,7 +96,7 @@ impl Environment {
 
     pub fn begin_rw_txn(&self) -> Result<RwTransaction<'_>, Error> {
         let mut txn = self.db.begin_write()?;
-        txn.set_durability(redb::Durability::Eventual);
+        txn.set_durability(redb::Durability::None)?;
         Ok(RwTransaction {
             txn,
             _phantom: PhantomData,

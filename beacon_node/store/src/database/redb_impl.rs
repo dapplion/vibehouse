@@ -1,7 +1,7 @@
 use crate::{ColumnIter, ColumnKeyIter, Key, metrics};
 use crate::{DBColumn, Error, KeyValueStoreOp};
 use parking_lot::RwLock;
-use redb::TableDefinition;
+use redb::{ReadableDatabase, TableDefinition};
 use std::collections::HashSet;
 use std::{borrow::BorrowMut, marker::PhantomData, path::Path};
 use strum::IntoEnumIterator;
@@ -21,7 +21,7 @@ impl From<WriteOptions> for redb::Durability {
         if options.sync {
             redb::Durability::Immediate
         } else {
-            redb::Durability::Eventual
+            redb::Durability::None
         }
     }
 }
@@ -79,7 +79,7 @@ impl<E: EthSpec> Redb<E> {
         let table_definition: TableDefinition<'_, &[u8], &[u8]> = TableDefinition::new(col.into());
         let open_db = self.db.read();
         let mut tx = open_db.begin_write()?;
-        tx.set_durability(opts.into());
+        tx.set_durability(opts.into())?;
         let mut table = tx.open_table(table_definition)?;
 
         table.insert(key, val).map(|_| {
@@ -163,7 +163,7 @@ impl<E: EthSpec> Redb<E> {
     pub fn do_atomically(&self, ops_batch: Vec<KeyValueStoreOp>) -> Result<(), Error> {
         let open_db = self.db.read();
         let mut tx = open_db.begin_write()?;
-        tx.set_durability(self.write_options().into());
+        tx.set_durability(self.write_options().into())?;
         for op in ops_batch {
             match op {
                 KeyValueStoreOp::PutKeyValue(column, key, value) => {
@@ -284,7 +284,7 @@ impl<E: EthSpec> Redb<E> {
         let open_db = self.db.read();
         let mut tx = open_db.begin_write()?;
 
-        tx.set_durability(redb::Durability::None);
+        tx.set_durability(redb::Durability::None)?;
 
         let table_definition: TableDefinition<'_, &[u8], &[u8]> = TableDefinition::new(col.into());
 
@@ -304,7 +304,7 @@ impl<E: EthSpec> Redb<E> {
         let open_db = self.db.read();
         let mut tx = open_db.begin_write()?;
 
-        tx.set_durability(redb::Durability::None);
+        tx.set_durability(redb::Durability::None)?;
 
         let table_definition: TableDefinition<'_, &[u8], &[u8]> =
             TableDefinition::new(column.into());

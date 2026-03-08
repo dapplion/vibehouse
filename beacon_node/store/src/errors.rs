@@ -229,6 +229,13 @@ impl From<redb::CompactionError> for Error {
     }
 }
 
+#[cfg(feature = "redb")]
+impl From<redb::SetDurabilityError> for Error {
+    fn from(e: redb::SetDurabilityError) -> Self {
+        Error::RedbError(Box::new(e.into()))
+    }
+}
+
 impl From<EpochCacheError> for Error {
     fn from(e: EpochCacheError) -> Error {
         Error::CacheBuildError(e)

@@ -127,6 +127,13 @@ impl From<redb::CommitError> for Error {
     }
 }
 
+#[cfg(feature = "redb")]
+impl From<redb::SetDurabilityError> for Error {
+    fn from(e: redb::SetDurabilityError) -> Self {
+        Error::DatabaseRedbError(e.into())
+    }
+}
+
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
         Error::DatabaseIOError(e)
