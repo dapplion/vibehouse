@@ -94,6 +94,14 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 594)
+- Checked consensus-specs: no new Gloas PRs merged since run 592 (v1.7.0-alpha.2 still latest release, no new releases).
+- Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged. #4843 (Variable PTC deadline) now has approval but still open. #4962 is new (sanity/blocks tests for missed payload withdrawal interactions).
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Removed ethers-core from execution_layer**: replaced `EthersTransaction` JSON→RLP conversion in `static_valid_tx` with pre-computed RLP hex bytes. ethers crates now only used by `execution_engine_integration` test crate.
+- **CI status**: run 592 (unused deps) in progress, run 593 (reqwest upgrade) pending. Run 586 (redb fix) passed all 6 jobs.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 592)
 - Checked consensus-specs: no new Gloas PRs merged since run 591 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open.
 - **#4950 merged** (Mar 6): extends BeaconBlocksByRoot and ExecutionPayloadEnvelopesByRoot serve range to `MIN_EPOCHS_FOR_BLOCK_REQUESTS`. Already compliant — vibehouse serves whatever is in the store without range filtering, and retains blocks well beyond that window.

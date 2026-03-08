@@ -1,4 +1,3 @@
-use crate::EthersTransaction;
 use crate::engine_api::{
     ExecutionBlock, PayloadAttributes, PayloadId, PayloadStatusV1, PayloadStatusV1Status,
     json_structures::{
@@ -866,27 +865,16 @@ pub fn generate_blobs<E: EthSpec>(
 }
 
 pub fn static_valid_tx<E: EthSpec>() -> Result<Transaction<E::MaxBytesPerTransaction>, String> {
-    // This is a real transaction hex encoded, but we don't care about the contents of the transaction.
-    let transaction: EthersTransaction = serde_json::from_str(
-        r#"{
-            "blockHash":"0x1d59ff54b1eb26b013ce3cb5fc9dab3705b415a67127a003c3e61eb445bb8df2",
-            "blockNumber":"0x5daf3b",
-            "from":"0xa7d9ddbe1f17865597fbd27ec712455208b6b76d",
-            "gas":"0xc350",
-            "gasPrice":"0x4a817c800",
-            "hash":"0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b",
-            "input":"0x68656c6c6f21",
-            "nonce":"0x15",
-            "to":"0xf02c1c8e6114b1dbe8937a39260b5b0a374432bb",
-            "transactionIndex":"0x41",
-            "value":"0xf3dbb76162000",
-            "v":"0x25",
-            "r":"0x1b5e176d927f8e9ab405058b2d2457392da3e20f328b16ddabcebc33eaac5fea",
-            "s":"0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c"
-         }"#,
+    // Pre-computed RLP encoding of a real legacy transaction (nonce=0x15, to=0xf02c..32bb).
+    // Previously derived at runtime via ethers_core::types::Transaction JSON deserialization.
+    let rlp_bytes = hex::decode(
+        "f871158504a817c80082c35094f02c1c8e6114b1dbe8937a39260b5b0a374432bb\
+         870f3dbb761620008668656c6c6f2125a01b5e176d927f8e9ab405058b2d245739\
+         2da3e20f328b16ddabcebc33eaac5feaa04ba69724e8f69de52f0125ad8b3c5c2c\
+         ef33019bac3249e2c0a2192766d1721c",
     )
-    .unwrap();
-    VariableList::new(transaction.rlp().to_vec())
+    .map_err(|e| format!("Failed to decode static transaction hex: {:?}", e))?;
+    VariableList::new(rlp_bytes)
         .map_err(|e| format!("Failed to convert transaction to SSZ: {:?}", e))
 }
 
