@@ -525,3 +525,43 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - `GossipCacheBuilder` dead_code allow — builder pattern, methods available for future use
 
 **Verification**: 557/557 state_processing tests, 16/16 store tests. Full workspace lint-full passes.
+
+### Run 563 — Dead error variants in BeaconChainError and EpochProcessingError
+
+**Scope**: Continue dead code cleanup. Remove never-constructed error enum variants across two crates.
+
+**Changes**:
+
+1. **BeaconChainError** (beacon_node/beacon_chain/src/errors.rs, 8 variants removed):
+   - `NoStateForAttestation { beacon_block_root: Hash256 }` — 0 constructions
+   - `NoProposerForSlot(Slot)` — 0 constructions
+   - `CanonicalHeadLockTimeout` — 0 constructions
+   - `AttestationCacheLockTimeout` — 0 constructions
+   - `ValidatorPubkeyCacheLockTimeout` — 0 constructions
+   - `SnapshotCacheLockTimeout` — 0 constructions
+   - `ForkchoiceUpdateParamsMissing` — 0 constructions
+   - `EmptyRpcCustodyColumns` — 0 constructions
+
+2. **BlockProductionError** (same file, 1 variant removed):
+   - `FailedToBuildBlobSidecars(String)` — 0 constructions
+
+3. **EpochProcessingError** (consensus/state_processing/src/per_epoch_processing/errors.rs, 8 variants removed):
+   - `UnableToDetermineProducer` — 0 constructions
+   - `NoBlockRoots` — 0 constructions
+   - `BaseRewardQuotientIsZero` — 0 constructions
+   - `NoRandaoSeed` — 0 constructions
+   - `PreviousTotalBalanceIsZero` — 0 constructions
+   - `InclusionDistanceZero` — 0 constructions
+   - `DeltasInconsistent` — 0 constructions
+   - `InclusionSlotsInconsistent(usize)` — 0 constructions
+
+4. **InclusionError enum removed entirely** (same file):
+   - `NoAttestationsForValidator` — 0 constructions
+   - `BeaconStateError(BeaconStateError)` — only used by dead `From` impl
+   - `EpochProcessingError::InclusionError(InclusionError)` variant also removed (0 constructions)
+   - `From<InclusionError> for EpochProcessingError` impl removed
+
+**Not changed (intentional)**:
+- Same items as run 562
+
+**Verification**: 557/557 state_processing tests, 35/35 EF spec tests (epoch processing + operations + sanity). Full workspace lint-full passes.
