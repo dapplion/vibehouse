@@ -5,6 +5,11 @@ use crate::engine_api::{
     ExecutionBlock, PayloadStatusV1, PayloadStatusV1Status, auth::Auth, http::JSONRPC_VERSION,
 };
 use crate::json_structures::JsonClientVersionV1;
+use axum::Router;
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::routing::post;
 use bytes::Bytes;
 use execution_block_generator::PoWBlock;
 use handle_rpc::handle_rpc;
@@ -15,7 +20,6 @@ use parking_lot::{Mutex, RwLock, RwLockWriteGuard};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
@@ -23,7 +27,6 @@ use std::sync::{Arc, LazyLock};
 use tokio::{runtime, sync::oneshot};
 use tracing::info;
 use types::{ChainSpec, EthSpec, ExecutionBlockHash, Uint256};
-use warp::{Filter, Rejection, http::StatusCode};
 
 use crate::EngineCapabilities;
 pub use execution_block_generator::DEFAULT_GAS_LIMIT;
@@ -524,14 +527,7 @@ impl<E: EthSpec> MockServer<E> {
 
 #[derive(Debug)]
 pub enum Error {
-    Warp(warp::Error),
     Other(String),
-}
-
-impl From<warp::Error> for Error {
-    fn from(e: warp::Error) -> Self {
-        Error::Warp(e)
-    }
 }
 
 impl From<String> for Error {
@@ -540,20 +536,17 @@ impl From<String> for Error {
     }
 }
 
-#[derive(Debug)]
-struct MissingIdField;
-
-impl warp::reject::Reject for MissingIdField {}
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::Other(e.to_string())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StaticNewPayloadResponse {
     status: PayloadStatusV1,
     should_import: bool,
 }
-#[derive(Debug)]
-struct AuthError(String);
-
-impl warp::reject::Reject for AuthError {}
 
 /// A wrapper around all the items required to spawn the HTTP server.
 ///
@@ -624,59 +617,115 @@ struct ErrorMessage {
     message: String,
 }
 
-/// Returns a `warp` header which filters out request that has a missing or incorrectly
-/// signed JWT token.
-fn auth_header_filter(jwt_key: JwtKey) -> warp::filters::BoxedFilter<()> {
-    warp::any()
-        .and(warp::filters::header::optional("Authorization"))
-        .and_then(move |authorization: Option<String>| {
-            let secret = jwt_key.clone();
-            async move {
-                match authorization {
-                    None => Err(warp::reject::custom(AuthError(
-                        "auth absent from request".to_string(),
-                    ))),
-                    Some(auth) => {
-                        if let Some(token) = auth.strip_prefix("Bearer ") {
-                            match Auth::validate_token(token, &secret) {
-                                Ok(_) => Ok(()),
-                                Err(e) => Err(warp::reject::custom(AuthError(format!(
-                                    "Auth failure: {:?}",
-                                    e
-                                )))),
-                            }
-                        } else {
-                            Err(warp::reject::custom(AuthError(
-                                "Bearer token not present in auth header".to_string(),
-                            )))
-                        }
-                    }
-                }
-            }
-        })
-        .untuple_one()
-        .boxed()
+/// Validate the JWT Authorization header.
+fn validate_auth(
+    headers: &axum::http::HeaderMap,
+    jwt_key: &JwtKey,
+) -> Result<(), (StatusCode, String)> {
+    let auth = headers
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                "auth absent from request".to_string(),
+            )
+        })?;
+
+    let token = auth.strip_prefix("Bearer ").ok_or_else(|| {
+        (
+            StatusCode::UNAUTHORIZED,
+            "Bearer token not present in auth header".to_string(),
+        )
+    })?;
+
+    Auth::validate_token(token, jwt_key)
+        .map_err(|e| (StatusCode::UNAUTHORIZED, format!("Auth failure: {:?}", e)))?;
+
+    Ok(())
 }
-/// This function receives a `Rejection` and tries to return a custom
-/// value on invalid auth, otherwise simply passes the rejection along.
-async fn handle_rejection(err: Rejection) -> Result<impl warp::Reply, Infallible> {
-    let code;
-    let message;
 
-    if let Some(AuthError(e)) = err.find::<AuthError>() {
-        message = format!("Authorization error: {}", e);
-        code = StatusCode::UNAUTHORIZED;
+/// Auth middleware layer for axum.
+async fn auth_middleware<E: EthSpec>(
+    State(ctx): State<Arc<Context<E>>>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, axum::response::Response> {
+    validate_auth(req.headers(), &ctx.jwt_key).map_err(|(status, message)| {
+        let body = serde_json::to_string(&ErrorMessage {
+            code: status.as_u16(),
+            message: format!("Authorization error: {}", message),
+        })
+        .unwrap_or_default();
+        axum::response::Response::builder()
+            .status(status)
+            .header("Content-Type", "application/json")
+            .body(axum::body::Body::from(body))
+            .unwrap()
+    })?;
+    Ok(next.run(req).await)
+}
+
+/// JSON-RPC root handler for `/`.
+async fn root_handler<E: EthSpec>(
+    State(ctx): State<Arc<Context<E>>>,
+    axum::Json(body): axum::Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let id = body
+        .get("id")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+
+    let preloaded_response = {
+        let mut preloaded_responses = ctx.preloaded_responses.lock();
+        if !preloaded_responses.is_empty() {
+            Some(preloaded_responses.remove(0))
+        } else {
+            None
+        }
+    };
+
+    let response = if let Some(preloaded_response) = preloaded_response {
+        preloaded_response
     } else {
-        message = "BAD_REQUEST".to_string();
-        code = StatusCode::BAD_REQUEST;
-    }
+        match handle_rpc(body, ctx).await {
+            Ok(result) => json!({
+                "id": id,
+                "jsonrpc": JSONRPC_VERSION,
+                "result": result
+            }),
+            Err((message, code)) => json!({
+                "id": id,
+                "jsonrpc": JSONRPC_VERSION,
+                "error": {
+                    "code": code,
+                    "message": message
+                }
+            }),
+        }
+    };
 
-    let json = warp::reply::json(&ErrorMessage {
-        code: code.as_u16(),
-        message,
-    });
+    (
+        StatusCode::OK,
+        [
+            ("Content-Type", "application/json"),
+            ("Server", "lighthouse-mock-execution-client"),
+        ],
+        serde_json::to_string(&response).expect("response must be valid JSON"),
+    )
+}
 
-    Ok(warp::reply::with_status(json, code))
+/// Echo handler for `/echo`.
+async fn echo_handler<E: EthSpec>(
+    State(ctx): State<Arc<Context<E>>>,
+    body: Bytes,
+) -> impl IntoResponse {
+    *ctx.last_echo_request.write() = Some(body.clone());
+    (
+        StatusCode::OK,
+        [("Server", "lighthouse-mock-execution-client")],
+        body,
+    )
 }
 
 /// Creates a server that will serve requests using information from `ctx`.
@@ -698,89 +747,35 @@ pub fn serve<E: EthSpec>(
     ctx: Arc<Context<E>>,
     shutdown: impl Future<Output = ()> + Send + Sync + 'static,
 ) -> Result<(SocketAddr, impl Future<Output = ()>), Error> {
-    let config = &ctx.config;
+    let listen_addr = ctx.config.listen_addr;
+    let listen_port = ctx.config.listen_port;
 
-    let inner_ctx = ctx.clone();
-    let ctx_filter = warp::any().map(move || inner_ctx.clone());
+    let app = Router::new()
+        .route("/", post(root_handler::<E>))
+        .route("/echo", post(echo_handler::<E>))
+        .layer(axum::middleware::from_fn_with_state(
+            ctx.clone(),
+            auth_middleware::<E>,
+        ))
+        .with_state(ctx);
 
-    // `/`
-    //
-    // Handles actual JSON-RPC requests.
-    let root = warp::path::end()
-        .and(warp::body::json())
-        .and(ctx_filter.clone())
-        .and_then(|body: serde_json::Value, ctx: Arc<Context<E>>| async move {
-            let id = body
-                .get("id")
-                .and_then(serde_json::Value::as_u64)
-                .ok_or_else(|| warp::reject::custom(MissingIdField))?;
-            let preloaded_response = {
-                let mut preloaded_responses = ctx.preloaded_responses.lock();
-                if !preloaded_responses.is_empty() {
-                    Some(preloaded_responses.remove(0))
-                } else {
-                    None
-                }
-            };
-
-            let response = if let Some(preloaded_response) = preloaded_response {
-                preloaded_response
-            } else {
-                match handle_rpc(body, ctx).await {
-                    Ok(result) => json!({
-                        "id": id,
-                        "jsonrpc": JSONRPC_VERSION,
-                        "result": result
-                    }),
-                    Err((message, code)) => json!({
-                        "id": id,
-                        "jsonrpc": JSONRPC_VERSION,
-                        "error": {
-                            "code": code,
-                            "message": message
-                        }
-                    }),
-                }
-            };
-
-            Ok::<_, warp::reject::Rejection>(
-                warp::http::Response::builder()
-                    .status(200)
-                    .body(serde_json::to_string(&response).expect("response must be valid JSON")),
-            )
-        });
-
-    // `/echo`
-    //
-    // Sends the body of the request to `ctx.last_echo_request` so we can inspect requests.
-    let echo = warp::path("echo")
-        .and(warp::body::bytes())
-        .and(ctx_filter)
-        .and_then(|bytes: Bytes, ctx: Arc<Context<E>>| async move {
-            *ctx.last_echo_request.write() = Some(bytes.clone());
-            Ok::<_, warp::reject::Rejection>(
-                warp::http::Response::builder().status(200).body(bytes),
-            )
-        });
-
-    let routes = warp::post()
-        .and(auth_header_filter(ctx.jwt_key.clone()))
-        .and(root.or(echo))
-        .recover(handle_rejection)
-        // Add a `Server` header.
-        .map(|reply| warp::reply::with_header(reply, "Server", "lighthouse-mock-execution-client"));
-
-    let (listening_socket, server) = warp::serve(routes).try_bind_with_graceful_shutdown(
-        SocketAddrV4::new(config.listen_addr, config.listen_port),
-        async {
-            shutdown.await;
-        },
-    )?;
+    let addr = SocketAddrV4::new(listen_addr, listen_port);
+    let listener = std::net::TcpListener::bind(addr)?;
+    listener.set_nonblocking(true)?;
+    let listener = tokio::net::TcpListener::from_std(listener)?;
+    let listening_socket = listener.local_addr()?;
 
     info!(
         listen_address = listening_socket.to_string(),
         "Metrics HTTP server started"
     );
+
+    let server = async move {
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown)
+            .await
+            .ok();
+    };
 
     Ok((listening_socket, server))
 }

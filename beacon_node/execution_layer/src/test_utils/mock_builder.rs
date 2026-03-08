@@ -1,6 +1,10 @@
 use crate::test_utils::{DEFAULT_BUILDER_PAYLOAD_VALUE_WEI, DEFAULT_JWT_SECRET};
 use crate::{Config, ExecutionLayer, PayloadAttributes, PayloadParameters};
-use bytes::Bytes;
+use axum::Router;
+use axum::extract::{Path, State};
+use axum::http::HeaderMap;
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
 use eth2::types::PublishBlockRequest;
 use eth2::types::{
     BlobsBundle, BlockId, BroadcastValidation, EndpointVersion, EventKind, EventTopic,
@@ -15,7 +19,6 @@ use parking_lot::RwLock;
 use sensitive_url::SensitiveUrl;
 use ssz::Encode;
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::future::Future;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
@@ -36,8 +39,6 @@ use types::{
     SignedRoot, SignedValidatorRegistrationData, Slot, Uint256,
 };
 use types::{ExecutionBlockHash, SecretKey};
-use warp::reply::{self, Reply};
-use warp::{Filter, Rejection};
 
 pub const DEFAULT_FEE_RECIPIENT: Address = Address::repeat_byte(42);
 pub const DEFAULT_GAS_LIMIT: u64 = 60_000_000;
@@ -75,11 +76,20 @@ pub fn mock_builder_extra_data<E: EthSpec>() -> types::VariableList<u8, E::MaxEx
     "mock_builder".as_bytes().to_vec().into()
 }
 
-#[derive(Debug)]
-// We don't use the string value directly, but it's used in the Debug impl which is required by `warp::reject::Reject`.
-struct Custom(#[allow(dead_code)] String);
+/// API error type for mock builder responses.
+struct ApiError(axum::http::StatusCode, String);
 
-impl warp::reject::Reject for Custom {}
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        (self.0, self.1).into_response()
+    }
+}
+
+impl From<String> for ApiError {
+    fn from(s: String) -> Self {
+        ApiError(axum::http::StatusCode::BAD_REQUEST, s)
+    }
+}
 
 // contains functions we need for BuilderBids.. not sure what to call this
 pub trait BidStuff<E: EthSpec> {
@@ -991,224 +1001,268 @@ impl<E: EthSpec> MockBuilder<E> {
     }
 }
 
-/// Serve the builder api using warp. Uses the functions defined in `MockBuilder` to serve
-/// the requests.
-///
-/// We should eventually move this to axum when we move everything else.
+/// POST /eth/v1/builder/validators
+async fn validators_handler<E: EthSpec>(
+    State(builder): State<MockBuilder<E>>,
+    axum::Json(registrations): axum::Json<Vec<SignedValidatorRegistrationData>>,
+) -> Result<impl IntoResponse, ApiError> {
+    builder
+        .register_validators(registrations)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(axum::http::StatusCode::OK)
+}
+
+/// GET /eth/v1/builder/status
+async fn status_handler() -> impl IntoResponse {
+    (
+        axum::http::StatusCode::OK,
+        [("Server", "lighthouse-mock-builder-server")],
+    )
+}
+
+/// GET /eth/v1/builder/header/:slot/:parent_hash/:pubkey
+async fn header_handler<E: EthSpec>(
+    State(builder): State<MockBuilder<E>>,
+    Path((slot, parent_hash, pubkey)): Path<(Slot, ExecutionBlockHash, PublicKeyBytes)>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, ApiError> {
+    let fork_name = builder.fork_name_at_slot(slot);
+    let signed_bid = builder
+        .get_header(slot, parent_hash, pubkey)
+        .await
+        .map_err(ApiError::from)?;
+
+    let accept_header: eth2::types::Accept = headers
+        .get("accept")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(eth2::types::Accept::Any);
+
+    match accept_header {
+        eth2::types::Accept::Ssz => Ok((
+            axum::http::StatusCode::OK,
+            [
+                (CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER.to_string()),
+                (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
+                ("Server", "lighthouse-mock-builder-server".to_string()),
+            ],
+            signed_bid.as_ssz_bytes(),
+        )
+            .into_response()),
+        eth2::types::Accept::Json | eth2::types::Accept::Any => {
+            let resp: ForkVersionedResponse<_> = ForkVersionedResponse {
+                version: fork_name,
+                metadata: Default::default(),
+                data: signed_bid,
+            };
+            Ok((
+                axum::http::StatusCode::OK,
+                [("Server", "lighthouse-mock-builder-server".to_string())],
+                axum::Json(resp),
+            )
+                .into_response())
+        }
+    }
+}
+
+/// Route blinded_blocks requests to SSZ or JSON handler based on content-type.
+async fn blinded_blocks_dispatch<E: EthSpec>(
+    State(builder): State<MockBuilder<E>>,
+    Path(version_str): Path<String>,
+    req: axum::extract::Request,
+) -> axum::response::Response {
+    let endpoint_version: EndpointVersion = match version_str.parse() {
+        Ok(v) => v,
+        Err(_) => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid EndpointVersion",
+            )
+                .into_response();
+        }
+    };
+    let headers = req.headers().clone();
+    let body = match axum::body::to_bytes(req.into_body(), 1024 * 1024).await {
+        Ok(b) => b,
+        Err(e) => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("Failed to read body: {e}"),
+            )
+                .into_response();
+        }
+    };
+    let content_type = headers
+        .get(CONTENT_TYPE_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+
+    if endpoint_version != EndpointVersion(1) && endpoint_version != EndpointVersion(2) {
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("Unsupported version: {endpoint_version}"),
+        )
+            .into_response();
+    }
+
+    let fork_name: ForkName = match headers
+        .get(CONSENSUS_VERSION_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.parse().ok())
+    {
+        Some(f) => f,
+        None => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Missing or invalid consensus version header",
+            )
+                .into_response();
+        }
+    };
+
+    if content_type == SSZ_CONTENT_TYPE_HEADER {
+        let block = match SignedBlindedBeaconBlock::<E>::from_ssz_bytes_by_fork(&body, fork_name) {
+            Ok(b) => b,
+            Err(e) => {
+                return (axum::http::StatusCode::BAD_REQUEST, format!("{:?}", e)).into_response();
+            }
+        };
+        let payload = match builder.submit_blinded_block(block).await {
+            Ok(p) => p,
+            Err(e) => return (axum::http::StatusCode::BAD_REQUEST, e).into_response(),
+        };
+
+        if endpoint_version == EndpointVersion(1) {
+            (
+                axum::http::StatusCode::OK,
+                [
+                    (CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER.to_string()),
+                    (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
+                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                ],
+                payload.as_ssz_bytes(),
+            )
+                .into_response()
+        } else {
+            (
+                axum::http::StatusCode::ACCEPTED,
+                [
+                    (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
+                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                ],
+                Vec::<u8>::new(),
+            )
+                .into_response()
+        }
+    } else {
+        let block: SignedBlindedBeaconBlock<E> = match serde_json::from_slice(&body) {
+            Ok(b) => b,
+            Err(e) => {
+                return (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    format!("Invalid JSON: {e}"),
+                )
+                    .into_response();
+            }
+        };
+        let payload = match builder.submit_blinded_block(block).await {
+            Ok(p) => p,
+            Err(e) => return (axum::http::StatusCode::BAD_REQUEST, e).into_response(),
+        };
+        let resp: ForkVersionedResponse<_> = ForkVersionedResponse {
+            version: fork_name,
+            metadata: Default::default(),
+            data: payload,
+        };
+
+        let Ok(json_payload) = serde_json::to_string(&resp) else {
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "couldn't serialize response",
+            )
+                .into_response();
+        };
+
+        if endpoint_version == EndpointVersion(1) {
+            let Ok(body_str) = serde_json::to_string(&json_payload) else {
+                return (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    "invalid JSON",
+                )
+                    .into_response();
+            };
+            (
+                axum::http::StatusCode::OK,
+                [
+                    (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
+                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                ],
+                body_str,
+            )
+                .into_response()
+        } else {
+            (
+                axum::http::StatusCode::ACCEPTED,
+                [
+                    (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
+                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                ],
+                String::new(),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Serve the builder API using axum.
 pub fn serve<E: EthSpec>(
     listen_addr: Ipv4Addr,
     listen_port: u16,
     builder: MockBuilder<E>,
 ) -> Result<(SocketAddr, impl Future<Output = ()>), crate::test_utils::Error> {
-    let inner_ctx = builder.clone();
-    let ctx_filter = warp::any().map(move || inner_ctx.clone());
-
-    let prefix_v1 = warp::path("eth")
-        .and(warp::path("v1"))
-        .and(warp::path("builder"));
-
-    let prefix_either = warp::path("eth")
-        .and(
-            warp::path::param::<EndpointVersion>().or_else(|_| async move {
-                Err(warp::reject::custom(Custom(
-                    "Invalid EndpointVersion".to_string(),
-                )))
-            }),
-        )
-        .and(warp::path("builder"));
-
-    let validators = prefix_v1
-        .and(warp::path("validators"))
-        .and(warp::body::json())
-        .and(warp::path::end())
-        .and(ctx_filter.clone())
-        .and_then(
-            |registrations: Vec<SignedValidatorRegistrationData>,
-             builder: MockBuilder<E>| async move {
-                builder
-                    .register_validators(registrations)
-                    .await
-                    .map_err(|e| warp::reject::custom(Custom(e)))?;
-                Ok::<_, Rejection>(warp::reply().into_response())
-            },
-        );
-
-    let blinded_block_ssz =
-        prefix_either
-            .and(warp::path("blinded_blocks"))
-            .and(warp::body::bytes())
-            .and(warp::header::header::<ForkName>(CONSENSUS_VERSION_HEADER))
-            .and(warp::path::end())
-            .and(ctx_filter.clone())
-            .and_then(
-                |endpoint_version,
-                 block_bytes: Bytes,
-                 fork_name: ForkName,
-                 builder: MockBuilder<E>| async move {
-                    if endpoint_version != EndpointVersion(1)
-                        && endpoint_version != EndpointVersion(2)
-                    {
-                        return Err(warp::reject::custom(Custom(format!(
-                            "Unsupported version: {endpoint_version}"
-                        ))));
-                    }
-                    let block = SignedBlindedBeaconBlock::<E>::from_ssz_bytes_by_fork(
-                        &block_bytes,
-                        fork_name,
-                    )
-                    .map_err(|e| warp::reject::custom(Custom(format!("{:?}", e))))?;
-                    let payload = builder
-                        .submit_blinded_block(block)
-                        .await
-                        .map_err(|e| warp::reject::custom(Custom(e)))?;
-
-                    if endpoint_version == EndpointVersion(1) {
-                        Ok::<_, warp::reject::Rejection>(
-                            warp::http::Response::builder()
-                                .status(200)
-                                .body(payload.as_ssz_bytes())
-                                .map(add_ssz_content_type_header)
-                                .map(|res| add_consensus_version_header(res, fork_name))
-                                .unwrap(),
-                        )
-                    } else {
-                        Ok(warp::http::Response::builder()
-                            .status(202)
-                            .body(&[] as &'static [u8])
-                            .map(|res| add_consensus_version_header(res, fork_name))
-                            .unwrap())
-                    }
+    let app = Router::<MockBuilder<E>>::new()
+        .route(
+            "/eth/v1/builder/validators",
+            post(
+                |state: State<MockBuilder<E>>,
+                 body: axum::Json<Vec<SignedValidatorRegistrationData>>| async move {
+                    validators_handler::<E>(state, body).await
                 },
-            );
-
-    let blinded_block = prefix_either
-        .and(warp::path("blinded_blocks"))
-        .and(warp::body::json())
-        .and(warp::header::header::<ForkName>(CONSENSUS_VERSION_HEADER))
-        .and(warp::path::end())
-        .and(ctx_filter.clone())
-        .and_then(
-            |endpoint_version,
-             block: SignedBlindedBeaconBlock<E>,
-             fork_name: ForkName,
-             builder: MockBuilder<E>| async move {
-                if endpoint_version != EndpointVersion(1) && endpoint_version != EndpointVersion(2)
-                {
-                    return Err(warp::reject::custom(Custom(format!(
-                        "Unsupported version: {endpoint_version}"
-                    ))));
-                }
-                let payload = builder
-                    .submit_blinded_block(block)
-                    .await
-                    .map_err(|e| warp::reject::custom(Custom(e)))?;
-                let resp: ForkVersionedResponse<_> = ForkVersionedResponse {
-                    version: fork_name,
-                    metadata: Default::default(),
-                    data: payload,
-                };
-
-                let json_payload = serde_json::to_string(&resp)
-                    .map_err(|_| reject("coudn't serialize response"))?;
-
-                if endpoint_version == EndpointVersion(1) {
-                    Ok::<_, warp::reject::Rejection>(
-                        warp::http::Response::builder()
-                            .status(200)
-                            .body(
-                                serde_json::to_string(&json_payload)
-                                    .map_err(|_| reject("invalid JSON"))?,
-                            )
-                            .map(|res| add_consensus_version_header(res, fork_name))
-                            .unwrap(),
-                    )
-                } else {
-                    Ok(warp::http::Response::builder()
-                        .status(202)
-                        .body("".to_string())
-                        .map(|res| add_consensus_version_header(res, fork_name))
-                        .unwrap())
-                }
-            },
-        );
-
-    let status = prefix_v1
-        .and(warp::path("status"))
-        .then(|| async { warp::reply().into_response() });
-
-    let header = prefix_v1
-        .and(warp::path("header"))
-        .and(warp::path::param::<Slot>().or_else(|_| async { Err(reject("Invalid slot")) }))
-        .and(
-            warp::path::param::<ExecutionBlockHash>()
-                .or_else(|_| async { Err(reject("Invalid parent hash")) }),
+            ),
         )
-        .and(
-            warp::path::param::<PublicKeyBytes>()
-                .or_else(|_| async { Err(reject("Invalid pubkey")) }),
+        .route(
+            "/eth/{version}/builder/blinded_blocks",
+            post(blinded_blocks_dispatch::<E>),
         )
-        .and(warp::path::end())
-        .and(ctx_filter.clone())
-        .and(warp::header::optional::<eth2::types::Accept>("accept"))
-        .and_then(
-            |slot: Slot,
-             parent_hash: ExecutionBlockHash,
-             pubkey: PublicKeyBytes,
-             builder: MockBuilder<E>,
-             accept_header: Option<eth2::types::Accept>| async move {
-                let fork_name = builder.fork_name_at_slot(slot);
-                let signed_bid = builder
-                    .get_header(slot, parent_hash, pubkey)
-                    .await
-                    .map_err(|e| warp::reject::custom(Custom(e)))?;
-                let accept_header = accept_header.unwrap_or(eth2::types::Accept::Any);
-                match accept_header {
-                    eth2::types::Accept::Ssz => Ok::<_, Rejection>(
-                        warp::http::Response::builder()
-                            .status(200)
-                            .body(signed_bid.as_ssz_bytes())
-                            .map(add_ssz_content_type_header)
-                            .map(|res| add_consensus_version_header(res, fork_name))
-                            .unwrap(),
-                    ),
-                    eth2::types::Accept::Json | eth2::types::Accept::Any => {
-                        let resp: ForkVersionedResponse<_> = ForkVersionedResponse {
-                            version: fork_name,
-                            metadata: Default::default(),
-                            data: signed_bid,
-                        };
-                        Ok::<_, Rejection>(warp::reply::json(&resp).into_response())
-                    }
-                }
-            },
-        );
-
-    let routes = warp::post()
-        // Routes which expect `application/octet-stream` go within this `and`.
-        .and(
-            warp::header::exact(CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER)
-                .and(blinded_block_ssz),
+        .route("/eth/v1/builder/status", get(status_handler))
+        .route(
+            "/eth/v1/builder/header/{slot}/{parent_hash}/{pubkey}",
+            get(
+                |state: State<MockBuilder<E>>,
+                 path: Path<(Slot, ExecutionBlockHash, PublicKeyBytes)>,
+                 headers: HeaderMap| async move {
+                    header_handler::<E>(state, path, headers).await
+                },
+            ),
         )
-        .or(validators.or(blinded_block))
-        .or(warp::get().and(status).or(header))
-        .map(|reply| warp::reply::with_header(reply, "Server", "lighthouse-mock-builder-server"));
+        .with_state(builder);
 
-    let (listening_socket, server) = warp::serve(routes)
-        .try_bind_ephemeral(SocketAddrV4::new(listen_addr, listen_port))
-        .expect("mock builder server should start");
+    let addr = SocketAddrV4::new(listen_addr, listen_port);
+    let listener = std::net::TcpListener::bind(addr).expect("mock builder server should bind");
+    listener
+        .set_nonblocking(true)
+        .expect("mock builder should set nonblocking");
+    let listener =
+        tokio::net::TcpListener::from_std(listener).expect("mock builder tokio listener");
+    let listening_socket = listener
+        .local_addr()
+        .expect("mock builder should have local addr");
+
+    let server = async move {
+        axum::serve(listener, app).await.ok();
+    };
+
     Ok((listening_socket, server))
-}
-
-fn reject(msg: &'static str) -> Rejection {
-    warp::reject::custom(Custom(msg.to_string()))
-}
-
-/// Add the 'Content-Type application/octet-stream` header to a response.
-fn add_ssz_content_type_header<T: Reply>(reply: T) -> warp::reply::Response {
-    reply::with_header(reply, CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER).into_response()
-}
-
-/// Add the `Eth-Consensus-Version` header to a response.
-fn add_consensus_version_header<T: Reply>(reply: T, fork_name: ForkName) -> warp::reply::Response {
-    reply::with_header(reply, CONSENSUS_VERSION_HEADER, fork_name.to_string()).into_response()
 }

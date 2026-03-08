@@ -3611,6 +3611,7 @@ dependencies = [
  "alloy-rlp",
  "alloy-trie",
  "arc-swap",
+ "axum 0.8.8",
  "builder_client",
  "bytes",
  "eth2",
@@ -3645,7 +3646,6 @@ dependencies = [
  "tree_hash",
  "tree_hash_derive",
  "types",
- "warp",
  "zeroize",
 ]
 
