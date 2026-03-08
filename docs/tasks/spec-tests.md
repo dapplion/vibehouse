@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — maintenance check (run 550)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- All tracked Gloas PRs still OPEN: #4979 (PTC Lookbehind, 10 review comments, mergeable_state=blocked), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit fork choice test), #4939 (envelope request), #4962 (missed payload withdrawal tests)
+- No new Gloas consensus changes merged since last check (only dependency/CI updates: #4988, #4985, #4986, #4984)
+- Documented detailed implementation plan for PTC Lookbehind (PR #4979) in spec-update-post-alpha2.md — ready to implement when it merges
+- CI still running for run 549's reprocess try_send fix
+- **Result**: No spec changes to implement. PTC Lookbehind plan documented.
+
 ### 2026-03-08 — maintenance check (run 549)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - All tracked Gloas PRs still OPEN: #4979 (PTC Lookbehind), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit fork choice test), #4939 (envelope request for index-1 attestations), #4962 (missed payload withdrawal tests)
