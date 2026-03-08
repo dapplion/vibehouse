@@ -2158,6 +2158,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
 
                         if allow_reprocess {
                             let processor = self.clone();
+                            let message_id_clone = message_id.clone();
                             let msg = ReprocessQueueMessage::UnknownLightClientOptimisticUpdate(
                                 QueuedLightClientUpdate {
                                     parent_root,
@@ -2181,7 +2182,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                                 })
                                 .is_err()
                             {
-                                error!("Failed to send optimistic update for re-processing")
+                                error!("Failed to send optimistic update for re-processing");
+                                self.propagate_validation_result(
+                                    message_id_clone,
+                                    peer_id,
+                                    MessageAcceptance::Ignore,
+                                );
                             }
                         } else {
                             debug!(
@@ -2504,6 +2510,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         .unwrap_or_else(|_| {
                             warn!(msg = "UnknownBlockHash", "Failed to send to sync service")
                         });
+                    let message_id_clone = message_id.clone();
                     let msg = match failed_att {
                         FailedAtt::Aggregate {
                             attestation,
@@ -2561,7 +2568,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                         })
                         .is_err()
                     {
-                        error!("Failed to send attestation for re-processing")
+                        error!("Failed to send attestation for re-processing");
+                        self.propagate_validation_result(
+                            message_id_clone,
+                            peer_id,
+                            MessageAcceptance::Ignore,
+                        );
                     }
                 } else {
                     // We shouldn't make any further attempts to process this attestation.
