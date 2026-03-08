@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — replace psutil with procfs, unblock cargo outdated (run 574)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- No new Gloas spec PRs merged since run 573
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
+- **Replaced `psutil` with `procfs`** in health_metrics crate — removes 7 transitive deps (psutil, darwin-libproc, darwin-libproc-sys, nix, mach2, platforms, unescape) and eliminates the `memchr ~2.3` version conflict that was blocking `cargo outdated` and other dependency updates
+  - All system health data now comes from `procfs` (already a dependency) + `libc::statvfs` for disk usage + `num_cpus` for core/thread counts
+  - 12/12 http_api health tests pass, full workspace compiles, clippy clean
+  - `cargo outdated` now works — identified 20+ outdated deps (mostly major version bumps: redb 2→3, jsonwebtoken 9→10, aes/scrypt/pbkdf2, etc.)
+- CI: nightly green, previous CI run green
+
 ### 2026-03-08 — redb backend test coverage (run 573)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
