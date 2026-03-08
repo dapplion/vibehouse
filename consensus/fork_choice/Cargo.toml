@@ -12,7 +12,6 @@ logging = { workspace = true }
 metrics = { workspace = true }
 proto_array = { workspace = true }
 state_processing = { workspace = true }
-superstruct = { workspace = true }
 tracing = { workspace = true }
 types = { workspace = true }
 

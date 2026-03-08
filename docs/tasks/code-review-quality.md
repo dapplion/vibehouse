@@ -472,3 +472,21 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - `environment` `tracing-log` — used indirectly via logging crate
 
 **Verification**: 98/98 tests across affected crates. Full workspace compiles clean, lint-full passes.
+
+### Run 561 — More unused dependency removal
+
+**Scope**: Second pass of cargo-machete with manual verification, focusing on non-derive-macro dependencies missed in run 560.
+
+**Changes** (4 dependencies removed across 4 crates):
+1. `consensus/state_processing` — removed `swap_or_not_shuffle` (0 uses in crate)
+2. `consensus/fork_choice` — removed `superstruct` (0 uses after ProtoNode simplification in run 558)
+3. `validator_client/slashing_protection` — removed `tracing` (0 uses in crate)
+4. `common/logging` — removed `serde` (only `serde_json` is used, not `serde` itself)
+
+**Not removed** (false positives, same as run 560):
+- All `ethereum_ssz`/`ethereum_ssz_derive`/`ethereum_serde_utils` — used by derive macros
+- `eth2` `rand` — used by `TestRandom` derive macro
+- `merkle_proof`/`bls` `alloy-primitives` — feature forwarding
+- `eth2_wallet` `tiny-bip39` — used via `bip39::` import
+
+**Verification**: 724/724 tests across affected crates. Full workspace compiles clean, lint passes.
