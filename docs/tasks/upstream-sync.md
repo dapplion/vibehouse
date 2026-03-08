@@ -94,6 +94,16 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 598)
+- Checked consensus-specs: no new Gloas PRs merged since run 597 (v1.7.0-alpha.2 still latest release, no new releases).
+- Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Fixed CI failure**: deposit contract ABI files were gitignored but build.rs (simplified in run 597) expects them committed. Removed `.gitignore`, committed the 4 contract files (ABI + bytecode for production + testnet). This was introduced by the reqwest upgrade (fd1306be6) which replaced the download-at-build-time approach with read-from-repo.
+- **Dependency audit**: 39 unique duplicate crates remain (86 total duplicate entries), all transitive — warp→hyper 0.14, libp2p→rand 0.8, etc. None actionable without major library migrations.
+- **Security audit**: cargo-audit shows same rsa RUSTSEC-2023-0071 (not applicable), plus unmaintained advisories for bincode, derivative, paste, ansi_term (all transitive or widely-used, not actionable).
+- **CI status**: run 597 unit tests failed (deposit_contract build.rs panic on missing ABI files). Fix pushed. Nightly: 5 consecutive successes.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 597)
 - Checked consensus-specs: no new Gloas PRs merged since run 595 (v1.7.0-alpha.2 still latest release, no new releases).
 - Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
