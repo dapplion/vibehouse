@@ -94,6 +94,16 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 599)
+- Checked consensus-specs: no new Gloas PRs merged since run 598 (v1.7.0-alpha.2 still latest release, no new releases).
+- Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Devnet smoke test**: PASSED — 4-node devnet, finalized_epoch=8, Gloas fork transition clean. Validates all recent dependency upgrades (ethabi→alloy, ethers→alloy, reqwest 0.12, prometheus 0.14, criterion 0.8, strum 0.27, uuid 1.x).
+- **Disk cleanup**: freed 329GB from stale `target/debug/` build artifacts (313GB) + old kurtosis runs (4GB) + docker prune (7GB). Disk was at 100% (2.9GB free), now at 26% (329GB free).
+- **Dependency check**: `rand_xorshift` 0.4→0.5 blocked by rand_core version mismatch (0.5 needs rand_core 0.10, we use rand 0.9 / rand_core 0.9). Not upgradeable without full rand ecosystem bump.
+- **CI status**: run 598 (deposit contract fix) still pending/queued. Nightly: 6 consecutive successes.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 598)
 - Checked consensus-specs: no new Gloas PRs merged since run 597 (v1.7.0-alpha.2 still latest release, no new releases).
 - Open Gloas spec PRs tracked: #4979, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558 — all still open/unmerged
