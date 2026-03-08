@@ -94,6 +94,15 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 582)
+- Checked consensus-specs: no new Gloas PRs merged since last check (v1.7.0-alpha.2 still latest release)
+- Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- New tracked PRs: #4954 (Store milliseconds), #4962 (sanity/blocks missed payload withdrawal tests)
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Dependency upgrades shipped**: tiny-bip39 1.0→2.0 (rand feature gate)
+- **Dead code removal**: removed unused `service_name` field from TaskExecutor (was marked FIXME since lighthouse era, `#[allow(dead_code)]`)
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-02-28 (run 273)
 - Checked consensus-specs: no new Gloas PRs merged since run 261 (v1.7.0-alpha.2 still latest release)
 - Open Gloas spec PRs tracked: #4950, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
