@@ -369,3 +369,15 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
    - `beacon_self_build_envelope_successes_total` — self-build envelope processed successfully
 
 **Verification**: 44/44 Gloas network tests, 17/17 self-build envelope tests, 17/17 EF spec tests, full workspace clippy clean (lint-full passed).
+
+### Run 556 — Dead V15 operation pool compat removal
+
+**Problem**: `PersistedOperationPool` used a superstruct enum with V15 and V20 variants. The V15 variant was a compatibility shim for old Lighthouse DB schema ≤17. vibehouse has no production databases with old schemas, and no migration code references V15. Three `TransformPersist` impls for `AttesterSlashingBase` existed solely to support V15→V20 conversion.
+
+**Changes**:
+1. Converted `PersistedOperationPool` from a superstruct enum to a plain struct (136 lines removed)
+2. Removed dead `TransformPersist` impl for `AttesterSlashingBase` and `From`/`TryFrom` for `SigVerifiedOp<AttesterSlashingBase>` (3 TODOs resolved)
+3. Made `into_operation_pool` infallible (was `Result` only because V15 conversion could fail)
+4. Removed `IncorrectOpPoolVariant` error variant (unused)
+
+**Verification**: 31/31 operation_pool tests, schema_stability test, op pool retrieval tests all pass. Full workspace clippy clean.
