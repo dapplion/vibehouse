@@ -3832,7 +3832,6 @@ fn no_state_root_iter() -> Option<std::iter::Empty<Result<(Hash256, Slot), Error
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum StateSummaryIteratorError {
     MissingSummary(Hash256),
     CircularSummaries {
