@@ -200,11 +200,18 @@ impl<E: EthSpec> Redb<E> {
     }
 
     /// Compact all values in the states and states flag columns.
+    ///
+    /// In redb 3.x, compaction fails if any read transactions are active. This is best-effort:
+    /// if compaction can't proceed due to active transactions, we skip it silently.
     pub fn compact(&self) -> Result<(), Error> {
         let _timer = metrics::start_timer(&metrics::DISK_DB_COMPACT_TIMES);
         let mut open_db = self.db.write();
         let mut_db = open_db.borrow_mut();
-        mut_db.compact().map_err(Into::into).map(|_| ())
+        match mut_db.compact() {
+            Ok(_) => Ok(()),
+            Err(redb::CompactionError::TransactionInProgress) => Ok(()),
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub fn iter_column_keys_from<K: Key>(
