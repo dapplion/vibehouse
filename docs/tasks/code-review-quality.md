@@ -706,3 +706,18 @@ Removed 9 unused dependencies across 6 crates using `cargo-machete --with-metada
 - `client`: removed `ethereum_ssz`
 
 False positives from cargo-machete (kept): `rand` (used by TestRandom derive macro), `ethereum_ssz` (used by Encode/Decode derive macros), `zip` (build-dependency), `futures` (dev-dependency used in tests).
+
+### Run 579 — dependency upgrades: db-key, headers (2026-03-08)
+
+**Spec status**: v1.7.0-alpha.2 still latest release. PR #4950 (extend by_root serve range) and #4926 (SLOT_DURATION_MS) merged since last check — both already compliant, no code changes needed.
+
+**Dependency upgrades** (2 crates):
+1. `db-key` 0.0.5 → 0.1.0 (store) — new Key trait uses standard `From<&[u8]>` + `AsRef<[u8]>` instead of custom `from_u8`/`as_slice` methods. Updated `BytesKey` impl.
+2. `headers` 0.3 → 0.4 (warp_utils) — moves to base64 0.22 and headers-core 0.3. No API changes needed (same `Origin::try_from_parts` call).
+
+**Investigated but not upgraded** (blocked by ecosystem):
+- `reqwest-eventsource` 0.5 → 0.6: requires `reqwest` 0.11 → 0.12 upgrade (different `http` crate versions cause `StatusCode` type mismatch)
+- `rand_xorshift` 0.4 → 0.5: requires `rand` 0.8 → 0.9 upgrade (different `rand_core` versions cause `SeedableRng` trait mismatch)
+- `hash-db` 0.15 → 0.16 + `keccak-hash` 0.10 → 0.12: blocked by `triehash` 0.8.4 pinning `hash-db` 0.15
+
+**Verification**: 32/32 store + warp_utils tests, full workspace build clean, full lint clean.
