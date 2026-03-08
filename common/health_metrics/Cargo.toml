@@ -8,5 +8,6 @@ eth2 = { workspace = true }
 metrics = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+num_cpus = { workspace = true }
 procfs = "0.18"
-psutil = "3.3.0"
