@@ -5,10 +5,9 @@ use beacon_node::beacon_chain::chain_config::{
     DisallowedReOrgOffsets,
 };
 use beacon_node::beacon_chain::custody_context::NodeCustodyType;
-use beacon_node::{
-    ClientConfig as Config, beacon_chain::graffiti_calculator::GraffitiOrigin,
-    beacon_chain::store::config::DatabaseBackend as BeaconNodeBackend,
-};
+#[cfg(feature = "beacon-node-leveldb")]
+use beacon_node::beacon_chain::store::config::DatabaseBackend as BeaconNodeBackend;
+use beacon_node::{ClientConfig as Config, beacon_chain::graffiti_calculator::GraffitiOrigin};
 use beacon_processor::BeaconProcessorConfig;
 use lighthouse_network::PeerId;
 use network_utils::unused_port::{
@@ -2753,6 +2752,7 @@ fn genesis_state_url_value() {
 }
 
 #[test]
+#[cfg(feature = "beacon-node-leveldb")]
 fn beacon_node_backend_override() {
     CommandLineTest::new()
         .flag("beacon-node-backend", Some("leveldb"))
