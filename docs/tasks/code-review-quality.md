@@ -381,3 +381,20 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 4. Removed `IncorrectOpPoolVariant` error variant (unused)
 
 **Verification**: 31/31 operation_pool tests, schema_stability test, op pool retrieval tests all pass. Full workspace clippy clean.
+
+### Run 557 — Dead V17 fork choice compat and all DB schema migrations removal
+
+**Problem**: Fork choice persistence used superstruct enums with V17 and V28 variants across 3 crates (proto_array `SszContainer`, fork_choice `PersistedForkChoice`, beacon_chain `PersistedForkChoiceStore`/`PersistedForkChoice`). V17 was the format used by Lighthouse schemas 17–27; vibehouse has always been at schema 28. Six migration files (v22→v28, 1,068 lines) existed to upgrade old Lighthouse databases that vibehouse will never encounter. `CacheItem` and `BalancesCache` were single-variant superstructs (V8 only) — unnecessary abstraction.
+
+**Changes** (1,522 lines removed, 32 added):
+1. Deleted 6 migration files: `migration_schema_v23.rs` through `migration_schema_v28.rs`
+2. Simplified `migrate_schema` to only accept identity (from == to == CURRENT_SCHEMA_VERSION)
+3. Converted `SszContainer` (proto_array) from V17/V28 superstruct to plain struct
+4. Converted `PersistedForkChoice` (fork_choice) from V17/V28 superstruct to plain struct
+5. Converted `PersistedForkChoice` (beacon_chain) from V17/V28 superstruct to plain struct
+6. Converted `PersistedForkChoiceStore` from V17/V28 superstruct to plain struct
+7. Removed `from_persisted_v17()` and all V17↔V28 conversion impls
+8. Converted `CacheItem`/`BalancesCache` from single-variant superstructs to plain structs
+9. Removed 4 schema downgrade/upgrade round-trip tests (tested dead migration paths)
+
+**Verification**: 277/277 proto_array + fork_choice tests, 8/8 EF fork choice tests, 31/31 operation_pool tests, schema_stability test passes. Full workspace clippy clean (lint-full passed).
