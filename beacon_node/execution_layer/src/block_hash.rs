@@ -1,14 +1,19 @@
 use crate::{
     json_structures::{EncodableJsonWithdrawal, JsonWithdrawal},
-    keccak::{KeccakHasher, keccak256},
+    keccak::keccak256,
 };
 use alloy_rlp::Encodable;
-use keccak_hash::KECCAK_EMPTY_LIST_RLP;
-use triehash::ordered_trie_root;
+use alloy_trie::root::ordered_trie_root_with_encoder;
 use types::{
     EncodableExecutionBlockHeader, EthSpec, ExecutionBlockHash, ExecutionBlockHeader,
     ExecutionPayloadRef, ExecutionRequests, Hash256,
 };
+
+/// keccak256(RLP([])) — the hash of an empty list, used as ommers_hash in post-merge blocks.
+const KECCAK_EMPTY_LIST_RLP: Hash256 = Hash256::new([
+    0x1d, 0xcc, 0x4d, 0xe8, 0xde, 0xc7, 0x5d, 0x7a, 0xab, 0x85, 0xb5, 0x67, 0xb6, 0xcc, 0xd4, 0x1a,
+    0xd3, 0x12, 0x45, 0x1b, 0x94, 0x8a, 0x74, 0x13, 0xf0, 0xa1, 0x42, 0xfd, 0x40, 0xd4, 0x93, 0x47,
+]);
 
 /// Calculate the block hash of an execution block.
 ///
@@ -19,19 +24,26 @@ pub fn calculate_execution_block_hash<E: EthSpec>(
     parent_beacon_block_root: Option<Hash256>,
     execution_requests: Option<&ExecutionRequests<E>>,
 ) -> (ExecutionBlockHash, Hash256) {
-    // Calculate the transactions root.
-    // We're currently using a deprecated Parity library for this. We should move to a
-    // better alternative when one appears, possibly following Reth.
-    let rlp_transactions_root = ordered_trie_root::<KeccakHasher, _>(
-        payload.transactions().iter().map(|txn_bytes| &**txn_bytes),
+    // Calculate the transactions root using alloy-trie MPT.
+    let txn_bytes: Vec<_> = payload
+        .transactions()
+        .iter()
+        .map(|txn| txn.to_vec())
+        .collect();
+    let rlp_transactions_root = Hash256::from(
+        ordered_trie_root_with_encoder(&txn_bytes, |item, buf| buf.extend_from_slice(item))
+            .as_ref(),
     );
 
     // Calculate withdrawals root (post-Capella).
     let rlp_withdrawals_root = if let Ok(withdrawals) = payload.withdrawals() {
-        Some(ordered_trie_root::<KeccakHasher, _>(
-            withdrawals
-                .iter()
-                .map(|withdrawal| rlp_encode_withdrawal(&JsonWithdrawal::from(withdrawal.clone()))),
+        let encoded: Vec<_> = withdrawals
+            .iter()
+            .map(|withdrawal| rlp_encode_withdrawal(&JsonWithdrawal::from(withdrawal.clone())))
+            .collect();
+        Some(Hash256::from(
+            ordered_trie_root_with_encoder(&encoded, |item, buf| buf.extend_from_slice(item))
+                .as_ref(),
         ))
     } else {
         None
@@ -44,7 +56,7 @@ pub fn calculate_execution_block_hash<E: EthSpec>(
     // Construct the block header.
     let exec_block_header = ExecutionBlockHeader::from_payload(
         payload,
-        KECCAK_EMPTY_LIST_RLP.as_fixed_bytes().into(),
+        KECCAK_EMPTY_LIST_RLP,
         rlp_transactions_root,
         rlp_withdrawals_root,
         rlp_blob_gas_used,
