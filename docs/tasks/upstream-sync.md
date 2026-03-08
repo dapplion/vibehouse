@@ -94,6 +94,13 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 584)
+- Checked consensus-specs: no new Gloas PRs merged since run 583 (v1.7.0-alpha.2 still latest release, no new releases). Recent merges: #4988 (sampling config test fix), #4985 (dep cleanup), #4984 (remove EIP-6800), #4977 (remove EIP-7441) — all infra/cleanup, no Gloas changes.
+- Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Removed dead DatabaseBackend enum and --beacon-node-backend CLI flag**: follows up on run 583's leveldb removal. The single-variant `DatabaseBackend` enum, `DEFAULT_BACKEND` constant, `backend` field on `StoreConfig`, `--beacon-node-backend` CLI flag, and database_manager `--backend` flag were all dead code. Removed from 9 files, -63 lines net. Also simplified `BeaconNodeBackend::open` to drop unused config parameter.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 583)
 - Checked consensus-specs: no new Gloas PRs merged since run 582 (v1.7.0-alpha.2 still latest release, no new releases)
 - Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
