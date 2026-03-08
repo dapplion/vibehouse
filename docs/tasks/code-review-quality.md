@@ -668,3 +668,29 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - `BidObservationOutcome`, `AttestationObservationOutcome` — used within beacon_chain verification
 
 **Verification**: 557/557 state_processing tests, zero warnings, clippy clean.
+
+### Run 569 — dependency updates and codebase health check
+
+**Scope**: Spec conformance check, dependency updates, dead code audit.
+
+**Spec status**:
+- v1.7.0-alpha.2 still latest release, no new spec test vectors
+- PTC Lookbehind (PR #4979) still open/blocked
+- No new Gloas-related PRs merged since run 568
+- CI: all jobs green (check+clippy+fmt, ef-tests, network+op_pool passed; beacon_chain and http_api in progress)
+- Nightly CI: 5 consecutive green runs (Mar 3-7)
+
+**Dead code audit**: Comprehensive scan of `#[allow(dead_code)]`, unused imports, stale conditional compilation — all 21 instances are justified (error Debug fields, builder pattern methods, test infrastructure, platform-specific code). No cleanup needed.
+
+**Dependency updates** (2 commits):
+1. `procfs` 0.15.1 → 0.18.0 — removed 10 stale transitive deps (hermit-abi, io-lifetimes, linux-raw-sys 0.1.x, rustix 0.36.x, 6 windows-sys/targets crates)
+2. `libc` 0.2.182 → 0.2.183 — patch update
+
+**Investigated but not updated**:
+- `psutil` 3.3.0 → 5.4.0: blocked by `darwin-libproc` → `memchr ~2.3` pin conflicting with `gossipsub` → `regex` → `memchr ^2.6`
+- `cc` 1.2.30 → 1.2.56: breaks `leveldb-sys` build (adds `-Wthread-safety` GCC doesn't support)
+- `cmake` 0.1.54 → 0.1.57: same `leveldb-sys` build failure
+- `itertools`, `sysinfo`, `uuid`, `strum`: major version bumps requiring API migration across many crates, low value
+- `service_name` dead field in TaskExecutor: 25+ callers, high churn for zero behavior change
+
+**Verification**: 2585/2593 tests pass (8 web3signer timeouts — pre-existing infrastructure-dependent), zero clippy warnings, full lint clean.
