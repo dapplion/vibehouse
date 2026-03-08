@@ -1297,7 +1297,6 @@ dependencies = [
  "ethereum_ssz",
  "hex",
  "lighthouse_network",
- "log",
  "logging",
  "network_utils",
  "serde",
@@ -4001,7 +4000,6 @@ dependencies = [
  "merkle_proof",
  "rayon",
  "state_processing",
- "tracing",
  "tree_hash",
  "types",
 ]
@@ -5268,7 +5266,6 @@ dependencies = [
  "hex",
  "lighthouse_network",
  "lighthouse_version",
- "log",
  "malloc_utils",
  "network_utils",
  "rayon",
