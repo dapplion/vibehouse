@@ -28,6 +28,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — upgrade 7 dependencies (run 577)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
+- **Upgraded 7 dependencies across 8 crates**:
+  - `jsonwebtoken` 9→10 in execution_layer: added `rust_crypto` feature for CryptoProvider (v10 requires explicit crypto backend selection)
+  - `rpassword` 5→7 in account_utils: `prompt_password_stderr()` → `read_password_from_bufread(&mut stdin().lock())` for stdin path, `read_password_from_tty(None)` → `read_password()`
+  - `bs58` 0.4→0.5 in http_api: API-compatible
+  - `mediatype` 0.19→0.21 in eth2: API-compatible
+  - `num-bigint-dig` 0.8→0.9 in eth2_key_derivation: API-compatible
+  - `mock_instant` 0.3→0.6 in lru_cache: module restructure `mock_instant::Instant` → `mock_instant::global::Instant`, `MockClock` → `global::MockClock`
+  - `base64` 0.13→0.22 in eth2_interop_keypairs (dev-dep): `base64::decode()` → `BASE64_STANDARD.decode()`
+  - `serde_array_query` 0.1→0.3 in warp_utils: API-compatible
+- Skipped: `rand_xorshift` 0.4→0.5 (needs `rand_core` 0.10, blocked by workspace `rand` 0.8), `tiny-bip39` 1→2 (large API rewrite), `headers` 0.3→0.4 (blocked by warp's `http` version), `db-key` 0.0.5→0.1.0 (blocked by `leveldb` crate)
+- All 2602 workspace tests pass, 138/138 EF spec tests pass, lint-full clean
+
 ### 2026-03-08 — upgrade RustCrypto suite + sha2 (run 576)
 - v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests latest: v1.5.0)
 - All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
