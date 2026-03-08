@@ -94,6 +94,9 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 603)
+- **Introduced unified ApiError type for beacon_node/http_api**: new `api_error.rs` module with `ApiError` enum replaces ~130 scattered `warp_utils::reject::*` calls across all 22 handler modules. `TaskSpawner` now uses `ApiError` as the concrete error type instead of generic `Err: Into<warp::Rejection>`. Bridge code (`Reject` impl, `handle_rejection`, `convert_api_error`) converts between `ApiError` and warp's rejection system at filter boundaries. Fixed subtle rejection priority bug where `.or()` combined rejections caused `BadRequest` to shadow `UnsupportedMediaType`. All 251 http_api tests pass, clippy clean. This is the key preparatory step — all handler logic now uses `ApiError`, making the final warp→axum router migration straightforward.
+
 ### 2026-03-08 (run 602)
 - **Migrated execution_layer test mocks from warp to axum**: both MockServer (mock EL JSON-RPC) and MockBuilder (mock builder API) now use axum 0.8. Auth middleware via `axum::middleware::from_fn_with_state`. Handled axum's `Handler` trait constraint — `EndpointVersion` only implements `FromStr` not `Deserialize`, so used `Path<String>` with manual parsing. All 46 execution_layer tests + 251 http_api tests pass. Remaining warp users: beacon_node/http_api, common/warp_utils.
 
