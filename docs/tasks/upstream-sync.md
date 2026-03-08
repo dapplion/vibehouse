@@ -94,6 +94,15 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 585)
+- Checked consensus-specs: no new Gloas PRs merged since run 584 (v1.7.0-alpha.2 still latest release, no new releases). No Gloas spec file changes in the last week — all recent merges are infrastructure/tooling.
+- Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Removed 13 unused dependencies across 7 crates**: lighthouse (lighthouse_tracing, store — store was leftover from leveldb feature removal), environment (tracing-log), beacon_node (genesis, serde_json), beacon_chain (alloy-primitives, eth2_network_config, superstruct, zstd), client (serde_json, tracing-subscriber, operation_pool dev, state_processing dev), lighthouse_network (alloy-primitives, bytes), network (alloy-primitives, eth2 dev, eth2_network_config dev, serde_json dev). Found via cargo-machete, verified with full workspace compile + lint + 2602/2610 tests (8 web3signer timeouts — pre-existing).
+- **Security audit**: ran cargo-audit — 1 vulnerability (rsa RUSTSEC-2023-0071, Marvin Attack timing side-channel). Not applicable: vibehouse uses HS256 (HMAC-SHA256) for Engine API JWT, not RSA. The rsa crate is a transitive dep of jsonwebtoken that we don't use. 10 unmaintained crate warnings — all transitive, not actionable.
+- **CI status**: latest push passing (3/6 jobs complete, remaining in progress). Nightly green (3 consecutive).
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 584)
 - Checked consensus-specs: no new Gloas PRs merged since run 583 (v1.7.0-alpha.2 still latest release, no new releases). Recent merges: #4988 (sampling config test fix), #4985 (dep cleanup), #4984 (remove EIP-6800), #4977 (remove EIP-7441) — all infra/cleanup, no Gloas changes.
 - Open Gloas spec PRs tracked: #4979, #4954, #4962, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
