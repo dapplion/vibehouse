@@ -12,7 +12,6 @@ arbitrary-fuzz = [
     "dep:arbitrary",
     "smallvec/arbitrary",
     "types/arbitrary-fuzz",
-    "merkle_proof/arbitrary",
     "ethereum_ssz/arbitrary",
     "ssz_types/arbitrary",
     "tree_hash/arbitrary",
