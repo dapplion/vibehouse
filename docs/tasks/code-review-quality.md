@@ -694,3 +694,15 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
 - `service_name` dead field in TaskExecutor: 25+ callers, high churn for zero behavior change
 
 **Verification**: 2585/2593 tests pass (8 web3signer timeouts — pre-existing infrastructure-dependent), zero clippy warnings, full lint clean.
+
+### Run 571 — unused dependency cleanup (2026-03-08)
+
+Removed 9 unused dependencies across 6 crates using `cargo-machete --with-metadata`:
+- `bls`: removed `alloy-primitives`, `safe_arith`
+- `execution_layer`: removed `sha2`
+- `http_api`: removed `either`
+- `slashing_protection`: removed `ethereum_serde_utils`
+- `store`: removed `logging`, `smallvec`, `tracing-subscriber`
+- `client`: removed `ethereum_ssz`
+
+False positives from cargo-machete (kept): `rand` (used by TestRandom derive macro), `ethereum_ssz` (used by Encode/Decode derive macros), `zip` (build-dependency), `futures` (dev-dependency used in tests).
