@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — maintenance check (run 549)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- All tracked Gloas PRs still OPEN: #4979 (PTC Lookbehind), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit fork choice test), #4939 (envelope request for index-1 attestations), #4962 (missed payload withdrawal tests)
+- Recently merged upstream: #4988, #4984, #4977 and dependency/CI updates only — no Gloas consensus changes
+- CI in progress for run 548's reprocess try_send fix (6/6 jobs running)
+- Clippy clean, cargo audit clean (10 unmaintained warnings only)
+- **Result**: No spec changes to implement. Monitoring open PRs.
+
 ### 2026-03-08 — maintenance check (run 548)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - All tracked PRs still OPEN: #4979 (PTC Lookbehind), #4940 (fork choice tests), #4932 (sanity/blocks tests), #4960 (deposit fork choice test)
