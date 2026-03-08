@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — upgrade redb 2.x to 3.1.0 (run 575)
+- v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests latest: v1.5.0)
+- All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
+- **Upgraded redb 2.x → 3.1.0** in both store and slasher crates
+  - API changes: `Durability::Eventual` removed (→ `Durability::None`), `set_durability()` now returns `Result`, `begin_read()` moved to `ReadableDatabase` trait
+  - Added `From<SetDurabilityError>` error conversions in both store and slasher
+  - All store tests pass (30/30), all slasher redb tests pass (27/27), lint-full clean
+- CI: nightly green, previous CI run green
+
 ### 2026-03-08 — replace psutil with procfs, unblock cargo outdated (run 574)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - No new Gloas spec PRs merged since run 573
