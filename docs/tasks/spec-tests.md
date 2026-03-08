@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-08 — spec & housekeeping check (run 568)
+- v1.7.0-alpha.2 still latest, no new spec test release
+- PTC Lookbehind PR #4979 still OPEN
+- Reviewed recently merged Gloas PRs: #4918 (attestation payload status check), #4923 (ignore block with unknown parent payload), #4948 (payload status constant reorder) — all already implemented in vibehouse
+- Clippy clean (zero warnings), nightly CI green (5 consecutive passes)
+- Closed upstream-sync task doc (contradicted independence policy), removed sigp/lighthouse git remote
+- Dead code exploration found no remaining cleanup opportunities
+- 1549/1549 core consensus tests pass (proto_array, fork_choice, state_processing, types)
+- **Result**: All spec changes implemented. Housekeeping only.
+
 ### 2026-03-08 — spec conformance audit (run 555)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - PTC Lookbehind PR #4979 still OPEN (10 review comments, active discussion Mar 6-7)
