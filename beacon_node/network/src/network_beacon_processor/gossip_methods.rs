@@ -262,6 +262,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     error = ?e,
                     "Batch unagg. attn verification failed"
                 );
+                for package in packages {
+                    self.propagate_validation_result(
+                        package.message_id,
+                        package.peer_id,
+                        MessageAcceptance::Reject,
+                    );
+                }
                 return;
             }
         };
@@ -473,6 +480,13 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     error = ?e,
                     "Batch agg. attn verification failed"
                 );
+                for package in packages {
+                    self.propagate_validation_result(
+                        package.message_id,
+                        package.peer_id,
+                        MessageAcceptance::Reject,
+                    );
+                }
                 return;
             }
         };
