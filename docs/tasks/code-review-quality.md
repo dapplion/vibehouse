@@ -793,3 +793,13 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 - All `ethereum_ssz`/`ethereum_serde_utils` — derive macros
 
 **Verification**: 2/2 genesis tests, full workspace build clean, full clippy clean, pre-push lint-full passes.
+
+### Run 587 — fix redb 3.x compaction CI failure (2026-03-08)
+
+**CI failure**: `store_tests::prune_historic_states` panicked with `RedbError(TransactionInProgress)` at store_tests.rs:4780. Introduced by redb 2.x → 3.1.0 upgrade (run 575).
+
+**Root cause**: In redb 3.x, `Database::compact()` fails with `CompactionError::TransactionInProgress` if any read transactions are alive. In `prune_historic_states`, after deleting cold state data, `compact_freezer()` is called. If background tasks hold read transactions on the cold DB at that point, compaction fails. In redb 2.x this was not an error.
+
+**Fix**: Modified `Redb::compact()` to silently skip compaction when `TransactionInProgress` is returned. Compaction is an optimization (space reclamation), not a correctness requirement — it can safely be skipped and retried later.
+
+**Verification**: `prune_historic_states` test passes, 30/30 store tests pass, full clippy clean, pre-push lint-full passes.
