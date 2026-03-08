@@ -94,6 +94,15 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-08 (run 592)
+- Checked consensus-specs: no new Gloas PRs merged since run 591 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open.
+- **#4950 merged** (Mar 6): extends BeaconBlocksByRoot and ExecutionPayloadEnvelopesByRoot serve range to `MIN_EPOCHS_FOR_BLOCK_REQUESTS`. Already compliant — vibehouse serves whatever is in the store without range filtering, and retains blocks well beyond that window.
+- Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
+- vibehouse open issues: 3 RFCs (#27, #28, #29) — no bugs or feature requests
+- **Dependency cleanup shipped**: removed unused deps from 4 crates — serde_json from simulator, logging from execution_engine_integration, alloy-primitives from merkle_proof (+ dead arbitrary feature passthrough), merkle_proof/arbitrary from state_processing arbitrary-fuzz feature.
+- **CI status**: run 591 (zip upgrade) in progress. check+clippy+fmt passed. Run 586 (redb fix) passed all 6 jobs. Nightly: 5 consecutive successes.
+- **Spec status**: stable, fully compliant — no code changes needed
+
 ### 2026-03-08 (run 591)
 - Checked consensus-specs: no new Gloas PRs merged since run 590 (v1.7.0-alpha.2 still latest release, no new releases). PTC lookbehind PR #4979 still open.
 - Open Gloas spec PRs tracked: #4979, #4960, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630 — all still open/unmerged
