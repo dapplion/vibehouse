@@ -628,3 +628,22 @@ These complement the devnet scenarios (kurtosis scripts) for end-to-end testing.
    - `TooManyResponses` — 0 constructions
 
 **Verification**: 557/557 state_processing tests, 35/35 EF spec tests, 163/163 network tests. Full workspace clippy clean.
+
+### Run 566 — Final dead code sweep
+
+**Scope**: Comprehensive dead code audit across remaining error enums, public functions, constants, and modules.
+
+**Changes**:
+
+1. **store::Error** (1 variant removed):
+   - `MissingGenesisState` — 0 constructions anywhere in workspace
+
+**Exhaustive audit results** (no further dead code found):
+- All remaining error variants in store::Error, BeaconChainError, BlockProductionError, BlockProcessingError, all state_processing error enums, fork_choice::Error, network sync errors — all actively constructed
+- All `#[allow(dead_code)]` annotations justified (test infrastructure, Debug-used fields, Drop guards)
+- All Gloas-specific public functions verified as actively called
+- No orphaned .rs files, no dead modules, no unused re-exports
+- `IndexedPayloadAttestation::num_attesters()` and `PayloadAttestation::num_attesters()` — only test usage, but harmless utility methods
+- Consensus-specs still at v1.7.0-alpha.2, PTC Lookbehind PR #4979 still open, no spec logic changes merged
+
+**Verification**: 16/16 store tests, full workspace build + clippy clean.
