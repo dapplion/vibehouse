@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 736)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
+- CI (22875542079): check+clippy+fmt passed, EF tests passed, remaining jobs in progress; nightly: continuously green
+- cargo check --release: zero warnings; cargo audit: 1 known rsa advisory (RUSTSEC-2023-0071), 5 allowed warnings, no new vulnerabilities
+- Test coverage audit: process_pending_envelope paths fully covered (happy, EL Syncing, EL Invalid, re-verification failures)
+- No code changes needed
+
 ### 2026-03-09 — fixed 2 beacon_chain test failures (run 735)
 - Found and fixed 2 tests that fail when running `cargo nextest run -p beacon_chain` without feature flags:
   - `block_verification::verify_block_for_gossip_slashing_detection`: panicked on `Slasher::open().unwrap()` when no slasher backend compiled in. Fixed: gracefully skip when `SlasherDatabaseBackendDisabled`.
