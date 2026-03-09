@@ -94,6 +94,12 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-09 (run 607)
+- **Fixed CI clippy failure**: `question_mark` lint in `http_api/src/lib.rs:4082` — replaced `if result.is_err() { return result; }` with `result?;`. CI clippy uses `-D warnings` (strict) while Makefile had `-A clippy::question-mark` (lenient).
+- **Aligned Makefile lint with CI**: removed `-A clippy::question-mark` from Makefile lint target. Now both CI and local `make lint` enforce the same clippy rules, preventing future drift.
+- **Spec check**: no new Gloas PRs merged since run 606. PTC Lookbehind (#4979) still open. Recent merges are all tooling/deps (renovate, EIP-6800/7441 removals, python updates).
+- **Dependency audit**: all remaining duplicate dependencies (66 entries) are transitive — no actionable upgrades available. `rand_xorshift` 0.5 still blocked by rand_core version mismatch.
+
 ### 2026-03-09 (run 606)
 - **Removed warp dependency entirely**: deleted `common/warp_utils` crate (7 source files, 484 lines), removed `warp` and `warp_utils` from workspace Cargo.toml and beacon_node/http_api Cargo.toml, cleaned up clippy.toml async-wrapper-methods. Lockfile drops 13 packages (1032 → 1019), eliminating duplicate hyper 0.14, http 0.2, h2 0.3, headers 0.3 dependency chains. All 251 http_api tests pass, full workspace compiles clean.
 - **Warp→axum migration complete**: the entire HTTP stack now uses axum 0.8 + tower-http 0.6. Migration path was: http_metrics (run 600) → validator_client/http_api (run 601) → execution_layer test mocks (run 602) → ApiError unification (run 603) → beacon_node/http_api router (run 605) → warp removal (this run).
