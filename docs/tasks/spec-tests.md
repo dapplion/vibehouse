@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, no changes (run 715)
+- No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- All 10 tracked PRs still OPEN; #4992 (PTC Lookbehind minimal) most actively reviewed
+- CI green (ci success), docker queued (runner availability), zero compiler warnings
+- Cargo audit unchanged (1 vuln RUSTSEC-2023-0071 rsa, 5 allowed warnings — all transitive/no-fix)
+- Dependencies all at latest compatible versions (0 updates)
+- No code changes needed
+
 ### 2026-03-09 — spec stable, no changes (run 714)
 - No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - All 10 tracked PRs still OPEN, no new activity
