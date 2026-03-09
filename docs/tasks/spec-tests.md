@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 744)
+- Spec scan: no new Gloas merges (recent: reftests, release-drafter, nightly matrix, deps cleanup — all CI/tooling), no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
+- PTC lookbehind PR #4992: potuz updated today — acknowledged duties functions not yet touched, awaiting dev preferences on approach vs #4979
+- CI (22875542079): all 6 jobs passed; nightly: 5 consecutive green runs (Mar 5-9)
+- cargo check --release: zero warnings; cargo audit: 1 known rsa advisory, 5 allowed warnings, no new vulnerabilities
+- cargo outdated: rand_xorshift 0.4→0.5 available (non-critical), rand 0.8→0.9 (dev dep only)
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 741)
 - Spec scan: no new Gloas merges (recent merges all CI/tooling/deps), no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
 - CI (22875542079): all 6 jobs passed — check+clippy+fmt, EF tests, network+op_pool, http_api, beacon_chain, unit tests
