@@ -120,6 +120,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 720 (Mar 9)
+- Fixed spec conformance bug in `process_execution_payload_envelope`: self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) were incorrectly going through signature verification when `VerifySignatures::True`. The spec's `is_valid_indexed_execution_payload_envelope` returns True immediately for self-build without checking the signature. In practice the beacon chain always passes `VerifySignatures::False`, but this would fail if EF tests ever include self-build envelope test vectors.
+- Added `self_build_envelope_skips_signature_check` test verifying Signature::empty() passes with VerifySignatures::True
+- Updated 3 existing tests that tested the old (incorrect) behavior to match the spec
+- All 575 state_processing tests pass, all EF spec envelope tests pass, clippy clean
+- Spec scan: no new merges, PTC lookbehind PRs (#4979, #4992) still open and in design debate
+
 ### 2026-03-09 — consolidated: runs 642-719 (Mar 9)
 Spec stable throughout. All 10 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0). CI and nightly continuously green.
 
