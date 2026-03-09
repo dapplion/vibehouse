@@ -116,23 +116,18 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<(), EnvelopeProcessingError> {
-    if verify_signatures.is_true() {
+    // Spec: is_valid_indexed_execution_payload_envelope returns True immediately
+    // for self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) without
+    // checking the signature. Self-build envelopes carry Signature::empty().
+    if verify_signatures.is_true()
+        && signed_envelope.message.builder_index != BUILDER_INDEX_SELF_BUILD
+    {
         let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
-            if builder_idx == BUILDER_INDEX_SELF_BUILD {
-                // Self-build: use the proposer's validator pubkey
-                let proposer_index = state.latest_block_header().proposer_index as usize;
-                state
-                    .validators()
-                    .get(proposer_index)
-                    .and_then(|v| v.pubkey.decompress().ok().map(Cow::Owned))
-            } else {
-                // Builder-submitted: use the builder's pubkey from the registry
-                state
-                    .builders()
-                    .ok()?
-                    .get(builder_idx as usize)
-                    .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
-            }
+            state
+                .builders()
+                .ok()?
+                .get(builder_idx as usize)
+                .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
         };
 
         let signature_set = execution_payload_envelope_signature_set(
@@ -551,6 +546,49 @@ mod tests {
         assert!(
             result.is_ok(),
             "valid envelope should succeed: {:?}",
+            result.unwrap_err()
+        );
+    }
+
+    /// Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) carry
+    /// Signature::empty(). The spec's `is_valid_indexed_execution_payload_envelope`
+    /// returns True immediately for self-build without checking the signature.
+    /// This test verifies that behavior works correctly even with VerifySignatures::True.
+    #[test]
+    fn self_build_envelope_skips_signature_check() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Set the committed bid to self-build
+        state
+            .latest_execution_payload_bid_mut()
+            .unwrap()
+            .builder_index = BUILDER_INDEX_SELF_BUILD;
+
+        let mut envelope = make_valid_envelope(&state);
+        assert_eq!(
+            envelope.message.builder_index, BUILDER_INDEX_SELF_BUILD,
+            "envelope should be self-build"
+        );
+        assert_eq!(
+            envelope.signature,
+            Signature::empty(),
+            "self-build envelope should have empty signature"
+        );
+
+        fix_envelope_state_root(&state, &mut envelope, &spec);
+
+        // With VerifySignatures::True, this must still succeed because the spec
+        // skips signature verification for self-build envelopes.
+        let result = process_execution_payload_envelope(
+            &mut state,
+            None,
+            &envelope,
+            VerifySignatures::True,
+            &spec,
+        );
+        assert!(
+            result.is_ok(),
+            "self-build envelope with empty signature should pass with VerifySignatures::True: {:?}",
             result.unwrap_err()
         );
     }
@@ -1492,8 +1530,10 @@ mod tests {
         );
     }
 
+    /// Per spec, self-build envelopes skip signature verification entirely.
+    /// Any signature (including a wrong one) should be accepted.
     #[test]
-    fn self_build_envelope_with_wrong_signature_rejected() {
+    fn self_build_envelope_with_wrong_signature_accepted() {
         let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
 
         // Set the bid to self-build
@@ -1506,7 +1546,8 @@ mod tests {
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
 
-        // Sign with a non-proposer key (validator 1 instead of proposer at index 0)
+        // Sign with a non-proposer key — should still pass because
+        // spec skips signature check for self-build
         let wrong_kp = &keypairs[1];
         sign_envelope(&state, &mut envelope, &wrong_kp.sk, &spec);
 
@@ -1518,14 +1559,16 @@ mod tests {
             &spec,
         );
         assert!(
-            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope with wrong signature should be rejected: {:?}",
-            result,
+            result.is_ok(),
+            "self-build envelope should skip signature check per spec: {:?}",
+            result.unwrap_err(),
         );
     }
 
+    /// Per spec, self-build envelopes skip signature verification entirely.
+    /// Even a builder key signature should be accepted.
     #[test]
-    fn self_build_envelope_with_builder_key_rejected() {
+    fn self_build_envelope_with_builder_key_accepted() {
         let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
 
         // Set the bid to self-build
@@ -1538,7 +1581,7 @@ mod tests {
         let mut envelope = make_valid_envelope(&state);
         fix_envelope_state_root(&state, &mut envelope, &spec);
 
-        // Sign with the builder's key (not the proposer's key)
+        // Sign with the builder's key — should still pass
         let builder_kp = &keypairs[8];
         sign_envelope(&state, &mut envelope, &builder_kp.sk, &spec);
 
@@ -1550,9 +1593,9 @@ mod tests {
             &spec,
         );
         assert!(
-            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope signed by builder (not proposer) should be rejected: {:?}",
-            result,
+            result.is_ok(),
+            "self-build envelope should skip signature check per spec: {:?}",
+            result.unwrap_err(),
         );
     }
 
@@ -2808,10 +2851,9 @@ mod tests {
     }
 
     #[test]
-    fn self_build_envelope_wrong_signer_rejected() {
-        // Self-build envelope signed by a NON-proposer key should fail
-        // signature verification, proving the self-build path uses
-        // the correct pubkey (proposer's, not some other validator's).
+    fn self_build_envelope_any_signer_accepted() {
+        // Per spec, self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD)
+        // skip signature verification entirely. Any signature should be accepted.
         let (mut state, spec, keypairs) = make_gloas_state_with_keys(8, 64_000_000_000);
 
         // Set the bid to self-build
@@ -2836,9 +2878,9 @@ mod tests {
             &spec,
         );
         assert!(
-            matches!(result, Err(EnvelopeProcessingError::BadSignature)),
-            "self-build envelope signed by non-proposer should be rejected: {:?}",
-            result,
+            result.is_ok(),
+            "self-build envelope should skip signature check per spec: {:?}",
+            result.unwrap_err(),
         );
     }
 
