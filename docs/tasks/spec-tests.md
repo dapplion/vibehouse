@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — contains_invalid_payloads + on_invalid_execution_payload tests (run 725)
+- Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
+- PTC lookbehind PR #4992: potuz acknowledged `get_ptc_assignment` needs fixing, waiting on dev preference for approach
+- Added 4 unit tests for `contains_invalid_payloads` (ProtoArrayForkChoice): empty tree, all valid, after invalidation, mixed valid/invalid
+- Added 3 unit tests for `on_invalid_execution_payload` (ForkChoice): InvalidateOne transitions Optimistic→Invalid, unknown root error, InvalidateMany with known ancestor
+- Both functions previously had no dedicated test coverage despite being part of the execution validity pipeline
+- All 302 proto_array + fork_choice tests pass, clippy clean
+
 ### 2026-03-09 — spec stable, codebase audit (run 724)
 - Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
 - No new spec-test vectors (consensus-spec-tests latest: v1.6.0-beta.0, pre-Gloas)
