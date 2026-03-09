@@ -3,8 +3,7 @@ name: docker
 on:
     push:
         branches:
-            - unstable
-            - stable
+            - main
         tags:
             - v*
 
@@ -28,16 +27,11 @@ jobs:
     extract-version:
         runs-on: ubuntu-22.04
         steps:
-            - name: Extract version (if stable)
-              if: github.event.ref == 'refs/heads/stable'
+            - name: Extract version (if main)
+              if: github.event.ref == 'refs/heads/main'
               run: |
                     echo "VERSION=latest" >> $GITHUB_ENV
                     echo "VERSION_SUFFIX=" >> $GITHUB_ENV
-            - name: Extract version (if unstable)
-              if: github.event.ref == 'refs/heads/unstable'
-              run: |
-                    echo "VERSION=latest" >> $GITHUB_ENV
-                    echo "VERSION_SUFFIX=-unstable" >> $GITHUB_ENV
             - name: Extract version (if tagged release)
               if: startsWith(github.event.ref, 'refs/tags')
               run: |

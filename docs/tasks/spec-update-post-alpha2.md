@@ -96,7 +96,28 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - **PR #4932** — "Add Gloas sanity/blocks tests with payload attestation coverage": tests `process_payload_attestation` during full block processing. Our `SanityBlocksHandler` runs all forks — ready to pass when merged.
 - **PR #4960** — "Add Gloas fork choice test for new validator deposit": extends fork choice tests with deposit scenarios. Already supported by our handler.
 
+### 10. PR #4918 — Only allow attestations for known payload statuses (merged Feb 13)
+- Adds validation to `validate_on_attestation`: if `attestation.data.index == 1`, `beacon_block_root` must be in `store.payload_states`
+- Already implemented: `fork_choice.rs:1191-1199` checks `block.payload_revealed` with `PayloadNotRevealed` error
+
+### 11. PR #4923 — Ignore beacon block if parent payload unknown (merged Feb 15)
+- New gossip `[IGNORE]` rule: if parent block's execution payload envelope not yet received, ignore the block
+- Already implemented: `block_verification.rs:970-983` returns `BlockError::GloasParentPayloadUnknown`
+
+### 12. PR #4931 — Rebase FOCIL onto Gloas (merged Feb 17)
+- FOCIL (EIP-7805) is a separate feature from ePBS (EIP-7732), promoted to Heze fork (after Gloas) via PR #4942
+- Not relevant for vibehouse's Gloas implementation
+
 ## Progress log
+
+### 2026-03-09 — spec scan + CI cleanup (run 621)
+- All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- Confirmed 3 additional merged PRs already implemented: #4918 (attestation validation), #4923 (parent payload unknown), #4931 (FOCIL — Heze fork, not relevant)
+- Removed stale upstream workflow files: test-suite.yml, local-testnet.yml, book.yml, linkcheck.yml, mergify.yml (security: auto-approved sigp/lighthouse team PRs)
+- Updated docker.yml to target `main` branch (was `unstable`/`stable`)
+- Updated release.yml to remove Sigma Prime-specific content (testing checklist, upstream book URLs, PGP key reference)
+- CI: check+clippy+fmt passing, other jobs in progress
 
 ### 2026-03-08 — spec conformance deep audit (run 555)
 - Verified `process_execution_payload_bid` against latest spec: all 9 validation checks in exact order, state mutations correct
