@@ -139,6 +139,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec scan + conformance audit (run 667)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- CI green: ci passed, nightly 3 consecutive greens
+- Deep spec conformance audit of critical functions: `is_parent_block_full`, `can_builder_cover_bid`, `process_payload_attestation` PTC membership, envelope verification ordering, `on_payload_attestation` quorum — all correct
+- Test coverage audit: all Gloas modules thoroughly tested (envelope_processing 80+ tests/3372 lines, gloas.rs integration 20658 lines, upgrade/gloas.rs 32 tests, epoch processing 19 tests, block replayer 32 tests, fork choice validation 7+ tests)
+- No code changes needed — codebase in excellent shape
+
 ### 2026-03-09 — spec scan (run 660)
 - All 12 tracked Gloas PRs still OPEN (no merges since last scan)
 - No new consensus-specs release (still v1.7.0-alpha.2)
