@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — fixed 2 beacon_chain test failures (run 735)
+- Found and fixed 2 tests that fail when running `cargo nextest run -p beacon_chain` without feature flags:
+  - `block_verification::verify_block_for_gossip_slashing_detection`: panicked on `Slasher::open().unwrap()` when no slasher backend compiled in. Fixed: gracefully skip when `SlasherDatabaseBackendDisabled`.
+  - `column_verification::rpc_columns_with_invalid_header_signature`: guard condition checked `is_fulu_scheduled()` (true on mainnet default spec, Fulu at epoch 411392) instead of checking genesis fork. With phase0 genesis, block production has no blobs → `opt_blobs.unwrap()` panicked. Fixed: check `fork_name_at_epoch(0).fulu_enabled()` instead.
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
+- CI: all jobs green, nightly: continuously green
+- cargo check --release: zero warnings; cargo audit: same known rsa advisory
+- 768/768 beacon_chain tests pass (was 766/768 before fix)
+
 ### 2026-03-09 — spec stable, all clear (run 734)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0; spec-tests repo archived)
 - All 10 tracked PRs still OPEN: #4992, #4979, #4954, #4898, #4892, #4843, #4940, #4932, #4960, #4962
