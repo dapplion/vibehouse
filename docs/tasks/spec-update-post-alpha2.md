@@ -120,10 +120,11 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### 2026-03-09 — consolidated: runs 642-718 (Mar 9)
+### 2026-03-09 — consolidated: runs 642-719 (Mar 9)
 Spec stable throughout. All 10 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0). CI and nightly continuously green.
 
 Key activities:
+- **run 719**: added PTC lookbehind bug demonstration test — proves `get_ptc_committee` returns different results for the same slot when effective balances change, documenting the known bug that PR #4992 fixes
 - **run 718**: deep spec conformance audit — verified `compute_balance_weighted_selection` (proposer/sync/PTC), `process_execution_payload`, `process_builder_pending_payments`, `process_slot`, `process_epoch` ordering all match spec
 - **run 717**: consolidated progress log (was 350+ lines of repeated "no changes" entries)
 - **run 704**: corrected PR #4939 status — still OPEN, our implementation is proactive
