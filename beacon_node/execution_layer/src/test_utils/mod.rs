@@ -125,11 +125,11 @@ impl<E: EthSpec> MockServer<E> {
             Uint256::from(DEFAULT_TERMINAL_DIFFICULTY),
             DEFAULT_TERMINAL_BLOCK,
             ExecutionBlockHash::zero(),
-            None, // FIXME(capella): should this be the default?
-            None, // FIXME(deneb): should this be the default?
-            None, // FIXME(electra): should this be the default?
-            None, // FIXME(fulu): should this be the default?
-            None, // FIXME(gloas): should this be the default?
+            None, // shanghai_time
+            None, // cancun_time
+            None, // prague_time
+            None, // osaka_time
+            None, // amsterdam_time
             chain_spec,
             None,
         )
