@@ -891,3 +891,20 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 - `lighthouse/` directory name — workspace member path, not user-visible
 
 **Verification**: `cargo build --release` clean, `vibehouse --version` shows `vibehouse v0.1.0`, 312/312 package tests pass, clippy clean, pre-push lint-full passes.
+
+### Run 615: finish vc/lcli rebranding (2026-03-09)
+
+**Scope**: Rebrand remaining user-visible "Lighthouse" references missed in runs 611-614.
+
+**Changes** (3 files):
+1. `validator_client/src/cli.rs`: 4 CLI help text strings — doppelganger protection, builder proposals, prefer builder proposals, web3signer slashing protection
+2. `validator_client/http_api/src/lib.rs`: 6 error messages "Lighthouse shutting down" → "vibehouse shutting down"
+3. `lcli/src/main.rs`: Command name "Lighthouse CLI Tool" → "vibehouse CLI Tool"
+
+**Remaining "lighthouse" references** (intentionally kept):
+- API paths (`.push("lighthouse")`) — breaking change for external tooling
+- Crate/module names (`lighthouse_network`, `lighthouse_validator_store`, `lighthouse_vc`) — internal
+- Test infrastructure file paths (`tls_dir().join("lighthouse")`) — test artifacts
+- Test rig temp dir prefixes — internal
+
+**Verification**: cargo check clean, validator_client tests pass, clippy clean, pre-push lint-full passes.
