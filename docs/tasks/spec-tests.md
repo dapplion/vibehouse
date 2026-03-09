@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, no changes (run 706)
+- Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- All 10 tracked Gloas PRs still OPEN; PR #4992 getting review from kevaundray
+- CI: ef-tests/network+op_pool/check+clippy+fmt passed; 3 jobs in progress
+- No code changes needed
+
 ### 2026-03-09 — spec stable, no changes (run 705)
 - Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - All 10 tracked Gloas PRs still OPEN: #4992, #4979, #4960, #4954, #4940, #4939, #4932, #4898, #4892, #4843

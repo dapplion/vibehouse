@@ -120,6 +120,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec stable, no changes (run 706)
+- No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- All 10 tracked PRs still OPEN
+- PR #4992 (PTC Lookbehind minimal): kevaundray reviewing — raised concern about `get_ptc_assignment` needing 32 slots while cache only holds 2; design still in flux
+- CI: ef-tests, network+op_pool, check+clippy+fmt passed; beacon_chain, http_api, unit tests in progress
+- No code changes needed
+
 ### 2026-03-09 — spec stable, no changes (run 705)
 - No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - All 10 tracked PRs still OPEN — no new activity
