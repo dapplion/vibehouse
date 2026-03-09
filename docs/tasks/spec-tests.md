@@ -118,6 +118,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - cargo audit: same known rsa advisory, no new vulnerabilities; 0 compatible dep updates
 - No code changes needed
 
+### 2026-03-09 — spec stable, all clear (run 743)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0)
+- All 10 tracked PRs still OPEN; PTC lookbehind (#4992) still in design (potuz: duties functions not yet addressed)
+- CI: all 6 jobs passed; nightly: 3+ consecutive green
+- Local test verification: 575/575 state_processing, 302/302 fork_choice+proto_array — all pass
+- cargo check --release: zero warnings; cargo audit: no new vulnerabilities
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 730)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Recent consensus-specs merges: all CI/tooling/deps (pytest perf, reftests, renovate, EIP-6800 removal)
