@@ -120,6 +120,16 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 748 (Mar 10)
+- Spec scan: all 11 tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0)
+- PTC lookbehind PR #4992: no new comments since last scan (last activity Mar 9), design still evolving
+- Recently merged consensus-specs PRs (#4990-4994): all CI/tooling/cleanup, no consensus changes
+- CI fully green; nightly tests: 7 consecutive green runs (Mar 5-10)
+- Workspace tests: 2643/2643 passed (excluded web3signer_tests — external service)
+- EF spec tests: 35/35 passed (operations + epoch_processing + sanity, minimal preset)
+- Cargo audit unchanged (rsa advisory only, no fix available)
+- Code audit: no TODO/FIXME/unreachable!/todo! in Gloas production code (beacon_chain)
+
 ### run 747 (Mar 10)
 - Spec scan: all 11 tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0)
 - PTC lookbehind PR #4992: no new comments since last scan (last activity Mar 9), design still evolving
