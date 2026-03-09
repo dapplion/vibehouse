@@ -130,7 +130,7 @@ mod tests {
     use std::io::LineWriter;
     use tempfile::TempDir;
 
-    const DEFAULT_GRAFFITI: &str = "lighthouse";
+    const DEFAULT_GRAFFITI: &str = "vibehouse";
     const CUSTOM_GRAFFITI1: &str = "custom-graffiti1";
     const CUSTOM_GRAFFITI2: &str = "graffitiwall:720:641:#ffff00";
     const EMPTY_GRAFFITI: &str = "";

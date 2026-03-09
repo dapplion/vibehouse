@@ -31,7 +31,7 @@ pub fn construct_logger<E: EthSpec>(
     Option<Libp2pDiscv5TracingLayer>,
 ) {
     let subcommand_name = matches.subcommand_name();
-    let logfile_prefix = subcommand_name.unwrap_or("lighthouse");
+    let logfile_prefix = subcommand_name.unwrap_or("vibehouse");
 
     let file_mode = if logger_config.is_restricted {
         0o600

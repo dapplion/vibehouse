@@ -33,7 +33,7 @@ use tracing_subscriber::{Layer, filter::EnvFilter, layer::SubscriberExt, util::S
 use types::{EthSpec, EthSpecId};
 use validator_client::ProductionValidatorClient;
 
-pub static SHORT_VERSION: LazyLock<String> = LazyLock::new(|| VERSION.replace("Lighthouse/", ""));
+pub static SHORT_VERSION: LazyLock<String> = LazyLock::new(|| VERSION.replace("vibehouse/", ""));
 pub static LONG_VERSION: LazyLock<String> = LazyLock::new(|| {
     format!(
         "{}\n\
@@ -103,15 +103,14 @@ fn main() {
     }
 
     // Parse the CLI parameters.
-    let cli = Command::new("Lighthouse")
+    let cli = Command::new("vibehouse")
         .version(SHORT_VERSION.as_str())
-        .author("Sigma Prime <contact@sigmaprime.io>")
         .styles(get_color_style())
         .next_line_help(true)
         .term_width(80)
         .disable_help_flag(true)
         .about(
-            "Ethereum 2.0 client by Sigma Prime. Provides a full-featured beacon \
+            "Ethereum consensus client with ePBS (EIP-7732). Provides a full-featured beacon \
              node, a validator client and utilities for managing validator accounts.",
         )
         .long_version(LONG_VERSION.as_str())
@@ -670,9 +669,9 @@ fn run<E: EthSpec>(
                 .get_one::<String>("telemetry-service-name")
                 .cloned()
                 .unwrap_or_else(|| match matches.subcommand() {
-                    Some(("beacon_node", _)) => "lighthouse-bn".to_string(),
-                    Some(("validator_client", _)) => "lighthouse-vc".to_string(),
-                    _ => "lighthouse".to_string(),
+                    Some(("beacon_node", _)) => "vibehouse-bn".to_string(),
+                    Some(("validator_client", _)) => "vibehouse-vc".to_string(),
+                    _ => "vibehouse".to_string(),
                 });
 
             let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
@@ -684,7 +683,7 @@ fn run<E: EthSpec>(
                 )
                 .build();
 
-            let tracer = provider.tracer("lighthouse");
+            let tracer = provider.tracer("vibehouse");
             Ok::<_, String>(
                 tracing_opentelemetry::layer()
                     .with_tracer(tracer)

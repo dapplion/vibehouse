@@ -4,7 +4,7 @@ use eth2::lighthouse::{ProcessHealth, SystemHealth};
 use serde::{Deserialize, Serialize};
 
 pub const VERSION: u64 = 1;
-pub const CLIENT_NAME: &str = "lighthouse";
+pub const CLIENT_NAME: &str = "vibehouse";
 
 /// An API error serializable to JSON.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

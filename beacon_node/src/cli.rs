@@ -10,7 +10,6 @@ pub fn cli_app() -> Command {
         .display_order(0)
         .visible_aliases(["b", "bn", "beacon"])
         .version(crate_version!())
-        .author("Sigma Prime <contact@sigmaprime.io>")
         .styles(get_color_style())
         .about("The primary component which connects to the Ethereum 2.0 P2P network and \
                 downloads, verifies and stores blocks. Provides a HTTP API for querying \
