@@ -1,6 +1,6 @@
 [package]
 name = "lcli"
-description = "Lighthouse CLI (modeled after zcli)"
+description = "Vibehouse CLI (modeled after zcli)"
 version = "8.0.1"
 authors = ["Paul Hauner <paul@paulhauner.com>"]
 edition = { workspace = true }

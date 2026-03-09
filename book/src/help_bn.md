@@ -5,7 +5,7 @@ The primary component which connects to the Ethereum 2.0 P2P network and
 downloads, verifies and stores blocks. Provides a HTTP API for querying the
 beacon chain and publishing messages to the network.
 
-Usage: lighthouse beacon_node [OPTIONS] --execution-endpoint <EXECUTION-ENDPOINT>
+Usage: vibehouse beacon_node [OPTIONS] --execution-endpoint <EXECUTION-ENDPOINT>
 
 Options:
       --auto-compact-db <auto-compact-db>
@@ -69,10 +69,10 @@ Options:
           Set the timeout for checkpoint sync calls to remote beacon node HTTP
           endpoint. [default: 180]
   -d, --datadir <DIR>
-          Used to specify a custom root data directory for lighthouse keys and
-          databases. Defaults to $HOME/.lighthouse/{network} where network is
-          the value of the `network` flag Note: Users should specify separate
-          custom datadirs for different networks.
+          Used to specify a custom root data directory for vibehouse keys and
+          databases. Defaults to $HOME/.vibehouse/{network} where network is the
+          value of the `network` flag Note: Users should specify separate custom
+          datadirs for different networks.
       --debug-level <LEVEL>
           Specifies the verbosity level used when emitting logs to the terminal.
           [default: info] [possible values: info, debug, trace, warn, error]
@@ -112,9 +112,9 @@ Options:
           The UDP6 port of the local ENR. Set this only if you are sure other
           nodes can connect to your local node on this port over IPv6.
       --epochs-per-blob-prune <EPOCHS>
-          The epoch interval with which to prune blobs from Lighthouse's
-          database when they are older than the data availability boundary
-          relative to the current epoch. [default: 256]
+          The epoch interval with which to prune blobs from vibehouse's database
+          when they are older than the data availability boundary relative to
+          the current epoch. [default: 256]
       --epochs-per-migration <N>
           The number of epochs to wait between running the migration of data
           from the hot DB to the cold DB. Less frequent runs can be useful for
@@ -224,7 +224,7 @@ Options:
           One or more comma-delimited multiaddrs to manually connect to a libp2p
           peer without an ENR.
       --listen-address [<ADDRESS>...]
-          The address lighthouse will listen for UDP and TCP connections. To
+          The address vibehouse will listen for UDP and TCP connections. To
           listen over IPv4 and IPv6 set this flag twice with the different
           values.
           Examples:
@@ -233,7 +233,7 @@ Options:
           - --listen-address '0.0.0.0' --listen-address '::' will listen over
           both IPv4 and IPv6. The order of the given addresses is not relevant.
           However, multiple IPv4, or multiple IPv6 addresses will not be
-          accepted. If omitted, Lighthouse will listen on all interfaces, for
+          accepted. If omitted, vibehouse will listen on all interfaces, for
           both IPv4 and IPv6.
       --log-format <FORMAT>
           Specifies the log format used when emitting logs to the terminal.
@@ -278,7 +278,7 @@ Options:
           Defines how many seconds to wait between each message sent to the
           monitoring-endpoint. Default: 60s
       --network <network>
-          Name of the Eth2 chain Lighthouse will sync and follow. [possible
+          Name of the Eth2 chain vibehouse will sync and follow. [possible
           values: mainnet, gnosis, chiado, sepolia, holesky, hoodi]
       --network-dir <DIR>
           Data directory for network keys. Defaults to network/ inside the
@@ -323,11 +323,11 @@ Options:
           Percentage of head vote weight below which to attempt a proposer
           reorg. Default: 20%
       --prune-blobs <BOOLEAN>
-          Prune blobs from Lighthouse's database when they are older than the
+          Prune blobs from vibehouse's database when they are older than the
           data data availability boundary relative to the current epoch.
           [default: true]
       --prune-payloads <prune-payloads>
-          Prune execution payloads from Lighthouse's database. This saves space
+          Prune execution payloads from vibehouse's database. This saves space
           but imposes load on the execution client, as payloads need to be
           reconstructed and sent to syncing peers. [default: true]
       --quic-port <PORT>
@@ -379,13 +379,16 @@ Options:
           full [default: 1]
       --state-cache-size <STATE_CACHE_SIZE>
           Specifies the size of the state cache [default: 128]
+      --stateless-min-proofs-required <N>
+          Minimum number of execution proofs required before considering a block
+          proven. Only relevant with --stateless-validation. [default: 1]
       --suggested-fee-recipient <SUGGESTED-FEE-RECIPIENT>
           Emergency fallback fee recipient for use in case the validator client
           does not have one configured. You should set this flag on the
           validator client instead of (or in addition to) setting it here.
   -t, --testnet-dir <DIR>
           Path to directory containing eth2_testnet specs. Defaults to a
-          hard-coded Lighthouse testnet. Only effective if there is no existing
+          hard-coded vibehouse testnet. Only effective if there is no existing
           database.
       --target-peers <target-peers>
           The target number of peers.
@@ -393,8 +396,8 @@ Options:
           URL of the OpenTelemetry collector to export tracing spans (e.g.,
           http://localhost:4317). If not set, tracing export is disabled.
       --telemetry-service-name <NAME>
-          Override the OpenTelemetry service name. Defaults to 'lighthouse-bn'
-          for beacon node, 'lighthouse-vc' for validator client, or 'lighthouse'
+          Override the OpenTelemetry service name. Defaults to 'vibehouse-bn'
+          for beacon node, 'vibehouse-vc' for validator client, or 'vibehouse'
           for other subcommands.
       --trusted-peers <TRUSTED_PEERS>
           One or more comma-delimited trusted peer ids which always have the
@@ -467,9 +470,9 @@ Flags:
           will generally increase memory usage, it should only be provided when
           debugging specific memory allocation issues.
       --disable-optimistic-finalized-sync
-          Force Lighthouse to verify every execution block hash with the
+          Force vibehouse to verify every execution block hash with the
           execution client during finalized sync. By default block hashes will
-          be checked in Lighthouse and only passed to the EL if initial
+          be checked in vibehouse and only passed to the EL if initial
           verification fails.
       --disable-packet-filter
           Disables the discovery packet filter. Useful for testing in smaller
@@ -483,18 +486,27 @@ Flags:
       --disable-self-limiter
           Disables the outbound rate limiter (requests sent by this node).
       --disable-upnp
-          Disables UPnP support. Setting this will prevent Lighthouse from
+          Disables UPnP support. Setting this will prevent vibehouse from
           attempting to automatically establish external port mappings.
   -e, --enr-match
           Sets the local ENR IP address and port to match those set for
-          lighthouse. Specifically, the IP address will be the value of
+          vibehouse. Specifically, the IP address will be the value of
           --listen-address and the UDP port will be --discovery-port.
       --enable-private-discovery
-          Lighthouse by default does not discover private IP addresses. Set this
+          vibehouse by default does not discover private IP addresses. Set this
           flag to enable connection attempts to local addresses.
+      --generate-execution-proofs
+          Enable execution proof generation. When the node receives an execution
+          payload envelope, it will generate a ZK proof and publish it to proof
+          subnets. Stub implementation initially.
       --genesis-backfill
           Attempts to download blocks all the way back to genesis when
           checkpoint syncing.
+      --genesis-builders <N>
+          Inject N builders into the Gloas genesis state on first start. Uses
+          deterministic keypairs starting at index equal to the validator count.
+          For devnet testing of the external builder (ePBS) path only. [default:
+          0]
       --gui
           Enable the graphical user interface and all its requirements. This
           enables --http and --validator-monitor-auto and enables SSE logging.
@@ -546,7 +558,7 @@ Flags:
           After a checkpoint sync, reconstruct historic states in the database.
           This requires syncing all the way back to genesis.
       --reset-payload-statuses
-          When present, Lighthouse will forget the payload statuses of any
+          When present, vibehouse will forget the payload statuses of any
           already-imported blocks. This can assist in the recovery from a
           consensus failure caused by the execution layer.
       --semi-supernode
@@ -566,6 +578,10 @@ Flags:
           Standard option for a staking beacon node. This will enable the HTTP
           server on localhost:5052 and import deposit logs from the execution
           node.
+      --stateless-validation
+          Enable stateless validation mode. The node will not call the EL for
+          execution payload verification, relying on ZK proofs received via
+          gossip subnets instead. Requires Gloas (ePBS) fork to be active.
       --stdin-inputs
           If present, read all user inputs from stdin instead of tty.
       --subscribe-all-subnets

@@ -6,7 +6,7 @@ defined in a JSON file which can be generated using the "create-validators"
 command. This command only supports validators signing via a keystore on the
 local file system (i.e., not Web3Signer validators).
 
-Usage: lighthouse validator_manager move [OPTIONS] --src-vc-token <PATH> --src-vc-url <HTTP_ADDRESS> --dest-vc-token <PATH> --dest-vc-url <HTTP_ADDRESS>
+Usage: vibehouse validator_manager move [OPTIONS] --src-vc-token <PATH> --src-vc-url <HTTP_ADDRESS> --dest-vc-token <PATH> --dest-vc-url <HTTP_ADDRESS>
 
 Options:
       --builder-boost-factor <UINT64>
@@ -19,10 +19,10 @@ Options:
       --count <VALIDATOR_COUNT>
           The number of validators to move.
   -d, --datadir <DIR>
-          Used to specify a custom root data directory for lighthouse keys and
-          databases. Defaults to $HOME/.lighthouse/{network} where network is
-          the value of the `network` flag Note: Users should specify separate
-          custom datadirs for different networks.
+          Used to specify a custom root data directory for vibehouse keys and
+          databases. Defaults to $HOME/.vibehouse/{network} where network is the
+          value of the `network` flag Note: Users should specify separate custom
+          datadirs for different networks.
       --debug-level <LEVEL>
           Specifies the verbosity level used when emitting logs to the terminal.
           [default: info] [possible values: info, debug, trace, warn, error]
@@ -63,10 +63,10 @@ Options:
           The maximum size (in MB) each log file can grow to before rotating. If
           set to 0, background file logging is disabled. [default: 200]
       --network <network>
-          Name of the Eth2 chain Lighthouse will sync and follow. [possible
+          Name of the Eth2 chain vibehouse will sync and follow. [possible
           values: mainnet, gnosis, chiado, sepolia, holesky, hoodi]
       --prefer-builder-proposals <prefer-builder-proposals>
-          If this flag is set, Lighthouse will always prefer blocks constructed
+          If this flag is set, vibehouse will always prefer blocks constructed
           by builders, regardless of payload value. [possible values: true,
           false]
       --src-vc-token <PATH>
@@ -80,14 +80,14 @@ Options:
           recipient. Omit this flag to use the default value from the VC.
   -t, --testnet-dir <DIR>
           Path to directory containing eth2_testnet specs. Defaults to a
-          hard-coded Lighthouse testnet. Only effective if there is no existing
+          hard-coded vibehouse testnet. Only effective if there is no existing
           database.
       --telemetry-collector-url <URL>
           URL of the OpenTelemetry collector to export tracing spans (e.g.,
           http://localhost:4317). If not set, tracing export is disabled.
       --telemetry-service-name <NAME>
-          Override the OpenTelemetry service name. Defaults to 'lighthouse-bn'
-          for beacon node, 'lighthouse-vc' for validator client, or 'lighthouse'
+          Override the OpenTelemetry service name. Defaults to 'vibehouse-bn'
+          for beacon node, 'vibehouse-vc' for validator client, or 'vibehouse'
           for other subcommands.
       --validators <STRING>
           The validators to be moved. Either a list of 0x-prefixed validator

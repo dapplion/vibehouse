@@ -1,10 +1,10 @@
 # Lighthouse CLI Reference
 
 ```
-Ethereum 2.0 client by Sigma Prime. Provides a full-featured beacon node, a
-validator client and utilities for managing validator accounts.
+Ethereum consensus client with ePBS (EIP-7732). Provides a full-featured beacon
+node, a validator client and utilities for managing validator accounts.
 
-Usage: lighthouse [OPTIONS] [COMMAND]
+Usage: vibehouse [OPTIONS] [COMMAND]
 
 Commands:
   account_manager
@@ -16,7 +16,7 @@ Commands:
           querying the beacon chain and publishing messages to the network.
           [aliases: b, bn, beacon]
   boot_node
-          Start a special Lighthouse process that only serves as a discv5
+          Start a special vibehouse process that only serves as a discv5
           boot-node. This process will *not* import blocks or perform most
           typical beacon node functions. Instead, it will simply run the discv5
           service and assist nodes on the network to discover each other. This
@@ -29,17 +29,17 @@ Commands:
           validator (e.g., proposing blocks and attestations). [aliases: v, vc,
           validator]
   validator_manager
-          Utilities for managing a Lighthouse validator client via the HTTP API.
+          Utilities for managing a vibehouse validator client via the HTTP API.
           [aliases: vm, validator-manager]
   help
           Print this message or the help of the given subcommand(s)
 
 Options:
   -d, --datadir <DIR>
-          Used to specify a custom root data directory for lighthouse keys and
-          databases. Defaults to $HOME/.lighthouse/{network} where network is
-          the value of the `network` flag Note: Users should specify separate
-          custom datadirs for different networks.
+          Used to specify a custom root data directory for vibehouse keys and
+          databases. Defaults to $HOME/.vibehouse/{network} where network is the
+          value of the `network` flag Note: Users should specify separate custom
+          datadirs for different networks.
       --debug-level <LEVEL>
           Specifies the verbosity level used when emitting logs to the terminal.
           [default: info] [possible values: info, debug, trace, warn, error]
@@ -70,18 +70,18 @@ Options:
           The maximum size (in MB) each log file can grow to before rotating. If
           set to 0, background file logging is disabled. [default: 200]
       --network <network>
-          Name of the Eth2 chain Lighthouse will sync and follow. [possible
+          Name of the Eth2 chain vibehouse will sync and follow. [possible
           values: mainnet, gnosis, chiado, sepolia, holesky, hoodi]
   -t, --testnet-dir <DIR>
           Path to directory containing eth2_testnet specs. Defaults to a
-          hard-coded Lighthouse testnet. Only effective if there is no existing
+          hard-coded vibehouse testnet. Only effective if there is no existing
           database.
       --telemetry-collector-url <URL>
           URL of the OpenTelemetry collector to export tracing spans (e.g.,
           http://localhost:4317). If not set, tracing export is disabled.
       --telemetry-service-name <NAME>
-          Override the OpenTelemetry service name. Defaults to 'lighthouse-bn'
-          for beacon node, 'lighthouse-vc' for validator client, or 'lighthouse'
+          Override the OpenTelemetry service name. Defaults to 'vibehouse-bn'
+          for beacon node, 'vibehouse-vc' for validator client, or 'vibehouse'
           for other subcommands.
   -V, --version
           Print version

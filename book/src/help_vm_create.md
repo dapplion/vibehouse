@@ -7,7 +7,7 @@ then be imported to a validator client using the "import-validators" command.
 Another, optional JSON file is created which contains a list of validator
 deposits in the same format as the "ethstaker-deposit-cli" tool.
 
-Usage: lighthouse validator_manager create [OPTIONS] --output-path <DIRECTORY>
+Usage: vibehouse validator_manager create [OPTIONS] --output-path <DIRECTORY>
 
 Options:
       --beacon-node <HTTP_ADDRESS>
@@ -27,10 +27,10 @@ Options:
           The number of validators to create, regardless of how many already
           exist
   -d, --datadir <DIR>
-          Used to specify a custom root data directory for lighthouse keys and
-          databases. Defaults to $HOME/.lighthouse/{network} where network is
-          the value of the `network` flag Note: Users should specify separate
-          custom datadirs for different networks.
+          Used to specify a custom root data directory for vibehouse keys and
+          databases. Defaults to $HOME/.vibehouse/{network} where network is the
+          value of the `network` flag Note: Users should specify separate custom
+          datadirs for different networks.
       --debug-level <LEVEL>
           Specifies the verbosity level used when emitting logs to the terminal.
           [default: info] [possible values: info, debug, trace, warn, error]
@@ -76,14 +76,14 @@ Options:
       --mnemonic-path <MNEMONIC_PATH>
           If present, the mnemonic will be read in from this file.
       --network <network>
-          Name of the Eth2 chain Lighthouse will sync and follow. [possible
+          Name of the Eth2 chain vibehouse will sync and follow. [possible
           values: mainnet, gnosis, chiado, sepolia, holesky, hoodi]
       --output-path <DIRECTORY>
           The path to a directory where the validator and (optionally) deposits
           files will be created. The directory will be created if it does not
           exist.
       --prefer-builder-proposals <prefer-builder-proposals>
-          If this flag is set, Lighthouse will always prefer blocks constructed
+          If this flag is set, vibehouse will always prefer blocks constructed
           by builders, regardless of payload value. [possible values: true,
           false]
       --suggested-fee-recipient <ETH1_ADDRESS>
@@ -91,14 +91,14 @@ Options:
           recipient. Omit this flag to use the default value from the VC.
   -t, --testnet-dir <DIR>
           Path to directory containing eth2_testnet specs. Defaults to a
-          hard-coded Lighthouse testnet. Only effective if there is no existing
+          hard-coded vibehouse testnet. Only effective if there is no existing
           database.
       --telemetry-collector-url <URL>
           URL of the OpenTelemetry collector to export tracing spans (e.g.,
           http://localhost:4317). If not set, tracing export is disabled.
       --telemetry-service-name <NAME>
-          Override the OpenTelemetry service name. Defaults to 'lighthouse-bn'
-          for beacon node, 'lighthouse-vc' for validator client, or 'lighthouse'
+          Override the OpenTelemetry service name. Defaults to 'vibehouse-bn'
+          for beacon node, 'vibehouse-vc' for validator client, or 'vibehouse'
           for other subcommands.
 
 Flags:

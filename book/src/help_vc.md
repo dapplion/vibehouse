@@ -4,7 +4,7 @@
 When connected to a beacon node, performs the duties of a staked validator
 (e.g., proposing blocks and attestations).
 
-Usage: lighthouse validator_client [OPTIONS]
+Usage: vibehouse validator_client [OPTIONS]
 
 Options:
       --beacon-nodes <NETWORK_ADDRESSES>
@@ -29,10 +29,10 @@ Options:
           This flag takes a unix timestamp value that will be used to override
           the timestamp used in the builder api registration.
   -d, --datadir <DIR>
-          Used to specify a custom root data directory for lighthouse keys and
-          databases. Defaults to $HOME/.lighthouse/{network} where network is
-          the value of the `network` flag Note: Users should specify separate
-          custom datadirs for different networks.
+          Used to specify a custom root data directory for vibehouse keys and
+          databases. Defaults to $HOME/.vibehouse/{network} where network is the
+          value of the `network` flag Note: Users should specify separate custom
+          datadirs for different networks.
       --debug-level <LEVEL>
           Specifies the verbosity level used when emitting logs to the terminal.
           [default: info] [possible values: info, debug, trace, warn, error]
@@ -113,7 +113,7 @@ Options:
           Defines how many seconds to wait between each message sent to the
           monitoring-endpoint. [default: 60]
       --network <network>
-          Name of the Eth2 chain Lighthouse will sync and follow. [possible
+          Name of the Eth2 chain vibehouse will sync and follow. [possible
           values: mainnet, gnosis, chiado, sepolia, holesky, hoodi]
       --proposer-nodes <NETWORK_ADDRESSES>
           Comma-separated addresses to one or more beacon node HTTP APIs. These
@@ -124,7 +124,7 @@ Options:
           The directory which contains the password to unlock the validator
           voting keypairs. Each password should be contained in a file where the
           name is the 0x-prefixed hex representation of the validators voting
-          public key. Defaults to ~/.lighthouse/{network}/secrets.
+          public key. Defaults to ~/.vibehouse/{network}/secrets.
       --suggested-fee-recipient <FEE-RECIPIENT>
           Once the merge has happened, this address will receive transaction
           fees from blocks proposed by this validator client. If a fee recipient
@@ -132,14 +132,14 @@ Options:
           value.
   -t, --testnet-dir <DIR>
           Path to directory containing eth2_testnet specs. Defaults to a
-          hard-coded Lighthouse testnet. Only effective if there is no existing
+          hard-coded vibehouse testnet. Only effective if there is no existing
           database.
       --telemetry-collector-url <URL>
           URL of the OpenTelemetry collector to export tracing spans (e.g.,
           http://localhost:4317). If not set, tracing export is disabled.
       --telemetry-service-name <NAME>
-          Override the OpenTelemetry service name. Defaults to 'lighthouse-bn'
-          for beacon node, 'lighthouse-vc' for validator client, or 'lighthouse'
+          Override the OpenTelemetry service name. Defaults to 'vibehouse-bn'
+          for beacon node, 'vibehouse-vc' for validator client, or 'vibehouse'
           for other subcommands.
       --validator-registration-batch-size <INTEGER>
           Defines the number of validators per validator/register_validator

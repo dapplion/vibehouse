@@ -285,8 +285,8 @@ fn main() {
                 .value_name("NAME")
                 .help(
                     "Override the OpenTelemetry service name. \
-                    Defaults to 'lighthouse-bn' for beacon node, 'lighthouse-vc' for validator \
-                    client, or 'lighthouse' for other subcommands."
+                    Defaults to 'vibehouse-bn' for beacon node, 'vibehouse-vc' for validator \
+                    client, or 'vibehouse' for other subcommands."
                 )
                 .requires("telemetry-collector-url")
                 .action(ArgAction::Set)
