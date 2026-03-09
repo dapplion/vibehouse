@@ -118,6 +118,14 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan + cleanup (run 609)
+- All 9 tracked PRs still open: #4979 (PTC lookbehind, active discussion Mar 7 re: Vector size trade-offs), #4940, #4932, #4960, #4962, #4840, #4839, #4843, #4630
+- PR #4950 (by_root serve range) merged Mar 6 — already compliant (tracked above)
+- No new Gloas spec changes merged since run 608
+- PTC Lookbehind (#4979) discussion: potuz/jtraglia/ensi321/nflaig debating Vector size (2*SLOTS_PER_EPOCH vs 2 vs 1), asserts for `get_ptc`, next epoch JIT computation. Design still evolving.
+- Codebase cleanup: consolidated 10 duplicate TODO comments in beacon_chain builder
+- Full code quality scan: no unwraps in production Gloas code, no dead_code allows, no stale warp references, clippy clean, no compiler warnings
+
 ### 2026-03-09 — spec scan (run 608)
 - All 6 tracked PRs still open: #4979 (PTC lookbehind), #4940, #4932, #4960, #4840, #4939
 - PR #4948 (reorder PayloadStatus constants: EMPTY=0, FULL=1, PENDING=2) merged Feb 26 — already matches our `GloasPayloadStatus` enum ordering
