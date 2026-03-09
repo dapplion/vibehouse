@@ -56,7 +56,7 @@ where
 }
 
 /// Extract and validate a JSON body, rejecting SSZ content-type.
-/// This replaces `warp_utils::json::json()`.
+/// Rejects SSZ content-type and parses JSON from the request body.
 pub async fn json_body<T: DeserializeOwned>(
     headers: &HeaderMap,
     body: axum::body::Bytes,
@@ -67,7 +67,7 @@ pub async fn json_body<T: DeserializeOwned>(
 }
 
 /// Extract and validate a JSON body that may be empty (returns T::default() for empty bodies).
-/// This replaces `warp_utils::json::json_no_body()`.
+/// Returns `T::default()` for empty bodies, otherwise parses JSON.
 pub async fn json_body_or_default<T: DeserializeOwned + Default>(
     headers: &HeaderMap,
     body: axum::body::Bytes,

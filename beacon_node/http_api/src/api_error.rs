@@ -102,7 +102,7 @@ impl IntoResponse for ApiError {
     }
 }
 
-/// Convenience constructors matching the old warp_utils::reject API.
+/// Convenience constructors for common HTTP error responses.
 impl ApiError {
     pub fn not_found(msg: impl Into<String>) -> Self {
         ApiError::NotFound(msg.into())

@@ -225,7 +225,6 @@ impl From<String> for Error {
 }
 
 /// Shared application state for the beacon node HTTP API.
-#[allow(dead_code)]
 struct AppState<T: BeaconChainTypes> {
     chain: Option<Arc<BeaconChain<T>>>,
     network_tx: Option<UnboundedSender<NetworkMessage<T::EthSpec>>>,
@@ -233,7 +232,6 @@ struct AppState<T: BeaconChainTypes> {
     network_globals: Option<Arc<NetworkGlobals<T::EthSpec>>>,
     task_spawner: TaskSpawner<T::EthSpec>,
     data_dir: PathBuf,
-    config: Config,
     system_info: Arc<RwLock<System>>,
     app_start: std::time::Instant,
     sse_logging_components: Option<SSELoggingComponents>,
@@ -489,7 +487,6 @@ pub fn serve<T: BeaconChainTypes>(
         network_globals: ctx.network_globals.clone(),
         task_spawner: TaskSpawner::new(beacon_processor_send),
         data_dir: config.data_dir.clone(),
-        config: config.clone(),
         system_info,
         app_start: std::time::Instant::now(),
         sse_logging_components: ctx.sse_logging_components.clone(),

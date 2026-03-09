@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use eth2::types::ErrorMessage;
 
-/// Unified error type for the VC HTTP API, replacing warp rejections.
+/// Unified error type for the VC HTTP API.
 pub enum ApiError {
     NotFound(String),
     BadRequest(String),
