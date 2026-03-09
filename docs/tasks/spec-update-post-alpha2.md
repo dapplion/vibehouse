@@ -90,6 +90,26 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 8. **Update callers**: `process_payload_attestation`, `get_indexed_payload_attestation`, `validator_ptc_duties` — all call current `get_ptc_committee`, redirect to new `get_ptc`
 
+## Upcoming: Fork Choice Milliseconds (PR #4954, OPEN — not yet merged)
+
+Converts fork choice `Store.time`/`Store.genesis_time` (seconds) to `Store.time_ms`/`Store.genesis_time_ms` (milliseconds). Adds `compute_slot_since_genesis`, `compute_time_into_slot_ms` helpers.
+
+**vibehouse impact: NONE for fork choice internals.** vibehouse's `ForkChoiceStore` trait already stores time as `Slot` (not UNIX timestamp), and block timeliness already uses millisecond `Duration` via `millis_from_current_slot_start()`. The conversion from wall-clock time to slot happens in the slot clock layer, outside fork choice.
+
+**Only change needed when merged:** EF fork choice test handler — `on_tick` test steps will send millisecond values instead of seconds. The test runner deserializer will need to convert from `milliseconds / SLOT_DURATION_MS` instead of `seconds * 1000 / SLOT_DURATION_MS`.
+
+## Upcoming: Remove Pending from Tiebreaker (PR #4898, OPEN — already compliant)
+
+Our `get_payload_tiebreaker` (proto_array_fork_choice.rs:1560) doesn't special-case PENDING — it falls through to `should_extend_payload`, matching the proposed spec change. No code change needed.
+
+## Upcoming: Remove Impossible Branch (PR #4892, OPEN — already compliant)
+
+Changes `if message.slot <= block.slot` to `assert message.slot >= block.slot` + `if message.slot == block.slot`. Our `is_supporting_vote_gloas_at_slot` (proto_array_fork_choice.rs:1482) already uses `==` with an assert comment. No code change needed.
+
+## Upcoming: Variable PTC Deadline (PR #4843, OPEN — will need implementation)
+
+Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload_quorum`, adds `payload_envelopes` to store, adds `MIN_PAYLOAD_DUE_BPS` config, introduces `get_payload_due_ms`/`get_payload_size` for variable deadline based on payload size. Last updated Feb 19, design still evolving.
+
 ## Upcoming Spec Test PRs (not yet merged)
 
 - **PR #4940** — "Add initial fork choice tests for Gloas": tests `on_execution_payload` (EMPTY→FULL transition), basic head tracking. Our `ForkChoiceHandler` already supports `on_execution_payload` steps and `head_payload_status` checks — ready to pass when merged.
@@ -109,6 +129,19 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### 2026-03-09 — spec scan + upcoming PR pre-analysis (run 633)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged or opened since run 632
+- CI (run 22844693747): all 6 jobs passed (success)
+- Nightly: 5 consecutive green (Mar 4-8), today's queued
+- Pre-analyzed upcoming PRs for readiness:
+  - **#4898** (remove pending from tiebreaker): vibehouse already compliant — our `get_payload_tiebreaker` doesn't special-case PENDING, falls through to `should_extend_payload`. No code change needed.
+  - **#4892** (remove impossible branch in is_supporting_vote): vibehouse already compliant — we use `==` check at line 1482 with assert comment. No code change needed.
+  - **#4954** (fork choice store milliseconds): NO code change needed — vibehouse already stores time as `Slot` (not UNIX timestamp) and uses ms `Duration` for timeliness. Only EF test handler `on_tick` deserialization will need updating when test vectors change.
+  - **#4843** (variable PTC deadline): renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload_quorum`, adds `payload_envelopes` to store, `MIN_PAYLOAD_DUE_BPS` config, variable deadline by payload size. Last updated Feb 19, still evolving.
+- Workspace tests: 2600/2609 passed, 8 failed (all web3signer_tests — external Java service timeout, not code regression)
 
 ### 2026-03-09 — spec scan (run 632)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
