@@ -120,6 +120,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 700)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release
+- CI run 690: check+clippy+ef-tests+network passed, beacon_chain+http_api+unit tests running
+- Clippy: zero warnings, codebase clean
+- No code changes needed
+
 ### 2026-03-09 — spec scan (run 699)
 - All 13 tracked Gloas PRs still OPEN (no merges since last scan)
 - No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release
