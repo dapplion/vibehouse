@@ -216,7 +216,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
 
         if voting_pubkeys.is_empty() {
             warn!(
-                hint = "create validators via the API, or the `lighthouse account` CLI command",
+                hint = "create validators via the API, or the `vibehouse account` CLI command",
                 "No enabled validators"
             );
         }

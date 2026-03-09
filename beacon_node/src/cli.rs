@@ -159,7 +159,7 @@ pub fn cli_app() -> Command {
             Arg::new("listen-address")
                 .long("listen-address")
                 .value_name("ADDRESS")
-                .help("The address lighthouse will listen for UDP and TCP connections. To listen \
+                .help("The address vibehouse will listen for UDP and TCP connections. To listen \
                       over IPv4 and IPv6 set this flag twice with the different values.\n\
                       Examples:\n\
                       - --listen-address '0.0.0.0' will listen over IPv4.\n\
@@ -167,7 +167,7 @@ pub fn cli_app() -> Command {
                       - --listen-address '0.0.0.0' --listen-address '::' will listen over both \
                       IPv4 and IPv6. The order of the given addresses is not relevant. However, \
                       multiple IPv4, or multiple IPv6 addresses will not be accepted. \
-                      If omitted, Lighthouse will listen on all interfaces, for both IPv4 and IPv6.")
+                      If omitted, vibehouse will listen on all interfaces, for both IPv4 and IPv6.")
                 .action(ArgAction::Append)
                 .num_args(0..=2)
                 .display_order(0)
@@ -247,7 +247,7 @@ pub fn cli_app() -> Command {
             Arg::new("network-load")
                 .long("network-load")
                 .value_name("INTEGER")
-                .help("Lighthouse's network can be tuned for bandwidth/performance. Setting this to a high value, will increase the bandwidth lighthouse uses, increasing the likelihood of redundant information in exchange for faster communication. This can increase profit of validators marginally by receiving messages faster on the network. Lower values decrease bandwidth usage, but makes communication slower which can lead to validator performance reduction. Values are in the range [1,5].")
+                .help("vibehouse's network can be tuned for bandwidth/performance. Setting this to a high value, will increase the bandwidth vibehouse uses, increasing the likelihood of redundant information in exchange for faster communication. This can increase profit of validators marginally by receiving messages faster on the network. Lower values decrease bandwidth usage, but makes communication slower which can lead to validator performance reduction. Values are in the range [1,5].")
                 .hide(true)
                 .action(ArgAction::Set)
                 .display_order(0)
@@ -255,7 +255,7 @@ pub fn cli_app() -> Command {
         .arg(
             Arg::new("disable-upnp")
                 .long("disable-upnp")
-                .help("Disables UPnP support. Setting this will prevent Lighthouse from attempting to automatically establish external port mappings.")
+                .help("Disables UPnP support. Setting this will prevent vibehouse from attempting to automatically establish external port mappings.")
                 .action(ArgAction::SetTrue)
                 .help_heading(FLAG_HEADER)
                 .display_order(0)
@@ -344,7 +344,7 @@ pub fn cli_app() -> Command {
                 .long("enr-match")
                 .action(ArgAction::SetTrue)
                 .help_heading(FLAG_HEADER)
-                .help("Sets the local ENR IP address and port to match those set for lighthouse. \
+                .help("Sets the local ENR IP address and port to match those set for vibehouse. \
                       Specifically, the IP address will be the value of --listen-address and the \
                       UDP port will be --discovery-port.")
                 .display_order(0)
@@ -389,7 +389,7 @@ pub fn cli_app() -> Command {
         .arg(
             Arg::new("disable-peer-scoring")
                 .long("disable-peer-scoring")
-                .help("Disables peer scoring in lighthouse. WARNING: This is a dev only flag is only meant to be used in local testing scenarios \
+                .help("Disables peer scoring in vibehouse. WARNING: This is a dev only flag is only meant to be used in local testing scenarios \
                         Using this flag on a real network may cause your node to become eclipsed and see a different view of the network")
                 .action(ArgAction::SetTrue)
                 .help_heading(FLAG_HEADER)
@@ -426,7 +426,7 @@ pub fn cli_app() -> Command {
         .arg(
             Arg::new("enable-private-discovery")
                 .long("enable-private-discovery")
-                .help("Lighthouse by default does not discover private IP addresses. Set this flag to enable connection attempts to local addresses.")
+                .help("vibehouse by default does not discover private IP addresses. Set this flag to enable connection attempts to local addresses.")
                 .action(ArgAction::SetTrue)
                 .help_heading(FLAG_HEADER)
                 .display_order(0)
@@ -1016,7 +1016,7 @@ pub fn cli_app() -> Command {
         .arg(
             Arg::new("prune-payloads")
                 .long("prune-payloads")
-                .help("Prune execution payloads from Lighthouse's database. This saves space but \
+                .help("Prune execution payloads from vibehouse's database. This saves space but \
                        imposes load on the execution client, as payloads need to be \
                        reconstructed and sent to syncing peers.")
                 .action(ArgAction::Set)
@@ -1027,7 +1027,7 @@ pub fn cli_app() -> Command {
             Arg::new("prune-blobs")
                 .long("prune-blobs")
                 .value_name("BOOLEAN")
-                .help("Prune blobs from Lighthouse's database when they are older than the data \
+                .help("Prune blobs from vibehouse's database when they are older than the data \
                        data availability boundary relative to the current epoch.")
                 .action(ArgAction::Set)
                 .default_value("true")
@@ -1037,7 +1037,7 @@ pub fn cli_app() -> Command {
             Arg::new("epochs-per-blob-prune")
                 .long("epochs-per-blob-prune")
                 .value_name("EPOCHS")
-                .help("The epoch interval with which to prune blobs from Lighthouse's \
+                .help("The epoch interval with which to prune blobs from vibehouse's \
                        database when they are older than the data availability boundary \
                        relative to the current epoch.")
                 .action(ArgAction::Set)
@@ -1516,7 +1516,7 @@ pub fn cli_app() -> Command {
         .arg(
             Arg::new("reset-payload-statuses")
                 .long("reset-payload-statuses")
-                .help("When present, Lighthouse will forget the payload statuses of any \
+                .help("When present, vibehouse will forget the payload statuses of any \
                        already-imported blocks. This can assist in the recovery from a consensus \
                        failure caused by the execution layer.")
                 .action(ArgAction::SetTrue)
@@ -1528,9 +1528,9 @@ pub fn cli_app() -> Command {
                 .long("disable-optimistic-finalized-sync")
                 .action(ArgAction::SetTrue)
                 .help_heading(FLAG_HEADER)
-                .help("Force Lighthouse to verify every execution block hash with the execution \
+                .help("Force vibehouse to verify every execution block hash with the execution \
                        client during finalized sync. By default block hashes will be checked in \
-                       Lighthouse and only passed to the EL if initial verification fails.")
+                       vibehouse and only passed to the EL if initial verification fails.")
                 .display_order(0)
         )
         .arg(

@@ -58,7 +58,7 @@ pub fn cli_app() -> Command {
                 .value_name("SECRETS_DIR")
                 .help(
                     "The path where the validator keystore passwords will be stored. \
-                    Defaults to ~/.lighthouse/{network}/secrets",
+                    Defaults to ~/.vibehouse/{network}/secrets",
                 )
                 .action(ArgAction::Set)
                 .display_order(0)

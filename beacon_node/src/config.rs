@@ -67,7 +67,7 @@ pub fn get_config<E: EthSpec>(
                 );
                 info!(
                     "Type 'confirm' to delete the database. Any other input will leave \
-                    the database intact and Lighthouse will exit."
+                    the database intact and vibehouse will exit."
                 );
                 let confirmation = read_input_from_user(stdin_inputs)?;
 
@@ -78,12 +78,12 @@ pub fn get_config<E: EthSpec>(
                     purge_db(chain_db, freezer_db, blobs_db)?;
                     info!("Database was deleted.");
                 } else {
-                    info!("Database was not deleted. Lighthouse will now close.");
+                    info!("Database was not deleted. vibehouse will now close.");
                     std::process::exit(1);
                 }
             } else {
                 warn!(
-                    "The `--purge-db` flag was passed, but Lighthouse is not running \
+                    "The `--purge-db` flag was passed, but vibehouse is not running \
                     interactively. The database was not purged. Use `--purge-db-force` \
                     to purge the database without requiring confirmation."
                 );

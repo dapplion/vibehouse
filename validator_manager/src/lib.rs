@@ -16,7 +16,7 @@ pub mod move_validators;
 
 pub const CMD: &str = "validator_manager";
 
-/// This flag is on the top-level `lighthouse` binary.
+/// This flag is on the top-level `vibehouse` binary.
 const DUMP_CONFIGS_FLAG: &str = "dump-config";
 
 /// Used only in testing, this allows a command to dump its configuration to a file and then exit
@@ -46,7 +46,7 @@ pub fn cli_app() -> Command {
         .visible_aliases(["vm", "validator-manager"])
         .display_order(0)
         .styles(get_color_style())
-        .about("Utilities for managing a Lighthouse validator client via the HTTP API.")
+        .about("Utilities for managing a vibehouse validator client via the HTTP API.")
         .subcommand(create_validators::cli_app())
         .subcommand(import_validators::cli_app())
         .subcommand(move_validators::cli_app())

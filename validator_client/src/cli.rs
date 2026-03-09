@@ -70,7 +70,7 @@ pub struct ValidatorClient {
         help = "The directory which contains the password to unlock the validator \
                 voting keypairs. Each password should be contained in a file where the \
                 name is the 0x-prefixed hex representation of the validators voting public \
-                key. Defaults to ~/.lighthouse/{network}/secrets.",
+                key. Defaults to ~/.vibehouse/{network}/secrets.",
         display_order = 0
     )]
     pub secrets_dir: Option<PathBuf>,

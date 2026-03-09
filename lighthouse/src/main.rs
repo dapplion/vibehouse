@@ -300,8 +300,8 @@ fn main() {
                 .value_name("DIR")
                 .global(true)
                 .help(
-                    "Used to specify a custom root data directory for lighthouse keys and databases. \
-                    Defaults to $HOME/.lighthouse/{network} where network is the value of the `network` flag \
+                    "Used to specify a custom root data directory for vibehouse keys and databases. \
+                    Defaults to $HOME/.vibehouse/{network} where network is the value of the `network` flag \
                     Note: Users should specify separate custom datadirs for different networks.")
                 .action(ArgAction::Set)
                 .display_order(0)
@@ -313,7 +313,7 @@ fn main() {
                 .value_name("DIR")
                 .help(
                     "Path to directory containing eth2_testnet specs. Defaults to \
-                      a hard-coded Lighthouse testnet. Only effective if there is no \
+                      a hard-coded vibehouse testnet. Only effective if there is no \
                       existing database.",
                 )
                 .action(ArgAction::Set)
@@ -324,7 +324,7 @@ fn main() {
             Arg::new("network")
                 .long("network")
                 .value_name("network")
-                .help("Name of the Eth2 chain Lighthouse will sync and follow.")
+                .help("Name of the Eth2 chain vibehouse will sync and follow.")
                 .value_parser(HARDCODED_NET_NAMES.to_vec())
                 .conflicts_with("testnet-dir")
                 .action(ArgAction::Set)
@@ -468,7 +468,7 @@ fn main() {
             #[cfg(not(all(feature = "spec-minimal", feature = "gnosis")))]
             other => {
                 eprintln!(
-                    "Eth spec `{}` is not supported by this build of Lighthouse",
+                    "Eth spec `{}` is not supported by this build of vibehouse",
                     other
                 );
                 eprintln!("You must compile with a feature flag to enable this spec variant");
@@ -724,14 +724,14 @@ fn run<E: EthSpec>(
     // Allow Prometheus to export the time at which the process was started.
     metrics::expose_process_start_time();
 
-    // Allow Prometheus access to the version and commit of the Lighthouse build.
-    metrics::expose_lighthouse_version();
+    // Allow Prometheus access to the version and commit of the vibehouse build.
+    metrics::expose_vibehouse_version();
 
     #[cfg(all(feature = "modern", target_arch = "x86_64"))]
     if !std::is_x86_feature_detected!("adx") {
         tracing::warn!(
-            advice = "If you get a SIGILL, please try Lighthouse portable build",
-            "CPU seems incompatible with optimized Lighthouse build"
+            advice = "If you get a SIGILL, please try vibehouse portable build",
+            "CPU seems incompatible with optimized vibehouse build"
         );
     }
 
@@ -813,7 +813,7 @@ fn run<E: EthSpec>(
         Err(_) => (),
     };
 
-    info!(version = VERSION, "Lighthouse started");
+    info!(version = VERSION, "vibehouse started");
     info!(network_name, "Configured network");
 
     match matches.subcommand() {

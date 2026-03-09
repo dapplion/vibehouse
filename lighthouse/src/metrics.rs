@@ -11,10 +11,10 @@ pub static PROCESS_START_TIME_SECONDS: LazyLock<Result<IntGauge>> = LazyLock::ne
     )
 });
 
-pub static LIGHTHOUSE_VERSION: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
+pub static VIBEHOUSE_VERSION: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
-        "lighthouse_info",
-        "The build of Lighthouse running on the server",
+        "vibehouse_info",
+        "The build of vibehouse running on the server",
         &["version"],
     )
 });
@@ -29,6 +29,6 @@ pub fn expose_process_start_time() {
     }
 }
 
-pub fn expose_lighthouse_version() {
-    set_gauge_vec(&LIGHTHOUSE_VERSION, &[VERSION], 1);
+pub fn expose_vibehouse_version() {
+    set_gauge_vec(&VIBEHOUSE_VERSION, &[VERSION], 1);
 }

@@ -52,7 +52,7 @@ pub fn cli_app() -> Command {
             Arg::new(WALLETS_DIR_FLAG)
                 .long(WALLETS_DIR_FLAG)
                 .value_name(WALLETS_DIR_FLAG)
-                .help("A path containing Eth2 EIP-2386 wallets. Defaults to ~/.lighthouse/{network}/wallets")
+                .help("A path containing Eth2 EIP-2386 wallets. Defaults to ~/.vibehouse/{network}/wallets")
                 .action(ArgAction::Set)
                 .conflicts_with("datadir")
                 .display_order(0)
@@ -63,7 +63,7 @@ pub fn cli_app() -> Command {
                 .value_name("SECRETS_DIR")
                 .help(
                     "The path where the validator keystore passwords will be stored. \
-                    Defaults to ~/.lighthouse/{network}/secrets",
+                    Defaults to ~/.vibehouse/{network}/secrets",
                 )
                 .conflicts_with("datadir")
                 .action(ArgAction::Set)
@@ -146,7 +146,7 @@ pub fn cli_run<E: EthSpec>(
     // The command will always fail if the wallet dir does not exist.
     if !wallet_base_dir.exists() {
         return Err(format!(
-            "No wallet directory at {:?}. Use the `lighthouse --network {} {} {} {}` command to create a wallet",
+            "No wallet directory at {:?}. Use the `vibehouse --network {} {} {} {}` command to create a wallet",
             wallet_base_dir,
             matches
                 .get_one::<String>("network")

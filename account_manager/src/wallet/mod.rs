@@ -18,7 +18,7 @@ pub fn cli_app() -> Command {
             Arg::new(WALLETS_DIR_FLAG)
                 .long(WALLETS_DIR_FLAG)
                 .value_name("WALLETS_DIRECTORY")
-                .help("A path containing Eth2 EIP-2386 wallets. Defaults to ~/.lighthouse/{network}/wallets")
+                .help("A path containing Eth2 EIP-2386 wallets. Defaults to ~/.vibehouse/{network}/wallets")
                 .action(ArgAction::Set)
                 .conflicts_with("datadir"),
         )
