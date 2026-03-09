@@ -48,7 +48,7 @@ impl<E: EthSpec> LocalBeaconNode<E> {
     ) -> Result<Self, String> {
         // Creates a temporary directory that will be deleted once this `TempDir` is dropped.
         let datadir = TempBuilder::new()
-            .prefix("lighthouse_node_test_rig")
+            .prefix("vibehouse_node_test_rig")
             .tempdir()
             .expect("should create temp directory for client datadir");
 
@@ -146,12 +146,12 @@ impl ValidatorFiles {
     /// Creates temporary data and secrets dirs.
     pub fn new() -> Result<Self, String> {
         let datadir = TempBuilder::new()
-            .prefix("lighthouse-validator-client")
+            .prefix("vibehouse-validator-client")
             .tempdir()
             .map_err(|e| format!("Unable to create VC data dir: {:?}", e))?;
 
         let secrets_dir = TempBuilder::new()
-            .prefix("lighthouse-validator-client-secrets")
+            .prefix("vibehouse-validator-client-secrets")
             .tempdir()
             .map_err(|e| format!("Unable to create VC secrets dir: {:?}", e))?;
 
@@ -241,7 +241,7 @@ pub struct LocalExecutionNode<E: EthSpec> {
 impl<E: EthSpec> LocalExecutionNode<E> {
     pub fn new(context: RuntimeContext<E>, config: MockExecutionConfig) -> Self {
         let datadir = TempBuilder::new()
-            .prefix("lighthouse_node_test_rig_el")
+            .prefix("vibehouse_node_test_rig_el")
             .tempdir()
             .expect("should create temp directory for client datadir");
         let jwt_file_path = datadir.path().join("jwt.hex");

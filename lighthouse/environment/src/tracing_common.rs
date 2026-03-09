@@ -9,7 +9,7 @@ use std::process;
 use tracing_subscriber::filter::LevelFilter;
 use types::EthSpec;
 
-/// Constructs all logging layers including both Lighthouse-specific and
+/// Constructs all logging layers including both Vibehouse-specific and
 /// dependency logging.
 ///
 /// The `Layer`s are as follows:

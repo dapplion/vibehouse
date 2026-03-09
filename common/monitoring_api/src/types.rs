@@ -171,7 +171,7 @@ fn client_version() -> Option<String> {
 }
 
 /// Returns the client build
-/// Note: Lighthouse does not support build numbers, this is effectively a null-value.
+/// Note: Vibehouse does not support build numbers, this is effectively a null-value.
 fn client_build() -> u64 {
     0
 }

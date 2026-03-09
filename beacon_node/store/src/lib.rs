@@ -1,4 +1,4 @@
-//! Storage functionality for Lighthouse.
+//! Storage functionality for Vibehouse.
 //!
 //! Provides the following stores:
 //!

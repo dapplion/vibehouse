@@ -44,7 +44,7 @@ pub struct Config {
     pub builder_proposals: bool,
     /// Enable slashing protection even while using web3signer keys.
     pub enable_web3signer_slashing_protection: bool,
-    /// If true, Lighthouse will prefer builder proposals, if available.
+    /// If true, Vibehouse will prefer builder proposals, if available.
     pub prefer_builder_proposals: bool,
     /// Specifies the boost factor, a percentage multiplier to apply to the builder's payload value.
     pub builder_boost_factor: Option<u64>,

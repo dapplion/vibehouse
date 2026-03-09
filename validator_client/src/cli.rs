@@ -241,7 +241,7 @@ pub struct ValidatorClient {
     #[clap(
         long,
         requires = "http",
-        help = "If present, allow access to the DELETE /lighthouse/keystores HTTP \
+        help = "If present, allow access to the DELETE /vibehouse/keystores HTTP \
                 API method, which allows exporting keystores and passwords to HTTP API \
                 consumers who have access to the API token. This method is useful for \
                 exporting validators, however it should be used with caution since it \

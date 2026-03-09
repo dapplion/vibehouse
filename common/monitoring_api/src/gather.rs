@@ -6,12 +6,12 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::LazyLock;
 
-/// Represents a metric that needs to be fetched from lighthouse metrics registry
+/// Represents a metric that needs to be fetched from vibehouse metrics registry
 /// and sent to the remote monitoring service.
 #[derive(Debug, Clone)]
 pub struct JsonMetric {
-    /// Name of the metric as used in Lighthouse metrics.
-    lighthouse_metric_name: &'static str,
+    /// Name of the metric as used in Vibehouse metrics.
+    vibehouse_metric_name: &'static str,
     /// Json key for the metric that we send to the remote monitoring endpoint.
     json_output_key: &'static str,
     /// Type of the json value to be sent to the remote monitoring endpoint
@@ -20,12 +20,12 @@ pub struct JsonMetric {
 
 impl JsonMetric {
     const fn new(
-        lighthouse_metric_name: &'static str,
+        vibehouse_metric_name: &'static str,
         json_output_key: &'static str,
         ty: JsonType,
     ) -> Self {
         Self {
-            lighthouse_metric_name,
+            vibehouse_metric_name,
             json_output_key,
             ty,
         }
@@ -131,14 +131,14 @@ pub enum JsonType {
 pub static BEACON_METRICS_MAP: LazyLock<HashMap<String, JsonMetric>> = LazyLock::new(|| {
     BEACON_PROCESS_METRICS
         .iter()
-        .map(|metric| (metric.lighthouse_metric_name.to_string(), metric.clone()))
+        .map(|metric| (metric.vibehouse_metric_name.to_string(), metric.clone()))
         .collect()
 });
 /// HashMap representing the `VALIDATOR_PROCESS_METRICS`.
 pub static VALIDATOR_METRICS_MAP: LazyLock<HashMap<String, JsonMetric>> = LazyLock::new(|| {
     VALIDATOR_PROCESS_METRICS
         .iter()
-        .map(|metric| (metric.lighthouse_metric_name.to_string(), metric.clone()))
+        .map(|metric| (metric.vibehouse_metric_name.to_string(), metric.clone()))
         .collect()
 });
 
@@ -168,7 +168,7 @@ pub fn gather_metrics(metrics_map: &HashMap<String, JsonMetric>) -> Option<serde
         };
     }
     // Insert default metrics for all monitoring service metrics that do not
-    // exist as lighthouse metrics.
+    // exist as vibehouse metrics.
     for json_metric in metrics_map.values() {
         if !res.contains_key(json_metric.json_output_key) {
             let _ = res.insert(
@@ -180,7 +180,7 @@ pub fn gather_metrics(metrics_map: &HashMap<String, JsonMetric>) -> Option<serde
     Some(serde_json::Value::Object(res))
 }
 
-/// Gathers and returns the lighthouse beacon metrics.
+/// Gathers and returns the vibehouse beacon metrics.
 pub fn gather_beacon_metrics(
     db_path: &Path,
     freezer_db_path: &Path,
@@ -198,7 +198,7 @@ pub fn gather_beacon_metrics(
     })
 }
 
-/// Gathers and returns the lighthouse validator metrics.
+/// Gathers and returns the vibehouse validator metrics.
 pub fn gather_validator_metrics() -> Result<ValidatorProcessMetrics, String> {
     let validator_metrics = gather_metrics(&VALIDATOR_METRICS_MAP)
         .ok_or_else(|| "Failed to gather validator metrics".to_string())?;

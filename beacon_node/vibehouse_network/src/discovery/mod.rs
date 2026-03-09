@@ -1,11 +1,11 @@
-//! The discovery sub-behaviour of Lighthouse.
+//! The discovery sub-behaviour of Vibehouse.
 //!
 //! This module creates a libp2p dummy-behaviour built around the discv5 protocol. It handles
 //! queries and manages access to the discovery routing table.
 
 pub(crate) mod enr;
 
-// Allow external use of the lighthouse ENR builder
+// Allow external use of the vibehouse ENR builder
 use crate::service::TARGET_SUBNET_PEERS;
 use crate::{ClearDialError, metrics};
 use crate::{Enr, NetworkConfig, NetworkGlobals, Subnet, SubnetDiscovery};
@@ -1204,7 +1204,7 @@ impl<E: EthSpec> Discovery<E> {
                 DialError::Denied { .. } => {
                     if self.network_globals.peers.read().is_connected(&peer_id) {
                         // There's an active connection, so we don’t disconnect the peer.
-                        // Lighthouse dials to a peer twice using TCP and QUIC (if QUIC is not
+                        // Vibehouse dials to a peer twice using TCP and QUIC (if QUIC is not
                         // disabled). Usually, one establishes a connection, and the other fails
                         // because the peer allows only one connection per peer.
                         return;

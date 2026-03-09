@@ -114,7 +114,7 @@ impl StatusMessage {
                 head_slot: status.head_slot,
                 // Note: we always produce a V2 message as our local
                 // status message, so this match arm should ideally never
-                // be invoked in lighthouse.
+                // be invoked in vibehouse.
                 earliest_available_slot: Slot::new(0),
             },
             Self::V2(status) => status.clone(),

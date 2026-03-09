@@ -71,7 +71,7 @@ pub struct ValidatorInclusionData {
     pub is_previous_epoch_head_attester: bool,
 }
 
-/// Reports on the health of the Lighthouse instance.
+/// Reports on the health of the Vibehouse instance.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Health {
     #[serde(flatten)]
@@ -171,50 +171,50 @@ pub struct DepositLog {
 }
 
 impl BeaconNodeHttpClient {
-    /// `GET lighthouse/health`
-    pub async fn get_lighthouse_health(&self) -> Result<GenericResponse<Health>, Error> {
+    /// `GET vibehouse/health`
+    pub async fn get_vibehouse_health(&self) -> Result<GenericResponse<Health>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("health");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/syncing`
-    pub async fn get_lighthouse_syncing(&self) -> Result<GenericResponse<SyncState>, Error> {
+    /// `GET vibehouse/syncing`
+    pub async fn get_vibehouse_syncing(&self) -> Result<GenericResponse<SyncState>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("syncing");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/custody/info`
-    pub async fn get_lighthouse_custody_info(&self) -> Result<CustodyInfo, Error> {
+    /// `GET vibehouse/custody/info`
+    pub async fn get_vibehouse_custody_info(&self) -> Result<CustodyInfo, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("custody")
             .push("info");
 
         self.get(path).await
     }
 
-    /// `POST lighthouse/custody/backfill`
-    pub async fn post_lighthouse_custody_backfill(&self) -> Result<(), Error> {
+    /// `POST vibehouse/custody/backfill`
+    pub async fn post_vibehouse_custody_backfill(&self) -> Result<(), Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("custody")
             .push("backfill");
 
@@ -224,25 +224,25 @@ impl BeaconNodeHttpClient {
     /*
      * Note:
      *
-     * The `lighthouse/peers` endpoints do not have functions here. We are yet to implement
+     * The `vibehouse/peers` endpoints do not have functions here. We are yet to implement
      * `Deserialize` on the `PeerInfo` struct since it contains use of `Instant`. This could be
      * fairly simply achieved, if desired.
      */
 
-    /// `GET lighthouse/proto_array`
-    pub async fn get_lighthouse_proto_array(&self) -> Result<GenericResponse<ProtoArray>, Error> {
+    /// `GET vibehouse/proto_array`
+    pub async fn get_vibehouse_proto_array(&self) -> Result<GenericResponse<ProtoArray>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("proto_array");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/validator_inclusion/{epoch}/global`
-    pub async fn get_lighthouse_validator_inclusion_global(
+    /// `GET vibehouse/validator_inclusion/{epoch}/global`
+    pub async fn get_vibehouse_validator_inclusion_global(
         &self,
         epoch: Epoch,
     ) -> Result<GenericResponse<GlobalValidatorInclusionData>, Error> {
@@ -250,7 +250,7 @@ impl BeaconNodeHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validator_inclusion")
             .push(&epoch.to_string())
             .push("global");
@@ -258,8 +258,8 @@ impl BeaconNodeHttpClient {
         self.get(path).await
     }
 
-    /// `GET lighthouse/validator_inclusion/{epoch}/{validator_id}`
-    pub async fn get_lighthouse_validator_inclusion(
+    /// `GET vibehouse/validator_inclusion/{epoch}/{validator_id}`
+    pub async fn get_vibehouse_validator_inclusion(
         &self,
         epoch: Epoch,
         validator_id: ValidatorId,
@@ -268,7 +268,7 @@ impl BeaconNodeHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validator_inclusion")
             .push(&epoch.to_string())
             .push(&validator_id.to_string());
@@ -276,38 +276,38 @@ impl BeaconNodeHttpClient {
         self.get(path).await
     }
 
-    /// `POST lighthouse/database/reconstruct`
-    pub async fn post_lighthouse_database_reconstruct(&self) -> Result<String, Error> {
+    /// `POST vibehouse/database/reconstruct`
+    pub async fn post_vibehouse_database_reconstruct(&self) -> Result<String, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("database")
             .push("reconstruct");
 
         self.post_with_response(path, &()).await
     }
 
-    /// `POST lighthouse/add_peer`
-    pub async fn post_lighthouse_add_peer(&self, req: AdminPeer) -> Result<(), Error> {
+    /// `POST vibehouse/add_peer`
+    pub async fn post_vibehouse_add_peer(&self, req: AdminPeer) -> Result<(), Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("add_peer");
 
         self.post_with_response(path, &req).await
     }
 
-    /// `POST lighthouse/remove_peer`
-    pub async fn post_lighthouse_remove_peer(&self, req: AdminPeer) -> Result<(), Error> {
+    /// `POST vibehouse/remove_peer`
+    pub async fn post_vibehouse_remove_peer(&self, req: AdminPeer) -> Result<(), Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("remove_peer");
 
         self.post_with_response(path, &req).await
@@ -317,8 +317,8 @@ impl BeaconNodeHttpClient {
      Analysis endpoints.
     */
 
-    /// `GET` lighthouse/analysis/block_rewards?start_slot,end_slot
-    pub async fn get_lighthouse_analysis_block_rewards(
+    /// `GET` vibehouse/analysis/block_rewards?start_slot,end_slot
+    pub async fn get_vibehouse_analysis_block_rewards(
         &self,
         start_slot: Slot,
         end_slot: Slot,
@@ -327,7 +327,7 @@ impl BeaconNodeHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("analysis")
             .push("block_rewards");
 
@@ -338,8 +338,8 @@ impl BeaconNodeHttpClient {
         self.get(path).await
     }
 
-    /// `GET` lighthouse/analysis/block_packing?start_epoch,end_epoch
-    pub async fn get_lighthouse_analysis_block_packing(
+    /// `GET` vibehouse/analysis/block_packing?start_epoch,end_epoch
+    pub async fn get_vibehouse_analysis_block_packing(
         &self,
         start_epoch: Epoch,
         end_epoch: Epoch,
@@ -348,7 +348,7 @@ impl BeaconNodeHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("analysis")
             .push("block_packing_efficiency");
 
@@ -359,8 +359,8 @@ impl BeaconNodeHttpClient {
         self.get(path).await
     }
 
-    /// `GET` lighthouse/analysis/attestation_performance/{index}?start_epoch,end_epoch
-    pub async fn get_lighthouse_analysis_attestation_performance(
+    /// `GET` vibehouse/analysis/attestation_performance/{index}?start_epoch,end_epoch
+    pub async fn get_vibehouse_analysis_attestation_performance(
         &self,
         start_epoch: Epoch,
         end_epoch: Epoch,
@@ -370,7 +370,7 @@ impl BeaconNodeHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("analysis")
             .push("attestation_performance")
             .push(&target);

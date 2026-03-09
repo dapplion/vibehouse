@@ -215,7 +215,7 @@ impl Timeouts {
 }
 
 /// A wrapper around `reqwest::Client` which provides convenience methods for interfacing with a
-/// Lighthouse Beacon Node HTTP server (`http_api`).
+/// Vibehouse Beacon Node HTTP server (`http_api`).
 #[derive(Clone, Debug, Derivative)]
 #[derivative(PartialEq)]
 pub struct BeaconNodeHttpClient {
@@ -2873,8 +2873,8 @@ impl BeaconNodeHttpClient {
         self.get_opt(path).await
     }
 
-    /// `POST lighthouse/liveness`
-    pub async fn post_lighthouse_liveness(
+    /// `POST vibehouse/liveness`
+    pub async fn post_vibehouse_liveness(
         &self,
         ids: &[u64],
         epoch: Epoch,
@@ -2883,7 +2883,7 @@ impl BeaconNodeHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("liveness");
 
         self.post_with_timeout_and_response(

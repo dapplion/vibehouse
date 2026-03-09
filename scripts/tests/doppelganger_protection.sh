@@ -158,7 +158,7 @@ EOF
 
     for val in 0x*; do
         [[ -e $val ]] || continue
-        is_attester=$(run_command_without_exit "curl -s $BN1_HTTP_ADDRESS/lighthouse/validator_inclusion/3/$val | jq | grep -q '\"is_previous_epoch_target_attester\": false'")
+        is_attester=$(run_command_without_exit "curl -s $BN1_HTTP_ADDRESS/vibehouse/validator_inclusion/3/$val | jq | grep -q '\"is_previous_epoch_target_attester\": false'")
         if [[ $is_attester -eq 0 ]]; then
             echo "$val did not attest in epoch 2."
         else
@@ -179,7 +179,7 @@ EOF
     sleep $(( $SECONDS_PER_SLOT * 32 * 2 ))
     for val in 0x*; do
         [[ -e $val ]] || continue
-        is_attester=$(run_command_without_exit "curl -s $BN1_HTTP_ADDRESS/lighthouse/validator_inclusion/5/$val | jq | grep -q '\"is_previous_epoch_target_attester\": true'")
+        is_attester=$(run_command_without_exit "curl -s $BN1_HTTP_ADDRESS/vibehouse/validator_inclusion/5/$val | jq | grep -q '\"is_previous_epoch_target_attester\": true'")
         if [[ $is_attester -eq 0 ]]; then
             echo "$val attested in epoch 4."
         else

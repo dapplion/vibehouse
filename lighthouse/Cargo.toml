@@ -88,5 +88,5 @@ validator_dir = { workspace = true }
 zeroize = { workspace = true }
 
 [[test]]
-name = "lighthouse_tests"
+name = "vibehouse_tests"
 path = "tests/main.rs"

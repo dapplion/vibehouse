@@ -12,7 +12,7 @@ use crate::rayon_pool_provider::RayonPoolProvider;
 pub use crate::rayon_pool_provider::RayonPoolType;
 pub use tokio::task::JoinHandle;
 
-/// Provides a reason when Lighthouse is shut down.
+/// Provides a reason when Vibehouse is shut down.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ShutdownReason {
     /// The node shut down successfully.
@@ -59,7 +59,7 @@ impl HandleProvider {
     /// Returns a `Handle` to a `Runtime`.
     ///
     /// May return `None` if the weak reference to the `Runtime` has been dropped (this generally
-    /// means Lighthouse is shutting down).
+    /// means Vibehouse is shutting down).
     pub fn handle(&self) -> Option<Handle> {
         match self {
             HandleProvider::Runtime(weak_runtime) => weak_runtime
@@ -92,7 +92,7 @@ impl TaskExecutor {
     /// ## Note
     ///
     /// This function should only be used during testing. In production, prefer to obtain an
-    /// instance of `Self` via a `environment::RuntimeContext` (see the `lighthouse/environment`
+    /// instance of `Self` via a `environment::RuntimeContext` (see the `vibehouse/environment`
     /// crate).
     pub fn new<T: Into<HandleProvider>>(
         handle: T,
@@ -353,7 +353,7 @@ impl TaskExecutor {
     /// ## Warning
     ///
     /// This method is "dangerous" since calling it from an async thread will result in a panic! Any
-    /// use of this outside of testing should be very deeply considered as Lighthouse has been
+    /// use of this outside of testing should be very deeply considered as Vibehouse has been
     /// burned by this function in the past.
     ///
     /// Determining what is an "async thread" is rather challenging; just because a function isn't

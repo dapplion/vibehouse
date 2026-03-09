@@ -1,7 +1,7 @@
 //! Utilities for managing database schema changes.
 //!
 //! vibehouse only supports the current schema version. Legacy migrations from
-//! Lighthouse (v22 through v28) have been removed since vibehouse has never run
+//! Vibehouse (v22 through v28) have been removed since vibehouse has never run
 //! with an older schema.
 
 use crate::beacon_chain::BeaconChainTypes;

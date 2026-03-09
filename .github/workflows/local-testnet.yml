@@ -20,14 +20,14 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build --build-arg FEATURES=portable,spec-minimal -t lighthouse:local .
-          docker save lighthouse:local -o lighthouse-docker.tar
+          docker build --build-arg FEATURES=portable,spec-minimal -t vibehouse:local .
+          docker save vibehouse:local -o vibehouse-docker.tar
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-docker
-          path: lighthouse-docker.tar
+          name: vibehouse-docker
+          path: vibehouse-docker.tar
           retention-days: 3
 
   run-local-testnet:
@@ -46,11 +46,11 @@ jobs:
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
-          name: lighthouse-docker
+          name: vibehouse-docker
           path: .
 
       - name: Load Docker image
-        run: docker load -i lighthouse-docker.tar
+        run: docker load -i vibehouse-docker.tar
 
       - name: Start local testnet with Assertoor
         run: ./start_local_testnet.sh -e local-assertoor -c -a -b false && sleep 60
@@ -114,11 +114,11 @@ jobs:
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
-          name: lighthouse-docker
+          name: vibehouse-docker
           path: .
 
       - name: Load Docker image
-        run: docker load -i lighthouse-docker.tar
+        run: docker load -i vibehouse-docker.tar
 
       - name: Run the doppelganger protection success test script
         run: |
@@ -150,11 +150,11 @@ jobs:
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
-          name: lighthouse-docker
+          name: vibehouse-docker
           path: .
 
       - name: Load Docker image
-        run: docker load -i lighthouse-docker.tar
+        run: docker load -i vibehouse-docker.tar
 
       - name: Run the doppelganger protection failure test script
         run: |
@@ -193,11 +193,11 @@ jobs:
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
-          name: lighthouse-docker
+          name: vibehouse-docker
           path: .
 
       - name: Load Docker image
-        run: docker load -i lighthouse-docker.tar
+        run: docker load -i vibehouse-docker.tar
 
       - name: Run the checkpoint sync test script
         run: |
@@ -235,11 +235,11 @@ jobs:
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
-          name: lighthouse-docker
+          name: vibehouse-docker
           path: .
 
       - name: Load Docker image
-        run: docker load -i lighthouse-docker.tar
+        run: docker load -i vibehouse-docker.tar
 
       - name: Run the genesis sync test script
         run: |

@@ -160,7 +160,7 @@ impl SlashingDatabase {
     /// Most importantly, put the database into exclusive locking mode, so that threads are forced
     /// to serialise all DB access (to prevent slashable data being checked and signed in parallel).
     /// The exclusive locking mode also has the benefit of applying to other processes, so multiple
-    /// Lighthouse processes trying to access the same database will also be blocked.
+    /// Vibehouse processes trying to access the same database will also be blocked.
     fn apply_pragmas(conn: &mut rusqlite::Connection) -> Result<(), rusqlite::Error> {
         conn.pragma_update(None, "foreign_keys", true)?;
         conn.pragma_update(None, "locking_mode", "EXCLUSIVE")?;

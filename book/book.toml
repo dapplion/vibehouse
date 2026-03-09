@@ -2,7 +2,7 @@
 authors = ["Paul Hauner", "Age Manning"]
 language = "en"
 src = "src"
-title = "Lighthouse Book"
+title = "Vibehouse Book"
 
 [output.html]
 additional-css =["src/css/custom.css"]

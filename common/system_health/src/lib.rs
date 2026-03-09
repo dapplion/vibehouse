@@ -112,7 +112,7 @@ fn observe_system_health(
                 continue;
             }
 
-            // If we have other file systems, compare these to the data_dir of Lighthouse and
+            // If we have other file systems, compare these to the data_dir of Vibehouse and
             // prioritize these.
             if data_dir
                 .to_str()
@@ -199,7 +199,7 @@ pub fn observe_system_health_vc(
     }
 }
 
-/// The current state of Lighthouse NAT/connectivity.
+/// The current state of Vibehouse NAT/connectivity.
 #[derive(Serialize, Deserialize)]
 pub struct NatState {
     /// Contactable on discovery ipv4.

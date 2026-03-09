@@ -381,7 +381,7 @@ impl arbitrary::Arbitrary<'_> for CommitteeCache {
 
 /// This is a shim struct to ensure that we can encode a `Vec<Option<NonZeroUsize>>` an SSZ union
 /// with a four-byte selector. The SSZ specification changed from four bytes to one byte during 2021
-/// and we use this shim to avoid breaking the Lighthouse database.
+/// and we use this shim to avoid breaking the Vibehouse database.
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 struct NonZeroUsizeOption(Option<NonZeroUsize>);

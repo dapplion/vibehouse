@@ -31,7 +31,7 @@ impl AttestationPerformance {
     }
 }
 
-/// Query parameters for the `/lighthouse/analysis/attestation_performance` endpoint.
+/// Query parameters for the `/vibehouse/analysis/attestation_performance` endpoint.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct AttestationPerformanceQuery {
     pub start_epoch: Epoch,

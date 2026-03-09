@@ -1,4 +1,4 @@
-/// This crate contains the main link for lighthouse to rust-libp2p. It therefore re-exports
+/// This crate contains the main link for vibehouse to rust-libp2p. It therefore re-exports
 /// all required libp2p functionality.
 ///
 /// This crate builds and manages the libp2p services required by the beacon node.

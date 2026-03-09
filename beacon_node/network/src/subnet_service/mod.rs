@@ -99,7 +99,7 @@ pub struct SubnetService<T: BeaconChainTypes> {
     /// The waker for the current thread.
     waker: Option<std::task::Waker>,
 
-    /// The discovery mechanism of lighthouse is disabled.
+    /// The discovery mechanism of vibehouse is disabled.
     discovery_disabled: bool,
 
     /// We are always subscribed to all subnets.

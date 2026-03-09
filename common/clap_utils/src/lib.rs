@@ -11,7 +11,7 @@ use types::{ChainSpec, Config, EthSpec};
 pub mod flags;
 
 pub const BAD_TESTNET_DIR_MESSAGE: &str = "The hard-coded testnet directory was invalid. \
-                                        This happens when Lighthouse is migrating between spec versions \
+                                        This happens when Vibehouse is migrating between spec versions \
                                         or when there is no default public network to connect to. \
                                         During these times you must specify a --testnet-dir.";
 

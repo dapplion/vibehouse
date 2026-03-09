@@ -15,7 +15,7 @@ pub fn build_result(repo_dir: &Path) -> Output {
         .arg("geth")
         .current_dir(repo_dir)
         // Geth now uses the commit hash from a GitHub runner environment variable if it detects a CI environment.
-        // We need to override this to successfully build Geth in Lighthouse workflows.
+        // We need to override this to successfully build Geth in Vibehouse workflows.
         // See: https://github.com/ethereum/go-ethereum/blob/668c3a7278af399c0e776e92f1c721b5158388f2/internal/build/env.go#L95-L121
         .env("CI", "false")
         .output()

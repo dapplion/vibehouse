@@ -30,7 +30,7 @@ impl<Ip: Into<IpAddr> + Clone> ListenAddr<Ip> {
     }
 }
 
-/// Types of listening addresses Lighthouse can accept.
+/// Types of listening addresses Vibehouse can accept.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ListenAddress {
     V4(ListenAddr<Ipv4Addr>),

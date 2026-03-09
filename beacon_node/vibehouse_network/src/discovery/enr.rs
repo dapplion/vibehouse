@@ -180,7 +180,7 @@ pub fn build_or_load_enr<E: EthSpec>(
     Ok(local_enr)
 }
 
-/// Builds a lighthouse ENR given a `NetworkConfig`.
+/// Builds a vibehouse ENR given a `NetworkConfig`.
 pub fn build_enr<E: EthSpec>(
     enr_key: &CombinedKey,
     config: &NetworkConfig,

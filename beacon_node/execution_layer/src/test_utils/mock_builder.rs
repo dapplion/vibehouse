@@ -1017,7 +1017,7 @@ async fn validators_handler<E: EthSpec>(
 async fn status_handler() -> impl IntoResponse {
     (
         axum::http::StatusCode::OK,
-        [("Server", "lighthouse-mock-builder-server")],
+        [("Server", "vibehouse-mock-builder-server")],
     )
 }
 
@@ -1045,7 +1045,7 @@ async fn header_handler<E: EthSpec>(
             [
                 (CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER.to_string()),
                 (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
-                ("Server", "lighthouse-mock-builder-server".to_string()),
+                ("Server", "vibehouse-mock-builder-server".to_string()),
             ],
             signed_bid.as_ssz_bytes(),
         )
@@ -1058,7 +1058,7 @@ async fn header_handler<E: EthSpec>(
             };
             Ok((
                 axum::http::StatusCode::OK,
-                [("Server", "lighthouse-mock-builder-server".to_string())],
+                [("Server", "vibehouse-mock-builder-server".to_string())],
                 axum::Json(resp),
             )
                 .into_response())
@@ -1140,7 +1140,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
                 [
                     (CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER.to_string()),
                     (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
-                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                    ("Server", "vibehouse-mock-builder-server".to_string()),
                 ],
                 payload.as_ssz_bytes(),
             )
@@ -1150,7 +1150,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
                 axum::http::StatusCode::ACCEPTED,
                 [
                     (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
-                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                    ("Server", "vibehouse-mock-builder-server".to_string()),
                 ],
                 Vec::<u8>::new(),
             )
@@ -1197,7 +1197,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
                 axum::http::StatusCode::OK,
                 [
                     (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
-                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                    ("Server", "vibehouse-mock-builder-server".to_string()),
                 ],
                 body_str,
             )
@@ -1207,7 +1207,7 @@ async fn blinded_blocks_dispatch<E: EthSpec>(
                 axum::http::StatusCode::ACCEPTED,
                 [
                     (CONSENSUS_VERSION_HEADER, fork_name.to_string()),
-                    ("Server", "lighthouse-mock-builder-server".to_string()),
+                    ("Server", "vibehouse-mock-builder-server".to_string()),
                 ],
                 String::new(),
             )

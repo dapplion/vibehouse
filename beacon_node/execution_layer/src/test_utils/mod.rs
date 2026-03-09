@@ -709,7 +709,7 @@ async fn root_handler<E: EthSpec>(
         StatusCode::OK,
         [
             ("Content-Type", "application/json"),
-            ("Server", "lighthouse-mock-execution-client"),
+            ("Server", "vibehouse-mock-execution-client"),
         ],
         serde_json::to_string(&response).expect("response must be valid JSON"),
     )
@@ -723,7 +723,7 @@ async fn echo_handler<E: EthSpec>(
     *ctx.last_echo_request.write() = Some(body.clone());
     (
         StatusCode::OK,
-        [("Server", "lighthouse-mock-execution-client")],
+        [("Server", "vibehouse-mock-execution-client")],
         body,
     )
 }

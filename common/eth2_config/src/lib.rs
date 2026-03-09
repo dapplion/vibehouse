@@ -1,8 +1,8 @@
 //! This crate primarily exists to serve the `common/eth2_network_configs` crate, by providing the
 //! canonical list of built-in-networks and some tooling to help include those configurations in the
-//! `lighthouse` binary.
+//! `vibehouse` binary.
 //!
-//! It also provides some additional structs which are useful to other components of `lighthouse`
+//! It also provides some additional structs which are useful to other components of `vibehouse`
 //! (e.g., `Eth2Config`).
 
 use std::env;
@@ -54,7 +54,7 @@ const CHIADO_GENESIS_STATE_SOURCE: GenesisStateSource = GenesisStateSource::Url 
     genesis_state_root: "0xa48419160f8f146ecaa53d12a5d6e1e6af414a328afdc56b60d5002bb472a077",
 };
 
-/// The core configuration of a Lighthouse beacon node.
+/// The core configuration of a Vibehouse beacon node.
 #[derive(Debug, Clone)]
 pub struct Eth2Config {
     pub eth_spec_id: EthSpecId,

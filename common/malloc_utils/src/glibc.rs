@@ -11,7 +11,7 @@ use std::os::raw::c_int;
 use std::result::Result;
 use std::sync::LazyLock;
 
-/// The optimal mmap threshold for Lighthouse seems to be around 128KB.
+/// The optimal mmap threshold for Vibehouse seems to be around 128KB.
 ///
 /// By default GNU malloc will start with a threshold of 128KB and adjust it upwards, but we've
 /// found that the upwards adjustments tend to result in heap fragmentation. Explicitly setting the

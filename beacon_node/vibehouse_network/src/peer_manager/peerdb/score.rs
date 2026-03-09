@@ -21,9 +21,9 @@ pub(crate) const DEFAULT_SCORE: f64 = 0.0;
 const MIN_SCORE_BEFORE_DISCONNECT: f64 = -20.0;
 /// The minimum reputation before a peer is banned.
 const MIN_SCORE_BEFORE_BAN: f64 = -50.0;
-/// If a peer has a lighthouse score below this constant all other score parts will get ignored and
+/// If a peer has a vibehouse score below this constant all other score parts will get ignored and
 /// the peer will get banned regardless of the other parts.
-const MIN_LIGHTHOUSE_SCORE_BEFORE_BAN: f64 = -60.0;
+const MIN_VIBEHOUSE_SCORE_BEFORE_BAN: f64 = -60.0;
 /// The maximum score a peer can obtain.
 const MAX_SCORE: f64 = 100.0;
 /// The minimum score a peer can obtain.
@@ -128,8 +128,8 @@ impl std::fmt::Display for ScoreState {
 pub struct RealScore {
     /// The global score.
     // NOTE: In the future we may separate this into sub-scores involving the RPC, Gossipsub and
-    // lighthouse.
-    lighthouse_score: f64,
+    // vibehouse.
+    vibehouse_score: f64,
     gossipsub_score: f64,
     /// We ignore the negative gossipsub scores of some peers to allow decaying without
     /// disconnecting.
@@ -143,7 +143,7 @@ pub struct RealScore {
 impl Default for RealScore {
     fn default() -> Self {
         RealScore {
-            lighthouse_score: DEFAULT_SCORE,
+            vibehouse_score: DEFAULT_SCORE,
             gossipsub_score: DEFAULT_SCORE,
             score: DEFAULT_SCORE,
             last_updated: Instant::now(),
@@ -155,8 +155,8 @@ impl Default for RealScore {
 impl RealScore {
     /// Access to the underlying score.
     fn recompute_score(&mut self) {
-        self.score = self.lighthouse_score;
-        if self.lighthouse_score <= MIN_LIGHTHOUSE_SCORE_BEFORE_BAN {
+        self.score = self.vibehouse_score;
+        if self.vibehouse_score <= MIN_VIBEHOUSE_SCORE_BEFORE_BAN {
             //ignore all other scores, i.e. do nothing here
         } else if self.gossipsub_score >= 0.0 {
             self.score += self.gossipsub_score * GOSSIPSUB_POSITIVE_SCORE_WEIGHT;
@@ -172,22 +172,22 @@ impl RealScore {
     /// Modifies the score based on a peer's action.
     pub fn apply_peer_action(&mut self, peer_action: PeerAction) {
         match peer_action {
-            PeerAction::Fatal => self.set_lighthouse_score(MIN_SCORE), // The worst possible score
+            PeerAction::Fatal => self.set_vibehouse_score(MIN_SCORE), // The worst possible score
             PeerAction::LowToleranceError => self.add(-10.0),
             PeerAction::MidToleranceError => self.add(-5.0),
             PeerAction::HighToleranceError => self.add(-1.0),
         }
     }
 
-    fn set_lighthouse_score(&mut self, new_score: f64) {
-        self.lighthouse_score = new_score;
+    fn set_vibehouse_score(&mut self, new_score: f64) {
+        self.vibehouse_score = new_score;
         self.update_state();
     }
 
     /// Add an f64 to the score abiding by the limits.
     fn add(&mut self, score: f64) {
-        let new_score = (self.lighthouse_score + score).clamp(MIN_SCORE, MAX_SCORE);
-        self.set_lighthouse_score(new_score);
+        let new_score = (self.vibehouse_score + score).clamp(MIN_SCORE, MAX_SCORE);
+        self.set_vibehouse_score(new_score);
     }
 
     fn update_state(&mut self) {
@@ -208,7 +208,7 @@ impl RealScore {
     #[cfg(test)]
     // reset the score
     pub fn test_reset(&mut self) {
-        self.set_lighthouse_score(0f64);
+        self.set_vibehouse_score(0f64);
     }
 
     // Set the gossipsub_score to a specific f64.
@@ -240,7 +240,7 @@ impl RealScore {
         {
             // e^(-ln(2)/HL*t)
             let decay_factor = (*HALFLIFE_DECAY * secs_since_update as f64).exp();
-            self.lighthouse_score *= decay_factor;
+            self.vibehouse_score *= decay_factor;
             self.last_updated = now;
             self.update_state();
         }

@@ -373,7 +373,7 @@ async fn run(config: MoveConfig) -> Result<(), String> {
         let request = DeleteKeystoresRequest {
             pubkeys: vec![pubkey_to_move],
         };
-        let deleted = match src_http_client.delete_lighthouse_keystores(&request).await {
+        let deleted = match src_http_client.delete_vibehouse_keystores(&request).await {
             Ok(deleted) => deleted,
             Err(e) => {
                 match src_http_client.get_keystores().await {

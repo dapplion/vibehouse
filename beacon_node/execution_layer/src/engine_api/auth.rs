@@ -166,7 +166,7 @@ mod tests {
         let auth = Auth::new(
             JwtKey::from_slice(&DEFAULT_JWT_SECRET).unwrap(),
             Some("42".into()),
-            Some("Lighthouse".into()),
+            Some("Vibehouse".into()),
         );
         let claims = auth.generate_claims_at_timestamp();
         let token = auth.generate_token_with_claims(&claims).unwrap();

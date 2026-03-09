@@ -30,10 +30,10 @@ use types::{Keypair, PublicKey};
 use validator_dir::ValidatorDir;
 use zeroize::Zeroizing;
 
-/// Returns the `lighthouse account` command.
+/// Returns the `vibehouse account` command.
 fn account_cmd() -> Command {
-    let lighthouse_bin = env!("CARGO_BIN_EXE_vibehouse");
-    let path = lighthouse_bin
+    let vibehouse_bin = env!("CARGO_BIN_EXE_vibehouse");
+    let path = vibehouse_bin
         .parse::<PathBuf>()
         .expect("should parse CARGO_TARGET_DIR");
 
@@ -42,7 +42,7 @@ fn account_cmd() -> Command {
     cmd
 }
 
-/// Returns the `lighthouse account wallet` command.
+/// Returns the `vibehouse account wallet` command.
 fn wallet_cmd() -> Command {
     let mut cmd = account_cmd();
     cmd.arg(WALLET_CMD);
@@ -84,7 +84,7 @@ fn dir_validator_count<P: AsRef<Path>>(dir: P) -> usize {
         .count()
 }
 
-/// Uses `lighthouse account wallet list` to list all wallets.
+/// Uses `vibehouse account wallet list` to list all wallets.
 fn list_wallets<P: AsRef<Path>>(base_dir: P) -> Vec<String> {
     let output = output_result(
         wallet_cmd()
@@ -103,7 +103,7 @@ fn list_wallets<P: AsRef<Path>>(base_dir: P) -> Vec<String> {
         .collect()
 }
 
-/// Create a wallet using the lighthouse CLI.
+/// Create a wallet using the vibehouse CLI.
 fn create_wallet<P: AsRef<Path>>(
     name: &str,
     base_dir: P,
@@ -155,7 +155,7 @@ impl TestWallet {
         self.mnemonic_dir.path().join("mnemonic")
     }
 
-    /// Actually create the wallet using the lighthouse CLI.
+    /// Actually create the wallet using the vibehouse CLI.
     pub fn create(&self) -> Result<Output, String> {
         create_wallet(
             &self.name,
@@ -217,7 +217,7 @@ fn wallet_create_and_list() {
     assert_eq!(list_wallets(wally.base_dir()).len(), 2);
 }
 
-/// Returns the `lighthouse account validator` command.
+/// Returns the `vibehouse account validator` command.
 fn validator_cmd() -> Command {
     let mut cmd = account_cmd();
     cmd.arg(VALIDATOR_CMD);

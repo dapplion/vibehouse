@@ -222,58 +222,55 @@ pub fn serve<T: 'static + SlotClock + Clone, E: EthSpec>(
 
     // Build router. Routes requiring auth are nested under a middleware layer.
     let authed_routes = Router::new()
-        // GET lighthouse/*
-        .route("/lighthouse/version", get(get_node_version::<T, E>))
-        .route("/lighthouse/health", get(get_lighthouse_health::<T, E>))
-        .route("/lighthouse/spec", get(get_lighthouse_spec::<T, E>))
+        // GET vibehouse/*
+        .route("/vibehouse/version", get(get_node_version::<T, E>))
+        .route("/vibehouse/health", get(get_vibehouse_health::<T, E>))
+        .route("/vibehouse/spec", get(get_vibehouse_spec::<T, E>))
         .route(
-            "/lighthouse/validators",
-            get(get_lighthouse_validators::<T, E>),
+            "/vibehouse/validators",
+            get(get_vibehouse_validators::<T, E>),
         )
         .route(
-            "/lighthouse/validators/{validator_pubkey}",
-            get(get_lighthouse_validators_pubkey::<T, E>),
+            "/vibehouse/validators/{validator_pubkey}",
+            get(get_vibehouse_validators_pubkey::<T, E>),
+        )
+        .route("/vibehouse/ui/health", get(get_vibehouse_ui_health::<T, E>))
+        .route(
+            "/vibehouse/ui/graffiti",
+            get(get_vibehouse_ui_graffiti::<T, E>),
         )
         .route(
-            "/lighthouse/ui/health",
-            get(get_lighthouse_ui_health::<T, E>),
+            "/vibehouse/beacon/health",
+            get(get_vibehouse_beacon_health::<T, E>),
         )
+        // POST vibehouse/*
+        .route("/vibehouse/validators", post(post_validators::<T, E>))
         .route(
-            "/lighthouse/ui/graffiti",
-            get(get_lighthouse_ui_graffiti::<T, E>),
-        )
-        .route(
-            "/lighthouse/beacon/health",
-            get(get_lighthouse_beacon_health::<T, E>),
-        )
-        // POST lighthouse/*
-        .route("/lighthouse/validators", post(post_validators::<T, E>))
-        .route(
-            "/lighthouse/validators/mnemonic",
+            "/vibehouse/validators/mnemonic",
             post(post_validators_mnemonic::<T, E>),
         )
         .route(
-            "/lighthouse/validators/keystore",
+            "/vibehouse/validators/keystore",
             post(post_validators_keystore::<T, E>),
         )
         .route(
-            "/lighthouse/validators/web3signer",
+            "/vibehouse/validators/web3signer",
             post(post_validators_web3signer::<T, E>),
         )
-        // PATCH lighthouse/*
+        // PATCH vibehouse/*
         .route(
-            "/lighthouse/validators/{validator_pubkey}",
+            "/vibehouse/validators/{validator_pubkey}",
             patch(patch_validators::<T, E>),
         )
-        // DELETE lighthouse/*
+        // DELETE vibehouse/*
         .route(
-            "/lighthouse/keystores",
-            delete(delete_lighthouse_keystores::<T, E>),
+            "/vibehouse/keystores",
+            delete(delete_vibehouse_keystores::<T, E>),
         )
-        // POST lighthouse/beacon/update
+        // POST vibehouse/beacon/update
         .route(
-            "/lighthouse/beacon/update",
-            post(post_lighthouse_beacon_update::<T, E>),
+            "/vibehouse/beacon/update",
+            post(post_vibehouse_beacon_update::<T, E>),
         )
         // Standard key-manager endpoints
         .route("/eth/v1/keystores", get(get_std_keystores::<T, E>))
@@ -330,8 +327,8 @@ pub fn serve<T: 'static + SlotClock + Clone, E: EthSpec>(
 
     // Unauthenticated routes.
     let unauthed_routes = Router::new()
-        .route("/lighthouse/auth", get(get_auth::<T, E>))
-        .route("/lighthouse/logs", get(get_log_events::<T, E>));
+        .route("/vibehouse/auth", get(get_auth::<T, E>))
+        .route("/vibehouse/logs", get(get_log_events::<T, E>));
 
     let app = Router::new()
         .merge(authed_routes)
@@ -448,7 +445,7 @@ async fn get_node_version<T: 'static + SlotClock + Clone, E: EthSpec>(
     .await
 }
 
-async fn get_lighthouse_health<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(_state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     blocking_json(move || {
@@ -459,7 +456,7 @@ async fn get_lighthouse_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     .await
 }
 
-async fn get_lighthouse_spec<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_spec<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let spec = state.ctx.spec.clone();
@@ -470,7 +467,7 @@ async fn get_lighthouse_spec<T: 'static + SlotClock + Clone, E: EthSpec>(
     .await
 }
 
-async fn get_lighthouse_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_store = get_validator_store(&state)?;
@@ -492,7 +489,7 @@ async fn get_lighthouse_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
     .await
 }
 
-async fn get_lighthouse_validators_pubkey<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_validators_pubkey<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
     Path(validator_pubkey): Path<PublicKey>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -518,7 +515,7 @@ async fn get_lighthouse_validators_pubkey<T: 'static + SlotClock + Clone, E: Eth
     .await
 }
 
-async fn get_lighthouse_ui_health<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_ui_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let val_dir = get_validator_dir(&state)?;
@@ -542,7 +539,7 @@ async fn get_lighthouse_ui_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     .await
 }
 
-async fn get_lighthouse_ui_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_ui_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_store = get_validator_store(&state)?;
@@ -568,7 +565,7 @@ async fn get_lighthouse_ui_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     .await
 }
 
-async fn get_lighthouse_beacon_health<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn get_vibehouse_beacon_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let block_service = get_block_service(&state)?;
@@ -1006,7 +1003,7 @@ async fn post_std_remotekeys<T: 'static + SlotClock + Clone, E: EthSpec>(
     blocking_json(move || remotekeys::import::<_, E>(request, validator_store, task_executor)).await
 }
 
-async fn post_lighthouse_beacon_update<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn post_vibehouse_beacon_update<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
     Json(request): Json<UpdateCandidatesRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -1130,7 +1127,7 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 // ── DELETE handlers ─────────────────────────────────────────────────────────
 
-async fn delete_lighthouse_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
+async fn delete_vibehouse_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
     Json(request): Json<eth2::vibehouse_vc::std_types::DeleteKeystoresRequest>,
 ) -> Result<impl IntoResponse, ApiError> {

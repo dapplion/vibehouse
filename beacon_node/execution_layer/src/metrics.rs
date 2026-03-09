@@ -64,7 +64,7 @@ pub static EXECUTION_LAYER_GET_PAYLOAD_BODIES_BY_RANGE: LazyLock<Result<Histogra
 pub static EXECUTION_LAYER_VERIFY_BLOCK_HASH: LazyLock<Result<Histogram>> = LazyLock::new(|| {
     try_create_histogram_with_buckets(
         "execution_layer_verify_block_hash_time",
-        "Time to verify the execution block hash in Lighthouse, without the EL",
+        "Time to verify the execution block hash in Vibehouse, without the EL",
         Ok(vec![
             10e-6, 50e-6, 100e-6, 500e-6, 1e-3, 5e-3, 10e-3, 50e-3, 100e-3, 500e-3,
         ]),
@@ -119,7 +119,7 @@ pub static EXECUTION_LAYER_PAYLOAD_BIDS: LazyLock<Result<IntGaugeVec>> = LazyLoc
 pub static EXECUTION_LAYER_INFO: LazyLock<Result<IntGaugeVec>> = LazyLock::new(|| {
     try_create_int_gauge_vec(
         "execution_layer_info",
-        "The build of the execution layer connected to lighthouse",
+        "The build of the execution layer connected to vibehouse",
         &["code", "name", "version", "commit"],
     )
 });

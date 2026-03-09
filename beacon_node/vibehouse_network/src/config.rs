@@ -30,7 +30,7 @@ pub struct GossipsubConfigParams {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
-/// Network configuration for lighthouse.
+/// Network configuration for vibehouse.
 pub struct Config {
     /// Data directory where node's keyfile is stored
     pub network_dir: PathBuf,
@@ -107,7 +107,7 @@ pub struct Config {
     /// runtime.
     pub import_all_attestations: bool,
 
-    /// A setting specifying a range of values that tune the network parameters of lighthouse. The
+    /// A setting specifying a range of values that tune the network parameters of vibehouse. The
     /// lower the value the less bandwidth used, but the slower messages will be received.
     pub network_load: u8,
 
@@ -376,7 +376,7 @@ impl Default for Config {
     }
 }
 
-/// Controls sizes of gossipsub meshes to tune a Lighthouse node's bandwidth/performance.
+/// Controls sizes of gossipsub meshes to tune a Vibehouse node's bandwidth/performance.
 pub struct NetworkLoad {
     pub name: &'static str,
     pub mesh_n_low: usize,
@@ -446,7 +446,7 @@ impl From<u8> for NetworkLoad {
     }
 }
 
-/// Return a Lighthouse specific `GossipsubConfig` where the `message_id_fn` depends on the current fork.
+/// Return a Vibehouse specific `GossipsubConfig` where the `message_id_fn` depends on the current fork.
 pub fn gossipsub_config(
     network_load: u8,
     fork_context: Arc<ForkContext>,

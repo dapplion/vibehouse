@@ -1,4 +1,4 @@
-//! Syncing for lighthouse.
+//! Syncing for vibehouse.
 //!
 //! Stores the various syncing methods for the beacon chain.
 mod backfill_sync;

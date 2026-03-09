@@ -49,7 +49,7 @@ pub fn geth_genesis_json() -> Value {
 pub fn nethermind_genesis_json() -> Value {
     json!(
         {
-            "name": "lighthouse_test_network",
+            "name": "vibehouse_test_network",
             "engine": {
               "Ethash": {
                 "params": {

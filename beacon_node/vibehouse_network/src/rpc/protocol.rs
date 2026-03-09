@@ -452,7 +452,7 @@ impl<E: EthSpec> UpgradeInfo for RPCProtocol<E> {
     type Info = ProtocolId;
     type InfoIter = Vec<Self::Info>;
 
-    /// The list of supported RPC protocols for Lighthouse.
+    /// The list of supported RPC protocols for Vibehouse.
     fn protocol_info(&self) -> Self::InfoIter {
         let mut supported_protocols = SupportedProtocol::currently_supported(&self.fork_context);
         if self.enable_light_client_server {

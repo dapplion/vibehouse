@@ -21,7 +21,7 @@ env:
   # Prevent Github API rate limiting.
   # NOTE: this token is a personal access token on Jimmy's account due to the default GITHUB_TOKEN
   # not having access to other repositories. We should eventually devise a better solution here.
-  LIGHTHOUSE_GITHUB_TOKEN: ${{ secrets.LIGHTHOUSE_GITHUB_TOKEN }}
+  VIBEHOUSE_GITHUB_TOKEN: ${{ secrets.VIBEHOUSE_GITHUB_TOKEN }}
   # Enable self-hosted runners for the sigp repo only.
   SELF_HOSTED_RUNNERS: ${{ github.repository == 'sigp/lighthouse' }}
   # Disable incremental compilation
@@ -385,7 +385,7 @@ jobs:
     - name: Install Rust at Minimum Supported Rust Version (MSRV)
       run: |
         metadata=$(cargo metadata --no-deps --format-version 1)
-        msrv=$(echo $metadata | jq -r '.packages | map(select(.name == "lighthouse")) | .[0].rust_version')
+        msrv=$(echo $metadata | jq -r '.packages | map(select(.name == "vibehouse")) | .[0].rust_version')
         rustup override set $msrv
     - name: Run cargo check
       run: cargo check --workspace

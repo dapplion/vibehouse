@@ -1054,10 +1054,10 @@ async fn proposer_duties_with_gossip_tolerance() {
     );
 }
 
-// Test that a request to `lighthouse/custody/backfill` succeeds by verifying that `CustodyContext` and `DataColumnCustodyInfo`
+// Test that a request to `vibehouse/custody/backfill` succeeds by verifying that `CustodyContext` and `DataColumnCustodyInfo`
 // have been updated with the correct values.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn lighthouse_restart_custody_backfill() {
+async fn vibehouse_restart_custody_backfill() {
     let spec = test_spec::<E>();
 
     // Skip pre-Fulu.
@@ -1097,7 +1097,7 @@ async fn lighthouse_restart_custody_backfill() {
 
     custody_context
         .update_and_backfill_custody_count_at_epoch(harness.chain.epoch().unwrap(), cgc_at_head);
-    client.post_lighthouse_custody_backfill().await.unwrap();
+    client.post_vibehouse_custody_backfill().await.unwrap();
 
     let cgc_at_head = custody_context.custody_group_count_at_head(spec);
     let cgc_at_previous_epoch =
@@ -1119,7 +1119,7 @@ async fn lighthouse_restart_custody_backfill() {
 // Test that a request for next epoch proposer duties suceeds when the current slot clock is within
 // gossip clock disparity (500ms) of the new epoch.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn lighthouse_custody_info() {
+async fn vibehouse_custody_info() {
     let mut spec = test_spec::<E>();
 
     // Skip pre-Fulu.
@@ -1155,7 +1155,7 @@ async fn lighthouse_custody_info() {
 
     assert_eq!(harness.chain.slot().unwrap(), num_initial);
 
-    let info = client.get_lighthouse_custody_info().await.unwrap();
+    let info = client.get_vibehouse_custody_info().await.unwrap();
     assert_eq!(info.earliest_custodied_data_column_slot, 0);
     assert_eq!(info.custody_group_count, spec.custody_requirement);
     assert_eq!(
@@ -1177,7 +1177,7 @@ async fn lighthouse_custody_info() {
 
     assert_eq!(harness.chain.slot().unwrap(), num_initial + num_secondary);
 
-    let info = client.get_lighthouse_custody_info().await.unwrap();
+    let info = client.get_vibehouse_custody_info().await.unwrap();
     assert_eq!(
         info.earliest_custodied_data_column_slot,
         num_initial + num_secondary

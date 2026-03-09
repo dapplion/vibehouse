@@ -1,5 +1,5 @@
 //! This crate aims to provide a common set of tools that can be used to create a "environment" to
-//! run Lighthouse services like the `beacon_node` or `validator_client`. This allows for the
+//! run Vibehouse services like the `beacon_node` or `validator_client`. This allows for the
 //! unification of creating tokio runtimes, loggers and eth2 specifications in production and in
 //! testing.
 //!
@@ -190,7 +190,7 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
         Ok(self)
     }
 
-    /// Initialize the Lighthouse-specific tracing logging components from
+    /// Initialize the Vibehouse-specific tracing logging components from
     /// the provided config.
     ///
     /// This consists of 3 tracing `Layers`:
@@ -317,7 +317,7 @@ impl<E: EthSpec> EnvironmentBuilder<E> {
     }
 }
 
-/// An environment where Lighthouse services can run. Used to start a production beacon node or
+/// An environment where Vibehouse services can run. Used to start a production beacon node or
 /// validator client, or to run tests that involve logging and async task execution.
 pub struct Environment<E: EthSpec> {
     runtime: Arc<Runtime>,

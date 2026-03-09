@@ -70,7 +70,7 @@ pub const EIP155_ERROR_STR: &str = "chain not synced beyond EIP-155 replay-prote
 /// (verified geth, nethermind, erigon, besu)
 pub const METHOD_NOT_FOUND_CODE: i64 = -32601;
 
-pub static LIGHTHOUSE_CAPABILITIES: &[&str] = &[
+pub static VIBEHOUSE_CAPABILITIES: &[&str] = &[
     ENGINE_NEW_PAYLOAD_V1,
     ENGINE_NEW_PAYLOAD_V2,
     ENGINE_NEW_PAYLOAD_V3,
@@ -95,11 +95,11 @@ pub static LIGHTHOUSE_CAPABILITIES: &[&str] = &[
 /// for two reasons:
 /// 1. This saves the overhead of converting into Json for every engine call
 /// 2. The Json version lacks error checking so we can avoid calling `unwrap()`
-pub static LIGHTHOUSE_JSON_CLIENT_VERSION: LazyLock<JsonClientVersionV1> =
+pub static VIBEHOUSE_JSON_CLIENT_VERSION: LazyLock<JsonClientVersionV1> =
     LazyLock::new(|| JsonClientVersionV1 {
-        code: ClientCode::Lighthouse.to_string(),
-        name: "Lighthouse".to_string(),
-        version: VERSION.replace("Lighthouse/", ""),
+        code: ClientCode::Vibehouse.to_string(),
+        name: "Vibehouse".to_string(),
+        version: VERSION.replace("Vibehouse/", ""),
         commit: COMMIT_PREFIX.to_string(),
     });
 
@@ -1158,7 +1158,7 @@ impl HttpJsonRpc {
     }
 
     pub async fn exchange_capabilities(&self) -> Result<EngineCapabilities, Error> {
-        let params = json!([LIGHTHOUSE_CAPABILITIES]);
+        let params = json!([VIBEHOUSE_CAPABILITIES]);
 
         let capabilities: HashSet<String> = self
             .rpc_request(
@@ -1228,7 +1228,7 @@ impl HttpJsonRpc {
     /// `get_engine_version(Some(Duration::ZERO))` if you want to force
     /// fetching from the EE as this will cache the result.
     pub async fn get_client_version_v1(&self) -> Result<Vec<ClientVersionV1>, Error> {
-        let params = json!([*LIGHTHOUSE_JSON_CLIENT_VERSION]);
+        let params = json!([*VIBEHOUSE_JSON_CLIENT_VERSION]);
 
         let response: Vec<JsonClientVersionV1> = self
             .rpc_request(

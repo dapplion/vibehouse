@@ -52,25 +52,25 @@ const MAX_CONCURRENT_REQUESTS: usize = 2;
 pub trait ReqId: Send + 'static + std::fmt::Debug + Copy + Clone {}
 impl<T> ReqId for T where T: Send + 'static + std::fmt::Debug + Copy + Clone {}
 
-/// RPC events sent from Lighthouse.
+/// RPC events sent from Vibehouse.
 #[derive(Debug, Clone)]
 pub enum RPCSend<Id, E: EthSpec> {
-    /// A request sent from Lighthouse.
+    /// A request sent from Vibehouse.
     ///
     /// The `Id` is given by the application making the request. These
     /// go over *outbound* connections.
     Request(Id, RequestType<E>),
-    /// A response sent from Lighthouse.
+    /// A response sent from Vibehouse.
     ///
     /// The `SubstreamId` must correspond to the RPC-given ID of the original request received from the
     /// peer. The second parameter is a single chunk of a response. These go over *inbound*
     /// connections.
     Response(SubstreamId, RpcResponse<E>),
-    /// Lighthouse has requested to terminate the connection with a goodbye message.
+    /// Vibehouse has requested to terminate the connection with a goodbye message.
     Shutdown(Id, GoodbyeReason),
 }
 
-/// RPC events received from outside Lighthouse.
+/// RPC events received from outside Vibehouse.
 #[derive(Debug, Clone)]
 pub enum RPCReceived<Id, E: EthSpec> {
     /// A request received from the outside.
@@ -275,7 +275,7 @@ impl<Id: ReqId, E: EthSpec> RPC<Id, E> {
         }
     }
 
-    /// Lighthouse wishes to disconnect from this peer by sending a Goodbye message. This
+    /// Vibehouse wishes to disconnect from this peer by sending a Goodbye message. This
     /// gracefully terminates the RPC behaviour with a goodbye message.
     pub fn shutdown(&mut self, peer_id: PeerId, id: Id, reason: GoodbyeReason) {
         self.events.push(ToSwarm::NotifyHandler {

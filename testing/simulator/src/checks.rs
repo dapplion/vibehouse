@@ -476,7 +476,7 @@ pub async fn check_attestation_correctness<E: EthSpec>(
     let remote_node = &network.remote_nodes()?[node_index];
 
     let results = remote_node
-        .get_lighthouse_analysis_attestation_performance(
+        .get_vibehouse_analysis_attestation_performance(
             Epoch::new(start_epoch),
             Epoch::new(upto_epoch - 2),
             "global".to_string(),

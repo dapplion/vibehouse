@@ -1857,7 +1857,7 @@ where
         if let Err(e) = proto_array.set_all_blocks_to_optimistic::<E>(spec) {
             // If there is an error resetting the optimistic status then log loudly and revert
             // back to a proto-array which does not have the reset applied. This indicates a
-            // significant error in Lighthouse and warrants detailed investigation.
+            // significant error in Vibehouse and warrants detailed investigation.
             crit!(
                 error = ?e,
                 info = "please report this error",

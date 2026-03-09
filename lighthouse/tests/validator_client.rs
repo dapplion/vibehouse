@@ -16,10 +16,10 @@ use tempfile::TempDir;
 use types::{Address, Slot};
 use validator_client::Config;
 
-/// Returns the `lighthouse validator_client` command.
+/// Returns the `vibehouse validator_client` command.
 fn base_cmd() -> Command {
-    let lighthouse_bin = env!("CARGO_BIN_EXE_vibehouse");
-    let path = lighthouse_bin
+    let vibehouse_bin = env!("CARGO_BIN_EXE_vibehouse");
+    let path = vibehouse_bin
         .parse::<PathBuf>()
         .expect("should parse CARGO_TARGET_DIR");
 

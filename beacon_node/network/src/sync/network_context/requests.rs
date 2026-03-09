@@ -92,7 +92,7 @@ impl<K: Copy + Eq + Hash + std::fmt::Display, T: ActiveRequestItems> ActiveReque
 
     /// Handle an `RpcEvent` for a specific request index by `id`.
     ///
-    /// Lighthouse ReqResp protocol API promises to send 0 or more `RpcEvent::Response` chunks,
+    /// Vibehouse ReqResp protocol API promises to send 0 or more `RpcEvent::Response` chunks,
     /// and EITHER a single `RpcEvent::RPCError` or RpcEvent::StreamTermination.
     ///
     /// Downstream code expects to receive a single `Result` value per request ID. However,

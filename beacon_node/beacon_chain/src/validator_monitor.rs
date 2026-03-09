@@ -1848,7 +1848,7 @@ impl<E: EthSpec> ValidatorMonitor<E> {
 
     /// Scrape `self` for metrics.
     ///
-    /// Should be called whenever Prometheus is scraping Lighthouse.
+    /// Should be called whenever Prometheus is scraping Vibehouse.
     pub fn scrape_metrics<S: SlotClock>(&self, slot_clock: &S, spec: &ChainSpec) {
         metrics::set_gauge(
             &metrics::VALIDATOR_MONITOR_VALIDATORS_TOTAL,

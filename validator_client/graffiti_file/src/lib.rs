@@ -20,7 +20,7 @@ pub enum Error {
 /// Struct to load validator graffitis from file.
 /// The graffiti file is expected to have the following structure
 ///
-/// default: Lighthouse
+/// default: Vibehouse
 /// public_key1: graffiti1
 /// public_key2: graffiti2
 /// ...

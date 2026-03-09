@@ -89,7 +89,7 @@ pub struct Eth2NetworkConfig {
 }
 
 impl Eth2NetworkConfig {
-    /// When Lighthouse is built it includes zero or more "hardcoded" network specifications. This
+    /// When Vibehouse is built it includes zero or more "hardcoded" network specifications. This
     /// function allows for instantiating one of these nets by name.
     pub fn constant(name: &str) -> Result<Option<Self>, String> {
         HARDCODED_NETS

@@ -2811,7 +2811,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     }
                     _ => {
                         /*
-                         * Lighthouse hit an unexpected error whilst processing the attestation. It
+                         * Vibehouse hit an unexpected error whilst processing the attestation. It
                          * should be impossible to trigger a `BeaconChainError` from the network,
                          * so we have a bug.
                          *
@@ -3093,7 +3093,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             SyncCommitteeError::BeaconChainError(e) => {
                 /*
-                 * Lighthouse hit an unexpected error whilst processing the sync committee message. It
+                 * Vibehouse hit an unexpected error whilst processing the sync committee message. It
                  * should be impossible to trigger a `BeaconChainError` from the network,
                  * so we have a bug.
                  *
@@ -3108,7 +3108,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             }
             SyncCommitteeError::BeaconStateError(e) => {
                 /*
-                 * Lighthouse hit an unexpected error whilst processing the sync committee message. It
+                 * Vibehouse hit an unexpected error whilst processing the sync committee message. It
                  * should be impossible to trigger a `BeaconStateError` from the network,
                  * so we have a bug.
                  *

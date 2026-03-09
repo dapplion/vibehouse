@@ -311,7 +311,7 @@ mod test {
 
         let peer_info2 = BlockPeerInfo {
             id: Some("peer2".to_string()),
-            client: Some("lighthouse".to_string()),
+            client: Some("vibehouse".to_string()),
         };
 
         let peer_info3 = BlockPeerInfo {

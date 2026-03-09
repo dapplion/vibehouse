@@ -21,12 +21,12 @@ pub const COUNT_FLAG: &str = "count";
 
 /// When the `ethstaker-deposit-cli` tool generates deposit data JSON, it adds a
 /// `deposit_cli_version` to protect the web-based "Launchpad" tool against a breaking change that
-/// was introduced in `ethstaker-deposit-cli`. Lighthouse don't really have a version that it
+/// was introduced in `ethstaker-deposit-cli`. Vibehouse don't really have a version that it
 /// can use here, so we choose a static string that is:
 ///
 /// 1. High enough that it's accepted by Launchpad.
-/// 2. Weird enough to identify Lighthouse.
-const LIGHTHOUSE_DEPOSIT_CLI_VERSION: &str = "20.18.20";
+/// 2. Weird enough to identify Vibehouse.
+const VIBEHOUSE_DEPOSIT_CLI_VERSION: &str = "20.18.20";
 
 #[derive(Debug)]
 pub enum UploadError {
@@ -136,7 +136,7 @@ impl ValidatorSpecification {
 
         if gas_limit.is_some() || builder_proposals.is_some() || enabled.is_some() {
             http_client
-                .patch_lighthouse_validators(
+                .patch_vibehouse_validators(
                     &voting_public_key,
                     enabled,
                     gas_limit,
@@ -230,7 +230,7 @@ impl StandardDepositDataJson {
                 .ok_or("The network specification does not have a CONFIG_NAME set")?,
             deposit_message_root,
             deposit_data_root,
-            deposit_cli_version: LIGHTHOUSE_DEPOSIT_CLI_VERSION.to_string(),
+            deposit_cli_version: VIBEHOUSE_DEPOSIT_CLI_VERSION.to_string(),
         })
     }
 }

@@ -29,7 +29,7 @@ const EXECUTION_ENGINE_START_TIMEOUT: Duration = Duration::from_secs(60);
 const TEST_FORK: ForkName = ForkName::Capella;
 
 struct ExecutionPair<Engine, E: EthSpec> {
-    /// The Lighthouse `ExecutionLayer` struct, connected to the `execution_engine` via HTTP.
+    /// The Vibehouse `ExecutionLayer` struct, connected to the `execution_engine` via HTTP.
     execution_layer: ExecutionLayer<E>,
     /// A handle to external EE process, once this is dropped the process will be killed.
     #[allow(dead_code)]

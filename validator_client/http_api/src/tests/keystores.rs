@@ -391,7 +391,7 @@ async fn get_web3_signer_keystores() {
 
         tester
             .client
-            .post_lighthouse_validators_web3signer(&remote_vals)
+            .post_vibehouse_validators_web3signer(&remote_vals)
             .await
             .unwrap();
 
@@ -440,7 +440,7 @@ async fn import_and_delete_conflicting_web3_signer_keystores() {
 
         tester
             .client
-            .post_lighthouse_validators_web3signer(&remote_vals)
+            .post_vibehouse_validators_web3signer(&remote_vals)
             .await
             .unwrap();
 
@@ -473,7 +473,7 @@ async fn import_and_delete_conflicting_web3_signer_keystores() {
         for pubkey in &pubkeys {
             tester
                 .client
-                .patch_lighthouse_validators(pubkey, Some(false), None, None, None, None, None)
+                .patch_vibehouse_validators(pubkey, Some(false), None, None, None, None, None)
                 .await
                 .unwrap();
         }
@@ -2034,7 +2034,7 @@ async fn import_remotekey_web3signer() {
         // Import web3signers.
         tester
             .client
-            .post_lighthouse_validators_web3signer(&web3signers)
+            .post_vibehouse_validators_web3signer(&web3signers)
             .await
             .unwrap();
 
@@ -2091,7 +2091,7 @@ async fn import_remotekey_web3signer_disabled() {
         // Import web3signers.
         tester
             .client
-            .post_lighthouse_validators_web3signer(&[web3signer_req])
+            .post_vibehouse_validators_web3signer(&[web3signer_req])
             .await
             .unwrap();
 
@@ -2146,7 +2146,7 @@ async fn import_remotekey_web3signer_enabled() {
         // Import web3signers.
         tester
             .client
-            .post_lighthouse_validators_web3signer(&[web3signer_req.clone()])
+            .post_vibehouse_validators_web3signer(&[web3signer_req.clone()])
             .await
             .unwrap();
 

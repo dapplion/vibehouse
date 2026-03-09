@@ -47,7 +47,7 @@ pub struct AttestationRewards {
     pub attestations: Vec<AttestationData>,
 }
 
-/// Query parameters for the `/lighthouse/block_rewards` endpoint.
+/// Query parameters for the `/vibehouse/block_rewards` endpoint.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct BlockRewardsQuery {
     /// Lower slot limit for block rewards returned (inclusive).

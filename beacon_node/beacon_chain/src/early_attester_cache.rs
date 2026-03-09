@@ -29,7 +29,7 @@ pub struct CacheItem<E: EthSpec> {
 /// Provides a single-item cache which allows for attesting to blocks before those blocks have
 /// reached the database.
 ///
-/// This cache stores enough information to allow Lighthouse to:
+/// This cache stores enough information to allow Vibehouse to:
 ///
 /// - Produce an attestation without using `chain.canonical_head`.
 /// - Verify that a block root exists (i.e., will be imported in the future) during attestation

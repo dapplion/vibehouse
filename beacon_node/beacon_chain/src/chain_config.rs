@@ -105,14 +105,14 @@ pub struct ChainConfig {
     /// The delay in milliseconds applied by the node between sending each blob or data column batch.
     /// This doesn't apply if the node is the block proposer.
     pub blob_publication_batch_interval: Duration,
-    /// The max distance between the head block and the current slot at which Lighthouse will
+    /// The max distance between the head block and the current slot at which Vibehouse will
     /// consider itself synced and still serve validator-related requests.
     pub sync_tolerance_epochs: u64,
     /// Artificial delay for block publishing. For PeerDAS testing only.
     pub block_publishing_delay: Option<Duration>,
     /// Artificial delay for data column publishing. For PeerDAS testing only.
     pub data_column_publishing_delay: Option<Duration>,
-    /// Block roots of "banned" blocks which Lighthouse will refuse to import.
+    /// Block roots of "banned" blocks which Vibehouse will refuse to import.
     ///
     /// On Holesky there is a block which is added to this set by default but which can be removed
     /// by using `--invalid-block-roots ""`.

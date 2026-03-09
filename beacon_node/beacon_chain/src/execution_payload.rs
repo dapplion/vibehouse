@@ -1,6 +1,6 @@
 //! This module contains various functions for producing and verifying `ExecutionPayloads`.
 //!
-//! Lighthouse tends to do payload tasks in *slightly* different locations to the specification.
+//! Vibehouse tends to do payload tasks in *slightly* different locations to the specification.
 //! This is because some tasks involve calling out to external servers and it's nice to keep those
 //! away from our pure `state_processing` and `fork_choice` crates.
 //!

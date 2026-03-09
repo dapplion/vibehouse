@@ -284,7 +284,7 @@ pub enum BlockError {
     /// problems to worry about than losing peers, and we're doing the network a favour by
     /// disconnecting.
     ParentExecutionPayloadInvalid { parent_root: Hash256 },
-    /// This is a known invalid block that was listed in Lighthouses configuration.
+    /// This is a known invalid block that was listed in Vibehouses configuration.
     /// At the moment this error is only relevant as part of the Holesky network recovery efforts.
     KnownInvalidExecutionPayload(Hash256),
     /// The block is a slashable equivocation from the proposer.
@@ -2263,7 +2263,7 @@ fn write_state<E: EthSpec>(prefix: &str, state: &BeaconState<E>) {
             return;
         };
         let filename = format!("{}_slot_{}_root_{}.ssz", prefix, state.slot(), root);
-        let mut path = std::env::temp_dir().join("lighthouse");
+        let mut path = std::env::temp_dir().join("vibehouse");
         let _ = fs::create_dir_all(path.clone());
         path = path.join(filename);
 
@@ -2283,7 +2283,7 @@ fn write_state<E: EthSpec>(prefix: &str, state: &BeaconState<E>) {
 fn write_block<E: EthSpec>(block: &SignedBeaconBlock<E>, root: Hash256) {
     if WRITE_BLOCK_PROCESSING_SSZ {
         let filename = format!("block_slot_{}_root{}.ssz", block.slot(), root);
-        let mut path = std::env::temp_dir().join("lighthouse");
+        let mut path = std::env::temp_dir().join("vibehouse");
         let _ = fs::create_dir_all(path.clone());
         path = path.join(filename);
 

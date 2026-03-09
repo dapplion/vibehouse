@@ -123,7 +123,7 @@ impl<'block, E: EthSpec> NewPayloadRequest<'block, E> {
         Ok(())
     }
 
-    /// Verify the block hash is consistent locally within Lighthouse.
+    /// Verify the block hash is consistent locally within Vibehouse.
     ///
     /// ## Specification
     ///

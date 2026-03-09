@@ -25,7 +25,7 @@ use gossipsub::{
     IdentTopic as Topic, MessageAcceptance, MessageAuthenticity, MessageId, PublishError,
     TopicScoreParams,
 };
-use gossipsub_scoring_parameters::{PeerScoreSettings, lighthouse_gossip_thresholds};
+use gossipsub_scoring_parameters::{PeerScoreSettings, vibehouse_gossip_thresholds};
 use libp2p::identity::Keypair;
 use libp2p::multiaddr::{self, Multiaddr, Protocol as MProtocol};
 use libp2p::swarm::behaviour::toggle::Toggle;
@@ -261,7 +261,7 @@ impl<E: EthSpec> Network<E> {
         let local_peer_id = network_globals.local_peer_id();
 
         let (gossipsub, update_gossipsub_scores) = {
-            let thresholds = lighthouse_gossip_thresholds();
+            let thresholds = vibehouse_gossip_thresholds();
 
             // Prepare scoring parameters
             let params = {

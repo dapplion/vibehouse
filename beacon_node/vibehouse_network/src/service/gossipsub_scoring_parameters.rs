@@ -31,7 +31,7 @@ const MESH_MESSAGE_DELIVERIES_WINDOW: u64 = 2;
 pub const GREYLIST_THRESHOLD: f64 = -16000.0;
 
 /// Builds the peer score thresholds.
-pub fn lighthouse_gossip_thresholds() -> PeerScoreThresholds {
+pub fn vibehouse_gossip_thresholds() -> PeerScoreThresholds {
     PeerScoreThresholds {
         gossip_threshold: -4000.0,
         publish_threshold: -8000.0,

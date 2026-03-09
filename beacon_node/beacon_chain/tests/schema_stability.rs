@@ -45,9 +45,9 @@ fn get_store(db_path: &TempDir, config: StoreConfig, spec: Arc<ChainSpec>) -> St
     .expect("disk store should initialize")
 }
 
-/// This test checks the database schema stability against previous versions of Lighthouse's code.
+/// This test checks the database schema stability against previous versions of Vibehouse's code.
 ///
-/// If you are changing something about how Lighthouse stores data on disk, you almost certainly
+/// If you are changing something about how Vibehouse stores data on disk, you almost certainly
 /// need to implement a database schema change. This is true even if the data being stored only
 /// applies to an upcoming fork that isn't live on mainnet. We never want to be in the situation
 /// where commit A writes data in some format, and then a later commit B changes that format
@@ -57,7 +57,7 @@ fn get_store(db_path: &TempDir, config: StoreConfig, spec: Arc<ChainSpec>) -> St
 /// This test implements partial, imperfect checks on the DB schema which are designed to quickly
 /// catch common changes.
 ///
-/// This test uses hardcoded values, rather than trying to access previous versions of Lighthouse's
+/// This test uses hardcoded values, rather than trying to access previous versions of Vibehouse's
 /// code. If you've successfully implemented a schema change and you're sure that the new values are
 /// correct, you can update the hardcoded values here.
 #[tokio::test]

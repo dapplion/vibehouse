@@ -14,7 +14,7 @@
 
 FROM=$1
 TO=$2
-VERSION_CRATE="../common/lighthouse_version/src/lib.rs"
+VERSION_CRATE="../common/vibehouse_version/src/lib.rs"
 
 update_cargo_toml () {
 	echo $1

@@ -207,20 +207,20 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_lighthouse_spec(self) -> Self {
+    pub async fn test_get_vibehouse_spec(self) -> Self {
         let result = if self.spec.is_gloas_scheduled() {
             self.client
-                .get_lighthouse_spec::<ConfigAndPresetGloas>()
+                .get_vibehouse_spec::<ConfigAndPresetGloas>()
                 .await
                 .map(|res| ConfigAndPreset::Gloas(res.data))
         } else if self.spec.is_fulu_scheduled() {
             self.client
-                .get_lighthouse_spec::<ConfigAndPresetFulu>()
+                .get_vibehouse_spec::<ConfigAndPresetFulu>()
                 .await
                 .map(|res| ConfigAndPreset::Fulu(res.data))
         } else {
             self.client
-                .get_lighthouse_spec::<ConfigAndPresetElectra>()
+                .get_vibehouse_spec::<ConfigAndPresetElectra>()
                 .await
                 .map(|res| ConfigAndPreset::Electra(res.data))
         }
@@ -245,15 +245,15 @@ impl ApiTester {
     }
 
     #[cfg(target_os = "linux")]
-    pub async fn test_get_lighthouse_health(self) -> Self {
-        self.client.get_lighthouse_health().await.unwrap();
+    pub async fn test_get_vibehouse_health(self) -> Self {
+        self.client.get_vibehouse_health().await.unwrap();
 
         self
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub async fn test_get_lighthouse_health(self) -> Self {
-        self.client.get_lighthouse_health().await.unwrap_err();
+    pub async fn test_get_vibehouse_health(self) -> Self {
+        self.client.get_vibehouse_health().await.unwrap_err();
 
         self
     }
@@ -302,7 +302,7 @@ impl ApiTester {
             };
             let response = self
                 .client
-                .post_lighthouse_validators_mnemonic(&request)
+                .post_vibehouse_validators_mnemonic(&request)
                 .await
                 .unwrap()
                 .data;
@@ -315,7 +315,7 @@ impl ApiTester {
             );
             let response = self
                 .client
-                .post_lighthouse_validators(validators.clone())
+                .post_vibehouse_validators(validators.clone())
                 .await
                 .unwrap()
                 .data;
@@ -329,7 +329,7 @@ impl ApiTester {
             initial_enabled_vals + s.count - s.disabled.len()
         );
 
-        let server_vals = self.client.get_lighthouse_validators().await.unwrap().data;
+        let server_vals = self.client.get_vibehouse_validators().await.unwrap().data;
 
         assert_eq!(server_vals.len(), self.vals_total());
 
@@ -428,7 +428,7 @@ impl ApiTester {
             };
 
             self.client
-                .post_lighthouse_validators_keystore(&request)
+                .post_vibehouse_validators_keystore(&request)
                 .await
                 .unwrap_err();
 
@@ -451,7 +451,7 @@ impl ApiTester {
 
         let response = self
             .client
-            .post_lighthouse_validators_keystore(&request)
+            .post_vibehouse_validators_keystore(&request)
             .await
             .unwrap()
             .data;
@@ -461,7 +461,7 @@ impl ApiTester {
         assert_eq!(self.vals_total(), initial_vals + 1);
         assert_eq!(self.vals_enabled(), initial_enabled_vals + num_enabled);
 
-        let server_vals = self.client.get_lighthouse_validators().await.unwrap().data;
+        let server_vals = self.client.get_vibehouse_validators().await.unwrap().data;
 
         assert_eq!(server_vals.len(), self.vals_total());
 
@@ -498,7 +498,7 @@ impl ApiTester {
             .collect();
 
         self.client
-            .post_lighthouse_validators_web3signer(&request)
+            .post_vibehouse_validators_web3signer(&request)
             .await
             .unwrap();
 
@@ -513,7 +513,7 @@ impl ApiTester {
     }
 
     pub async fn test_sign_voluntary_exits(self, index: usize, maybe_epoch: Option<Epoch>) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         // manually setting validator index in `ValidatorStore`
         self.initialized_validators
             .write()
@@ -540,10 +540,10 @@ impl ApiTester {
     }
 
     pub async fn set_validator_enabled(self, index: usize, enabled: bool) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 Some(enabled),
                 None,
@@ -565,7 +565,7 @@ impl ApiTester {
 
         assert!(
             self.client
-                .get_lighthouse_validators()
+                .get_vibehouse_validators()
                 .await
                 .unwrap()
                 .data
@@ -578,7 +578,7 @@ impl ApiTester {
         // Check the server via an individual request.
         assert_eq!(
             self.client
-                .get_lighthouse_validators_pubkey(&validator.voting_pubkey)
+                .get_vibehouse_validators_pubkey(&validator.voting_pubkey)
                 .await
                 .unwrap()
                 .unwrap()
@@ -591,10 +591,10 @@ impl ApiTester {
     }
 
     pub async fn set_gas_limit(self, index: usize, gas_limit: u64) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 Some(gas_limit),
@@ -610,7 +610,7 @@ impl ApiTester {
     }
 
     pub async fn assert_gas_limit(self, index: usize, gas_limit: u64) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store.get_gas_limit(&validator.voting_pubkey),
@@ -621,10 +621,10 @@ impl ApiTester {
     }
 
     pub async fn set_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 None,
@@ -640,10 +640,10 @@ impl ApiTester {
     }
 
     pub async fn set_builder_boost_factor(self, index: usize, builder_boost_factor: u64) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 None,
@@ -663,10 +663,10 @@ impl ApiTester {
         index: usize,
         prefer_builder_proposals: bool,
     ) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 None,
@@ -682,7 +682,7 @@ impl ApiTester {
     }
 
     pub async fn assert_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store
@@ -698,7 +698,7 @@ impl ApiTester {
         index: usize,
         builder_boost_factor: Option<u64>,
     ) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store
@@ -714,7 +714,7 @@ impl ApiTester {
         index: usize,
         builder_boost_factor: Option<u64>,
     ) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store
@@ -740,7 +740,7 @@ impl ApiTester {
         index: usize,
         prefer_builder_proposals: bool,
     ) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store
@@ -752,10 +752,10 @@ impl ApiTester {
     }
 
     pub async fn set_graffiti(self, index: usize, graffiti: &str) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let graffiti_str = GraffitiString::from_str(graffiti).unwrap();
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 None,
@@ -771,7 +771,7 @@ impl ApiTester {
     }
 
     pub async fn assert_graffiti(self, index: usize, graffiti: &str) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let graffiti_str = GraffitiString::from_str(graffiti).unwrap();
         assert_eq!(
             self.validator_store.graffiti(&validator.voting_pubkey),
@@ -782,7 +782,7 @@ impl ApiTester {
     }
 
     pub async fn test_set_graffiti(self, index: usize, graffiti: &str) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let graffiti_str = GraffitiString::from_str(graffiti).unwrap();
         let resp = self
             .client
@@ -795,7 +795,7 @@ impl ApiTester {
     }
 
     pub async fn test_delete_graffiti(self, index: usize) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let resp = self.client.get_graffiti(&validator.voting_pubkey).await;
 
         assert!(resp.is_ok());
@@ -814,7 +814,7 @@ impl ApiTester {
     }
 
     pub async fn test_get_graffiti(self, index: usize, expected_graffiti: &str) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
         let expected_graffiti_str = GraffitiString::from_str(expected_graffiti).unwrap();
         let resp = self.client.get_graffiti(&validator.voting_pubkey).await;
 
@@ -857,23 +857,23 @@ async fn routes_with_invalid_auth() {
         .await
         .test_with_invalid_auth(|client| async move { client.get_vibehouse_version().await })
         .await
-        .test_with_invalid_auth(|client| async move { client.get_lighthouse_health().await })
+        .test_with_invalid_auth(|client| async move { client.get_vibehouse_health().await })
         .await
         .test_with_invalid_auth(|client| async move {
-            client.get_lighthouse_spec::<types::Config>().await
+            client.get_vibehouse_spec::<types::Config>().await
         })
         .await
-        .test_with_invalid_auth(|client| async move { client.get_lighthouse_validators().await })
+        .test_with_invalid_auth(|client| async move { client.get_vibehouse_validators().await })
         .await
         .test_with_invalid_auth(|client| async move {
             client
-                .get_lighthouse_validators_pubkey(&PublicKeyBytes::empty())
+                .get_vibehouse_validators_pubkey(&PublicKeyBytes::empty())
                 .await
         })
         .await
         .test_with_invalid_auth(|client| async move {
             client
-                .post_lighthouse_validators(vec![ValidatorRequest {
+                .post_vibehouse_validators(vec![ValidatorRequest {
                     enable: <_>::default(),
                     description: <_>::default(),
                     graffiti: <_>::default(),
@@ -889,7 +889,7 @@ async fn routes_with_invalid_auth() {
         .await
         .test_with_invalid_auth(|client| async move {
             client
-                .post_lighthouse_validators_mnemonic(&CreateValidatorsMnemonicRequest {
+                .post_vibehouse_validators_mnemonic(&CreateValidatorsMnemonicRequest {
                     mnemonic: String::default().into(),
                     key_derivation_path_offset: <_>::default(),
                     validators: <_>::default(),
@@ -905,7 +905,7 @@ async fn routes_with_invalid_auth() {
                 .build()
                 .unwrap();
             client
-                .post_lighthouse_validators_keystore(&KeystoreValidatorsPostRequest {
+                .post_vibehouse_validators_keystore(&KeystoreValidatorsPostRequest {
                     password: String::default().into(),
                     enable: <_>::default(),
                     keystore,
@@ -921,7 +921,7 @@ async fn routes_with_invalid_auth() {
         .await
         .test_with_invalid_auth(|client| async move {
             client
-                .patch_lighthouse_validators(
+                .patch_vibehouse_validators(
                     &PublicKeyBytes::empty(),
                     Some(false),
                     None,
@@ -983,9 +983,9 @@ async fn simple_getters() {
         .await
         .test_get_vibehouse_version()
         .await
-        .test_get_lighthouse_health()
+        .test_get_vibehouse_health()
         .await
-        .test_get_lighthouse_spec()
+        .test_get_vibehouse_spec()
         .await;
 }
 

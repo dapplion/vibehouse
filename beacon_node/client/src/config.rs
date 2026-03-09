@@ -47,7 +47,7 @@ pub enum ClientGenesis {
     },
 }
 
-/// The core configuration of a Lighthouse beacon node.
+/// The core configuration of a Vibehouse beacon node.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     data_dir: PathBuf,

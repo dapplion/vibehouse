@@ -471,8 +471,8 @@ if [ "$SYNC_MODE" = true ] && [ "${VALIDATOR_HEAD_SLOT:-0}" -gt 0 ]; then
       super_head=$(echo "$super_resp" | jq -r '.data.head_slot' 2>/dev/null || echo "0")
       super_is_syncing=$(echo "$super_resp" | jq -r '.data.is_syncing' 2>/dev/null || echo "true")
 
-      # Get detailed sync state from lighthouse-specific endpoint
-      super_lh=$(curl -sf "$SYNC_SUPER_URL/lighthouse/syncing" 2>/dev/null || echo "")
+      # Get detailed sync state from vibehouse-specific endpoint
+      super_lh=$(curl -sf "$SYNC_SUPER_URL/vibehouse/syncing" 2>/dev/null || echo "")
       if [ -n "$super_lh" ]; then
         super_status=$(echo "$super_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
       fi
@@ -492,7 +492,7 @@ if [ "$SYNC_MODE" = true ] && [ "${VALIDATOR_HEAD_SLOT:-0}" -gt 0 ]; then
       full_head=$(echo "$full_resp" | jq -r '.data.head_slot' 2>/dev/null || echo "0")
       full_is_syncing=$(echo "$full_resp" | jq -r '.data.is_syncing' 2>/dev/null || echo "true")
 
-      full_lh=$(curl -sf "$SYNC_FULL_URL/lighthouse/syncing" 2>/dev/null || echo "")
+      full_lh=$(curl -sf "$SYNC_FULL_URL/vibehouse/syncing" 2>/dev/null || echo "")
       if [ -n "$full_lh" ]; then
         full_status=$(echo "$full_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
       fi
@@ -673,7 +673,7 @@ if [ "$CHURN_MODE" = true ] && [ "${PRE_CHURN_FINALIZED:-0}" -gt 0 ]; then
 
     # Get detailed sync state
     churn_status="not_ready"
-    churn_lh=$(curl -sf "$CHURN_NODE_URL/lighthouse/syncing" 2>/dev/null || echo "")
+    churn_lh=$(curl -sf "$CHURN_NODE_URL/vibehouse/syncing" 2>/dev/null || echo "")
     if [ -n "$churn_lh" ]; then
       churn_status=$(echo "$churn_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
     fi

@@ -1,5 +1,5 @@
 //! This library provides a wrapper around several BLS implementations to provide
-//! Lighthouse-specific functionality.
+//! Vibehouse-specific functionality.
 //!
 //! This crate should not perform direct cryptographic operations, instead it should do these via
 //! external libraries. However, seeing as it is an interface to a real cryptographic library, it

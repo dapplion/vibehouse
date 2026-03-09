@@ -30,7 +30,7 @@ pub const MAX_BANNED_PEERS: usize = 1000;
 /// We ban an IP if there are more than `BANNED_PEERS_PER_IP_THRESHOLD` banned peers with this IP.
 const BANNED_PEERS_PER_IP_THRESHOLD: usize = 5;
 /// Relative factor of peers that are allowed to have a negative gossipsub score without penalizing
-/// them in lighthouse.
+/// them in vibehouse.
 const ALLOWED_NEGATIVE_GOSSIPSUB_FACTOR: f32 = 0.1;
 /// The time we allow peers to be in the dialing state in our PeerDb before we revert them to a
 /// disconnected state.

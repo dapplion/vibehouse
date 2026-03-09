@@ -462,7 +462,7 @@ pub fn get_config<E: EthSpec>(
      * Replaces previously set flags.
      * Libp2p and discovery ports are set explicitly by selecting
      * a random free port so that we aren't needlessly updating ENR
-     * from lighthouse.
+     * from vibehouse.
      * Discovery address is set to localhost by default.
      */
     if cli_args.get_flag("zero-ports") {
@@ -582,7 +582,7 @@ pub fn get_config<E: EthSpec>(
         // When 'private' flag is present, use a zero-initialized bytes array.
         GraffitiOrigin::UserSpecified(GraffitiString::empty().into())
     } else {
-        // Use the default lighthouse graffiti if no user-specified graffiti flags are present
+        // Use the default vibehouse graffiti if no user-specified graffiti flags are present
         GraffitiOrigin::default()
     };
     client_config.beacon_graffiti = beacon_graffiti;
@@ -909,7 +909,7 @@ pub fn get_config<E: EthSpec>(
     Ok(client_config)
 }
 
-/// Gets the listening_addresses for lighthouse based on the cli options.
+/// Gets the listening_addresses for vibehouse based on the cli options.
 pub fn parse_listening_addresses(cli_args: &ArgMatches) -> Result<ListenAddress, String> {
     let listen_addresses_str = cli_args
         .get_many::<String>("listen-address")
@@ -993,7 +993,7 @@ pub fn parse_listening_addresses(cli_args: &ArgMatches) -> Result<ListenAddress,
             format!("Failed to parse --quic6-port as an integer: {parse_error}")
         })?;
 
-    // Here we specify the default listening addresses for Lighthouse.
+    // Here we specify the default listening addresses for Vibehouse.
     // By default, we listen on 0.0.0.0.
     //
     // IF the host supports a globally routable IPv6 address, we also listen on ::.

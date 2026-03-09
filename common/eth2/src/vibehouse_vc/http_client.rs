@@ -16,7 +16,7 @@ use types::graffiti::GraffitiString;
 use zeroize::Zeroizing;
 
 /// A wrapper around `reqwest::Client` which provides convenience methods for interfacing with a
-/// Lighthouse Validator Client HTTP server (`validator_client/src/http_api`).
+/// Vibehouse Validator Client HTTP server (`validator_client/src/http_api`).
 #[derive(Clone)]
 pub struct ValidatorClientHttpClient {
     client: reqwest::Client,
@@ -281,60 +281,60 @@ impl ValidatorClientHttpClient {
         Ok(response.json().await?)
     }
 
-    /// `GET lighthouse/version`
+    /// `GET vibehouse/version`
     pub async fn get_vibehouse_version(&self) -> Result<GenericResponse<VersionData>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("version");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/health`
-    pub async fn get_lighthouse_health(&self) -> Result<GenericResponse<Health>, Error> {
+    /// `GET vibehouse/health`
+    pub async fn get_vibehouse_health(&self) -> Result<GenericResponse<Health>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("health");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/spec`
-    pub async fn get_lighthouse_spec<T: Serialize + DeserializeOwned>(
+    /// `GET vibehouse/spec`
+    pub async fn get_vibehouse_spec<T: Serialize + DeserializeOwned>(
         &self,
     ) -> Result<GenericResponse<T>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("spec");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/validators`
-    pub async fn get_lighthouse_validators(
+    /// `GET vibehouse/validators`
+    pub async fn get_vibehouse_validators(
         &self,
     ) -> Result<GenericResponse<Vec<ValidatorData>>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators");
 
         self.get(path).await
     }
 
-    /// `GET lighthouse/validators/{validator_pubkey}`
-    pub async fn get_lighthouse_validators_pubkey(
+    /// `GET vibehouse/validators/{validator_pubkey}`
+    pub async fn get_vibehouse_validators_pubkey(
         &self,
         validator_pubkey: &PublicKeyBytes,
     ) -> Result<Option<GenericResponse<ValidatorData>>, Error> {
@@ -342,15 +342,15 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators")
             .push(&validator_pubkey.to_string());
 
         self.get_opt(path).await
     }
 
-    /// `POST lighthouse/validators`
-    pub async fn post_lighthouse_validators(
+    /// `POST vibehouse/validators`
+    pub async fn post_vibehouse_validators(
         &self,
         validators: Vec<ValidatorRequest>,
     ) -> Result<GenericResponse<PostValidatorsResponseData>, Error> {
@@ -358,14 +358,14 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators");
 
         self.post(path, &validators).await
     }
 
-    /// `POST lighthouse/validators/mnemonic`
-    pub async fn post_lighthouse_validators_mnemonic(
+    /// `POST vibehouse/validators/mnemonic`
+    pub async fn post_vibehouse_validators_mnemonic(
         &self,
         request: &CreateValidatorsMnemonicRequest,
     ) -> Result<GenericResponse<Vec<CreatedValidator>>, Error> {
@@ -373,15 +373,15 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators")
             .push("mnemonic");
 
         self.post(path, &request).await
     }
 
-    /// `POST lighthouse/validators/keystore`
-    pub async fn post_lighthouse_validators_keystore(
+    /// `POST vibehouse/validators/keystore`
+    pub async fn post_vibehouse_validators_keystore(
         &self,
         request: &KeystoreValidatorsPostRequest,
     ) -> Result<GenericResponse<ValidatorData>, Error> {
@@ -389,15 +389,15 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators")
             .push("keystore");
 
         self.post(path, &request).await
     }
 
-    /// `POST lighthouse/validators/web3signer`
-    pub async fn post_lighthouse_validators_web3signer(
+    /// `POST vibehouse/validators/web3signer`
+    pub async fn post_vibehouse_validators_web3signer(
         &self,
         request: &[Web3SignerValidatorRequest],
     ) -> Result<(), Error> {
@@ -405,16 +405,16 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators")
             .push("web3signer");
 
         self.post(path, &request).await
     }
 
-    /// `PATCH lighthouse/validators/{validator_pubkey}`
+    /// `PATCH vibehouse/validators/{validator_pubkey}`
     #[allow(clippy::too_many_arguments)]
-    pub async fn patch_lighthouse_validators(
+    pub async fn patch_vibehouse_validators(
         &self,
         voting_pubkey: &PublicKeyBytes,
         enabled: Option<bool>,
@@ -428,7 +428,7 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("validators")
             .push(&voting_pubkey.to_string());
 
@@ -447,7 +447,7 @@ impl ValidatorClientHttpClient {
     }
 
     /// `DELETE eth/v1/keystores`
-    pub async fn delete_lighthouse_keystores(
+    pub async fn delete_vibehouse_keystores(
         &self,
         req: &DeleteKeystoresRequest,
     ) -> Result<ExportKeystoresResponse, Error> {
@@ -455,7 +455,7 @@ impl ValidatorClientHttpClient {
 
         path.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("keystores");
 
         self.delete_with_unsigned_response(path, req).await
@@ -517,12 +517,12 @@ impl ValidatorClientHttpClient {
         Ok(url)
     }
 
-    /// `GET lighthouse/auth`
+    /// `GET vibehouse/auth`
     pub async fn get_auth(&self) -> Result<AuthResponse, Error> {
         let mut url = self.server.full.clone();
         url.path_segments_mut()
             .map_err(|()| Error::InvalidUrl(self.server.clone()))?
-            .push("lighthouse")
+            .push("vibehouse")
             .push("auth");
         self.get_unsigned(url).await
     }

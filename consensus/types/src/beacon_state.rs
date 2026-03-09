@@ -141,7 +141,7 @@ pub enum Error {
     IncorrectAttestationIndex,
     /// An arithmetic operation occurred which would have overflowed or divided by 0.
     ///
-    /// This represents a serious bug in either the spec or Lighthouse!
+    /// This represents a serious bug in either the spec or Vibehouse!
     ArithError(ArithError),
     MissingBeaconBlock(SignedBeaconBlockHash),
     MissingBeaconState(BeaconStateHash),

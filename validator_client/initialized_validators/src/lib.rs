@@ -1282,7 +1282,7 @@ impl InitializedValidators {
                                     warn!(
                                         path = ?lockfile_path.display(),
                                         cause = "Ungraceful shutdown (harmless) OR \
-                                                    non-Lighthouse client using this keystore \
+                                                    non-Vibehouse client using this keystore \
                                                     (risky)",
                                         "Ignored stale lockfile"
                                     );

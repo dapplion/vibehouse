@@ -12,7 +12,7 @@ CONFIG=${2:-$SCRIPT_DIR/checkpoint-sync-config-sepolia.yaml}
 
 # Test configuration
 # ------------------------------------------------------
-# Interval for polling the /lighthouse/syncing endpoint for sync status
+# Interval for polling the /vibehouse/syncing endpoint for sync status
 POLL_INTERVAL_SECS=5
 # Target number of slots to backfill to complete this test.
 TARGET_BACKFILL_SLOTS=256
@@ -26,7 +26,7 @@ poll_node() {
   local node_type=$1
   local url=${node_urls[$node_type]}
 
-  response=$(curl -s "${url}/lighthouse/syncing")
+  response=$(curl -s "${url}/vibehouse/syncing")
 
   if [ -z "$response" ] || [ "$response" = "null" ]; then
     echo "${node_type} status: No response or null response"
@@ -54,7 +54,7 @@ poll_node() {
   fi
   # For other states (Synced, SyncingFinalized, SyncingHead, SyncTransition, Stalled, Unknown),
   # we continue polling
-  # NOTE: there is a bug where Lighthouse briefly switch to "Synced" before completing backfilling. We ignore this state
+  # NOTE: there is a bug where Vibehouse briefly switch to "Synced" before completing backfilling. We ignore this state
   # as it's unlikely a node is fully synced without going through backfilling `TARGET_BACKFILL_SLOTS` slots (only
   # possible on a new network).
 }

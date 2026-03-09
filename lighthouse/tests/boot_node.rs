@@ -15,10 +15,10 @@ use vibehouse_network::{Enr, discovery::ENR_FILENAME};
 
 const IP_ADDRESS: &str = "192.168.2.108";
 
-/// Returns the `lighthouse boot_node` command.
+/// Returns the `vibehouse boot_node` command.
 fn base_cmd() -> Command {
-    let lighthouse_bin = env!("CARGO_BIN_EXE_vibehouse");
-    let path = lighthouse_bin
+    let vibehouse_bin = env!("CARGO_BIN_EXE_vibehouse");
+    let path = vibehouse_bin
         .parse::<PathBuf>()
         .expect("should parse CARGO_TARGET_DIR");
 

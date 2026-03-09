@@ -253,10 +253,10 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_lighthouse_spec(self) -> Self {
+    pub async fn test_get_vibehouse_spec(self) -> Self {
         let result = self
             .client
-            .get_lighthouse_spec::<ConfigAndPresetGloas>()
+            .get_vibehouse_spec::<ConfigAndPresetGloas>()
             .await
             .map(|res| ConfigAndPreset::Gloas(res.data))
             .unwrap();
@@ -280,15 +280,15 @@ impl ApiTester {
     }
 
     #[cfg(target_os = "linux")]
-    pub async fn test_get_lighthouse_health(self) -> Self {
-        self.client.get_lighthouse_health().await.unwrap();
+    pub async fn test_get_vibehouse_health(self) -> Self {
+        self.client.get_vibehouse_health().await.unwrap();
 
         self
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub async fn test_get_lighthouse_health(self) -> Self {
-        self.client.get_lighthouse_health().await.unwrap_err();
+    pub async fn test_get_vibehouse_health(self) -> Self {
+        self.client.get_vibehouse_health().await.unwrap_err();
 
         self
     }
@@ -337,7 +337,7 @@ impl ApiTester {
             };
             let response = self
                 .client
-                .post_lighthouse_validators_mnemonic(&request)
+                .post_vibehouse_validators_mnemonic(&request)
                 .await
                 .unwrap()
                 .data;
@@ -350,7 +350,7 @@ impl ApiTester {
             );
             let response = self
                 .client
-                .post_lighthouse_validators(validators.clone())
+                .post_vibehouse_validators(validators.clone())
                 .await
                 .unwrap()
                 .data;
@@ -364,7 +364,7 @@ impl ApiTester {
             initial_enabled_vals + s.count - s.disabled.len()
         );
 
-        let server_vals = self.client.get_lighthouse_validators().await.unwrap().data;
+        let server_vals = self.client.get_vibehouse_validators().await.unwrap().data;
 
         assert_eq!(server_vals.len(), self.vals_total());
 
@@ -463,7 +463,7 @@ impl ApiTester {
             };
 
             self.client
-                .post_lighthouse_validators_keystore(&request)
+                .post_vibehouse_validators_keystore(&request)
                 .await
                 .unwrap_err();
 
@@ -486,7 +486,7 @@ impl ApiTester {
 
         let response = self
             .client
-            .post_lighthouse_validators_keystore(&request)
+            .post_vibehouse_validators_keystore(&request)
             .await
             .unwrap()
             .data;
@@ -496,7 +496,7 @@ impl ApiTester {
         assert_eq!(self.vals_total(), initial_vals + 1);
         assert_eq!(self.vals_enabled(), initial_enabled_vals + num_enabled);
 
-        let server_vals = self.client.get_lighthouse_validators().await.unwrap().data;
+        let server_vals = self.client.get_vibehouse_validators().await.unwrap().data;
 
         assert_eq!(server_vals.len(), self.vals_total());
 
@@ -533,7 +533,7 @@ impl ApiTester {
             .collect();
 
         self.client
-            .post_lighthouse_validators_web3signer(&request)
+            .post_vibehouse_validators_web3signer(&request)
             .await
             .unwrap();
 
@@ -548,10 +548,10 @@ impl ApiTester {
     }
 
     pub async fn set_validator_enabled(self, index: usize, enabled: bool) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 Some(enabled),
                 None,
@@ -573,7 +573,7 @@ impl ApiTester {
 
         assert!(
             self.client
-                .get_lighthouse_validators()
+                .get_vibehouse_validators()
                 .await
                 .unwrap()
                 .data
@@ -586,7 +586,7 @@ impl ApiTester {
         // Check the server via an individual request.
         assert_eq!(
             self.client
-                .get_lighthouse_validators_pubkey(&validator.voting_pubkey)
+                .get_vibehouse_validators_pubkey(&validator.voting_pubkey)
                 .await
                 .unwrap()
                 .unwrap()
@@ -599,10 +599,10 @@ impl ApiTester {
     }
 
     pub async fn set_gas_limit(self, index: usize, gas_limit: u64) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 Some(gas_limit),
@@ -618,7 +618,7 @@ impl ApiTester {
     }
 
     pub async fn assert_gas_limit(self, index: usize, gas_limit: u64) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store.get_gas_limit(&validator.voting_pubkey),
@@ -629,10 +629,10 @@ impl ApiTester {
     }
 
     pub async fn set_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         self.client
-            .patch_lighthouse_validators(
+            .patch_vibehouse_validators(
                 &validator.voting_pubkey,
                 None,
                 None,
@@ -648,7 +648,7 @@ impl ApiTester {
     }
 
     pub async fn assert_builder_proposals(self, index: usize, builder_proposals: bool) -> Self {
-        let validator = &self.client.get_lighthouse_validators().await.unwrap().data[index];
+        let validator = &self.client.get_vibehouse_validators().await.unwrap().data[index];
 
         assert_eq!(
             self.validator_store

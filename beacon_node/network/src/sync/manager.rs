@@ -1,4 +1,4 @@
-//! The `SyncManager` facilities the block syncing logic of lighthouse. The current networking
+//! The `SyncManager` facilities the block syncing logic of vibehouse. The current networking
 //! specification provides two methods from which to obtain blocks from peers. The `BlocksByRange`
 //! request and the `BlocksByRoot` request. The former is used to obtain a large number of
 //! blocks and the latter allows for searching for blocks given a block-hash.

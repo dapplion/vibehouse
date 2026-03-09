@@ -35,7 +35,7 @@ pub enum Domain {
     ProposerPreferences,
 }
 
-/// Lighthouse's internal configuration struct.
+/// Vibehouse's internal configuration struct.
 ///
 /// Contains a mixture of "preset" and "config" values w.r.t to the EF definitions.
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
@@ -898,7 +898,7 @@ impl ChainSpec {
 
     /// Returns the highest possible value of blob sidecar subnet count based on enabled forks.
     ///
-    /// This is useful for upper bounds for the subnet count during a given run of lighthouse.
+    /// This is useful for upper bounds for the subnet count during a given run of vibehouse.
     pub fn blob_sidecar_subnet_count_max(&self) -> u64 {
         if self.electra_fork_epoch.is_some() {
             self.blob_sidecar_subnet_count_electra
@@ -1390,7 +1390,7 @@ impl ChainSpec {
             ptc_size: 2,                            // 2^1 (vs mainnet 512)
             max_builders_per_withdrawals_sweep: 16, // 2^4 (vs mainnet 16384)
             // Other
-            network_id: 2, // lighthouse testnet network id
+            network_id: 2, // vibehouse testnet network id
             deposit_chain_id: 5,
             deposit_network_id: 5,
             deposit_contract_address: "1234567890123456789012345678901234567890"

@@ -1,4 +1,4 @@
-//! This module contains the logic for Lighthouse's backfill sync.
+//! This module contains the logic for Vibehouse's backfill sync.
 //!
 //! This kind of sync occurs when a trusted state is provided to the client. The client
 //! will perform a [`RangeSync`] to the latest head from the trusted state, such that the

@@ -121,7 +121,7 @@ pub async fn notify<S: ValidatorStore, T: SlotClock + 'static>(
 
         if total_validators == 0 {
             info!(
-                msg = "see `lighthouse vm create --help` or the HTTP API documentation",
+                msg = "see `vibehouse vm create --help` or the HTTP API documentation",
                 "No validators present"
             )
         } else if total_validators == attesting_validators {

@@ -23,7 +23,7 @@ mod range;
 
 type T = Witness<ManualSlotClock, E, MemoryStore<E>, MemoryStore<E>>;
 
-/// This test utility enables integration testing of Lighthouse sync components.
+/// This test utility enables integration testing of Vibehouse sync components.
 ///
 /// It covers the following:
 /// 1. Sending `SyncMessage` to `SyncManager` to trigger `RangeSync`, `BackFillSync` and `BlockLookups` behaviours.

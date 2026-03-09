@@ -1,4 +1,4 @@
-/// This crate provides the network server for Lighthouse.
+/// This crate provides the network server for Vibehouse.
 pub mod service;
 
 mod metrics;

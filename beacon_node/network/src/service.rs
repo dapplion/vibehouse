@@ -178,14 +178,14 @@ pub struct NetworkService<T: BeaconChainTypes> {
     libp2p: Network<T::EthSpec>,
     /// An attestation and sync committee subnet manager service.
     subnet_service: SubnetService<T>,
-    /// The receiver channel for lighthouse to communicate with the network service.
+    /// The receiver channel for vibehouse to communicate with the network service.
     network_recv: mpsc::UnboundedReceiver<NetworkMessage<T::EthSpec>>,
-    /// The receiver channel for lighthouse to send validator subscription requests.
+    /// The receiver channel for vibehouse to send validator subscription requests.
     validator_subscription_recv: mpsc::Receiver<ValidatorSubscriptionMessage>,
     /// The sending channel for the network service to send messages to be routed throughout
-    /// lighthouse.
+    /// vibehouse.
     router_send: mpsc::UnboundedSender<RouterMessage<T::EthSpec>>,
-    /// A reference to lighthouse's database to persist the DHT.
+    /// A reference to vibehouse's database to persist the DHT.
     store: Arc<HotColdDB<T::EthSpec, T::HotStore, T::ColdStore>>,
     /// A collection of global variables, accessible outside of the network service.
     network_globals: Arc<NetworkGlobals<T::EthSpec>>,

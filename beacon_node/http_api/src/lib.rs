@@ -2,7 +2,7 @@
 //!
 //! <https://github.com/ethereum/beacon-APIs>
 //!
-//! There are also some additional, non-standard endpoints behind the `/lighthouse/` path which are
+//! There are also some additional, non-standard endpoints behind the `/vibehouse/` path which are
 //! used for development.
 // BeaconChainError is returned from closures throughout this crate.
 // Its size (128+ bytes) triggers result_large_err but boxing it would
@@ -428,7 +428,7 @@ fn bucket_api_path(path: &str) -> &'static str {
         .or_else(|| starts_with("v1/validator/"))
         .or_else(|| starts_with("v2/validator/"))
         .or_else(|| starts_with("v3/validator/"))
-        .or_else(|| starts_with("lighthouse"))
+        .or_else(|| starts_with("vibehouse"))
         .unwrap_or("other")
 }
 
@@ -786,85 +786,85 @@ pub fn serve<T: BeaconChainTypes>(
         )
         // SSE events
         .route("/eth/v1/events", get(get_events::<T>))
-        // Lighthouse routes
-        .route("/lighthouse/health", get(get_lighthouse_health::<T>))
-        .route("/lighthouse/ui/health", get(get_lighthouse_ui_health::<T>))
+        // Vibehouse routes
+        .route("/vibehouse/health", get(get_vibehouse_health::<T>))
+        .route("/vibehouse/ui/health", get(get_vibehouse_ui_health::<T>))
         .route(
-            "/lighthouse/ui/validator_count",
-            get(get_lighthouse_ui_validator_count::<T>),
+            "/vibehouse/ui/validator_count",
+            get(get_vibehouse_ui_validator_count::<T>),
         )
-        .route("/lighthouse/syncing", get(get_lighthouse_syncing::<T>))
-        .route("/lighthouse/nat", get(get_lighthouse_nat::<T>))
-        .route("/lighthouse/peers", get(get_lighthouse_peers::<T>))
+        .route("/vibehouse/syncing", get(get_vibehouse_syncing::<T>))
+        .route("/vibehouse/nat", get(get_vibehouse_nat::<T>))
+        .route("/vibehouse/peers", get(get_vibehouse_peers::<T>))
         .route(
-            "/lighthouse/peers/connected",
-            get(get_lighthouse_peers_connected::<T>),
-        )
-        .route(
-            "/lighthouse/proto_array",
-            get(get_lighthouse_proto_array::<T>),
+            "/vibehouse/peers/connected",
+            get(get_vibehouse_peers_connected::<T>),
         )
         .route(
-            "/lighthouse/validator_inclusion/{epoch}/{validator_id}",
-            get(get_lighthouse_validator_inclusion_global::<T>),
+            "/vibehouse/proto_array",
+            get(get_vibehouse_proto_array::<T>),
         )
         .route(
-            "/lighthouse/validator_inclusion/{epoch}/global",
-            get(get_lighthouse_validator_inclusion::<T>),
-        )
-        .route("/lighthouse/staking", get(get_lighthouse_staking::<T>))
-        .route(
-            "/lighthouse/database/info",
-            get(get_lighthouse_database_info::<T>),
+            "/vibehouse/validator_inclusion/{epoch}/{validator_id}",
+            get(get_vibehouse_validator_inclusion_global::<T>),
         )
         .route(
-            "/lighthouse/custody/info",
-            get(get_lighthouse_custody_info::<T>),
+            "/vibehouse/validator_inclusion/{epoch}/global",
+            get(get_vibehouse_validator_inclusion::<T>),
+        )
+        .route("/vibehouse/staking", get(get_vibehouse_staking::<T>))
+        .route(
+            "/vibehouse/database/info",
+            get(get_vibehouse_database_info::<T>),
         )
         .route(
-            "/lighthouse/analysis/block_rewards",
-            get(get_lighthouse_block_rewards::<T>).post(post_lighthouse_block_rewards::<T>),
+            "/vibehouse/custody/info",
+            get(get_vibehouse_custody_info::<T>),
         )
         .route(
-            "/lighthouse/analysis/attestation_performance/{target}",
-            get(get_lighthouse_attestation_performance::<T>),
+            "/vibehouse/analysis/block_rewards",
+            get(get_vibehouse_block_rewards::<T>).post(post_vibehouse_block_rewards::<T>),
         )
         .route(
-            "/lighthouse/analysis/block_packing_efficiency",
-            get(get_lighthouse_block_packing_efficiency::<T>),
+            "/vibehouse/analysis/attestation_performance/{target}",
+            get(get_vibehouse_attestation_performance::<T>),
         )
         .route(
-            "/lighthouse/merge_readiness",
-            get(get_lighthouse_merge_readiness::<T>),
-        )
-        .route("/lighthouse/finalize", post(post_lighthouse_finalize::<T>))
-        .route(
-            "/lighthouse/compaction",
-            post(post_lighthouse_compaction::<T>),
-        )
-        .route("/lighthouse/add_peer", post(post_lighthouse_add_peer::<T>))
-        .route(
-            "/lighthouse/remove_peer",
-            post(post_lighthouse_remove_peer::<T>),
-        )
-        .route("/lighthouse/liveness", post(post_lighthouse_liveness::<T>))
-        .route(
-            "/lighthouse/ui/validator_metrics",
-            post(post_lighthouse_ui_validator_metrics::<T>),
+            "/vibehouse/analysis/block_packing_efficiency",
+            get(get_vibehouse_block_packing_efficiency::<T>),
         )
         .route(
-            "/lighthouse/ui/validator_info",
-            post(post_lighthouse_ui_validator_info::<T>),
+            "/vibehouse/merge_readiness",
+            get(get_vibehouse_merge_readiness::<T>),
+        )
+        .route("/vibehouse/finalize", post(post_vibehouse_finalize::<T>))
+        .route(
+            "/vibehouse/compaction",
+            post(post_vibehouse_compaction::<T>),
+        )
+        .route("/vibehouse/add_peer", post(post_vibehouse_add_peer::<T>))
+        .route(
+            "/vibehouse/remove_peer",
+            post(post_vibehouse_remove_peer::<T>),
+        )
+        .route("/vibehouse/liveness", post(post_vibehouse_liveness::<T>))
+        .route(
+            "/vibehouse/ui/validator_metrics",
+            post(post_vibehouse_ui_validator_metrics::<T>),
         )
         .route(
-            "/lighthouse/database/reconstruct",
-            post(post_lighthouse_database_reconstruct::<T>),
+            "/vibehouse/ui/validator_info",
+            post(post_vibehouse_ui_validator_info::<T>),
         )
         .route(
-            "/lighthouse/custody/backfill",
-            post(post_lighthouse_custody_backfill::<T>),
+            "/vibehouse/database/reconstruct",
+            post(post_vibehouse_database_reconstruct::<T>),
         )
-        .route("/lighthouse/logs", get(get_lighthouse_logs::<T>))
+        .route(
+            "/vibehouse/custody/backfill",
+            post(post_vibehouse_custody_backfill::<T>),
+        )
+        .route("/vibehouse/logs", get(get_vibehouse_logs::<T>))
         // Vibehouse routes
         .route(
             "/vibehouse/execution_proof_status/{block_id}",
@@ -4235,9 +4235,9 @@ async fn get_events<T: BeaconChainTypes>(
     Ok(Sse::new(s).keep_alive(KeepAlive::default()).into_response())
 }
 
-// -- Lighthouse routes --
+// -- Vibehouse routes --
 
-async fn get_lighthouse_health<T: BeaconChainTypes>(
+async fn get_vibehouse_health<T: BeaconChainTypes>(
     State(_state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     // No task_spawner needed for this simple check.
@@ -4246,7 +4246,7 @@ async fn get_lighthouse_health<T: BeaconChainTypes>(
         .map_err(ApiError::bad_request)
 }
 
-async fn get_lighthouse_ui_health<T: BeaconChainTypes>(
+async fn get_vibehouse_ui_health<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let network_globals = state.network_globals()?;
@@ -4267,7 +4267,7 @@ async fn get_lighthouse_ui_health<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_ui_validator_count<T: BeaconChainTypes>(
+async fn get_vibehouse_ui_validator_count<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4279,7 +4279,7 @@ async fn get_lighthouse_ui_validator_count<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_syncing<T: BeaconChainTypes>(
+async fn get_vibehouse_syncing<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let network_globals = state.network_globals()?;
@@ -4293,7 +4293,7 @@ async fn get_lighthouse_syncing<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_nat<T: BeaconChainTypes>(
+async fn get_vibehouse_nat<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     state
@@ -4304,7 +4304,7 @@ async fn get_lighthouse_nat<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_peers<T: BeaconChainTypes>(
+async fn get_vibehouse_peers<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let network_globals = state.network_globals()?;
@@ -4324,7 +4324,7 @@ async fn get_lighthouse_peers<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_peers_connected<T: BeaconChainTypes>(
+async fn get_vibehouse_peers_connected<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let network_globals = state.network_globals()?;
@@ -4343,7 +4343,7 @@ async fn get_lighthouse_peers_connected<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_proto_array<T: BeaconChainTypes>(
+async fn get_vibehouse_proto_array<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4362,7 +4362,7 @@ async fn get_lighthouse_proto_array<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_validator_inclusion_global<T: BeaconChainTypes>(
+async fn get_vibehouse_validator_inclusion_global<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     Path((epoch, validator_id)): Path<(Epoch, ValidatorId)>,
 ) -> Result<Response, ApiError> {
@@ -4376,7 +4376,7 @@ async fn get_lighthouse_validator_inclusion_global<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_validator_inclusion<T: BeaconChainTypes>(
+async fn get_vibehouse_validator_inclusion<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     Path(epoch): Path<Epoch>,
 ) -> Result<Response, ApiError> {
@@ -4390,7 +4390,7 @@ async fn get_lighthouse_validator_inclusion<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_staking<T: BeaconChainTypes>(
+async fn get_vibehouse_staking<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     state
@@ -4399,7 +4399,7 @@ async fn get_lighthouse_staking<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_database_info<T: BeaconChainTypes>(
+async fn get_vibehouse_database_info<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4409,7 +4409,7 @@ async fn get_lighthouse_database_info<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_custody_info<T: BeaconChainTypes>(
+async fn get_vibehouse_custody_info<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4419,7 +4419,7 @@ async fn get_lighthouse_custody_info<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_block_rewards<T: BeaconChainTypes>(
+async fn get_vibehouse_block_rewards<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     Query(query): Query<eth2::vibehouse::BlockRewardsQuery>,
 ) -> Result<Response, ApiError> {
@@ -4432,7 +4432,7 @@ async fn get_lighthouse_block_rewards<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_block_rewards<T: BeaconChainTypes>(
+async fn post_vibehouse_block_rewards<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4447,7 +4447,7 @@ async fn post_lighthouse_block_rewards<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_attestation_performance<T: BeaconChainTypes>(
+async fn get_vibehouse_attestation_performance<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     Path(target): Path<String>,
     Query(query): Query<eth2::vibehouse::AttestationPerformanceQuery>,
@@ -4461,7 +4461,7 @@ async fn get_lighthouse_attestation_performance<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_block_packing_efficiency<T: BeaconChainTypes>(
+async fn get_vibehouse_block_packing_efficiency<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     Query(query): Query<eth2::vibehouse::BlockPackingEfficiencyQuery>,
 ) -> Result<Response, ApiError> {
@@ -4474,7 +4474,7 @@ async fn get_lighthouse_block_packing_efficiency<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_merge_readiness<T: BeaconChainTypes>(
+async fn get_vibehouse_merge_readiness<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4490,7 +4490,7 @@ async fn get_lighthouse_merge_readiness<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_finalize<T: BeaconChainTypes>(
+async fn post_vibehouse_finalize<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4515,7 +4515,7 @@ async fn post_lighthouse_finalize<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_compaction<T: BeaconChainTypes>(
+async fn post_vibehouse_compaction<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4530,7 +4530,7 @@ async fn post_lighthouse_compaction<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_add_peer<T: BeaconChainTypes>(
+async fn post_vibehouse_add_peer<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4555,7 +4555,7 @@ async fn post_lighthouse_add_peer<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_remove_peer<T: BeaconChainTypes>(
+async fn post_vibehouse_remove_peer<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4580,7 +4580,7 @@ async fn post_lighthouse_remove_peer<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_liveness<T: BeaconChainTypes>(
+async fn post_vibehouse_liveness<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4620,7 +4620,7 @@ async fn post_lighthouse_liveness<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_ui_validator_metrics<T: BeaconChainTypes>(
+async fn post_vibehouse_ui_validator_metrics<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4636,7 +4636,7 @@ async fn post_lighthouse_ui_validator_metrics<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_ui_validator_info<T: BeaconChainTypes>(
+async fn post_vibehouse_ui_validator_info<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     headers: HeaderMap,
     body: Bytes,
@@ -4651,7 +4651,7 @@ async fn post_lighthouse_ui_validator_info<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_database_reconstruct<T: BeaconChainTypes>(
+async fn post_vibehouse_database_reconstruct<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     state.check_not_syncing()?;
@@ -4665,7 +4665,7 @@ async fn post_lighthouse_database_reconstruct<T: BeaconChainTypes>(
         .await
 }
 
-async fn post_lighthouse_custody_backfill<T: BeaconChainTypes>(
+async fn post_vibehouse_custody_backfill<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
@@ -4688,7 +4688,7 @@ async fn post_lighthouse_custody_backfill<T: BeaconChainTypes>(
         .await
 }
 
-async fn get_lighthouse_logs<T: BeaconChainTypes>(
+async fn get_vibehouse_logs<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     let sse_component = state.sse_logging_components.clone();

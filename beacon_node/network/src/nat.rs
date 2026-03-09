@@ -46,7 +46,7 @@ pub async fn construct_upnp_mappings(addr: Ipv4Addr, port: u16) -> Result<(), Er
                 port,
                 SocketAddr::new(IpAddr::V4(addr), port),
                 MAPPING_DURATION,
-                "Lighthouse Discovery port",
+                "Vibehouse Discovery port",
             )
             .await
             .with_context(|| format!("Could not UPnP map port: {} on the gateway", port))?;

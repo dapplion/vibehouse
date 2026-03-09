@@ -663,7 +663,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let new_view = fork_choice_read_lock.cached_fork_choice_view();
 
         // Check to ensure that the finalized block hasn't been marked as invalid. If it has,
-        // shut down Lighthouse.
+        // shut down Vibehouse.
         let finalized_proto_block = fork_choice_read_lock.get_finalized_block()?;
         check_finalized_payload_validity(self, &finalized_proto_block)?;
 
@@ -1160,7 +1160,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 }
 
 /// Check to see if the `finalized_proto_block` has an invalid execution payload. If so, shut down
-/// Lighthouse.
+/// Vibehouse.
 ///
 /// ## Notes
 ///
@@ -1493,7 +1493,7 @@ fn observe_head_block_delays<E: EthSpec, S: SlotClock>(
                 .as_millis() as i64,
         );
 
-        // The time it took to check the validity within Lighthouse
+        // The time it took to check the validity within Vibehouse
         metrics::set_gauge(
             &metrics::BEACON_BLOCK_DELAY_CONSENSUS_VERIFICATION_TIME,
             block_delays

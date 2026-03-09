@@ -119,7 +119,7 @@ impl<E: EthSpec> MockBeaconNode<E> {
             .with_body(
                 r#"{
                 "data": {
-                    "version": "lighthouse-mock"
+                    "version": "vibehouse-mock"
                 }
             }"#,
             )

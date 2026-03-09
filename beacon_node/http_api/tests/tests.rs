@@ -6064,7 +6064,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_lighthouse_rejects_invalid_withdrawals_root(self) -> Self {
+    pub async fn test_vibehouse_rejects_invalid_withdrawals_root(self) -> Self {
         // Ensure builder payload *would be* chosen
         self.mock_builder
             .as_ref()
@@ -6105,7 +6105,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_lighthouse_rejects_invalid_withdrawals_root_v3(self) -> Self {
+    pub async fn test_vibehouse_rejects_invalid_withdrawals_root_v3(self) -> Self {
         // Ensure builder payload *would be* chosen
         self.mock_builder
             .as_ref()
@@ -6139,75 +6139,75 @@ impl ApiTester {
     }
 
     #[cfg(target_os = "linux")]
-    pub async fn test_get_lighthouse_health(self) -> Self {
-        self.client.get_lighthouse_health().await.unwrap();
+    pub async fn test_get_vibehouse_health(self) -> Self {
+        self.client.get_vibehouse_health().await.unwrap();
 
         self
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub async fn test_get_lighthouse_health(self) -> Self {
-        self.client.get_lighthouse_health().await.unwrap_err();
+    pub async fn test_get_vibehouse_health(self) -> Self {
+        self.client.get_vibehouse_health().await.unwrap_err();
 
         self
     }
 
-    pub async fn test_get_lighthouse_syncing(self) -> Self {
-        self.client.get_lighthouse_syncing().await.unwrap();
+    pub async fn test_get_vibehouse_syncing(self) -> Self {
+        self.client.get_vibehouse_syncing().await.unwrap();
 
         self
     }
 
-    pub async fn test_get_lighthouse_proto_array(self) -> Self {
-        self.client.get_lighthouse_proto_array().await.unwrap();
+    pub async fn test_get_vibehouse_proto_array(self) -> Self {
+        self.client.get_vibehouse_proto_array().await.unwrap();
 
         self
     }
 
-    pub async fn test_get_lighthouse_validator_inclusion_global(self) -> Self {
+    pub async fn test_get_vibehouse_validator_inclusion_global(self) -> Self {
         let epoch = self.chain.epoch().unwrap() - 1;
         self.client
-            .get_lighthouse_validator_inclusion_global(epoch)
+            .get_vibehouse_validator_inclusion_global(epoch)
             .await
             .unwrap();
 
         self
     }
 
-    pub async fn test_get_lighthouse_validator_inclusion(self) -> Self {
+    pub async fn test_get_vibehouse_validator_inclusion(self) -> Self {
         let epoch = self.chain.epoch().unwrap() - 1;
         self.client
-            .get_lighthouse_validator_inclusion(epoch, ValidatorId::Index(0))
+            .get_vibehouse_validator_inclusion(epoch, ValidatorId::Index(0))
             .await
             .unwrap();
 
         self
     }
 
-    pub async fn test_post_lighthouse_database_reconstruct(self) -> Self {
+    pub async fn test_post_vibehouse_database_reconstruct(self) -> Self {
         let response = self
             .client
-            .post_lighthouse_database_reconstruct()
+            .post_vibehouse_database_reconstruct()
             .await
             .unwrap();
         assert_eq!(response, "success");
         self
     }
 
-    pub async fn test_post_lighthouse_add_remove_peer(self) -> Self {
+    pub async fn test_post_vibehouse_add_remove_peer(self) -> Self {
         let trusted_peers = self.ctx.network_globals.as_ref().unwrap().trusted_peers();
         // Check that there aren't any trusted peers on startup
         assert!(trusted_peers.is_empty());
         let enr = AdminPeer {enr: "enr:-QESuEDpVVjo8dmDuneRhLnXdIGY3e9NQiaG4sJR3GS-VMQCQDsmBYoQhJRaPeZzPlTsZj2F8v-iV4lKJEYIRIyztqexHodhdHRuZXRziAwAAAAAAAAAhmNsaWVudNiKTGlnaHRob3VzZYw3LjAuMC1iZXRhLjSEZXRoMpDS8Zl_YAAJEAAIAAAAAAAAgmlkgnY0gmlwhIe11XmDaXA2kCoBBPkAOitZAAAAAAAAAAKEcXVpY4IjKYVxdWljNoIjg4lzZWNwMjU2azGhA43ihEr9BUVVnIHIfFqBR3Izs4YRHHPsTqIbUgEb3Hc8iHN5bmNuZXRzD4N0Y3CCIyiEdGNwNoIjgoN1ZHCCIyiEdWRwNoIjgg".to_string()};
         self.client
-            .post_lighthouse_add_peer(enr.clone())
+            .post_vibehouse_add_peer(enr.clone())
             .await
             .unwrap();
         let trusted_peers = self.ctx.network_globals.as_ref().unwrap().trusted_peers();
         // Should have 1 trusted peer
         assert_eq!(trusted_peers.len(), 1);
 
-        self.client.post_lighthouse_remove_peer(enr).await.unwrap();
+        self.client.post_vibehouse_remove_peer(enr).await.unwrap();
         let trusted_peers = self.ctx.network_globals.as_ref().unwrap().trusted_peers();
         // Should be empty after removing
         assert!(trusted_peers.is_empty());
@@ -6215,7 +6215,7 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_post_lighthouse_liveness(self) -> Self {
+    pub async fn test_post_vibehouse_liveness(self) -> Self {
         let epoch = self.chain.epoch().unwrap();
         let head_state = self.chain.head_beacon_state_cloned();
         let indices = (0..head_state.validators().len())
@@ -6236,7 +6236,7 @@ impl ApiTester {
 
         let result = self
             .client
-            .post_lighthouse_liveness(indices.as_slice(), epoch)
+            .post_vibehouse_liveness(indices.as_slice(), epoch)
             .await
             .unwrap()
             .data;
@@ -6289,7 +6289,7 @@ impl ApiTester {
 
         let result = self
             .client
-            .post_lighthouse_liveness(indices.as_slice(), epoch)
+            .post_vibehouse_liveness(indices.as_slice(), epoch)
             .await
             .unwrap()
             .data;
@@ -6820,7 +6820,7 @@ impl ApiTester {
     ///
     /// Exercises both:
     /// 1. The standard `GET /eth/v1/beacon/rewards/blocks/{block_id}` endpoint
-    /// 2. The lighthouse `GET /lighthouse/analysis/block_rewards` endpoint which
+    /// 2. The vibehouse `GET /vibehouse/analysis/block_rewards` endpoint which
     ///    uses `load_envelopes_for_blocks` + `BlockReplayer.envelopes()` — a code
     ///    path only reached for Gloas blocks.
     async fn test_beacon_block_rewards_gloas(self) -> Self {
@@ -6842,14 +6842,14 @@ impl ApiTester {
             assert_eq!(beacon_block_reward, api_beacon_block_reward);
         }
 
-        // Lighthouse analysis endpoint: exercises load_envelopes_for_blocks +
+        // Vibehouse analysis endpoint: exercises load_envelopes_for_blocks +
         // BlockReplayer.envelopes() for Gloas blocks across multiple slots.
         let head_slot = self.harness.chain.head_snapshot().beacon_block.slot();
         let analysis_rewards = self
             .client
-            .get_lighthouse_analysis_block_rewards(Slot::new(1), head_slot)
+            .get_vibehouse_analysis_block_rewards(Slot::new(1), head_slot)
             .await
-            .expect("lighthouse block_rewards analysis should succeed for Gloas chain");
+            .expect("vibehouse block_rewards analysis should succeed for Gloas chain");
 
         assert!(
             !analysis_rewards.is_empty(),
@@ -7933,7 +7933,7 @@ async fn builder_works_post_capella() {
         .await
         .test_builder_works_post_capella()
         .await
-        .test_lighthouse_rejects_invalid_withdrawals_root()
+        .test_vibehouse_rejects_invalid_withdrawals_root()
         .await;
 }
 
@@ -7951,7 +7951,7 @@ async fn builder_works_post_deneb() {
         .await
         .test_builder_works_post_deneb()
         .await
-        .test_lighthouse_rejects_invalid_withdrawals_root_v3()
+        .test_vibehouse_rejects_invalid_withdrawals_root_v3()
         .await;
 }
 
@@ -8058,24 +8058,24 @@ async fn post_validator_liveness_epoch() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn lighthouse_endpoints() {
+async fn vibehouse_endpoints() {
     ApiTester::new()
         .await
-        .test_get_lighthouse_health()
+        .test_get_vibehouse_health()
         .await
-        .test_get_lighthouse_syncing()
+        .test_get_vibehouse_syncing()
         .await
-        .test_get_lighthouse_proto_array()
+        .test_get_vibehouse_proto_array()
         .await
-        .test_get_lighthouse_validator_inclusion()
+        .test_get_vibehouse_validator_inclusion()
         .await
-        .test_get_lighthouse_validator_inclusion_global()
+        .test_get_vibehouse_validator_inclusion_global()
         .await
-        .test_post_lighthouse_database_reconstruct()
+        .test_post_vibehouse_database_reconstruct()
         .await
-        .test_post_lighthouse_liveness()
+        .test_post_vibehouse_liveness()
         .await
-        .test_post_lighthouse_add_remove_peer()
+        .test_post_vibehouse_add_remove_peer()
         .await;
 }
 

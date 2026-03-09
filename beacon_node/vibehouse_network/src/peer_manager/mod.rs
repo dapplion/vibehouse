@@ -1,4 +1,4 @@
-//! Implementation of Lighthouse's peer management system.
+//! Implementation of Vibehouse's peer management system.
 
 use crate::rpc::{GoodbyeReason, MetaData, Protocol, RPCError, RpcErrorResponse};
 use crate::service::TARGET_SUBNET_PEERS;
@@ -595,7 +595,7 @@ impl<E: EthSpec> PeerManager<E> {
                     Protocol::BlocksByRange => PeerAction::MidToleranceError,
                     Protocol::BlocksByRoot => PeerAction::MidToleranceError,
                     Protocol::BlobsByRange => PeerAction::MidToleranceError,
-                    // Lighthouse does not currently make light client requests; therefore, this
+                    // Vibehouse does not currently make light client requests; therefore, this
                     // is an unexpected scenario. We do not ban the peer for rate limiting.
                     Protocol::LightClientBootstrap => return,
                     Protocol::LightClientOptimisticUpdate => return,
@@ -1275,7 +1275,7 @@ impl<E: EthSpec> PeerManager<E> {
     ///   committees.
     /// - Do not prune trusted peers. NOTE: This means if a user has more trusted peers than the
     ///   excess peer limit, all of the following logic is subverted as we will not prune any peers.
-    ///   Also, the more trusted peers a user has, the less room Lighthouse has to efficiently manage
+    ///   Also, the more trusted peers a user has, the less room Vibehouse has to efficiently manage
     ///   its peers across the subnets.
     ///
     /// Prune peers in the following order:

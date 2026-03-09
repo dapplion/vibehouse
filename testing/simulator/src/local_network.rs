@@ -169,7 +169,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     /// Returns the number of beacon nodes in the network.
     ///
     /// Note: does not count nodes that are external to this `LocalNetwork` that may have connected
-    /// (e.g., another Lighthouse process on the same machine.)
+    /// (e.g., another Vibehouse process on the same machine.)
     pub fn beacon_node_count(&self) -> usize {
         self.beacon_nodes.read().len()
     }
@@ -177,7 +177,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     /// Returns the number of proposer nodes in the network.
     ///
     /// Note: does not count nodes that are external to this `LocalNetwork` that may have connected
-    /// (e.g., another Lighthouse process on the same machine.)
+    /// (e.g., another Vibehouse process on the same machine.)
     pub fn proposer_node_count(&self) -> usize {
         self.proposer_nodes.read().len()
     }
@@ -185,7 +185,7 @@ impl<E: EthSpec> LocalNetwork<E> {
     /// Returns the number of validator clients in the network.
     ///
     /// Note: does not count nodes that are external to this `LocalNetwork` that may have connected
-    /// (e.g., another Lighthouse process on the same machine.)
+    /// (e.g., another Vibehouse process on the same machine.)
     pub fn validator_client_count(&self) -> usize {
         self.validator_clients.read().len()
     }

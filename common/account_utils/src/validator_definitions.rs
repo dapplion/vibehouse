@@ -444,7 +444,7 @@ pub fn is_voting_keystore(file_name: &str) -> bool {
         return false;
     }
 
-    // The format used by Lighthouse.
+    // The format used by Vibehouse.
     if file_name == VOTING_KEYSTORE_FILE {
         return true;
     }
@@ -486,7 +486,7 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn voting_keystore_filename_lighthouse() {
+    fn voting_keystore_filename_vibehouse() {
         assert!(is_voting_keystore(VOTING_KEYSTORE_FILE));
     }
 

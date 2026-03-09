@@ -13,7 +13,7 @@ OFFLINE_DURATION_SECS=${4:-120} # stopped duration  of non validating nodes
 
 # Test configuration
 # ------------------------------------------------------
-# Interval for polling the /lighthouse/syncing endpoint for sync status
+# Interval for polling the /vibehouse/syncing endpoint for sync status
 # Reduce the polling time so that some progress can be seen
 POLL_INTERVAL_SECS=0.5
 # Timeout for this test, if the nodes fail to sync, fail the test.
@@ -30,7 +30,7 @@ poll_node() {
   local node_type=$1
   local url=${node_urls[$node_type]}
 
-  response=$(curl -s "${url}/lighthouse/syncing" 2>/dev/null)
+  response=$(curl -s "${url}/vibehouse/syncing" 2>/dev/null)
 
   if [ -z "$response" ] || [ "$response" = "null" ]; then
     echo "${node_type} status: No response or null response"

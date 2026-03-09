@@ -1477,7 +1477,7 @@ pub static BEACON_BLOCK_DELAY_CONSENSUS_VERIFICATION_TIME: LazyLock<Result<IntGa
     LazyLock::new(|| {
         try_create_int_gauge(
             "beacon_block_delay_consensus_verification_time",
-            "The time taken to verify the block within Lighthouse",
+            "The time taken to verify the block within Vibehouse",
         )
     });
 

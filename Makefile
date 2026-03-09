@@ -216,7 +216,7 @@ test-ef: make-ef-tests run-ef-tests
 # Downloads and runs the nightly EF test vectors.
 test-ef-nightly: make-ef-tests-nightly run-ef-tests
 
-# Runs tests checking interop between Lighthouse and execution clients.
+# Runs tests checking interop between Vibehouse and execution clients.
 test-exec-engine:
 	make -C $(EXECUTION_ENGINE_INTEGRATION) test
 

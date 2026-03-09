@@ -1,5 +1,5 @@
 //! Provides functions that are used for key/account management across multiple crates in the
-//! Lighthouse project.
+//! Vibehouse project.
 
 use eth2_keystore::Keystore;
 use eth2_wallet::{

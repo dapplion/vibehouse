@@ -962,7 +962,7 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             ref err @ BlockError::ParentExecutionPayloadInvalid { ref parent_root } => {
                 warn!(
                     ?parent_root,
-                    advice = "check execution node for corruption then restart it and Lighthouse",
+                    advice = "check execution node for corruption then restart it and Vibehouse",
                     "Failed to sync chain built on invalid parent"
                 );
                 Err(ChainSegmentFailed {

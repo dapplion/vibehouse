@@ -7414,7 +7414,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         if justified_block.execution_status.is_invalid() {
             crit!(
                 msg = "ensure you are not connected to a malicious network. This error is not \
-                recoverable, please reach out to the lighthouse developers for assistance.",
+                recoverable, please reach out to the vibehouse developers for assistance.",
                 "The justified checkpoint is invalid"
             );
 

@@ -9,7 +9,7 @@ use strum::{AsRefStr, EnumIter, IntoStaticStr};
 /// Various client and protocol information related to a node.
 #[derive(Clone, Debug, Serialize)]
 pub struct Client {
-    /// The client's name (Ex: lighthouse, prism, nimbus, etc)
+    /// The client's name (Ex: vibehouse, prism, nimbus, etc)
     pub kind: ClientKind,
     /// The client's version.
     pub version: String,

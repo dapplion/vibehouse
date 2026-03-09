@@ -657,6 +657,7 @@ pub enum ClientCode {
     GoEthereum,
     Grandine,
     Lighthouse,
+    Vibehouse,
     Lodestar,
     Nethermind,
     Nimbus,
@@ -676,6 +677,7 @@ impl std::fmt::Display for ClientCode {
             ClientCode::GoEthereum => "GE",
             ClientCode::Grandine => "GR",
             ClientCode::Lighthouse => "LH",
+            ClientCode::Vibehouse => "VH",
             ClientCode::Lodestar => "LS",
             ClientCode::Nethermind => "NM",
             ClientCode::Nimbus => "NB",
@@ -700,6 +702,7 @@ impl TryFrom<String> for ClientCode {
             "GE" => Ok(Self::GoEthereum),
             "GR" => Ok(Self::Grandine),
             "LH" => Ok(Self::Lighthouse),
+            "VH" => Ok(Self::Vibehouse),
             "LS" => Ok(Self::Lodestar),
             "NM" => Ok(Self::Nethermind),
             "NB" => Ok(Self::Nimbus),
@@ -759,7 +762,7 @@ pub struct ClientVersionV1 {
 }
 
 impl ClientVersionV1 {
-    pub fn calculate_graffiti(&self, lighthouse_commit_prefix: CommitPrefix) -> Graffiti {
+    pub fn calculate_graffiti(&self, vibehouse_commit_prefix: CommitPrefix) -> Graffiti {
         let graffiti_string = format!(
             "{}{}LH{}",
             self.code,
@@ -768,7 +771,7 @@ impl ClientVersionV1 {
                 .get(..4)
                 .unwrap_or(self.commit.0.as_str())
                 .to_lowercase(),
-            lighthouse_commit_prefix
+            vibehouse_commit_prefix
                 .0
                 .get(..4)
                 .unwrap_or("0000")

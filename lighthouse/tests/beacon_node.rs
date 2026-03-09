@@ -36,10 +36,10 @@ const DUMMY_ENR_QUIC_PORT: u16 = 9999;
 const _: () =
     assert!(DUMMY_ENR_QUIC_PORT != 0 && DUMMY_ENR_TCP_PORT != 0 && DUMMY_ENR_UDP_PORT != 0);
 
-/// Returns the `lighthouse beacon_node` command.
+/// Returns the `vibehouse beacon_node` command.
 fn base_cmd() -> Command {
-    let lighthouse_bin = env!("CARGO_BIN_EXE_vibehouse");
-    let path = lighthouse_bin
+    let vibehouse_bin = env!("CARGO_BIN_EXE_vibehouse");
+    let path = vibehouse_bin
         .parse::<PathBuf>()
         .expect("should parse CARGO_TARGET_DIR");
 
@@ -735,7 +735,7 @@ fn run_jwt_optional_flags_test(jwt_flag: &str, jwt_id_flag: &str, jwt_version_fl
     let execution_endpoint = "http://meow.cats";
     let jwt_file = "jwt-file";
     let id = "bn-1";
-    let version = "Lighthouse-v2.1.3";
+    let version = "Vibehouse-v2.1.3";
     CommandLineTest::new_with_no_execution_endpoint()
         .flag("execution-endpoint", Some(execution_endpoint))
         .flag(jwt_flag, dir.path().join(jwt_file).as_os_str().to_str())
@@ -1237,7 +1237,7 @@ fn default_boot_nodes() {
     CommandLineTest::new()
         .run_with_zero_port()
         .with_config(|config| {
-            // Lighthouse Team (Sigma Prime)
+            // Vibehouse Team (Sigma Prime)
             assert_eq!(config.network.boot_nodes_enr.len(), number_of_boot_nodes);
         });
 }

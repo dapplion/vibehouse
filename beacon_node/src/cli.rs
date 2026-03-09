@@ -1499,7 +1499,7 @@ pub fn cli_app() -> Command {
                 .long("builder-user-agent")
                 .value_name("STRING")
                 .help("The HTTP user agent to send alongside requests to the builder URL. The \
-                       default is Lighthouse's version string.")
+                       default is Vibehouse's version string.")
                 .requires("builder")
                 .action(ArgAction::Set)
                 .display_order(0)
