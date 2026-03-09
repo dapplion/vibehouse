@@ -8972,4 +8972,36 @@ mod tests {
             result,
         );
     }
+
+    // ── PTC committee edge cases ─────────────────────────────────
+
+    #[test]
+    fn ptc_committee_no_validators_returns_error() {
+        // Build a state with 0 validators — get_ptc_committee should fail with NoActiveValidators
+        // because get_beacon_committees_at_slot returns empty committees.
+        let (mut state, spec) = make_gloas_state_with_committees(1, 32_000_000_000, 64_000_000_000);
+        let slot = state.slot();
+
+        // Clear all validators and rebuild committee caches so committees are empty
+        *state.validators_mut() = List::empty();
+        *state.balances_mut() = List::empty();
+        state
+            .build_committee_cache(types::RelativeEpoch::Previous, &spec)
+            .expect("should build previous committee cache");
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .expect("should build current committee cache");
+
+        let result = get_ptc_committee(&state, slot, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::NoActiveValidators,
+                ))
+            ),
+            "empty validator set should trigger NoActiveValidators, got {:?}",
+            result,
+        );
+    }
 }
