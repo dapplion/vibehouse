@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — dep update + spec scan (run 680)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
+- CI green (check+clippy passed, 5 jobs in progress), nightly 5 consecutive greens (Mar 5-9)
+- Updated patch dep: zerocopy 0.8.41→0.8.42
+- All 2612 workspace tests pass (excl. web3signer infra-dependent), 1282 types+state_processing pass
+- cargo audit unchanged (1 medium rsa advisory, transitive)
+
 ### 2026-03-09 — spec scan (run 679)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
