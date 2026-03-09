@@ -28,6 +28,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, deep conformance audit (run 718)
+- No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors (v1.5.0)
+- All tracked PRs still OPEN; #4992 (PTC Lookbehind minimal) most active with review from potuz/kevaundray
+- CI green, nightly green (3 consecutive)
+- Deep spec conformance audit of all Gloas functions against consensus-specs master:
+  - `compute_balance_weighted_selection` — verified: `compute_proposer_index`, `get_next_sync_committee_indices`, `get_ptc_committee` all correctly implement the selection algorithm (shuffle_indices=True for proposer/sync, False for PTC)
+  - `compute_balance_weighted_acceptance` — verified: 16-bit random, LE bytes, correct hash preimage (seed + i/16)
+  - `process_execution_payload` (envelope) — verified: all 12 verification checks match spec, builder payment queuing correct
+  - `process_builder_pending_payments` — verified: quorum check, window rotation, ordering within epoch processing
+  - `process_slot` — verified: availability clearing at `(slot+1) % SLOTS_PER_HISTORICAL_ROOT`
+  - `process_epoch` — verified: `builder_pending_payments` called after `pending_consolidations`, before `effective_balance_updates`
+- No code changes needed — all implementations match spec
+
 ### 2026-03-09 — spec stable, test coverage expanded (run 717)
 - No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - All 10 tracked PRs still OPEN
