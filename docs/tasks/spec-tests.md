@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — test coverage (run 655)
+- Spec stable, no new merges. CI green.
+- Audited Gloas error paths for test gaps; found validator sweep BLS credential path and attestation slot overflow untested
+- Added 3 new tests: validator sweep BLS-credential skip behavior (mutable + read-only paths), payload attestation slot overflow at u64::MAX
+- Discovery: `WithdrawalCredentialsInvalid` error at lines 657/667 in process_withdrawals_gloas is defense-in-depth only — `is_fully_withdrawable_validator`/`is_partially_withdrawable_validator` already filter out BLS-credential validators via `has_execution_withdrawal_credential`
+- All 199 gloas tests pass, clippy clean, pushed
+
 ### 2026-03-09 — spec scan (run 650)
 - All 12 tracked Gloas PRs still OPEN, no new merges
 - Found 2 additional Gloas-labeled PRs: #4747 (Fast Confirmation Rule, eip7805/FOCIL) and #4558 (Cell Dissemination, fulu+gloas) — neither is core ePBS, no action needed
