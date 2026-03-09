@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — epoch processing tests + spec scan (run 675)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 9 tracked Gloas PRs still OPEN
+- Added 5 epoch processing integration/edge case tests:
+  - Fulu fork gate skips builder payments even when config enabled
+  - Gloas proposer lookahead entries match independent computation
+  - Combined payments + lookahead no interference
+  - Large total_active_balance quorum arithmetic (safe_arith)
+  - Withdrawals preserved after effective balance updates
+- All 566 state_processing tests pass, clippy clean
+
 ### 2026-03-09 — spec scan (run 674)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
