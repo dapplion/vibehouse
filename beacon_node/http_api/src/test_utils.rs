@@ -9,17 +9,6 @@ use beacon_processor::{
 };
 use directory::DEFAULT_ROOT_DIR;
 use eth2::{BeaconNodeHttpClient, Timeouts};
-use lighthouse_network::rpc::methods::MetaDataV3;
-use lighthouse_network::{
-    ConnectedPoint, Enr, NetworkConfig, NetworkGlobals, PeerId, PeerManager,
-    discv5::enr::CombinedKey,
-    libp2p::swarm::{
-        ConnectionId, NetworkBehaviour,
-        behaviour::{ConnectionEstablished, FromSwarm},
-    },
-    rpc::methods::{MetaData, MetaDataV2},
-    types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield, SyncState},
-};
 use network::{NetworkReceivers, NetworkSenders};
 use sensitive_url::SensitiveUrl;
 use std::future::Future;
@@ -29,6 +18,17 @@ use std::time::Duration;
 use store::MemoryStore;
 use task_executor::test_utils::TestRuntime;
 use types::{ChainSpec, EthSpec};
+use vibehouse_network::rpc::methods::MetaDataV3;
+use vibehouse_network::{
+    ConnectedPoint, Enr, NetworkConfig, NetworkGlobals, PeerId, PeerManager,
+    discv5::enr::CombinedKey,
+    libp2p::swarm::{
+        ConnectionId, NetworkBehaviour,
+        behaviour::{ConnectionEstablished, FromSwarm},
+    },
+    rpc::methods::{MetaData, MetaDataV2},
+    types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield, SyncState},
+};
 
 pub const TCP_PORT: u16 = 42;
 pub const UDP_PORT: u16 = 42;
@@ -226,7 +226,7 @@ pub async fn create_api_server_with_config<T: BeaconChainTypes>(
     ));
 
     // Only a peer manager can add peers, so we create a dummy manager.
-    let config = lighthouse_network::peer_manager::config::Config::default();
+    let config = vibehouse_network::peer_manager::config::Config::default();
     let mut pm = PeerManager::new(config, network_globals.clone()).unwrap();
 
     // add a peer

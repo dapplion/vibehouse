@@ -14,7 +14,6 @@ use directory::{DEFAULT_BEACON_NODE_DIR, DEFAULT_NETWORK_DIR, DEFAULT_ROOT_DIR};
 use environment::RuntimeContext;
 use execution_layer::DEFAULT_JWT_FILE;
 use http_api::TlsConfig;
-use lighthouse_network::{Enr, Multiaddr, NetworkConfig, PeerIdSerialized, multiaddr::Protocol};
 use network_utils::listen_addr::ListenAddress;
 use sensitive_url::SensitiveUrl;
 use std::collections::HashSet;
@@ -30,6 +29,7 @@ use std::time::Duration;
 use tracing::{error, info, warn};
 use types::graffiti::GraffitiString;
 use types::{Checkpoint, Epoch, EthSpec, Hash256, PublicKeyBytes};
+use vibehouse_network::{Enr, Multiaddr, NetworkConfig, PeerIdSerialized, multiaddr::Protocol};
 
 const PURGE_DB_CONFIRMATION: &str = "confirm";
 

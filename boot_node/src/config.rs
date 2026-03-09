@@ -2,12 +2,6 @@ use beacon_node::{get_data_dir, set_network_config};
 use bytes::Bytes;
 use clap::ArgMatches;
 use eth2_network_config::Eth2NetworkConfig;
-use lighthouse_network::discv5::{self, Enr, enr::CombinedKey};
-use lighthouse_network::{
-    NetworkConfig,
-    discovery::{load_enr_from_disk, use_or_load_enr},
-    load_private_key,
-};
 use network_utils::enr_ext::CombinedKeyExt;
 use serde::{Deserialize, Serialize};
 use ssz::Encode;
@@ -15,6 +9,12 @@ use std::net::{SocketAddrV4, SocketAddrV6};
 use std::time::Duration;
 use std::{marker::PhantomData, path::PathBuf};
 use types::EthSpec;
+use vibehouse_network::discv5::{self, Enr, enr::CombinedKey};
+use vibehouse_network::{
+    NetworkConfig,
+    discovery::{load_enr_from_disk, use_or_load_enr},
+    load_private_key,
+};
 
 /// A set of configuration parameters for the bootnode, established from CLI arguments.
 pub struct BootNodeConfig<E: EthSpec> {
@@ -202,13 +202,13 @@ impl BootNodeConfigSerialization {
         } = config;
 
         let (ipv4_listen_socket, ipv6_listen_socket) = match discv5_config.listen_config {
-            lighthouse_network::discv5::ListenConfig::Ipv4 { ip, port } => {
+            vibehouse_network::discv5::ListenConfig::Ipv4 { ip, port } => {
                 (Some(SocketAddrV4::new(ip, port)), None)
             }
-            lighthouse_network::discv5::ListenConfig::Ipv6 { ip, port } => {
+            vibehouse_network::discv5::ListenConfig::Ipv6 { ip, port } => {
                 (None, Some(SocketAddrV6::new(ip, port, 0, 0)))
             }
-            lighthouse_network::discv5::ListenConfig::DualStack {
+            vibehouse_network::discv5::ListenConfig::DualStack {
                 ipv4,
                 ipv4_port,
                 ipv6,

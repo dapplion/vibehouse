@@ -43,13 +43,13 @@ use beacon_chain::{
 use beacon_processor::work_reprocessing_queue::{QueuedUnaggregate, ReprocessQueueMessage};
 use beacon_processor::{Work, WorkEvent};
 use eth2::types::Failure;
-use lighthouse_network::PubsubMessage;
 use network::NetworkMessage;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc::UnboundedSender, oneshot};
 use tracing::{debug, error, warn};
 use types::SingleAttestation;
+use vibehouse_network::PubsubMessage;
 
 // Error variants are only used in `Debug` and considered `dead_code` by the compiler.
 #[derive(Debug)]

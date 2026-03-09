@@ -1,15 +1,15 @@
 use clap::ArgMatches;
-use lighthouse_network::{
-    NETWORK_KEY_FILENAME, NetworkConfig,
-    discovery::{CombinedKey, ENR_FILENAME, build_enr},
-    libp2p::identity::secp256k1,
-};
 use network_utils::enr_ext::CombinedKeyExt;
 use std::io::Write;
 use std::path::PathBuf;
 use std::{fs, net::Ipv4Addr};
 use std::{fs::File, num::NonZeroU16};
 use types::{ChainSpec, EnrForkId, Epoch, EthSpec, FixedBytesExtended, Hash256};
+use vibehouse_network::{
+    NETWORK_KEY_FILENAME, NetworkConfig,
+    discovery::{CombinedKey, ENR_FILENAME, build_enr},
+    libp2p::identity::secp256k1,
+};
 
 pub fn run<E: EthSpec>(matches: &ArgMatches, spec: &ChainSpec) -> Result<(), String> {
     let ip: Ipv4Addr = clap_utils::parse_required(matches, "ip")?;

@@ -10,7 +10,6 @@ use beacon_chain::{
     validator_monitor::timestamp_now,
 };
 use eth2::types::{self as api_types};
-use lighthouse_network::PubsubMessage;
 use network::NetworkMessage;
 use slot_clock::SlotClock;
 use std::cmp::max;
@@ -21,6 +20,7 @@ use types::{
     BeaconStateError, Epoch, EthSpec, SignedContributionAndProof, SyncCommitteeMessage, SyncDuty,
     SyncSubnetId, slot_data::SlotData,
 };
+use vibehouse_network::PubsubMessage;
 
 /// The struct that is returned to the requesting HTTP client.
 type SyncDuties = api_types::ExecutionOptimisticResponse<Vec<SyncDuty>>;

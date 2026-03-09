@@ -13,7 +13,6 @@ use execution_layer::{
         ENGINE_NEW_PAYLOAD_V3, ENGINE_NEW_PAYLOAD_V4,
     },
 };
-use lighthouse_network::{NetworkGlobals, types::SyncState};
 use logging::crit;
 use slot_clock::SlotClock;
 use std::sync::Arc;
@@ -22,6 +21,7 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use types::*;
+use vibehouse_network::{NetworkGlobals, types::SyncState};
 
 /// Create a warning log whenever the peer count is at or below this value.
 pub const WARN_PEER_COUNT: usize = 1;

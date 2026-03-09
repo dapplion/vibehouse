@@ -11,16 +11,6 @@ use beacon_processor::{
     BeaconProcessorSend, DuplicateCache, GossipAggregatePackage, GossipAttestationPackage, Work,
     WorkEvent as BeaconWorkEvent,
 };
-use lighthouse_network::rpc::InboundRequestId;
-use lighthouse_network::rpc::methods::{
-    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
-    ExecutionPayloadEnvelopesByRootRequest, LightClientUpdatesByRangeRequest,
-};
-use lighthouse_network::service::api_types::CustodyBackfillBatchId;
-use lighthouse_network::{
-    Client, MessageId, NetworkGlobals, PeerId, PubsubMessage,
-    rpc::{BlocksByRangeRequest, BlocksByRootRequest, LightClientBootstrapRequest, StatusMessage},
-};
 use rand::prelude::SliceRandom;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -29,6 +19,16 @@ use task_executor::TaskExecutor;
 use tokio::sync::mpsc::{self, error::TrySendError};
 use tracing::{debug, error, instrument, trace, warn};
 use types::*;
+use vibehouse_network::rpc::InboundRequestId;
+use vibehouse_network::rpc::methods::{
+    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
+    ExecutionPayloadEnvelopesByRootRequest, LightClientUpdatesByRangeRequest,
+};
+use vibehouse_network::service::api_types::CustodyBackfillBatchId;
+use vibehouse_network::{
+    Client, MessageId, NetworkGlobals, PeerId, PubsubMessage,
+    rpc::{BlocksByRangeRequest, BlocksByRootRequest, LightClientBootstrapRequest, StatusMessage},
+};
 
 pub use sync_methods::ChainSegmentProcessId;
 use types::blob_sidecar::FixedBlobSidecarList;

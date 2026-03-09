@@ -18,7 +18,7 @@ genesis = { workspace = true }
 http_api = { workspace = true }
 http_metrics = { path = "../http_metrics" }
 kzg = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 logging = { workspace = true }
 metrics = { workspace = true }
 monitoring_api = { workspace = true }

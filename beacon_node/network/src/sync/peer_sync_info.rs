@@ -1,7 +1,7 @@
 use super::manager::SLOT_IMPORT_TOLERANCE;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use lighthouse_network::{SyncInfo, SyncStatus as PeerSyncStatus};
 use std::cmp::Ordering;
+use vibehouse_network::{SyncInfo, SyncStatus as PeerSyncStatus};
 
 /// The type of peer relative to our current state.
 pub enum PeerSyncType {

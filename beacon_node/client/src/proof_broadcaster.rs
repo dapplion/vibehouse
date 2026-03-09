@@ -4,11 +4,11 @@
 //! as a `PubsubMessage::ExecutionProof` via the network sender.
 
 use beacon_chain::execution_proof_generation::ProofReceiver;
-use lighthouse_network::PubsubMessage;
 use network::NetworkMessage;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{debug, warn};
 use types::EthSpec;
+use vibehouse_network::PubsubMessage;
 
 /// Runs the proof broadcaster loop until the receiver is closed.
 ///

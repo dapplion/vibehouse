@@ -43,7 +43,6 @@ use crate::work_reprocessing_queue::{
 };
 use futures::stream::{Stream, StreamExt};
 use futures::task::Poll;
-use lighthouse_network::{MessageId, NetworkGlobals, PeerId};
 use logging::TimeLatch;
 use logging::crit;
 use parking_lot::Mutex;
@@ -67,6 +66,7 @@ use types::{
     BeaconState, ChainSpec, EthSpec, Hash256, RelativeEpoch, SignedAggregateAndProof,
     SingleAttestation, Slot, SubnetId,
 };
+use vibehouse_network::{MessageId, NetworkGlobals, PeerId};
 use work_reprocessing_queue::IgnoredRpcBlock;
 use work_reprocessing_queue::{
     QueuedAggregate, QueuedLightClientUpdate, QueuedRpcBlock, QueuedUnaggregate, ReadyWork,

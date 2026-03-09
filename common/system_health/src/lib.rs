@@ -1,4 +1,3 @@
-use lighthouse_network::{NetworkGlobals, types::SyncState};
 use network_utils::discovery_metrics;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -6,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sysinfo::{CpuExt, DiskExt, NetworkExt, NetworksExt, System, SystemExt};
 use types::EthSpec;
+use vibehouse_network::{NetworkGlobals, types::SyncState};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SystemHealth {

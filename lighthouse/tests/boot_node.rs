@@ -3,7 +3,6 @@ use boot_node::config::BootNodeConfigSerialization;
 use crate::exec::{CommandLineTestExec, CompletedTest};
 use clap::ArgMatches;
 use clap_utils::get_eth2_network_config;
-use lighthouse_network::{Enr, discovery::ENR_FILENAME};
 use network_utils::unused_port::unused_udp4_port;
 use std::fs::File;
 use std::io::Write;
@@ -12,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use tempfile::TempDir;
+use vibehouse_network::{Enr, discovery::ENR_FILENAME};
 
 const IP_ADDRESS: &str = "192.168.2.108";
 

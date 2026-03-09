@@ -6,13 +6,13 @@ use beacon_chain::BeaconChainTypes;
 use beacon_chain::test_utils::BeaconChainHarness;
 use beacon_processor::{BeaconProcessorChannels, BeaconProcessorConfig};
 use futures::StreamExt;
-use lighthouse_network::identity::secp256k1;
-use lighthouse_network::types::{GossipEncoding, GossipKind};
-use lighthouse_network::{Enr, GossipTopic};
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 use types::{Epoch, EthSpec, MinimalEthSpec, SubnetId};
+use vibehouse_network::identity::secp256k1;
+use vibehouse_network::types::{GossipEncoding, GossipKind};
+use vibehouse_network::{Enr, GossipTopic};
 
 impl<T: BeaconChainTypes> NetworkService<T> {
     fn get_topic_params(&self, topic: GossipTopic) -> Option<&gossipsub::TopicScoreParams> {

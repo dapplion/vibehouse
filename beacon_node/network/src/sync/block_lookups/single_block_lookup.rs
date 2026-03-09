@@ -6,7 +6,6 @@ use crate::sync::network_context::{
 };
 use beacon_chain::{BeaconChainTypes, BlockProcessStatus};
 use derivative::Derivative;
-use lighthouse_network::service::api_types::Id;
 use parking_lot::RwLock;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -17,6 +16,7 @@ use strum::IntoStaticStr;
 use tracing::{Span, debug_span};
 use types::blob_sidecar::FixedBlobSidecarList;
 use types::{DataColumnSidecarList, EthSpec, SignedBeaconBlock, Slot};
+use vibehouse_network::service::api_types::Id;
 use vibehouse_tracing::SPAN_SINGLE_BLOCK_LOOKUP;
 
 // Dedicated enum for LookupResult to force its usage

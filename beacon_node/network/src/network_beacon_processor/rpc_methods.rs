@@ -5,12 +5,6 @@ use crate::status::ToStatusMessage;
 use crate::sync::SyncMessage;
 use beacon_chain::{BeaconChainError, BeaconChainTypes, BlockProcessStatus, WhenSlotSkipped};
 use itertools::{Itertools, process_results};
-use lighthouse_network::rpc::methods::{
-    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
-    ExecutionPayloadEnvelopesByRootRequest,
-};
-use lighthouse_network::rpc::*;
-use lighthouse_network::{PeerId, ReportSource, Response, SyncInfo};
 use methods::LightClientUpdatesByRangeRequest;
 use slot_clock::SlotClock;
 use std::collections::{HashMap, HashSet, hash_map::Entry};
@@ -19,6 +13,12 @@ use tokio_stream::StreamExt;
 use tracing::{Span, debug, error, field, instrument, warn};
 use types::blob_sidecar::BlobIdentifier;
 use types::{ColumnIndex, Epoch, EthSpec, Hash256, Slot};
+use vibehouse_network::rpc::methods::{
+    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest, DataColumnsByRootRequest,
+    ExecutionPayloadEnvelopesByRootRequest,
+};
+use vibehouse_network::rpc::*;
+use vibehouse_network::{PeerId, ReportSource, Response, SyncInfo};
 use vibehouse_tracing::{
     SPAN_HANDLE_BLOBS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST,
     SPAN_HANDLE_BLOCKS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOCKS_BY_ROOT_REQUEST,

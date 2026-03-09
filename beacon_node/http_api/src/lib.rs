@@ -67,8 +67,6 @@ use eth2::types::{
 use eth2::{CONTENT_TYPE_HEADER, SSZ_CONTENT_TYPE_HEADER};
 use futures::StreamExt;
 use health_metrics::observe::Observe;
-use lighthouse_network::rpc::methods::MetaData;
-use lighthouse_network::{Enr, NetworkGlobals, PeerId, PubsubMessage, types::SyncState};
 use logging::{SSELoggingComponents, crit};
 use network::{NetworkMessage, NetworkSenders, ValidatorSubscriptionMessage};
 use network_utils::enr_ext::EnrExt;
@@ -111,6 +109,8 @@ use version::{
     execution_optimistic_finalized_beacon_response, inconsistent_fork_rejection,
     unsupported_version_rejection,
 };
+use vibehouse_network::rpc::methods::MetaData;
+use vibehouse_network::{Enr, NetworkGlobals, PeerId, PubsubMessage, types::SyncState};
 use vibehouse_version::version_with_platform;
 
 use axum::{

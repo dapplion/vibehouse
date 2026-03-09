@@ -27,7 +27,7 @@ ethereum_hashing = { workspace = true }
 ethereum_ssz = { workspace = true }
 execution_layer = { workspace = true }
 hex = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 vibehouse_version = { workspace = true }
 network_utils = { workspace = true }
 rayon = { workspace = true }

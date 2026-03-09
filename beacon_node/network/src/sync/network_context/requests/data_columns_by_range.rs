@@ -1,7 +1,7 @@
 use super::{ActiveRequestItems, LookupVerifyError};
-use lighthouse_network::rpc::methods::DataColumnsByRangeRequest;
 use std::sync::Arc;
 use types::{DataColumnSidecar, EthSpec};
+use vibehouse_network::rpc::methods::DataColumnsByRangeRequest;
 
 /// Accumulates results of a data_columns_by_range request. Only returns items after receiving the
 /// stream termination.

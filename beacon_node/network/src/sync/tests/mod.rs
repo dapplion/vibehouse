@@ -5,7 +5,6 @@ use crate::sync::range_sync::RangeSyncType;
 use beacon_chain::builder::Witness;
 use beacon_chain::test_utils::{BeaconChainHarness, EphemeralHarnessType};
 use beacon_processor::WorkEvent;
-use lighthouse_network::NetworkGlobals;
 use rand_chacha::ChaCha20Rng;
 use slot_clock::ManualSlotClock;
 use std::fs::OpenOptions;
@@ -17,6 +16,7 @@ use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use types::{ChainSpec, ForkName, MinimalEthSpec as E};
+use vibehouse_network::NetworkGlobals;
 
 mod lookups;
 mod range;

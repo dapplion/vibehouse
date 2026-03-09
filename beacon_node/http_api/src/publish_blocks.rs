@@ -18,7 +18,6 @@ use eth2::types::{
 };
 use execution_layer::{ProvenancedPayload, SubmitBlindedBlockResponse};
 use futures::TryFutureExt;
-use lighthouse_network::PubsubMessage;
 use network::NetworkMessage;
 use rand::prelude::SliceRandom;
 use slot_clock::SlotClock;
@@ -35,6 +34,7 @@ use types::{
     FullPayloadBellatrix, Hash256, KzgProofs, SignedBeaconBlock, SignedBlindedBeaconBlock,
     SignedExecutionPayloadEnvelope,
 };
+use vibehouse_network::PubsubMessage;
 use vibehouse_tracing::SPAN_PUBLISH_BLOCK;
 
 pub type UnverifiedBlobs<T> = Option<(

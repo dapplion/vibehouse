@@ -5,7 +5,7 @@ authors = ["Sigma Prime <contact@sigmaprime.io>"]
 edition = { workspace = true }
 
 [features]
-# NOTE: This can be run via cargo build --bin lighthouse --features network/disable-backfill
+# NOTE: This can be run via cargo build --bin vibehouse --features network/disable-backfill
 disable-backfill = []
 fork_from_env = ["beacon_chain/fork_from_env"]
 portable = ["beacon_chain/portable"]
@@ -26,7 +26,7 @@ futures = { workspace = true }
 hex = { workspace = true }
 igd-next = { version = "0.16", features = ["aio_tokio"] }
 itertools = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 vibehouse_tracing = { workspace = true }
 logging = { workspace = true }
 lru_cache = { workspace = true }

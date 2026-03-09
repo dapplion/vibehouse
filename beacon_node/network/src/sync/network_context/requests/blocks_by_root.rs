@@ -1,7 +1,7 @@
 use beacon_chain::get_block_root;
-use lighthouse_network::rpc::BlocksByRootRequest;
 use std::sync::Arc;
 use types::{EthSpec, ForkContext, Hash256, SignedBeaconBlock};
+use vibehouse_network::rpc::BlocksByRootRequest;
 
 use super::{ActiveRequestItems, LookupVerifyError};
 

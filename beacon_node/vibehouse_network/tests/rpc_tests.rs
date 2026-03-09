@@ -5,12 +5,6 @@ mod common;
 use crate::common::spec_with_all_forks_enabled;
 use common::{Protocol, build_tracing_subscriber};
 use libp2p::PeerId;
-use lighthouse_network::rpc::{RequestType, methods::*};
-use lighthouse_network::service::api_types::{
-    AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
-    DataColumnsByRangeRequestId, DataColumnsByRangeRequester, RangeRequestId, SyncRequestId,
-};
-use lighthouse_network::{NetworkEvent, ReportSource, Response};
 use ssz::Encode;
 use ssz_types::VariableList;
 use std::sync::Arc;
@@ -25,6 +19,12 @@ use types::{
     MinimalEthSpec, RuntimeVariableList, Signature, SignedBeaconBlock, SignedBeaconBlockHeader,
     Slot,
 };
+use vibehouse_network::rpc::{RequestType, methods::*};
+use vibehouse_network::service::api_types::{
+    AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
+    DataColumnsByRangeRequestId, DataColumnsByRangeRequester, RangeRequestId, SyncRequestId,
+};
+use vibehouse_network::{NetworkEvent, ReportSource, Response};
 
 type E = MinimalEthSpec;
 

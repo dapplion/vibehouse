@@ -27,16 +27,6 @@ use beacon_chain::{
     validator_monitor::timestamp_now,
 };
 use beacon_processor::WorkEvent;
-use lighthouse_network::discovery::CombinedKey;
-use lighthouse_network::{
-    NetworkConfig, NetworkGlobals, PeerId,
-    rpc::{RPCError, RequestType, RpcErrorResponse},
-    service::api_types::{
-        AppRequestId, DataColumnsByRootRequestId, DataColumnsByRootRequester, Id,
-        SingleLookupReqId, SyncRequestId,
-    },
-    types::SyncState,
-};
 use slot_clock::{SlotClock, TestingSlotClock};
 use tokio::sync::mpsc;
 use tracing::info;
@@ -45,6 +35,16 @@ use types::{
     ForkContext, ForkName, Hash256, MinimalEthSpec as E, SignedBeaconBlock, Slot,
     data_column_sidecar::ColumnIndex,
     test_utils::{SeedableRng, TestRandom, XorShiftRng},
+};
+use vibehouse_network::discovery::CombinedKey;
+use vibehouse_network::{
+    NetworkConfig, NetworkGlobals, PeerId,
+    rpc::{RPCError, RequestType, RpcErrorResponse},
+    service::api_types::{
+        AppRequestId, DataColumnsByRootRequestId, DataColumnsByRootRequester, Id,
+        SingleLookupReqId, SyncRequestId,
+    },
+    types::SyncState,
 };
 
 const D: Duration = Duration::new(0, 0);

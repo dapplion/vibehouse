@@ -1,8 +1,8 @@
 use crate::Context;
 use beacon_chain::BeaconChainTypes;
-use lighthouse_network::prometheus_client::encoding::text::encode;
 use malloc_utils::scrape_allocator_metrics;
 use metrics::TextEncoder;
+use vibehouse_network::prometheus_client::encoding::text::encode;
 
 pub fn gather_prometheus_metrics<T: BeaconChainTypes>(
     ctx: &Context<T>,

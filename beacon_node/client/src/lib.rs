@@ -7,9 +7,9 @@ mod proof_broadcaster;
 pub mod builder;
 
 use beacon_chain::BeaconChain;
-use lighthouse_network::{Enr, Multiaddr, NetworkGlobals};
 use std::net::SocketAddr;
 use std::sync::Arc;
+use vibehouse_network::{Enr, Multiaddr, NetworkGlobals};
 
 pub use beacon_chain::BeaconChainTypes;
 pub use builder::ClientBuilder;

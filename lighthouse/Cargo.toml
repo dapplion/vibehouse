@@ -80,7 +80,7 @@ beacon_node_fallback = { workspace = true }
 beacon_processor = { workspace = true }
 eth2 = { workspace = true }
 initialized_validators = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 sensitive_url = { workspace = true }
 slashing_protection = { workspace = true }
 tempfile = { workspace = true }

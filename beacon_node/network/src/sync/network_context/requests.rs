@@ -3,10 +3,10 @@ use std::{collections::hash_map::Entry, hash::Hash};
 
 use beacon_chain::validator_monitor::timestamp_now;
 use fnv::FnvHashMap;
-use lighthouse_network::PeerId;
 use strum::IntoStaticStr;
 use tracing::{Span, debug};
 use types::{Hash256, Slot};
+use vibehouse_network::PeerId;
 
 pub use blobs_by_range::BlobsByRangeRequestItems;
 pub use blobs_by_root::{BlobsByRootRequestItems, BlobsByRootSingleBlockRequest};

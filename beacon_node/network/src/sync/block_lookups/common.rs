@@ -7,12 +7,12 @@ use crate::sync::block_lookups::{
 use crate::sync::manager::BlockProcessType;
 use crate::sync::network_context::{LookupRequestResult, SyncNetworkContext};
 use beacon_chain::BeaconChainTypes;
-use lighthouse_network::service::api_types::Id;
 use parking_lot::RwLock;
 use std::collections::HashSet;
 use std::sync::Arc;
 use types::blob_sidecar::FixedBlobSidecarList;
 use types::{DataColumnSidecarList, SignedBeaconBlock};
+use vibehouse_network::service::api_types::Id;
 
 use super::SingleLookupId;
 use super::single_block_lookup::{ComponentRequests, DownloadResult};

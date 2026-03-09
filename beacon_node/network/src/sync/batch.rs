@@ -1,9 +1,5 @@
 use beacon_chain::block_verification_types::RpcBlock;
 use derivative::Derivative;
-use lighthouse_network::PeerId;
-use lighthouse_network::rpc::methods::BlocksByRangeRequest;
-use lighthouse_network::rpc::methods::DataColumnsByRangeRequest;
-use lighthouse_network::service::api_types::Id;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -13,6 +9,10 @@ use std::time::Instant;
 use strum::{Display, EnumIter, IntoStaticStr};
 use types::Slot;
 use types::{DataColumnSidecarList, Epoch, EthSpec};
+use vibehouse_network::PeerId;
+use vibehouse_network::rpc::methods::BlocksByRangeRequest;
+use vibehouse_network::rpc::methods::DataColumnsByRangeRequest;
+use vibehouse_network::service::api_types::Id;
 
 /// Batch states used as metrics labels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, IntoStaticStr)]

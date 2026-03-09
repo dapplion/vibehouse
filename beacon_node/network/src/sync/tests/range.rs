@@ -9,21 +9,21 @@ use beacon_chain::data_column_verification::CustodyDataColumn;
 use beacon_chain::test_utils::{AttestationStrategy, BlockStrategy, fork_name_from_env};
 use beacon_chain::{EngineState, NotifyExecutionLayer, block_verification_types::RpcBlock};
 use beacon_processor::WorkType;
-use lighthouse_network::rpc::RequestType;
-use lighthouse_network::rpc::methods::{
-    BlobsByRangeRequest, DataColumnsByRangeRequest, OldBlocksByRangeRequest,
-    OldBlocksByRangeRequestV2, StatusMessageV2,
-};
-use lighthouse_network::service::api_types::{
-    AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, DataColumnsByRangeRequestId,
-    SyncRequestId,
-};
-use lighthouse_network::{PeerId, SyncInfo};
 use std::time::Duration;
 use types::{
     BlobSidecarList, BlockImportSource, Epoch, EthSpec, Hash256, MinimalEthSpec as E,
     SignedBeaconBlock, SignedBeaconBlockHash, Slot,
 };
+use vibehouse_network::rpc::RequestType;
+use vibehouse_network::rpc::methods::{
+    BlobsByRangeRequest, DataColumnsByRangeRequest, OldBlocksByRangeRequest,
+    OldBlocksByRangeRequestV2, StatusMessageV2,
+};
+use vibehouse_network::service::api_types::{
+    AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, DataColumnsByRangeRequestId,
+    SyncRequestId,
+};
+use vibehouse_network::{PeerId, SyncInfo};
 
 const D: Duration = Duration::new(0, 0);
 

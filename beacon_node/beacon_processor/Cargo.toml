@@ -7,7 +7,7 @@ edition = { workspace = true }
 fnv = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 logging = { workspace = true }
 metrics = { workspace = true }
 num_cpus = { workspace = true }

@@ -13,13 +13,13 @@ use tokio::time::Instant;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use delay_map::HashSetDelay;
 use futures::prelude::*;
-use lighthouse_network::{NetworkConfig, Subnet, SubnetDiscovery, discv5::enr::NodeId};
 use slot_clock::SlotClock;
 use tracing::{debug, error, info, warn};
 use types::{
     AttestationData, EthSpec, Slot, SubnetId, SyncCommitteeSubscription, SyncSubnetId,
     ValidatorSubscription,
 };
+use vibehouse_network::{NetworkConfig, Subnet, SubnetDiscovery, discv5::enr::NodeId};
 
 #[cfg(test)]
 mod tests;

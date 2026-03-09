@@ -1,17 +1,17 @@
 use beacon_chain::{
     block_verification_types::RpcBlock, data_column_verification::CustodyDataColumn, get_block_root,
 };
-use lighthouse_network::{
-    PeerId,
-    service::api_types::{
-        BlobsByRangeRequestId, BlocksByRangeRequestId, DataColumnsByRangeRequestId,
-    },
-};
 use std::{collections::HashMap, sync::Arc};
 use tracing::{Span, debug};
 use types::{
     BlobSidecar, ChainSpec, ColumnIndex, DataColumnSidecar, DataColumnSidecarList, EthSpec,
     Hash256, RuntimeVariableList, SignedBeaconBlock,
+};
+use vibehouse_network::{
+    PeerId,
+    service::api_types::{
+        BlobsByRangeRequestId, BlocksByRangeRequestId, DataColumnsByRangeRequestId,
+    },
 };
 
 use crate::sync::network_context::MAX_COLUMN_RETRIES;
@@ -457,17 +457,17 @@ mod tests {
     use beacon_chain::test_utils::{
         NumBlobs, generate_rand_block_and_blobs, generate_rand_block_and_data_columns, test_spec,
     };
-    use lighthouse_network::{
+    use rand::SeedableRng;
+    use std::sync::Arc;
+    use tracing::Span;
+    use types::{Epoch, ForkName, MinimalEthSpec as E, SignedBeaconBlock, test_utils::XorShiftRng};
+    use vibehouse_network::{
         PeerId,
         service::api_types::{
             BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
             DataColumnsByRangeRequestId, DataColumnsByRangeRequester, Id, RangeRequestId,
         },
     };
-    use rand::SeedableRng;
-    use std::sync::Arc;
-    use tracing::Span;
-    use types::{Epoch, ForkName, MinimalEthSpec as E, SignedBeaconBlock, test_utils::XorShiftRng};
 
     fn components_id() -> ComponentsByRangeRequestId {
         ComponentsByRangeRequestId {

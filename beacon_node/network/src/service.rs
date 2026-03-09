@@ -11,23 +11,6 @@ use futures::channel::mpsc::Sender;
 use futures::future::OptionFuture;
 use futures::prelude::*;
 
-use lighthouse_network::Enr;
-use lighthouse_network::identity::Keypair;
-use lighthouse_network::rpc::InboundRequestId;
-use lighthouse_network::rpc::RequestType;
-use lighthouse_network::rpc::methods::RpcResponse;
-use lighthouse_network::service::Network;
-use lighthouse_network::types::GossipKind;
-use lighthouse_network::{
-    Context, PeerAction, PubsubMessage, ReportSource, Response, Subnet,
-    rpc::{GoodbyeReason, RpcErrorResponse},
-};
-use lighthouse_network::{MessageAcceptance, prometheus_client::registry::Registry};
-use lighthouse_network::{
-    MessageId, NetworkEvent, NetworkGlobals, PeerId,
-    service::api_types::AppRequestId,
-    types::{GossipEncoding, GossipTopic, core_topics_to_subscribe},
-};
 use logging::crit;
 use std::collections::BTreeSet;
 use std::{collections::HashSet, pin::Pin, sync::Arc, time::Duration};
@@ -40,6 +23,23 @@ use tracing::{debug, error, info, trace, warn};
 use types::{
     EthSpec, ForkContext, Slot, SubnetId, SyncCommitteeSubscription, SyncSubnetId, Unsigned,
     ValidatorSubscription,
+};
+use vibehouse_network::Enr;
+use vibehouse_network::identity::Keypair;
+use vibehouse_network::rpc::InboundRequestId;
+use vibehouse_network::rpc::RequestType;
+use vibehouse_network::rpc::methods::RpcResponse;
+use vibehouse_network::service::Network;
+use vibehouse_network::types::GossipKind;
+use vibehouse_network::{
+    Context, PeerAction, PubsubMessage, ReportSource, Response, Subnet,
+    rpc::{GoodbyeReason, RpcErrorResponse},
+};
+use vibehouse_network::{MessageAcceptance, prometheus_client::registry::Registry};
+use vibehouse_network::{
+    MessageId, NetworkEvent, NetworkGlobals, PeerId,
+    service::api_types::AppRequestId,
+    types::{GossipEncoding, GossipTopic, core_topics_to_subscribe},
 };
 
 mod tests;
@@ -170,7 +170,7 @@ impl<E: EthSpec> NetworkSenders<E> {
     }
 }
 
-/// Service that handles communication between internal services and the `lighthouse_network` network service.
+/// Service that handles communication between internal services and the `vibehouse_network` network service.
 pub struct NetworkService<T: BeaconChainTypes> {
     /// A reference to the underlying beacon chain.
     beacon_chain: Arc<BeaconChain<T>>,

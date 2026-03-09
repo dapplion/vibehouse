@@ -1,7 +1,7 @@
-use lighthouse_network::Enr;
 use std::sync::Arc;
 use store::{DBColumn, Error as StoreError, HotColdDB, ItemStore, StoreItem};
 use types::{EthSpec, Hash256};
+use vibehouse_network::Enr;
 
 /// 32-byte key for accessing the `DhtEnrs`. All zero because `DhtEnrs` has its own column.
 pub const DHT_DB_KEY: Hash256 = Hash256::ZERO;

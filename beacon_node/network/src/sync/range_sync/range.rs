@@ -49,15 +49,15 @@ use crate::sync::batch::BatchId;
 use crate::sync::network_context::{RpcResponseError, SyncNetworkContext};
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use lighthouse_network::rpc::GoodbyeReason;
-use lighthouse_network::service::api_types::Id;
-use lighthouse_network::{PeerId, SyncInfo};
 use logging::crit;
 use lru_cache::LRUTimeCache;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, trace, warn};
 use types::{Epoch, EthSpec, Hash256};
+use vibehouse_network::rpc::GoodbyeReason;
+use vibehouse_network::service::api_types::Id;
+use vibehouse_network::{PeerId, SyncInfo};
 
 /// For how long we store failed finalized chains to prevent retries.
 const FAILED_CHAINS_EXPIRY_SECONDS: u64 = 30;

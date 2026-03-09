@@ -12,11 +12,6 @@ use crate::sync::SyncMessage;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use beacon_processor::{BeaconProcessorSend, DuplicateCache};
 use futures::prelude::*;
-use lighthouse_network::rpc::*;
-use lighthouse_network::{
-    MessageId, NetworkGlobals, PeerId, PubsubMessage, Response,
-    service::api_types::{AppRequestId, SyncRequestId},
-};
 use logging::TimeLatch;
 use logging::crit;
 use std::sync::Arc;
@@ -25,6 +20,11 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{debug, error, trace, warn};
 use types::{BlobSidecar, DataColumnSidecar, EthSpec, ForkContext, SignedBeaconBlock};
+use vibehouse_network::rpc::*;
+use vibehouse_network::{
+    MessageId, NetworkGlobals, PeerId, PubsubMessage, Response,
+    service::api_types::{AppRequestId, SyncRequestId},
+};
 
 /// Handles messages from the network and routes them to the appropriate service to be handled.
 pub struct Router<T: BeaconChainTypes> {

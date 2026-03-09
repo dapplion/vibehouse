@@ -31,7 +31,7 @@ execution_layer = { workspace = true }
 hex = { workspace = true }
 http_api = { workspace = true }
 hyper = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 monitoring_api = { workspace = true }
 network_utils = { workspace = true }
 sensitive_url = { workspace = true }

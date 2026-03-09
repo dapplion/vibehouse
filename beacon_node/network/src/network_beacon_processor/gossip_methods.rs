@@ -26,7 +26,6 @@ use beacon_chain::{
     validator_monitor::{get_block_delay_ms, get_slot_delay_ms},
 };
 use beacon_processor::{Work, WorkEvent};
-use lighthouse_network::{Client, MessageAcceptance, MessageId, PeerAction, PeerId, ReportSource};
 use logging::crit;
 use operation_pool::ReceivedPreCapella;
 use slot_clock::SlotClock;
@@ -47,6 +46,7 @@ use types::{
     SingleAttestation, Slot, SubnetId, SyncCommitteeMessage, SyncSubnetId,
     beacon_block::BlockImportSource,
 };
+use vibehouse_network::{Client, MessageAcceptance, MessageId, PeerAction, PeerId, ReportSource};
 use vibehouse_tracing::{
     SPAN_PROCESS_GOSSIP_BLOB, SPAN_PROCESS_GOSSIP_BLOCK, SPAN_PROCESS_GOSSIP_DATA_COLUMN,
 };

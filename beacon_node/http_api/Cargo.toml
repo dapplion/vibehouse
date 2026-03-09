@@ -18,7 +18,7 @@ execution_layer = { workspace = true }
 futures = { workspace = true }
 health_metrics = { workspace = true }
 hex = { workspace = true }
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 vibehouse_tracing = { workspace = true }
 vibehouse_version = { workspace = true }
 logging = { workspace = true }

@@ -10,9 +10,6 @@ use crate::sync::batch::BatchMetricsState;
 use crate::sync::network_context::SyncNetworkContext;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use fnv::FnvHashMap;
-use lighthouse_network::PeerId;
-use lighthouse_network::SyncInfo;
-use lighthouse_network::service::api_types::Id;
 use logging::crit;
 use smallvec::SmallVec;
 use std::collections::HashMap;
@@ -22,6 +19,9 @@ use strum::IntoEnumIterator;
 use tracing::{debug, error};
 use types::EthSpec;
 use types::{Epoch, Hash256, Slot};
+use vibehouse_network::PeerId;
+use vibehouse_network::SyncInfo;
+use vibehouse_network::service::api_types::Id;
 
 /// The number of head syncing chains to sync at a time.
 const PARALLEL_HEAD_CHAINS: usize = 2;

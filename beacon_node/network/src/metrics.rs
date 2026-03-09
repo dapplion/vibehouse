@@ -5,16 +5,16 @@ use beacon_chain::{
     sync_committee_verification::Error as SyncCommitteeError,
 };
 use fnv::FnvHashMap;
-use lighthouse_network::{
-    GossipTopic, Gossipsub, NetworkGlobals, peer_manager::peerdb::client::ClientKind,
-    types::GossipKind,
-};
 pub use metrics::*;
 use std::sync::{Arc, LazyLock};
 use strum::AsRefStr;
 use strum::IntoEnumIterator;
 use types::DataColumnSubnetId;
 use types::EthSpec;
+use vibehouse_network::{
+    GossipTopic, Gossipsub, NetworkGlobals, peer_manager::peerdb::client::ClientKind,
+    types::GossipKind,
+};
 
 #[derive(Debug, AsRefStr)]
 pub(crate) enum BlockSource {

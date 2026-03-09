@@ -4,10 +4,10 @@ use crate::sync::block_sidecar_coupling::{ByRangeRequest, CouplingError};
 use crate::sync::network_context::MAX_COLUMN_RETRIES;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use itertools::Itertools;
-use lighthouse_network::PeerId;
-use lighthouse_network::service::api_types::DataColumnsByRangeRequestId;
 use std::sync::Arc;
 use types::{ColumnIndex, DataColumnSidecar, DataColumnSidecarList, Epoch, EthSpec, Slot};
+use vibehouse_network::PeerId;
+use vibehouse_network::service::api_types::DataColumnsByRangeRequestId;
 
 pub struct RangeDataColumnBatchRequest<T: BeaconChainTypes> {
     requests: HashMap<

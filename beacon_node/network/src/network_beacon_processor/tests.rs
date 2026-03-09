@@ -26,17 +26,6 @@ use beacon_processor::{work_reprocessing_queue::*, *};
 use execution_layer::test_utils::generate_genesis_header;
 use gossipsub::MessageAcceptance;
 use itertools::Itertools;
-use lighthouse_network::rpc::InboundRequestId;
-use lighthouse_network::rpc::methods::{
-    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest,
-    ExecutionPayloadEnvelopesByRootRequest, MetaDataV3,
-};
-use lighthouse_network::{
-    Client, MessageId, NetworkConfig, NetworkGlobals, PeerId, Response,
-    discv5::enr::{self, CombinedKey},
-    rpc::methods::{MetaData, MetaDataV2},
-    types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield},
-};
 use matches::assert_matches;
 use slot_clock::SlotClock;
 use std::collections::HashSet;
@@ -54,6 +43,17 @@ use types::{
     ProposerPreferences, ProposerSlashing, RuntimeVariableList, SignedAggregateAndProof,
     SignedBeaconBlock, SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope,
     SignedProposerPreferences, SignedRoot, SignedVoluntaryExit, SingleAttestation, Slot, SubnetId,
+};
+use vibehouse_network::rpc::InboundRequestId;
+use vibehouse_network::rpc::methods::{
+    BlobsByRangeRequest, BlobsByRootRequest, DataColumnsByRangeRequest,
+    ExecutionPayloadEnvelopesByRootRequest, MetaDataV3,
+};
+use vibehouse_network::{
+    Client, MessageId, NetworkConfig, NetworkGlobals, PeerId, Response,
+    discv5::enr::{self, CombinedKey},
+    rpc::methods::{MetaData, MetaDataV2},
+    types::{EnrAttestationBitfield, EnrSyncCommitteeBitfield},
 };
 
 type E = MainnetEthSpec;

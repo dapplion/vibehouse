@@ -27,7 +27,6 @@ use http_api::{
     BlockId, StateId,
     test_utils::{ApiServer, create_api_server},
 };
-use lighthouse_network::{Enr, PeerId, types::SyncState};
 use network::NetworkReceivers;
 use network_utils::enr_ext::EnrExt;
 use operation_pool::attestation_storage::CheckpointKey;
@@ -47,6 +46,7 @@ use types::{
     MainnetEthSpec, RelativeEpoch, SelectionProof, SignedRoot, SingleAttestation, Slot,
     attestation::AttestationBase,
 };
+use vibehouse_network::{Enr, PeerId, types::SyncState};
 
 type E = MainnetEthSpec;
 

@@ -2,7 +2,6 @@ use beacon_chain::{
     BeaconChain, BeaconChainError, BeaconChainTypes, observed_operations::ObservationOutcome,
 };
 use directory::size_of_dir;
-use lighthouse_network::PubsubMessage;
 use network::NetworkMessage;
 use slasher::{
     Slasher,
@@ -22,6 +21,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::{Duration, Instant, interval_at};
 use tracing::{debug, error, info, trace, warn};
 use types::{AttesterSlashing, Epoch, EthSpec, ProposerSlashing};
+use vibehouse_network::PubsubMessage;
 
 pub struct SlasherService<T: BeaconChainTypes> {
     beacon_chain: Arc<BeaconChain<T>>,

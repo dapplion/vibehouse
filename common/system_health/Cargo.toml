@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = { workspace = true }
 
 [dependencies]
-lighthouse_network = { workspace = true }
+vibehouse_network = { workspace = true }
 metrics = { workspace = true }
 network_utils = { workspace = true }
 parking_lot = { workspace = true }

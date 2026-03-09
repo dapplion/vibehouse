@@ -9,7 +9,6 @@ pub use client::{Client, ClientBuilder, ClientConfig, ClientGenesis};
 pub use config::{get_config, get_data_dir, set_network_config};
 use environment::RuntimeContext;
 pub use eth2_config::Eth2Config;
-use lighthouse_network::load_private_key;
 use network_utils::enr_ext::peer_id_to_node_id;
 use slasher::{DatabaseBackendOverride, Slasher};
 use std::ops::{Deref, DerefMut};
@@ -17,6 +16,7 @@ use std::sync::Arc;
 use store::database::interface::BeaconNodeBackend;
 use tracing::{info, warn};
 use types::{ChainSpec, Epoch, EthSpec, ForkName};
+use vibehouse_network::load_private_key;
 
 /// A type-alias to the tighten the definition of a production-intended `Client`.
 pub type ProductionClient<E> =
@@ -192,7 +192,7 @@ impl<E: EthSpec> DerefMut for ProductionBeaconNode<E> {
 #[derive(Clone)]
 struct Discv5Executor(task_executor::TaskExecutor);
 
-impl lighthouse_network::discv5::Executor for Discv5Executor {
+impl vibehouse_network::discv5::Executor for Discv5Executor {
     fn spawn(&self, future: std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>) {
         self.0.spawn(future, "discv5")
     }

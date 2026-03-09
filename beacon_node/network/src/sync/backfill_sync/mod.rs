@@ -21,9 +21,6 @@ use crate::sync::network_context::{
 };
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use lighthouse_network::service::api_types::Id;
-use lighthouse_network::types::{BackFillState, NetworkGlobals};
-use lighthouse_network::{PeerAction, PeerId};
 use logging::crit;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{
@@ -36,6 +33,9 @@ use std::sync::Arc;
 use strum::IntoEnumIterator;
 use tracing::{debug, error, info, warn};
 use types::{ColumnIndex, Epoch, EthSpec};
+use vibehouse_network::service::api_types::Id;
+use vibehouse_network::types::{BackFillState, NetworkGlobals};
+use vibehouse_network::{PeerAction, PeerId};
 
 /// Blocks are downloaded in batches from peers. This constant specifies how many epochs worth of
 /// blocks per batch are requested _at most_. A batch may request less blocks to account for
@@ -1220,10 +1220,10 @@ mod tests {
     use super::*;
     use beacon_chain::test_utils::BeaconChainHarness;
     use bls::Hash256;
-    use lighthouse_network::{NetworkConfig, SyncInfo, SyncStatus};
     use rand_08::SeedableRng;
     use rand_08::prelude::StdRng;
     use types::MinimalEthSpec;
+    use vibehouse_network::{NetworkConfig, SyncInfo, SyncStatus};
 
     #[test]
     fn request_batches_should_not_loop_infinitely() {

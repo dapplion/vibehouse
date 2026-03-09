@@ -1,7 +1,7 @@
 use super::{ActiveRequestItems, LookupVerifyError};
-use lighthouse_network::rpc::BlocksByRangeRequest;
 use std::sync::Arc;
 use types::{EthSpec, SignedBeaconBlock};
+use vibehouse_network::rpc::BlocksByRangeRequest;
 
 /// Accumulates results of a blocks_by_range request. Only returns items after receiving the
 /// stream termination.

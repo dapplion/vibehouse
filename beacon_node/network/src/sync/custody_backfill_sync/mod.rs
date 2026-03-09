@@ -5,16 +5,16 @@ use std::{
 };
 
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use lighthouse_network::{
-    NetworkGlobals, PeerAction, PeerId,
-    service::api_types::{CustodyBackFillBatchRequestId, CustodyBackfillBatchId},
-    types::CustodyBackFillState,
-};
 use logging::crit;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use strum::IntoEnumIterator;
 use tracing::{debug, error, info, info_span, warn};
 use types::{DataColumnSidecarList, Epoch, EthSpec};
+use vibehouse_network::{
+    NetworkGlobals, PeerAction, PeerId,
+    service::api_types::{CustodyBackFillBatchRequestId, CustodyBackfillBatchId},
+    types::CustodyBackFillState,
+};
 use vibehouse_tracing::SPAN_CUSTODY_BACKFILL_SYNC_BATCH_REQUEST;
 
 use crate::metrics;

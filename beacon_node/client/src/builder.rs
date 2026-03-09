@@ -28,8 +28,6 @@ use execution_layer::ExecutionLayer;
 use execution_layer::test_utils::generate_genesis_header;
 use futures::channel::mpsc::Receiver;
 use genesis::{DEFAULT_ETH1_BLOCK_HASH, interop_genesis_state};
-use lighthouse_network::identity::Keypair;
-use lighthouse_network::{NetworkGlobals, prometheus_client::registry::Registry};
 use monitoring_api::{MonitoringHttpClient, ProcessType};
 use network::{NetworkConfig, NetworkSenders, NetworkService};
 use rand::SeedableRng;
@@ -48,6 +46,8 @@ use types::{
     Address, BeaconState, BlobSidecarList, Builder, ChainSpec, Epoch, EthSpec, ExecutionBlockHash,
     Hash256, SignedBeaconBlock, test_utils::generate_deterministic_keypairs,
 };
+use vibehouse_network::identity::Keypair;
+use vibehouse_network::{NetworkGlobals, prometheus_client::registry::Registry};
 
 /// Interval between polling the eth1 node for genesis information.
 pub const ETH1_GENESIS_UPDATE_INTERVAL_MILLIS: u64 = 7_000;

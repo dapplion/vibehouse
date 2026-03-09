@@ -1,8 +1,4 @@
 #![cfg(test)]
-use lighthouse_network::Enr;
-use lighthouse_network::Multiaddr;
-use lighthouse_network::service::Network as LibP2PService;
-use lighthouse_network::{NetworkConfig, NetworkEvent};
 use network_utils::enr_ext::EnrExt;
 use std::sync::Arc;
 use std::sync::Weak;
@@ -13,12 +9,16 @@ use types::{
     ChainSpec, EnrForkId, Epoch, EthSpec, FixedBytesExtended, ForkContext, ForkName, Hash256,
     MinimalEthSpec,
 };
+use vibehouse_network::Enr;
+use vibehouse_network::Multiaddr;
+use vibehouse_network::service::Network as LibP2PService;
+use vibehouse_network::{NetworkConfig, NetworkEvent};
 
 type E = MinimalEthSpec;
 
-use lighthouse_network::identity::secp256k1;
-use lighthouse_network::rpc::config::InboundRateLimiterConfig;
 use tempfile::Builder as TempBuilder;
+use vibehouse_network::identity::secp256k1;
+use vibehouse_network::rpc::config::InboundRateLimiterConfig;
 
 /// Returns a chain spec with all forks enabled.
 pub fn spec_with_all_forks_enabled() -> ChainSpec {
@@ -130,7 +130,7 @@ pub async fn build_libp2p_instance(
     let (shutdown_tx, _) = futures::channel::mpsc::channel(1);
     let executor = task_executor::TaskExecutor::new(rt, exit, shutdown_tx);
     let custody_group_count = chain_spec.custody_requirement;
-    let libp2p_context = lighthouse_network::Context {
+    let libp2p_context = vibehouse_network::Context {
         config,
         enr_fork_id: EnrForkId::default(),
         fork_context: Arc::new(fork_context(fork_name, &chain_spec)),

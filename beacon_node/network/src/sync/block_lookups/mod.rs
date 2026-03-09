@@ -36,8 +36,6 @@ use beacon_chain::data_availability_checker::{
 use beacon_chain::{AvailabilityProcessingStatus, BeaconChainTypes, BlockError};
 pub use common::RequestState;
 use fnv::FnvHashMap;
-use lighthouse_network::service::api_types::SingleLookupReqId;
-use lighthouse_network::{PeerAction, PeerId};
 use lru_cache::LRUTimeCache;
 pub use single_block_lookup::{BlobRequestState, BlockRequestState, CustodyRequestState};
 use std::collections::hash_map::Entry;
@@ -46,6 +44,8 @@ use std::time::Duration;
 use store::Hash256;
 use tracing::{debug, error, warn};
 use types::{BlobSidecar, DataColumnSidecar, EthSpec, SignedBeaconBlock};
+use vibehouse_network::service::api_types::SingleLookupReqId;
+use vibehouse_network::{PeerAction, PeerId};
 
 pub mod common;
 pub mod parent_chain;
@@ -122,7 +122,7 @@ pub struct BlockLookups<T: BeaconChainTypes> {
 }
 
 #[cfg(test)]
-use lighthouse_network::service::api_types::Id;
+use vibehouse_network::service::api_types::Id;
 
 #[cfg(test)]
 /// Tuple of `SingleLookupId`, requested block root, awaiting parent block root (if any),

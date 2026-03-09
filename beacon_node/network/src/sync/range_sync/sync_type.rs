@@ -2,7 +2,7 @@
 //! of a remote.
 
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use lighthouse_network::SyncInfo;
+use vibehouse_network::SyncInfo;
 
 /// The type of Range sync that should be done relative to our current state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

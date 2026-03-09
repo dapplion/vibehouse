@@ -7,7 +7,6 @@ use beacon_node::beacon_chain::chain_config::{
 use beacon_node::beacon_chain::custody_context::NodeCustodyType;
 use beacon_node::{ClientConfig as Config, beacon_chain::graffiti_calculator::GraffitiOrigin};
 use beacon_processor::BeaconProcessorConfig;
-use lighthouse_network::PeerId;
 use network_utils::unused_port::{
     unused_tcp4_port, unused_tcp6_port, unused_udp4_port, unused_udp6_port,
 };
@@ -23,6 +22,7 @@ use std::time::Duration;
 use tempfile::TempDir;
 use types::non_zero_usize::new_non_zero_usize;
 use types::{Address, Checkpoint, Epoch, Hash256, MainnetEthSpec};
+use vibehouse_network::PeerId;
 
 const DEFAULT_EXECUTION_ENDPOINT: &str = "http://localhost:8551/";
 const DEFAULT_EXECUTION_JWT_SECRET_KEY: &str =
@@ -1610,7 +1610,7 @@ fn empty_inbound_rate_limiter_flag() {
         .with_config(|config| {
             assert_eq!(
                 config.network.inbound_rate_limiter_config,
-                Some(lighthouse_network::rpc::config::InboundRateLimiterConfig::default())
+                Some(vibehouse_network::rpc::config::InboundRateLimiterConfig::default())
             )
         });
 }

@@ -6,7 +6,6 @@ use beacon_chain::{
     test_utils::get_kzg,
 };
 use genesis::{DEFAULT_ETH1_BLOCK_HASH, generate_deterministic_keypairs, interop_genesis_state};
-use lighthouse_network::NetworkConfig;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use slot_clock::{SlotClock, SystemTimeSlotClock};
@@ -20,6 +19,7 @@ use types::{
     CommitteeIndex, Epoch, EthSpec, Hash256, MainnetEthSpec, Slot, SubnetId,
     SyncCommitteeSubscription, SyncSubnetId, ValidatorSubscription,
 };
+use vibehouse_network::NetworkConfig;
 
 const SLOT_DURATION_MILLIS: u64 = 400;
 
@@ -113,7 +113,7 @@ fn get_subnet_service() -> SubnetService<TestBeaconChainType> {
 
     SubnetService::new(
         beacon_chain,
-        lighthouse_network::discv5::enr::NodeId::random(),
+        vibehouse_network::discv5::enr::NodeId::random(),
         &config,
     )
 }
