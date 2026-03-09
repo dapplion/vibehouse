@@ -110,6 +110,13 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 622)
+- All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- Recent merged PRs (#4980-#4991) are all housekeeping: dependency updates, CI fixes, EIP-6800 removal — nothing Gloas-related
+- Codebase clean: zero warnings, zero clippy issues, rebranding complete
+- CI running for latest push (run 621 rebranding commits)
+
 ### 2026-03-09 — spec scan + CI cleanup (run 621)
 - All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
 - No new consensus-specs release (still v1.7.0-alpha.2)
