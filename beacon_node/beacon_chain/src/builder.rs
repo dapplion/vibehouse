@@ -1061,25 +1061,16 @@ where
             store_migrator,
             slot_clock: slot_clock.clone(),
             op_pool: self.op_pool.ok_or("Cannot build without op pool")?,
-            // TODO: allow for persisting and loading the pool from disk.
+            // TODO: allow for persisting and loading these pools from disk.
             naive_aggregation_pool: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             naive_sync_aggregation_pool: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_attestations: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_sync_contributions: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_gossip_attesters: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_block_attesters: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_sync_contributors: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_aggregators: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_sync_aggregators: <_>::default(),
-            // TODO: allow for persisting and loading the pool from disk.
             observed_block_producers: <_>::default(),
             observed_column_sidecars: RwLock::new(ObservedDataSidecars::new(self.spec.clone())),
             observed_blob_sidecars: RwLock::new(ObservedDataSidecars::new(self.spec.clone())),
