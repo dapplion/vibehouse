@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 659)
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
+- PR #4979 (PTC Lookbehind) still OPEN, only tracked PR not yet merged
+- NEW: PR #4950 (extend by_root reqresp serve range to match by_range) merged Mar 6 — analyzed: vibehouse by_root handlers already serve all stored data without range restriction, exceeding the minimum spec requirement. No code change needed.
+- NEW: PR #4954 (fork choice store milliseconds) OPEN — converts fork choice timing from seconds to milliseconds, related to merged #4926 (SLOT_DURATION_MS). Not merged yet, monitor.
+- CI: latest run (commit 7234b3e24) in progress; previous CI green; nightly passed (Mar 9)
+- No code changes needed — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan (run 658)
 - All tracked Gloas PRs still OPEN; PR #4979 (PTC Lookbehind) still needs reviews
 - No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
