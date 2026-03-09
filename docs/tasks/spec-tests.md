@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 739)
+- Spec scan: no new Gloas merges (3 merged: reftests, nightly matrix, release-drafter — all CI/tooling), no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
+- PTC lookbehind PR #4992: active review today — kevaundray raised that 2-slot cache doesn't cover `get_ptc_assignment`'s 32-slot iteration; potuz acknowledges duties functions not yet addressed, design still evolving
+- CI (22875542079): check+clippy+fmt passed, EF tests passed, network+op_pool passed, http_api passed, beacon_chain/unit still running
+- cargo check --release: zero warnings; cargo audit: 1 known rsa advisory, 5 allowed warnings, no new vulnerabilities
+- Dependencies: 0 compatible crate updates available
+- Test coverage audit: load_parent patching, epoch processing, self-build envelope all thoroughly covered; no actionable gaps found
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 738)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
 - CI (22875542079): check+clippy+fmt passed, EF tests passed, network+op_pool passed, beacon_chain/unit/http_api in progress
