@@ -118,6 +118,14 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan (run 610)
+- All 9 tracked PRs still open, no status changes: #4979 (PTC lookbehind, design still evolving — potuz favors 2*SLOTS_PER_EPOCH, ensi321/nflaig exploring smaller options), #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
+- No new Gloas spec PRs merged since run 609
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- CI: latest push (run 609 cleanup) in progress, all nightly tests passing through Mar 8
+- Codebase audit: zero clippy warnings, zero compiler warnings, zero TODOs in Gloas code, comprehensive metrics coverage for ePBS gossip types
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan + cleanup (run 609)
 - All 9 tracked PRs still open: #4979 (PTC lookbehind, active discussion Mar 7 re: Vector size trade-offs), #4940, #4932, #4960, #4962, #4840, #4839, #4843, #4630
 - PR #4950 (by_root serve range) merged Mar 6 — already compliant (tracked above)
