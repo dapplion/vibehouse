@@ -130,6 +130,15 @@ Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload
 
 ## Progress log
 
+### 2026-03-09 — spec scan + post-rebrand devnet verification (run 640)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged or opened since run 639
+- **Devnet verification post-rebrand: SUCCESS** — finalized_epoch=8 at slot 81, clean Gloas fork transition at epoch 1, 4 nodes healthy
+- Explored codebase for actionable improvements: `can_builder_cover_bid` and `is_parent_block_full` correctly remain `pub` (cross-crate usage), bid clone at line 199 is necessary (ref to owned), no dead code or stale TODOs in Gloas code
+- CI: all green, Docker build cache cleared and rebuild succeeded
+- No code changes this run — spec stable, fully compliant, devnet verified
+
 ### 2026-03-09 — spec scan (run 639)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
