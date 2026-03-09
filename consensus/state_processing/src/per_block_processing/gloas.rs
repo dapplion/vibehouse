@@ -3406,6 +3406,68 @@ mod tests {
     }
 
     #[test]
+    fn ptc_committee_changes_when_effective_balances_change() {
+        // Demonstrates the PTC lookbehind bug (consensus-specs PR #4992):
+        //
+        // When validating a payload attestation from the previous slot at an epoch
+        // boundary, effective balance changes from epoch processing cause
+        // get_ptc_committee to return a different committee for the same slot.
+        //
+        // Example: attestation created for slot 7 (epoch 0) with PTC committee A.
+        // Epoch processing runs, effective balances change. At slot 8 (epoch 1),
+        // get_ptc_committee(state, slot=7) returns committee B != A because the
+        // balance-weighted selection now uses different weights.
+        //
+        // Fix: PR #4992 adds ptc_lookbehind cache to BeaconState so PTC committees
+        // are computed once and cached, immune to later balance changes.
+        let spec = E::default_spec();
+        let max_eb = spec.max_effective_balance_electra;
+
+        // Use 64 validators so each slot has multiple committee members,
+        // giving balance weighting a visible effect on selection.
+        let (mut state, spec) = make_gloas_state_with_committees(64, max_eb, 64_000_000_000);
+
+        // State is at slot 8 (epoch 1). Compute PTC for slot 7 (last slot of epoch 0)
+        // which is the previous slot — exactly when payload attestation validation
+        // would look back.
+        let target_slot = Slot::new(7);
+        let ptc_before = get_ptc_committee(&state, target_slot, &spec).unwrap();
+        assert_eq!(ptc_before.len(), E::ptc_size());
+
+        // Simulate what epoch processing does: change effective balances.
+        // Drop validators 0-31 to minimum (1 ETH) and keep 32-63 at max.
+        // This drastically changes balance-weighted selection probabilities.
+        for i in 0..32 {
+            state.get_validator_mut(i).unwrap().effective_balance = 1_000_000_000;
+        }
+
+        // Rebuild committee caches since validator set properties changed
+        state
+            .build_committee_cache(types::RelativeEpoch::Previous, &spec)
+            .unwrap();
+        state
+            .build_committee_cache(types::RelativeEpoch::Current, &spec)
+            .unwrap();
+
+        let ptc_after = get_ptc_committee(&state, target_slot, &spec).unwrap();
+        assert_eq!(ptc_after.len(), E::ptc_size());
+
+        // The committees should differ because balance weighting changed.
+        // Validators 0-31 now have ~3% of max balance, making them unlikely
+        // to pass the acceptance check: eb * max_rv >= max_eb * rv.
+        // This means different validators get selected for the PTC.
+        //
+        // NOTE: This assertion demonstrates the bug. When ptc_lookbehind is
+        // implemented (PR #4992), this test should be updated: the cached
+        // PTC should remain stable regardless of balance changes.
+        assert_ne!(
+            ptc_before, ptc_after,
+            "PTC committee for the same slot changed after effective balance update — \
+             this is the lookbehind bug (consensus-specs PR #4992)"
+        );
+    }
+
+    #[test]
     fn ptc_committee_max_balance_always_accepted() {
         // When all validators have max_effective_balance, the acceptance test
         // `effective_balance * max_random_value >= max_effective_balance * random_value`
