@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — fork transition audit + performance review (run 664)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release, no new Gloas PR merges
+- All 12 tracked Gloas PRs still OPEN
+- CI green: latest ci run in_progress, previous green; nightly greens continue
+- Audited fork transition edge cases (Fulu→Gloas boundary): upgrade_to_gloas field initialization, load_parent latest_block_hash patching, get_advanced_hot_state cache-hit path at fork boundary — all correctly handled through fork_name checks, error-based fallbacks, and zero-block-hash guards
+- Performance review of Gloas hot paths: identified self-build envelope double-processing (build_self_build_envelope + process_self_build_envelope), payload attestation aggregation clones, bid pool insert clones — all negligible in practice (once-per-12s block production path)
+- Zero compiler warnings, cargo audit unchanged (1 medium rsa transitive advisory)
+- No code changes needed — codebase clean, spec stable
+
 ### 2026-03-09 — deep audit of Gloas production code paths (run 663)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All tracked Gloas PRs still OPEN; PR #4979 (PTC Lookbehind) and #4954 (fork choice milliseconds) still unmerged
