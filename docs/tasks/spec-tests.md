@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — prometheus metrics for ePBS pools + spec scan (run 676)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
+- CI green (nightly 5+ consecutive greens), clippy clean, cargo audit unchanged
+- Added 4 prometheus gauge metrics for ePBS pool monitoring:
+  - `beacon_execution_bid_pool_size`: bids in the bid pool
+  - `beacon_observed_payload_attestations_size`: tracked payload attestations for dedup
+  - `beacon_observed_payload_envelopes_size`: tracked envelope roots for dedup
+  - `beacon_observed_execution_bids_size`: tracked bid dedup entries
+- Made `total_bid_count`/`bid_count_for_slot`/`slot_count` public on ExecutionBidPool (were #[cfg(test)])
+- All 401 Gloas beacon_chain tests pass, 49 execution bid tests pass
+
 ### 2026-03-09 — epoch processing tests + spec scan (run 675)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN
