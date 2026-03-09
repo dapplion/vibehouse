@@ -2,7 +2,7 @@
 
 ## 1. Are there any requirements to run Siren?
 
-Yes, the most current Siren version requires Lighthouse v4.3.0 or higher to function properly. These releases can be found on the [releases](https://github.com/sigp/lighthouse/releases) page of the Lighthouse repository.
+Yes, the most current Siren version requires vibehouse v4.3.0 or higher to function properly.
 
 ## 2. Where can I find my API token?
 

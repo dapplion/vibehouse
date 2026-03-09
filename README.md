@@ -35,9 +35,9 @@ make
 ./target/release/vibehouse --help
 ```
 
-## Upstream
+## Heritage
 
-vibehouse tracks [sigp/lighthouse](https://github.com/sigp/lighthouse) as upstream. We regularly cherry-pick and merge fixes. The fork point is **v8.0.1** (Fulu mainnet).
+vibehouse shares historical code ancestry with [Lighthouse v8.0.1](https://github.com/sigp/lighthouse). From that point on, vibehouse is fully independent — all new code is written from the Ethereum consensus specs.
 
 ## Contributing
 
@@ -47,7 +47,7 @@ See [plan.md](./plan.md) for what we're working on and where help is needed.
 
 ## Documentation
 
-For general Lighthouse usage, the [Lighthouse Book](https://lighthouse-book.sigmaprime.io) still applies.
+The vibehouse CLI is compatible with Lighthouse's command structure. For general CL node usage, refer to the [Lighthouse Book](https://lighthouse-book.sigmaprime.io) as a starting point.
 
 ## Contact
 
@@ -55,4 +55,4 @@ For general Lighthouse usage, the [Lighthouse Book](https://lighthouse-book.sigm
 
 ## License
 
-Apache 2.0, same as upstream Lighthouse.
+Apache 2.0.

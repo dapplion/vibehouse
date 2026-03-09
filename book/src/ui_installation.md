@@ -4,7 +4,7 @@ Siren supports any operating system that supports containers and/or NodeJS 18, t
 
 ## Version Requirement
 
-To ensure proper functionality, the Siren app requires Lighthouse v4.3.0 or higher. You can find these versions on the [releases](https://github.com/sigp/lighthouse/releases) page of the Lighthouse repository.
+To ensure proper functionality, the Siren app requires vibehouse v4.3.0 or higher.
 
 ## Configuration
 
