@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, approved PRs tracked (run 692)
+- Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- 3 approved PRs ready to merge: #4843 (Variable PTC deadline — significant timing change), #4898 (remove pending status from tiebreaker — cleanup), #4892 (remove impossible branch in forkchoice — cleanup)
+- Previously merged PRs #4918 (attestation payload status check) and #4947 (pre-fork proposer_preferences subscription) both already implemented in vibehouse
+- CI green (run 680 success, current run 690 in progress), nightly 5+ consecutive greens
+- Zero patch dep updates available, cargo audit unchanged (1 medium rsa advisory, transitive)
+- Code audit: builder withdrawal apply path (gloas.rs:686) uses defensive `get_mut()` with `if let Some` — safe because builder_index is validated at line 516-520 during withdrawal creation
+- No code changes needed — monitoring #4843 for merge (would need PTC deadline timing implementation)
+
 ### 2026-03-09 — spec stable, codebase audit (run 684)
 - Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - 11 open Gloas PRs tracked (#4992, #4979, #4960, #4954, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558)
