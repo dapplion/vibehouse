@@ -94,6 +94,19 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-09 (run 605)
+- **Completed warp→axum migration for beacon_node/http_api**: converted all 85 warp filter chains to axum async handler functions in a single coordinated push. Key changes:
+  - New `extractors.rs` module with custom axum extractors: `MultiKeyQuery` (for `?topics=head&topics=block` style queries), `json_body`/`json_body_or_default` helpers, header parsing utilities (`accept_header`, `consensus_version_header`, `parse_endpoint_version`)
+  - All routes use axum `Router` with `State`, `Path`, `Query`, `HeaderMap`, `Bytes` extractors
+  - `BlockId`/`StateId` gained `Deserialize` support via `#[serde(try_from = "String")]` for axum `Path<T>` extraction
+  - Removed warp bridge code from `ApiError` (the `Reject` impl and `From<warp::Rejection>` conversion)
+  - Fixed axum 0.8 path syntax: `:param` → `{param}` for all route paths
+  - Fixed route conflict: `/eth/v2/beacon/pool/attestations` literal POST route shadowed `{version}` GET route — split into explicit v1/v2 handlers with query param support
+  - Fixed test file: replaced `warp::http::StatusCode` with `axum::http::StatusCode` in broadcast_validation_tests
+  - Net: 4553 insertions, 5469 deletions across 14 files
+- **All 251 http_api tests pass**, clippy clean, lint clean
+- **Remaining warp user**: `common/warp_utils` (can be removed once no crate depends on it)
+
 ### 2026-03-09 (run 604)
 - **Attempted warp→axum migration for beacon_node/http_api lib.rs**: evaluated multiple approaches for converting the 5723-line lib.rs from warp filter chains to axum Router. Determined the migration is all-or-nothing due to incompatible type systems (warp uses http 0.2 / hyper 0.14, axum uses http 1.x / hyper 1.x — Response types don't interop). Tried agent-based full rewrite (hit output token limits), tried converting handler modules first (broke builds because handler modules return warp::reply::Response which is incompatible with axum::response::Response). Reverted all changes to maintain clean build.
 - **Strategy for next runs**: the migration needs to be done in a single coordinated push — convert lib.rs router + all handler module response types + task_spawner + version helpers simultaneously. Should split lib.rs into route modules first (without changing framework) to make the final switch more manageable.
