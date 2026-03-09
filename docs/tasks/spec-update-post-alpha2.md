@@ -139,6 +139,16 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec scan + edge case tests (run 671)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (latest tagged: v1.6.1, Gloas spec: v1.7.0-alpha.2)
+- CI green, clippy clean
+- Added 3 edge case tests for bid overwrite behavior:
+  - `two_bids_different_builders_second_overwrites_payment`: verifies builder_index/amount/fee_recipient change when a different builder outbids
+  - `same_builder_rebid_resets_ptc_weight`: verifies PTC weight is cleared on rebid (stale attestations)
+  - `late_bid_after_envelope_preserves_payload_state`: verifies late bid doesn't reset payload_revealed
+- All 677 state_processing + fork_choice tests pass
+
 ### 2026-03-09 — spec scan (run 670)
 - All 12 tracked Gloas PRs still OPEN (no merges since last scan)
 - No new consensus-specs release (latest tagged: v1.6.1, Gloas spec: v1.7.0-alpha.2)
