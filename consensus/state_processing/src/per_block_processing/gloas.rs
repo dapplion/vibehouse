@@ -8973,6 +8973,153 @@ mod tests {
         );
     }
 
+    // ── process_payload_attestation happy path & indexing ────────
+
+    #[test]
+    fn process_payload_attestation_valid_no_sig_check() {
+        // Happy path: correct beacon_block_root, correct slot, with aggregation bits set.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        // Build attestation with bit 0 set (first PTC member attests)
+        let mut att = make_payload_attestation_raw(parent_root, prev_slot);
+        att.aggregation_bits
+            .set(0, true)
+            .expect("bit 0 should be in range");
+
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "valid payload attestation should succeed, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_all_bits_set() {
+        // All PTC members attest — should succeed with VerifySignatures::False.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        let mut att = make_payload_attestation_raw(parent_root, prev_slot);
+        for i in 0..E::ptc_size() {
+            att.aggregation_bits
+                .set(i, true)
+                .expect("bit should be in range");
+        }
+
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            result.is_ok(),
+            "all-bits-set payload attestation should succeed, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn process_payload_attestation_empty_bits_rejected() {
+        // No aggregation bits set → empty attesting_indices → rejected.
+        let (mut state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        let att = make_payload_attestation_raw(parent_root, prev_slot);
+        // All bits are false by default
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds
+                ))
+            ),
+            "empty aggregation bits should yield AttesterIndexOutOfBounds, got {:?}",
+            result,
+        );
+    }
+
+    // ── get_indexed_payload_attestation ──────────────────────────
+
+    #[test]
+    fn get_indexed_payload_attestation_single_bit() {
+        // With one bit set, indexed attestation should contain exactly one validator index.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        let mut att = make_payload_attestation_raw(Hash256::zero(), prev_slot);
+        att.aggregation_bits
+            .set(0, true)
+            .expect("bit 0 should be in range");
+
+        let indexed = get_indexed_payload_attestation(&state, &att, &spec)
+            .expect("should succeed with valid state and slot");
+        assert_eq!(
+            indexed.attesting_indices.len(),
+            1,
+            "single bit should yield exactly one attesting index"
+        );
+
+        // The index should correspond to the first PTC member
+        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+        assert_eq!(
+            indexed.attesting_indices[0], ptc[0],
+            "attesting index should match the PTC member at position 0"
+        );
+    }
+
+    #[test]
+    fn get_indexed_payload_attestation_all_bits() {
+        // With all bits set, indexed attestation should contain all PTC members, sorted.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        let mut att = make_payload_attestation_raw(Hash256::zero(), prev_slot);
+        for i in 0..E::ptc_size() {
+            att.aggregation_bits
+                .set(i, true)
+                .expect("bit should be in range");
+        }
+
+        let indexed = get_indexed_payload_attestation(&state, &att, &spec)
+            .expect("should succeed with all bits set");
+        assert_eq!(
+            indexed.attesting_indices.len(),
+            E::ptc_size(),
+            "all bits set should yield PTC_SIZE attesting indices"
+        );
+
+        // Verify indices are sorted
+        for w in indexed.attesting_indices.windows(2) {
+            assert!(
+                w[0] <= w[1],
+                "attesting indices must be sorted, found {} > {}",
+                w[0],
+                w[1]
+            );
+        }
+
+        // Verify data is preserved
+        assert_eq!(indexed.data, att.data);
+    }
+
+    #[test]
+    fn get_indexed_payload_attestation_no_bits_returns_empty() {
+        // With no bits set, indexed attestation should have empty attesting_indices.
+        let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
+        let prev_slot = state.slot().saturating_sub(1u64);
+
+        let att = make_payload_attestation_raw(Hash256::zero(), prev_slot);
+
+        let indexed = get_indexed_payload_attestation(&state, &att, &spec)
+            .expect("should succeed even with no bits set");
+        assert!(
+            indexed.attesting_indices.is_empty(),
+            "no bits set should yield empty attesting_indices"
+        );
+    }
+
     // ── PTC committee edge cases ─────────────────────────────────
 
     #[test]
