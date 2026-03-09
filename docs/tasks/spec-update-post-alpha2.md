@@ -110,6 +110,17 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-09 — spec scan + security audit (run 627)
+- All 6 key Gloas PRs still OPEN: #4979, #4940, #4932, #4960, #4840, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged — recent merges all CI/dep updates (#4991, #4990, #4988)
+- PTC Lookbehind (#4979) design still evolving: potuz favors 2*SLOTS_PER_EPOCH, ensi321 proposes size-2, discussion ongoing about lookahead needs
+- CI (run 22844693747): check+clippy+fmt passed, 5 test jobs in progress
+- Nightly tests: 5 consecutive green runs (Mar 4-8)
+- Full security audit of Gloas consensus code: zero `.unwrap()` in production paths, all arithmetic uses safe_arith traits, all index access bounds-checked, no unsafe casts
+- `cargo audit`: 1 vulnerability (rsa timing sidechannel via jsonwebtoken, no fix available upstream — Engine API JWT, not consensus-critical)
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan + code quality audit (run 626)
 - All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
 - No new consensus-specs release (still v1.7.0-alpha.2)
