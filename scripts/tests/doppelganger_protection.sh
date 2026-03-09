@@ -82,7 +82,7 @@ if [[ "$BEHAVIOR" == "failure" ]]; then
             "/testnet": ["el_cl_genesis_data"]
         },
         "cmd": [
-            "lighthouse",
+            "vibehouse",
             "vc",
             "--debug-level", "info",
             "--testnet-dir=/testnet",
@@ -127,7 +127,7 @@ if [[ "$BEHAVIOR" == "success" ]]; then
             "/testnet": ["el_cl_genesis_data"]
         },
         "cmd": [
-            "lighthouse",
+            "vibehouse",
             "vc",
             "--debug-level", "info",
             "--testnet-dir=/testnet",
