@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 734)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0; spec-tests repo archived)
+- All 10 tracked PRs still OPEN: #4992, #4979, #4954, #4898, #4892, #4843, #4940, #4932, #4960, #4962
+- CI (22871434411): all jobs passed; nightly: continuously green
+- cargo check --release: zero warnings; cargo audit: same known rsa advisory, no new vulnerabilities
+- Dependencies: 0 compatible updates (all at latest)
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 733)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Recent consensus-specs merges: all CI/tooling/deps (EIP-6800 removal, EIP-7441 removal, action improvements, dep updates)
