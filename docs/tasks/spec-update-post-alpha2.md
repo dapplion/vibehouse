@@ -120,6 +120,15 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 690)
+- All 13 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- PR #4992 (PTC Lookbehind minimal): updated today, potuz self-review comments, still REVIEW_REQUIRED
+- PR #4979 (PTC Lookbehind large): last updated Mar 7, REVIEW_REQUIRED
+- Committed lockfile update: windows-sys 0.61.2 consolidation, syn 2.0.117 (transitive deps)
+- CI green, cargo audit unchanged
+- No spec code changes needed
+
 ### 2026-03-09 — spec scan (run 689)
 - All 13 tracked Gloas PRs still OPEN (no merges since last scan)
 - No new consensus-specs release (still v1.7.0-alpha.2)
