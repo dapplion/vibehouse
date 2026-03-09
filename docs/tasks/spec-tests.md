@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, codebase audit (run 684)
+- Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- 11 open Gloas PRs tracked (#4992, #4979, #4960, #4954, #4940, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558)
+- PR #4992 (PTC Lookbehind minimal): 2 review comments from potuz (naming, placement), still blocked/open
+- CI run: check+clippy ✓, ef-tests ✓, network+op_pool ✓, http_api ✓, beacon_chain+unit tests in progress
+- Zero clippy warnings, zero TODOs in production code, zero unwraps in consensus production code
+- cargo audit: same 1 medium rsa advisory (transitive, no fix available)
+- Dependency check: no actionable updates (only dev dep `rand` semver-major, `rand_xorshift` major)
+- Test coverage audit: gloas_verification.rs has 60 tests, single_pass.rs has 24 Gloas tests, builder pending payments has 19 tests, block_replayer has 32 tests — all critical paths well covered
+- No code changes needed
+
 ### 2026-03-09 — new PTC Lookbehind alternative PR (run 683)
 - Spec stable: no new merges, no new releases
 - New PR #4992 "Add PTC Lookbehind" (potuz, Mar 9): simpler alternative to #4979, only 2 entries (~8KB) instead of 2*SLOTS_PER_EPOCH (~256KB), updated per-slot in process_slots
