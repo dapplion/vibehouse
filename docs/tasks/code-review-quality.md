@@ -903,8 +903,31 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 
 **Remaining "lighthouse" references** (intentionally kept):
 - API paths (`.push("lighthouse")`) — breaking change for external tooling
-- Crate/module names (`lighthouse_network`, `lighthouse_validator_store`, `lighthouse_vc`) — internal
 - Test infrastructure file paths (`tls_dir().join("lighthouse")`) — test artifacts
 - Test rig temp dir prefixes — internal
 
 **Verification**: cargo check clean, validator_client tests pass, clippy clean, pre-push lint-full passes.
+
+### Run 616: lighthouse_validator_store crate rename (2026-03-09)
+
+Renamed `lighthouse_validator_store` crate and `LighthouseValidatorStore` struct to `vibehouse_validator_store` / `VibehouseValidatorStore`.
+
+### Run 617: rename 3 remaining lighthouse_* crates (2026-03-09)
+
+**Scope**: Rename the last 3 crates with "lighthouse" in their names.
+
+**Changes** (3 crate renames, 145+ files):
+1. `common/lighthouse_version` → `common/vibehouse_version` — package name, directory, all imports and Cargo.toml deps (33 files)
+2. `beacon_node/lighthouse_tracing` → `beacon_node/vibehouse_tracing` — package name, directory, all imports and Cargo.toml deps (19 files)
+3. `beacon_node/lighthouse_network` → `beacon_node/vibehouse_network` — package name, directory, all imports and Cargo.toml deps (113 files)
+
+Also updated comments/variable names referencing "lighthouse" in graffiti_calculator.rs and network/Cargo.toml.
+
+**Remaining "lighthouse" references**:
+- API paths (`.push("lighthouse")`) — breaking change for external tooling
+- `lighthouse/` workspace directory (binary crate) — already renamed to `vibehouse` binary
+- `LighthouseSubcommands` enum — internal CLI dispatch
+- `eth2` crate feature flag `lighthouse` and modules `lighthouse.rs`, `lighthouse_vc/` — API client paths
+- Test infrastructure file paths — test artifacts
+
+**Verification**: cargo check clean, cargo fmt clean, clippy clean (pre-push lint-full passes).
