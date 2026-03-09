@@ -16,3 +16,5 @@ RUN apt-get update && apt-get -y upgrade && apt-get install -y --no-install-reco
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/cargo/bin/vibehouse /usr/local/bin/vibehouse
+# ethereum-package invokes the binary as "lighthouse" when cl_type: lighthouse
+RUN ln -s /usr/local/bin/vibehouse /usr/local/bin/lighthouse
