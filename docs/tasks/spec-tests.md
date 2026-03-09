@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 728)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2)
+- PTC lookbehind PR #4992 (minimal approach): active review comments from potuz/kevaundray, `get_ptc_assignment` needs fixing for 2-slot cache vs 32-slot iteration — design not finalized
+- CI (22871434411): 5/6 passed (check+clippy+fmt, EF tests, network+op_pool, http_api), unit+beacon_chain still running
+- Nightly: 6 consecutive green (Mar 4-9)
+- cargo audit: same known rsa advisory, no new vulnerabilities
+- Deep audit of `process_builder_pending_payments`, `upgrade_to_gloas`, `process_proposer_lookahead`, `load_parent` Gloas patching: all correct, well-tested
+- Epoch processing ordering verified: pending_consolidations → builder_pending_payments → effective_balance_updates → proposer_lookahead (matches spec)
+- No code changes needed
+
 ### 2026-03-09 — spec stable, routine audit (run 727)
 - Spec scan: no new Gloas merges (last 10 merged PRs all CI/tooling/deps), no new release (still v1.7.0-alpha.2)
 - PTC lookbehind PRs (#4979, #4992) still open; Fast Confirmation Rule PR #4747 updated today
