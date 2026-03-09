@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, test coverage expanded (run 717)
+- No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- All 10 tracked PRs still OPEN
+- CI green (ci success)
+- Added 6 unit tests for `process_payload_attestation` and `get_indexed_payload_attestation` — happy path (single/all bits), empty bits rejection, and index conversion correctness
+- These consensus-critical functions previously only had error-path tests for root/slot validation
+
 ### 2026-03-09 — spec stable, no changes (run 715)
 - No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - All 10 tracked PRs still OPEN; #4992 (PTC Lookbehind minimal) most actively reviewed
