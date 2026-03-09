@@ -550,7 +550,7 @@ impl<E: EthSpec> MockBuilder<E> {
                 )
                 .await
                 .map_err(|e| {
-                    // XXX: this should really be a 400 but warp makes that annoyingly difficult
+                    // XXX: this should really be a 400
                     format!("Failed to post blinded block {e:?}")
                 })?;
         }

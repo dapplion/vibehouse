@@ -48,7 +48,6 @@ members = [
     "common/task_executor",
     "common/test_random_derive",
     "common/validator_dir",
-    "common/warp_utils",
     "common/workspace_members",
     "consensus/context_deserialize/context_deserialize",
     "consensus/context_deserialize/context_deserialize_derive",
@@ -279,8 +278,6 @@ validator_metrics = { path = "validator_client/validator_metrics" }
 validator_services = { path = "validator_client/validator_services" }
 validator_store = { path = "validator_client/validator_store" }
 validator_test_rig = { path = "testing/validator_test_rig" }
-warp = { version = "0.3.7", default-features = false, features = ["tls"] }
-warp_utils = { path = "common/warp_utils" }
 workspace_members = { path = "common/workspace_members" }
 xdelta3 = { git = "https://github.com/sigp/xdelta3-rs", rev = "4db64086bb02e9febb584ba93b9d16bb2ae3825a" }
 zeroize = { version = "1", features = ["zeroize_derive", "serde"] }
