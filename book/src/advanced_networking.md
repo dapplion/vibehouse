@@ -1,6 +1,6 @@
 # Advanced Networking
 
-Lighthouse's networking stack has a number of configurable parameters that can
+Vibehouse's networking stack has a number of configurable parameters that can
 be adjusted to handle a variety of network situations. This section outlines
 some of these configuration parameters and their consequences at the networking
 level and their general intended use.
@@ -9,8 +9,8 @@ level and their general intended use.
 
 The beacon node has a `--target-peers` CLI parameter. This allows you to
 instruct the beacon node how many peers it should try to find and maintain.
-Lighthouse allows an additional 10% of this value for nodes to connect to us.
-Every 30 seconds, the excess peers are pruned. Lighthouse removes the
+Vibehouse allows an additional 10% of this value for nodes to connect to us.
+Every 30 seconds, the excess peers are pruned. Vibehouse removes the
 worst-performing peers and maintains the best performing peers.
 
 It may be counter-intuitive, but having a very large peer count will likely
@@ -21,7 +21,7 @@ Having a large peer count means that your node must act as an honest RPC server
 to all your connected peers. If there are many that are syncing, they will
 often be requesting a large number of blocks from your node. This means your
 node must perform a lot of work reading and responding to these peers. If your
-node is overloaded with peers and cannot respond in time, other Lighthouse
+node is overloaded with peers and cannot respond in time, other Vibehouse
 peers will consider you non-performant and disfavour you from their peer
 stores. Your node will also have to handle and manage the gossip and extra
 bandwidth that comes from having these extra peers. Having a non-responsive
@@ -39,23 +39,23 @@ drastically and use the (recommended) default.
 
 ## NAT Traversal (Port Forwarding)
 
-Lighthouse, by default, uses port 9000 for both TCP and UDP. Since v4.5.0, Lighthouse will also attempt to make QUIC connections via UDP port 9001 by default. Lighthouse will
+Vibehouse, by default, uses port 9000 for both TCP and UDP. Since v4.5.0, Vibehouse will also attempt to make QUIC connections via UDP port 9001 by default. Vibehouse will
 still function if it is behind a NAT without any port mappings. Although
-Lighthouse still functions, we recommend that some mechanism is used to ensure
-that your Lighthouse node is publicly accessible. This will typically improve
+Vibehouse still functions, we recommend that some mechanism is used to ensure
+that your Vibehouse node is publicly accessible. This will typically improve
 your peer count, allow the scoring system to find the best/most favourable
 peers for your node and overall improve the Ethereum consensus network.
 
-Lighthouse currently supports UPnP. If UPnP is enabled on your router,
-Lighthouse will automatically establish the port mappings for you (the beacon
+Vibehouse currently supports UPnP. If UPnP is enabled on your router,
+Vibehouse will automatically establish the port mappings for you (the beacon
 node will inform you of established routes in this case). If UPnP is not
-enabled, we recommend you to manually set up port mappings to Lighthouse's
+enabled, we recommend you to manually set up port mappings to Vibehouse's
 TCP and UDP ports (9000 TCP/UDP, and 9001 UDP by default).
 
-> Note: Lighthouse needs to advertise its publicly accessible ports in
+> Note: Vibehouse needs to advertise its publicly accessible ports in
 > order to inform its peers that it is contactable and how to connect to it.
-> Lighthouse has an automated way of doing this for the UDP port. This means
-> Lighthouse can detect its external UDP port. There is no such mechanism for the
+> Vibehouse has an automated way of doing this for the UDP port. This means
+> Vibehouse can detect its external UDP port. There is no such mechanism for the
 > TCP port. As such, we assume that the external UDP and external TCP port is the
 > same (i.e external 5050 UDP/TCP mapping to internal 9000 is fine). If you are setting up differing external UDP and TCP ports, you should
 > explicitly specify them using the `--enr-tcp-port` and `--enr-udp-port` as
@@ -82,32 +82,32 @@ The steps to do port forwarding depends on the router, but the general steps are
     - Protocol: select `TCP/UDP` or `BOTH`
     - External port: `9000`
     - Internal port: `9000`
-    - IP address: Usually there is a dropdown list for you to select the device. Choose the device that is running Lighthouse.
+    - IP address: Usually there is a dropdown list for you to select the device. Choose the device that is running Vibehouse.
 
     Since V4.5.0 port 9001/UDP is also used for QUIC support.
 
     - Protocol: select `UDP`
     - External port: `9001`
     - Internal port: `9001`
-    - IP address: Choose the device that is running  Lighthouse.
+    - IP address: Choose the device that is running  Vibehouse.
 
 1. To check that you have successfully opened the ports, go to [`yougetsignal`](https://www.yougetsignal.com/tools/open-ports/) and enter `9000` in the `port number`. If it shows "open", then you have successfully set up port forwarding. If it shows "closed", double check your settings, and also check that you have allowed firewall rules on port 9000. Note: this will only confirm if port 9000/TCP is open. You will need to ensure you have correctly setup port forwarding for the UDP ports (`9000` and `9001` by default).
 
 ## ENR Configuration
 
-Lighthouse has a number of CLI parameters for constructing and modifying the
+Vibehouse has a number of CLI parameters for constructing and modifying the
 local Ethereum Node Record (ENR). Examples are `--enr-address`,
 `--enr-udp-port`, `--enr-tcp-port` and `--disable-enr-auto-update`. These
 settings allow you to construct your initial ENR. Their primary intention is for
 setting up boot-like nodes and having a contactable ENR on boot. On normal
-operation of a Lighthouse node, none of these flags need to be set. Setting
+operation of a Vibehouse node, none of these flags need to be set. Setting
 these flags incorrectly can lead to your node being incorrectly added to the
 global DHT which will degrade the discovery process for all Ethereum consensus peers.
 
-The ENR of a Lighthouse node is initially set to be non-contactable. The
+The ENR of a Vibehouse node is initially set to be non-contactable. The
 in-built discovery mechanism can determine if your node is publicly accessible,
 and if it is, it will update your ENR to the correct public IP and port address
-(meaning you do not need to set it manually). Lighthouse persists its ENR, so
+(meaning you do not need to set it manually). Vibehouse persists its ENR, so
 on reboot it will re-load the settings it had discovered previously.
 
 Modifying the ENR settings can degrade the discovery of your node, making it
@@ -119,13 +119,13 @@ advanced use case.
 
 As noted in the previous sections, two fundamental parts to ensure good
 connectivity are: The parameters that configure the sockets over which
-Lighthouse listens for connections, and the parameters used to tell other peers
+Vibehouse listens for connections, and the parameters used to tell other peers
 how to connect to your node. This distinction is relevant and applies to most
 nodes that do not run directly on a public network.
 
-Since Lighthouse v7.0.0, Lighthouse listens to both IPv4 and IPv6 by default if it detects a globally routable IPv6 address. This means that dual-stack is enabled by default.
+Since Vibehouse v7.0.0, Vibehouse listens to both IPv4 and IPv6 by default if it detects a globally routable IPv6 address. This means that dual-stack is enabled by default.
 
-### Configuring Lighthouse to listen over IPv4/IPv6/Dual stack
+### Configuring Vibehouse to listen over IPv4/IPv6/Dual stack
 
 To listen over only IPv4 and not IPv6, use the flag `--listen-address 0.0.0.0`.
 
@@ -181,15 +181,15 @@ To listen over both IPv4 and IPv6 and using a different port for IPv6::
 > It listens on the default value of `--port6` (`9000`) for TCP, and port `9999` for UDP.
 > QUIC will use port `9001` for UDP, which is the default `--port6` value (`9000`) + 1.
 
-### Configuring Lighthouse to advertise IPv6 reachable addresses
+### Configuring Vibehouse to advertise IPv6 reachable addresses
 
-Lighthouse supports IPv6 to connect to other nodes both over IPv6 exclusively,
+Vibehouse supports IPv6 to connect to other nodes both over IPv6 exclusively,
 and dual stack using one socket for IPv4 and another socket for IPv6. In both
 scenarios, the previous sections still apply. In summary:
 
 > Beacon nodes must advertise their publicly reachable socket address
 
-In order to do so, lighthouse provides the following CLI options/parameters.
+In order to do so, vibehouse provides the following CLI options/parameters.
 
 - `--enr-udp-port` Use this to advertise the port that is publicly reachable
   over UDP with a publicly reachable IPv4 address. This might differ from the

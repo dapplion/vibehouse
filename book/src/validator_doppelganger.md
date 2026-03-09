@@ -4,19 +4,19 @@
 [Slashing Protection]: ./validator_slashing_protection.md
 [VC HTTP API]: ./api_vc.md
 
-From Lighthouse `v1.5.0`, the *Doppelganger Protection* feature is available for the Validator
+From Vibehouse `v1.5.0`, the *Doppelganger Protection* feature is available for the Validator
 Client. Taken from the German *[doppelgänger]*, which translates literally to "double-walker", a
 "doppelganger" in the context of Ethereum proof-of-stake refers to another instance of a validator running in a separate validator
 process. As detailed in [Slashing Protection], running the same validator twice will inevitably
 result in slashing.
 
-The Doppelganger Protection (DP) feature in Lighthouse *imperfectly* attempts to detect other
+The Doppelganger Protection (DP) feature in Vibehouse *imperfectly* attempts to detect other
 instances of a validator operating on the network before any slashable offences can be committed. It
 achieves this by staying silent for 2-3 epochs after a validator is started so it can listen for
 other instances of that validator before starting to sign potentially slashable messages.
 
-> Note: Doppelganger Protection is not yet interoperable, so if it is configured on a Lighthouse
-> validator client, the client must be connected to a Lighthouse beacon node.
+> Note: Doppelganger Protection is not yet interoperable, so if it is configured on a Vibehouse
+> validator client, the client must be connected to a Vibehouse beacon node.
 
 ## Initial Considerations
 
@@ -62,7 +62,7 @@ If you understand that DP is imperfect and will cause some (generally, non-subst
 duties, it can be enabled by providing the `--enable-doppelganger-protection` flag:
 
 ```bash
-lighthouse vc --enable-doppelganger-protection
+vibehouse vc --enable-doppelganger-protection
 ```
 
 When enabled, the validator client will emit the following log on start up:
@@ -96,7 +96,7 @@ INFO Internal shutdown received              reason: Doppelganger detected.
 INFO Shutting down..                         reason: Failure("Doppelganger detected.")
 ```
 
-Observing a doppelganger is a serious problem and users should be *very alarmed*. The Lighthouse DP
+Observing a doppelganger is a serious problem and users should be *very alarmed*. The Vibehouse DP
 system tries very hard to avoid false-positives so it is likely that a slashing risk is present.
 
 If a doppelganger is observed, the VC will shut down. **Do not restart the VC until you are certain
@@ -105,7 +105,7 @@ there is no other instance of that validator running elsewhere!**
 The steps to solving a doppelganger vary depending on the case, but some places to check are:
 
 1. Is there another validator process running on this host?
-    - Unix users can check by running the command `ps aux | grep lighthouse`
+    - Unix users can check by running the command `ps aux | grep vibehouse`
     - Windows users can check the Task Manager.
 1. Has this validator recently been moved from another host? Check to ensure it's not running.
 1. Has this validator been delegated to a staking service?
@@ -123,7 +123,7 @@ DP takes 2-3 epochs, which is approximately 12-20 minutes.
 
 ### How long does it take for DP to detect a doppelganger?
 
-To avoid false positives from restarting the same VC, Lighthouse will wait until the next epoch
+To avoid false positives from restarting the same VC, Vibehouse will wait until the next epoch
 before it starts detecting doppelgangers. Additionally, a validator might not attest till the end
 of the next epoch. This creates a 2 epoch delay, which is just over 12 minutes. Network delays or
 issues might lengthen this time more.

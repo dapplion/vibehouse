@@ -1,14 +1,14 @@
 # Redundancy
 
-There are three places in Lighthouse where redundancy is notable:
+There are three places in Vibehouse where redundancy is notable:
 
-1. ✅ GOOD: Using a redundant beacon node in `lighthouse vc --beacon-nodes`
-1. ❌ NOT SUPPORTED: Using a redundant execution node in `lighthouse bn --execution-endpoint`
-1. ☠️ BAD: Running redundant `lighthouse vc` instances with overlapping keypairs.
+1. ✅ GOOD: Using a redundant beacon node in `vibehouse vc --beacon-nodes`
+1. ❌ NOT SUPPORTED: Using a redundant execution node in `vibehouse bn --execution-endpoint`
+1. ☠️ BAD: Running redundant `vibehouse vc` instances with overlapping keypairs.
 
 We mention (3) since it is unsafe and should not be confused with the other two
 uses of redundancy. **Running the same validator keypair in more than one
-validator client (Lighthouse, or otherwise) will eventually lead to slashing.**
+validator client (Vibehouse, or otherwise) will eventually lead to slashing.**
 See [Slashing Protection](./validator_slashing_protection.md) for more information.
 
 From this paragraph, this document will *only* refer to the first two items (1, 2). We
@@ -16,12 +16,12 @@ From this paragraph, this document will *only* refer to the first two items (1, 
 
 ## Redundant Beacon Nodes
 
-The Lighthouse validator client can be configured to use multiple redundant beacon nodes.
+The Vibehouse validator client can be configured to use multiple redundant beacon nodes.
 
-The `lighthouse vc --beacon-nodes` flag allows one or more comma-separated values:
+The `vibehouse vc --beacon-nodes` flag allows one or more comma-separated values:
 
-1. `lighthouse vc --beacon-nodes http://localhost:5052`
-1. `lighthouse vc --beacon-nodes http://localhost:5052,http://192.168.1.1:5052`
+1. `vibehouse vc --beacon-nodes http://localhost:5052`
+1. `vibehouse vc --beacon-nodes http://localhost:5052,http://192.168.1.1:5052`
 
 In the first example, the validator client will attempt to contact
 `http://localhost:5052` to perform duties. If that node is not contactable, not
@@ -61,7 +61,7 @@ following flags:
 For example one could use the following command to provide a backup beacon node:
 
 ```bash
-lighthouse bn \
+vibehouse bn \
   --http \
   --http-address local_IP \
   --execution-endpoint http://localhost:8551 \
@@ -71,7 +71,7 @@ lighthouse bn \
 Prior to v3.2.0 fallback beacon nodes also required the `--subscribe-all-subnets` and
 `--import-all-attestations` flags. These flags are no longer required as the validator client will
 now broadcast subscriptions to all connected beacon nodes by default. This broadcast behaviour
-can be disabled using the `--broadcast none` flag for `lighthouse vc`.
+can be disabled using the `--broadcast none` flag for `vibehouse vc`.
 
 ### Fallback Health
 
@@ -87,11 +87,11 @@ sorted into tiers based onto sync distance and execution layer status. You can u
 multiple nodes fall into the same tier, user order is used to tie-break.
 
 To see health information for each connected node, you can use the
-[`/lighthouse/beacon/health` API endpoint](./api_vc_endpoints.md#get-lighthousebeaconhealth).
+[`/vibehouse/beacon/health` API endpoint](./api_vc_endpoints.md#get-vibehousebeaconhealth).
 
 ### Broadcast modes
 
-Since v4.6.0, the Lighthouse VC can be configured to broadcast messages to all configured beacon
+Since v4.6.0, the Vibehouse VC can be configured to broadcast messages to all configured beacon
 nodes rather than just the first available.
 
 The flag to control this behaviour is `--broadcast`, which takes multiple comma-separated values
@@ -117,8 +117,8 @@ The default is `--broadcast subscriptions`. To also broadcast blocks for example
 
 ## Redundant execution nodes
 
-Lighthouse previously supported redundant execution nodes for fetching data from the deposit
-contract. On merged networks *this is no longer supported*. Each Lighthouse beacon node must be
+Vibehouse previously supported redundant execution nodes for fetching data from the deposit
+contract. On merged networks *this is no longer supported*. Each Vibehouse beacon node must be
 configured in a 1:1 relationship with an execution node. For more information on the rationale
 behind this decision please see the [Merge Migration](./archived_merge_migration.md) documentation.
 

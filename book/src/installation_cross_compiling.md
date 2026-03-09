@@ -1,6 +1,6 @@
 # Cross-compiling
 
-Lighthouse supports cross-compiling, allowing users to run a binary on one
+Vibehouse supports cross-compiling, allowing users to run a binary on one
 platform (e.g., `aarch64`) that was compiled on another platform (e.g.,
 `x86_64`).
 
@@ -10,7 +10,7 @@ Cross-compiling requires [`Docker`](https://docs.docker.com/engine/install/),
 [`rustembedded/cross`](https://github.com/rust-embedded/cross) and for the
 current user to be in the `docker` group.
 
-The binaries will be created in the `target/` directory of the Lighthouse
+The binaries will be created in the `target/` directory of the Vibehouse
 project.
 
 ### Targets
@@ -24,12 +24,12 @@ The `Makefile` in the project contains two targets for cross-compiling:
 ### Example
 
 ```bash
-cd lighthouse
+cd vibehouse
 make build-aarch64
 ```
 
-The `lighthouse` binary will be compiled inside a Docker container and placed
-in `lighthouse/target/aarch64-unknown-linux-gnu/release`.
+The `vibehouse` binary will be compiled inside a Docker container and placed
+in `vibehouse/target/aarch64-unknown-linux-gnu/release`.
 
 ## Feature Flags
 

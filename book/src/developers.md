@@ -2,12 +2,12 @@
 
 _Documentation for protocol developers._
 
-This section lists Lighthouse-specific decisions that are not strictly spec'd and may be useful for
-other protocol developers wishing to interact with lighthouse.
+This section lists Vibehouse-specific decisions that are not strictly spec'd and may be useful for
+other protocol developers wishing to interact with vibehouse.
 
 ## Custom ENR Fields
 
-Lighthouse currently uses the following ENR fields:
+Vibehouse currently uses the following ENR fields:
 
 ### Ethereum Consensus Specified
 
@@ -17,9 +17,9 @@ Lighthouse currently uses the following ENR fields:
 | `attnets` | An SSZ bitfield which indicates which of the 64 subnets the node is subscribed to for an extended period of time |
 | `syncnets` | An SSZ bitfield which indicates which of the sync committee subnets the node is subscribed to |
 
-### Lighthouse Custom Fields
+### Vibehouse Custom Fields
 
-Lighthouse is currently using the following custom ENR fields.
+Vibehouse is currently using the following custom ENR fields.
 
 | Field | Description |
 | ---- | ---- |
@@ -28,7 +28,7 @@ Lighthouse is currently using the following custom ENR fields.
 
 ## Custom RPC Messages
 
-The specification leaves room for implementation-specific errors. Lighthouse uses the following
+The specification leaves room for implementation-specific errors. Vibehouse uses the following
 custom RPC error messages.
 
 ### Goodbye Reason Codes
@@ -36,7 +36,7 @@ custom RPC error messages.
 | Code | Message | Description |
 | ---- | ---- | ---- |
 | 128 | Unable to Verify Network | Teku uses this, so we adopted it. It relates to having a fork mismatch |
-| 129 | Too Many Peers | Lighthouse can close a connection because it has reached its peer-limit and pruned excess peers |
+| 129 | Too Many Peers | Vibehouse can close a connection because it has reached its peer-limit and pruned excess peers |
 | 250 | Bad Score | The node has been dropped due to having a bad peer score |
 | 251 | Banned | The peer has been banned and disconnected |
 | 252 | Banned IP | The IP the node is connected to us with has been banned |

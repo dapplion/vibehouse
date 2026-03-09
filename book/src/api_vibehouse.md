@@ -1,12 +1,12 @@
-# Lighthouse Non-Standard APIs
+# Vibehouse Non-Standard APIs
 
-Lighthouse fully supports the standardization efforts at
+Vibehouse fully supports the standardization efforts at
 [github.com/ethereum/beacon-APIs](https://github.com/ethereum/beacon-APIs).
 However, sometimes development requires additional endpoints that shouldn't
 necessarily be defined as a broad-reaching standard.  Such endpoints are placed
-behind the `/lighthouse` path.
+behind the `/vibehouse` path.
 
-The endpoints behind the `/lighthouse` path are:
+The endpoints behind the `/vibehouse` path are:
 
 - Not intended to be stable.
 - Not guaranteed to be safe.
@@ -16,14 +16,14 @@ Although we don't recommend that users rely on these endpoints, we
 document them briefly so they can be utilized by developers and
 researchers.
 
-## `/lighthouse/health`
+## `/vibehouse/health`
 
 *Note: This endpoint is presently only available on Linux.*
 
 Returns information regarding the health of the host machine.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/health" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/health" -H  "accept: application/json" | jq
 ```
 
 ```json
@@ -64,12 +64,12 @@ curl -X GET "http://localhost:5052/lighthouse/health" -H  "accept: application/j
 
 ```
 
-## `/lighthouse/ui/health`
+## `/vibehouse/ui/health`
 
 Returns information regarding the health of the host machine.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/ui/health" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/ui/health" -H  "accept: application/json" | jq
 ```
 
 ```json
@@ -102,12 +102,12 @@ curl -X GET "http://localhost:5052/lighthouse/ui/health" -H  "accept: applicatio
 }
 ```
 
-## `/lighthouse/ui/validator_count`
+## `/vibehouse/ui/validator_count`
 
 Returns an overview of validators.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/ui/validator_count" -H "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/ui/validator_count" -H "accept: application/json" | jq
 ```
 
 ```json
@@ -126,12 +126,12 @@ curl -X GET "http://localhost:5052/lighthouse/ui/validator_count" -H "accept: ap
 }
 ```
 
-## `/lighthouse/ui/validator_metrics`
+## `/vibehouse/ui/validator_metrics`
 
 Re-exposes certain metrics from the validator monitor to the HTTP API. This API requires that the beacon node to have the flag `--validator-monitor-auto`. This API will only return metrics for the validators currently being monitored and present in the POST data, or the validators running in the validator client.
 
 ```bash
-curl -X POST "http://localhost:5052/lighthouse/ui/validator_metrics" -d '{"indices": [12345]}' -H "Content-Type: application/json" | jq
+curl -X POST "http://localhost:5052/vibehouse/ui/validator_metrics" -d '{"indices": [12345]}' -H "Content-Type: application/json" | jq
 ```
 
 ```json
@@ -165,12 +165,12 @@ Running this API without the flag `--validator-monitor-auto` in the beacon node 
 }
 ```
 
-## `/lighthouse/syncing`
+## `/vibehouse/syncing`
 
 Returns the sync status of the beacon node.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/syncing" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/syncing" -H  "accept: application/json" | jq
 ```
 
 There are two possible outcomes, depending on whether the beacon node is syncing or synced.
@@ -196,10 +196,10 @@ There are two possible outcomes, depending on whether the beacon node is syncing
    }
    ```
 
-## `/lighthouse/peers`
+## `/vibehouse/peers`
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/peers" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/peers" -H  "accept: application/json" | jq
 ```
 
 ```json
@@ -265,12 +265,12 @@ curl -X GET "http://localhost:5052/lighthouse/peers" -H  "accept: application/js
 ]
 ```
 
-## `/lighthouse/peers/connected`
+## `/vibehouse/peers/connected`
 
 Returns information about connected peers.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/peers/connected" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/peers/connected" -H  "accept: application/json" | jq
 ```
 
 ```json
@@ -337,23 +337,23 @@ curl -X GET "http://localhost:5052/lighthouse/peers/connected" -H  "accept: appl
 ]
 ```
 
-## `/lighthouse/proto_array`
+## `/vibehouse/proto_array`
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/proto_array" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/proto_array" -H  "accept: application/json" | jq
 ```
 
 *Example omitted for brevity.*
 
-## `/lighthouse/validator_inclusion/{epoch}/{validator_id}`
+## `/vibehouse/validator_inclusion/{epoch}/{validator_id}`
 
 See [Validator Inclusion APIs](./api_validator_inclusion.md).
 
-## `/lighthouse/validator_inclusion/{epoch}/global`
+## `/vibehouse/validator_inclusion/{epoch}/global`
 
 See [Validator Inclusion APIs](./api_validator_inclusion.md).
 
-## `/lighthouse/liveness`
+## `/vibehouse/liveness`
 
 POST request that checks if any of the given validators have attested in the given epoch. Returns a list
 of objects, each including the validator index, epoch, and `is_live` status of a requested validator.
@@ -363,7 +363,7 @@ This endpoint is used in doppelganger detection, and can only provide accurate i
 > Note that for this API, if you insert an arbitrary epoch other than the previous, current or next epoch of the network, it will return `"code:400"` and `BAD_REQUEST`.
 
 ```bash
-curl -X POST "http://localhost:5052/lighthouse/liveness" -d '{"indices":["0","1"],"epoch":"1"}' -H  "content-type: application/json" | jq
+curl -X POST "http://localhost:5052/vibehouse/liveness" -d '{"indices":["0","1"],"epoch":"1"}' -H  "content-type: application/json" | jq
 ```
 
 ```json
@@ -378,12 +378,12 @@ curl -X POST "http://localhost:5052/lighthouse/liveness" -d '{"indices":["0","1"
 }
 ```
 
-## `/lighthouse/database/info`
+## `/vibehouse/database/info`
 
 Information about the database's split point and anchor info.
 
 ```bash
-curl "http://localhost:5052/lighthouse/database/info" | jq
+curl "http://localhost:5052/vibehouse/database/info" | jq
 ```
 
 ```json
@@ -447,22 +447,22 @@ indicating that all states with slots `>= 0` are available, i.e., full state his
 on the specific meanings of these fields see the docs on [Checkpoint
 Sync](./advanced_checkpoint_sync.md#how-to-run-an-archived-node).
 
-## `/lighthouse/custody/backfill`
+## `/vibehouse/custody/backfill`
 
 Starts a custody backfill sync from the next epoch with the node's latest custody requirements. The sync won't begin immediately, it waits until the next epoch is finalized before triggering.
 
 This endpoint should only be used to fix nodes that may have partial custody columns due to a prior backfill bug (present in v8.0.0-rc.2). Use with caution as it re-downloads all historic custody data columns and may consume significant bandwidth.
 
 ```bash
-curl -X POST "http://localhost:5052/lighthouse/custody/backfill"
+curl -X POST "http://localhost:5052/vibehouse/custody/backfill"
 ```
 
-## `/lighthouse/merge_readiness`
+## `/vibehouse/merge_readiness`
 
 Returns the current difficulty and terminal total difficulty of the network. Before [The Merge](https://ethereum.org/en/roadmap/merge/) on 15<sup>th</sup> September 2022, you will see that the current difficulty is less than the terminal total difficulty, An example is shown below:
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/merge_readiness" | jq
+curl -X GET "http://localhost:5052/vibehouse/merge_readiness" | jq
 ```
 
 ```json
@@ -491,7 +491,7 @@ As all testnets and Mainnet have been merged, both values will be the same after
 }
 ```
 
-## `/lighthouse/analysis/attestation_performance/{index}`
+## `/vibehouse/analysis/attestation_performance/{index}`
 
 Fetch information about the attestation performance of a validator index or all validators for a
 range of consecutive epochs.
@@ -504,7 +504,7 @@ Two query parameters are required:
 Example:
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/analysis/attestation_performance/1?start_epoch=1&end_epoch=1" | jq
+curl -X GET "http://localhost:5052/vibehouse/analysis/attestation_performance/1?start_epoch=1&end_epoch=1" | jq
 ```
 
 ```json
@@ -527,7 +527,7 @@ curl -X GET "http://localhost:5052/lighthouse/analysis/attestation_performance/1
 Instead of specifying a validator index, you can specify the entire validator set by using `global`:
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/analysis/attestation_performance/global?start_epoch=1&end_epoch=1" | jq
+curl -X GET "http://localhost:5052/vibehouse/analysis/attestation_performance/global?start_epoch=1&end_epoch=1" | jq
 ```
 
 ```json
@@ -569,7 +569,7 @@ Caveats:
   This is because the state *prior* to the `start_epoch` needs to be loaded from the database,
   and loading a state on a boundary is most efficient.
 
-## `/lighthouse/analysis/block_rewards`
+## `/vibehouse/analysis/block_rewards`
 
 Fetch information about the block rewards paid to proposers for a range of consecutive blocks.
 
@@ -581,7 +581,7 @@ Two query parameters are required:
 Example:
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/analysis/block_rewards?start_slot=1&end_slot=1" | jq
+curl -X GET "http://localhost:5052/vibehouse/analysis/block_rewards?start_slot=1&end_slot=1" | jq
 ```
 
 The first few lines of the response would look like:
@@ -621,9 +621,9 @@ Caveats:
   loading a state on a boundary is most efficient.
 
 [block_reward_src]:
-https://github.com/sigp/lighthouse/tree/unstable/common/eth2/src/lighthouse/block_rewards.rs
+https://github.com/dapplion/vibehouse/tree/main/common/eth2/src/vibehouse/block_rewards.rs
 
-## `/lighthouse/analysis/block_packing`
+## `/vibehouse/analysis/block_packing`
 
 Fetch information about the block packing efficiency of blocks for a range of consecutive
 epochs.
@@ -634,7 +634,7 @@ Two query parameters are required:
 - `end_epoch` (inclusive): the epoch of the last block to compute packing efficiency for.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/analysis/block_packing_efficiency?start_epoch=1&end_epoch=1" | jq
+curl -X GET "http://localhost:5052/vibehouse/analysis/block_packing_efficiency?start_epoch=1&end_epoch=1" | jq
 ```
 
 An excerpt of the response looks like:
@@ -665,16 +665,16 @@ Caveats:
   This is because the state *prior* to the `start_epoch` needs to be loaded from the database, and
   loading a state on a boundary is most efficient.
 
-## `/lighthouse/logs`
+## `/vibehouse/logs`
 
 This is a Server Side Event subscription endpoint. This allows a user to read
-the Lighthouse logs directly from the HTTP API endpoint. This currently
+the vibehouse logs directly from the HTTP API endpoint. This currently
 exposes INFO and higher level logs. It is only enabled when the `--gui` flag is set in the CLI.
 
 Example:
 
 ```bash
-curl -N "http://localhost:5052/lighthouse/logs"
+curl -N "http://localhost:5052/vibehouse/logs"
 ```
 
 Should provide an output that emits log events as they occur:
@@ -694,12 +694,12 @@ Should provide an output that emits log events as they occur:
 }
 ```
 
-## `/lighthouse/nat`
+## `/vibehouse/nat`
 
 Checks if the ports are open.
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/nat" | jq
+curl -X GET "http://localhost:5052/vibehouse/nat" | jq
 ```
 
 An example of response:

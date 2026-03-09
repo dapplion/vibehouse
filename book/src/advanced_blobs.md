@@ -4,7 +4,7 @@ With the [Fusaka](https://ethereum.org/roadmap/fusaka) upgrade, the main feature
 
 > Note: the above assumes that the beacon node has no attached validators. If the beacon node has attached validators, then it is required to custody (store) a certain number of data columns which increases with the number of staked ETH. For example, if the staked ETH is `$\geq$` 2048 ETH, then due to custody requirement, it will make the beacon node a semi-supernode ; if `$\geq$` 4096 ETH, the beacon node will be a supernode without needing the flag.
 
-Table below summarizes the role of relevant flags in Lighthouse beacon node:
+Table below summarizes the role of relevant flags in Vibehouse beacon node:
 
 |                     | Post-Deneb, Pre-Fulu                      |                                                              | Post-Fulu                                        |                                                          |
 |---------------------|-------------------------------------------|--------------------------------------------------------------|--------------------------------------------------|----------------------------------------------------------|
@@ -60,7 +60,7 @@ In the Deneb network upgrade, one of the changes is the implementation of EIP-48
    We can call the API:
 
    ```bash
-   curl "http://localhost:5052/lighthouse/database/info" | jq
+   curl "http://localhost:5052/vibehouse/database/info" | jq
    ```
 
-   Refer to [Lighthouse API](./api_lighthouse.md#lighthousedatabaseinfo) for an example response.
+   Refer to [Vibehouse API](./api_vibehouse.md#vibehousedatabaseinfo) for an example response.

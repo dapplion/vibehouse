@@ -1,4 +1,4 @@
-# Lighthouse CLI Reference
+# Vibehouse CLI Reference
 
 ```
 Ethereum consensus client with ePBS (EIP-7732). Provides a full-featured beacon

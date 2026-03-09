@@ -4,13 +4,13 @@
 
 ## Introduction
 
-The `lighthouse validator-manager` tool provides utilities for managing validators on a *running*
-Lighthouse Validator Client. The validator manager performs operations via the HTTP API of the
+The `vibehouse validator-manager` tool provides utilities for managing validators on a *running*
+Vibehouse Validator Client. The validator manager performs operations via the HTTP API of the
 validator client (VC). Due to limitations of the
-[keymanager-APIs](https://ethereum.github.io/keymanager-APIs/), only Lighthouse VCs are fully
+[keymanager-APIs](https://ethereum.github.io/keymanager-APIs/), only Vibehouse VCs are fully
 supported by this command.
 
-The validator manager tool is similar to the `lighthouse account-manager` tool,
+The validator manager tool is similar to the `vibehouse account-manager` tool,
 except the latter creates files that will be read by the VC next time it starts
 whilst the former makes instant changes to a live VC.
 

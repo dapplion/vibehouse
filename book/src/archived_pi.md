@@ -7,7 +7,7 @@ Tested on:
 - Raspberry Pi 4 Model B (4GB)
 - `Ubuntu 20.04 LTS (GNU/Linux 5.4.0-1011-raspi aarch64)`
 
-*Note: [Lighthouse supports cross-compiling](./installation_cross_compiling.md) to target a
+*Note: [Vibehouse supports cross-compiling](./installation_cross_compiling.md) to target a
 Raspberry Pi (`aarch64`). Compiling on a faster machine (i.e., `x86_64`
 desktop) may be convenient.*
 
@@ -15,7 +15,7 @@ desktop) may be convenient.*
 
 Follow the [Ubuntu Raspberry Pi installation instructions](https://ubuntu.com/download/raspberry-pi). **A 64-bit version is required**
 
-A graphical environment is not required in order to use Lighthouse.  Only the
+A graphical environment is not required in order to use Vibehouse.  Only the
 terminal and an Internet connection are necessary.
 
 ## 2. Install Packages
@@ -46,20 +46,20 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 >   be found, run `source $HOME/.cargo/env`. After that, running `cargo version` should return the version, for example `cargo 1.68.2`.
 > - It's generally advisable to append `source $HOME/.cargo/env` to `~/.bashrc`.
 
-## 4. Install Lighthouse
+## 4. Install Vibehouse
 
 ```bash
-git clone https://github.com/sigp/lighthouse.git
-cd lighthouse
-git checkout stable
+git clone https://github.com/dapplion/vibehouse.git
+cd vibehouse
+git checkout main
 make
 ```
 
 >
-> Compiling Lighthouse can take up to an hour. The safety guarantees provided by the Rust language
+> Compiling Vibehouse can take up to an hour. The safety guarantees provided by the Rust language
 unfortunately result in a lengthy compilation time on a low-spec CPU like a Raspberry Pi. For faster
 compilation on low-spec hardware, try [cross-compiling](./installation_cross_compiling.md) on a more powerful
 computer (e.g., compile for RasPi from your desktop computer).
 
-Once installation has finished, confirm Lighthouse is installed by viewing the
-usage instructions with  `lighthouse --help`.
+Once installation has finished, confirm Vibehouse is installed by viewing the
+usage instructions with  `vibehouse --help`.

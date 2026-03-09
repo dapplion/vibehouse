@@ -1,11 +1,11 @@
 # Beacon Node API
 
-Lighthouse implements the standard [Beacon Node API
+Vibehouse implements the standard [Beacon Node API
 specification][OpenAPI]. Please follow that link for a full description of each API endpoint.
 
 ## Starting the server
 
-A Lighthouse beacon node can be configured to expose an HTTP server by supplying the `--http` flag. The default listen address is `http://127.0.0.1:5052`.
+A Vibehouse beacon node can be configured to expose an HTTP server by supplying the `--http` flag. The default listen address is `http://127.0.0.1:5052`.
 
 The following CLI flags control the HTTP server:
 
@@ -19,8 +19,8 @@ The following CLI flags control the HTTP server:
 - `--http-enable-tls`: serve the HTTP server over TLS. Must be used with `--http-tls-cert`
  and `http-tls-key`. This feature is currently experimental, please see
  [Serving the HTTP API over TLS](#serving-the-http-api-over-tls) below.
-- `--http-tls-cert`: specify the path to the certificate file for Lighthouse to use.
-- `--http-tls-key`: specify the path to the private key file for Lighthouse to use.
+- `--http-tls-cert`: specify the path to the certificate file for Vibehouse to use.
+- `--http-tls-key`: specify the path to the private key file for Vibehouse to use.
 
 The schema of the API aligns with the standard Beacon Node API as defined
 at [github.com/ethereum/beacon-APIs](https://github.com/ethereum/beacon-APIs).
@@ -42,7 +42,7 @@ standard techniques:
   doesn't require setting `--http-address`.
 - Use a firewall to limit access to certain remote IPs, e.g. allow access only from one other
   machine on the local network.
-- Shield Lighthouse behind an HTTP server with rate-limiting such as NGINX. This is only
+- Shield Vibehouse behind an HTTP server with rate-limiting such as NGINX. This is only
   recommended for advanced users, e.g. beacon node hosting providers.
 
 Additional risks to be aware of include:
@@ -128,7 +128,7 @@ You can replace `1` in the above command with the validator index that you would
 
 ### Events API
 
-The [events API](https://ethereum.github.io/beacon-APIs/#/Events/eventstream) provides information such as the payload attributes that are of interest to block builders and relays. To query the payload attributes, it is necessary to run Lighthouse beacon node with the flag `--always-prepare-payload`. With the flag `--always-prepare-payload`, it is mandatory to also have the flag `--suggested-fee-recipient` set on the beacon node. You could pass a dummy fee recipient and have it override with the intended fee recipient of the proposer during the actual block proposal. It is also recommended to add the flag `--prepare-payload-lookahead 8000` which configures the payload attributes to be sent at 4s into each slot (or 8s from the start of the next slot). An example of the command is:
+The [events API](https://ethereum.github.io/beacon-APIs/#/Events/eventstream) provides information such as the payload attributes that are of interest to block builders and relays. To query the payload attributes, it is necessary to run Vibehouse beacon node with the flag `--always-prepare-payload`. With the flag `--always-prepare-payload`, it is mandatory to also have the flag `--suggested-fee-recipient` set on the beacon node. You could pass a dummy fee recipient and have it override with the intended fee recipient of the proposer during the actual block proposal. It is also recommended to add the flag `--prepare-payload-lookahead 8000` which configures the payload attributes to be sent at 4s into each slot (or 8s from the start of the next slot). An example of the command is:
 
 ```bash
 curl -X 'GET' \
@@ -168,13 +168,13 @@ Generate a self-signed certificate using `openssl`:
 openssl req -x509 -nodes -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -subj "/CN=localhost"
 ```
 
-Note that currently Lighthouse only accepts keys that are not password protected.
+Note that currently Vibehouse only accepts keys that are not password protected.
 This means we need to run with the `-nodes` flag (short for 'no DES').
 
-Once generated, we can run Lighthouse and an execution node according to [Run a node](./run_a_node.md). In addition, add the flags `--http-enable-tls --http-tls-cert cert.pem --http-tls-key key.pem` to Lighthouse, the command should look like:
+Once generated, we can run Vibehouse and an execution node according to [Run a node](./run_a_node.md). In addition, add the flags `--http-enable-tls --http-tls-cert cert.pem --http-tls-key key.pem` to Vibehouse, the command should look like:
 
 ```bash
-lighthouse bn \
+vibehouse bn \
   --network mainnet \
   --execution-endpoint http://localhost:8551 \
   --execution-jwt /secrets/jwt.hex \
@@ -185,7 +185,7 @@ lighthouse bn \
   --http-tls-key key.pem
 ```
 
-Note that the user running Lighthouse must have permission to read the
+Note that the user running Vibehouse must have permission to read the
 certificate and key.
 
 The API is now being served at `https://localhost:5052`.
@@ -223,7 +223,7 @@ sudo trust extract-compat
 Now the validator client can be connected to the beacon node by running:
 
 ```bash
-lighthouse vc --beacon-nodes https://localhost:5052
+vibehouse vc --beacon-nodes https://localhost:5052
 ```
 
 #### Option 2: Specify the certificate via CLI
@@ -232,7 +232,7 @@ You can also specify any custom certificates via the validator client CLI like
 so:
 
 ```bash
-lighthouse vc --beacon-nodes https://localhost:5052 --beacon-nodes-tls-certs cert.pem
+vibehouse vc --beacon-nodes https://localhost:5052 --beacon-nodes-tls-certs cert.pem
 ```
 
 ## Troubleshooting
@@ -250,7 +250,7 @@ curl -X GET "http://localhost:5052/eth/v1/node/version" -H  "accept:application/
 The beacon node should respond with its version:
 
 ```json
-{"data":{"version":"Lighthouse/v4.1.0-693886b/x86_64-linux"}
+{"data":{"version":"Vibehouse/v4.1.0-693886b/x86_64-linux"}
 ```
 
 If this doesn't work, the server might not be started or there might be a
@@ -264,7 +264,7 @@ which causes browsers to reject responses with a CORS error.
 The `--http-allow-origin` flag can be used to add a wild-card CORS header:
 
 ```bash
-lighthouse bn --http --http-allow-origin "*"
+vibehouse bn --http --http-allow-origin "*"
 ```
 
 > **Warning:** Adding the wild-card allow-origin flag can pose a security risk.

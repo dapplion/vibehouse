@@ -50,7 +50,7 @@ Options:
           header from the builder API. [default: 1000]
       --builder-user-agent <STRING>
           The HTTP user agent to send alongside requests to the builder URL. The
-          default is Lighthouse's version string.
+          default is Vibehouse's version string.
       --checkpoint-blobs <BLOBS_SSZ>
           Set the checkpoint blobs to start syncing from. Must be aligned and
           match --checkpoint-block. Using --checkpoint-sync-url instead is

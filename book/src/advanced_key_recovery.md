@@ -4,11 +4,11 @@ Generally, validator keystore files are generated alongside a *mnemonic*. If
 the keystore and/or the keystore password are lost, this mnemonic can
 regenerate a new, equivalent keystore with a new password.
 
-There are two ways to recover keys using the `lighthouse` CLI:
+There are two ways to recover keys using the `vibehouse` CLI:
 
-- `lighthouse account validator recover`: recover one or more EIP-2335 keystores from a mnemonic.
+- `vibehouse account validator recover`: recover one or more EIP-2335 keystores from a mnemonic.
  These keys can be used directly in a validator client.
-- `lighthouse account wallet recover`: recover an EIP-2386 wallet from a
+- `vibehouse account wallet recover`: recover an EIP-2386 wallet from a
  mnemonic.
 
 ## ⚠️ Warning
@@ -31,19 +31,19 @@ index on the same mnemonic always results in the same validator keypair being
 generated (see [EIP-2334](https://eips.ethereum.org/EIPS/eip-2334) for more
 detail).
 
-Using the `lighthouse account validator recover` command you can generate the
+Using the `vibehouse account validator recover` command you can generate the
 keystores that correspond to one or more indices in the mnemonic:
 
-- `lighthouse account validator recover`: recover only index `0`.
-- `lighthouse account validator recover --count 2`: recover indices `0, 1`.
-- `lighthouse account validator recover --first-index 1`: recover only index `1`.
-- `lighthouse account validator recover --first-index 1 --count 2`: recover indices `1, 2`.
+- `vibehouse account validator recover`: recover only index `0`.
+- `vibehouse account validator recover --count 2`: recover indices `0, 1`.
+- `vibehouse account validator recover --first-index 1`: recover only index `1`.
+- `vibehouse account validator recover --first-index 1 --count 2`: recover indices `1, 2`.
 
 For each of the indices recovered in the above commands, a directory will be
-created in the `--validator-dir` location (default `~/.lighthouse/{network}/validators`)
+created in the `--validator-dir` location (default `~/.vibehouse/{network}/validators`)
 which contains all the information necessary to run a validator using the
-`lighthouse vc` command. The password to this new keystore will be placed in
-the `--secrets-dir` (default `~/.lighthouse/{network}/secrets`).
+`vibehouse vc` command. The password to this new keystore will be placed in
+the `--secrets-dir` (default `~/.vibehouse/{network}/secrets`).
 
 where `{network}` is the name of the consensus layer network passed in the `--network` parameter (default is `mainnet`).
 
@@ -55,7 +55,7 @@ keystores, if desired. For example, the following command will create an
 encrypted wallet named `wally-recovered` from a mnemonic:
 
 ```
-lighthouse account wallet recover --name wally-recovered
+vibehouse account wallet recover --name wally-recovered
 ```
 
 **⚠️ Warning:** the wallet will be created with a `nextaccount` value of `0`.

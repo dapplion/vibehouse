@@ -23,29 +23,29 @@
 - [Can I submit a voluntary exit message without a beacon node?](#vc-exit)
 - [Does increasing the number of validators increase the CPU and other computer resources used?](#vc-resource)
 - [I want to add new validators. Do I have to reimport the existing keys?](#vc-reimport)
-- [Do I have to stop `lighthouse vc` the when importing new validator keys?](#vc-import)
+- [Do I have to stop `vibehouse vc` the when importing new validator keys?](#vc-import)
 - [How can I delete my validator once it is imported?](#vc-delete)
 
 ## [Network, Monitoring and Maintenance](#network-monitoring-and-maintenance-1)
 
 - [I have a low peer count and it is not increasing](#net-peer)
-- [How do I update lighthouse?](#net-update)
+- [How do I update vibehouse?](#net-update)
 - [Do I need to set up any port mappings (port forwarding)?](#net-port-forwarding)
 - [How can I monitor my validators?](#net-monitor)
 - [My beacon node and validator client are on different servers. How can I point the validator client to the beacon node?](#net-bn-vc)
 - [Should I do anything to the beacon node or validator client settings if I have a relocation of the node / change of IP address?](#net-ip)
-- [How to change the TCP/UDP port 9000 that Lighthouse listens on?](#net-port)
-- [Lighthouse `v4.3.0` introduces a change where a node will subscribe to only 2 subnets in total. I am worried that this will impact my validators return.](#net-subnet)
+- [How to change the TCP/UDP port 9000 that Vibehouse listens on?](#net-port)
+- [Vibehouse `v4.3.0` introduces a change where a node will subscribe to only 2 subnets in total. I am worried that this will impact my validators return.](#net-subnet)
 - [How to know how many of my peers are connected through QUIC?](#net-quic)
 
 ## [Miscellaneous](#miscellaneous-1)
 
 - [What should I do if I lose my slashing protection database?](#misc-slashing)
-- [I can't compile lighthouse](#misc-compile)
-- [How do I check the version of Lighthouse that is running?](#misc-version)
-- [Does Lighthouse have pruning function like the execution client to save disk space?](#misc-prune)
+- [I can't compile vibehouse](#misc-compile)
+- [How do I check the version of Vibehouse that is running?](#misc-version)
+- [Does Vibehouse have pruning function like the execution client to save disk space?](#misc-prune)
 - [Can I use a HDD for the freezer database and only have the hot db on SSD?](#misc-freezer)
-- [Can Lighthouse log in local timestamp instead of UTC?](#misc-timestamp)
+- [Can Vibehouse log in local timestamp instead of UTC?](#misc-timestamp)
 - [My hard disk is full and my validator is down. What should I do?](#misc-full)
 
 ## Beacon Node
@@ -121,7 +121,7 @@ WARN BlockProcessingFailure                  outcome: MissingBeaconBlock(0xbdba2
 
 ### <a name="bn-download-slow"></a> After checkpoint sync, the progress of `downloading historical blocks` is slow. Why?
 
-This is a normal behaviour. Since [v4.1.0](https://github.com/sigp/lighthouse/releases/tag/v4.1.0), Lighthouse implements rate-limited backfill sync to mitigate validator performance issues after a checkpoint sync. This is not something to worry about since backfill sync / historical data is not required for staking. However, if you opt to sync the chain as fast as possible, you can add the flag `--disable-backfill-rate-limiting` to the beacon node.
+This is a normal behaviour. Since [v4.1.0](https://github.com/dapplion/vibehouse/releases/tag/v4.1.0), Vibehouse implements rate-limited backfill sync to mitigate validator performance issues after a checkpoint sync. This is not something to worry about since backfill sync / historical data is not required for staking. However, if you opt to sync the chain as fast as possible, you can add the flag `--disable-backfill-rate-limiting` to the beacon node.
 
 ### <a name="bn-http"></a> My beacon node logs `WARN Error processing HTTP API request`, what should I do?
 
@@ -163,11 +163,11 @@ If the node is syncing or downloading historical blocks, the error should disapp
 
 ### <a name="bn-deposit-cache"></a> My beacon node logs `WARN Failed to finalize deposit cache`, what should I do?
 
-This is a known [bug](https://github.com/sigp/lighthouse/issues/3707) that will fix by itself.
+This is a known [bug](https://github.com/dapplion/vibehouse/issues/3707) that will fix by itself.
 
 ### <a name="bn-partial-history"></a> How can I construct only partial state history?
 
-Lighthouse prunes finalized states by default. Nevertheless, it is quite often that users may be interested in the state history of a few epochs before finalization. To have access to these pruned states, Lighthouse typically requires a full reconstruction of states using the flag `--reconstruct-historic-states` (which will usually take a week). Partial state history can be achieved with some "tricks". Here are the general steps:
+Vibehouse prunes finalized states by default. Nevertheless, it is quite often that users may be interested in the state history of a few epochs before finalization. To have access to these pruned states, Vibehouse typically requires a full reconstruction of states using the flag `--reconstruct-historic-states` (which will usually take a week). Partial state history can be achieved with some "tricks". Here are the general steps:
 
   1. Delete the current database. You can do so with `--purge-db-force` or manually deleting the database from the data directory: `$datadir/beacon`.
 
@@ -184,7 +184,7 @@ Lighthouse prunes finalized states by default. Nevertheless, it is quite often t
   1. Check the database:
 
   ```bash
-  curl "http://localhost:5052/lighthouse/database/info" | jq '.anchor'
+  curl "http://localhost:5052/vibehouse/database/info" | jq '.anchor'
   ```
 
   and look for the field `state_upper_limit`. It should show the slot of the snapshot:
@@ -193,7 +193,7 @@ Lighthouse prunes finalized states by default. Nevertheless, it is quite often t
   "state_upper_limit": "10485760",
   ```
 
-Lighthouse will now start to reconstruct historic states from slot `10485760`. At this point, if you do not want a full state reconstruction, you may remove the flag `--reconstruct-historic-states` (and restart). When the process is completed, you will have the state data from slot `10485760`. Going forward, Lighthouse will continue retaining all historical states newer than the snapshot. Eventually this can lead to increased disk usage, which presently can only be reduced by repeating the process starting from a more recent snapshot.
+Vibehouse will now start to reconstruct historic states from slot `10485760`. At this point, if you do not want a full state reconstruction, you may remove the flag `--reconstruct-historic-states` (and restart). When the process is completed, you will have the state data from slot `10485760`. Going forward, Vibehouse will continue retaining all historical states newer than the snapshot. Eventually this can lead to increased disk usage, which presently can only be reduced by repeating the process starting from a more recent snapshot.
 
 > Note: You may only be interested in very recent historic states. To do so, you may configure the full snapshot to be, for example, every 2<sup>11</sup> slots, see [database configuration](./advanced_database.md#hierarchical-state-diffs) for more details. This can be configured with the flag `--hierarchy-exponents 5,7,11` together with the flag `--reconstruct-historic-states`. This will affect the slot number in Step 2, while other steps remain the same. Note that this comes at the expense of a higher storage requirement.
 
@@ -204,7 +204,7 @@ Lighthouse will now start to reconstruct historic states from slot `10485760`. A
 ### <a name="vc-redundancy"></a> Can I use redundancy in my staking setup?
 
 You should **never** use duplicate/redundant validator keypairs or validator clients (i.e., don't
-duplicate your JSON keystores and don't run `lighthouse vc` twice). This will lead to slashing.
+duplicate your JSON keystores and don't run `vibehouse vc` twice). This will lead to slashing.
 
 However, there are some components which can be configured with redundancy. See the
 [Redundancy](./advanced_redundancy.md) guide for more information.
@@ -234,7 +234,7 @@ Another example of log:
 
 ```
 DEBG Delayed head block, set_as_head_time_ms: 22, imported_time_ms: 312, attestable_delay_ms: 7052, available_delay_ms: 6874, execution_time_ms: 4694, consensus_time_ms: 232, blob_delay_ms: 2159, observed_delay_ms: 2179, total_delay_ms: 7209, slot: 1885922, proposer_index: 606896, block_root: 0x9966df24d24e722d7133068186f0caa098428696e9f441ac416d0aca70cc0a23, service: beacon, module: beacon_chain::canonical_head:1441
-/159.69.68.247/tcp/9000, service: libp2p, module: lighthouse_network::service:1811
+/159.69.68.247/tcp/9000, service: libp2p, module: vibehouse_network::service:1811
 ```
 
 In this example, we see that the `execution_time_ms` is 4694ms. The `execution_time_ms` is how long the node took to process the block. The `execution_time_ms` of larger than 1 second suggests that there is slowness in processing the block. If the `execution_time_ms` is high, it could be due to high CPU usage, high I/O disk usage or the clients are doing some background maintenance processes.
@@ -253,7 +253,7 @@ Yes. Beaconcha.in provides the tool to broadcast the message. You can create the
 
 It is also noted that you can submit your BLS-to-execution-change message to update your withdrawal credentials from type `0x00` to `0x01` using the same link.
 
-If you would like to still use Lighthouse to submit the message, you will need to run a beacon node and an execution client. For the beacon node, you can use checkpoint sync to quickly sync the chain under a minute. On the other hand, the execution client can be syncing and _needs not be synced_. This implies that it is possible to broadcast a voluntary exit message within a short time by quickly spinning up a node.
+If you would like to still use Vibehouse to submit the message, you will need to run a beacon node and an execution client. For the beacon node, you can use checkpoint sync to quickly sync the chain under a minute. On the other hand, the execution client can be syncing and _needs not be synced_. This implies that it is possible to broadcast a voluntary exit message within a short time by quickly spinning up a node.
 
 ### <a name="vc-resource"></a> Does increasing the number of validators increase the CPU and other computer resources used?
 
@@ -261,17 +261,17 @@ A computer with hardware specifications stated in the [Recommended System Requir
 
 ### <a name="vc-reimport"></a> I want to add new validators. Do I have to reimport the existing keys?
 
-No. You can just import new validator keys to the destination directory. If the `validator_keys` folder contains existing keys, that's fine as well because Lighthouse will skip importing existing keys.
+No. You can just import new validator keys to the destination directory. If the `validator_keys` folder contains existing keys, that's fine as well because Vibehouse will skip importing existing keys.
 
-### <a name="vc-import"></a> Do I have to stop `lighthouse vc` when importing new validator keys?
+### <a name="vc-import"></a> Do I have to stop `vibehouse vc` when importing new validator keys?
 
 Generally yes.
 
-If you do not want to stop `lighthouse vc`, you can use the [key manager API](./api_vc_endpoints.md) to import keys.
+If you do not want to stop `vibehouse vc`, you can use the [key manager API](./api_vc_endpoints.md) to import keys.
 
 ### <a name="vc-delete"></a> How can I delete my validator once it is imported?
 
-You can use the `lighthouse vm delete` command to delete validator keys, see [validator manager delete](./validator_manager_api.md#delete).
+You can use the `vibehouse vm delete` command to delete validator keys, see [validator manager delete](./validator_manager_api.md#delete).
 
 If you are looking to delete the validators in one node and import it to another, you can use the [validator-manager](./validator_manager_move.md) to move the validators across nodes without the hassle of deleting and importing the keys.
 
@@ -296,7 +296,7 @@ expect, there are a few things to check on:
     To check that the ports are forwarded, run the command:
 
     ```bash
-    curl http://localhost:5052/lighthouse/nat
+    curl http://localhost:5052/vibehouse/nat
     ```
 
     It should return `{"data":true}`. If it returns `{"data":false}`, you may want to double check if the port forward was correctly set up.
@@ -304,7 +304,7 @@ expect, there are a few things to check on:
     If the ports are open, you should have incoming peers. To check that you have incoming peers, run the command:
 
     ```bash
-    curl localhost:5052/lighthouse/peers | jq '.[] | select(.peer_info.connection_direction=="Incoming")'
+    curl localhost:5052/vibehouse/peers | jq '.[] | select(.peer_info.connection_direction=="Incoming")'
     ```
 
     If you have incoming peers, it should return a lot of data containing information of peers. If the response is empty, it means that you have no incoming peers and there the ports are not open. You may want to double check if the port forward was correctly set up.
@@ -313,16 +313,16 @@ expect, there are a few things to check on:
 
 1. Ensure that you have a quality router for the internet connection. For example, if you connect the router to many devices including the node, it may be possible that the router cannot handle all routing tasks, hence struggling to keep up the number of peers. Therefore, using a quality router for the node is important to keep a healthy number of peers.
 
-### <a name="net-update"></a> How do I update lighthouse?
+### <a name="net-update"></a> How do I update vibehouse?
 
 If you are updating to new release binaries, it will be the same process as described [here.](./installation_binaries.md)
 
-If you are updating by rebuilding from source, see [here.](./installation_source.md#update-lighthouse)
+If you are updating by rebuilding from source, see [here.](./installation_source.md#update-vibehouse)
 
 If you are running the docker image provided by Sigma Prime on Dockerhub, you can update to specific versions, for example:
 
 ```bash
-docker pull sigp/lighthouse:v1.0.0
+docker pull dapplion/vibehouse:v1.0.0
 ```
 
 If you are building a docker image, the process will be similar to the one described [here.](./installation_docker.md#building-the-docker-image)
@@ -330,13 +330,13 @@ You just need to make sure the code you have checked out is up to date.
 
 ### <a name="net-port-forwarding"></a> Do I need to set up any port mappings (port forwarding)?
 
-It is not strictly required to open any ports for Lighthouse to connect and
-participate in the network. Lighthouse should work out-of-the-box. However, if
+It is not strictly required to open any ports for Vibehouse to connect and
+participate in the network. Vibehouse should work out-of-the-box. However, if
 your node is not publicly accessible (you are behind a NAT or router that has
-not been configured to allow access to Lighthouse ports) you will only be able
+not been configured to allow access to Vibehouse ports) you will only be able
 to reach peers who have a set up that is publicly accessible.
 
-There are a number of undesired consequences of not making your Lighthouse node
+There are a number of undesired consequences of not making your Vibehouse node
 publicly accessible.
 
 Firstly, it will make it more difficult for your node to find peers, as your
@@ -352,25 +352,25 @@ peers to join and degrades the overall connectivity of the global network.
 
 For these reasons, we recommend that you make your node publicly accessible.
 
-Lighthouse supports UPnP. If you are behind a NAT with a router that supports
-UPnP, you can simply ensure UPnP is enabled (Lighthouse will inform you in its
-initial logs if a route has been established). You can also manually [set up port mappings/port forwarding](./advanced_networking.md#how-to-open-ports) in your router to your local Lighthouse instance. By default,
-Lighthouse uses port 9000 for both TCP and UDP, and optionally 9001 UDP for QUIC support.
-Opening these ports will make your Lighthouse node maximally contactable.
+Vibehouse supports UPnP. If you are behind a NAT with a router that supports
+UPnP, you can simply ensure UPnP is enabled (Vibehouse will inform you in its
+initial logs if a route has been established). You can also manually [set up port mappings/port forwarding](./advanced_networking.md#how-to-open-ports) in your router to your local Vibehouse instance. By default,
+Vibehouse uses port 9000 for both TCP and UDP, and optionally 9001 UDP for QUIC support.
+Opening these ports will make your Vibehouse node maximally contactable.
 
 ### <a name="net-monitor"></a> How can I monitor my validators?
 
-Apart from using block explorers, you may use the "Validator Monitor" built into Lighthouse which
+Apart from using block explorers, you may use the "Validator Monitor" built into Vibehouse which
 provides logging and Prometheus/Grafana metrics for individual validators. See [Validator
-Monitoring](./validator_monitoring.md) for more information. Lighthouse has also developed Lighthouse UI (Siren) to monitor performance, see [Lighthouse UI (Siren)](./ui.md).
+Monitoring](./validator_monitoring.md) for more information. Vibehouse has also developed Vibehouse UI (Siren) to monitor performance, see [Vibehouse UI (Siren)](./ui.md).
 
 ### <a name="net-bn-vc"></a> My beacon node and validator client are on different servers. How can I point the validator client to the beacon node?
 
-The setting on the beacon node is the same for both cases below. In the beacon node, specify `lighthouse bn --http-address local_IP` so that the beacon node is listening on the local network rather than `localhost`. You can find the `local_IP` by running the command `hostname -I | awk '{print $1}'` on the server running the beacon node.
+The setting on the beacon node is the same for both cases below. In the beacon node, specify `vibehouse bn --http-address local_IP` so that the beacon node is listening on the local network rather than `localhost`. You can find the `local_IP` by running the command `hostname -I | awk '{print $1}'` on the server running the beacon node.
 
 1. If the beacon node and validator clients are on different servers _in the same network_, the setting in the validator client is as follows:
 
-   Use the flag `--beacon-nodes` to point to the beacon node. For example, `lighthouse vc --beacon-nodes http://local_IP:5052` where `local_IP` is the local IP address of the beacon node and `5052` is the default `http-port` of the beacon node.
+   Use the flag `--beacon-nodes` to point to the beacon node. For example, `vibehouse vc --beacon-nodes http://local_IP:5052` where `local_IP` is the local IP address of the beacon node and `5052` is the default `http-port` of the beacon node.
 
    If you have firewall setup, e.g., `ufw`, you will need to allow port 5052 (assuming that the default port is used) with `sudo ufw allow 5052`. Note: this will allow all IP addresses to access the HTTP API of the beacon node. If you are on an untrusted network (e.g., a university or public WiFi) or the host is exposed to the internet, use apply IP-address filtering as described later in this section.
 
@@ -384,7 +384,7 @@ The setting on the beacon node is the same for both cases below. In the beacon n
 
 2. If the beacon node and validator clients are on different servers _and different networks_, it is necessary to perform port forwarding of the SSH port (e.g., the default port 22) on the router, and also allow firewall on the SSH port. The connection can be established via port forwarding on the router.
 
-      In the validator client, use the flag `--beacon-nodes` to point to the beacon node. However, since the beacon node and the validator client are on different networks, the IP address to use is the public IP address of the beacon node, i.e., `lighthouse vc --beacon-nodes http://public_IP:5052`. You can get the public IP address of the beacon node by running the command `dig +short myip.opendns.com @resolver1.opendns.com` on the server running the beacon node.
+      In the validator client, use the flag `--beacon-nodes` to point to the beacon node. However, since the beacon node and the validator client are on different networks, the IP address to use is the public IP address of the beacon node, i.e., `vibehouse vc --beacon-nodes http://public_IP:5052`. You can get the public IP address of the beacon node by running the command `dig +short myip.opendns.com @resolver1.opendns.com` on the server running the beacon node.
 
       Additionally, port forwarding of port 5052 on the router connected to the beacon node is required for the vc to connect to the bn. To do port forwarding, refer to [how to open ports](./advanced_networking.md#how-to-open-ports).
 
@@ -396,19 +396,19 @@ The setting on the beacon node is the same for both cases below. In the beacon n
 
       where `vc_IP_address` is the public IP address of the validator client. The command will only allow connections to the beacon node from the validator client IP address to prevent malicious attacks on the beacon node over the internet.
 
-It is also worth noting that the `--beacon-nodes` flag can also be used for redundancy of beacon nodes. For example, let's say you have a beacon node and a validator client running on the same host, and a second beacon node on another server as a backup. In this case, you can use `lighthouse vc --beacon-nodes http://localhost:5052, http://IP-address:5052` on the validator client.
+It is also worth noting that the `--beacon-nodes` flag can also be used for redundancy of beacon nodes. For example, let's say you have a beacon node and a validator client running on the same host, and a second beacon node on another server as a backup. In this case, you can use `vibehouse vc --beacon-nodes http://localhost:5052, http://IP-address:5052` on the validator client.
 
 ### <a name="net-ip"></a> Should I do anything to the beacon node or validator client settings if I have a relocation of the node / change of IP address?
 
-No. Lighthouse will auto-detect the change and update your Ethereum Node Record (ENR). You just need to make sure you are not manually setting the ENR with `--enr-address` (which, for common use cases, this flag is not used).
+No. Vibehouse will auto-detect the change and update your Ethereum Node Record (ENR). You just need to make sure you are not manually setting the ENR with `--enr-address` (which, for common use cases, this flag is not used).
 
-### <a name="net-port"></a> How to change the TCP/UDP port 9000 that Lighthouse listens on?
+### <a name="net-port"></a> How to change the TCP/UDP port 9000 that Vibehouse listens on?
 
 Use the flag `--port <PORT>` in the beacon node. This flag can be useful when you are running two beacon nodes at the same time. You can leave one beacon node as the default port 9000, and configure the second beacon node to listen on, e.g., `--port 9100`.
-Since V4.5.0, Lighthouse supports QUIC and by default will use the value of `--port` + 1 to listen via UDP (default `9001`).
+Since V4.5.0, Vibehouse supports QUIC and by default will use the value of `--port` + 1 to listen via UDP (default `9001`).
 This can be configured by using the flag `--quic-port`. Refer to [Advanced Networking](./advanced_networking.md#nat-traversal-port-forwarding) for more information.
 
-### <a name="net-subnet"></a> Lighthouse `v4.3.0` introduces a change where a node will subscribe to only 2 subnets in total. I am worried that this will impact my validators return
+### <a name="net-subnet"></a> Vibehouse `v4.3.0` introduces a change where a node will subscribe to only 2 subnets in total. I am worried that this will impact my validators return
 
 Previously, having more validators means subscribing to more subnets. Since the change, a node will now only subscribe to 2 subnets in total. This will bring about significant reductions in bandwidth for nodes with multiple validators.
 
@@ -418,7 +418,7 @@ If you would still like to subscribe to all subnets, you can use the flag `subsc
 
 ### <a name="net-quic"></a> How to know how many of my peers are connected via QUIC?
 
-With `--metrics` enabled in the beacon node, the [Grafana Network dashboard](https://github.com/sigp/lighthouse-metrics/blob/master/dashboards/Network.json) displays the connected by transport, which will show the number of peers connected via QUIC.
+With `--metrics` enabled in the beacon node, the [Grafana Network dashboard](https://github.com/dapplion/vibehouse-metrics/blob/master/dashboards/Network.json) displays the connected by transport, which will show the number of peers connected via QUIC.
 
 Alternatively, you can find the number of peers connected via QUIC manually using:
 
@@ -442,25 +442,25 @@ which shows that there are a total of 36 peers connected via QUIC.
 
 See [here](./validator_slashing_protection.md#misplaced-slashing-database).
 
-### <a name="misc-compile"></a> I can't compile lighthouse
+### <a name="misc-compile"></a> I can't compile vibehouse
 
 See [here.](./installation_source.md#troubleshooting)
 
-### <a name="misc-version"></a> How do I check the version of Lighthouse that is running?
+### <a name="misc-version"></a> How do I check the version of Vibehouse that is running?
 
-If you build Lighthouse from source, run `lighthouse --version`. Example of output:
+If you build Vibehouse from source, run `vibehouse --version`. Example of output:
 
 ```bash
-Lighthouse v4.1.0-693886b
+Vibehouse v4.1.0-693886b
 BLS library: blst-modern
 SHA256 hardware acceleration: false
 Allocator: jemalloc
 Specs: mainnet (true), minimal (false), gnosis (true)
 ```
 
-If you download the binary file, navigate to the location of the directory, for example, the binary file is in `/usr/local/bin`, run `/usr/local/bin/lighthouse --version`, the example of output is the same as above.
+If you download the binary file, navigate to the location of the directory, for example, the binary file is in `/usr/local/bin`, run `/usr/local/bin/vibehouse --version`, the example of output is the same as above.
 
-Alternatively, if you have Lighthouse running, on the same computer, you can run:
+Alternatively, if you have Vibehouse running, on the same computer, you can run:
 
 ```bash
 curl "http://127.0.0.1:5052/eth/v1/node/version"
@@ -469,23 +469,23 @@ curl "http://127.0.0.1:5052/eth/v1/node/version"
 Example of output:
 
 ```bash
-{"data":{"version":"Lighthouse/v4.1.0-693886b/x86_64-linux"}}
+{"data":{"version":"Vibehouse/v4.1.0-693886b/x86_64-linux"}}
 ```
 
 which says that the version is v4.1.0.
 
-### <a name="misc-prune"></a> Does Lighthouse have pruning function like the execution client to save disk space?
+### <a name="misc-prune"></a> Does Vibehouse have pruning function like the execution client to save disk space?
 
-Yes, Lighthouse supports [state pruning](./advanced_database_migrations.md#how-to-prune-historic-states) which can help to save disk space.
+Yes, Vibehouse supports [state pruning](./advanced_database_migrations.md#how-to-prune-historic-states) which can help to save disk space.
 
 ### <a name="misc-freezer"></a> Can I use a HDD for the freezer database and only have the hot db on SSD?
 
 Yes, you can do so by using the flag `--freezer-dir /path/to/freezer_db` in the beacon node.
 
-### <a name="misc-timestamp"></a> Can Lighthouse log in local timestamp instead of UTC?
+### <a name="misc-timestamp"></a> Can Vibehouse log in local timestamp instead of UTC?
 
-The reason why Lighthouse logs in UTC is due to the dependency on an upstream library that is [yet to be resolved](https://github.com/sigp/lighthouse/issues/3130). Alternatively, using the flag `disable-log-timestamp` in combination with systemd will suppress the UTC timestamps and print the logs in local timestamps.
+The reason why Vibehouse logs in UTC is due to the dependency on an upstream library that is [yet to be resolved](https://github.com/dapplion/vibehouse/issues/3130). Alternatively, using the flag `disable-log-timestamp` in combination with systemd will suppress the UTC timestamps and print the logs in local timestamps.
 
 ### <a name="misc-full"></a> My hard disk is full and my validator is down. What should I do?
 
-A quick way to get the validator back online is by removing the Lighthouse beacon node database and resync Lighthouse using checkpoint sync. A guide to do this can be found in the [Lighthouse Discord server](https://discord.com/channels/605577013327167508/605577013331361793/1019755522985050142). With some free space left, you will then be able to prune the execution client database to free up more space.
+A quick way to get the validator back online is by removing the Vibehouse beacon node database and resync Vibehouse using checkpoint sync. A guide to do this can be found in the [Vibehouse Discord server](https://discord.com/channels/605577013327167508/605577013331361793/1019755522985050142). With some free space left, you will then be able to prune the execution client database to free up more space.

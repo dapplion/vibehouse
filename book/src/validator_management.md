@@ -1,26 +1,26 @@
 # Validator Management
 
-The `lighthouse vc` command starts a *validator client* instance which connects
+The `vibehouse vc` command starts a *validator client* instance which connects
 to a beacon node to perform the duties of a staked validator.
 
 This document provides information on how the validator client discovers the
 validators it will act for and how it obtains their cryptographic
 signatures.
 
-Users that create validators using the `lighthouse account` tool in the
-standard directories and do not start their `lighthouse vc` with the
+Users that create validators using the `vibehouse account` tool in the
+standard directories and do not start their `vibehouse vc` with the
 `--disable-auto-discover` flag should not need to understand the contents of
 this document. However, users with more complex needs may find this document
 useful.
 
-The [lighthouse validator-manager](./validator_manager.md) command can be used
-to create and import validators to a Lighthouse VC. It can also be used to move
-validators between two Lighthouse VCs.
+The [vibehouse validator-manager](./validator_manager.md) command can be used
+to create and import validators to a Vibehouse VC. It can also be used to move
+validators between two Vibehouse VCs.
 
 ## Introducing the `validator_definitions.yml` file
 
 The `validator_definitions.yml` file is located in the `validator-dir`, which
-defaults to `~/.lighthouse/{network}/validators`. It is a
+defaults to `~/.vibehouse/{network}/validators`. It is a
 [YAML](https://en.wikipedia.org/wiki/YAML) encoded file defining exactly which
 validators the validator client will (and won't) act for.
 
@@ -33,12 +33,12 @@ Here's an example file with two validators:
 - enabled: true
   voting_public_key: "0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007"
   type: local_keystore
-  voting_keystore_path: /home/paul/.lighthouse/validators/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007/voting-keystore.json
-  voting_keystore_password_path: /home/paul/.lighthouse/secrets/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
+  voting_keystore_path: /home/paul/.vibehouse/validators/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007/voting-keystore.json
+  voting_keystore_password_path: /home/paul/.vibehouse/secrets/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
 - enabled: false
   voting_public_key: "0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477"
   type: local_keystore
-  voting_keystore_path: /home/paul/.lighthouse/validators/0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477/voting-keystore.json
+  voting_keystore_path: /home/paul/.vibehouse/validators/0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477/voting-keystore.json
   voting_keystore_password: myStrongpa55word123&$
 ```
 
@@ -73,8 +73,8 @@ any validators. If the `--disable-auto-discover` flag is **not** provided, an
 *automatic validator discovery* routine will start (more on that later). To
 recap:
 
-- `lighthouse vc`: validators are automatically discovered.
-- `lighthouse vc --disable-auto-discover`: validators are **not** automatically discovered.
+- `vibehouse vc`: validators are automatically discovered.
+- `vibehouse vc --disable-auto-discover`: validators are **not** automatically discovered.
 
 ### Automatic validator discovery
 
@@ -99,7 +99,7 @@ name identical to the `voting_public_key` value.
 Let's assume the following directory structure:
 
 ```
-~/.lighthouse/{network}/validators
+~/.vibehouse/{network}/validators
 ├── john
 │   └── voting-keystore.json
 ├── sally
@@ -112,7 +112,7 @@ Let's assume the following directory structure:
 └── slashing_protection.sqlite
 ```
 
-There is no `validator_definitions.yml` file present, so we can run `lighthouse
+There is no `validator_definitions.yml` file present, so we can run `vibehouse
 vc` (**without** `--disable-auto-discover`) and it will create the following `validator_definitions.yml`:
 
 ```yaml
@@ -120,18 +120,18 @@ vc` (**without** `--disable-auto-discover`) and it will create the following `va
 - enabled: true
   voting_public_key: "0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477"
   type: local_keystore
-  voting_keystore_path: /home/paul/.lighthouse/validators/sally/one/voting-keystore.json
-  voting_keystore_password_path: /home/paul/.lighthouse/secrets/0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477
+  voting_keystore_path: /home/paul/.vibehouse/validators/sally/one/voting-keystore.json
+  voting_keystore_password_path: /home/paul/.vibehouse/secrets/0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477
 - enabled: true
   voting_public_key: "0xaa440c566fcf34dedf233baf56cf5fb05bb420d9663b4208272545608c27c13d5b08174518c758ecd814f158f2b4a337"
   type: local_keystore
-  voting_keystore_path: /home/paul/.lighthouse/validators/sally/two/voting-keystore.json
-  voting_keystore_password_path: /home/paul/.lighthouse/secrets/0xaa440c566fcf34dedf233baf56cf5fb05bb420d9663b4208272545608c27c13d5b08174518c758ecd814f158f2b4a337
+  voting_keystore_path: /home/paul/.vibehouse/validators/sally/two/voting-keystore.json
+  voting_keystore_password_path: /home/paul/.vibehouse/secrets/0xaa440c566fcf34dedf233baf56cf5fb05bb420d9663b4208272545608c27c13d5b08174518c758ecd814f158f2b4a337
 - enabled: true
   voting_public_key: "0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007"
   type: local_keystore
-  voting_keystore_path: /home/paul/.lighthouse/validators/john/voting-keystore.json
-  voting_keystore_password_path: /home/paul/.lighthouse/secrets/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
+  voting_keystore_path: /home/paul/.vibehouse/validators/john/voting-keystore.json
+  voting_keystore_password_path: /home/paul/.vibehouse/secrets/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
 ```
 
 All `voting-keystore.json` files have been detected and added to the file.
@@ -142,7 +142,7 @@ In order for the validator client to decrypt the validators, they will need to
 ensure their `secrets-dir` is organised as below:
 
 ```
-~/.lighthouse/{network}/secrets
+~/.vibehouse/{network}/secrets
 ├── 0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477
 ├── 0xaa440c566fcf34dedf233baf56cf5fb05bb420d9663b4208272545608c27c13d5b08174518c758ecd814f158f2b4a337
 └── 0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
@@ -151,7 +151,7 @@ ensure their `secrets-dir` is organised as below:
 ### Manual configuration
 
 The automatic validator discovery process works out-of-the-box with validators
-that are created using the `lighthouse account validator create` command. The
+that are created using the `vibehouse account validator create` command. The
 details of this process are only interesting to those who are using keystores
 generated with another tool or have a non-standard requirements.
 

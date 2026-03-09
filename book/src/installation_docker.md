@@ -1,6 +1,6 @@
 # Docker Guide
 
-There are two ways to obtain a Lighthouse Docker image:
+There are two ways to obtain a Vibehouse Docker image:
 
 1. [Docker Hub](#docker-hub), or
 2. By [building a Docker image from source](#building-the-docker-image).
@@ -10,28 +10,28 @@ image](#using-the-docker-image).
 
 ## Docker Hub
 
-Lighthouse maintains the [sigp/lighthouse][docker_hub] Docker Hub repository which provides an easy
-way to run Lighthouse without building the image yourself.
+Vibehouse maintains the [dapplion/vibehouse][docker_hub] Docker Hub repository which provides an easy
+way to run Vibehouse without building the image yourself.
 
 Obtain the latest image with:
 
 ```bash
-docker pull sigp/lighthouse
+docker pull dapplion/vibehouse
 ```
 
 Download and test the image with:
 
 ```bash
-docker run sigp/lighthouse lighthouse --version
+docker run dapplion/vibehouse vibehouse --version
 ```
 
-If you can see the latest [Lighthouse release](https://github.com/sigp/lighthouse/releases) version
-(see example below), then you've successfully installed Lighthouse via Docker.
+If you can see the latest [Vibehouse release](https://github.com/dapplion/vibehouse/releases) version
+(see example below), then you've successfully installed Vibehouse via Docker.
 
 ### Example Version Output
 
 ```text
-Lighthouse vx.x.xx-xxxxxxxxx
+Vibehouse vx.x.xx-xxxxxxxxx
 BLS Library: xxxx-xxxxxxx
 ```
 
@@ -40,12 +40,12 @@ BLS Library: xxxx-xxxxxxx
 There are several images available on Docker Hub.
 
 Most users should use the `latest` tag, which corresponds to the latest stable release of
-Lighthouse with optimizations enabled.
+Vibehouse with optimizations enabled.
 
 To install a specific tag (in this case `latest`), add the tag name to your `docker` commands:
 
 ```bash
-docker pull sigp/lighthouse:latest
+docker pull dapplion/vibehouse:latest
 ```
 
 Image tags follow this format:
@@ -56,7 +56,7 @@ ${version}${arch}${stability}
 
 The `version` is:
 
-* `vX.Y.Z` for a tagged Lighthouse release, e.g. `v2.1.1`
+* `vX.Y.Z` for a tagged Vibehouse release, e.g. `v2.1.1`
 * `latest` for the `stable` branch (latest release) or `unstable` branch
 
 The `arch` is:
@@ -73,7 +73,7 @@ The `stability` is:
 Examples:
 
 * `latest-unstable`: most recent `unstable` build
-* `latest-amd64`: most recent Lighthouse release for older x86_64 CPUs
+* `latest-amd64`: most recent Vibehouse release for older x86_64 CPUs
 * `latest-amd64-unstable`: most recent `unstable` build for older x86_64 CPUs
 
 ## Building the Docker Image
@@ -82,13 +82,13 @@ To build the image from source, navigate to
 the root of the repository and run:
 
 ```bash
-docker build . -t lighthouse:local
+docker build . -t vibehouse:local
 ```
 
 The build will likely take several minutes. Once it's built, test it with:
 
 ```bash
-docker run lighthouse:local lighthouse --help
+docker run vibehouse:local vibehouse --help
 ```
 
 ## Using the Docker image
@@ -96,7 +96,7 @@ docker run lighthouse:local lighthouse --help
 You can run a Docker beacon node with the following command:
 
 ```bash
-docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp -p 127.0.0.1:5052:5052 -v $HOME/.lighthouse:/root/.lighthouse sigp/lighthouse lighthouse --network mainnet beacon --http --http-address 0.0.0.0
+docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp -p 127.0.0.1:5052:5052 -v $HOME/.vibehouse:/root/.vibehouse dapplion/vibehouse vibehouse --network mainnet beacon --http --http-address 0.0.0.0
 ```
 
 > To join the Hoodi testnet, use `--network hoodi` instead.
@@ -105,7 +105,7 @@ docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp -p 127.0.0.1:5052:
 
 ### Volumes
 
-Lighthouse uses the `/root/.lighthouse` directory inside the Docker image to
+Vibehouse uses the `/root/.vibehouse` directory inside the Docker image to
 store the configuration, database and validator keys. Users will generally want
 to create a bind-mount volume to ensure this directory persists between `docker
 run` commands.
@@ -114,7 +114,7 @@ The following example runs a beacon node with the data directory
 mapped to the users home directory:
 
 ```bash
-docker run -v $HOME/.lighthouse:/root/.lighthouse sigp/lighthouse lighthouse beacon
+docker run -v $HOME/.vibehouse:/root/.vibehouse dapplion/vibehouse vibehouse beacon
 ```
 
 ### Ports
@@ -123,14 +123,14 @@ In order to be a good peer and serve other peers you should expose port `9000` f
 Use the `-p` flag to do this:
 
 ```bash
-docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp sigp/lighthouse lighthouse beacon
+docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp dapplion/vibehouse vibehouse beacon
 ```
 
 If you use the `--http` flag you may also want to expose the HTTP port with `-p
 127.0.0.1:5052:5052`.
 
 ```bash
-docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp -p 127.0.0.1:5052:5052 sigp/lighthouse lighthouse beacon --http --http-address 0.0.0.0
+docker run -p 9000:9000/tcp -p 9000:9000/udp -p 9001:9001/udp -p 127.0.0.1:5052:5052 dapplion/vibehouse vibehouse beacon --http --http-address 0.0.0.0
 ```
 
-[docker_hub]: https://hub.docker.com/repository/docker/sigp/lighthouse/
+[docker_hub]: https://hub.docker.com/repository/docker/dapplion/vibehouse/

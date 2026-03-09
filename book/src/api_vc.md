@@ -1,11 +1,11 @@
 # Validator Client API
 
-Lighthouse implements a JSON HTTP API for the validator client which enables programmatic management
+Vibehouse implements a JSON HTTP API for the validator client which enables programmatic management
 of validators and keys.
 
 The API includes all of the endpoints from the [standard keymanager
 API](https://ethereum.github.io/keymanager-APIs/) that is implemented by other clients and remote
-signers. It also includes some Lighthouse-specific endpoints which are described in
+signers. It also includes some Vibehouse-specific endpoints which are described in
 [Endpoints](./api_vc_endpoints.md).
 
 > Note: All requests to the HTTP server must supply an
@@ -13,7 +13,7 @@ signers. It also includes some Lighthouse-specific endpoints which are described
 
 ## Starting the server
 
-A Lighthouse validator client can be configured to expose a HTTP server by supplying the `--http` flag. The default listen address is `http://127.0.0.1:5062`.
+A Vibehouse validator client can be configured to expose a HTTP server by supplying the `--http` flag. The default listen address is `http://127.0.0.1:5062`.
 
 The following CLI flags control the HTTP server:
 
@@ -39,5 +39,5 @@ For custom setups, such as certain Docker configurations, a custom HTTP listen a
 Start the validator client with the HTTP server listening on [http://localhost:5062](http://localhost:5062):
 
 ```bash
-lighthouse vc --http
+vibehouse vc --http
 ```

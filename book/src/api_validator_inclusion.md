@@ -1,6 +1,6 @@
 # Validator Inclusion APIs
 
-The `/lighthouse/validator_inclusion` API endpoints provide information on
+The `/vibehouse/validator_inclusion` API endpoints provide information on
 results of the proof-of-stake voting process used for finality/justification
 under Casper FFG.
 
@@ -14,8 +14,8 @@ In order to apply these APIs, you need to have historical states information in 
 
 | HTTP Path | Description |
 | --- | -- |
-| [`/lighthouse/validator_inclusion/{epoch}/global`](#global) | A global vote count for a given epoch. |
-| [`/lighthouse/validator_inclusion/{epoch}/{validator_id}`](#individual) | A per-validator breakdown of votes in a given epoch. |
+| [`/vibehouse/validator_inclusion/{epoch}/global`](#global) | A global vote count for a given epoch. |
+| [`/vibehouse/validator_inclusion/{epoch}/{validator_id}`](#individual) | A per-validator breakdown of votes in a given epoch. |
 
 ## Global
 
@@ -72,7 +72,7 @@ beacon chain may justify and/or finalize the epoch.
 ### HTTP Example
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/validator_inclusion/0/global" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/validator_inclusion/0/global" -H  "accept: application/json" | jq
 ```
 
 ```json
@@ -98,7 +98,7 @@ individual values, please see it for definitions of terms like "current_epoch",
 ### HTTP Example
 
 ```bash
-curl -X GET "http://localhost:5052/lighthouse/validator_inclusion/0/42" -H  "accept: application/json" | jq
+curl -X GET "http://localhost:5052/vibehouse/validator_inclusion/0/42" -H  "accept: application/json" | jq
 ```
 
 ```json

@@ -89,7 +89,7 @@ Siren provides the ability to exit/withdraw your validators via the validator ma
 
 ### Deposit and Import new Validators
 
-Siren's deposit flow aims to create a smooth and easy process for depositing and importing a new Lighthouse validator. The process is separated into 6 main steps:
+Siren's deposit flow aims to create a smooth and easy process for depositing and importing a new Vibehouse validator. The process is separated into 6 main steps:
 
 #### Validator Setup
 
@@ -151,7 +151,7 @@ Siren's deposit flow aims to create a smooth and easy process for depositing and
 
 ### Partial Validator Withdrawal
 
-`EIP-7002` enables partial withdrawals from validators with `0x02` withdrawal credentials and balances exceeding the `MIN_ACTIVATION_BALANCE`. Additionally, validators with upgraded `0x02` credentials will no longer participate in the automatic withdrawal sweeps, making this tool very valuable for Lighthouse validators.
+`EIP-7002` enables partial withdrawals from validators with `0x02` withdrawal credentials and balances exceeding the `MIN_ACTIVATION_BALANCE`. Additionally, validators with upgraded `0x02` credentials will no longer participate in the automatic withdrawal sweeps, making this tool very valuable for Vibehouse validators.
 
 In order to request a partial withdrawal you must have access to the wallet set in the validator's withdrawal credentials and enough ETH to cover the withdrawal request and gas fees. Connect this wallet to the Siren dashboard to start withdrawing funds. All pending withdrawals will be visible in the same view for your convenience.
 

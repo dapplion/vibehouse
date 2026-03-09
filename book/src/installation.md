@@ -1,8 +1,8 @@
 # 📦 Installation
 
-Lighthouse runs on Linux, macOS, and Windows.
+Vibehouse runs on Linux, macOS, and Windows.
 
-There are three core methods to obtain the Lighthouse application:
+There are three core methods to obtain the Vibehouse application:
 
 - [Pre-built binaries](./installation_binaries.md).
 - [Docker images](./installation_docker.md).
@@ -21,9 +21,9 @@ There are also community-maintained installation methods:
 
 ## Recommended System Requirements
 
-Before [The Merge](https://ethereum.org/en/roadmap/merge/), Lighthouse was able to run on its own with low to mid-range consumer hardware, but would perform best when provided with ample system resources.
+Before [The Merge](https://ethereum.org/en/roadmap/merge/), Vibehouse was able to run on its own with low to mid-range consumer hardware, but would perform best when provided with ample system resources.
 
-After [The Merge](https://ethereum.org/en/roadmap/merge/) on 15<sup>th</sup> September 2022, it is necessary to run Lighthouse together with an execution client ([Nethermind](https://nethermind.io/), [Besu](https://www.hyperledger.org/use/besu), [Erigon](https://github.com/ledgerwatch/erigon), [Geth](https://geth.ethereum.org/), [Reth](https://github.com/paradigmxyz/reth)). The following system requirements listed are therefore for running a Lighthouse beacon node combined with an execution client , and a validator client with a modest number of validator keys (less than 100):
+After [The Merge](https://ethereum.org/en/roadmap/merge/) on 15<sup>th</sup> September 2022, it is necessary to run Vibehouse together with an execution client ([Nethermind](https://nethermind.io/), [Besu](https://www.hyperledger.org/use/besu), [Erigon](https://github.com/ledgerwatch/erigon), [Geth](https://geth.ethereum.org/), [Reth](https://github.com/paradigmxyz/reth)). The following system requirements listed are therefore for running a Vibehouse beacon node combined with an execution client , and a validator client with a modest number of validator keys (less than 100):
 
 - CPU: Quad-core AMD Ryzen, Intel Broadwell, ARMv8 or newer
 - Memory: 32 GB RAM*

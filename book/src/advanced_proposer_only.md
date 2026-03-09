@@ -1,6 +1,6 @@
 # Advanced Proposer-Only Beacon Nodes
 
-Lighthouse allows for more exotic setups that can minimize attack vectors by
+Vibehouse allows for more exotic setups that can minimize attack vectors by
 adding redundant beacon nodes and dividing the roles of attesting and block
 production between them.
 
@@ -16,8 +16,8 @@ networks with large validator counts).
 
 ## The Beacon Node
 
-A Lighthouse beacon node can be configured with the `--proposer-only` flag
-(i.e. `lighthouse bn --proposer-only`).
+A Vibehouse beacon node can be configured with the `--proposer-only` flag
+(i.e. `vibehouse bn --proposer-only`).
 Setting a beacon node with this flag will limit its use as a beacon node for
 normal activities such as performing attestations, but it will make the node
 harder to identify as a potential node to attack and will also consume less

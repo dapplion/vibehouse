@@ -4,12 +4,12 @@ The security of the Ethereum proof-of-stake protocol depends on penalties for mi
 as _slashings_. Validators that sign conflicting messages (blocks or attestations), can be slashed
 by other validators through the inclusion of a `ProposerSlashing` or `AttesterSlashing` on chain.
 
-The Lighthouse validator client includes a mechanism to protect its validators against
+The Vibehouse validator client includes a mechanism to protect its validators against
 accidental slashing, known as the slashing protection database. This database records every
 block and attestation signed by validators, and the validator client uses this information to
 avoid signing any slashable messages.
 
-Lighthouse's slashing protection database is an SQLite database located at
+Vibehouse's slashing protection database is an SQLite database located at
 `$datadir/validators/slashing_protection.sqlite` which is locked exclusively when the validator
 client is running. In normal operation, this database will be automatically created and utilized,
 meaning that your validators are kept safe by default.
@@ -22,8 +22,8 @@ and carefully to keep your validators safe. See the [Troubleshooting](#troublesh
 The database will be automatically created, and your validators registered with it when:
 
 * Importing keys from another source (e.g. [ethstaker-deposit-cli](https://github.com/eth-educators/ethstaker-deposit-cli), Lodestar, Nimbus, Prysm, Teku, [ethdo](https://github.com/wealdtech/ethdo)).
-  See [import validator keys](./mainnet_validator.md#step-3-import-validator-keys-to-lighthouse).
-* Creating keys using Lighthouse itself (`lighthouse account validator create`)
+  See [import validator keys](./mainnet_validator.md#step-3-import-validator-keys-to-vibehouse).
+* Creating keys using Vibehouse itself (`vibehouse account validator create`)
 * Creating keys via the [validator client API](./api_vc.md).
 
 ## Avoiding Slashing
@@ -41,17 +41,17 @@ Examples of circumstances where the slashing protection database is effective ar
   against the slashing conditions and will refuse to attest on the new chain until it is safe
   to do so (usually after one epoch).
 * Importing keys and signing history from another client, where that history is complete.
-  If you run another client and decide to switch to Lighthouse, you can export data from
-  your client to be imported into Lighthouse's slashing protection database. See
+  If you run another client and decide to switch to Vibehouse, you can export data from
+  your client to be imported into Vibehouse's slashing protection database. See
   [Import and Export](#import-and-export).
 * Misplacing `slashing_protection.sqlite` during a datadir change or migration between machines.
-  By default, Lighthouse will refuse to start if it finds validator keys that are not registered
+  By default, Vibehouse will refuse to start if it finds validator keys that are not registered
   in the slashing protection database.
 
 Examples where it is **ineffective** are:
 
 * Running two validator client instances simultaneously. This could be two different
-  clients (e.g. Lighthouse and Prysm) running on the same machine, two Lighthouse instances using
+  clients (e.g. Vibehouse and Prysm) running on the same machine, two Vibehouse instances using
   different datadirs, or two clients on completely different machines (e.g. one on a cloud server
   and one running locally). You are responsible for ensuring that your validator keys are never
   running simultaneously – the slashing protection database **cannot protect you in this case**.
@@ -60,33 +60,33 @@ Examples where it is **ineffective** are:
 
 ## Import and Export
 
-Lighthouse supports the slashing protection interchange format described in [EIP-3076][]. An
+Vibehouse supports the slashing protection interchange format described in [EIP-3076][]. An
 interchange file is a record of blocks and attestations signed by a set of validator keys –
 basically a portable slashing protection database!
 
-To import a slashing protection database to Lighthouse, you first need to export your existing client's database. Instructions to export the slashing protection database for other clients are listed below:
+To import a slashing protection database to Vibehouse, you first need to export your existing client's database. Instructions to export the slashing protection database for other clients are listed below:
 
 * [Lodestar](https://chainsafe.github.io/lodestar/reference/cli/#validator-slashing-protection-export)
 * [Nimbus](https://nimbus.guide/migration.html#2-export-slashing-protection-history)
 * [Prysm](https://docs.prylabs.network/docs/wallet/slashing-protection#exporting-your-validators-slashing-protection-history)
 * [Teku](https://docs.teku.consensys.net/HowTo/Prevent-Slashing#export-a-slashing-protection-file)
 
-Once you have the slashing protection database from your existing client, you can now import the database to Lighthouse. With your validator client stopped, you can import a `.json` interchange file from another client
+Once you have the slashing protection database from your existing client, you can now import the database to Vibehouse. With your validator client stopped, you can import a `.json` interchange file from another client
 using this command:
 
 ```bash
-lighthouse account validator slashing-protection import filename.json
+vibehouse account validator slashing-protection import filename.json
 ```
 
 When importing an interchange file, you still need to import the validator keystores themselves
-separately, using the instructions for [import validator keys](./mainnet_validator.md#step-3-import-validator-keys-to-lighthouse).
+separately, using the instructions for [import validator keys](./mainnet_validator.md#step-3-import-validator-keys-to-vibehouse).
 
 ---
 
-You can export Lighthouse's database for use with another client with this command:
+You can export Vibehouse's database for use with another client with this command:
 
 ```
-lighthouse account validator slashing-protection export filename.json
+vibehouse account validator slashing-protection export filename.json
 ```
 
 The validator client needs to be stopped in order to export, to guarantee that the data exported is
@@ -96,7 +96,7 @@ up to date.
 
 ### How Import Works
 
-Since version 1.6.0, Lighthouse will ignore any slashable data in the import data and will safely
+Since version 1.6.0, Vibehouse will ignore any slashable data in the import data and will safely
 update the low watermarks for blocks and attestations. It will store only the maximum-slot block
 for each validator, and the maximum source/target attestation. This is faster than importing
 all data while also being more resilient to repeated imports & stale data.
@@ -108,23 +108,23 @@ all data while also being more resilient to repeated imports & stale data.
 If the slashing protection database cannot be found, it will manifest in an error like this:
 
 ```
-Oct 12 14:41:26.415 CRIT Failed to start validator client        reason: Failed to open slashing protection database: SQLError("Unable to open database: Error(Some(\"unable to open database file: /home/karlm/.lighthouse/mainnet/validators/slashing_protection.sqlite\"))").
-Ensure that `slashing_protection.sqlite` is in "/home/karlm/.lighthouse/mainnet/validators" folder
+Oct 12 14:41:26.415 CRIT Failed to start validator client        reason: Failed to open slashing protection database: SQLError("Unable to open database: Error(Some(\"unable to open database file: /home/karlm/.vibehouse/mainnet/validators/slashing_protection.sqlite\"))").
+Ensure that `slashing_protection.sqlite` is in "/home/karlm/.vibehouse/mainnet/validators" folder
 ```
 
 Usually this indicates that during some manual intervention, the slashing database has been
-misplaced. This error can also occur if you have upgraded from Lighthouse v0.2.x to v0.3.x without
+misplaced. This error can also occur if you have upgraded from Vibehouse v0.2.x to v0.3.x without
 moving the slashing protection database. If you have imported your keys into a new node, you should
 never see this error (see [Initialization](#initialization)).
 
 The safest way to remedy this error is to find your old slashing protection database and move
 it to the correct location. In our example that would be
-`~/.lighthouse/mainnet/validators/slashing_protection.sqlite`. You can search for your old database
-using a tool like `find`, `fd`, or your file manager's GUI. Ask on the Lighthouse Discord if you're
+`~/.vibehouse/mainnet/validators/slashing_protection.sqlite`. You can search for your old database
+using a tool like `find`, `fd`, or your file manager's GUI. Ask on the Vibehouse Discord if you're
 not sure.
 
 If you are absolutely 100% sure that you need to recreate the missing database, you can start
-the Lighthouse validator client with the `--init-slashing-protection` flag. This flag is incredibly
+the Vibehouse validator client with the `--init-slashing-protection` flag. This flag is incredibly
 dangerous and should not be used lightly, and we **strongly recommend** you try finding
 your old slashing protection database before using it. If you do decide to use it, you should
 wait at least 1 epoch (~7 minutes) from when your validator client was last actively signing
@@ -147,7 +147,7 @@ and _could_ indicate a serious error or misconfiguration (see [Avoiding Slashing
 
 ## Limitation of Liability
 
-The Lighthouse developers do not guarantee the perfect functioning of this software, or accept
-liability for any losses suffered. For more information see the [Lighthouse license][license].
+The Vibehouse developers do not guarantee the perfect functioning of this software, or accept
+liability for any losses suffered. For more information see the [Vibehouse license][license].
 
-[license]: https://github.com/sigp/lighthouse/blob/stable/LICENSE
+[license]: https://github.com/dapplion/vibehouse/blob/stable/LICENSE

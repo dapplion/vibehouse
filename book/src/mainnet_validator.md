@@ -2,7 +2,7 @@
 
 [launchpad]: https://launchpad.ethereum.org/
 [advanced-datadir]: ./advanced_datadir.md
-[license]: https://github.com/sigp/lighthouse/blob/stable/LICENSE
+[license]: https://github.com/dapplion/vibehouse/blob/stable/LICENSE
 [slashing]: ./validator_slashing_protection.md
 [discord]: https://discord.gg/cyAszAh
 
@@ -18,8 +18,8 @@ Being educated is critical to a validator's success. Before submitting your main
 - Performing a web search and doing your own research.
 
 >
-> **Please note**: the Lighthouse team does not take any responsibility for losses or damages
-> occurred through the use of Lighthouse. We have an experienced internal security team and have
+> **Please note**: the Vibehouse team does not take any responsibility for losses or damages
+> occurred through the use of Vibehouse. We have an experienced internal security team and have
 > undergone multiple third-party security-reviews, however the possibility of bugs or malicious
 > interference remains a real and constant threat. Validators should be prepared to lose some rewards
 > due to the actions of other actors on the consensus layer or software bugs. See the
@@ -30,9 +30,9 @@ Being educated is critical to a validator's success. Before submitting your main
 There are five primary steps to become a validator:
 
 1. [Create validator keys](#step-1-create-validator-keys)
-1. [Start an execution client and Lighthouse beacon node](#step-2-start-an-execution-client-and-lighthouse-beacon-node)
-1. [Import validator keys into Lighthouse](#step-3-import-validator-keys-to-lighthouse)
-1. [Start Lighthouse validator client](#step-4-start-lighthouse-validator-client)
+1. [Start an execution client and Vibehouse beacon node](#step-2-start-an-execution-client-and-vibehouse-beacon-node)
+1. [Import validator keys into Vibehouse](#step-3-import-validator-keys-to-vibehouse)
+1. [Start Vibehouse validator client](#step-4-start-vibehouse-validator-client)
 1. [Submit deposit](#step-5-submit-deposit-a-minimum-of-32eth-to-activate-one-validator)
 
 > **Important note**: The guide below contains both mainnet and testnet instructions. We highly recommend *all* users to **run a testnet validator** prior to staking mainnet ETH.  By far, the best technical learning experience is to run a testnet validator. You can get hands-on experience with all the tools and it's a great way to test your staking
@@ -52,36 +52,36 @@ and follow the instructions to generate the keys. When prompted for a network, s
 
 > **Important note:** A mnemonic (or seed phrase) is a 24-word string randomly generated in the process. It is highly recommended to write down the mnemonic and keep it safe offline. It is important to ensure that the mnemonic is never stored in any digital form (computers, mobile phones, etc) connected to the internet. Please also make one or more backups of the mnemonic to ensure your ETH is not lost in the case of data loss. It is very important to keep your mnemonic private as it represents the ultimate control of your ETH.
 
-Upon completing this step, the files `deposit_data-*.json` and `keystore-m_*.json` will be created. The keys that are generated from `ethstaker-deposit-cli` can be easily loaded into a Lighthouse validator client (`lighthouse vc`) in [Step 3](#step-3-import-validator-keys-to-lighthouse). In fact, both of these programs are designed to work with each other.
+Upon completing this step, the files `deposit_data-*.json` and `keystore-m_*.json` will be created. The keys that are generated from `ethstaker-deposit-cli` can be easily loaded into a Vibehouse validator client (`vibehouse vc`) in [Step 3](#step-3-import-validator-keys-to-vibehouse). In fact, both of these programs are designed to work with each other.
 
-> Lighthouse also supports creating validator keys, see [Validator Manager Create](./validator_manager_create.md) for more info.
+> Vibehouse also supports creating validator keys, see [Validator Manager Create](./validator_manager_create.md) for more info.
 
-### Step 2. Start an execution client and Lighthouse beacon node
+### Step 2. Start an execution client and Vibehouse beacon node
 
-Start an execution client and Lighthouse beacon node according to the [Run a Node](./run_a_node.md) guide. Make sure that both execution client and consensus client are synced.
+Start an execution client and Vibehouse beacon node according to the [Run a Node](./run_a_node.md) guide. Make sure that both execution client and consensus client are synced.
 
-### Step 3. Import validator keys to Lighthouse
+### Step 3. Import validator keys to Vibehouse
 
 In [Step 1](#step-1-create-validator-keys), the `ethstaker-deposit-cli` will generate the validator keys into a `validator_keys` directory. Let's assume that
-this directory is `$HOME/ethstaker-deposit-cli/validator_keys`. Using the default `validators` directory in Lighthouse (`~/.lighthouse/mainnet/validators`), run the following command to import validator keys:
+this directory is `$HOME/ethstaker-deposit-cli/validator_keys`. Using the default `validators` directory in Vibehouse (`~/.vibehouse/mainnet/validators`), run the following command to import validator keys:
 
 Mainnet:
 
 ```bash
-lighthouse --network mainnet account validator import --directory $HOME/ethstaker-deposit-cli/validator_keys
+vibehouse --network mainnet account validator import --directory $HOME/ethstaker-deposit-cli/validator_keys
 ```
 
 Hoodi testnet:
 
 ```bash
-lighthouse --network hoodi account validator import --directory $HOME/ethstaker-deposit-cli/validator_keys
+vibehouse --network hoodi account validator import --directory $HOME/ethstaker-deposit-cli/validator_keys
 ```
 
 > Note: The user must specify the consensus client network that they are importing the keys by using the `--network` flag.
 
 > Note: If the validator_keys directory is in a different location, modify the path accordingly.
 
-> Note: `~/.lighthouse/mainnet` is the default directory which contains the keys and database. To specify a custom directory, see [Custom Directories][advanced-datadir].
+> Note: `~/.vibehouse/mainnet` is the default directory which contains the keys and database. To specify a custom directory, see [Custom Directories][advanced-datadir].
 
 > Docker users should use the command from the [Docker](#docker-users) documentation.
 
@@ -100,7 +100,7 @@ Enter the keystore password, or press enter to omit it:
 
 The user can choose whether or not they'd like to store the validator password
 in the [`validator_definitions.yml`](./validator_management.md) file. If the
-password is *not* stored here, the validator client (`lighthouse vc`)
+password is *not* stored here, the validator client (`vibehouse vc`)
 application will ask for the password each time it starts. This might be nice
 for some users from a security perspective (i.e., if it is a shared computer),
 however it means that if the validator client restarts, the user will be subject
@@ -121,33 +121,33 @@ WARNING: DO NOT USE THE ORIGINAL KEYSTORES TO VALIDATE WITH ANOTHER CLIENT, OR Y
 
 Once you see the above message, you have successfully imported the validator keys. You can now proceed to the next step to start the validator client.
 
-### Step 4. Start Lighthouse validator client
+### Step 4. Start Vibehouse validator client
 
 After the keys are imported, the user can start performing their validator duties
-by starting the Lighthouse validator client `lighthouse vc`:
+by starting the Vibehouse validator client `vibehouse vc`:
 
 Mainnet:
 
 ```bash
-lighthouse vc --network mainnet --suggested-fee-recipient YourFeeRecipientAddress
+vibehouse vc --network mainnet --suggested-fee-recipient YourFeeRecipientAddress
 ```
 
 Hoodi testnet:
 
 ```bash
-lighthouse vc --network hoodi --suggested-fee-recipient YourFeeRecipientAddress
+vibehouse vc --network hoodi --suggested-fee-recipient YourFeeRecipientAddress
 ```
 
 The `validator client` manages validators using data obtained from the beacon node via a HTTP API. You are highly recommended to enter a fee-recipient by changing `YourFeeRecipientAddress` to an Ethereum address under your control.
 
-When `lighthouse vc` starts, check that the validator public key appears
+When `vibehouse vc` starts, check that the validator public key appears
 as a `voting_pubkey` as shown below:
 
 ```
 INFO Enabled validator       voting_pubkey: 0xa5e8702533f6d66422e042a0bf3471ab9b302ce115633fa6fdc5643f804b6b4f1c33baf95f125ec21969a3b1e0dd9e56
 ```
 
-Once this log appears (and there are no errors) the `lighthouse vc` application
+Once this log appears (and there are no errors) the `vibehouse vc` application
 will ensure that the validator starts performing its duties and being rewarded
 by the protocol.
 
@@ -177,11 +177,11 @@ Congratulations! Your validator is now performing its duties and you will receiv
 
 After the validator is running and performing its duties, it is important to keep the validator online to continue accumulating rewards. However, there could be problems with the computer, the internet or other factors that cause the validator to be offline. For this, it is best to subscribe to notifications, e.g., via [beaconcha.in](https://beaconcha.in/) which will send notifications about missed attestations and/or proposals. You will be notified about the validator's offline status and will be able to react promptly.
 
-The next important thing is to stay up to date with updates to Lighthouse and the execution client. Updates are released from time to time, typically once or twice a month. For Lighthouse updates, you can subscribe to notifications on [Github](https://github.com/sigp/lighthouse) by clicking on `Watch`. If you only want to receive notification on new releases, select `Custom`, then `Releases`. You could also join [Lighthouse Discord](https://discord.gg/cyAszAh) where we will make an announcement when there is a new release.
+The next important thing is to stay up to date with updates to Vibehouse and the execution client. Updates are released from time to time, typically once or twice a month. For Vibehouse updates, you can subscribe to notifications on [Github](https://github.com/dapplion/vibehouse) by clicking on `Watch`. If you only want to receive notification on new releases, select `Custom`, then `Releases`. You could also join [Vibehouse Discord](https://discord.gg/cyAszAh) where we will make an announcement when there is a new release.
 
-You may also want to try out [Siren](./ui.md), a UI developed by Lighthouse to monitor validator performance.
+You may also want to try out [Siren](./ui.md), a UI developed by Vibehouse to monitor validator performance.
 
-Once you are familiar with running a validator and server maintenance, you'll find that running Lighthouse is easy. Install it, start it, monitor it and keep it updated. You shouldn't need to interact with it on a day-to-day basis. Happy staking!
+Once you are familiar with running a validator and server maintenance, you'll find that running Vibehouse is easy. Install it, start it, monitor it and keep it updated. You shouldn't need to interact with it on a day-to-day basis. Happy staking!
 
 ## Docker users
 
@@ -192,36 +192,36 @@ in this document can be substituted with:
 
 ```bash
 docker run -it \
-	-v $HOME/.lighthouse:/root/.lighthouse \
+	-v $HOME/.vibehouse:/root/.vibehouse \
 	-v $(pwd)/validator_keys:/root/validator_keys \
-	sigp/lighthouse \
-	lighthouse --network mainnet account validator import --directory /root/validator_keys
+	dapplion/vibehouse \
+	vibehouse --network mainnet account validator import --directory /root/validator_keys
 ```
 
 Here we use two `-v` volumes to attach:
 
-- `~/.lighthouse` on the host to `/root/.lighthouse` in the Docker container.
+- `~/.vibehouse` on the host to `/root/.vibehouse` in the Docker container.
 - The `validator_keys` directory in the present working directory of the host
  to the `/root/validator_keys` directory of the Docker container.
 
-### Start Lighthouse beacon node and validator client
+### Start Vibehouse beacon node and validator client
 
 Those using Docker images can start the processes with:
 
 ```bash
 $ docker run \
 	--network host \
-	-v $HOME/.lighthouse:/root/.lighthouse sigp/lighthouse \
-	lighthouse --network mainnet bn --staking --http-address 0.0.0.0
+	-v $HOME/.vibehouse:/root/.vibehouse dapplion/vibehouse \
+	vibehouse --network mainnet bn --staking --http-address 0.0.0.0
 ```
 
 ```bash
 $ docker run \
 	--network host \
-	-v $HOME/.lighthouse:/root/.lighthouse \
-	sigp/lighthouse \
-	lighthouse --network mainnet vc
+	-v $HOME/.vibehouse:/root/.vibehouse \
+	dapplion/vibehouse \
+	vibehouse --network mainnet vc
 ```
 
 If you get stuck you can always reach out on our [Discord][discord] or [create an
-issue](https://github.com/sigp/lighthouse/issues/new).
+issue](https://github.com/dapplion/vibehouse/issues/new).

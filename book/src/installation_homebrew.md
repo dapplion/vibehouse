@@ -1,16 +1,16 @@
 # Homebrew package
 
-Lighthouse is available on Linux and macOS via the [Homebrew package manager](https://brew.sh).
+Vibehouse is available on Linux and macOS via the [Homebrew package manager](https://brew.sh).
 
 Please note that this installation method is maintained by the Homebrew community.
-It is not officially supported by the Lighthouse team.
+It is not officially supported by the Vibehouse team.
 
 ## Installation
 
-Install the latest version of the [`lighthouse`][formula] formula with:
+Install the latest version of the [`vibehouse`][formula] formula with:
 
 ```bash
-brew install lighthouse
+brew install vibehouse
 ```
 
 ## Usage
@@ -18,7 +18,7 @@ brew install lighthouse
 If Homebrew is installed to your `PATH` (default), simply run:
 
 ```bash
-lighthouse --help
+vibehouse --help
 ```
 
 Alternatively, you can find the `vibehouse` binary at:
@@ -31,6 +31,6 @@ Alternatively, you can find the `vibehouse` binary at:
 
 The [formula][] is kept up-to-date by the Homebrew community and a bot that lists for new releases.
 
-The package source can be found in the [homebrew-core](https://github.com/Homebrew/homebrew-core/blob/master/Formula/l/lighthouse.rb) repository.
+The package source can be found in the [homebrew-core](https://github.com/Homebrew/homebrew-core/blob/master/Formula/v/vibehouse.rb) repository.
 
-  [formula]: https://formulae.brew.sh/formula/lighthouse
+  [formula]: https://formulae.brew.sh/formula/vibehouse

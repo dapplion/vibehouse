@@ -1,12 +1,12 @@
 # Prometheus Metrics
 
-Lighthouse provides an extensive suite of metrics and monitoring in the
+Vibehouse provides an extensive suite of metrics and monitoring in the
 [Prometheus](https://prometheus.io/docs/introduction/overview/) export format
-via a HTTP server built into Lighthouse.
+via a HTTP server built into Vibehouse.
 
 These metrics are generally consumed by a Prometheus server and displayed via a
 Grafana dashboard. These components are available in a docker-compose format at
-[sigp/lighthouse-metrics](https://github.com/sigp/lighthouse-metrics).
+[dapplion/vibehouse-metrics](https://github.com/dapplion/vibehouse-metrics).
 
 ## Beacon Node Metrics
 
@@ -19,7 +19,7 @@ flag. Use the `--metrics-address`, `--metrics-port` and
 Start a beacon node with the metrics server enabled:
 
 ```bash
-lighthouse bn --metrics
+vibehouse bn --metrics
 ```
 
 Check to ensure that the metrics are available on the default port:
@@ -39,7 +39,7 @@ flag. Use the `--metrics-address`, `--metrics-port` and
 Start a validator client with the metrics server enabled:
 
 ```bash
-lighthouse vc --metrics
+vibehouse vc --metrics
 ```
 
 Check to ensure that the metrics are available on the default port:
@@ -50,13 +50,13 @@ curl localhost:5064/metrics
 
 ## Remote Monitoring
 
-Lighthouse has the ability to send a subset of metrics to a remote server for collection. Presently
+Vibehouse has the ability to send a subset of metrics to a remote server for collection. Presently
 the main server offering remote monitoring is beaconcha.in. Instructions for setting this up
 can be found in beaconcha.in's docs:
 
 - <https://kb.beaconcha.in/beaconcha.in-explorer/mobile-app-less-than-greater-than-beacon-node>
 
-The Lighthouse flag for setting the monitoring URL is `--monitoring-endpoint`.
+The Vibehouse flag for setting the monitoring URL is `--monitoring-endpoint`.
 
 When sending metrics to a remote server you should be conscious of security:
 
@@ -73,12 +73,12 @@ independent of remote metric monitoring_.
 
 ### Update Period
 
-You can adjust the frequency at which Lighthouse sends metrics to the remote server using the
+You can adjust the frequency at which Vibehouse sends metrics to the remote server using the
 `--monitoring-endpoint-period` flag. It takes an integer value in seconds, defaulting to 60
 seconds.
 
 ```bash
-lighthouse bn --monitoring-endpoint-period 60 --monitoring-endpoint "https://url"
+vibehouse bn --monitoring-endpoint-period 60 --monitoring-endpoint "https://url"
 ```
 
 Increasing the monitoring period between can be useful if you are running into rate limits when

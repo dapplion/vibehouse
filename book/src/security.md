@@ -1,8 +1,8 @@
 # Security
 
-Lighthouse takes security seriously. Please see our security policy on GitHub for our PGP key and information on reporting vulnerabilities:
+Vibehouse takes security seriously. Please see our security policy on GitHub for our PGP key and information on reporting vulnerabilities:
 
-- [GitHub: Security Policy](https://github.com/sigp/lighthouse/blob/stable/SECURITY.md)
+- [GitHub: Security Policy](https://github.com/dapplion/vibehouse/blob/stable/SECURITY.md)
 
 ## Past Security Assessments
 

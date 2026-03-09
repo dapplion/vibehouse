@@ -1,6 +1,6 @@
 # Checkpoint Sync
 
-Lighthouse supports syncing from a recent finalized checkpoint. This is substantially faster than syncing from genesis, while still providing all the same features. Checkpoint sync is also safer as it protects the node from long-range attacks. Since [v4.6.0](https://github.com/sigp/lighthouse/releases/tag/v4.6.0), checkpoint sync is required by default and genesis sync will no longer work without the use of `--allow-insecure-genesis-sync`.
+Vibehouse supports syncing from a recent finalized checkpoint. This is substantially faster than syncing from genesis, while still providing all the same features. Checkpoint sync is also safer as it protects the node from long-range attacks. Checkpoint sync is required by default and genesis sync will no longer work without the use of `--allow-insecure-genesis-sync`.
 
 To quickly get started with checkpoint sync, read the sections below on:
 
@@ -16,10 +16,10 @@ checkpoint sync by providing the other beacon node's URL to `--checkpoint-sync-u
 other flags:
 
 ```bash
-lighthouse bn --checkpoint-sync-url "http://remote-bn:5052" ...
+vibehouse bn --checkpoint-sync-url "http://remote-bn:5052" ...
 ```
 
-Lighthouse will print a message to indicate that checkpoint sync is being used:
+Vibehouse will print a message to indicate that checkpoint sync is being used:
 
 ```text
 INFO Starting checkpoint sync                remote_url: http://remote-bn:8000/, service: beacon
@@ -35,7 +35,7 @@ INFO Loaded checkpoint block and state       state_root: 0xe8252c68784a8d5cc7e54
 > **Security Note**: You should cross-reference the `block_root` and `slot` of the loaded checkpoint
 > against a trusted source like a friend's node, a block explorer or some [public endpoints](https://eth-clients.github.io/checkpoint-sync-endpoints/).
 
-Once the checkpoint is loaded Lighthouse will sync forwards to the head of the chain.
+Once the checkpoint is loaded Vibehouse will sync forwards to the head of the chain.
 
 If a validator client is connected to the node then it will be able to start completing its duties
 as soon as forwards sync completes.
@@ -45,7 +45,7 @@ as soon as forwards sync completes.
 The Ethereum community provides various [public endpoints](https://eth-clients.github.io/checkpoint-sync-endpoints/) for you to choose from for your initial checkpoint state. Select one for your network and use it as the url for the `--checkpoint-sync-url` flag.  e.g.
 
 ```bash
-lighthouse bn --checkpoint-sync-url https://example.com/ ...
+vibehouse bn --checkpoint-sync-url https://example.com/ ...
 ```
 
 ### Adjusting the timeout
@@ -54,14 +54,14 @@ If the beacon node fails to start due to a timeout from the checkpoint sync serv
 running it again with a longer timeout by adding the flag `--checkpoint-sync-url-timeout`.
 
 ```bash
-lighthouse bn --checkpoint-sync-url-timeout 300 --checkpoint-sync-url https://example.com/ ...
+vibehouse bn --checkpoint-sync-url-timeout 300 --checkpoint-sync-url https://example.com/ ...
 ```
 
-The flag takes a value in seconds. For more information see `lighthouse bn --help`.
+The flag takes a value in seconds. For more information see `vibehouse bn --help`.
 
 ## Backfilling Blocks
 
-Once forwards sync completes, Lighthouse will commence a "backfill sync" to download the blocks
+Once forwards sync completes, Vibehouse will commence a "backfill sync" to download the blocks
 from the checkpoint back to genesis.
 
 The beacon node will log messages similar to the following each minute while it completes backfill
@@ -73,15 +73,15 @@ INFO Downloading historical blocks  est_time: 5 hrs 0 mins, speed: 111.96 slots/
 
 Once backfill is complete, a `INFO Historical block download complete` log will be emitted.
 
-> Note: Since [v4.1.0](https://github.com/sigp/lighthouse/releases/tag/v4.1.0), Lighthouse implements rate-limited backfilling to mitigate validator performance issues after a recent checkpoint sync. This means that the speed at which historical blocks are downloaded is limited, typically to less than 20 slots/sec. This will not affect validator performance. However, if you would still prefer to sync the chain as fast as possible, you can add the flag `--disable-backfill-rate-limiting` to the beacon node.
+> Note: Vibehouse implements rate-limited backfilling to mitigate validator performance issues after a recent checkpoint sync. This means that the speed at which historical blocks are downloaded is limited, typically to less than 20 slots/sec. This will not affect validator performance. However, if you would still prefer to sync the chain as fast as possible, you can add the flag `--disable-backfill-rate-limiting` to the beacon node.
 
-> Note: Since [v4.2.0](https://github.com/sigp/lighthouse/releases/tag/v4.2.0), Lighthouse limits the backfill sync to only sync backwards to the weak subjectivity point (approximately 5 months). This will help to save disk space. However, if you would like to sync back to the genesis, you can add the flag `--genesis-backfill` to the beacon node.
+> Note: Vibehouse limits the backfill sync to only sync backwards to the weak subjectivity point (approximately 5 months). This will help to save disk space. However, if you would like to sync back to the genesis, you can add the flag `--genesis-backfill` to the beacon node.
 
 ## FAQ
 
 1. What if I have an existing database? How can I use checkpoint sync?
 
-    The existing beacon database needs to be deleted before Lighthouse will attempt checkpoint sync.
+    The existing beacon database needs to be deleted before Vibehouse will attempt checkpoint sync.
     You can do this by providing the `--purge-db-force` flag, or by manually deleting `<DATADIR>/beacon`.
 
 1. Why is checkpoint sync faster?
@@ -134,7 +134,7 @@ Important information to be aware of:
 * It is safe to interrupt state reconstruction by gracefully terminating the node – it will pick up
   from where it left off when it restarts.
 * You can start reconstruction from the HTTP API, and view its progress. See the
-  [`/lighthouse/database`](./api_lighthouse.md) APIs.
+  [`/vibehouse/database`](./api_vibehouse.md) APIs.
 
 For more information on historic state storage see the
 [Database Configuration](./advanced_database.md) page.

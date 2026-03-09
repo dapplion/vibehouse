@@ -21,16 +21,16 @@ sufficient *without* introducing a remote signer.
 **Using a remote signer introduces a new set of security and slashing risks and should only be
 undertaken by advanced users who fully understand the risks.**
 
-### Web3Signer is not maintained by Lighthouse
+### Web3Signer is not maintained by Vibehouse
 
 The [Web3Signer] tool is maintained by [Consensys], the same team that maintains [Teku]. The
-Lighthouse team (Sigma Prime) does not maintain Web3Signer or make any guarantees about its safety
+Vibehouse team (Sigma Prime) does not maintain Web3Signer or make any guarantees about its safety
 or effectiveness.
 
 ## Usage
 
-A remote signing validator is added to Lighthouse in much the same way as one that uses a local
-keystore, via the [`validator_definitions.yml`](./validator_management.md) file or via the [`POST /lighthouse/validators/web3signer`](./api_vc_endpoints.md#post-lighthousevalidatorsweb3signer) API endpoint.
+A remote signing validator is added to Vibehouse in much the same way as one that uses a local
+keystore, via the [`validator_definitions.yml`](./validator_management.md) file or via the [`POST /vibehouse/validators/web3signer`](./api_vc_endpoints.md#post-vibehousevalidatorsweb3signer) API endpoint.
 
 Here is an example of a `validator_definitions.yml` file containing one validator which uses a
 remote signer:
@@ -46,7 +46,7 @@ remote signer:
   client_identity_password: "password"
 ```
 
-When using this file, the Lighthouse VC will perform duties for the `0xa5566..` validator and refer
+When using this file, the Vibehouse VC will perform duties for the `0xa5566..` validator and refer
 to the `https://my-remote-signer.com:1234` server to obtain any signatures. It will load a
 "self-signed" SSL certificate from `/home/paul/my-certificates/my-remote-signer.pem` (on the
 filesystem of the VC) to encrypt the communications between the VC and Web3Signer. It will use
@@ -59,7 +59,7 @@ SSL client authentication with the "self-signed" certificate in `/home/paul/my-k
 
 ## Slashing protection database
 
-Web3signer can be configured with its own slashing protection database. This makes the local slashing protection database by Lighthouse redundant. To disable Lighthouse slashing protection database for web3signer keys, use the flag `--disable-slashing-protection-web3signer` on the validator client.
+Web3signer can be configured with its own slashing protection database. This makes the local slashing protection database by Vibehouse redundant. To disable Vibehouse slashing protection database for web3signer keys, use the flag `--disable-slashing-protection-web3signer` on the validator client.
 
 > Note: DO NOT use this flag unless you are certain that slashing protection is enabled on web3signer.
 

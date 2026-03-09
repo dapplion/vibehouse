@@ -1,6 +1,6 @@
 # Database Configuration
 
-Lighthouse uses an efficient "split" database schema, whereby finalized states are stored separately
+Vibehouse uses an efficient "split" database schema, whereby finalized states are stored separately
 from recent, unfinalized states. We refer to the portion of the database storing finalized states as
 the _freezer_ or _cold DB_, and the portion storing recent states as the _hot DB_.
 
@@ -8,7 +8,7 @@ In both the hot and cold DBs, full `BeaconState` data structures are only stored
 intermediate states are reconstructed by quickly replaying blocks on top of the nearest state. For
 example, to fetch a state at slot 7 the database might fetch a full state from slot 0, and replay
 blocks from slots 1-7 while omitting redundant signature checks and Merkle root calculations. In
-the freezer DB, Lighthouse also uses hierarchical state diffs to jump larger distances (described in
+the freezer DB, Vibehouse also uses hierarchical state diffs to jump larger distances (described in
 more detail below).
 
 The full states upon which blocks are replayed are referred to as _snapshots_ in the case of the
@@ -20,10 +20,10 @@ configurable via the `--hierarchy-exponents` CLI flag, which is the topic of the
 
 ## Hierarchical State Diffs
 
-Since v6.0.0, Lighthouse's freezer database uses _hierarchical state diffs_ or _hdiffs_ for short.
-These diffs allow Lighthouse to reconstruct any historic state relatively quickly from a very
+Since v6.0.0, Vibehouse's freezer database uses _hierarchical state diffs_ or _hdiffs_ for short.
+These diffs allow Vibehouse to reconstruct any historic state relatively quickly from a very
 compact database. The essence of the hdiffs is that full states (snapshots) are stored only around
-once per year. To reconstruct a particular state, Lighthouse fetches the last snapshot prior to that
+once per year. To reconstruct a particular state, Vibehouse fetches the last snapshot prior to that
 state, and then applies several _layers_ of diffs. For example, to access a state from November
 2022, we might fetch the yearly snapshot for the start of 2022, then apply a monthly diff to jump to
 November, and then more granular diffs to reach the particular week, day and epoch desired.
@@ -51,12 +51,12 @@ that we have observed are:
 
 - **More frequent snapshots = more space**. This is quite intuitive - if you store full states more
   often then these will take up more space than diffs. However what you lose in space efficiency you
-  may gain in speed. It would be possible to achieve a configuration similar to Lighthouse's
+  may gain in speed. It would be possible to achieve a configuration similar to Vibehouse's
   previous `--slots-per-restore-point 32` using `--hierarchy-exponents 5`, although this would use
   _a lot_ of space. It's even possible to push beyond that with `--hierarchy-exponents 0` which
   would store a full state every single slot (NOT RECOMMENDED).
 - **Less diff layers are not necessarily faster**. One might expect that the fewer diff layers there
-  are, the less work Lighthouse would have to do to reconstruct any particular state. In practice
+  are, the less work Vibehouse would have to do to reconstruct any particular state. In practice
   this seems to be offset by the increased size of diffs in each layer making the diffs take longer
   to apply. We observed no significant performance benefit from `--hierarchy-exponents 5,7,11`, and
   a substantial increase in space consumed.
@@ -87,20 +87,20 @@ configuration is determined.
 
 ### CLI Configuration
 
-To configure your Lighthouse node's database, run your beacon node with the `--hierarchy-exponents` flag:
+To configure your Vibehouse node's database, run your beacon node with the `--hierarchy-exponents` flag:
 
 ```bash
-lighthouse beacon_node --hierarchy-exponents "5,7,11"
+vibehouse beacon_node --hierarchy-exponents "5,7,11"
 ```
 
 ### Historic state cache
 
-Lighthouse includes a cache to avoid repeatedly replaying blocks when loading historic states. Lighthouse will cache a limited number of reconstructed states and will re-use them when serving requests for subsequent states at higher slots. This greatly reduces the cost of requesting several states in order, and we recommend that applications like block explorers take advantage of this cache.
+Vibehouse includes a cache to avoid repeatedly replaying blocks when loading historic states. Vibehouse will cache a limited number of reconstructed states and will re-use them when serving requests for subsequent states at higher slots. This greatly reduces the cost of requesting several states in order, and we recommend that applications like block explorers take advantage of this cache.
 
 The historical state cache size can be specified with the flag `--historic-state-cache-size` (default value is 1):
 
 ```bash
-lighthouse beacon_node --historic-state-cache-size 4
+vibehouse beacon_node --historic-state-cache-size 4
 ```
 
 > Note: Use a large cache limit can lead to high memory usage.

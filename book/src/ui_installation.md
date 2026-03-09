@@ -1,6 +1,6 @@
 # 📦 Installation
 
-Siren supports any operating system that supports containers and/or NodeJS 18, this includes Linux, MacOS, and Windows. The recommended way of running Siren is by launching the [docker container](https://hub.docker.com/r/sigp/siren).
+Siren supports any operating system that supports containers and/or NodeJS 18, this includes Linux, MacOS, and Windows. The recommended way of running Siren is by launching the [docker container](https://hub.docker.com/r/dapplion/siren).
 
 ## Version Requirement
 
@@ -8,7 +8,7 @@ To ensure proper functionality, the Siren app requires vibehouse v4.3.0 or highe
 
 ## Configuration
 
-Siren requires a connection to both a Lighthouse Validator Client and a Lighthouse Beacon Node.
+Siren requires a connection to both a Vibehouse Validator Client and a Vibehouse Beacon Node.
 
 Both the Beacon node and the Validator client need to have their HTTP APIs enabled.
 These ports should be accessible from Siren. This means adding the flag `--http` on both beacon node and validator client.
@@ -24,7 +24,7 @@ We recommend running Siren's container next to your beacon node (on the same ser
  1. Clone the Siren repository:
 
     ```
-    git clone https://github.com/sigp/siren
+    git clone https://github.com/dapplion/siren
     cd siren
     ```
 
@@ -67,7 +67,7 @@ We recommend running Siren's container next to your beacon node (on the same ser
 
  1. Create a configuration file in the `Siren` directory: `nano .env` and insert the following fields to the `.env` file. The field values are given here as an example, modify the fields as necessary. For example, the `API_TOKEN` can be obtained from [`Validator Client Authorization Header`](./api_vc_auth_header.md).
 
-    A full example with all possible configuration options can be found [here](https://github.com/sigp/siren/blob/stable/.env.example).
+    A full example with all possible configuration options can be found [here](https://github.com/dapplion/siren/blob/stable/.env.example).
 
     ```
     BEACON_URL=http://localhost:5052
@@ -79,7 +79,7 @@ We recommend running Siren's container next to your beacon node (on the same ser
  1. You can now start Siren with:
 
     ```bash
-    docker run -ti --name siren --env-file $PWD/.env -p 443:443 sigp/siren
+    docker run -ti --name siren --env-file $PWD/.env -p 443:443 dapplion/siren
     ```
 
 > Note: If you have only exposed your HTTP API ports on the Beacon Node and Validator client to

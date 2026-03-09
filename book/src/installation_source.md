@@ -1,7 +1,7 @@
 # Build from Source
 
-Lighthouse builds on Linux, macOS, and Windows. Install the [Dependencies](#dependencies) using
-the instructions below, and then proceed to [Building Lighthouse](#build-lighthouse).
+Vibehouse builds on Linux, macOS, and Windows. Install the [Dependencies](#dependencies) using
+the instructions below, and then proceed to [Building Vibehouse](#build-vibehouse).
 
 ## Dependencies
 
@@ -38,11 +38,11 @@ sudo apt update && sudo apt install -y git gcc g++ make cmake pkg-config llvm-de
 > - If there are difficulties, try updating the package manager with `sudo apt
 >   update`.
 
-> Note: Lighthouse requires CMake v3.12 or newer, which isn't available in the package repositories
+> Note: Vibehouse requires CMake v3.12 or newer, which isn't available in the package repositories
 > of Ubuntu 18.04 or earlier. On these distributions CMake can still be installed via PPA:
 > [https://apt.kitware.com/](https://apt.kitware.com)
 
-After this, you are ready to [build Lighthouse](#build-lighthouse).
+After this, you are ready to [build Vibehouse](#build-vibehouse).
 
 ### Fedora/RHEL/CentOS
 
@@ -52,7 +52,7 @@ Install the following packages:
 yum -y install git make perl clang cmake
 ```
 
-After this, you are ready to [build Lighthouse](#build-lighthouse).
+After this, you are ready to [build Vibehouse](#build-vibehouse).
 
 ### macOS
 
@@ -65,7 +65,7 @@ brew install cmake
 
 [Homebrew]: https://brew.sh/
 
-After this, you are ready to [build Lighthouse](#build-lighthouse).
+After this, you are ready to [build Vibehouse](#build-vibehouse).
 
 ### Windows
 
@@ -94,24 +94,24 @@ choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
 choco install llvm
 ```
 
-These dependencies are for compiling Lighthouse natively on Windows. Lighthouse can also run
+These dependencies are for compiling Vibehouse natively on Windows. Vibehouse can also run
 successfully under the [Windows Subsystem for Linux (WSL)][WSL]. If using Ubuntu under WSL, you
 should follow the instructions for Ubuntu listed in the [Dependencies (Ubuntu)](#ubuntu) section.
 
 [WSL]: https://docs.microsoft.com/en-us/windows/wsl/about
 
-After this, you are ready to [build Lighthouse](#build-lighthouse).
+After this, you are ready to [build Vibehouse](#build-vibehouse).
 
-## Build Lighthouse
+## Build Vibehouse
 
-Once you have Rust and the build dependencies you're ready to build Lighthouse:
-
-```
-git clone https://github.com/sigp/lighthouse.git
-```
+Once you have Rust and the build dependencies you're ready to build Vibehouse:
 
 ```
-cd lighthouse
+git clone https://github.com/dapplion/vibehouse.git
+```
+
+```
+cd vibehouse
 ```
 
 ```
@@ -122,20 +122,20 @@ git checkout stable
 make
 ```
 
-Compilation may take around 10 minutes. Installation was successful if `lighthouse --help` displays
+Compilation may take around 10 minutes. Installation was successful if `vibehouse --help` displays
 the command-line documentation.
 
 If you run into any issues, please check the [Troubleshooting](#troubleshooting) section, or reach
 out to us on [Discord](https://discord.gg/cyAszAh).
 
-## Update Lighthouse
+## Update Vibehouse
 
-You can update Lighthouse to a specific version by running the commands below. The `lighthouse`
-directory will be the location you cloned Lighthouse to during the installation process.
+You can update Vibehouse to a specific version by running the commands below. The `vibehouse`
+directory will be the location you cloned Vibehouse to during the installation process.
 `${VERSION}` will be the version you wish to build in the format `vX.X.X`.
 
 ```
-cd lighthouse
+cd vibehouse
 ```
 
 ```
@@ -152,7 +152,7 @@ make
 
 ## Feature Flags
 
-You can customise the features that Lighthouse is built with using the `FEATURES` environment
+You can customise the features that Vibehouse is built with using the `FEATURES` environment
 variable. E.g.
 
 ```
@@ -162,7 +162,7 @@ FEATURES=gnosis,slasher-lmdb make
 Commonly used features include:
 
 - `gnosis`: support for the Gnosis Beacon Chain.
-- `portable`: the default feature as Lighthouse now uses runtime detection of hardware CPU features.
+- `portable`: the default feature as Vibehouse now uses runtime detection of hardware CPU features.
 - `slasher-lmdb`: support for the LMDB slasher backend. Enabled by default.
 - `slasher-mdbx`: support for the MDBX slasher backend.
 - `sysmalloc`: use the system memory allocator rather than jemalloc. This is always enabled on
@@ -179,10 +179,10 @@ CARGO_INSTALL_EXTRA_FLAGS="--no-default-features" make
 
 ## Compilation Profiles
 
-You can customise the compiler settings used to compile Lighthouse via
+You can customise the compiler settings used to compile Vibehouse via
 [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html).
 
-Lighthouse includes several profiles which can be selected via the `PROFILE` environment variable.
+Vibehouse includes several profiles which can be selected via the `PROFILE` environment variable.
 
 - `release`: default for source builds, enables most optimisations while not taking too long to
   compile.
@@ -200,8 +200,8 @@ PROFILE=maxperf make
 
 ### Command is not found
 
-Lighthouse will be installed to `CARGO_HOME` or `$HOME/.cargo`. This directory
-needs to be on your `PATH` before you can run `$ lighthouse`.
+Vibehouse will be installed to `CARGO_HOME` or `$HOME/.cargo`. This directory
+needs to be on your `PATH` before you can run `$ vibehouse`.
 
 See ["Configuring the `PATH` environment variable"](https://www.rust-lang.org/tools/install) for more information.
 
@@ -210,12 +210,12 @@ See ["Configuring the `PATH` environment variable"](https://www.rust-lang.org/to
 Make sure you are running the latest version of Rust. If you have installed Rust using rustup, simply run `rustup update`.
 
 If you can't install the latest version of Rust you can instead compile using the Minimum Supported
-Rust Version (MSRV) which is listed under the `rust-version` key in Lighthouse's
-[Cargo.toml](https://github.com/sigp/lighthouse/blob/stable/lighthouse/Cargo.toml).
+Rust Version (MSRV) which is listed under the `rust-version` key in Vibehouse's
+[Cargo.toml](https://github.com/dapplion/vibehouse/blob/stable/vibehouse/Cargo.toml).
 
 If compilation fails with `(signal: 9, SIGKILL: kill)`, this could mean your machine ran out of
 memory during compilation. If you are on a resource-constrained device you can
 look into [cross compilation](./installation_cross_compiling.md), or use a [pre-built
-binary](https://github.com/sigp/lighthouse/releases).
+binary](https://github.com/dapplion/vibehouse/releases).
 
 If compilation fails with `error: linking with cc failed: exit code: 1`, try running `cargo clean`.

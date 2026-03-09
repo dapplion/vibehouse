@@ -1,10 +1,10 @@
 # Development Environment
 
-Most Lighthouse developers work on Linux or MacOS, however Windows should still
+Most Vibehouse developers work on Linux or MacOS, however Windows should still
 be suitable.
 
 First, follow the [`Installation Guide`](./installation.md) to install
-Lighthouse. This will install Lighthouse to your `PATH`, which is not
+Vibehouse. This will install Vibehouse to your `PATH`, which is not
 particularly useful for development but still a good way to ensure you have the
 base dependencies.
 
@@ -32,11 +32,11 @@ you can run them locally and avoid CI failures:
   commands). This is approximately everything
  that is required to pass CI.
 
-_The lighthouse test suite is quite extensive, running the whole suite may take 30+ minutes._
+_The vibehouse test suite is quite extensive, running the whole suite may take 30+ minutes._
 
 ## Testing
 
-Lighthouse uses `cargo nextest` for unit and integration tests. Nextest provides better parallelization and is used by CI. For example, to test the `safe_arith` crate run:
+Vibehouse uses `cargo nextest` for unit and integration tests. Nextest provides better parallelization and is used by CI. For example, to test the `safe_arith` crate run:
 
 ```bash
 $ cd consensus/safe_arith
@@ -52,7 +52,7 @@ $ cargo nextest run
      Summary [ 0.012s] 8 tests run: 8 passed, 0 skipped
 ```
 
-Alternatively, since `lighthouse` is a cargo workspace you can use `-p safe_arith` where
+Alternatively, since `vibehouse` is a cargo workspace you can use `-p safe_arith` where
 `safe_arith` is the package name as defined in `/consensus/safe_arith/Cargo.toml`:
 
 ```bash
@@ -102,7 +102,7 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 51 filtered out; fin
 
 The
 [ethereum/consensus-spec-tests](https://github.com/ethereum/consensus-spec-tests/)
-repository contains a large set of tests that verify Lighthouse behaviour
+repository contains a large set of tests that verify Vibehouse behaviour
 against the Ethereum Foundation specifications.
 
 These tests are quite large (100's of MB) so they're only downloaded if you run
@@ -116,5 +116,5 @@ During development and testing it can be useful to start a small, local
 testnet.
 
 The
-[scripts/local_testnet/](https://github.com/sigp/lighthouse/tree/unstable/scripts/local_testnet)
+[scripts/local_testnet/](https://github.com/dapplion/vibehouse/tree/unstable/scripts/local_testnet)
 directory contains several scripts and a README that should make this process easy.

@@ -6,13 +6,13 @@ Yes, the most current Siren version requires vibehouse v4.3.0 or higher to funct
 
 ## 2. Where can I find my API token?
 
-The required API token may be found in the default data directory of the validator client. For more information please refer to the lighthouse ui configuration [`api token section`](./api_vc_auth_header.md).
+The required API token may be found in the default data directory of the validator client. For more information please refer to the vibehouse ui configuration [`api token section`](./api_vc_auth_header.md).
 
 ## 3. How do I fix the Node Network Errors?
 
-If you receive a red notification with a BEACON or VALIDATOR NODE NETWORK ERROR you can refer to the lighthouse ui [`installation`](./ui_installation.md#configuration).
+If you receive a red notification with a BEACON or VALIDATOR NODE NETWORK ERROR you can refer to the vibehouse ui [`installation`](./ui_installation.md#configuration).
 
-## 4. How do I connect Siren to Lighthouse from a different computer on the same network?
+## 4. How do I connect Siren to Vibehouse from a different computer on the same network?
 
 Siren is a webapp, you can access it like any other website. We don't recommend exposing it to the internet; if you require remote access a VPN or (authenticated) reverse proxy is highly recommended.
 That being said, it is entirely possible to have it published over the internet, how to do that goes well beyond the scope of this document but we want to emphasize once more the need for *at least* SSL encryption if you choose to do so.

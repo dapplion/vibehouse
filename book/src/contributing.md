@@ -1,24 +1,24 @@
-# Contributing to Lighthouse
+# Contributing to Vibehouse
 
 [![Chat Badge]][Chat Link]
-[![GitPOAP Badge](https://public-api.gitpoap.io/v1/repo/sigp/lighthouse/badge)](https://www.gitpoap.io/gh/sigp/lighthouse)
+[![GitPOAP Badge](https://public-api.gitpoap.io/v1/repo/dapplion/vibehouse/badge)](https://www.gitpoap.io/gh/dapplion/vibehouse)
 
 [Chat Badge]: https://img.shields.io/badge/chat-discord-%237289da
 [Chat Link]: https://discord.gg/cyAszAh
-[stable]: https://github.com/sigp/lighthouse/tree/stable
-[unstable]: https://github.com/sigp/lighthouse/tree/unstable
+[stable]: https://github.com/dapplion/vibehouse/tree/stable
+[unstable]: https://github.com/dapplion/vibehouse/tree/unstable
 
-Lighthouse welcomes contributions. If you are interested in contributing to the
-Ethereum ecosystem, and you want to learn Rust, Lighthouse is a great project
+Vibehouse welcomes contributions. If you are interested in contributing to the
+Ethereum ecosystem, and you want to learn Rust, Vibehouse is a great project
 to work on.
 
 To start contributing,
 
-1. Read our [how to contribute](https://github.com/sigp/lighthouse/blob/unstable/CONTRIBUTING.md) document.
+1. Read our [how to contribute](https://github.com/dapplion/vibehouse/blob/unstable/CONTRIBUTING.md) document.
 2. Setup a [development environment](./contributing_setup.md).
-3. Browse through the [open issues](https://github.com/sigp/lighthouse/issues)
+3. Browse through the [open issues](https://github.com/dapplion/vibehouse/issues)
    (tip: look for the [good first
-   issue](https://github.com/sigp/lighthouse/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+   issue](https://github.com/dapplion/vibehouse/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
    tag).
 4. Comment on an issue before starting work.
 5. Share your work via a pull-request.
@@ -28,7 +28,7 @@ If you have questions, please reach out via
 
 ## Branches
 
-Lighthouse maintains two permanent branches:
+Vibehouse maintains two permanent branches:
 
 - [`stable`][stable]: Always points to the latest stable release.
   - This is ideal for most users.
@@ -37,7 +37,7 @@ Lighthouse maintains two permanent branches:
 
 ## Ethereum consensus client
 
-Lighthouse is an implementation of the Ethereum proof-of-stake consensus specification, as defined
+Vibehouse is an implementation of the Ethereum proof-of-stake consensus specification, as defined
 in the  [ethereum/consensus-specs](https://github.com/ethereum/consensus-specs)
 repository.
 
@@ -47,7 +47,7 @@ into the canonical spec.
 
 ## Rust
 
-Lighthouse adheres to Rust code conventions as outlined in the [**Rust
+Vibehouse adheres to Rust code conventions as outlined in the [**Rust
 Styleguide**](https://doc.rust-lang.org/nightly/style-guide/).
 
 Please use [clippy](https://github.com/rust-lang/rust-clippy) and
@@ -61,9 +61,9 @@ cargo fmt --all --check
 
 ### Panics
 
-Generally, **panics should be avoided at all costs**. Lighthouse operates in an
+Generally, **panics should be avoided at all costs**. Vibehouse operates in an
 adversarial environment (the Internet) and it's a severe vulnerability if
-people on the Internet can cause Lighthouse to crash via a panic.
+people on the Internet can cause Vibehouse to crash via a panic.
 
 Always prefer returning a `Result` or `Option` over causing a panic. For
 example, prefer `array.get(1)?` over `array[1]`.
@@ -79,7 +79,7 @@ All `TODO` statements should be accompanied by a GitHub issue.
 ```rust
 pub fn my_function(&mut self, _something &[u8]) -> Result<String, Error> {
   // TODO: something_here
-  // https://github.com/sigp/lighthouse/issues/XX
+  // https://github.com/dapplion/vibehouse/issues/XX
 }
 ```
 
@@ -92,7 +92,7 @@ pub fn my_function(&mut self, _something &[u8]) -> Result<String, Error> {
 
 ```rust
 // Comment for this struct
-struct Lighthouse {}
+struct Vibehouse {}
 fn make_blockchain() {} // A comment on the same line after a space
 ```
 
@@ -102,11 +102,11 @@ fn make_blockchain() {} // A comment on the same line after a space
 - The comments should come before attributes.
 
 ```rust
-/// Stores the core configuration for this Lighthouse instance.
+/// Stores the core configuration for this Vibehouse instance.
 /// This struct is general, other components may implement more
 /// specialized config structs.
 #[derive(Clone)]
-pub struct LighthouseConfig {
+pub struct VibehouseConfig {
     pub data_dir: PathBuf,
     pub p2p_listen_port: u16,
 }

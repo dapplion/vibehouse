@@ -1,6 +1,6 @@
 # Moving Validators
 
-The `lighthouse validator-manager move` command uses the VC HTTP API to move
+The `vibehouse validator-manager move` command uses the VC HTTP API to move
 validators from one VC (the "src" VC) to another VC (the "dest" VC). The move
 operation is *comprehensive*; it will:
 
@@ -13,8 +13,8 @@ operation is *comprehensive*; it will:
 It is capable of moving all validators on the src VC, a count of validators or
 a list of pubkeys.
 
-The `move` command is only guaranteed to work between two Lighthouse VCs (i.e.,
-there is no guarantee that the commands will work between Lighthouse and Teku, for instance).
+The `move` command is only guaranteed to work between two Vibehouse VCs (i.e.,
+there is no guarantee that the commands will work between Vibehouse and Teku, for instance).
 
 The `move` command only supports moving validators using a keystore on the local
 file system, it does not support `Web3Signer` validators.
@@ -30,13 +30,13 @@ The following command will move all validators from the VC running at
 `http://localhost:6062` to the VC running at `http://localhost:5062`.
 
 ```bash
-lighthouse \
+vibehouse \
 	validator-manager \
 	move \
 	--src-vc-url http://localhost:6062 \
 	--src-vc-token ~/src-token.txt \
 	--dest-vc-url http://localhost:5062 \
-	--dest-vc-token ~/.lighthouse/mainnet/validators/api-token.txt \
+	--dest-vc-token ~/.vibehouse/mainnet/validators/api-token.txt \
 	--validators all
 ```
 
@@ -74,7 +74,7 @@ The source VC needs to have the following flags at a minimum:
 Therefore, the source VC command might look like:
 
 ```bash
-lighthouse \
+vibehouse \
     vc \
     --http \
     --http-allow-keystore-export
@@ -90,7 +90,7 @@ The destination VC needs to have the following flags at a minimum:
 Therefore, the destination VC command might look like:
 
 ```bash
-lighthouse \
+vibehouse \
     vc \
     --http \
     --enable-doppelganger-protection
@@ -113,7 +113,7 @@ source host on its file-system.
 
 On the **source host**, find the location of the `api-token.txt` file and copy the contents. The
 location of the file varies, but it is located in the "validator directory" of your data directory,
-alongside validator keystores. For example: `~/.lighthouse/mainnet/validators/api-token.txt`. If you are unsure of the `api-token.txt` path, you can run `curl http://localhost:5062/lighthouse/auth` which will show the path.
+alongside validator keystores. For example: `~/.vibehouse/mainnet/validators/api-token.txt`. If you are unsure of the `api-token.txt` path, you can run `curl http://localhost:5062/vibehouse/auth` which will show the path.
 
 Copy the contents of that file into a new file on the **destination host** at `~/src-token.txt`. The
 API token is a random string, e.g., `hGut6B8uEujufDXSmZsT0thnxvdvKFBvh`.
@@ -137,13 +137,13 @@ With the SSH tunnel established between the `dest-host` and `src-host`, from the
 host** run the command to move the validators:
 
 ```bash
-lighthouse \
+vibehouse \
 	validator-manager \
 	move \
 	--src-vc-url http://localhost:6062 \
 	--src-vc-token ~/src-token.txt \
 	--dest-vc-url http://localhost:5062 \
-	--dest-vc-token ~/.lighthouse/mainnet/validators/api-token.txt \
+	--dest-vc-token ~/.vibehouse/mainnet/validators/api-token.txt \
 	--validators all
 ```
 
@@ -159,7 +159,7 @@ Moved keystore 2 of 2
 Done.
 ```
 
-At the same time, `lighthouse vc` will log:
+At the same time, `vibehouse vc` will log:
 
 ```bash
 INFO Importing keystores via standard HTTP API, count: 1
@@ -174,13 +174,13 @@ for the validators to start attesting and producing blocks on the `dest-host`.
 If you would only like to move some validators, you can replace the flag `--validators all` with one or more validator public keys. For example:
 
 ```bash
-lighthouse \
+vibehouse \
 	validator-manager \
 	move \
 	--src-vc-url http://localhost:6062 \
 	--src-vc-token ~/src-token.txt \
 	--dest-vc-url http://localhost:5062 \
-	--dest-vc-token ~/.lighthouse/mainnet/validators/api-token.txt \
+	--dest-vc-token ~/.vibehouse/mainnet/validators/api-token.txt \
 	--validators 0x9096aab771e44da149bd7c9926d6f7bb96ef465c0eeb4918be5178cd23a1deb4aec232c61d85ff329b54ed4a3bdfff3a,0x90fc4f72d898a8f01ab71242e36f4545aaf87e3887be81632bb8ba4b2ae8fb70753a62f866344d7905e9a07f5a9cdda1
 ```
 

@@ -1,6 +1,6 @@
 # Running a Slasher
 
-Lighthouse includes a slasher for identifying slashable offences committed by other validators and
+Vibehouse includes a slasher for identifying slashable offences committed by other validators and
 including proof of those offences in blocks.
 
 Running a slasher is a good way to contribute to the health of the network, and doing so can earn
@@ -18,10 +18,10 @@ of the immaturity of the slasher UX and the extra resources required.
 The slasher runs inside the same process as the beacon node, when enabled via the `--slasher` flag:
 
 ```
-lighthouse bn --slasher
+vibehouse bn --slasher
 ```
 
-The slasher hooks into Lighthouse's block and attestation processing, and pushes messages into an
+The slasher hooks into Vibehouse's block and attestation processing, and pushes messages into an
 in-memory queue for regular processing. It will increase the CPU usage of the beacon node because it
 verifies the signatures of otherwise invalid messages. When a slasher batch update runs, the
 messages are filtered for relevancy, and all relevant messages are checked for slashings and written
@@ -37,7 +37,7 @@ The slasher has several configuration options that control its functioning.
 * Argument: path to directory
 
 By default the slasher stores data in the `slasher_db` directory inside the beacon node's datadir,
-e.g. `~/.lighthouse/{network}/beacon/slasher_db`. You can use this flag to change that storage
+e.g. `~/.vibehouse/{network}/beacon/slasher_db`. You can use this flag to change that storage
 directory.
 
 ### Database Backend
@@ -52,35 +52,35 @@ It is possible to use one of several database backends with the slasher:
 * MDBX
 
 The advantage of MDBX is that it performs compaction, resulting in less disk usage over time. The
-disadvantage is that upstream MDBX is unstable, so Lighthouse is pinned to a specific version.
+disadvantage is that upstream MDBX is unstable, so Vibehouse is pinned to a specific version.
 If bugs are found in our pinned version of MDBX it may be deprecated in future.
 
 LMDB does not have compaction but is more stable upstream than MDBX. If running with the LMDB
 backend on Windows it is recommended to allow extra space due to this issue:
-[sigp/lighthouse#2342](https://github.com/sigp/lighthouse/issues/2342).
+[dapplion/vibehouse#2342](https://github.com/dapplion/vibehouse/issues/2342).
 
 More backends may be added in future.
 
 #### Backend Override
 
-The default backend was changed from MDBX to LMDB in Lighthouse v4.3.0.
+The default backend was changed from MDBX to LMDB in Vibehouse v4.3.0.
 
-If an MDBX database is already found on disk, then Lighthouse will try to use it. This will result
+If an MDBX database is already found on disk, then Vibehouse will try to use it. This will result
 in a log at start-up:
 
 ```
 INFO Slasher backend overridden    reason: database exists, configured_backend: lmdb, overridden_backend: mdbx
 ```
 
-If the running Lighthouse binary doesn't have the MDBX backend enabled but an existing database is
-found, then a warning will be logged and Lighthouse will use the LMDB backend and create a new database:
+If the running Vibehouse binary doesn't have the MDBX backend enabled but an existing database is
+found, then a warning will be logged and Vibehouse will use the LMDB backend and create a new database:
 
 ```
-WARN Slasher backend override failed    advice: delete old MDBX database or enable MDBX backend, path: /home/user/.lighthouse/mainnet/beacon/slasher_db/mdbx.dat
+WARN Slasher backend override failed    advice: delete old MDBX database or enable MDBX backend, path: /home/user/.vibehouse/mainnet/beacon/slasher_db/mdbx.dat
 ```
 
-In this case you should either obtain a Lighthouse binary with the MDBX backend enabled, or delete
-the files for the old backend. The pre-built Lighthouse binaries and Docker images have MDBX enabled,
+In this case you should either obtain a Vibehouse binary with the MDBX backend enabled, or delete
+the files for the old backend. The pre-built Vibehouse binaries and Docker images have MDBX enabled,
 or if you're [building from source](./installation_source.md) you can enable the `slasher-mdbx` feature.
 
 To delete the files, use the `path` from the `WARN` log, and then delete the `mbdx.dat` and
@@ -208,7 +208,7 @@ If you would like to run a lightweight slasher that just checks blocks and attes
 the last day or so, you can use this combination of arguments:
 
 ```
-lighthouse bn --slasher --slasher-history-length 256 --slasher-max-db-size 16 --debug-level debug
+vibehouse bn --slasher --slasher-history-length 256 --slasher-max-db-size 16 --debug-level debug
 ```
 
 ## Stability Warning

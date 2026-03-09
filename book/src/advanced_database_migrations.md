@@ -1,21 +1,21 @@
 # Database Migrations
 
-Lighthouse uses a versioned database schema to allow its database design to evolve over time.
+Vibehouse uses a versioned database schema to allow its database design to evolve over time.
 
 Since beacon chain genesis in December 2020 there have been several database upgrades that have
 been applied automatically and in a _backwards compatible_ way.
 
 However, backwards compatibility does not imply the ability to _downgrade_ to a prior version of
-Lighthouse after upgrading. To facilitate smooth downgrades, Lighthouse v2.3.0 and above includes a
+Vibehouse after upgrading. To facilitate smooth downgrades, Vibehouse v2.3.0 and above includes a
 command for applying database downgrades. If a downgrade is available _from_ a schema version,
 it is listed in the table below under the "Downgrade available?" header.
 
-**Everything on this page applies to the Lighthouse _beacon node_, not to the
+**Everything on this page applies to the Vibehouse _beacon node_, not to the
 validator client or the slasher**.
 
 ## List of schema versions
 
-| Lighthouse version | Release date | Schema version | Downgrade available? |
+| Vibehouse version | Release date | Schema version | Downgrade available? |
 |--------------------|--------------|----------------|----------------------|
 | v8.0.0-rc.0        | Sep 2025     | v28            | yes before Fulu      |
 | v7.1.0             | Jul 2025     | v26            | yes                  |
@@ -29,7 +29,7 @@ validator client or the slasher**.
 > that use the same schema. E.g. you can downgrade from v5.2.0 to v5.0.0 because both use schema
 > v19.
 
-> **Note**: Support for old schemas is gradually removed from newer versions of Lighthouse. We
+> **Note**: Support for old schemas is gradually removed from newer versions of Vibehouse. We
 usually do this after a major version has been out for a while and everyone has upgraded. Deprecated
 schema versions for previous releases are archived under
 [Full list of schema versions](#full-list-of-schema-versions). If you get stuck and are unable
@@ -39,47 +39,47 @@ on mainnet.
 
 ## How to apply a database downgrade
 
-To apply a downgrade you need to use the `lighthouse db migrate` command with the correct parameters.
+To apply a downgrade you need to use the `vibehouse db migrate` command with the correct parameters.
 
-1. Make sure you have a copy of the latest version of Lighthouse. This will be the version that
+1. Make sure you have a copy of the latest version of Vibehouse. This will be the version that
    knows about the latest schema change, and has the ability to revert it.
 2. Work out the schema version you would like to downgrade to by checking the table above, or the [Full list of schema versions](#full-list-of-schema-versions) below. E.g. if you want to downgrade from v4.2.0, which upgraded the version from v16 to v17, then you'll want to downgrade to v16 in order to run v4.0.1.
 3. **Ensure that downgrading is feasible**. Not all schema upgrades can be reverted, and some of
    them are time-sensitive. The release notes will state whether a downgrade is available and
    whether any caveats apply to it.
-4. Work out the parameters for [Running `lighthouse db` correctly][run-correctly], including your
-   Lighthouse user, your datadir and your network flag.
+4. Work out the parameters for [Running `vibehouse db` correctly][run-correctly], including your
+   Vibehouse user, your datadir and your network flag.
 5. After stopping the beacon node, run the migrate command with the `--to` parameter set to the
    schema version you would like to downgrade to.
 
 ```bash
-sudo -u "$LH_USER" lighthouse db migrate --to "$VERSION" --datadir "$LH_DATADIR" --network "$NET"
+sudo -u "$LH_USER" vibehouse db migrate --to "$VERSION" --datadir "$LH_DATADIR" --network "$NET"
 ```
 
-For example if you want to downgrade to Lighthouse v4.0.1 from v4.2.0 and you followed Somer Esat's guide, you would run:
+For example if you want to downgrade to Vibehouse v4.0.1 from v4.2.0 and you followed Somer Esat's guide, you would run:
 
 ```bash
-sudo -u lighthousebeacon lighthouse db migrate --to 16 --datadir /var/lib/lighthouse --network mainnet
+sudo -u vibehousebeacon vibehouse db migrate --to 16 --datadir /var/lib/vibehouse --network mainnet
 ```
 
-Where `lighthouse` is Lighthouse v4.2.0+. After the downgrade succeeds you can then replace your
-global `lighthouse` binary with the older version and start your node again.
+Where `vibehouse` is Vibehouse v4.2.0+. After the downgrade succeeds you can then replace your
+global `vibehouse` binary with the older version and start your node again.
 
 ## How to apply a database upgrade
 
-Database _upgrades_ happen automatically upon installing a new version of Lighthouse. We will
+Database _upgrades_ happen automatically upon installing a new version of Vibehouse. We will
 highlight in the release notes when a database upgrade is included, and make note of the schema
 versions involved (e.g. v2.3.0 includes an upgrade from v8 to v9).
 
-They can also be applied using the `--to` parameter to `lighthouse db migrate`. See the section
+They can also be applied using the `--to` parameter to `vibehouse db migrate`. See the section
 on downgrades above.
 
 ## How to check the schema version
 
-To check the schema version of a running Lighthouse instance you can use the HTTP API:
+To check the schema version of a running Vibehouse instance you can use the HTTP API:
 
 ```bash
-curl "http://localhost:5052/lighthouse/database/info" | jq
+curl "http://localhost:5052/vibehouse/database/info" | jq
 ```
 
 ```json
@@ -110,39 +110,39 @@ curl "http://localhost:5052/lighthouse/database/info" | jq
 
 The `schema_version` key indicates that this database is using schema version 16.
 
-Alternatively, you can check the schema version with the `lighthouse db` command.
+Alternatively, you can check the schema version with the `vibehouse db` command.
 
 ```bash
-sudo -u lighthousebeacon lighthouse db version --datadir /var/lib/lighthouse --network mainnet
+sudo -u vibehousebeacon vibehouse db version --datadir /var/lib/vibehouse --network mainnet
 ```
 
-See the section on [Running `lighthouse db` correctly][run-correctly] for details.
+See the section on [Running `vibehouse db` correctly][run-correctly] for details.
 
-## How to run `lighthouse db` correctly
+## How to run `vibehouse db` correctly
 
-Several conditions need to be met in order to run `lighthouse db`:
+Several conditions need to be met in order to run `vibehouse db`:
 
 1. The beacon node must be **stopped** (not running). If you are using systemd a command like
-   `sudo systemctl stop lighthousebeacon` will accomplish this.
+   `sudo systemctl stop vibehousebeacon` will accomplish this.
 2. The command must run as the user that owns the beacon node database. If you are using systemd then
-   your beacon node might run as a user called `lighthousebeacon`.
-3. The `--datadir` flag must be set to the location of the Lighthouse data directory.
+   your beacon node might run as a user called `vibehousebeacon`.
+3. The `--datadir` flag must be set to the location of the Vibehouse data directory.
 4. The `--network` flag must be set to the correct network, e.g. `mainnet`, `hoodi` or `sepolia`.
 
-The general form for a `lighthouse db` command is:
+The general form for a `vibehouse db` command is:
 
 ```bash
-sudo -u "$LH_USER" lighthouse db version --datadir "$LH_DATADIR" --network "$NET"
+sudo -u "$LH_USER" vibehouse db version --datadir "$LH_DATADIR" --network "$NET"
 ```
 
 If you followed Somer Esat's guide for mainnet:
 
 ```bash
-sudo systemctl stop lighthousebeacon
+sudo systemctl stop vibehousebeacon
 ```
 
 ```bash
-sudo -u lighthousebeacon lighthouse db version --datadir /var/lib/lighthouse --network mainnet
+sudo -u vibehousebeacon vibehouse db version --datadir /var/lib/vibehouse --network mainnet
 ```
 
 If you followed the CoinCashew guide for mainnet:
@@ -152,32 +152,32 @@ sudo systemctl stop beacon-chain
 ```
 
 ```bash
-lighthouse db version --network mainnet
+vibehouse db version --network mainnet
 ```
 
-[run-correctly]: #how-to-run-lighthouse-db-correctly
+[run-correctly]: #how-to-run-vibehouse-db-correctly
 
 ## How to prune historic states
 
-Pruning historic states helps in managing the disk space used by the Lighthouse beacon node by removing old beacon
+Pruning historic states helps in managing the disk space used by the Vibehouse beacon node by removing old beacon
 states from the freezer database. This can be especially useful when the database has accumulated a significant amount
 of historic data. This command is intended for nodes synced before 4.4.1, as newly synced nodes no longer store historic states by default.
 
 Here are the steps to prune historic states:
 
-1. Before running the prune command, make sure that the Lighthouse beacon node is not running. If you are using systemd, you might stop the Lighthouse beacon node with a command like:
+1. Before running the prune command, make sure that the Vibehouse beacon node is not running. If you are using systemd, you might stop the Vibehouse beacon node with a command like:
 
    ```bash
-    sudo systemctl stop lighthousebeacon
+    sudo systemctl stop vibehousebeacon
     ```
 
 2. Use the `prune-states` command to prune the historic states. You can do a test run without the `--confirm` flag to check that the database can be pruned:
 
    ```bash
-    sudo -u "$LH_USER" lighthouse db prune-states --datadir "$LH_DATADIR" --network "$NET"
+    sudo -u "$LH_USER" vibehouse db prune-states --datadir "$LH_DATADIR" --network "$NET"
     ```
 
-   If pruning is available, Lighthouse will log:
+   If pruning is available, Vibehouse will log:
 
    ```text
    INFO Ready to prune states
@@ -189,24 +189,24 @@ Here are the steps to prune historic states:
 3. If you are ready to prune the states irreversibly, add the `--confirm` flag to commit the changes:
 
    ```bash
-    sudo -u "$LH_USER" lighthouse db prune-states --confirm --datadir "$LH_DATADIR" --network "$NET"
+    sudo -u "$LH_USER" vibehouse db prune-states --confirm --datadir "$LH_DATADIR" --network "$NET"
     ```
 
-   The `--confirm` flag ensures that you are aware the action is irreversible, and historic states will be permanently removed. Lighthouse will log:
+   The `--confirm` flag ensures that you are aware the action is irreversible, and historic states will be permanently removed. Vibehouse will log:
 
    ```text
    INFO Historic states pruned successfully
    ```
 
-4. After successfully pruning the historic states, you can restart the Lighthouse beacon node:
+4. After successfully pruning the historic states, you can restart the Vibehouse beacon node:
 
    ```bash
-    sudo systemctl start lighthousebeacon
+    sudo systemctl start vibehousebeacon
     ```
 
 ## Full list of schema versions
 
-| Lighthouse version | Release date | Schema version | Downgrade available?                |
+| Vibehouse version | Release date | Schema version | Downgrade available?                |
 |--------------------|--------------|----------------|-------------------------------------|
 | v8.0.0-rc.0        | Sep 2025     | v28            | yes before Fulu                     |
 | v7.1.0             | Jul 2025     | v26            | yes                                 |

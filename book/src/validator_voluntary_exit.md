@@ -14,7 +14,7 @@ You can also perform voluntary exit for one or more validators using the validat
 
 ## Initiating a voluntary exit
 
-In order to initiate an exit, users can use the `lighthouse account validator exit` command.
+In order to initiate an exit, users can use the `vibehouse account validator exit` command.
 
 - The `--keystore` flag is used to specify the path to the EIP-2335 voting keystore for the validator. The path should point directly to the validator key `.json` file, _not_ the folder containing the `.json` file.
 
@@ -32,10 +32,10 @@ The exit phrase is the following:
 Below is an example for initiating a voluntary exit on the Hoodi testnet.
 
 ```
-$ lighthouse --network hoodi account validator exit --keystore /path/to/keystore --beacon-node http://localhost:5052
+$ vibehouse --network hoodi account validator exit --keystore /path/to/keystore --beacon-node http://localhost:5052
 
 Running account manager for Hoodi network
-validator-dir path: ~/.lighthouse/hoodi/validators
+validator-dir path: ~/.vibehouse/hoodi/validators
 
 Enter the keystore password for validator in 0xabcd
 
@@ -47,7 +47,7 @@ WARNING: WARNING: THIS IS AN IRREVERSIBLE OPERATION
 
 
 
-PLEASE VISIT https://lighthouse-book.sigmaprime.io/validator_voluntary_exit.html
+PLEASE VISIT https://vibehouse-book.openclaw.io/validator_voluntary_exit.html
 TO MAKE SURE YOU UNDERSTAND THE IMPLICATIONS OF A VOLUNTARY EXIT.
 
 Enter the exit phrase from the above URL to confirm the voluntary exit:
@@ -65,7 +65,7 @@ Exit epoch in approximately 1920 secs
 You can also generate a pre-signed exit message without broadcasting it to the network. To do so, use the `--presign` flag:
 
 ```bash
-lighthouse account validator exit --network hoodi --keystore /path/to/keystore --presign
+vibehouse account validator exit --network hoodi --keystore /path/to/keystore --presign
 ```
 
 It will prompt for the keystore password, which, upon entering the correct password, will generate a pre-signed exit message:

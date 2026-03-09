@@ -1,6 +1,6 @@
 # Validator Monitoring
 
-Lighthouse allows for fine-grained monitoring of specific validators using the "validator monitor".
+Vibehouse allows for fine-grained monitoring of specific validators using the "validator monitor".
 Generally users will want to use this function to track their own validators, however, it can be
 used for any validator, regardless of who controls it.
 
@@ -9,7 +9,7 @@ _Note: If you are looking for remote metric monitoring, please see the docs on
 
 ## Monitoring is in the Beacon Node
 
-Lighthouse performs validator monitoring in the Beacon Node (BN) instead of the Validator Client
+Vibehouse performs validator monitoring in the Beacon Node (BN) instead of the Validator Client
 (VC). This is contrary to what some users may expect, but it has several benefits:
 
 1. It keeps the VC simple. The VC handles cryptographic signing and the developers believe it should
@@ -22,7 +22,7 @@ Lighthouse performs validator monitoring in the Beacon Node (BN) instead of the 
 
 ## How to Enable Monitoring
 
-The validator monitor is always enabled in Lighthouse, but it might not have any enrolled
+The validator monitor is always enabled in Vibehouse, but it might not have any enrolled
 validators. There are two methods for a validator to be enrolled for additional monitoring;
 automatic and manual.
 
@@ -37,7 +37,7 @@ minutes after start up.
 #### Example
 
 ```
-lighthouse bn --http --validator-monitor-auto
+vibehouse bn --http --validator-monitor-auto
 ```
 
 ### Manual
@@ -54,7 +54,7 @@ This is useful when monitoring validators that are not directly attached to this
 Monitor the mainnet validators at indices `0` and `1`:
 
 ```
-lighthouse bn --validator-monitor-pubkeys 0x933ad9491b62059dd065b560d256d8957a8c402cc6e8d8ee7290ae11e8f7329267a8811c397529dac52ae1342ba58c95,0xa1d1ad0714035353258038e964ae9675dc0252ee22cea896825c01458e1807bfad2f9969338798548d9858a571f7425c
+vibehouse bn --validator-monitor-pubkeys 0x933ad9491b62059dd065b560d256d8957a8c402cc6e8d8ee7290ae11e8f7329267a8811c397529dac52ae1342ba58c95,0xa1d1ad0714035353258038e964ae9675dc0252ee22cea896825c01458e1807bfad2f9969338798548d9858a571f7425c
 ```
 
 > Note: The validator monitoring will stop collecting per-validator Prometheus metrics and issuing per-validator logs when the number of validators reaches 64. To continue collecting metrics and logging, use the flag `--validator-monitor-individual-tracking-threshold N` where `N` is a number greater than the number of validators to monitor.
@@ -68,7 +68,7 @@ Enrolling a validator for additional monitoring results in:
 
 ### Logging
 
-Lighthouse will create logs for the following events for each monitored validator:
+Vibehouse will create logs for the following events for each monitored validator:
 
 - A block from the validator is observed.
 - An unaggregated attestation from the validator is observed.
@@ -95,12 +95,12 @@ Jan 18 11:21:09.808 INFO Attestation included in block           validator: 1, s
 ### Metrics
 
 The
-[`ValidatorMonitor`](https://github.com/sigp/lighthouse-metrics/blob/master/dashboards/ValidatorMonitor.json)
+[`ValidatorMonitor`](https://github.com/dapplion/vibehouse-metrics/blob/master/dashboards/ValidatorMonitor.json)
 dashboard contains most of the metrics exposed via the validator monitor.
 
 ### Attestation Simulator Metrics
 
-Lighthouse v4.6.0 introduces a new feature to track the performance of a beacon node. This feature internally simulates an attestation for each slot, and outputs a hit or miss for the head, target and source votes. The attestation simulator is turned on automatically (even when there are no validators) and prints logs in the debug level.
+Vibehouse v4.6.0 introduces a new feature to track the performance of a beacon node. This feature internally simulates an attestation for each slot, and outputs a hit or miss for the head, target and source votes. The attestation simulator is turned on automatically (even when there are no validators) and prints logs in the debug level.
 
 > Note: The simulated attestations are never published to the network, so the simulator does not reflect the attestation performance of a validator.
 
@@ -134,7 +134,7 @@ validator_monitor_attestation_simulator_source_attester_hit_total
 validator_monitor_attestation_simulator_source_attester_miss_total
 ```
 
-A Grafana dashboard to view the metrics for attestation simulator is available [here](https://github.com/sigp/lighthouse-metrics/blob/master/dashboards/AttestationSimulator.json).
+A Grafana dashboard to view the metrics for attestation simulator is available [here](https://github.com/dapplion/vibehouse-metrics/blob/master/dashboards/AttestationSimulator.json).
 
 The attestation simulator provides an insight into the attestation performance of a beacon node. It can be used as an indication of how expediently the beacon node has completed importing blocks within the 4s time frame for an attestation to be made.
 

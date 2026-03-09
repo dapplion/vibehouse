@@ -21,9 +21,9 @@ third-party services).
 
 ## How to configure a suggested fee recipient
 
-The Lighthouse VC provides two methods for setting the `suggested_fee_recipient` (also known
+The Vibehouse VC provides two methods for setting the `suggested_fee_recipient` (also known
 simply as the "fee recipient") to be passed to the execution layer during block production. The
-Lighthouse BN also provides a method for defining this value, should the VC not transmit a value.
+Vibehouse BN also provides a method for defining this value, should the VC not transmit a value.
 
 Assuming trustworthy nodes, the priority for the three methods is:
 
@@ -32,7 +32,7 @@ Assuming trustworthy nodes, the priority for the three methods is:
 1. `--suggested-fee-recipient` provided to the BN.
 
 > **NOTE**: It is **not** recommended to _only_ set the fee recipient on the beacon node, as this results
-> in sub-optimal block proposals. See [this issue](https://github.com/sigp/lighthouse/issues/3432)
+> in sub-optimal block proposals. See [this issue](https://github.com/dapplion/vibehouse/issues/3432)
 > for details.
 
 ### 1. Setting the fee recipient in the `validator_definitions.yml`
@@ -47,12 +47,12 @@ Below is an example of the validator_definitions.yml with `suggested_fee_recipie
 - enabled: true
   voting_public_key: "0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007"
   type: local_keystore
-  voting_keystore_path: /home/paul/.lighthouse/validators/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007/voting-keystore.json
-  voting_keystore_password_path: /home/paul/.lighthouse/secrets/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
+  voting_keystore_path: /home/paul/.vibehouse/validators/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007/voting-keystore.json
+  voting_keystore_password_path: /home/paul/.vibehouse/secrets/0x87a580d31d7bc69069b55f5a01995a610dd391a26dc9e36e81057a17211983a79266800ab8531f21f1083d7d84085007
   suggested_fee_recipient: "0x6cc8dcbca744a6e4ffedb98e1d0df903b10abd21"
 - enabled: false
   voting_public_key: "0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477"
-  type: local_keystore voting_keystore_path: /home/paul/.lighthouse/validators/0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477/voting-keystore.json
+  type: local_keystore voting_keystore_path: /home/paul/.vibehouse/validators/0xa5566f9ec3c6e1fdf362634ebec9ef7aceb0e460e5079714808388e5d48f4ae1e12897fed1bea951c17fa389d511e477/voting-keystore.json
   voting_keystore_password: myStrongpa55word123&$
   suggested_fee_recipient: "0xa2e334e71511686bcfe38bb3ee1ad8f6babcc03d"
 ```
@@ -65,7 +65,7 @@ validators where a `suggested_fee_recipient` is not loaded from another method.
 Provide a 0x-prefixed address, e.g.
 
 ```
-lighthouse vc --suggested-fee-recipient 0x25c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b ...
+vibehouse vc --suggested-fee-recipient 0x25c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b ...
 ```
 
 ### 3. Using the "--suggested-fee-recipient" flag on the beacon node
@@ -74,7 +74,7 @@ The `--suggested-fee-recipient` can be provided to the BN to act as a default va
 validator client does not transmit a `suggested_fee_recipient` to the BN.
 
 ```
-lighthouse bn --suggested-fee-recipient 0x25c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b ...
+vibehouse bn --suggested-fee-recipient 0x25c4a76E7d118705e7Ea2e9b7d8C59930d8aCD3b ...
 ```
 
 **This value should be considered an emergency fallback**. You should set the fee recipient in the
@@ -106,7 +106,7 @@ client.
 Command:
 
 ```bash
-DATADIR=$HOME/.lighthouse/mainnet
+DATADIR=$HOME/.vibehouse/mainnet
 PUBKEY=0xa9735061c84fc0003657e5bd38160762b7ef2d67d280e00347b1781570088c32c06f15418c144949f5d736b1d3a6c591
 FEE_RECIPIENT=0x1D4E51167DBDC4789a014357f4029ff76381b16c
 
@@ -141,7 +141,7 @@ The same path with a `GET` request can be used to query the fee recipient for a 
 Command:
 
 ```bash
-DATADIR=$HOME/.lighthouse/mainnet
+DATADIR=$HOME/.vibehouse/mainnet
 PUBKEY=0xa9735061c84fc0003657e5bd38160762b7ef2d67d280e00347b1781570088c32c06f15418c144949f5d736b1d3a6c591
 
 curl -X GET \
@@ -176,7 +176,7 @@ This is useful if you want the fee recipient to fall back to the validator clien
 Command:
 
 ```bash
-DATADIR=$HOME/.lighthouse/mainnet
+DATADIR=$HOME/.vibehouse/mainnet
 PUBKEY=0xa9735061c84fc0003657e5bd38160762b7ef2d67d280e00347b1781570088c32c06f15418c144949f5d736b1d3a6c591
 
 curl -X DELETE \

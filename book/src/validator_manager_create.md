@@ -2,7 +2,7 @@
 
 [Ethereum Staking Launchpad]: https://launchpad.ethereum.org/en/
 
-The `lighthouse validator-manager create` command derives validators from a
+The `vibehouse validator-manager create` command derives validators from a
 mnemonic and produces two files:
 
 - `validators.json`: the keystores and passwords for the newly generated
@@ -12,9 +12,9 @@ mnemonic and produces two files:
     be used for deposit submission via the [Ethereum Staking
     Launchpad][].
 
-The `lighthouse validator-manager import` command accepts a `validators.json`
+The `vibehouse validator-manager import` command accepts a `validators.json`
 file (from the `create` command) and submits those validators to a running
-Lighthouse Validator Client via the HTTP API.
+Vibehouse Validator Client via the HTTP API.
 
 These two commands enable a workflow of:
 
@@ -38,7 +38,7 @@ commands.**
 Create validators from a mnemonic with:
 
 ```bash
-lighthouse \
+vibehouse \
     validator-manager \
     create \
     --network mainnet \
@@ -58,7 +58,7 @@ lighthouse \
 Then, import the validators to a running VC with:
 
 ```bash
-lighthouse \
+vibehouse \
     validator-manager \
     import \
     --validators-file validators.json \
@@ -87,7 +87,7 @@ reside, so it's very important that this address is secure, accessible and
 backed-up. The `create` command:
 
 ```bash
-lighthouse \
+vibehouse \
     validator-manager \
     create \
     --first-index 0 \
@@ -133,7 +133,7 @@ The VC which will receive the validators needs to have the following flags at a 
 Therefore, the VC command might look like:
 
 ```bash
-lighthouse \
+vibehouse \
     vc \
     --http \
     --enable-doppelganger-protection
@@ -142,13 +142,13 @@ lighthouse \
 In order to import the validators, the location of the VC `api-token.txt` file
 must be known. The location of the file varies, but it is located in the
 "validator directory" of your data directory. For example:
-`~/.lighthouse/mainnet/validators/api-token.txt`. We will use `<API-TOKEN-PATH>`
-to substitute this value. If you are unsure of the `api-token.txt` path, you can run `curl http://localhost:5062/lighthouse/auth` which will show the path.
+`~/.vibehouse/mainnet/validators/api-token.txt`. We will use `<API-TOKEN-PATH>`
+to substitute this value. If you are unsure of the `api-token.txt` path, you can run `curl http://localhost:5062/vibehouse/auth` which will show the path.
 
 Once the VC is running, use the `import` command to import the validators to the VC:
 
 ```bash
-lighthouse \
+vibehouse \
     validator-manager \
     import \
     --validators-file validators.json \
@@ -168,7 +168,7 @@ Uploaded keystore 2 of 2 to the VC
 The user should now *securely* delete the `validators.json` file (e.g., `shred -u validators.json`).
 The `validators.json` contains the unencrypted validator keys and must not be
 shared with anyone.
-At the same time, `lighthouse vc` will log:
+At the same time, `vibehouse vc` will log:
 
 ```bash
 INFO Importing keystores via standard HTTP API, count: 1
@@ -192,7 +192,7 @@ Err(DuplicateValidator(0xab6e29f1b98fedfca878edce2b471f1b5ee58ee4c3bd216201f9825
 If you are certain that it is safe, you can add the flag `--ignore-duplicates` in the `import` command. The command becomes:
 
 ```bash
-lighthouse \
+vibehouse \
     validator-manager \
     import \
     --validators-file validators.json \

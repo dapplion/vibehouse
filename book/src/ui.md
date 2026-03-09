@@ -1,4 +1,4 @@
-# Lighthouse UI (Siren)
+# Vibehouse UI (Siren)
 
 _Documentation for Siren users and developers._
 
@@ -9,12 +9,12 @@ _Documentation for Siren users and developers._
 
 ![ui-overview](./imgs/ui.png)
 
-Siren is a user interface built for Lighthouse that connects to a Lighthouse Beacon Node and
-a Lighthouse Validator Client to monitor performance and display key validator
+Siren is a user interface built for Vibehouse that connects to a Vibehouse Beacon Node and
+a Vibehouse Validator Client to monitor performance and display key validator
 metrics.
 
 The UI is currently in active development. It resides in the
-[Siren](https://github.com/sigp/siren) repository.
+[Siren](https://github.com/dapplion/siren) repository.
 
 ## Topics
 
@@ -30,4 +30,4 @@ information:
 ## Contributing
 
 If you find an issue or bug or would otherwise like to help out with the
-development of the Siren project, please submit issues and PRs to the [Siren](https://github.com/sigp/siren) repository.
+development of the Siren project, please submit issues and PRs to the [Siren](https://github.com/dapplion/siren) repository.

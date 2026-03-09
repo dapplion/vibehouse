@@ -1,6 +1,6 @@
 # Managing Validators
 
-The `lighthouse validator-manager` uses the [Keymanager API](https://ethereum.github.io/keymanager-APIs/#/) to list, import and delete keystores via the HTTP API. This requires the validator client running with the flag `--http`. By default, the validator client HTTP address is `http://localhost:5062`. If a different IP address or port is used, add the flag `--vc-url http://IP:port_number` to the command below.
+The `vibehouse validator-manager` uses the [Keymanager API](https://ethereum.github.io/keymanager-APIs/#/) to list, import and delete keystores via the HTTP API. This requires the validator client running with the flag `--http`. By default, the validator client HTTP address is `http://localhost:5062`. If a different IP address or port is used, add the flag `--vc-url http://IP:port_number` to the command below.
 
 ## Exit
 
@@ -9,13 +9,13 @@ The `exit` command exits one or more validators from the validator client. To `e
 > **Important note: Once the --beacon-node flag is used, it will publish the voluntary exit to the network. This action is irreversible.**
 
 ```bash
-lighthouse vm exit --vc-token <API-TOKEN-PATH> --validators pubkey1,pubkey2 --beacon-node http://beacon-node-url:5052
+vibehouse vm exit --vc-token <API-TOKEN-PATH> --validators pubkey1,pubkey2 --beacon-node http://beacon-node-url:5052
 ```
 
 Example:
 
 ```bash
-lighthouse vm exit --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators 0x8885c29b8f88ee9b9a37b480fd4384fed74bda33d85bc8171a904847e65688b6c9bb4362d6597fd30109fb2def6c3ae4,0xa262dae3dcd2b2e280af534effa16bedb27c06f2959e114d53bd2a248ca324a018dc73179899a066149471a94a1bc92f --beacon-node http://localhost:5052
+vibehouse vm exit --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators 0x8885c29b8f88ee9b9a37b480fd4384fed74bda33d85bc8171a904847e65688b6c9bb4362d6597fd30109fb2def6c3ae4,0xa262dae3dcd2b2e280af534effa16bedb27c06f2959e114d53bd2a248ca324a018dc73179899a066149471a94a1bc92f --beacon-node http://localhost:5052
 ```
 
 If successful, the following log will be returned:
@@ -29,7 +29,7 @@ Successfully validated and published voluntary exit for validator
 To exit all validators on the validator client, use the keyword `all`:
 
 ```bash
-lighthouse vm exit --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators all --beacon-node http://localhost:5052
+vibehouse vm exit --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators all --beacon-node http://localhost:5052
 ```
 
 To check the voluntary exit status, refer to [the list command](./validator_manager_api.md#list).
@@ -39,13 +39,13 @@ The following command will only generate a presigned voluntary exit message and 
 To generate a presigned exit message and save it to a file, use the flag `--presign`:
 
 ```bash
-lighthouse vm exit --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators all --presign
+vibehouse vm exit --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators all --presign
 ```
 
 To generate a presigned exit message for a particular (future) epoch, use the flag `--exit-epoch`:
 
 ```bash
-lighthouse vm exit --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators all --presign --exit-epoch 1234567 
+vibehouse vm exit --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators all --presign --exit-epoch 1234567 
 ```
 
 The generated presigned exit message will only be valid at or after the specified exit-epoch, in this case, epoch 1234567.
@@ -55,19 +55,19 @@ The generated presigned exit message will only be valid at or after the specifie
 The `delete` command deletes one or more validators from the validator client. It will also modify the `validator_definitions.yml` file automatically so there is no manual action required from the user after the delete. To `delete`:
 
 ```bash
-lighthouse vm delete --vc-token <API-TOKEN-PATH> --validators pubkey1,pubkey2
+vibehouse vm delete --vc-token <API-TOKEN-PATH> --validators pubkey1,pubkey2
 ```
 
 Example:
 
 ```bash
-lighthouse vm delete --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators 0x8885c29b8f88ee9b9a37b480fd4384fed74bda33d85bc8171a904847e65688b6c9bb4362d6597fd30109fb2def6c3ae4,0xa262dae3dcd2b2e280af534effa16bedb27c06f2959e114d53bd2a248ca324a018dc73179899a066149471a94a1bc92f
+vibehouse vm delete --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators 0x8885c29b8f88ee9b9a37b480fd4384fed74bda33d85bc8171a904847e65688b6c9bb4362d6597fd30109fb2def6c3ae4,0xa262dae3dcd2b2e280af534effa16bedb27c06f2959e114d53bd2a248ca324a018dc73179899a066149471a94a1bc92f
 ```
 
 To delete all validators on the validator client, use the keyword `all`:
 
 ```bash
-lighthouse vm delete --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators all
+vibehouse vm delete --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators all
 ```
 
 ## Import
@@ -75,13 +75,13 @@ lighthouse vm delete --vc-token ~/.lighthouse/mainnet/validators/api-token.txt -
 The `import` command imports validator keystores generated by the `ethstaker-deposit-cli`. To import a validator keystore:
 
 ```bash
-lighthouse vm import --vc-token <API-TOKEN-PATH> --keystore-file /path/to/json --password keystore_password
+vibehouse vm import --vc-token <API-TOKEN-PATH> --keystore-file /path/to/json --password keystore_password
 ```
 
 Example:
 
 ```
-lighthouse vm import --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --keystore-file keystore.json --password keystore_password
+vibehouse vm import --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --keystore-file keystore.json --password keystore_password
 ```
 
 ## List
@@ -89,13 +89,13 @@ lighthouse vm import --vc-token ~/.lighthouse/mainnet/validators/api-token.txt -
 To list the validators running on the validator client:
 
 ```bash
-lighthouse vm list --vc-token ~/.lighthouse/mainnet/validators/api-token.txt
+vibehouse vm list --vc-token ~/.vibehouse/mainnet/validators/api-token.txt
 ```
 
 The `list` command can also be used to check the voluntary exit status of validators. To do so, use both `--beacon-node` and `--validators` flags. The `--validators` flag accepts a comma-separated list of validator public keys, or the keyword `all` to check the voluntary exit status of all validators attached to the validator client.
 
 ```bash
-lighthouse vm list --vc-token ~/.lighthouse/mainnet/validators/api-token.txt --validators 0x8de7ec501d574152f52a962bf588573df2fc3563fd0c6077651208ed20f24f3d8572425706b343117b48bdca56808416 --beacon-node http://localhost:5052
+vibehouse vm list --vc-token ~/.vibehouse/mainnet/validators/api-token.txt --validators 0x8de7ec501d574152f52a962bf588573df2fc3563fd0c6077651208ed20f24f3d8572425706b343117b48bdca56808416 --beacon-node http://localhost:5052
 ```
 
 If the validator voluntary exit has been accepted by the chain, the following log will be returned:

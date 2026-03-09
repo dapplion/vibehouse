@@ -4,36 +4,36 @@
 
 | HTTP Path | Description |
 | --- | -- |
-| [`GET /lighthouse/version`](#get-lighthouseversion) | Get the Lighthouse software version. |
-| [`GET /lighthouse/health`](#get-lighthousehealth) | Get information about the host machine. |
-| [`GET /lighthouse/ui/health`](#get-lighthouseuihealth) | Get information about the host machine. Focused for UI applications. |
-| [`GET /lighthouse/spec`](#get-lighthousespec) | Get the Ethereum proof-of-stake consensus specification used by the validator. |
-| [`GET /lighthouse/auth`](#get-lighthouseauth) | Get the location of the authorization token. |
-| [`GET /lighthouse/validators`](#get-lighthousevalidators) | List all validators. |
-| [`GET /lighthouse/validators`](#get-lighthousevalidators) | List all validators. |
-| [`GET /lighthouse/validators/:voting_pubkey`](#get-lighthousevalidatorsvoting_pubkey) | Get a specific validator. |
-| [`PATCH /lighthouse/validators/:voting_pubkey`](#patch-lighthousevalidatorsvoting_pubkey) | Update a specific validator. |
-| [`POST /lighthouse/validators`](#post-lighthousevalidators) | Create a new validator and mnemonic. |
-| [`POST /lighthouse/validators/keystore`](#post-lighthousevalidatorskeystore) | Import a keystore. |
-| [`POST /lighthouse/validators/mnemonic`](#post-lighthousevalidatorsmnemonic) | Create a new validator from an existing mnemonic. |
-| [`POST /lighthouse/validators/web3signer`](#post-lighthousevalidatorsweb3signer) | Add web3signer validators. |
-| [`GET /lighthouse/logs`](#get-lighthouselogs) | Get logs |
-| [`GET /lighthouse/beacon/health`](#get-lighthousebeaconhealth) | Get health information for each connected beacon node. |
-| [`POST /lighthouse/beacon/update`](#post-lighthousebeaconupdate) | Update the `--beacon-nodes` list. |
+| [`GET /vibehouse/version`](#get-vibehouseversion) | Get the Vibehouse software version. |
+| [`GET /vibehouse/health`](#get-vibehousehealth) | Get information about the host machine. |
+| [`GET /vibehouse/ui/health`](#get-vibehouseuihealth) | Get information about the host machine. Focused for UI applications. |
+| [`GET /vibehouse/spec`](#get-vibehousespec) | Get the Ethereum proof-of-stake consensus specification used by the validator. |
+| [`GET /vibehouse/auth`](#get-vibehouseauth) | Get the location of the authorization token. |
+| [`GET /vibehouse/validators`](#get-vibehousevalidators) | List all validators. |
+| [`GET /vibehouse/validators`](#get-vibehousevalidators) | List all validators. |
+| [`GET /vibehouse/validators/:voting_pubkey`](#get-vibehousevalidatorsvoting_pubkey) | Get a specific validator. |
+| [`PATCH /vibehouse/validators/:voting_pubkey`](#patch-vibehousevalidatorsvoting_pubkey) | Update a specific validator. |
+| [`POST /vibehouse/validators`](#post-vibehousevalidators) | Create a new validator and mnemonic. |
+| [`POST /vibehouse/validators/keystore`](#post-vibehousevalidatorskeystore) | Import a keystore. |
+| [`POST /vibehouse/validators/mnemonic`](#post-vibehousevalidatorsmnemonic) | Create a new validator from an existing mnemonic. |
+| [`POST /vibehouse/validators/web3signer`](#post-vibehousevalidatorsweb3signer) | Add web3signer validators. |
+| [`GET /vibehouse/logs`](#get-vibehouselogs) | Get logs |
+| [`GET /vibehouse/beacon/health`](#get-vibehousebeaconhealth) | Get health information for each connected beacon node. |
+| [`POST /vibehouse/beacon/update`](#post-vibehousebeaconupdate) | Update the `--beacon-nodes` list. |
 
-The query to Lighthouse API endpoints requires authorization, see [Authorization Header](./api_vc_auth_header.md).
+The query to Vibehouse API endpoints requires authorization, see [Authorization Header](./api_vc_auth_header.md).
 
-In addition to the above endpoints Lighthouse also supports all of the [standard keymanager APIs](https://ethereum.github.io/keymanager-APIs/).
+In addition to the above endpoints Vibehouse also supports all of the [standard keymanager APIs](https://ethereum.github.io/keymanager-APIs/).
 
-## `GET /lighthouse/version`
+## `GET /vibehouse/version`
 
-Returns the software version and `git` commit hash for the Lighthouse binary.
+Returns the software version and `git` commit hash for the Vibehouse binary.
 
 ### HTTP Specification
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/version`                      |
+| Path              | `/vibehouse/version`                      |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -41,8 +41,8 @@ Returns the software version and `git` commit hash for the Lighthouse binary.
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/version" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/version" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
 ```
 
 Example Response Body:
@@ -50,20 +50,20 @@ Example Response Body:
 ```json
 {
     "data": {
-        "version": "Lighthouse/v4.1.0-693886b/x86_64-linux"
+        "version": "Vibehouse/v0.1.0/x86_64-linux"
     }
 }
 ```
 
-> Note: The command provided in this documentation links to the API token file. In this documentation, it is assumed that the API token file is located in `/var/lib/lighthouse/validators/api-token.txt`. If your database is saved in another directory, modify the `DATADIR` accordingly. If you've specified a custom token path using `--http-token-path`, use that path instead. If you are having permission issue with accessing the API token file, you can modify the header to become `-H "Authorization: Bearer $(sudo cat ${DATADIR}/validators/api-token.txt)"`.
+> Note: The command provided in this documentation links to the API token file. In this documentation, it is assumed that the API token file is located in `/var/lib/vibehouse/validators/api-token.txt`. If your database is saved in another directory, modify the `DATADIR` accordingly. If you've specified a custom token path using `--http-token-path`, use that path instead. If you are having permission issue with accessing the API token file, you can modify the header to become `-H "Authorization: Bearer $(sudo cat ${DATADIR}/validators/api-token.txt)"`.
 
 > As an alternative, you can also provide the API token directly, for example, `-H "Authorization: Bearer hGut6B8uEujufDXSmZsT0thnxvdvKFBvh`. In this case, you obtain the token from the file `api-token.txt` and the command becomes:
 
 ```bash
-curl -X GET "http://localhost:5062/lighthouse/version" -H "Authorization: Bearer hGut6B8uEujufDXSmZsT0thnxvdvKFBvh" | jq
+curl -X GET "http://localhost:5062/vibehouse/version" -H "Authorization: Bearer hGut6B8uEujufDXSmZsT0thnxvdvKFBvh" | jq
 ```
 
-## `GET /lighthouse/health`
+## `GET /vibehouse/health`
 
 Returns information regarding the health of the host machine.
 
@@ -71,7 +71,7 @@ Returns information regarding the health of the host machine.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/health`                       |
+| Path              | `/vibehouse/health`                       |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -81,8 +81,8 @@ Returns information regarding the health of the host machine.
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/health" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/health" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
 ```
 
 Example Response Body:
@@ -124,7 +124,7 @@ Example Response Body:
 }
 ```
 
-## `GET /lighthouse/ui/health`
+## `GET /vibehouse/ui/health`
 
 Returns information regarding the health of the host machine.
 
@@ -132,7 +132,7 @@ Returns information regarding the health of the host machine.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/ui/health`                    |
+| Path              | `/vibehouse/ui/health`                    |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -140,8 +140,8 @@ Returns information regarding the health of the host machine.
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/ui/health" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/ui/health" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
  ```
 
 Example Response Body
@@ -170,7 +170,7 @@ Example Response Body
 }
 ```
 
-## `GET /lighthouse/ui/graffiti`
+## `GET /vibehouse/ui/graffiti`
 
 Returns the graffiti that will be used for the next block proposal of each validator.
 
@@ -178,7 +178,7 @@ Returns the graffiti that will be used for the next block proposal of each valid
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/ui/graffiti`                  |
+| Path              | `/vibehouse/ui/graffiti`                  |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -186,8 +186,8 @@ Returns the graffiti that will be used for the next block proposal of each valid
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/ui/graffiti" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/ui/graffiti" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
  ```
 
 Example Response Body
@@ -202,7 +202,7 @@ Example Response Body
 }
 ```
 
-## `GET /lighthouse/spec`
+## `GET /vibehouse/spec`
 
 Returns the Ethereum proof-of-stake consensus specification loaded for this validator.
 
@@ -210,7 +210,7 @@ Returns the Ethereum proof-of-stake consensus specification loaded for this vali
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/spec`                         |
+| Path              | `/vibehouse/spec`                         |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -218,8 +218,8 @@ Returns the Ethereum proof-of-stake consensus specification loaded for this vali
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/spec" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/spec" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
 ```
 
 Example Response Body
@@ -382,7 +382,7 @@ Example Response Body
 }
 ```
 
-## `GET /lighthouse/auth`
+## `GET /vibehouse/auth`
 
 Fetch the filesystem path of the [authorization token](./api_vc_auth_header.md).
 Unlike the other endpoints this may be called *without* providing an authorization token.
@@ -394,7 +394,7 @@ file may be read by a local user with access rights.
 
 | Property          | Specification      |
 |-------------------|--------------------|
-| Path              | `/lighthouse/auth` |
+| Path              | `/vibehouse/auth` |
 | Method            | GET                |
 | Required Headers  | -                  |
 | Typical Responses | 200                |
@@ -402,18 +402,18 @@ file may be read by a local user with access rights.
 Command:
 
 ```bash
-curl http://localhost:5062/lighthouse/auth | jq
+curl http://localhost:5062/vibehouse/auth | jq
 ```
 
 Example Response Body
 
 ```json
 {
-    "token_path": "/home/karlm/.lighthouse/hoodi/validators/api-token.txt"
+    "token_path": "/home/karlm/.vibehouse/hoodi/validators/api-token.txt"
 }
 ```
 
-## `GET /lighthouse/validators`
+## `GET /vibehouse/validators`
 
 Lists all validators managed by this validator client.
 
@@ -421,7 +421,7 @@ Lists all validators managed by this validator client.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators`                   |
+| Path              | `/vibehouse/validators`                   |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -429,8 +429,8 @@ Lists all validators managed by this validator client.
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/validators/" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/validators/" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
 ```
 
 Example Response Body
@@ -457,7 +457,7 @@ Example Response Body
 }
 ```
 
-## `GET /lighthouse/validators/:voting_pubkey`
+## `GET /vibehouse/validators/:voting_pubkey`
 
 Get a validator by their `voting_pubkey`.
 
@@ -465,7 +465,7 @@ Get a validator by their `voting_pubkey`.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators/:voting_pubkey`    |
+| Path              | `/vibehouse/validators/:voting_pubkey`    |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200, 400                                   |
@@ -473,8 +473,8 @@ Get a validator by their `voting_pubkey`.
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET "http://localhost:5062/lighthouse/validators/0xb0148e6348264131bf47bcd1829590e870c836dc893050fd0dadc7a28949f9d0a72f2805d027521b45441101f0cc1cde" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
+DATADIR=/var/lib/vibehouse
+curl -X GET "http://localhost:5062/vibehouse/validators/0xb0148e6348264131bf47bcd1829590e870c836dc893050fd0dadc7a28949f9d0a72f2805d027521b45441101f0cc1cde" -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
 ```
 
 Example Response Body
@@ -488,7 +488,7 @@ Example Response Body
 }
 ```
 
-## `PATCH /lighthouse/validators/:voting_pubkey`
+## `PATCH /vibehouse/validators/:voting_pubkey`
 
 Update some values for the validator with `voting_pubkey`. Possible fields: `enabled`, `gas_limit`, `builder_proposals`, `builder_boost_factor`, `prefer_builder_proposals`
 and `graffiti`.  The following example updates a validator from `enabled: true` to `enabled: false`.
@@ -497,7 +497,7 @@ and `graffiti`.  The following example updates a validator from `enabled: true` 
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators/:voting_pubkey`    |
+| Path              | `/vibehouse/validators/:voting_pubkey`    |
 | Method            | PATCH                                      |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200, 400                                   |
@@ -513,8 +513,8 @@ Example Request Body
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X PATCH "http://localhost:5062/lighthouse/validators/0xb0148e6348264131bf47bcd1829590e870c836dc893050fd0dadc7a28949f9d0a72f2805d027521b45441101f0cc1cde" \
+DATADIR=/var/lib/vibehouse
+curl -X PATCH "http://localhost:5062/vibehouse/validators/0xb0148e6348264131bf47bcd1829590e870c836dc893050fd0dadc7a28949f9d0a72f2805d027521b45441101f0cc1cde" \
 -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" \
 -H "Content-Type: application/json" \
 -d "{\"enabled\":false}" | jq
@@ -526,14 +526,14 @@ curl -X PATCH "http://localhost:5062/lighthouse/validators/0xb0148e6348264131bf4
 null
 ```
 
-A `null` response indicates that the request is successful. At the same time, `lighthouse vc` will log:
+A `null` response indicates that the request is successful. At the same time, `vibehouse vc` will log:
 
 ```text
 INFO Disabled validator                      voting_pubkey: 0xb0148e6348264131bf47bcd1829590e870c836dc893050fd0dadc7a28949f9d0a72f2805d027521b45441101f0cc1cde
 INFO Modified key_cache saved successfully
 ```
 
-## `POST /lighthouse/validators/`
+## `POST /vibehouse/validators/`
 
 Create any number of new validators, all of which will share a common mnemonic
 generated by the server.
@@ -547,7 +547,7 @@ Validators are generated from the mnemonic according to
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators`                   |
+| Path              | `/vibehouse/validators`                   |
 | Method            | POST                                       |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -574,8 +574,8 @@ Validators are generated from the mnemonic according to
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X POST http://localhost:5062/lighthouse/validators \
+DATADIR=/var/lib/vibehouse
+curl -X POST http://localhost:5062/vibehouse/validators \
 -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" \
 -H "Content-Type: application/json" \
 -d '[
@@ -620,7 +620,7 @@ curl -X POST http://localhost:5062/lighthouse/validators \
 }
 ```
 
- `lighthouse vc` will log:
+ `vibehouse vc` will log:
 
 ```text
 INFO Enabled validator                      voting_pubkey: 0x8ffbc881fb60841a4546b4b385ec5e9b5090fd1c4395e568d98b74b94b41a912c6101113da39d43c101369eeb9b48e50, signing_method: local_keystore
@@ -628,7 +628,7 @@ INFO Modified key_cache saved successfully
 INFO Disabled validator                     voting_pubkey: 0xa9fadd620dc68e9fe0d6e1a69f6c54a0271ad65ab5a509e645e45c6e60ff8f4fc538f301781193a08b55821444801502
 ```
 
-## `POST /lighthouse/validators/keystore`
+## `POST /vibehouse/validators/keystore`
 
 Import a keystore into the validator client.
 
@@ -636,7 +636,7 @@ Import a keystore into the validator client.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators/keystore`          |
+| Path              | `/vibehouse/validators/keystore`          |
 | Method            | POST                                       |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -689,8 +689,8 @@ We can use [JSON to String Converter](https://jsontostring.com/) so that the abo
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X POST http://localhost:5062/lighthouse/validators/keystore \
+DATADIR=/var/lib/vibehouse
+curl -X POST http://localhost:5062/vibehouse/validators/keystore \
 -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" \
 -H "Content-Type: application/json" \
 -d "{\"enable\":true,\"password\":\"mypassword\",\"keystore\":{\"crypto\":{\"kdf\":{\"function\":\"scrypt\",\"params\":{\"dklen\":32,\"n\":262144,\"r\":8,\"p\":1,\"salt\":\"445989ec2f332bb6099605b4f1562c0df017488d8d7fb3709f99ebe31da94b49\"},\"message\":\"\"},\"checksum\":{\"function\":\"sha256\",\"params\":{},\"message\":\"abadc1285fd38b24a98ac586bda5b17a8f93fc1ff0778803dc32049578981236\"},\"cipher\":{\"function\":\"aes-128-ctr\",\"params\":{\"iv\":\"65abb7e1d02eec9910d04299cc73efbe\"},\"message\":\"6b7931a4447be727a3bb5dc106d9f3c1ba50671648e522f213651d13450b6417\"}},\"uuid\":\"5cf2a1fb-dcd6-4095-9ebf-7e4ee0204cab\",\"path\":\"m/12381/3600/0/0/0\",\"pubkey\":\"b0d2f05014de27c6d7981e4a920799db1c512ee7922932be6bf55729039147cf35a090bd4ab378fe2d133c36cbbc9969\",\"version\":4,\"description\":\"\"}}" | jq
@@ -711,14 +711,14 @@ As this is an example for demonstration, the above command will return `InvalidP
 
 ```
 
- `lighthouse vc` will log:
+ `vibehouse vc` will log:
 
 ```bash
 INFO Enabled validator                      voting_pubkey: 0xb0d2f05014de27c6d7981e4a920799db1c512ee7922932be6bf55729039147cf35a090bd4ab378fe2d133c36cbb, signing_method: local_keystore
 INFO Modified key_cache saved successfully
 ```
 
-## `POST /lighthouse/validators/mnemonic`
+## `POST /vibehouse/validators/mnemonic`
 
 Create any number of new validators, all of which will share a common mnemonic.
 
@@ -732,7 +732,7 @@ generated with the path `m/12381/3600/i/42`.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators/mnemonic`          |
+| Path              | `/vibehouse/validators/mnemonic`          |
 | Method            | POST                                       |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200                                        |
@@ -756,8 +756,8 @@ generated with the path `m/12381/3600/i/42`.
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X POST http://localhost:5062/lighthouse/validators/mnemonic \
+DATADIR=/var/lib/vibehouse
+curl -X POST http://localhost:5062/vibehouse/validators/mnemonic \
 -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" \
 -H "Content-Type: application/json" \
 -d '{"mnemonic":" theme onion deal plastic claim silver fancy youth lock ordinary hotel elegant balance ridge web skill burger survey demand distance legal fish salad cloth","key_derivation_path_offset":0,"validators":[{"enable":true,"description":"validator_one","deposit_gwei":"32000000000"}]}' | jq
@@ -779,14 +779,14 @@ curl -X POST http://localhost:5062/lighthouse/validators/mnemonic \
 }
 ```
 
-`lighthouse vc` will log:
+`vibehouse vc` will log:
 
 ```text
 INFO Enabled validator                       voting_pubkey: 0xa062f95fee747144d5e511940624bc6546509eeaeae9383257a9c43e7ddc58c17c2bab4ae62053122184c381b90db380, signing_method: local_keystore
 INFO Modified key_cache saved successfully
 ```
 
-## `POST /lighthouse/validators/web3signer`
+## `POST /vibehouse/validators/web3signer`
 
 Create any number of new validators, all of which will refer to a
 [Web3Signer](https://docs.web3signer.consensys.net/en/latest/) server for signing.
@@ -795,7 +795,7 @@ Create any number of new validators, all of which will refer to a
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/validators/web3signer`        |
+| Path              | `/vibehouse/validators/web3signer`        |
 | Method            | POST                                       |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200, 400                                   |
@@ -826,8 +826,8 @@ Some of the fields above may be omitted or nullified to obtain default values (e
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X POST http://localhost:5062/lighthouse/validators/web3signer \
+DATADIR=/var/lib/vibehouse
+curl -X POST http://localhost:5062/vibehouse/validators/web3signer \
 -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" \
 -H "Content-Type: application/json" \
 -d "[{\"enable\":true,\"description\":\"validator_one\",\"graffiti\":\"Mr F was here\",\"suggested_fee_recipient\":\"0xa2e334e71511686bcfe38bb3ee1ad8f6babcc03d\",\"voting_public_key\":\"0xa062f95fee747144d5e511940624bc6546509eeaeae9383257a9c43e7ddc58c17c2bab4ae62053122184c381b90db380\",\"builder_proposals\":true,\"url\":\"http://path-to-web3signer.com\",\"root_certificate_path\":\"/path/to/certificate.pem\",\"client_identity_path\":\"/path/to/identity.p12\",\"client_identity_password\":\"pass\",\"request_timeout_ms\":12000}]"
@@ -839,13 +839,13 @@ curl -X POST http://localhost:5062/lighthouse/validators/web3signer \
 null
 ```
 
-A `null` response indicates that the request is successful. At the same time, `lighthouse vc` will log:
+A `null` response indicates that the request is successful. At the same time, `vibehouse vc` will log:
 
 ```text
 INFO Enabled validator                       voting_pubkey: 0xa062f95fee747144d5e511940624bc6546509eeaeae9383257a9c43e7ddc58c17c2bab4ae62053122184c381b90db380, signing_method: remote_signer
 ```
 
-## `GET /lighthouse/logs`
+## `GET /vibehouse/logs`
 
 Provides a subscription to receive logs as Server Side Events. Currently the
 logs emitted are INFO level or higher.
@@ -854,7 +854,7 @@ logs emitted are INFO level or higher.
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/logs`                         |
+| Path              | `/vibehouse/logs`                         |
 | Method            | GET                                        |
 | Required Headers  | None                                       |
 | Typical Responses | 200                                        |
@@ -875,7 +875,7 @@ logs emitted are INFO level or higher.
 }
 ```
 
-## `GET /lighthouse/beacon/health`
+## `GET /vibehouse/beacon/health`
 
 Provides information about the sync status and execution layer health of each connected beacon node.
 For more information about how to interpret the beacon node health, see [Fallback Health](./advanced_redundancy.md#fallback-health).
@@ -884,7 +884,7 @@ For more information about how to interpret the beacon node health, see [Fallbac
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/beacon/health`                |
+| Path              | `/vibehouse/beacon/health`                |
 | Method            | GET                                        |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200, 400                                   |
@@ -892,8 +892,8 @@ For more information about how to interpret the beacon node health, see [Fallbac
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X GET http://localhost:5062/lighthouse/beacon/health \
+DATADIR=/var/lib/vibehouse
+curl -X GET http://localhost:5062/vibehouse/beacon/health \
  -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" | jq
  ```
 
@@ -928,7 +928,7 @@ curl -X GET http://localhost:5062/lighthouse/beacon/health \
 }
 ```
 
-## `POST /lighthouse/beacon/update`
+## `POST /vibehouse/beacon/update`
 
 Updates the list of beacon nodes originally specified by the `--beacon-nodes` CLI flag.
 Use this endpoint when you don't want to restart the VC to add, remove or reorder beacon nodes.
@@ -937,7 +937,7 @@ Use this endpoint when you don't want to restart the VC to add, remove or reorde
 
 | Property          | Specification                              |
 |-------------------|--------------------------------------------|
-| Path              | `/lighthouse/beacon/update`                |
+| Path              | `/vibehouse/beacon/update`                |
 | Method            | POST                                       |
 | Required Headers  | [`Authorization`](./api_vc_auth_header.md) |
 | Typical Responses | 200, 400                                   |
@@ -957,8 +957,8 @@ Use this endpoint when you don't want to restart the VC to add, remove or reorde
 Command:
 
 ```bash
-DATADIR=/var/lib/lighthouse
-curl -X POST http://localhost:5062/lighthouse/beacon/update \
+DATADIR=/var/lib/vibehouse
+curl -X POST http://localhost:5062/vibehouse/beacon/update \
  -H "Authorization: Bearer $(cat ${DATADIR}/validators/api-token.txt)" \
  -H "Content-Type: application/json" \
  -d "{\"beacon_nodes\":[\"http://beacon-node1:5052\",\"http://beacon-node2:5052\",\"http://beacon-node3:5052\"]}"
@@ -980,4 +980,4 @@ curl -X POST http://localhost:5062/lighthouse/beacon/update \
 
 If successful, the response will be a copy of the new list included in the request.
 If unsuccessful, an error will be shown and the beacon nodes list will not be updated.
-You can verify the results of the endpoint by using the `/lighthouse/beacon/health` endpoint.
+You can verify the results of the endpoint by using the `/vibehouse/beacon/health` endpoint.

@@ -174,7 +174,7 @@ Flags:
           range will tie-break based on their ordering in `--beacon-nodes`. This
           ensures the primary beacon node is prioritised. [default: 8,8,48]
       --builder-proposals
-          If this flag is set, Lighthouse will query the Beacon Node for only
+          If this flag is set, Vibehouse will query the Beacon Node for only
           block headers during proposals and will sign over headers. Useful for
           outsourcing execution payload construction during proposals.
       --disable-attesting
@@ -195,7 +195,7 @@ Flags:
           will generally increase memory usage, it should only be provided when
           debugging specific memory allocation issues.
       --disable-slashing-protection-web3signer
-          Disable Lighthouse's slashing protection for all web3signer keys. This
+          Disable Vibehouse's slashing protection for all web3signer keys. This
           can reduce the I/O burden on the VC but is only safe if slashing
           protection is enabled on the remote signer and is implemented
           correctly. DO NOT ENABLE THIS FLAG UNLESS YOU ARE CERTAIN THAT
@@ -206,7 +206,7 @@ Flags:
           Enables functionality required for running the validator in a
           distributed validator cluster.
       --enable-doppelganger-protection
-          If this flag is set, Lighthouse will delay startup for three epochs
+          If this flag is set, Vibehouse will delay startup for three epochs
           and monitor for messages on the network by any of the validators
           managed by this client. This will result in three (possibly four)
           epochs worth of missed attestations. If an attestation is detected
@@ -214,7 +214,7 @@ Flags:
           second validator client with the same keys. This validator client will
           immediately shutdown if this is detected in order to avoid potentially
           committing a slashable offense. Use this flag in order to ENABLE this
-          functionality, without this flag Lighthouse will begin attesting
+          functionality, without this flag Vibehouse will begin attesting
           immediately.
       --enable-high-validator-count-metrics
           Enable per validator metrics for > 64 validators. Note: This flag is
@@ -226,7 +226,7 @@ Flags:
       --http
           Enable the RESTful HTTP API server. Disabled by default.
       --http-allow-keystore-export
-          If present, allow access to the DELETE /lighthouse/keystores HTTP API
+          If present, allow access to the DELETE /vibehouse/keystores HTTP API
           method, which allows exporting keystores and passwords to HTTP API
           consumers who have access to the API token. This method is useful for
           exporting validators, however it should be used with caution since it
@@ -268,7 +268,7 @@ Flags:
       --metrics
           Enable the Prometheus metrics HTTP server. Disabled by default.
       --prefer-builder-proposals
-          If this flag is set, Lighthouse will always prefer blocks constructed
+          If this flag is set, Vibehouse will always prefer blocks constructed
           by builders, regardless of payload value.
       --stdin-inputs
           If present, read all user inputs from stdin instead of tty.
