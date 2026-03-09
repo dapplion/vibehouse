@@ -1275,4 +1275,335 @@ mod tests {
         node.execution_status = ExecutionStatus::Invalid(ExecutionBlockHash::zero());
         assert!(!pa.node_is_viable_for_head::<E>(&node, Slot::new(0)));
     }
+
+    // ── propagate_execution_payload_validation tests ──────────
+
+    /// Helper: create a ProtoArray with a chain of `n` nodes (root→child→grandchild...),
+    /// all with Optimistic execution status and distinct block roots/hashes/slots.
+    fn make_chain(n: usize) -> ProtoArray {
+        let mut pa = make_proto_array();
+        for i in 0..n {
+            let root = Hash256::from_low_u64_be(i as u64 + 1);
+            let hash = ExecutionBlockHash::from_root(Hash256::from_low_u64_be(i as u64 + 100));
+            let mut node = make_node(None, true);
+            node.slot = Slot::new(i as u64);
+            node.root = root;
+            node.execution_status = ExecutionStatus::Optimistic(hash);
+            node.parent = if i == 0 { None } else { Some(i - 1) };
+            pa.nodes.push(node);
+            pa.indices.insert(root, i);
+        }
+        pa
+    }
+
+    fn root(i: u64) -> Hash256 {
+        Hash256::from_low_u64_be(i)
+    }
+
+    #[test]
+    fn validation_propagates_to_all_ancestors() {
+        // Chain: node0 → node1 → node2 (all Optimistic)
+        // Validate node2 → all should become Valid
+        let mut pa = make_chain(3);
+        pa.propagate_execution_payload_validation(root(3)).unwrap();
+        for node in &pa.nodes {
+            assert!(
+                matches!(node.execution_status, ExecutionStatus::Valid(_)),
+                "node {} should be Valid after propagation",
+                node.root
+            );
+        }
+    }
+
+    #[test]
+    fn validation_stops_at_already_valid_ancestor() {
+        // Chain: node0 (Valid) → node1 (Optimistic) → node2 (Optimistic)
+        // Validate node2 → node1 and node2 become Valid, node0 stays Valid (no error)
+        let mut pa = make_chain(3);
+        let hash0 = pa.nodes[0].execution_status.block_hash().unwrap();
+        pa.nodes[0].execution_status = ExecutionStatus::Valid(hash0);
+
+        pa.propagate_execution_payload_validation(root(3)).unwrap();
+        for node in &pa.nodes {
+            assert!(matches!(node.execution_status, ExecutionStatus::Valid(_)));
+        }
+    }
+
+    #[test]
+    fn validation_stops_at_irrelevant_ancestor() {
+        // Chain: node0 (Irrelevant) → node1 (Optimistic) → node2 (Optimistic)
+        // Validate node2 → node1 and node2 become Valid, node0 stays Irrelevant
+        let mut pa = make_chain(3);
+        pa.nodes[0].execution_status = ExecutionStatus::Irrelevant(true);
+
+        pa.propagate_execution_payload_validation(root(3)).unwrap();
+        assert!(matches!(
+            pa.nodes[0].execution_status,
+            ExecutionStatus::Irrelevant(_)
+        ));
+        assert!(matches!(
+            pa.nodes[1].execution_status,
+            ExecutionStatus::Valid(_)
+        ));
+        assert!(matches!(
+            pa.nodes[2].execution_status,
+            ExecutionStatus::Valid(_)
+        ));
+    }
+
+    #[test]
+    fn validation_errors_on_invalid_ancestor() {
+        // Chain: node0 (Invalid) → node1 (Optimistic) → node2 (Optimistic)
+        // Validate node2 → error (invalid ancestor of valid payload)
+        let mut pa = make_chain(3);
+        let hash0 = pa.nodes[0].execution_status.block_hash().unwrap();
+        pa.nodes[0].execution_status = ExecutionStatus::Invalid(hash0);
+
+        let result = pa.propagate_execution_payload_validation(root(3));
+        assert!(
+            matches!(result, Err(Error::InvalidAncestorOfValidPayload { .. })),
+            "should error when an ancestor is invalid"
+        );
+    }
+
+    #[test]
+    fn validation_unknown_root_errors() {
+        let mut pa = make_chain(1);
+        let result = pa.propagate_execution_payload_validation(Hash256::from_low_u64_be(999));
+        assert!(matches!(result, Err(Error::NodeUnknown(_))));
+    }
+
+    #[test]
+    fn validation_single_node_no_parent() {
+        // Single node with no parent — should become Valid
+        let mut pa = make_chain(1);
+        pa.propagate_execution_payload_validation(root(1)).unwrap();
+        assert!(matches!(
+            pa.nodes[0].execution_status,
+            ExecutionStatus::Valid(_)
+        ));
+    }
+
+    // ── propagate_execution_payload_invalidation tests ────────
+
+    #[test]
+    fn invalidate_one_marks_target_and_descendants() {
+        // Chain: node0 → node1 → node2
+        // Invalidate node1 → node1 and node2 become Invalid, node0 stays Optimistic
+        let mut pa = make_chain(3);
+        let op = InvalidationOperation::InvalidateOne {
+            block_root: root(2),
+        };
+        pa.propagate_execution_payload_invalidation::<E>(&op)
+            .unwrap();
+
+        assert!(
+            matches!(pa.nodes[0].execution_status, ExecutionStatus::Optimistic(_)),
+            "node0 should stay Optimistic"
+        );
+        assert!(
+            matches!(pa.nodes[1].execution_status, ExecutionStatus::Invalid(_)),
+            "node1 should be Invalid"
+        );
+        assert!(
+            matches!(pa.nodes[2].execution_status, ExecutionStatus::Invalid(_)),
+            "node2 (descendant) should be Invalid"
+        );
+    }
+
+    #[test]
+    fn invalidate_one_clears_best_child_and_descendant() {
+        // InvalidateOne should clear best_child and best_descendant on invalidated nodes
+        let mut pa = make_chain(2);
+        pa.nodes[0].best_child = Some(1);
+        pa.nodes[0].best_descendant = Some(1);
+
+        let op = InvalidationOperation::InvalidateOne {
+            block_root: root(1),
+        };
+        pa.propagate_execution_payload_invalidation::<E>(&op)
+            .unwrap();
+
+        // node0 becomes Invalid, its best_child/best_descendant should be cleared
+        assert_eq!(pa.nodes[0].best_child, None);
+        assert_eq!(pa.nodes[0].best_descendant, None);
+    }
+
+    #[test]
+    fn invalidate_one_unknown_root_errors() {
+        let mut pa = make_chain(1);
+        let op = InvalidationOperation::InvalidateOne {
+            block_root: Hash256::from_low_u64_be(999),
+        };
+        let result = pa.propagate_execution_payload_invalidation::<E>(&op);
+        assert!(matches!(result, Err(Error::NodeUnknown(_))));
+    }
+
+    #[test]
+    fn invalidate_many_with_known_ancestor() {
+        // Chain: node0 → node1 → node2 → node3
+        // InvalidateMany: head=node3, latest_valid_ancestor=hash of node1
+        // → node2 and node3 become Invalid, node0 and node1 stay Optimistic
+        let mut pa = make_chain(4);
+
+        // Set the finalized checkpoint to node0's root so that
+        // is_finalized_checkpoint_or_descendant returns true for node1 (a descendant)
+        let finalized_cp = Checkpoint {
+            epoch: Epoch::new(0),
+            root: root(1),
+        };
+        pa.finalized_checkpoint = finalized_cp;
+        // Set each node's finalized_checkpoint to match so the descendant check works
+        for node in &mut pa.nodes {
+            node.finalized_checkpoint = finalized_cp;
+        }
+
+        let ancestor_hash = pa.nodes[1].execution_status.block_hash().unwrap();
+        let op = InvalidationOperation::InvalidateMany {
+            head_block_root: root(4),
+            always_invalidate_head: true,
+            latest_valid_ancestor: ancestor_hash,
+        };
+        pa.propagate_execution_payload_invalidation::<E>(&op)
+            .unwrap();
+
+        assert!(
+            matches!(pa.nodes[0].execution_status, ExecutionStatus::Optimistic(_)),
+            "node0 should stay Optimistic"
+        );
+        assert!(
+            matches!(pa.nodes[1].execution_status, ExecutionStatus::Optimistic(_)),
+            "node1 (latest valid ancestor) should stay Optimistic"
+        );
+        assert!(
+            matches!(pa.nodes[2].execution_status, ExecutionStatus::Invalid(_)),
+            "node2 should be Invalid"
+        );
+        assert!(
+            matches!(pa.nodes[3].execution_status, ExecutionStatus::Invalid(_)),
+            "node3 should be Invalid"
+        );
+    }
+
+    #[test]
+    fn invalidate_many_unknown_ancestor_only_invalidates_head() {
+        // Chain: node0 → node1 → node2
+        // InvalidateMany: head=node2, always_invalidate_head=true,
+        // latest_valid_ancestor=unknown hash
+        // → only node2 gets invalidated (unknown ancestor = don't walk backwards)
+        let mut pa = make_chain(3);
+        let unknown_hash = ExecutionBlockHash::from_root(Hash256::from_low_u64_be(9999));
+        let op = InvalidationOperation::InvalidateMany {
+            head_block_root: root(3),
+            always_invalidate_head: true,
+            latest_valid_ancestor: unknown_hash,
+        };
+        pa.propagate_execution_payload_invalidation::<E>(&op)
+            .unwrap();
+
+        assert!(matches!(
+            pa.nodes[0].execution_status,
+            ExecutionStatus::Optimistic(_)
+        ));
+        assert!(matches!(
+            pa.nodes[1].execution_status,
+            ExecutionStatus::Optimistic(_)
+        ));
+        assert!(
+            matches!(pa.nodes[2].execution_status, ExecutionStatus::Invalid(_)),
+            "only the head should be invalidated"
+        );
+    }
+
+    #[test]
+    fn invalidate_many_dont_invalidate_head_with_unknown_ancestor() {
+        // Chain: node0 → node1
+        // InvalidateMany: head=node1, always_invalidate_head=false,
+        // latest_valid_ancestor=unknown hash
+        // → nothing gets invalidated (head is skipped, no ancestor walk)
+        let mut pa = make_chain(2);
+        let unknown_hash = ExecutionBlockHash::from_root(Hash256::from_low_u64_be(9999));
+        let op = InvalidationOperation::InvalidateMany {
+            head_block_root: root(2),
+            always_invalidate_head: false,
+            latest_valid_ancestor: unknown_hash,
+        };
+        pa.propagate_execution_payload_invalidation::<E>(&op)
+            .unwrap();
+
+        // Neither should be invalidated
+        assert!(matches!(
+            pa.nodes[0].execution_status,
+            ExecutionStatus::Optimistic(_)
+        ));
+        assert!(matches!(
+            pa.nodes[1].execution_status,
+            ExecutionStatus::Optimistic(_)
+        ));
+    }
+
+    #[test]
+    fn invalidation_errors_on_valid_becoming_invalid() {
+        // Chain: node0 (Valid) → node1 (Optimistic)
+        // InvalidateOne on node0 → error because Valid can't become Invalid
+        let mut pa = make_chain(2);
+        let hash0 = pa.nodes[0].execution_status.block_hash().unwrap();
+        pa.nodes[0].execution_status = ExecutionStatus::Valid(hash0);
+
+        let op = InvalidationOperation::InvalidateOne {
+            block_root: root(1),
+        };
+        let result = pa.propagate_execution_payload_invalidation::<E>(&op);
+        assert!(
+            matches!(result, Err(Error::ValidExecutionStatusBecameInvalid { .. })),
+            "should error when trying to invalidate a Valid node"
+        );
+    }
+
+    // ── node_leads_to_viable_head tests ──────────────────────
+
+    #[test]
+    fn node_leads_to_viable_head_via_best_descendant() {
+        // node0 has best_descendant pointing to node1 which is viable
+        let mut pa = make_chain(2);
+        let hash0 = pa.nodes[0].execution_status.block_hash().unwrap();
+        let hash1 = pa.nodes[1].execution_status.block_hash().unwrap();
+        pa.nodes[0].execution_status = ExecutionStatus::Valid(hash0);
+        pa.nodes[1].execution_status = ExecutionStatus::Valid(hash1);
+        pa.nodes[0].best_descendant = Some(1);
+
+        assert!(
+            pa.node_leads_to_viable_head::<E>(&pa.nodes[0].clone(), Slot::new(0))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn node_leads_to_viable_head_self_viable() {
+        // node0 is itself viable (no best_descendant)
+        let mut pa = make_chain(1);
+        let hash = pa.nodes[0].execution_status.block_hash().unwrap();
+        pa.nodes[0].execution_status = ExecutionStatus::Valid(hash);
+
+        assert!(
+            pa.node_leads_to_viable_head::<E>(&pa.nodes[0].clone(), Slot::new(0))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn node_leads_to_viable_head_invalid_descendant() {
+        // node0's best_descendant is invalid, and node0 itself is also not viable
+        // (external builder, payload not revealed)
+        let mut pa = make_chain(2);
+        pa.nodes[0].builder_index = Some(42);
+        pa.nodes[0].payload_revealed = false;
+        pa.nodes[1].execution_status = ExecutionStatus::Invalid(ExecutionBlockHash::zero());
+        pa.nodes[0].best_descendant = Some(1);
+
+        assert!(
+            !pa.node_leads_to_viable_head::<E>(&pa.nodes[0].clone(), Slot::new(0))
+                .unwrap()
+        );
+    }
 }
