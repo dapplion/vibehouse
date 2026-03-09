@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 657)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
+- CI: ef-tests + check/clippy/fmt green, remaining jobs in progress
+- Verified PRs #4918 (attestation payload status check) and #4923 (ignore blocks with unknown parent payload) are both fully implemented with tests
+- Audited envelope_processing.rs test coverage: 50+ tests covering all error variants, happy paths, state mutations, signature verification, execution requests, and payment queueing — no gaps found
+- No code changes needed
+
 ### 2026-03-09 — spec scan (run 656)
 - All 12 tracked Gloas PRs still OPEN (no merges since last scan)
 - No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
