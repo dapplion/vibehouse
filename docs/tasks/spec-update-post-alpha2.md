@@ -110,6 +110,17 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-09 — spec scan + maintenance check (run 629)
+- All 7 tracked Gloas PRs still OPEN: #4979, #4960, #4940, #4932, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged since run 628
+- CI (run 22844693747): 4/6 jobs passed (check+clippy+fmt, ef-tests, network+op_pool), 3 still running (unit tests, http_api, beacon_chain)
+- Nightly tests: 5 consecutive green runs (Mar 4-8)
+- `cargo audit`: 1 known vulnerability (rsa timing sidechannel via jsonwebtoken — no fix available, not consensus-critical)
+- `cargo outdated`: only 3 minor deps outdated (rand_xorshift 0.4→0.5 in types, rand/rand_chacha dev deps in network)
+- All 67 TODO/FIXME comments in codebase are inherited non-actionable items (DAS sync, electra cleanup, mock builder quirks)
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan + code quality review (run 628)
 - All 7 tracked Gloas PRs still OPEN: #4979, #4960, #4940, #4932, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
