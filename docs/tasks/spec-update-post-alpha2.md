@@ -118,6 +118,11 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan + identity rebranding (run 611)
+- Spec scan in progress (background agent checking all 9 tracked PRs)
+- Rebranded user-visible identity strings from Lighthouse to vibehouse (version, CLI, monitoring, P2P agent, telemetry)
+- All tests passing, full lint clean
+
 ### 2026-03-09 — spec scan (run 610)
 - All 9 tracked PRs still open, no status changes: #4979 (PTC lookbehind, design still evolving — potuz favors 2*SLOTS_PER_EPOCH, ensi321/nflaig exploring smaller options), #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
 - No new Gloas spec PRs merged since run 609

@@ -839,3 +839,24 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 **Spec status**: stable, no new Gloas merges since run 595. PR #4979 (PTC Lookbehind) still open. PR #4950 (by_root serve range) merged Mar 6 — already assessed as no-change-needed.
 
 **Verification**: 98/98 targeted tests (eth2_keystore, eth2_wallet, eth2_wallet_manager, slasher, database_manager, beacon_node_fallback), full workspace clippy clean, full lint-full clean (pre-push hook).
+
+### Run 611: vibehouse identity rebranding
+
+**Scope**: Rebrand user-visible identity strings from "Lighthouse" to "vibehouse".
+
+**Changes**:
+1. `lighthouse_version/src/lib.rs`: VERSION prefix "vibehouse/v0.1.0-", `client_name()` returns "vibehouse", `version()` returns "0.1.0", test regex updated
+2. `lighthouse/src/main.rs`: CLI name "vibehouse", about text updated, Sigma Prime author removed, telemetry service names "vibehouse-bn"/"vibehouse-vc", tracer name "vibehouse", SHORT_VERSION strip prefix updated
+3. `monitoring_api/src/types.rs`: CLIENT_NAME = "vibehouse"
+4. `environment/src/tracing_common.rs`: logfile prefix "vibehouse"
+5. `lighthouse_network/src/peer_manager/peerdb/client.rs`: added `Vibehouse` ClientKind variant with "vibehouse" agent string matching, Display impl
+6. `beacon_node/src/cli.rs`: removed Sigma Prime author
+7. `simulator/src/cli.rs`: removed Sigma Prime author
+8. `graffiti_file/src/lib.rs`: test default graffiti "vibehouse"
+
+**Not changed** (intentionally):
+- API paths (`/lighthouse/...`) — breaking change for external tooling
+- Binary name (`lighthouse`) — requires Makefile, Docker, Cargo.toml, CI changes; separate task
+- Crate names (`lighthouse_network`, `lighthouse_validator_store`) — internal, no user impact
+
+**Verification**: lighthouse_version, monitoring_api, graffiti_file tests pass; default_graffiti beacon_node test passes; full workspace cargo check clean; clippy clean; pre-push lint-full clean.
