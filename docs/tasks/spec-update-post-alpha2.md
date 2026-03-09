@@ -130,6 +130,14 @@ Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 639)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged or opened since run 638
+- CI: latest ci run passed (all jobs), nightly in progress, 5+ consecutive green (Mar 5-9)
+- Docker workflow: multiple cancelled runs from rapid pushes (normal), latest queued
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan (run 638)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
