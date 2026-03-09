@@ -2845,3 +2845,101 @@ async fn bid_equivocation_short_circuits_before_highest_value() {
         result_c.err()
     );
 }
+
+/// Invalid-signature payload attestations must NOT poison the observation cache.
+///
+/// The verification function checks for equivocation/duplicates BEFORE signature
+/// verification (read-only check), and only records observations AFTER the signature
+/// passes. If observations were recorded before signature verification, a bad-sig
+/// attestation would mark validators as "already seen", causing a subsequent valid
+/// attestation from the same validators to be dropped as a duplicate.
+///
+/// This test submits a bad-sig attestation from a PTC validator, then submits a
+/// valid attestation from the same validator. The valid attestation must be accepted.
+#[tokio::test]
+async fn attestation_invalid_signature_does_not_poison_observation_cache() {
+    let harness = gloas_harness(2).await;
+    let spec = &harness.chain.spec;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+    let state = &head.beacon_state;
+
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+            .expect("should compute PTC committee");
+    assert!(!ptc_indices.is_empty());
+
+    let ptc_validator = ptc_indices[0];
+
+    let data = PayloadAttestationData {
+        beacon_block_root: head_root,
+        slot: head_slot,
+        payload_present: true,
+        blob_data_available: false,
+    };
+
+    // Step 1: Submit an attestation with an invalid signature (wrong key).
+    let wrong_validator = if ptc_validator == 0 { 1 } else { 0 };
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = spec.get_domain(
+        epoch,
+        Domain::PtcAttester,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = data.signing_root(domain);
+    let wrong_sig = KEYPAIRS[wrong_validator as usize].sk.sign(signing_root);
+    let mut bad_agg_sig = AggregateSignature::infinity();
+    bad_agg_sig.add_assign(&wrong_sig);
+
+    let mut bad_attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::new(),
+        data: data.clone(),
+        signature: bad_agg_sig,
+    };
+    bad_attestation.aggregation_bits.set(0, true).unwrap();
+
+    let err = unwrap_err(
+        harness
+            .chain
+            .verify_payload_attestation_for_gossip(bad_attestation),
+        "bad-sig attestation should be rejected",
+    );
+    assert!(
+        matches!(err, PayloadAttestationError::InvalidSignature),
+        "expected InvalidSignature, got {:?}",
+        err
+    );
+
+    // Step 2: Submit a valid attestation from the SAME PTC validator.
+    // If the observation cache was poisoned by the bad-sig attestation, this
+    // would be dropped as a Duplicate.
+    let correct_sig = KEYPAIRS[ptc_validator as usize].sk.sign(signing_root);
+    let mut good_agg_sig = AggregateSignature::infinity();
+    good_agg_sig.add_assign(&correct_sig);
+
+    let mut good_attestation = PayloadAttestation::<E> {
+        aggregation_bits: BitVector::new(),
+        data,
+        signature: good_agg_sig,
+    };
+    good_attestation.aggregation_bits.set(0, true).unwrap();
+
+    let result = harness
+        .chain
+        .verify_payload_attestation_for_gossip(good_attestation);
+    assert!(
+        result.is_ok(),
+        "valid attestation after bad-sig should pass (cache not poisoned): {:?}",
+        result.err()
+    );
+
+    let verified = result.unwrap();
+    assert_eq!(
+        verified.attesting_indices(),
+        &[ptc_validator],
+        "attesting indices should contain the PTC validator"
+    );
+}
