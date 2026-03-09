@@ -120,6 +120,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 742 (Mar 9)
+- Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new spec release
+- PTC lookbehind PR #4992: potuz acknowledged duties functions not yet addressed; design still evolving
+- Recently merged consensus-specs PRs (#4990-4993): all CI/tooling/cleanup, no consensus changes
+- Workspace tests: 2643/2647 passed (4 web3signer_tests timeout — external service, not code)
+- Clippy clean, cargo audit unchanged (rsa advisory only)
+
 ### run 722 (Mar 9)
 - Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges
 - PTC lookbehind PR #4992: active review discussion — kevaundray raised `get_ptc_assignment` needing 32 slots vs 2-slot cache; potuz acknowledged duties functions not yet addressed. Design still evolving, not ready to implement.
