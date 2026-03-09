@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 731)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- Recent consensus-specs merges: all CI/tooling/deps (reftests improvements, renovate, EIP-6800 removal, dep cleanups)
+- PTC lookbehind PR #4992: active today — potuz/kevaundray still discussing `get_ptc_assignment` scope (32 slots vs 2-slot cache); potuz hasn't addressed duties functions, waiting on dev preference
+- Fast Confirmation Rule PR #4747: updated today, still in review (eip7805/FOCIL scope, Heze fork — not Gloas)
+- CI (22871434411): all 6 jobs passed; nightly: 7+ consecutive green (Mar 4-9)
+- cargo audit: same known rsa advisory, no new vulnerabilities; 0 compatible dep updates
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 730)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Recent consensus-specs merges: all CI/tooling/deps (pytest perf, reftests, renovate, EIP-6800 removal)
