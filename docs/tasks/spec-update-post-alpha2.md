@@ -139,6 +139,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 644)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release
+- CI green: check/clippy/fmt, ef-tests, network+op_pool passed; beacon_chain/http_api/unit tests in progress
+- Nightly tests: 3 consecutive greens (Mar 7-9)
+- cargo audit: same 1 medium + 5 unmaintained (all transitive, not actionable)
+- No code changes needed
+
 ### 2026-03-09 — spec scan (run 643)
 - All 10 previously tracked Gloas PRs still OPEN
 - Found 2 new untracked PRs: #4939 (index-1 attestation envelope validation — will need implementation) and #4962 (test-only: missed payload withdrawal interactions)
