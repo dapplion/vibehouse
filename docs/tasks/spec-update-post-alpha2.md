@@ -110,6 +110,16 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 632)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged or opened since run 631
+- CI (run 22844693747): 5/6 passed, beacon_chain tests still running (normal ~50min)
+- Nightly: 5 consecutive green (Mar 4-8)
+- Clean release build: zero warnings
+- PTC Lookbehind (#4979): discussion ongoing re: assert placement in `get_ptc`, design settling on 2*SLOTS_PER_EPOCH
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan (run 631)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
