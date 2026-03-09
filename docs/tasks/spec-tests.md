@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 730)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- Recent consensus-specs merges: all CI/tooling/deps (pytest perf, reftests, renovate, EIP-6800 removal)
+- PTC lookbehind PRs (#4979, #4992) still OPEN; potuz confirmed duties functions not yet addressed, waiting on dev preference
+- CI (22871434411): all 6 jobs passed (check+clippy+fmt, EF tests, network+op_pool, http_api, beacon_chain, unit tests)
+- Nightly: 6+ consecutive green (Mar 4-9)
+- cargo check --release: zero warnings, 0 compatible dep updates
+- cargo audit: same known rsa advisory, no new vulnerabilities
+- Full codebase coverage audit: no todo!()/unimplemented!() in production, no unwrap() in consensus paths, no unsafe blocks, no #[allow(dead_code)] on Gloas code
+- No code changes needed
+
 ### 2026-03-09 — spec stable, safety audit clean (run 729)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - PTC lookbehind PRs (#4979, #4992) still OPEN, design not finalized
