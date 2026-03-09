@@ -856,7 +856,38 @@ Net: -86 lines, -4 deprecated dependencies, no new direct dependencies (alloy-tr
 
 **Not changed** (intentionally):
 - API paths (`/lighthouse/...`) — breaking change for external tooling
-- Binary name (`lighthouse`) — requires Makefile, Docker, Cargo.toml, CI changes; separate task
+- Binary name (`lighthouse`) — DONE in run 613 (see below)
 - Crate names (`lighthouse_network`, `lighthouse_validator_store`) — internal, no user impact
 
 **Verification**: lighthouse_version, monitoring_api, graffiti_file tests pass; default_graffiti beacon_node test passes; full workspace cargo check clean; clippy clean; pre-push lint-full clean.
+
+### Run 613: binary rename lighthouse → vibehouse (2026-03-09)
+
+**Scope**: Rename the compiled binary from `lighthouse` to `vibehouse` across all build infrastructure.
+
+**Changes** (20 files):
+1. `lighthouse/Cargo.toml`: `name = "lighthouse"` → `name = "vibehouse"`, version `8.0.1` → `0.1.0`, removed Sigma Prime author
+2. `Makefile`: `--bin lighthouse` → `--bin vibehouse`, tarball/install paths updated, Docker image tags `vibehouse:reproducible-*`
+3. `Dockerfile`: copy dir `lighthouse` → `vibehouse`, binary path `/usr/local/bin/vibehouse`, added `lighthouse` symlink for kurtosis compat
+4. `Dockerfile.dev`: binary path updated, `lighthouse` symlink added
+5. `Dockerfile.reproducible`: `--bin vibehouse`, binary path updated, entrypoint `/vibehouse`
+6. `Dockerfile.cross`: binary path updated, `lighthouse` symlink added
+7. `lcli/Dockerfile`: copy dir updated, comment fixed
+8. `scripts/build-docker.sh`: binary name in cargo build output and `cp` command
+9. `scripts/cli.sh`: `CMD=./target/release/vibehouse`
+10. `.config/nextest.toml`: report name `vibehouse-run`
+11. `.github/workflows/release.yml`: repo/image names, artifact names, runner conditions all → `vibehouse`/`dapplion`
+12. `.github/workflows/docker.yml`: matrix binary `vibehouse`, runner conditions → `dapplion/vibehouse`
+13. `lighthouse/tests/*.rs` (5 files): `CARGO_BIN_EXE_lighthouse` → `CARGO_BIN_EXE_vibehouse`
+14. `README.md`: `./target/release/vibehouse --help`
+15. `book/src/installation_homebrew.md`: binary name in path
+
+**Kurtosis compatibility**: Docker images include `ln -s /usr/local/bin/vibehouse /usr/local/bin/lighthouse` so the ethereum-package's `cl_type: lighthouse` startup commands still work.
+
+**Not changed** (intentionally):
+- Kurtosis yaml `cl_type: lighthouse` — this is the ethereum-package's client type identifier, not our binary name
+- `/lighthouse/...` API paths — would break external tooling
+- Crate names — internal, no user impact
+- `lighthouse/` directory name — workspace member path, not user-visible
+
+**Verification**: `cargo build --release` clean, `vibehouse --version` shows `vibehouse v0.1.0`, 312/312 package tests pass, clippy clean, pre-push lint-full passes.
