@@ -12,10 +12,10 @@ concurrency:
 env:
     DOCKER_PASSWORD: ${{ secrets.DH_KEY }}
     DOCKER_USERNAME: ${{ secrets.DH_ORG }}
-    REPO_NAME: ${{ github.repository_owner }}/lighthouse
-    IMAGE_NAME: ${{ github.repository_owner }}/lighthouse
-    # Enable self-hosted runners for the sigp repo only.
-    SELF_HOSTED_RUNNERS: ${{ github.repository == 'sigp/lighthouse' }}
+    REPO_NAME: ${{ github.repository_owner }}/vibehouse
+    IMAGE_NAME: ${{ github.repository_owner }}/vibehouse
+    # Enable self-hosted runners for the dapplion repo only.
+    SELF_HOSTED_RUNNERS: ${{ github.repository == 'dapplion/vibehouse' }}
 
 jobs:
     extract-version:
@@ -35,10 +35,10 @@ jobs:
                        aarch64-apple-darwin]
                 include:
                     -   arch: aarch64-unknown-linux-gnu
-                        runner: ${{ github.repository == 'sigp/lighthouse' && fromJson('["self-hosted", "linux", "release", "large"]') || 'ubuntu-latest'  }}
+                        runner: ${{ github.repository == 'dapplion/vibehouse' && fromJson('["self-hosted", "linux", "release", "large"]') || 'ubuntu-latest'  }}
                         profile: maxperf
                     -   arch: x86_64-unknown-linux-gnu
-                        runner: ${{ github.repository == 'sigp/lighthouse' && fromJson('["self-hosted", "linux", "release", "large"]') || 'ubuntu-latest'  }}
+                        runner: ${{ github.repository == 'dapplion/vibehouse' && fromJson('["self-hosted", "linux", "release", "large"]') || 'ubuntu-latest'  }}
                         profile: maxperf
                     -   arch: aarch64-apple-darwin
                         runner: macos-14
@@ -57,13 +57,13 @@ jobs:
             #       Builds
             # ==============================
 
-            - name: Build Lighthouse for aarch64-unknown-linux-gnu
+            - name: Build vibehouse for aarch64-unknown-linux-gnu
               if:   matrix.arch == 'aarch64-unknown-linux-gnu'
               run:  |
                 cargo install cross
                 env CROSS_PROFILE=${{ matrix.profile }} make build-aarch64
 
-            - name: Build Lighthouse for x86_64-unknown-linux-gnu
+            - name: Build vibehouse for x86_64-unknown-linux-gnu
               if:   matrix.arch == 'x86_64-unknown-linux-gnu'
               run:  |
                 cargo install cross
@@ -71,11 +71,12 @@ jobs:
 
             - name: Move cross-compiled binary
               if:  contains(matrix.arch, 'unknown-linux-gnu')
-              run: mv target/${{ matrix.arch }}/${{ matrix.profile }}/lighthouse ~/.cargo/bin/lighthouse
+              run: mv target/${{ matrix.arch }}/${{ matrix.profile }}/vibehouse ~/.cargo/bin/vibehouse
 
-            - name: Build Lighthouse for aarch64-apple-darwin
+            - name: Build vibehouse for aarch64-apple-darwin
               if:   matrix.arch == 'aarch64-apple-darwin'
               run:  cargo install --path lighthouse --force --locked --features portable,gnosis --profile ${{ matrix.profile }}
+              # Note: `--path lighthouse` refers to the directory name, not the binary name
 
             - name: Configure GPG and create artifacts
               env:
@@ -85,10 +86,10 @@ jobs:
                   export GPG_TTY=$(tty)
                   echo "$GPG_SIGNING_KEY" | gpg --batch --import
                   mkdir artifacts
-                  mv ~/.cargo/bin/lighthouse ./artifacts
+                  mv ~/.cargo/bin/vibehouse ./artifacts
                   cd artifacts
-                  tar -czf lighthouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz lighthouse
-                  echo "$GPG_PASSPHRASE" | gpg --passphrase-fd 0 --pinentry-mode loopback --batch -ab lighthouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
+                  tar -czf vibehouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz vibehouse
+                  echo "$GPG_PASSPHRASE" | gpg --passphrase-fd 0 --pinentry-mode loopback --batch -ab vibehouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
                   for ext in "tar.gz" "tar.gz.asc";\
                   do for f in *.$ext;\
                     do cp $f "../${f%.$ext}.$ext";\
@@ -104,15 +105,15 @@ jobs:
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: lighthouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
-                  path: lighthouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
+                  name: vibehouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
+                  path: vibehouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz
                   compression-level: 0
 
             - name: Upload signature
               uses: actions/upload-artifact@v4
               with:
-                  name: lighthouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz.asc
-                  path: lighthouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz.asc
+                  name: vibehouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz.asc
+                  path: vibehouse-${{ needs.extract-version.outputs.VERSION }}-${{ matrix.arch }}.tar.gz.asc
                   compression-level: 0
 
     draft-release:
@@ -200,14 +201,14 @@ jobs:
 
                   | System | Architecture | Binary | PGP Signature |
                   |:---:|:---:|:---:|:---|
-                  | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/apple/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/apple" ><img src="https://cdn.simpleicons.org/apple" width="32" alt="Apple logo">  </picture> | aarch64 | [lighthouse-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/lighthouse-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/lighthouse-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz.asc) |
-                  | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/linux/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/linux/black" ><img src="https://cdn.simpleicons.org/linux" width="32" alt="Linux logo"> </picture> | x86_64 | [lighthouse-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/lighthouse-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/lighthouse-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.asc) |
-                  | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/raspberrypi/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/raspberrypi/black" > <img src="https://cdn.simpleicons.org/raspberrypi" width="32" alt="Raspberrypi logo"> </picture> | aarch64 | [lighthouse-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/lighthouse-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/lighthouse-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz.asc) |
+                  | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/apple/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/apple" ><img src="https://cdn.simpleicons.org/apple" width="32" alt="Apple logo">  </picture> | aarch64 | [vibehouse-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/vibehouse-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/vibehouse-${{ env.VERSION }}-aarch64-apple-darwin.tar.gz.asc) |
+                  | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/linux/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/linux/black" ><img src="https://cdn.simpleicons.org/linux" width="32" alt="Linux logo"> </picture> | x86_64 | [vibehouse-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/vibehouse-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/vibehouse-${{ env.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.asc) |
+                  | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/raspberrypi/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/raspberrypi/black" > <img src="https://cdn.simpleicons.org/raspberrypi" width="32" alt="Raspberrypi logo"> </picture> | aarch64 | [vibehouse-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/vibehouse-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz) | [PGP Signature](https://github.com/${{ env.REPO_NAME }}/releases/download/${{ env.VERSION }}/vibehouse-${{ env.VERSION }}-aarch64-unknown-linux-gnu.tar.gz.asc) |
                   | | | | |
                   | **System** | **Option** | - | **Resource** |
                   | <picture> <source media="(prefers-color-scheme: dark)" srcset="https://cdn.simpleicons.org/docker/white" > <source media="(prefers-color-scheme: light)" srcset="https://cdn.simpleicons.org/docker/black" > <img src="https://cdn.simpleicons.org/docker/black" width="32" alt="Docker logo"></picture>  | Docker | [${{ env.VERSION }}](https://hub.docker.com/r/${{ env.IMAGE_NAME }}/tags?page=1&ordering=last_updated&name=${{ env.VERSION }}) | [${{ env.IMAGE_NAME }}](https://hub.docker.com/r/${{ env.IMAGE_NAME }}) |
                   ENDBODY
                   )
-                  assets=(./lighthouse-*.tar.gz*/lighthouse-*.tar.gz*)
+                  assets=(./vibehouse-*.tar.gz*/vibehouse-*.tar.gz*)
                   tag_name="${{ env.VERSION }}"
                   echo "$body" | gh release create --draft -F "-" "$tag_name" "${assets[@]}"

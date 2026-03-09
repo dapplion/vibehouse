@@ -33,7 +33,7 @@ impl<T> Default for CommandLineTest<T> {
     fn default() -> Self {
         let dir = tempdir().unwrap();
         let config_path = dir.path().join("config.json");
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_lighthouse"));
+        let mut cmd = Command::new(env!("CARGO_BIN_EXE_vibehouse"));
         cmd.arg("--dump-config")
             .arg(config_path.as_os_str())
             .arg("validator-manager")

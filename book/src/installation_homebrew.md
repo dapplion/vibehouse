@@ -21,10 +21,10 @@ If Homebrew is installed to your `PATH` (default), simply run:
 lighthouse --help
 ```
 
-Alternatively, you can find the `lighthouse` binary at:
+Alternatively, you can find the `vibehouse` binary at:
 
 ```bash
-"$(brew --prefix)/bin/lighthouse" --help
+"$(brew --prefix)/bin/vibehouse" --help
 ```
 
 ## Maintenance

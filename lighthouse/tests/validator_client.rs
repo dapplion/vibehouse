@@ -18,7 +18,7 @@ use validator_client::Config;
 
 /// Returns the `lighthouse validator_client` command.
 fn base_cmd() -> Command {
-    let lighthouse_bin = env!("CARGO_BIN_EXE_lighthouse");
+    let lighthouse_bin = env!("CARGO_BIN_EXE_vibehouse");
     let path = lighthouse_bin
         .parse::<PathBuf>()
         .expect("should parse CARGO_TARGET_DIR");

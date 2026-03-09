@@ -1,5 +1,5 @@
 # This image is meant to enable cross-architecture builds.
-# It assumes the lighthouse binary has already been
+# It assumes the vibehouse binary has already been
 # compiled for `$TARGETPLATFORM` and moved to `./bin`.
 FROM --platform=$TARGETPLATFORM ubuntu:22.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,4 +7,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
-COPY ./bin/lighthouse /usr/local/bin/lighthouse
+COPY ./bin/vibehouse /usr/local/bin/vibehouse
+RUN ln -s /usr/local/bin/vibehouse /usr/local/bin/lighthouse

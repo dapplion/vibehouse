@@ -40,7 +40,7 @@ RECENT_FORKS=electra fulu gloas
 # Extra flags for Cargo
 CARGO_INSTALL_EXTRA_FLAGS?=
 
-# Builds the Lighthouse binary in release (optimized).
+# Builds the vibehouse binary in release (optimized).
 #
 # Binaries will most likely be found in `./target/release`
 install:
@@ -66,14 +66,14 @@ install-lcli:
 #
 # The resulting binaries will be created in the `target/` directory.
 build-x86_64:
-	cross build --bin lighthouse --target x86_64-unknown-linux-gnu --features "portable,$(CROSS_FEATURES)" --profile "$(CROSS_PROFILE)" --locked
+	cross build --bin vibehouse --target x86_64-unknown-linux-gnu --features "portable,$(CROSS_FEATURES)" --profile "$(CROSS_PROFILE)" --locked
 build-aarch64:
 	# JEMALLOC_SYS_WITH_LG_PAGE=16 tells jemalloc to support up to 64-KiB
 	# pages, which are commonly used by aarch64 systems.
 	# See: https://github.com/sigp/lighthouse/issues/5244
-	JEMALLOC_SYS_WITH_LG_PAGE=16 cross build --bin lighthouse --target aarch64-unknown-linux-gnu --features "portable,$(CROSS_FEATURES)" --profile "$(CROSS_PROFILE)" --locked
+	JEMALLOC_SYS_WITH_LG_PAGE=16 cross build --bin vibehouse --target aarch64-unknown-linux-gnu --features "portable,$(CROSS_FEATURES)" --profile "$(CROSS_PROFILE)" --locked
 build-riscv64:
-	cross build --bin lighthouse --target riscv64gc-unknown-linux-gnu --features "portable,$(CROSS_FEATURES)" --profile "$(CROSS_PROFILE)" --locked
+	cross build --bin vibehouse --target riscv64gc-unknown-linux-gnu --features "portable,$(CROSS_FEATURES)" --profile "$(CROSS_PROFILE)" --locked
 
 build-lcli-x86_64:
 	cross build --bin lcli --target x86_64-unknown-linux-gnu --features "portable" --profile "$(CROSS_PROFILE)" --locked
@@ -98,7 +98,7 @@ build-reproducible-x86_64:
 		--build-arg RUST_IMAGE=$(RUST_IMAGE_AMD64) \
 		--build-arg SOURCE_DATE=$(SOURCE_DATE) \
 		-f Dockerfile.reproducible \
-		-t lighthouse:reproducible-amd64 .
+		-t vibehouse:reproducible-amd64 .
 
 # Default image for arm64
 RUST_IMAGE_ARM64 ?= rust:1.88-bullseye@sha256:8b22455a7ce2adb1355067638284ee99d21cc516fab63a96c4514beaf370aa94
@@ -111,21 +111,21 @@ build-reproducible-aarch64:
 		--build-arg RUST_IMAGE=$(RUST_IMAGE_ARM64) \
 		--build-arg SOURCE_DATE=$(SOURCE_DATE) \
 		-f Dockerfile.reproducible \
-		-t lighthouse:reproducible-arm64 .
+		-t vibehouse:reproducible-arm64 .
 
 # Build both architectures
 build-reproducible-all: build-reproducible-x86_64 build-reproducible-aarch64
 
 # Create a `.tar.gz` containing a binary for a specific target.
 define tarball_release_binary
-	cp $(1)/lighthouse $(BIN_DIR)/lighthouse
+	cp $(1)/vibehouse $(BIN_DIR)/vibehouse
 	cd $(BIN_DIR) && \
-		tar -czf lighthouse-$(GIT_TAG)-$(2)$(3).tar.gz lighthouse && \
-		rm lighthouse
+		tar -czf vibehouse-$(GIT_TAG)-$(2)$(3).tar.gz vibehouse && \
+		rm vibehouse
 endef
 
 # Create a series of `.tar.gz` files in the BIN_DIR directory, each containing
-# a `lighthouse` binary for a different target.
+# a `vibehouse` binary for a different target.
 #
 # The current git tag will be used as the version in the output file names. You
 # will likely need to use `git tag` and create a semver tag (e.g., `v0.2.3`).
@@ -224,14 +224,13 @@ test-exec-engine:
 # test vectors.
 test: test-release
 
-# Updates the CLI help text pages in the Lighthouse book, building with Docker (primarily for Windows users).
+# Updates the CLI help text pages in the book, building with Docker (primarily for Windows users).
 cli:
 	docker run --rm --user=root \
-	-v ${PWD}:/home/runner/actions-runner/lighthouse sigmaprime/github-runner \
-	bash -c 'cd lighthouse && make && ./scripts/cli.sh'
+	-v ${PWD}:/home/runner/actions-runner/vibehouse sigmaprime/github-runner \
+	bash -c 'cd vibehouse && make && ./scripts/cli.sh'
 
-# Updates the CLI help text pages in the Lighthouse book, building using local
-# `cargo`.
+# Updates the CLI help text pages in the book, building using local `cargo`.
 cli-local:
 	make && ./scripts/cli.sh
 

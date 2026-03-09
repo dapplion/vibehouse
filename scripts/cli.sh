@@ -19,7 +19,7 @@ write_to_file() {
     printf "\n\n%s\n" "<style> .content main {max-width:88%;} </style>" >> "$file"
 }
 
-CMD=./target/release/lighthouse
+CMD=./target/release/vibehouse
 
 # Store all help strings in variables.
 general_cli=$($CMD --help)

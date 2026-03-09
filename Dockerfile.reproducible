@@ -30,15 +30,15 @@ ARG FEATURES="gnosis,slasher-lmdb,slasher-mdbx,slasher-redb,jemalloc"
 ARG PROFILE="reproducible"
 
 # Build the project with the reproducible settings
-RUN cargo build --bin lighthouse \
+RUN cargo build --bin vibehouse \
     --features "${FEATURES}" \
     --profile "${PROFILE}" \
     --locked \
     --target "${RUST_TARGET}"
 
-RUN mv /app/target/${RUST_TARGET}/${PROFILE}/lighthouse /lighthouse
+RUN mv /app/target/${RUST_TARGET}/${PROFILE}/vibehouse /vibehouse
 
 # Create a minimal final image with just the binary
 FROM gcr.io/distroless/cc-debian12:nonroot-6755e21ccd99ddead6edc8106ba03888cbeed41a
-COPY --from=builder /lighthouse /lighthouse
-ENTRYPOINT [ "/lighthouse" ]
+COPY --from=builder /vibehouse /vibehouse
+ENTRYPOINT [ "/vibehouse" ]

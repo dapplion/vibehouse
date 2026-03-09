@@ -94,7 +94,7 @@ leak-timeout = "100ms"
 # The name of the top-level "report" element in JUnit report. If aggregating
 # reports across different test runs, it may be useful to provide separate names
 # for each report.
-report-name = "lighthouse-run"
+report-name = "vibehouse-run"
 
 # Whether standard output and standard error for passing tests should be stored in the JUnit report.
 # Output is stored in the <system-out> and <system-err> elements of the <testcase> element.

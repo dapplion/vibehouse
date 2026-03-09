@@ -32,7 +32,7 @@ cd vibehouse
 make
 
 # vibe with it
-./target/release/lighthouse --help
+./target/release/vibehouse --help
 ```
 
 ## Upstream

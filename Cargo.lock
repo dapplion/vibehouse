@@ -5618,55 +5618,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lighthouse"
-version = "8.0.1"
-dependencies = [
- "account_manager",
- "account_utils",
- "beacon_node",
- "beacon_node_fallback",
- "beacon_processor",
- "bls",
- "boot_node",
- "clap",
- "clap_utils",
- "console-subscriber",
- "database_manager",
- "directory",
- "environment",
- "eth2",
- "eth2_network_config",
- "ethereum_hashing",
- "futures",
- "initialized_validators",
- "lighthouse_network",
- "lighthouse_version",
- "logging",
- "malloc_utils",
- "metrics",
- "network_utils",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "sensitive_url",
- "serde",
- "serde_json",
- "serde_yaml",
- "slasher",
- "slashing_protection",
- "task_executor",
- "tempfile",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "types",
- "validator_client",
- "validator_dir",
- "validator_manager",
- "zeroize",
-]
-
-[[package]]
 name = "lighthouse_network"
 version = "0.2.0"
 dependencies = [
@@ -11069,6 +11020,55 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vibehouse"
+version = "0.1.0"
+dependencies = [
+ "account_manager",
+ "account_utils",
+ "beacon_node",
+ "beacon_node_fallback",
+ "beacon_processor",
+ "bls",
+ "boot_node",
+ "clap",
+ "clap_utils",
+ "console-subscriber",
+ "database_manager",
+ "directory",
+ "environment",
+ "eth2",
+ "eth2_network_config",
+ "ethereum_hashing",
+ "futures",
+ "initialized_validators",
+ "lighthouse_network",
+ "lighthouse_version",
+ "logging",
+ "malloc_utils",
+ "metrics",
+ "network_utils",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "sensitive_url",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "slasher",
+ "slashing_protection",
+ "task_executor",
+ "tempfile",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "types",
+ "validator_client",
+ "validator_dir",
+ "validator_manager",
+ "zeroize",
+]
 
 [[package]]
 name = "wait-timeout"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Fast Docker image build for vibehouse dev.
-# Builds the lighthouse binary on the host (incremental, uses cargo cache)
+# Builds the vibehouse binary on the host (incremental, uses cargo cache)
 # then packages it into a minimal Docker image via Dockerfile.dev.
 #
 # Usage: scripts/build-docker.sh
@@ -12,12 +12,12 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$REPO_ROOT"
 
-echo "==> Building lighthouse (release) on host..."
+echo "==> Building vibehouse (release) on host..."
 cargo build --release --features spec-minimal
 
 echo "==> Copying binary to bin/..."
 mkdir -p bin
-cp target/release/lighthouse bin/lighthouse
+cp target/release/vibehouse bin/vibehouse
 
 echo "==> Building Docker image vibehouse:local..."
 # Use sudo if current user can't access docker socket directly
