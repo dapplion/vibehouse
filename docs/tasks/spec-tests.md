@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, safety audit clean (run 729)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PTC lookbehind PRs (#4979, #4992) still OPEN, design not finalized
+- CI (22871434411): 5/6 passed (check+clippy+fmt, EF tests, network+op_pool, http_api, beacon_chain), unit tests still running
+- Nightly: 6+ consecutive green (Mar 4-9)
+- cargo check --release: zero warnings
+- cargo update --dry-run: 0 compatible updates available
+- Production code safety audit (gloas.rs, fork_choice.rs, proto_array.rs, block_verification.rs, beacon_chain.rs): no unwrap() in consensus paths, all array access via .get(), saturating/checked arithmetic throughout, no unsafe blocks
+- Gossip verification test coverage audit: 42+ tests covering all happy paths; remaining untested error variants (InvalidAggregationBits, PtcCommitteeError, MissingBeaconBlock, NotGloasBlock) are hard-to-reach paths requiring malformed internal state — covered implicitly by integration tests
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 728)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2)
 - PTC lookbehind PR #4992 (minimal approach): active review comments from potuz/kevaundray, `get_ptc_assignment` needs fixing for 2-slot cache vs 32-slot iteration — design not finalized
