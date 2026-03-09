@@ -110,6 +110,15 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-09 — spec scan + code quality review (run 628)
+- All 7 tracked Gloas PRs still OPEN: #4979, #4960, #4940, #4932, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged since run 627
+- CI (run 22844693747): 4/6 jobs passed, 2 still running
+- Deep code quality review: all Gloas ePBS functions use correct reference/ownership, no unnecessary clones in hot paths, no dead code, no unreachable branches
+- Clean build: zero warnings
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan + security audit (run 627)
 - All 6 key Gloas PRs still OPEN: #4979, #4940, #4932, #4960, #4840, #4939
 - No new consensus-specs release (still v1.7.0-alpha.2)

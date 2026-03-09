@@ -28,6 +28,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan + code quality review (run 628)
+- v1.7.0-alpha.2 still latest, no new spec test release (consensus-spec-tests: v1.5.0)
+- All 7 tracked Gloas PRs still OPEN: #4979 (PTC Lookbehind), #4960, #4940, #4932, #4843, #4840, #4630
+- No new Gloas-related PRs merged — recent merges all CI/dep updates (#4990, #4991)
+- consensus-specs latest stable release: v1.6.1
+- CI (run 22844693747): 4/6 jobs passed (check+clippy+fmt, ef-tests, network+op_pool, beacon_chain running), 2 still in progress
+- Nightly tests: 5+ consecutive green runs
+- Deep code quality review of Gloas ePBS consensus code: all public functions use correct reference/ownership patterns, no unnecessary clones in hot consensus paths, no dead branches, all error messages accurate
+- `cargo audit`: same 1 known vulnerability (rsa timing sidechannel via jsonwebtoken — no upstream fix, not consensus-critical)
+- Clean build: zero warnings, zero clippy issues
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-08 — upgrade ethabi 16→18, dep audit complete (run 578)
 - v1.7.0-alpha.2 still latest, no new spec test release
 - All tracked Gloas spec PRs still OPEN: #4979 (PTC Lookbehind), #4940, #4932, #4960, #4898, #4954, #4843, #4840
