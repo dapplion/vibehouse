@@ -120,6 +120,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec stable, no changes (run 703)
+- No new Gloas merges, no new releases (still v1.7.0-alpha.2), no new spec-test vectors
+- All 4 tracked PRs still OPEN: #4992, #4979, #4954, #4843
+- No new Gloas PRs opened since last scan
+- CI in progress, clippy clean
+- No code changes needed
+
 ### 2026-03-09 — implement PR #4939 index-1 attestation envelope validation (run 701)
 - **PR #4939 MERGED Mar 7**: index-1 attestation envelope validation — IMPLEMENTED
   - Added `verify_payload_envelope_for_index1()` to `attestation_verification.rs`
