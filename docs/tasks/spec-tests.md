@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 656)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
+- CI green: ci passed, nightly 3 consecutive greens (Mar 7-9), spec-test-version-check passed
+- cargo audit: same 1 medium rsa advisory (transitive, no fix available)
+- Deep audit of test gaps: epoch processing (process_builder_pending_payments), deposit routing (process_deposit_request_gloas), withdrawal processing all have comprehensive coverage; remaining gaps are defense-in-depth unreachable paths (e.g. Hash256 always 32 bytes, BitVector index always valid)
+- No code changes needed
+
 ### 2026-03-09 — test coverage (run 655)
 - Spec stable, no new merges. CI green.
 - Audited Gloas error paths for test gaps; found validator sweep BLS credential path and attestation slot overflow untested
