@@ -318,6 +318,34 @@ pub static PAYLOAD_ENVELOPE_PROCESSING_TIMES: LazyLock<Result<Histogram>> = Lazy
 });
 
 /*
+ * Gloas ePBS Pool Gauges
+ */
+pub static EXECUTION_BID_POOL_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+    try_create_int_gauge(
+        "beacon_execution_bid_pool_size",
+        "Number of execution payload bids currently in the bid pool.",
+    )
+});
+pub static OBSERVED_PAYLOAD_ATTESTATIONS_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+    try_create_int_gauge(
+        "beacon_observed_payload_attestations_size",
+        "Number of payload attestations currently tracked for dedup/equivocation.",
+    )
+});
+pub static OBSERVED_PAYLOAD_ENVELOPES_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+    try_create_int_gauge(
+        "beacon_observed_payload_envelopes_size",
+        "Number of block roots tracked for envelope dedup.",
+    )
+});
+pub static OBSERVED_EXECUTION_BIDS_SIZE: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
+    try_create_int_gauge(
+        "beacon_observed_execution_bids_size",
+        "Number of execution bids tracked for dedup/equivocation.",
+    )
+});
+
+/*
  * Gloas ePBS Parent Path Metrics (FULL vs EMPTY)
  */
 pub static BLOCK_IMPORT_FULL_PARENT_TOTAL: LazyLock<Result<IntCounter>> = LazyLock::new(|| {
@@ -2124,6 +2152,29 @@ pub fn scrape_for_metrics<T: BeaconChainTypes>(beacon_chain: &BeaconChain<T>) {
     set_gauge_by_usize(
         &OP_POOL_NUM_SYNC_CONTRIBUTIONS,
         beacon_chain.op_pool.num_sync_contributions(),
+    );
+
+    set_gauge_by_usize(
+        &EXECUTION_BID_POOL_SIZE,
+        beacon_chain.execution_bid_pool.lock().total_bid_count(),
+    );
+    set_gauge_by_usize(
+        &OBSERVED_PAYLOAD_ATTESTATIONS_SIZE,
+        beacon_chain
+            .observed_payload_attestations
+            .lock()
+            .observed_attestation_count(),
+    );
+    set_gauge_by_usize(
+        &OBSERVED_PAYLOAD_ENVELOPES_SIZE,
+        beacon_chain.observed_payload_envelopes.lock().len(),
+    );
+    set_gauge_by_usize(
+        &OBSERVED_EXECUTION_BIDS_SIZE,
+        beacon_chain
+            .observed_execution_bids
+            .lock()
+            .observed_bid_count(),
     );
 
     beacon_chain
