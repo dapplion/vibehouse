@@ -28,6 +28,24 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, comprehensive coverage audit (run 726)
+- Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
+- No new spec-test vectors (consensus-spec-tests latest: v1.6.0-beta.0, pre-Gloas)
+- PTC lookbehind PR #4992: still evolving — potuz acknowledged duties functions not yet addressed, kevaundray raised get_ptc_assignment needing 32 slots vs 2-slot cache
+- CI in progress (22871434411): check+clippy+fmt passed, remaining jobs running; nightly green 5 consecutive runs (Mar 5-9)
+- cargo audit: same known rsa advisory (RUSTSEC-2023-0071), no new vulnerabilities
+- Dependencies: all at latest compatible versions (0 crate updates available)
+- Deep test coverage audit across consensus crates:
+  - state_processing/per_block_processing/gloas.rs: 9200+ lines including comprehensive tests for all Gloas functions (bid processing, envelope processing, withdrawals, PTC committee, builder exits, deposit routing)
+  - fork_choice.rs: 80 Gloas-specific tests covering on_execution_bid, on_payload_attestation, on_execution_payload, validate_on_attestation, gloas_head_payload_status, queued attestation dequeue
+  - proto_array: 300+ tests including propagation, viability, find_head_gloas, contains_execution_block_hash
+  - upgrade/gloas.rs: 21+ tests covering state migration, builder onboarding, field preservation
+  - execution_bid_pool.rs: 17 tests covering bid selection, pruning, reorg, parent filtering
+  - observed_*.rs: 45+ tests for equivocation tracking, deduplication, pruning
+- Only gap: gloas_verification.rs (gossip verification) has no unit tests — covered by integration tests in network_beacon_processor/tests.rs, which is appropriate for BeaconChain-dependent code
+- Zero todo!()/unimplemented!() in production code, clippy clean
+- No code changes needed
+
 ### 2026-03-09 — contains_invalid_payloads + on_invalid_execution_payload tests (run 725)
 - Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
 - PTC lookbehind PR #4992: potuz acknowledged `get_ptc_assignment` needs fixing, waiting on dev preference for approach
