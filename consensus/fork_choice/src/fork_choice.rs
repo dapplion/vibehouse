@@ -3749,6 +3749,97 @@ mod tests {
             );
         }
 
+        /// Same builder rebids for the same slot. PTC weight that accumulated
+        /// for the first bid should be cleared, because the new bid may have
+        /// different block_hash / commitments, making old PTC votes stale.
+        #[test]
+        fn same_builder_rebid_resets_ptc_weight() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // First bid: builder 42
+            let bid1 = make_bid(1, 42);
+            fc.on_execution_bid(&bid1, block_root).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Simulate PTC weight from attestations for the first bid
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_weight = 100;
+            fc.proto_array.core_proto_array_mut().nodes[idx].ptc_blob_data_available_weight = 50;
+
+            // Same builder 42 rebids (e.g. with higher value or different block_hash)
+            let bid2 = make_bid(1, 42);
+            fc.on_execution_bid(&bid2, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.builder_index,
+                Some(42),
+                "builder_index should remain the same builder"
+            );
+            assert_eq!(
+                node.ptc_weight, 0,
+                "ptc_weight must reset on rebid — old attestations are stale"
+            );
+            assert_eq!(
+                node.ptc_blob_data_available_weight, 0,
+                "blob weight must reset on rebid"
+            );
+        }
+
+        /// Late bid arriving after envelope was already received should NOT
+        /// reset the payload state, since the payload is already confirmed.
+        #[test]
+        fn late_bid_after_envelope_preserves_payload_state() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+
+            // Envelope arrives first
+            let envelope_hash = ExecutionBlockHash::repeat_byte(0xCC);
+            fc.on_execution_payload(block_root, envelope_hash).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert!(node.payload_revealed);
+            assert!(node.envelope_received);
+
+            // Late bid arrives after envelope — should NOT reset payload state
+            let late_bid = make_bid(1, 77);
+            fc.on_execution_bid(&late_bid, block_root).unwrap();
+
+            let node = &fc.proto_array.core_proto_array().nodes[idx];
+            assert_eq!(
+                node.builder_index,
+                Some(77),
+                "builder_index should still be set from the late bid"
+            );
+            assert!(
+                node.payload_revealed,
+                "payload_revealed must NOT be reset by late bid"
+            );
+            assert!(
+                node.envelope_received,
+                "envelope_received must NOT be reset by late bid"
+            );
+            assert!(
+                node.payload_data_available,
+                "payload_data_available must NOT be reset by late bid"
+            );
+        }
+
         /// Envelope arrives before any bid was processed. This tests the
         /// out-of-order message path where the execution payload envelope
         /// is gossiped before (or without) an execution bid.

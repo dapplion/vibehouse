@@ -8047,6 +8047,87 @@ mod tests {
         assert_eq!(payment2.weight, 0, "weight reset to zero by overwrite");
     }
 
+    /// Two different builders bid for the same slot. The second bid from builder 1
+    /// must overwrite the pending payment recorded by builder 0, changing the
+    /// builder_index in the payment entry.
+    #[test]
+    fn two_bids_different_builders_second_overwrites_payment() {
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+
+        // Add a second builder (index 1) with enough balance
+        let builder1 = Builder {
+            pubkey: types::PublicKeyBytes::empty(),
+            version: 0x03,
+            execution_address: Address::repeat_byte(0xEE),
+            balance: 64_000_000_000,
+            deposit_epoch: Epoch::new(0),
+            withdrawable_epoch: spec.far_future_epoch,
+        };
+        state.builders_mut().unwrap().push(builder1).unwrap();
+
+        let slot = state.slot();
+        let parent_root = state.latest_block_header().parent_root;
+        let slots_per_epoch = E::slots_per_epoch();
+        let slot_index = (slots_per_epoch + slot.as_u64() % slots_per_epoch) as usize;
+
+        // Builder 0 bids 2 ETH
+        let bid0 = make_builder_bid(&state, &spec, 2_000_000_000);
+        assert_eq!(bid0.message.builder_index, 0);
+        process_execution_payload_bid(
+            &mut state,
+            &bid0,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let payment0 = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(payment0.withdrawal.builder_index, 0);
+        assert_eq!(payment0.withdrawal.amount, 2_000_000_000);
+
+        // Builder 1 bids 3 ETH — overwrites builder 0's payment
+        let mut bid1 = make_builder_bid(&state, &spec, 3_000_000_000);
+        bid1.message.builder_index = 1;
+        bid1.message.fee_recipient = Address::repeat_byte(0xEE);
+        process_execution_payload_bid(
+            &mut state,
+            &bid1,
+            slot,
+            parent_root,
+            VerifySignatures::False,
+            &spec,
+        )
+        .unwrap();
+
+        let payment1 = *state
+            .as_gloas()
+            .unwrap()
+            .builder_pending_payments
+            .get(slot_index)
+            .unwrap();
+        assert_eq!(
+            payment1.withdrawal.builder_index, 1,
+            "builder_index should be updated to the second builder"
+        );
+        assert_eq!(
+            payment1.withdrawal.amount, 3_000_000_000,
+            "amount should be from the second bid"
+        );
+        assert_eq!(
+            payment1.withdrawal.fee_recipient,
+            Address::repeat_byte(0xEE),
+            "fee_recipient should be from the second builder"
+        );
+        assert_eq!(payment1.weight, 0, "weight should be reset by overwrite");
+    }
+
     /// Self-build bid (value=0) leaves payment slot untouched, then external bid
     /// writes payment. Verifies the `if amount > 0` guard on payment recording.
     #[test]
