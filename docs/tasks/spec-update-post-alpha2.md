@@ -91,13 +91,13 @@ Changes `if message.slot <= block.slot` to `assert message.slot >= block.slot` +
 
 Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload_quorum`, adds `payload_envelopes` to store, adds `MIN_PAYLOAD_DUE_BPS` config, introduces `get_payload_due_ms`/`get_payload_size` for variable deadline based on payload size. Last updated Feb 19, design still evolving.
 
-## Upcoming: Index-1 Attestation Envelope Validation (PR #4939, OPEN — will need implementation)
+## DONE: Index-1 Attestation Envelope Validation (PR #4939, MERGED Mar 7)
 
 Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}`:
 1. **[REJECT]** If `data.index == 1` (payload present for past block), the execution payload for that block must have passed validation
 2. **[IGNORE]** If `data.index == 1`, the execution payload envelope must have been seen. Clients MAY queue the attestation and SHOULD request the envelope via `ExecutionPayloadEnvelopesByRoot`
 
-**vibehouse impact: will need implementation.** Currently, index-1 attestations pass through standard gossip validation without checking payload envelope status. When merged, need to add checks in `attestation_verification.rs` to verify the referenced block's payload has been received/validated before accepting index-1 attestations.
+**Implemented in run 701:** Added `verify_payload_envelope_for_index1()` in `attestation_verification.rs`. Checks `head_block.envelope_received` (IGNORE if not seen) and `head_block.execution_status` (REJECT if Invalid). Applied to both aggregate and unaggregated attestation gossip validation. New error variants: `PayloadEnvelopeNotSeen`, `PayloadNotValidated`. Gossip handler maps to `MessageAcceptance::Ignore` and `MessageAcceptance::Reject` respectively. Existing test updated to verify gossip-level rejection.
 
 ## Upcoming Spec Test PRs (not yet merged)
 
@@ -119,6 +119,18 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### 2026-03-09 — implement PR #4939 index-1 attestation envelope validation (run 701)
+- **PR #4939 MERGED Mar 7**: index-1 attestation envelope validation — IMPLEMENTED
+  - Added `verify_payload_envelope_for_index1()` to `attestation_verification.rs`
+  - New error variants: `PayloadEnvelopeNotSeen` (IGNORE), `PayloadNotValidated` (REJECT)
+  - Applied to both aggregate and unaggregated gossip validation
+  - Gossip handler in `gossip_methods.rs` maps errors correctly
+  - Existing test updated from fork-choice-level check to gossip-level check
+  - All 401 Gloas beacon_chain tests pass, 79 network tests pass, clippy clean
+- New open Gloas PRs discovered: #5009 (PTC entries in block), #5012 (execution request gossip), #5014 (networking fixes), #5016-#5043 (EIP-7866 Inclusion Lists cluster — 7 PRs)
+- Still tracked OPEN: #4992, #4979, #4954, #4843
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release
 
 ### 2026-03-09 — spec scan (run 700)
 - All 12 tracked Gloas PRs still OPEN (no merges since last scan)

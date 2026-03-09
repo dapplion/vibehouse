@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — implemented PR #4939, spec scan (run 701)
+- PR #4939 (index-1 attestation envelope validation) MERGED Mar 7 — implemented gossip-level checks
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors
+- Still tracked OPEN: #4992, #4979, #4954, #4843
+- New Gloas PRs: EIP-7866 Inclusion Lists cluster (7 PRs), #5009 PTC entries, #5012 execution request gossip, #5014 networking fixes
+- All tests pass, clippy clean
+
 ### 2026-03-09 — spec stable, no changes (run 700)
 - Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - All 12 tracked Gloas PRs still OPEN — no activity since last scan
