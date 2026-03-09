@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, codebase audit (run 724)
+- Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
+- No new spec-test vectors (consensus-spec-tests latest: v1.6.0-beta.0, pre-Gloas)
+- CI running on latest commit (22870841207), nightly green 5 consecutive runs (Mar 5-9)
+- cargo audit: same known rsa advisory, no new vulnerabilities
+- Codebase audit: zero `todo!()`/`unimplemented!()` in production code (64 instances all in test mock `ValidatorStore` trait impls, acceptable)
+- Test coverage audit: all major Gloas functions comprehensively tested (150+ state_processing, 50+ proto_array, 40+ envelope, 16+ epoch processing, integration tests)
+- No code changes needed
+
 ### 2026-03-09 — proto_array propagation tests (run 723)
 - Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
 - PTC lookbehind PR #4992: design still evolving, not ready to implement
