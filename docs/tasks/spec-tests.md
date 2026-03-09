@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — proto_array propagation tests (run 723)
+- Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
+- PTC lookbehind PR #4992: design still evolving, not ready to implement
+- Added 15 unit tests for consensus-critical proto_array functions that had no test coverage:
+  - `propagate_execution_payload_validation` (6 tests): ancestor chain propagation, stops at Valid/Irrelevant, errors on Invalid ancestor, unknown root, single node
+  - `propagate_execution_payload_invalidation` (6 tests): InvalidateOne target+descendants, best_child clearing, unknown root, InvalidateMany with known/unknown ancestor, head-only skipping
+  - `node_leads_to_viable_head` (3 tests): via best_descendant, self-viable, invalid descendant with unrevealed payload
+- All 179 proto_array tests pass, clippy clean
+
 ### 2026-03-09 — spec stable, deep conformance audit (run 718)
 - No new Gloas merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors (v1.5.0)
 - All tracked PRs still OPEN; #4992 (PTC Lookbehind minimal) most active with review from potuz/kevaundray
