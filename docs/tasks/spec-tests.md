@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — production code audit + spec scan (run 661)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 12 tracked Gloas PRs still OPEN; recent merged PRs are maintenance only (#4991 CI matrix, #4990 release-drafter, etc.)
+- Production code safety audit: zero `.unwrap()` or `.expect()` in consensus state_processing production code (all in test modules only); `dump_as_dot` debug function in beacon_chain.rs has unwraps but is non-consensus
+- CI green: latest ci run passed (commit 7234b3e24); docker builds queued (waiting for runners)
+- No code changes — codebase clean, spec stable
+
 ### 2026-03-09 — spec scan (run 659)
 - No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
 - PR #4979 (PTC Lookbehind) still OPEN, only tracked PR not yet merged
