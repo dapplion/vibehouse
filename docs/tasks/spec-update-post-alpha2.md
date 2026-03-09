@@ -130,6 +130,14 @@ Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload
 
 ## Progress log
 
+### 2026-03-09 — spec scan + docker CI optimization (run 641)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged or opened since run 640
+- CI: all green, no failures. Docker workflow runs were being cancelled repeatedly by rapid task-doc pushes
+- **Fix: added paths-ignore to docker workflow** — docs-only commits (`.md`, `docs/`, `.claude/`, `.ai/`) no longer trigger expensive Docker builds. Tag pushes for releases are unaffected.
+- Test coverage audit: Gloas code has exceptionally thorough coverage across all four key areas (state_processing, epoch_processing, beacon_chain, fork_choice). Two minor gaps identified (block_replayer blinded envelope path, execution_payload.rs FULL/EMPTY withdrawal computation) — both are tested through integration tests, and the functions are tightly coupled to BeaconChain making direct unit tests impractical.
+
 ### 2026-03-09 — spec scan + post-rebrand devnet verification (run 640)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)

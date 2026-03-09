@@ -6,6 +6,11 @@ on:
             - main
         tags:
             - v*
+        paths-ignore:
+            - '**.md'
+            - 'docs/**'
+            - '.claude/**'
+            - '.ai/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
