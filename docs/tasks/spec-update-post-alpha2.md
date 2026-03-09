@@ -91,7 +91,7 @@ Changes `if message.slot <= block.slot` to `assert message.slot >= block.slot` +
 
 Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload_quorum`, adds `payload_envelopes` to store, adds `MIN_PAYLOAD_DUE_BPS` config, introduces `get_payload_due_ms`/`get_payload_size` for variable deadline based on payload size. Last updated Feb 19, design still evolving.
 
-## DONE: Index-1 Attestation Envelope Validation (PR #4939, MERGED Mar 7)
+## DONE: Index-1 Attestation Envelope Validation (PR #4939, still OPEN — implemented proactively)
 
 Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}`:
 1. **[REJECT]** If `data.index == 1` (payload present for past block), the execution payload for that block must have passed validation
@@ -119,6 +119,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### 2026-03-09 — spec stable, doc fix (run 704)
+- No new Gloas merges since last scan — recent merges: #4993 (reftests action), #4990-#4991 (CI) — all maintenance
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors
+- All tracked PRs still OPEN: #4992, #4979, #4960, #4954, #4940, #4939, #4932, #4898, #4892, #4843
+- **Correction**: PR #4939 is still OPEN (not merged as previously stated) — our implementation is proactive; PR stalled since Feb 19 with minor review feedback, logic unchanged
+- CI: previous run success, current in progress
+- No code changes needed
 
 ### 2026-03-09 — spec stable, no changes (run 703)
 - No new Gloas merges, no new releases (still v1.7.0-alpha.2), no new spec-test vectors
