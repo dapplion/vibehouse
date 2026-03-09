@@ -4079,9 +4079,7 @@ async fn post_validator_register_validator<T: BeaconChainTypes>(
         })
         .await;
 
-    if result.is_err() {
-        return result;
-    }
+    result?;
 
     rx.await
         .unwrap_or_else(|_| Err(ApiError::server_error("No response from builder channel")))
