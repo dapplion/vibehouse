@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan + PTC Lookbehind analysis (run 681)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- 7 tracked Gloas PRs still OPEN (#4979, #4960, #4940, #4932, #4843, #4840, #4630); #4962 and #4939 no longer appear in filtered results
+- PTC Lookbehind (#4979) analysis: adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` to BeaconState, new `compute_ptc`/`process_ptc_lookbehind` functions, modifies `get_ptc` to use cache. Still under review (10 comments). When merged: need new state field, epoch processing step, fork upgrade changes, ~medium scope
+- PRs #4940/#4960 add Gloas fork choice test vectors — already handled by existing `ForkChoiceHandler` which iterates all forks
+- PR #4932 adds Gloas sanity/blocks tests — already handled by existing `SanityBlocksHandler`
+- CI run 680 in progress (all 6 jobs running), nightly 5 consecutive greens (Mar 5-9)
+- Clippy clean (zero warnings), cargo audit unchanged (1 medium rsa advisory, transitive)
+- No code changes needed — spec stable, test infrastructure ready for incoming test vectors
+
 ### 2026-03-09 — dep update + spec scan (run 680)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
