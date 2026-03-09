@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — dep updates + spec scan (run 677)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
+- PTC Lookbehind (#4979) still blocked (mergeable but no approvals, last activity Mar 7)
+- CI green, clippy clean, cargo audit unchanged (1 medium rsa advisory, transitive)
+- Updated patch deps: alloy-trie 0.9.4→0.9.5, quinn-proto 0.11.13→0.11.14, yamux 0.13.9→0.13.10
+- All 2611 workspace tests pass (excl. web3signer infra-dependent), 163 network tests pass, 46 execution_layer tests pass
+
 ### 2026-03-09 — prometheus metrics for ePBS pools + spec scan (run 676)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
