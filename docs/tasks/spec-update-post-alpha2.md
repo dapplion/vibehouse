@@ -118,6 +118,14 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan + help text rebrand (run 614)
+- All 6 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4840, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- Rebranded remaining help text: telemetry service name defaults (lighthouse-bn/vc → vibehouse-bn/vc), lcli description
+- Regenerated CLI help docs (7 help_*.md files updated)
+- Verified: all /lighthouse/ API endpoints intentionally kept (established API path, external tooling depends on it)
+- Verified: Docker lighthouse symlink + kurtosis cl_type=lighthouse intentionally kept (infrastructure constraints)
+
 ### 2026-03-09 — spec scan + deep rebrand (run 612)
 - All 9 tracked PRs still open, no new merges, no new release
 - Completed deep rebrand: CLI help text, error/log messages, default data directory (~/.lighthouse → ~/.vibehouse), metrics name (lighthouse_info → vibehouse_info), boot_node about text, validator_manager/account_manager help strings — 18 files, 51 line changes
