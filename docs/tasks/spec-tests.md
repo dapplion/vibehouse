@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, no changes (run 709)
+- Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
+- All 10 tracked Gloas PRs still OPEN; no new merges since last check
+- CI green, clippy clean (zero warnings), cargo audit unchanged (1 rsa advisory, transitive)
+- No code changes needed
+
 ### 2026-03-09 — spec stable, no changes (run 707)
 - Spec stable: no new merges, no new releases (v1.7.0-alpha.2), no new spec-test vectors
 - Recent merges: #4993 (reftests), #4990/#4991 (CI), #4988 (sampling config), #4984 (removed Verkle/EIP-6800) — none Gloas-related
