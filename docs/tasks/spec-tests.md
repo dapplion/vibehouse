@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — gossip verification test coverage (run 662)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 12 tracked Gloas PRs still OPEN; all recently merged PRs are maintenance/CI only
+- Added `attestation_invalid_signature_does_not_poison_observation_cache` test to gloas_verification.rs — verifies that a bad-sig payload attestation doesn't mark PTC validators as "already seen", which would block subsequent valid attestations. Mirrors the existing bid poison test.
+- CI green, nightly 5+ consecutive greens
+
 ### 2026-03-09 — production code audit + spec scan (run 661)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 12 tracked Gloas PRs still OPEN; recent merged PRs are maintenance only (#4991 CI matrix, #4990 release-drafter, etc.)
