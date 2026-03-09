@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 631)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged since run 630
+- CI (run 22844693747): 4/6 passed (check+clippy+fmt, ef-tests, network+op_pool, http_api), 2 still running (unit tests, beacon_chain — started 30min ago, normal)
+- Nightly tests: consecutive green runs (Mar 6-8)
+- Workspace compiles with zero warnings
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan (run 630)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
