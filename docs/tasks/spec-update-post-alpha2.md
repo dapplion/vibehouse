@@ -118,6 +118,11 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan + deep rebrand (run 612)
+- All 9 tracked PRs still open, no new merges, no new release
+- Completed deep rebrand: CLI help text, error/log messages, default data directory (~/.lighthouse → ~/.vibehouse), metrics name (lighthouse_info → vibehouse_info), boot_node about text, validator_manager/account_manager help strings — 18 files, 51 line changes
+- 359 tests pass, full lint clean
+
 ### 2026-03-09 — spec scan + identity rebranding (run 611)
 - Spec scan in progress (background agent checking all 9 tracked PRs)
 - Rebranded user-visible identity strings from Lighthouse to vibehouse (version, CLI, monitoring, P2P agent, telemetry)
