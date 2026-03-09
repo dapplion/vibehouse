@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 650)
+- All 12 tracked Gloas PRs still OPEN, no new merges
+- Found 2 additional Gloas-labeled PRs: #4747 (Fast Confirmation Rule, eip7805/FOCIL) and #4558 (Cell Dissemination, fulu+gloas) — neither is core ePBS, no action needed
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
+- Recent merged PRs: maintenance only (dependency updates, CI improvements, EIP-6800/7441 removal)
+- CI: all 6 jobs green (check+clippy+fmt, ef-tests, unit-tests, beacon-chain, http-api, network+op_pool)
+- Nightly: spec-test-version-check passed (no new release)
+- cargo audit: same 1 medium rsa advisory (transitive, no fix available)
+- No code changes — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan (run 647)
 - All 12 tracked Gloas PRs still OPEN, no new merges, no new PRs
 - No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release

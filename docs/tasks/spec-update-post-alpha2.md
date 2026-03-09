@@ -139,6 +139,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 650)
+- All 12 tracked Gloas PRs still OPEN (no merges since last scan)
+- Found 2 Gloas-labeled PRs not in our tracker: #4747 (Fast Confirmation Rule, eip7805) and #4558 (Cell Dissemination) — neither is core ePBS, no implementation needed
+- Recent merged PRs: all maintenance (dep updates, CI, EIP-6800/7441 removal) — nothing Gloas
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release (still v1.5.0)
+- CI all green, cargo audit unchanged
+- No code changes needed
+
 ### 2026-03-09 — spec scan (run 649)
 - All 12 tracked Gloas PRs still OPEN (no merges since last scan)
 - No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release
