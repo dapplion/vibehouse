@@ -16,8 +16,6 @@ Additionally, there are two extra guides for specific uses:
 There are also community-maintained installation methods:
 
 - [Homebrew package](./installation_homebrew.md).
-- Arch Linux AUR packages: [source](https://aur.archlinux.org/packages/lighthouse-ethereum),
-  [binary](https://aur.archlinux.org/packages/lighthouse-ethereum-bin).
 
 ## Recommended System Requirements
 

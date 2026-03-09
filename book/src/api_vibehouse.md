@@ -209,7 +209,7 @@ curl -X GET "http://localhost:5052/vibehouse/peers" -H  "accept: application/jso
     "peer_info": {
       "score": {
         "Real": {
-          "lighthouse_score": 0,
+          "vibehouse_score": 0,
           "gossipsub_score": -18371.409037358582,
           "ignore_negative_gossipsub_score": false,
           "score": -21.816048231863316
@@ -280,7 +280,7 @@ curl -X GET "http://localhost:5052/vibehouse/peers/connected" -H  "accept: appli
     "peer_info": {
       "score": {
         "Real": {
-          "lighthouse_score": 0,
+          "vibehouse_score": 0,
           "gossipsub_score": 0,
           "ignore_negative_gossipsub_score": false,
           "score": 0

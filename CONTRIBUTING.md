@@ -1,21 +1,15 @@
 # Contributors Guide
 
-[![GitPOAP badge](https://public-api.gitpoap.io/v1/repo/sigp/lighthouse/badge)](https://www.gitpoap.io/gh/sigp/lighthouse)
-
-Lighthouse is an open-source Ethereum consensus client. We're community driven and
-welcome all contribution. We aim to provide a constructive, respectful and fun
+Vibehouse is an open-source Ethereum consensus client. We're community driven and
+welcome all contributions. We aim to provide a constructive, respectful and fun
 environment for collaboration.
-
-We are active contributors to
-the [Ethereum Proof-of-Stake Consensus specification](https://github.com/ethereum/consensus-specs) and attend
-all [Ethereum implementers calls](https://github.com/ethereum/pm/).
 
 This guide is geared towards beginners. If you're an open-source veteran feel
 free to just skim this document and get straight into crushing issues.
 
 ## Why Contribute
 
-There are many reasons you might contribute to Lighthouse. For example, you may
+There are many reasons you might contribute to vibehouse. For example, you may
 wish to:
 
 - contribute to the Ethereum ecosystem.
@@ -29,13 +23,11 @@ wish to:
 
 ## How to Contribute
 
-Regardless of the reason, the process to begin contributing is very much the
-same. We operate like a typical open-source project operating on GitHub: the
-repository [Issues](https://github.com/sigp/lighthouse/issues) is where we
+We operate like a typical open-source project on GitHub: the
+repository [Issues](https://github.com/dapplion/vibehouse/issues) is where we
 track what needs to be done and [Pull
-Requests](https://github.com/sigp/lighthouse/pulls) is where code gets
-reviewed. We use [discord](https://discord.gg/cyAszAh) to chat
-informally.
+Requests](https://github.com/dapplion/vibehouse/pulls) is where code gets
+reviewed.
 
 ### General Work-Flow
 
@@ -45,21 +37,14 @@ We recommend the following work-flow for contributors:
    your skill-set. Use comments to communicate your intentions and ask
    questions.
 2. **Work in a feature branch** of your personal fork
-   (github.com/YOUR_NAME/lighthouse) of the main repository
-   (github.com/sigp/lighthouse).
+   (github.com/YOUR_NAME/vibehouse) of the main repository
+   (github.com/dapplion/vibehouse).
 3. Once you feel you have addressed the issue, **create a pull-request** with
-   `unstable` as the base branch to merge your changes into the main repository.
+   `main` as the base branch to merge your changes into the main repository.
 4. Wait for the repository maintainers to **review your changes** to ensure the
-   issue is addressed satisfactorily. Optionally, mention your PR on
-   [discord](https://discord.gg/cyAszAh).
+   issue is addressed satisfactorily.
 5. If the issue is addressed the repository maintainers will **merge your
    pull-request** and you'll be an official contributor!
-
-Generally, you find an issue you'd like to work on and announce your intentions
-to start work in a comment on the issue. Then, do your work on a separate
-branch (a "feature branch") in your own fork of the main repository. Once
-you're happy and you think the issue has been addressed, create a pull request
-into the main repository.
 
 ### First-time Set-up
 
@@ -71,21 +56,16 @@ steps:
    and [clone
    it](https://help.github.com/articles/fork-a-repo/#step-2-create-a-local-clone-of-your-fork)
    to your local machine.
-2. [Add an _"upstream"_
-   branch](https://help.github.com/articles/fork-a-repo/#step-3-configure-git-to-sync-your-fork-with-the-original-spoon-knife-repository)
-   that tracks github.com/sigp/lighthouse using `$ git remote add upstream
-   https://github.com/sigp/lighthouse.git` (
-   pro-tip: [use SSH](https://help.github.com/articles/connecting-to-github-with-ssh/) instead of HTTPS).
-3. Create a new feature branch with `$ git checkout -b your_feature_name`. The
+2. Create a new feature branch with `$ git checkout -b your_feature_name`. The
    name of your branch isn't critical but it should be short and instructive.
    E.g., if you're fixing a bug with serialization, you could name your branch
    `fix_serialization_bug`.
-4. Make sure you sign your commits.
+3. Make sure you sign your commits.
    See [relevant doc](https://help.github.com/en/github/authenticating-to-github/about-commit-signature-verification).
-5. Commit your changes and push them to your fork with `$ git push origin
+4. Commit your changes and push them to your fork with `$ git push origin
    your_feature_name`.
-6. Go to your fork on github.com and use the web interface to create a pull
-   request into the sigp/lighthouse repository.
+5. Go to your fork on github.com and use the web interface to create a pull
+   request into the dapplion/vibehouse repository.
 
 From there, the repository maintainers will review the PR and either accept it
 or provide some constructive feedback.
@@ -93,12 +73,7 @@ or provide some constructive feedback.
 There's a great
 [guide](https://akrabat.com/the-beginners-guide-to-contributing-to-a-github-project/)
 by Rob Allen that provides much more detail on each of these steps, if you're
-having trouble. As always, jump on [discord](https://discord.gg/cyAszAh)
-if you get stuck.
-
-Additionally,
-the ["Contributing to Lighthouse" section](https://lighthouse-book.sigmaprime.io/contributing.html#contributing-to-lighthouse)
-of the Lighthouse Book provides more details on the setup.
+having trouble.
 
 ## FAQs
 

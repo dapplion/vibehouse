@@ -1,9 +1,7 @@
-# Lighthouse Book
+# Vibehouse Book
 
 Contains an [mdBook](https://github.com/rust-lang-nursery/mdBook) that serves
-as the primary source of Lighthouse user documentation.
-
-The book is hosted at [lighthouse-book.sigmaprime.io](http://lighthouse-book.sigmaprime.io)
+as the primary source of Vibehouse user documentation.
 
 ## Usage
 
