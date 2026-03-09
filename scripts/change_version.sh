@@ -27,7 +27,7 @@ update_cargo_toml ../account_manager/Cargo.toml
 update_cargo_toml ../beacon_node/Cargo.toml
 update_cargo_toml ../boot_node/Cargo.toml
 update_cargo_toml ../lcli/Cargo.toml
-update_cargo_toml ../lighthouse/Cargo.toml
+update_cargo_toml ../vibehouse/Cargo.toml
 update_cargo_toml ../validator_client/Cargo.toml
 
 echo $VERSION_CRATE

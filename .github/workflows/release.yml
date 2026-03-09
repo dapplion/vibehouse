@@ -75,8 +75,7 @@ jobs:
 
             - name: Build vibehouse for aarch64-apple-darwin
               if:   matrix.arch == 'aarch64-apple-darwin'
-              run:  cargo install --path lighthouse --force --locked --features portable,gnosis --profile ${{ matrix.profile }}
-              # Note: `--path lighthouse` refers to the directory name, not the binary name
+              run:  cargo install --path vibehouse --force --locked --features portable,gnosis --profile ${{ matrix.profile }}
 
             - name: Configure GPG and create artifacts
               env:

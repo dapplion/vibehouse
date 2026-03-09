@@ -10,7 +10,7 @@ ST = VA
 L = SomeCity
 O = MyCompany
 OU = MyDivision
-CN = lighthouse
+CN = vibehouse
 [v3_req]
 keyUsage = keyEncipherment, dataEncipherment
 extendedKeyUsage = serverAuth
