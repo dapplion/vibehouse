@@ -1,5 +1,5 @@
 use crate::{BeaconChain, BeaconChainError, BeaconChainTypes};
-use eth2::lighthouse::{AttestationRewards, BlockReward, BlockRewardMeta};
+use eth2::vibehouse::{AttestationRewards, BlockReward, BlockRewardMeta};
 use operation_pool::{
     AttMaxCover, MaxCover, PROPOSER_REWARD_DENOMINATOR, RewardCache, SplitAttestation,
 };

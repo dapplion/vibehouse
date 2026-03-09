@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use eth2::lighthouse::{ProcessHealth, SystemHealth};
+use eth2::vibehouse::{ProcessHealth, SystemHealth};
 use serde::{Deserialize, Serialize};
 
 pub const VERSION: u64 = 1;

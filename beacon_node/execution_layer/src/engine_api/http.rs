@@ -109,7 +109,7 @@ pub mod deposit_log {
     use state_processing::per_block_processing::signature_sets::deposit_pubkey_signature_message;
     use types::{ChainSpec, DepositData, Hash256, PublicKeyBytes, SignatureBytes};
 
-    pub use eth2::lighthouse::DepositLog;
+    pub use eth2::vibehouse::DepositLog;
 
     /// The following constants define the layout of bytes in the deposit contract `DepositEvent`. The
     /// event bytes are formatted according to the  Ethereum ABI.

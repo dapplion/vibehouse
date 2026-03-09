@@ -28,7 +28,7 @@ use create_validator::{
     create_validators_mnemonic, create_validators_web3signer, get_voting_password_storage,
 };
 use directory::{DEFAULT_HARDCODED_NETWORK, DEFAULT_ROOT_DIR, DEFAULT_VALIDATOR_DIR};
-use eth2::lighthouse_vc::{
+use eth2::vibehouse_vc::{
     std_types::{AuthResponse, GetFeeRecipientResponse, GetGasLimitResponse},
     types::{
         self as api_types, GenericResponse, GetGraffitiResponse, Graffiti, PublicKey,
@@ -452,7 +452,7 @@ async fn get_lighthouse_health<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(_state): State<SharedState<T, E>>,
 ) -> Result<impl IntoResponse, ApiError> {
     blocking_json(move || {
-        eth2::lighthouse::Health::observe()
+        eth2::vibehouse::Health::observe()
             .map(GenericResponse::from)
             .map_err(|e| ApiError::BadRequest(e.to_string()))
     })
@@ -977,7 +977,7 @@ async fn post_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 async fn post_std_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
-    Json(request): Json<eth2::lighthouse_vc::std_types::ImportKeystoresRequest>,
+    Json(request): Json<eth2::vibehouse_vc::std_types::ImportKeystoresRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_dir = get_validator_dir(&state)?;
     let secrets_dir = get_secrets_dir(&state)?;
@@ -999,7 +999,7 @@ async fn post_std_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 async fn post_std_remotekeys<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
-    Json(request): Json<eth2::lighthouse_vc::std_types::ImportRemotekeysRequest>,
+    Json(request): Json<eth2::vibehouse_vc::std_types::ImportRemotekeysRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_store = get_validator_store(&state)?;
     let task_executor = state.ctx.task_executor.clone();
@@ -1132,7 +1132,7 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 async fn delete_lighthouse_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
-    Json(request): Json<eth2::lighthouse_vc::std_types::DeleteKeystoresRequest>,
+    Json(request): Json<eth2::vibehouse_vc::std_types::DeleteKeystoresRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_store = get_validator_store(&state)?;
     let task_executor = state.ctx.task_executor.clone();
@@ -1227,7 +1227,7 @@ async fn delete_graffiti_endpoint<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 async fn delete_std_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
-    Json(request): Json<eth2::lighthouse_vc::std_types::DeleteKeystoresRequest>,
+    Json(request): Json<eth2::vibehouse_vc::std_types::DeleteKeystoresRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_store = get_validator_store(&state)?;
     let task_executor = state.ctx.task_executor.clone();
@@ -1236,7 +1236,7 @@ async fn delete_std_keystores<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 async fn delete_std_remotekeys<T: 'static + SlotClock + Clone, E: EthSpec>(
     State(state): State<SharedState<T, E>>,
-    Json(request): Json<eth2::lighthouse_vc::std_types::DeleteRemotekeysRequest>,
+    Json(request): Json<eth2::vibehouse_vc::std_types::DeleteRemotekeysRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let validator_store = get_validator_store(&state)?;
     let task_executor = state.ctx.task_executor.clone();

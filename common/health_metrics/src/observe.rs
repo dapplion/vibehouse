@@ -1,4 +1,4 @@
-use eth2::lighthouse::{Health, ProcessHealth, SystemHealth};
+use eth2::vibehouse::{Health, ProcessHealth, SystemHealth};
 
 #[cfg(target_os = "linux")]
 use procfs::{Current, CurrentSI};

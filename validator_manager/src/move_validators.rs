@@ -4,7 +4,7 @@ use account_utils::read_password_from_user;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use eth2::{
     SensitiveUrl,
-    lighthouse_vc::{
+    vibehouse_vc::{
         std_types::{
             DeleteKeystoreStatus, DeleteKeystoresRequest, ImportKeystoreStatus, InterchangeJsonStr,
             Status,

@@ -1,6 +1,6 @@
 use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
-use eth2::lighthouse::{
+use eth2::vibehouse::{
     BlockPackingEfficiency, BlockPackingEfficiencyQuery, ProposerInfo, UniqueAttestation,
 };
 use parking_lot::Mutex;

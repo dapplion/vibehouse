@@ -1,7 +1,7 @@
 //! Implementation of the standard keystore management API.
 use crate::api_error::ApiError;
 use account_utils::validator_definitions::PasswordStorage;
-use eth2::lighthouse_vc::{
+use eth2::vibehouse_vc::{
     std_types::{
         DeleteKeystoreStatus, DeleteKeystoresRequest, DeleteKeystoresResponse,
         ImportKeystoreStatus, ImportKeystoresRequest, ImportKeystoresResponse, InterchangeJsonStr,

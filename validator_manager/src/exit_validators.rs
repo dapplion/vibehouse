@@ -294,7 +294,7 @@ mod test {
     };
     use account_utils::eth2_keystore::KeystoreBuilder;
     use beacon_chain::test_utils::{AttestationStrategy, BlockStrategy};
-    use eth2::lighthouse_vc::types::KeystoreJsonStr;
+    use eth2::vibehouse_vc::types::KeystoreJsonStr;
     use http_api::test_utils::InteractiveTester;
     use std::{
         fs::{self, File},

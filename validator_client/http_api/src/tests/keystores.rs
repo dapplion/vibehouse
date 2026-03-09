@@ -1,8 +1,8 @@
 use super::*;
 use account_utils::random_password_string;
 use bls::PublicKeyBytes;
-use eth2::lighthouse_vc::types::UpdateFeeRecipientRequest;
-use eth2::lighthouse_vc::{
+use eth2::vibehouse_vc::types::UpdateFeeRecipientRequest;
+use eth2::vibehouse_vc::{
     http_client::ValidatorClientHttpClient as HttpClient,
     std_types::{KeystoreJsonStr as Keystore, *},
     types::Web3SignerValidatorRequest,

@@ -1,7 +1,7 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use eth2::{
     SensitiveUrl,
-    lighthouse_vc::types::{DeleteKeystoreStatus, DeleteKeystoresRequest},
+    vibehouse_vc::types::{DeleteKeystoreStatus, DeleteKeystoresRequest},
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

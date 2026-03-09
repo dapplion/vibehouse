@@ -4,7 +4,7 @@ use crate::peer_manager::peerdb::PeerDB;
 use crate::rpc::{MetaData, MetaDataV3};
 use crate::types::{BackFillState, SyncState};
 use crate::{Client, Enr, GossipTopic, Multiaddr, NetworkConfig, PeerId};
-use eth2::lighthouse::sync_state::CustodyBackFillState;
+use eth2::vibehouse::sync_state::CustodyBackFillState;
 use network_utils::enr_ext::EnrExt;
 use parking_lot::RwLock;
 use std::collections::HashSet;

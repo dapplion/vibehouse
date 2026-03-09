@@ -5,8 +5,8 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use clap_utils::FLAG_HEADER;
 use eth2::{
     BeaconNodeHttpClient, SensitiveUrl, Timeouts,
-    lighthouse_vc::std_types::KeystoreJsonStr,
     types::{StateId, ValidatorId},
+    vibehouse_vc::std_types::KeystoreJsonStr,
 };
 use eth2_wallet::WalletBuilder;
 use serde::{Deserialize, Serialize};

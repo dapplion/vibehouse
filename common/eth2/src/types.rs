@@ -23,8 +23,8 @@ use types::beacon_block_body::KzgCommitments;
 use types::test_utils::TestRandom;
 pub use types::*;
 
-#[cfg(feature = "lighthouse")]
-use crate::lighthouse::BlockReward;
+#[cfg(feature = "vibehouse")]
+use crate::vibehouse::BlockReward;
 
 /// An API error serializable to JSON.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1286,7 +1286,7 @@ pub enum EventKind<E: EthSpec> {
     LateHead(SseLateHead),
     LightClientFinalityUpdate(Box<BeaconResponse<LightClientFinalityUpdate<E>>>),
     LightClientOptimisticUpdate(Box<BeaconResponse<LightClientOptimisticUpdate<E>>>),
-    #[cfg(feature = "lighthouse")]
+    #[cfg(feature = "vibehouse")]
     BlockReward(BlockReward),
     PayloadAttributes(VersionedSsePayloadAttributes),
     ProposerSlashing(Box<ProposerSlashing>),
@@ -1316,7 +1316,7 @@ impl<E: EthSpec> EventKind<E> {
             EventKind::LateHead(_) => "late_head",
             EventKind::LightClientFinalityUpdate(_) => "light_client_finality_update",
             EventKind::LightClientOptimisticUpdate(_) => "light_client_optimistic_update",
-            #[cfg(feature = "lighthouse")]
+            #[cfg(feature = "vibehouse")]
             EventKind::BlockReward(_) => "block_reward",
             EventKind::ProposerSlashing(_) => "proposer_slashing",
             EventKind::AttesterSlashing(_) => "attester_slashing",
@@ -1397,7 +1397,7 @@ impl<E: EthSpec> EventKind<E> {
                     })?),
                 )))
             }
-            #[cfg(feature = "lighthouse")]
+            #[cfg(feature = "vibehouse")]
             "block_reward" => Ok(EventKind::BlockReward(serde_json::from_str(data).map_err(
                 |e| ServerError::InvalidServerSentEvent(format!("Block Reward: {:?}", e)),
             )?)),
@@ -1473,7 +1473,7 @@ pub enum EventTopic {
     PayloadAttributes,
     LightClientFinalityUpdate,
     LightClientOptimisticUpdate,
-    #[cfg(feature = "lighthouse")]
+    #[cfg(feature = "vibehouse")]
     BlockReward,
     AttesterSlashing,
     ProposerSlashing,
@@ -1504,7 +1504,7 @@ impl FromStr for EventTopic {
             "late_head" => Ok(EventTopic::LateHead),
             "light_client_finality_update" => Ok(EventTopic::LightClientFinalityUpdate),
             "light_client_optimistic_update" => Ok(EventTopic::LightClientOptimisticUpdate),
-            #[cfg(feature = "lighthouse")]
+            #[cfg(feature = "vibehouse")]
             "block_reward" => Ok(EventTopic::BlockReward),
             "attester_slashing" => Ok(EventTopic::AttesterSlashing),
             "proposer_slashing" => Ok(EventTopic::ProposerSlashing),
@@ -1536,7 +1536,7 @@ impl fmt::Display for EventTopic {
             EventTopic::LateHead => write!(f, "late_head"),
             EventTopic::LightClientFinalityUpdate => write!(f, "light_client_finality_update"),
             EventTopic::LightClientOptimisticUpdate => write!(f, "light_client_optimistic_update"),
-            #[cfg(feature = "lighthouse")]
+            #[cfg(feature = "vibehouse")]
             EventTopic::BlockReward => write!(f, "block_reward"),
             EventTopic::AttesterSlashing => write!(f, "attester_slashing"),
             EventTopic::ProposerSlashing => write!(f, "proposer_slashing"),

@@ -3,7 +3,7 @@ use crate::api_error::ApiError;
 use account_utils::validator_definitions::{
     SigningDefinition, ValidatorDefinition, Web3SignerDefinition,
 };
-use eth2::lighthouse_vc::std_types::{
+use eth2::vibehouse_vc::std_types::{
     DeleteRemotekeyStatus, DeleteRemotekeysRequest, DeleteRemotekeysResponse,
     ImportRemotekeyStatus, ImportRemotekeysRequest, ImportRemotekeysResponse,
     ListRemotekeysResponse, SingleListRemotekeysResponse, Status,

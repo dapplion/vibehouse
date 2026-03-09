@@ -4241,7 +4241,7 @@ async fn get_lighthouse_health<T: BeaconChainTypes>(
     State(_state): State<SharedState<T>>,
 ) -> Result<Response, ApiError> {
     // No task_spawner needed for this simple check.
-    eth2::lighthouse::Health::observe()
+    eth2::vibehouse::Health::observe()
         .map(|h| Json(api_types::GenericResponse::from(h)).into_response())
         .map_err(ApiError::bad_request)
 }
@@ -4421,7 +4421,7 @@ async fn get_lighthouse_custody_info<T: BeaconChainTypes>(
 
 async fn get_lighthouse_block_rewards<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
-    Query(query): Query<eth2::lighthouse::BlockRewardsQuery>,
+    Query(query): Query<eth2::vibehouse::BlockRewardsQuery>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
     state
@@ -4450,7 +4450,7 @@ async fn post_lighthouse_block_rewards<T: BeaconChainTypes>(
 async fn get_lighthouse_attestation_performance<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
     Path(target): Path<String>,
-    Query(query): Query<eth2::lighthouse::AttestationPerformanceQuery>,
+    Query(query): Query<eth2::vibehouse::AttestationPerformanceQuery>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
     state
@@ -4463,7 +4463,7 @@ async fn get_lighthouse_attestation_performance<T: BeaconChainTypes>(
 
 async fn get_lighthouse_block_packing_efficiency<T: BeaconChainTypes>(
     State(state): State<SharedState<T>>,
-    Query(query): Query<eth2::lighthouse::BlockPackingEfficiencyQuery>,
+    Query(query): Query<eth2::vibehouse::BlockPackingEfficiencyQuery>,
 ) -> Result<Response, ApiError> {
     let chain = state.chain()?;
     state

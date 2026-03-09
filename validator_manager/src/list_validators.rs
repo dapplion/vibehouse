@@ -1,6 +1,6 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use eth2::lighthouse_vc::types::SingleKeystoreResponse;
 use eth2::types::{ConfigAndPreset, StateId, ValidatorId, ValidatorStatus};
+use eth2::vibehouse_vc::types::SingleKeystoreResponse;
 use eth2::{BeaconNodeHttpClient, SensitiveUrl, Timeouts};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

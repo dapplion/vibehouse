@@ -2,7 +2,7 @@ mod gather;
 mod types;
 use std::{path::PathBuf, time::Duration};
 
-use eth2::lighthouse::SystemHealth;
+use eth2::vibehouse::SystemHealth;
 use gather::{gather_beacon_metrics, gather_validator_metrics};
 use health_metrics::observe::Observe;
 use reqwest::{IntoUrl, Response};

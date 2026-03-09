@@ -1,6 +1,6 @@
 use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
-use eth2::lighthouse::CustodyInfo;
+use eth2::vibehouse::CustodyInfo;
 use std::sync::Arc;
 use types::EthSpec;
 

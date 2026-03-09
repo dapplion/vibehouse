@@ -5,7 +5,7 @@ use account_utils::{
     eth2_wallet::{WalletBuilder, bip39::Mnemonic},
     random_mnemonic, random_password,
 };
-use eth2::lighthouse_vc::types::{self as api_types};
+use eth2::vibehouse_vc::types::{self as api_types};
 use slot_clock::SlotClock;
 use std::path::{Path, PathBuf};
 use types::{ChainSpec, EthSpec};

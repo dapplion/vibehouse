@@ -1,6 +1,6 @@
 use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes, WhenSlotSkipped};
-use eth2::lighthouse::{BlockReward, BlockRewardsQuery};
+use eth2::vibehouse::{BlockReward, BlockRewardsQuery};
 use lru::LruCache;
 use state_processing::BlockReplayer;
 use std::num::NonZeroUsize;

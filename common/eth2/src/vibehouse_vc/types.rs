@@ -1,6 +1,6 @@
-pub use crate::lighthouse::Health;
-pub use crate::lighthouse_vc::std_types::*;
 pub use crate::types::{GenericResponse, VersionData};
+pub use crate::vibehouse::Health;
+pub use crate::vibehouse_vc::std_types::*;
 use eth2_keystore::Keystore;
 use graffiti::GraffitiString;
 use serde::{Deserialize, Serialize};

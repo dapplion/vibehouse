@@ -1,9 +1,9 @@
 pub use account_utils::STDIN_INPUTS_FLAG;
 use account_utils::strip_off_newlines;
-use eth2::lighthouse_vc::std_types::{InterchangeJsonStr, KeystoreJsonStr};
+use eth2::vibehouse_vc::std_types::{InterchangeJsonStr, KeystoreJsonStr};
 use eth2::{
     SensitiveUrl,
-    lighthouse_vc::{
+    vibehouse_vc::{
         http_client::ValidatorClientHttpClient,
         std_types::{ImportKeystoreStatus, ImportKeystoresRequest, SingleKeystoreResponse, Status},
         types::UpdateFeeRecipientRequest,

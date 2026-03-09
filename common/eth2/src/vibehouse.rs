@@ -1,4 +1,4 @@
-//! This module contains endpoints that are non-standard and only available on Lighthouse servers.
+//! This module contains endpoints that are non-standard and only available on vibehouse servers.
 
 mod attestation_performance;
 mod block_packing_efficiency;
@@ -8,8 +8,8 @@ pub mod sync_state;
 
 use crate::{
     BeaconNodeHttpClient, DepositData, Error, Hash256, Slot,
-    lighthouse::sync_state::SyncState,
     types::{AdminPeer, Epoch, GenericResponse, ValidatorId},
+    vibehouse::sync_state::SyncState,
 };
 use proto_array::core::ProtoArray;
 use serde::{Deserialize, Serialize};

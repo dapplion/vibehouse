@@ -2,8 +2,8 @@ use crate::api_error::ApiError;
 use crate::state_id::StateId;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use eth2::{
-    lighthouse::{GlobalValidatorInclusionData, ValidatorInclusionData},
     types::ValidatorId,
+    vibehouse::{GlobalValidatorInclusionData, ValidatorInclusionData},
 };
 use state_processing::per_epoch_processing::{EpochProcessingSummary, process_epoch};
 use types::{BeaconState, BeaconStateError, ChainSpec, Epoch, EthSpec};

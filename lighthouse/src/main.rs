@@ -9,7 +9,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use clap_utils::{
     FLAG_HEADER, flags::DISABLE_MALLOC_TUNING_FLAG, get_color_style, get_eth2_network_config,
 };
-use cli::LighthouseSubcommands;
+use cli::VibehouseSubcommands;
 use directory::{DEFAULT_BEACON_NODE_DIR, DEFAULT_VALIDATOR_DIR, parse_path_or_default};
 use environment::tracing_common;
 use environment::{EnvironmentBuilder, LoggerConfig};
@@ -415,7 +415,7 @@ fn main() {
         .subcommand(account_manager::cli_app())
         .subcommand(validator_manager::cli_app());
 
-    let cli = LighthouseSubcommands::augment_subcommands(cli);
+    let cli = VibehouseSubcommands::augment_subcommands(cli);
 
     let matches = cli.get_matches();
 
@@ -773,13 +773,13 @@ fn run<E: EthSpec>(
         return Ok(());
     }
 
-    match LighthouseSubcommands::from_arg_matches(matches) {
-        Ok(LighthouseSubcommands::DatabaseManager(db_manager_config)) => {
+    match VibehouseSubcommands::from_arg_matches(matches) {
+        Ok(VibehouseSubcommands::DatabaseManager(db_manager_config)) => {
             info!("Running database manager for {} network", network_name);
             database_manager::run(matches, &db_manager_config, environment)?;
             return Ok(());
         }
-        Ok(LighthouseSubcommands::ValidatorClient(validator_client_config)) => {
+        Ok(VibehouseSubcommands::ValidatorClient(validator_client_config)) => {
             let context = environment.core_context();
             let executor = context.executor.clone();
             let config = validator_client::Config::from_cli(matches, &validator_client_config)

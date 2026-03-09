@@ -7,12 +7,12 @@
 //! Eventually it would be ideal to publish this crate on crates.io, however we have some local
 //! dependencies preventing this presently.
 
-#[cfg(feature = "lighthouse")]
-pub mod lighthouse;
-#[cfg(feature = "lighthouse")]
-pub mod lighthouse_vc;
 pub mod mixin;
 pub mod types;
+#[cfg(feature = "vibehouse")]
+pub mod vibehouse;
+#[cfg(feature = "vibehouse")]
+pub mod vibehouse_vc;
 
 use self::mixin::{RequestAccept, ResponseOptional};
 use self::types::{Error as ResponseError, *};

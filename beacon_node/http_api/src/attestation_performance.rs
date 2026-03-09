@@ -1,6 +1,6 @@
 use crate::api_error::ApiError;
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
-use eth2::lighthouse::{
+use eth2::vibehouse::{
     AttestationPerformance, AttestationPerformanceQuery, AttestationPerformanceStatistics,
 };
 use state_processing::{
