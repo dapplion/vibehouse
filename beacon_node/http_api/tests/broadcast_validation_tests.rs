@@ -427,7 +427,7 @@ pub async fn consensus_partial_pass_only_consensus() {
         tester.harness.chain.clone(),
         &channel.0,
         validation_level,
-        warp::http::StatusCode::ACCEPTED,
+        axum::http::StatusCode::ACCEPTED,
     )
     .await;
 
@@ -751,7 +751,7 @@ pub async fn equivocation_consensus_late_equivocation() {
         tester.harness.chain,
         &channel.0,
         validation_level,
-        warp::http::StatusCode::ACCEPTED,
+        axum::http::StatusCode::ACCEPTED,
     )
     .await;
 
@@ -1549,7 +1549,7 @@ pub async fn blinded_equivocation_consensus_late_equivocation() {
             tester.harness.chain,
             &channel.0,
             validation_level,
-            warp::http::StatusCode::ACCEPTED,
+            axum::http::StatusCode::ACCEPTED,
         )
         .await;
 
@@ -2011,7 +2011,7 @@ pub async fn duplicate_block_status_code() {
     // `validator_count // 32`.
     let validator_count = 64;
     let num_initial: u64 = 31;
-    let duplicate_block_status_code = warp::http::StatusCode::IM_A_TEAPOT;
+    let duplicate_block_status_code = axum::http::StatusCode::IM_A_TEAPOT;
     let tester = InteractiveTester::<E>::new_with_initializer_and_mutator(
         None,
         validator_count,

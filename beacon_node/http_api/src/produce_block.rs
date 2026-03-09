@@ -7,6 +7,7 @@ use crate::{
         add_ssz_content_type_header, beacon_response, inconsistent_fork_rejection,
     },
 };
+use axum::response::{IntoResponse, Response};
 use beacon_chain::{
     BeaconBlockResponseWrapper, BeaconChain, BeaconChainTypes, ProduceBlockVerification,
 };
@@ -16,7 +17,6 @@ use ssz::Encode;
 use std::sync::Arc;
 use tracing::instrument;
 use types::{payload::BlockProductionVersion, *};
-use warp::reply::{Reply, Response};
 
 /// If default boost factor is provided in validator/blocks v3 request, we will skip the calculation
 /// to keep the precision.
@@ -108,25 +108,28 @@ pub fn build_response_v3<T: BeaconChainTypes>(
     let block_contents = build_block_contents::build_block_contents(fork_name, block_response)?;
 
     match accept_header {
-        Some(api_types::Accept::Ssz) => warp::http::Response::builder()
+        Some(api_types::Accept::Ssz) => axum::http::Response::builder()
             .status(200)
-            .body(block_contents.as_ssz_bytes().into())
-            .map(|res: Response| add_ssz_content_type_header(res))
+            .body(axum::body::Body::from(block_contents.as_ssz_bytes()))
+            .map(|r| add_ssz_content_type_header(r.into_response()))
             .map(|res| add_consensus_version_header(res, fork_name))
             .map(|res| add_execution_payload_blinded_header(res, execution_payload_blinded))
             .map(|res| add_execution_payload_value_header(res, execution_payload_value))
             .map(|res| add_consensus_block_value_header(res, consensus_block_value))
             .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
-        _ => Ok(warp::reply::json(&ForkVersionedResponse {
-            version: fork_name,
-            metadata,
-            data: block_contents,
-        })
-        .into_response())
-        .map(|res| add_consensus_version_header(res, fork_name))
-        .map(|res| add_execution_payload_blinded_header(res, execution_payload_blinded))
-        .map(|res| add_execution_payload_value_header(res, execution_payload_value))
-        .map(|res| add_consensus_block_value_header(res, consensus_block_value)),
+        _ => {
+            let resp = axum::Json(ForkVersionedResponse {
+                version: fork_name,
+                metadata,
+                data: block_contents,
+            })
+            .into_response();
+            let resp = add_consensus_version_header(resp, fork_name);
+            let resp = add_execution_payload_blinded_header(resp, execution_payload_blinded);
+            let resp = add_execution_payload_value_header(resp, execution_payload_value);
+            let resp = add_consensus_block_value_header(resp, consensus_block_value);
+            Ok(resp)
+        }
     }
 }
 
@@ -218,13 +221,13 @@ pub fn build_response_v2<T: BeaconChainTypes>(
     let block_contents = build_block_contents::build_block_contents(fork_name, block_response)?;
 
     match accept_header {
-        Some(api_types::Accept::Ssz) => warp::http::Response::builder()
+        Some(api_types::Accept::Ssz) => axum::http::Response::builder()
             .status(200)
-            .body(block_contents.as_ssz_bytes().into())
-            .map(|res: Response| add_ssz_content_type_header(res))
+            .body(axum::body::Body::from(block_contents.as_ssz_bytes()))
+            .map(|r| add_ssz_content_type_header(r.into_response()))
             .map(|res| add_consensus_version_header(res, fork_name))
             .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
-        _ => Ok(warp::reply::json(&beacon_response(
+        _ => Ok(axum::Json(beacon_response(
             ResponseIncludesVersion::Yes(fork_name),
             block_contents,
         ))

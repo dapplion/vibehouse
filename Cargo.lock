@@ -4576,6 +4576,7 @@ dependencies = [
  "safe_arith",
  "sensitive_url",
  "serde",
+ "serde_array_query",
  "serde_json",
  "slot_clock",
  "state_processing",

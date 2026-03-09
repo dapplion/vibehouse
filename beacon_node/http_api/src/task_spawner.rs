@@ -1,10 +1,10 @@
 use crate::api_error::ApiError;
+use axum::response::{IntoResponse, Response};
 use beacon_processor::{BeaconProcessorSend, BlockingOrAsync, Work, WorkEvent};
 use serde::Serialize;
 use std::future::Future;
 use tokio::sync::{mpsc::error::TrySendError, oneshot};
 use types::EthSpec;
-use warp::reply::{Reply, Response};
 
 /// Maps a request to a queue in the `BeaconProcessor`.
 #[derive(Clone, Copy)]
@@ -73,40 +73,34 @@ impl<E: EthSpec> TaskSpawner<E> {
     }
 
     /// Executes a "blocking" (non-async) task which returns a `Response`.
-    pub async fn blocking_response_task<F, T>(self, priority: Priority, func: F) -> Response
+    pub async fn blocking_response_task<F>(
+        self,
+        priority: Priority,
+        func: F,
+    ) -> Result<Response, ApiError>
     where
-        F: FnOnce() -> Result<T, ApiError> + Send + Sync + 'static,
-        T: Reply + Send + 'static,
+        F: FnOnce() -> Result<Response, ApiError> + Send + Sync + 'static,
     {
-        let result = self.blocking_task(priority, func).await;
-        crate::api_error::convert_api_error(result)
+        self.blocking_task(priority, func).await
     }
 
     /// Executes a "blocking" (non-async) task which returns a JSON-serializable
     /// object.
-    pub async fn blocking_json_task<F, T>(self, priority: Priority, func: F) -> Response
+    pub async fn blocking_json_task<F, T>(
+        self,
+        priority: Priority,
+        func: F,
+    ) -> Result<Response, ApiError>
     where
         F: FnOnce() -> Result<T, ApiError> + Send + Sync + 'static,
         T: Serialize + Send + 'static,
     {
-        let func = || func().map(|t| warp::reply::json(&t).into_response());
-        self.blocking_response_task(priority, func).await
+        let value = self.blocking_task(priority, func).await?;
+        Ok(axum::Json(value).into_response())
     }
 
-    /// Executes an async task which may return an `ApiError`, which will be converted to a response.
+    /// Executes an async task which may return an `ApiError`.
     pub async fn spawn_async_with_rejection(
-        self,
-        priority: Priority,
-        func: impl Future<Output = Result<Response, ApiError>> + Send + Sync + 'static,
-    ) -> Response {
-        let result = self
-            .spawn_async_with_rejection_no_conversion(priority, func)
-            .await;
-        crate::api_error::convert_api_error(result)
-    }
-
-    /// Same as `spawn_async_with_rejection` but returning a result with the unhandled error.
-    pub async fn spawn_async_with_rejection_no_conversion(
         self,
         priority: Priority,
         func: impl Future<Output = Result<Response, ApiError>> + Send + Sync + 'static,

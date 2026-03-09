@@ -2,6 +2,8 @@ use crate::metrics;
 use std::future::Future;
 
 use crate::api_error::ApiError;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use beacon_chain::blob_verification::{GossipBlobError, GossipVerifiedBlob};
 use beacon_chain::block_verification_types::{AsBlock, RpcBlock};
 use beacon_chain::data_column_verification::GossipVerifiedDataColumn;
@@ -34,8 +36,6 @@ use types::{
     FullPayloadBellatrix, Hash256, KzgProofs, SignedBeaconBlock, SignedBlindedBeaconBlock,
     SignedExecutionPayloadEnvelope,
 };
-use warp::http::StatusCode;
-use warp::reply::{Reply, Response};
 
 pub type UnverifiedBlobs<T> = Option<(
     KzgProofs<<T as BeaconChainTypes>::EthSpec>,
@@ -309,15 +309,15 @@ pub async fn publish_block<T: BeaconChainTypes, B: IntoGossipVerifiedBlock<T>>(
                 // None of the components provided in this HTTP request were new, so this was an
                 // entirely redundant duplicate request. Return a status code indicating this,
                 // which can be overridden based on config.
-                Ok(warp::reply::with_status(
-                    warp::reply::json(&ErrorMessage {
+                Ok((
+                    duplicate_status_code,
+                    axum::Json(ErrorMessage {
                         code: duplicate_status_code.as_u16(),
                         message: "duplicate block".to_string(),
                         stacktraces: vec![],
                     }),
-                    duplicate_status_code,
                 )
-                .into_response())
+                    .into_response())
             }
         }
         Err(BlockError::DuplicateImportStatusUnknown(root)) => {
@@ -628,7 +628,7 @@ async fn post_block_import_logging_and_response<T: BeaconChainTypes>(
             if is_locally_built_block {
                 late_block_logging(chain, seen_timestamp, block.message(), root, "local")
             }
-            Ok(warp::reply().into_response())
+            Ok(StatusCode::OK.into_response())
         }
         Ok(AvailabilityProcessingStatus::MissingComponents(_, block_root)) => {
             let msg = format!("Missing parts of block with root {:?}", block_root);
@@ -689,7 +689,7 @@ pub async fn publish_blinded_block<T: BeaconChainTypes>(
     } else {
         // From the fulu fork, builders are responsible for publishing and
         // will no longer return the full payload and blobs.
-        Ok(warp::reply().into_response())
+        Ok(StatusCode::OK.into_response())
     }
 }
 

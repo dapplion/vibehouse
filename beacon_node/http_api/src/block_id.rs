@@ -17,7 +17,8 @@ use types::{
 
 /// Wraps `eth2::types::BlockId` and provides a simple way to obtain a block or root for a given
 /// `BlockId`.
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
+#[serde(try_from = "String")]
 pub struct BlockId(pub CoreBlockId);
 
 type Finalized = bool;
@@ -464,6 +465,14 @@ impl FromStr for BlockId {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         CoreBlockId::from_str(s).map(Self)
+    }
+}
+
+impl TryFrom<String> for BlockId {
+    type Error = String;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        s.parse()
     }
 }
 

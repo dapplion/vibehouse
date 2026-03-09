@@ -9,7 +9,8 @@ use types::{BeaconState, Checkpoint, EthSpec, Fork, Hash256, Slot};
 
 /// Wraps `eth2::types::StateId` and provides common state-access functionality. E.g., reading
 /// states or parts of states from the database.
-#[derive(Debug)]
+#[derive(Debug, serde::Deserialize)]
+#[serde(try_from = "String")]
 pub struct StateId(pub CoreStateId);
 
 // More clarity when returning if the state is finalized or not in the root function.
@@ -238,6 +239,14 @@ impl FromStr for StateId {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         CoreStateId::from_str(s).map(Self)
+    }
+}
+
+impl TryFrom<String> for StateId {
+    type Error = String;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        s.parse()
     }
 }
 

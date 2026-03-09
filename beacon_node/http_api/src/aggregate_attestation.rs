@@ -2,13 +2,13 @@ use crate::api_error::ApiError;
 use crate::api_types::GenericResponse;
 use crate::unsupported_version_rejection;
 use crate::version::{V1, V2, add_consensus_version_header, add_ssz_content_type_header};
+use axum::response::{IntoResponse, Response};
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use eth2::types::{self as api_types, EndpointVersion, Hash256, Slot};
 use ssz::Encode;
 use std::sync::Arc;
 use types::beacon_response::EmptyMetadata;
 use types::{CommitteeIndex, ForkVersionedResponse};
-use warp::reply::{Reply, Response};
 
 pub fn get_aggregate_attestation<T: BeaconChainTypes>(
     slot: Slot,
@@ -35,14 +35,13 @@ pub fn get_aggregate_attestation<T: BeaconChainTypes>(
     };
 
     if matches!(accept_header, Some(api_types::Accept::Ssz)) {
-        return warp::http::Response::builder()
+        let resp = axum::http::Response::builder()
             .status(200)
-            .body(warp::hyper::Body::from(
-                aggregate_attestation.as_ssz_bytes(),
-            ))
-            .map(add_ssz_content_type_header)
+            .body(axum::body::Body::from(aggregate_attestation.as_ssz_bytes()))
+            .map(|r| add_ssz_content_type_header(r.into_response()))
             .map(|resp| add_consensus_version_header(resp, fork_name))
-            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}",)));
+            .map_err(|e| ApiError::server_error(format!("failed to create response: {e}")))?;
+        return Ok(resp);
     }
 
     if endpoint_version == V2 {
@@ -52,11 +51,11 @@ pub fn get_aggregate_attestation<T: BeaconChainTypes>(
             data: aggregate_attestation,
         };
         Ok(add_consensus_version_header(
-            warp::reply::json(&fork_versioned_response).into_response(),
+            axum::Json(&fork_versioned_response).into_response(),
             fork_name,
         ))
     } else if endpoint_version == V1 {
-        Ok(warp::reply::json(&GenericResponse::from(aggregate_attestation)).into_response())
+        Ok(axum::Json(GenericResponse::from(aggregate_attestation)).into_response())
     } else {
         Err(unsupported_version_rejection(endpoint_version))
     }

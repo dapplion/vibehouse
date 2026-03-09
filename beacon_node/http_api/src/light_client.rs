@@ -3,6 +3,7 @@ use crate::version::{
     ResponseIncludesVersion, add_consensus_version_header, add_ssz_content_type_header,
     beacon_response,
 };
+use axum::response::{IntoResponse, Response};
 use beacon_chain::{BeaconChain, BeaconChainError, BeaconChainTypes};
 use eth2::types::{
     self as api_types, LightClientUpdate, LightClientUpdateResponseChunk,
@@ -11,7 +12,6 @@ use eth2::types::{
 use ssz::Encode;
 use std::sync::Arc;
 use types::{BeaconResponse, EthSpec, ForkName, Hash256, LightClientBootstrap};
-use warp::reply::{Reply, Response};
 
 const MAX_REQUEST_LIGHT_CLIENT_UPDATES: u64 = 128;
 
@@ -35,10 +35,10 @@ pub fn get_light_client_updates<T: BeaconChainTypes>(
                 })
                 .collect();
 
-            warp::http::Response::builder()
+            axum::http::Response::builder()
                 .status(200)
-                .body(warp::hyper::Body::from(response_chunks))
-                .map(add_ssz_content_type_header)
+                .body(axum::body::Body::from(response_chunks))
+                .map(|r| add_ssz_content_type_header(r.into_response()))
                 .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e)))
         }
         _ => {
@@ -46,7 +46,7 @@ pub fn get_light_client_updates<T: BeaconChainTypes>(
                 .iter()
                 .map(|update| map_light_client_update_to_json_response::<T>(&chain, update.clone()))
                 .collect::<Vec<BeaconResponse<LightClientUpdate<T::EthSpec>>>>();
-            Ok(warp::reply::json(&fork_versioned_response).into_response())
+            Ok(axum::Json(fork_versioned_response).into_response())
         }
     }
 }
@@ -72,18 +72,18 @@ pub fn get_light_client_bootstrap<T: BeaconChainTypes>(
         ))?;
 
     match accept_header {
-        Some(api_types::Accept::Ssz) => warp::http::Response::builder()
+        Some(api_types::Accept::Ssz) => axum::http::Response::builder()
             .status(200)
-            .body(warp::hyper::Body::from(
+            .body(axum::body::Body::from(
                 light_client_bootstrap.as_ssz_bytes(),
             ))
-            .map(|res| add_consensus_version_header(res, fork_name))
+            .map(|r| add_consensus_version_header(r.into_response(), fork_name))
             .map(add_ssz_content_type_header)
             .map_err(|e| ApiError::server_error(format!("failed to create response: {}", e))),
         _ => {
             let fork_versioned_response =
                 map_light_client_bootstrap_to_json_response::<T>(fork_name, light_client_bootstrap);
-            Ok(warp::reply::json(&fork_versioned_response).into_response())
+            Ok(axum::Json(fork_versioned_response).into_response())
         }
     }
 }
