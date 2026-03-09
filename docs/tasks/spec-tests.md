@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan + codebase audit (run 666)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 11 tracked Gloas PRs still OPEN (dropped #4747 Fast Confirmation Rule — not core ePBS)
+- PR #4979 (PTC Lookbehind) still blocked, last activity Mar 7
+- CI green: all 7 jobs passed; nightly 5 consecutive greens (Mar 5-9)
+- Deep codebase audit: zero TODO/FIXME/HACK/XXX in Rust source, zero compiler warnings, zero clippy warnings
+- Explored untested error paths: BuilderPaymentIndexOutOfBounds and BitFieldError in envelope_processing are defensive checks for structurally impossible states (Vector always correctly sized) — low-value to test
+- cargo audit: unchanged (1 medium rsa advisory, transitive, no fix)
+- No code changes needed — spec stable, codebase clean
+
 ### 2026-03-09 — spec scan + PR 4979 readiness review (run 665)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release, no new Gloas PR merges
 - All 12 tracked Gloas PRs still OPEN
