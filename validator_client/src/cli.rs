@@ -351,14 +351,14 @@ pub struct ValidatorClient {
     #[clap(
         long,
         value_name = "BOOLEAN",
-        help = "If this flag is set, Lighthouse will delay startup for three epochs and \
+        help = "If this flag is set, vibehouse will delay startup for three epochs and \
                 monitor for messages on the network by any of the validators managed by this \
                 client. This will result in three (possibly four) epochs worth of missed \
                 attestations. If an attestation is detected during this period, it means it is \
                 very likely that you are running a second validator client with the same keys. \
                 This validator client will immediately shutdown if this is detected in order \
                 to avoid potentially committing a slashable offense. Use this flag in order to \
-                ENABLE this functionality, without this flag Lighthouse will begin attesting \
+                ENABLE this functionality, without this flag vibehouse will begin attesting \
                 immediately.",
         display_order = 0,
         help_heading = FLAG_HEADER
@@ -368,7 +368,7 @@ pub struct ValidatorClient {
     #[clap(
         long,
         alias = "private-tx-proposals",
-        help = "If this flag is set, Lighthouse will query the Beacon Node for only block \
+        help = "If this flag is set, vibehouse will query the Beacon Node for only block \
                 headers during proposals and will sign over headers. Useful for outsourcing \
                 execution payload construction during proposals.",
         display_order = 0,
@@ -431,7 +431,7 @@ pub struct ValidatorClient {
 
     #[clap(
         long,
-        help = "If this flag is set, Lighthouse will always prefer blocks \
+        help = "If this flag is set, vibehouse will always prefer blocks \
                 constructed by builders, regardless of payload value.",
         display_order = 0,
         help_heading = FLAG_HEADER
@@ -468,7 +468,7 @@ pub struct ValidatorClient {
 
     #[clap(
         long,
-        help = "Disable Lighthouse's slashing protection for all web3signer keys. This can \
+        help = "Disable vibehouse's slashing protection for all web3signer keys. This can \
                 reduce the I/O burden on the VC but is only safe if slashing protection \
                 is enabled on the remote signer and is implemented correctly. DO NOT ENABLE \
                 THIS FLAG UNLESS YOU ARE CERTAIN THAT SLASHING PROTECTION IS ENABLED ON \

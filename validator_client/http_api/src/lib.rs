@@ -726,7 +726,7 @@ async fn post_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
             };
             Ok(GenericResponse::from(response))
         } else {
-            Err(ApiError::ServerError("Lighthouse shutting down".into()))
+            Err(ApiError::ServerError("vibehouse shutting down".into()))
         }
     })
     .await
@@ -759,7 +759,7 @@ async fn post_validators_mnemonic<T: 'static + SlotClock + Clone, E: EthSpec>(
                 ))?;
             Ok(GenericResponse::from(validators))
         } else {
-            Err(ApiError::ServerError("Lighthouse shutting down".into()))
+            Err(ApiError::ServerError("vibehouse shutting down".into()))
         }
     })
     .await
@@ -822,7 +822,7 @@ async fn post_validators_keystore<T: 'static + SlotClock + Clone, E: EthSpec>(
                         ApiError::ServerError(format!("failed to initialize validator: {:?}", e))
                     })?
             } else {
-                return Err(ApiError::ServerError("Lighthouse shutting down".into()));
+                return Err(ApiError::ServerError("vibehouse shutting down".into()));
             }
         };
 
@@ -870,7 +870,7 @@ async fn post_validators_web3signer<T: 'static + SlotClock + Clone, E: EthSpec>(
             ))?;
             Ok(())
         } else {
-            Err(ApiError::ServerError("Lighthouse shutting down".into()))
+            Err(ApiError::ServerError("vibehouse shutting down".into()))
         }
     })
     .await
@@ -950,7 +950,7 @@ async fn post_validators_voluntary_exits<T: 'static + SlotClock + Clone, E: EthS
             ))?;
             Ok(signed_voluntary_exit)
         } else {
-            Err(ApiError::ServerError("Lighthouse shutting down".into()))
+            Err(ApiError::ServerError("vibehouse shutting down".into()))
         }
     })
     .await
@@ -1120,7 +1120,7 @@ async fn patch_validators<T: 'static + SlotClock + Clone, E: EthSpec>(
                         })?;
                     Ok(())
                 } else {
-                    Err(ApiError::ServerError("Lighthouse shutting down".into()))
+                    Err(ApiError::ServerError("vibehouse shutting down".into()))
                 }
             }
         }
