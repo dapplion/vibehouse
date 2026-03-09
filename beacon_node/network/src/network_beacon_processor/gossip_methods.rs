@@ -2493,6 +2493,39 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     "attn_comm_index_non_zero",
                 );
             }
+            AttnError::PayloadEnvelopeNotSeen { beacon_block_root } => {
+                /*
+                 * [Gloas:EIP7732] Index-1 attestation for a block whose execution
+                 * payload envelope has not been seen yet. IGNORE per spec — MAY queue
+                 * and SHOULD request envelope via ExecutionPayloadEnvelopesByRoot.
+                 */
+                debug!(
+                    %peer_id,
+                    block = ?beacon_block_root,
+                    ?attestation_type,
+                    "Index-1 attestation but payload envelope not seen"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
+                return;
+            }
+            AttnError::PayloadNotValidated { beacon_block_root } => {
+                /*
+                 * [Gloas:EIP7732] Index-1 attestation for a block whose execution
+                 * payload has not passed EL validation. REJECT per spec.
+                 */
+                debug!(
+                    %peer_id,
+                    block = ?beacon_block_root,
+                    ?attestation_type,
+                    "Index-1 attestation but payload not validated"
+                );
+                self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Reject);
+                self.gossip_penalize_peer(
+                    peer_id,
+                    PeerAction::LowToleranceError,
+                    "attn_payload_not_validated",
+                );
+            }
             AttnError::UnknownHeadBlock { beacon_block_root } => {
                 trace!(
                     %peer_id,

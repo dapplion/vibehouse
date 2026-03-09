@@ -18756,30 +18756,21 @@ async fn gloas_index_1_attestation_for_unrevealed_payload_rejected_at_fork_choic
     agg_sig.add_assign(&harness.validator_keypairs[validator_index].sk.sign(message));
     attestation.signature = agg_sig;
 
-    // Step 1: Gossip verification should PASS (doesn't check payload_revealed)
-    let verified = harness
+    // [Gloas:EIP7732] consensus-specs PR #4939:
+    // Gossip verification now rejects index-1 attestations when the payload
+    // envelope has not been seen (PayloadEnvelopeNotSeen).
+    let result = harness
         .chain
-        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id))
-        .expect(
-            "gossip verification should pass for index=1 attestation (no payload_revealed check)",
-        );
-
-    // Step 2: Apply to fork choice — should FAIL with PayloadNotRevealed
-    let err = harness
-        .chain
-        .apply_attestation_to_fork_choice(&verified)
-        .expect_err(
-            "apply_attestation_to_fork_choice should reject index=1 for unrevealed payload",
-        );
+        .verify_unaggregated_attestation_for_gossip(&attestation, Some(subnet_id));
+    assert!(
+        result.is_err(),
+        "gossip verification should reject index=1 attestation when envelope not seen"
+    );
+    let err = result.err().unwrap();
 
     assert!(
-        matches!(
-            err,
-            BeaconChainError::ForkChoiceError(fork_choice::Error::InvalidAttestation(
-                fork_choice::InvalidAttestation::PayloadNotRevealed { .. }
-            ))
-        ),
-        "expected PayloadNotRevealed error, got {:?}",
+        matches!(err, AttestationError::PayloadEnvelopeNotSeen { .. }),
+        "expected PayloadEnvelopeNotSeen error, got {:?}",
         err
     );
 }

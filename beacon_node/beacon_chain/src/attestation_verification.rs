@@ -42,7 +42,7 @@ use crate::{
 };
 use bls::verify_signature_sets;
 use itertools::Itertools;
-use proto_array::Block as ProtoBlock;
+use proto_array::{Block as ProtoBlock, ExecutionStatus};
 use slot_clock::SlotClock;
 use state_processing::{
     common::{
@@ -240,6 +240,20 @@ pub enum Error {
     ///
     /// The peer has sent an invalid message.
     Invalid(AttestationValidationError),
+    /// The attestation has `data.index == 1` (payload present) but the execution payload
+    /// envelope for the referenced block has not been seen yet.
+    ///
+    /// ## Peer scoring
+    ///
+    /// The attestation may be valid but we can't verify it yet. The envelope should be requested.
+    PayloadEnvelopeNotSeen { beacon_block_root: Hash256 },
+    /// The attestation has `data.index == 1` (payload present) but the execution payload
+    /// for the referenced block has not passed EL validation.
+    ///
+    /// ## Peer scoring
+    ///
+    /// The peer has sent an invalid message.
+    PayloadNotValidated { beacon_block_root: Hash256 },
     /// The attestation head block is too far behind the attestation slot, causing many skip slots.
     /// This is deemed a DoS risk.
     TooManySkippedSlots {
@@ -594,6 +608,13 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
             ));
         }
 
+        // [New in Gloas:EIP7732] consensus-specs PR #4939:
+        // Index-1 attestations (payload present for past block) require the
+        // execution payload envelope to have been seen and validated.
+        if fork_name.gloas_enabled() && attestation.data().index == 1 {
+            verify_payload_envelope_for_index1(&head_block, attestation.data())?;
+        }
+
         // Ensure that the attestation has participants.
         if attestation.is_aggregation_bits_zero() {
             Err(Error::EmptyAggregationBitfield)
@@ -900,6 +921,13 @@ impl<'a, T: BeaconChainTypes> IndexedUnaggregatedAttestation<'a, T> {
             return Err(Error::CommitteeIndexNonZero(
                 attestation.data.index as usize,
             ));
+        }
+
+        // [New in Gloas:EIP7732] consensus-specs PR #4939:
+        // Index-1 attestations (payload present for past block) require the
+        // execution payload envelope to have been seen and validated.
+        if fork_name.gloas_enabled() && attestation.data.index == 1 {
+            verify_payload_envelope_for_index1(&head_block, &attestation.data)?;
         }
 
         Ok(())
@@ -1297,6 +1325,31 @@ pub fn verify_attestation_signature<T: BeaconChainTypes>(
     } else {
         Err(Error::InvalidSignature)
     }
+}
+
+/// [New in Gloas:EIP7732] consensus-specs PR #4939:
+/// Verifies that index-1 attestations (payload present for a past block) have the
+/// corresponding execution payload envelope seen and validated.
+///
+/// - [IGNORE] If index == 1, the envelope must have been seen.
+/// - [REJECT] If index == 1, the execution payload must have passed validation.
+fn verify_payload_envelope_for_index1(
+    head_block: &ProtoBlock,
+    attestation_data: &AttestationData,
+) -> Result<(), Error> {
+    let beacon_block_root = attestation_data.beacon_block_root;
+
+    // [IGNORE] The execution payload envelope must have been seen.
+    if !head_block.envelope_received {
+        return Err(Error::PayloadEnvelopeNotSeen { beacon_block_root });
+    }
+
+    // [REJECT] The execution payload must have passed EL validation.
+    if matches!(head_block.execution_status, ExecutionStatus::Invalid(_)) {
+        return Err(Error::PayloadNotValidated { beacon_block_root });
+    }
+
+    Ok(())
 }
 
 /// Verifies that the `attestation.data.target.root` is indeed the target root of the block at
