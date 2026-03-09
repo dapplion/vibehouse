@@ -27,9 +27,6 @@ use beacon_chain::{
 };
 use beacon_processor::{Work, WorkEvent};
 use lighthouse_network::{Client, MessageAcceptance, MessageId, PeerAction, PeerId, ReportSource};
-use lighthouse_tracing::{
-    SPAN_PROCESS_GOSSIP_BLOB, SPAN_PROCESS_GOSSIP_BLOCK, SPAN_PROCESS_GOSSIP_DATA_COLUMN,
-};
 use logging::crit;
 use operation_pool::ReceivedPreCapella;
 use slot_clock::SlotClock;
@@ -49,6 +46,9 @@ use types::{
     SignedContributionAndProof, SignedProposerPreferences, SignedRoot, SignedVoluntaryExit,
     SingleAttestation, Slot, SubnetId, SyncCommitteeMessage, SyncSubnetId,
     beacon_block::BlockImportSource,
+};
+use vibehouse_tracing::{
+    SPAN_PROCESS_GOSSIP_BLOB, SPAN_PROCESS_GOSSIP_BLOCK, SPAN_PROCESS_GOSSIP_DATA_COLUMN,
 };
 
 use beacon_processor::work_reprocessing_queue::QueuedColumnReconstruction;

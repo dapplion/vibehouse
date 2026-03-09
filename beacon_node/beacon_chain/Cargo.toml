@@ -32,7 +32,7 @@ hex = { workspace = true }
 int_to_bytes = { workspace = true }
 itertools = { workspace = true }
 kzg = { workspace = true }
-lighthouse_tracing = { workspace = true }
+vibehouse_tracing = { workspace = true }
 vibehouse_version = { workspace = true }
 logging = { workspace = true }
 lru = { workspace = true }

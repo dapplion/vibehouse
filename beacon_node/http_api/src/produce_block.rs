@@ -12,11 +12,11 @@ use beacon_chain::{
     BeaconBlockResponseWrapper, BeaconChain, BeaconChainTypes, ProduceBlockVerification,
 };
 use eth2::types::{self as api_types, ProduceBlockV3Metadata, SkipRandaoVerification};
-use lighthouse_tracing::{SPAN_PRODUCE_BLOCK_V2, SPAN_PRODUCE_BLOCK_V3};
 use ssz::Encode;
 use std::sync::Arc;
 use tracing::instrument;
 use types::{payload::BlockProductionVersion, *};
+use vibehouse_tracing::{SPAN_PRODUCE_BLOCK_V2, SPAN_PRODUCE_BLOCK_V3};
 
 /// If default boost factor is provided in validator/blocks v3 request, we will skip the calculation
 /// to keep the precision.

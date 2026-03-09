@@ -21,11 +21,6 @@ use beacon_processor::{
 use beacon_processor::{Work, WorkEvent};
 use lighthouse_network::PeerAction;
 use lighthouse_network::service::api_types::CustodyBackfillBatchId;
-use lighthouse_tracing::{
-    SPAN_CUSTODY_BACKFILL_SYNC_IMPORT_COLUMNS, SPAN_PROCESS_CHAIN_SEGMENT,
-    SPAN_PROCESS_CHAIN_SEGMENT_BACKFILL, SPAN_PROCESS_RPC_BLOBS, SPAN_PROCESS_RPC_BLOCK,
-    SPAN_PROCESS_RPC_CUSTODY_COLUMNS,
-};
 use logging::crit;
 use std::sync::Arc;
 use std::time::Duration;
@@ -34,6 +29,11 @@ use tracing::{debug, debug_span, error, info, instrument, warn};
 use types::beacon_block_body::format_kzg_commitments;
 use types::blob_sidecar::FixedBlobSidecarList;
 use types::{BlockImportSource, DataColumnSidecarList, Epoch, Hash256};
+use vibehouse_tracing::{
+    SPAN_CUSTODY_BACKFILL_SYNC_IMPORT_COLUMNS, SPAN_PROCESS_CHAIN_SEGMENT,
+    SPAN_PROCESS_CHAIN_SEGMENT_BACKFILL, SPAN_PROCESS_RPC_BLOBS, SPAN_PROCESS_RPC_BLOCK,
+    SPAN_PROCESS_RPC_CUSTODY_COLUMNS,
+};
 
 /// Id associated to a batch processing request, either a sync batch or a parent lookup.
 #[derive(Clone, Debug, PartialEq)]

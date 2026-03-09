@@ -10,12 +10,12 @@ use lighthouse_network::{
     service::api_types::{CustodyBackFillBatchRequestId, CustodyBackfillBatchId},
     types::CustodyBackFillState,
 };
-use lighthouse_tracing::SPAN_CUSTODY_BACKFILL_SYNC_BATCH_REQUEST;
 use logging::crit;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use strum::IntoEnumIterator;
 use tracing::{debug, error, info, info_span, warn};
 use types::{DataColumnSidecarList, Epoch, EthSpec};
+use vibehouse_tracing::SPAN_CUSTODY_BACKFILL_SYNC_BATCH_REQUEST;
 
 use crate::metrics;
 use crate::sync::{

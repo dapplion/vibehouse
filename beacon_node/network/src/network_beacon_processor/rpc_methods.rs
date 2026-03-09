@@ -11,14 +11,6 @@ use lighthouse_network::rpc::methods::{
 };
 use lighthouse_network::rpc::*;
 use lighthouse_network::{PeerId, ReportSource, Response, SyncInfo};
-use lighthouse_tracing::{
-    SPAN_HANDLE_BLOBS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST,
-    SPAN_HANDLE_BLOCKS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOCKS_BY_ROOT_REQUEST,
-    SPAN_HANDLE_DATA_COLUMNS_BY_RANGE_REQUEST, SPAN_HANDLE_DATA_COLUMNS_BY_ROOT_REQUEST,
-    SPAN_HANDLE_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_REQUEST, SPAN_HANDLE_LIGHT_CLIENT_BOOTSTRAP,
-    SPAN_HANDLE_LIGHT_CLIENT_FINALITY_UPDATE, SPAN_HANDLE_LIGHT_CLIENT_OPTIMISTIC_UPDATE,
-    SPAN_HANDLE_LIGHT_CLIENT_UPDATES_BY_RANGE,
-};
 use methods::LightClientUpdatesByRangeRequest;
 use slot_clock::SlotClock;
 use std::collections::{HashMap, HashSet, hash_map::Entry};
@@ -27,6 +19,14 @@ use tokio_stream::StreamExt;
 use tracing::{Span, debug, error, field, instrument, warn};
 use types::blob_sidecar::BlobIdentifier;
 use types::{ColumnIndex, Epoch, EthSpec, Hash256, Slot};
+use vibehouse_tracing::{
+    SPAN_HANDLE_BLOBS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOBS_BY_ROOT_REQUEST,
+    SPAN_HANDLE_BLOCKS_BY_RANGE_REQUEST, SPAN_HANDLE_BLOCKS_BY_ROOT_REQUEST,
+    SPAN_HANDLE_DATA_COLUMNS_BY_RANGE_REQUEST, SPAN_HANDLE_DATA_COLUMNS_BY_ROOT_REQUEST,
+    SPAN_HANDLE_EXECUTION_PAYLOAD_ENVELOPES_BY_ROOT_REQUEST, SPAN_HANDLE_LIGHT_CLIENT_BOOTSTRAP,
+    SPAN_HANDLE_LIGHT_CLIENT_FINALITY_UPDATE, SPAN_HANDLE_LIGHT_CLIENT_OPTIMISTIC_UPDATE,
+    SPAN_HANDLE_LIGHT_CLIENT_UPDATES_BY_RANGE,
+};
 
 impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
     /* Auxiliary functions */

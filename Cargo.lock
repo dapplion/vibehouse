@@ -1334,8 +1334,6 @@ dependencies = [
  "int_to_bytes",
  "itertools 0.14.0",
  "kzg",
- "lighthouse_tracing",
- "lighthouse_version",
  "logging",
  "lru",
  "maplit",
@@ -1370,6 +1368,8 @@ dependencies = [
  "tree_hash",
  "tree_hash_derive",
  "types",
+ "vibehouse_tracing",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -1699,13 +1699,13 @@ version = "0.1.0"
 dependencies = [
  "eth2",
  "ethereum_ssz",
- "lighthouse_version",
  "mockito",
  "reqwest",
  "sensitive_url",
  "serde",
  "serde_json",
  "tokio",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -3622,7 +3622,6 @@ dependencies = [
  "hex",
  "jsonwebtoken",
  "kzg",
- "lighthouse_version",
  "logging",
  "lru",
  "metrics",
@@ -3646,6 +3645,7 @@ dependencies = [
  "tree_hash",
  "tree_hash_derive",
  "types",
+ "vibehouse_version",
  "zeroize",
 ]
 
@@ -4473,8 +4473,6 @@ dependencies = [
  "health_metrics",
  "hex",
  "lighthouse_network",
- "lighthouse_tracing",
- "lighthouse_version",
  "logging",
  "lru",
  "metrics",
@@ -4501,6 +4499,8 @@ dependencies = [
  "tracing",
  "tree_hash",
  "types",
+ "vibehouse_tracing",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -4511,7 +4511,6 @@ dependencies = [
  "beacon_chain",
  "health_metrics",
  "lighthouse_network",
- "lighthouse_version",
  "logging",
  "malloc_utils",
  "metrics",
@@ -4524,6 +4523,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "types",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -5145,7 +5145,6 @@ dependencies = [
  "execution_layer",
  "hex",
  "lighthouse_network",
- "lighthouse_version",
  "malloc_utils",
  "network_utils",
  "rayon",
@@ -5160,6 +5159,7 @@ dependencies = [
  "tree_hash",
  "types",
  "validator_dir",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -5638,7 +5638,6 @@ dependencies = [
  "libp2p",
  "libp2p-gossipsub",
  "libp2p-mplex",
- "lighthouse_version",
  "local-ip-address",
  "logging",
  "lru",
@@ -5666,18 +5665,7 @@ dependencies = [
  "tracing-subscriber",
  "types",
  "unsigned-varint 0.8.0",
-]
-
-[[package]]
-name = "lighthouse_tracing"
-version = "0.1.0"
-
-[[package]]
-name = "lighthouse_version"
-version = "0.1.0"
-dependencies = [
- "git-version",
- "regex",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -6119,7 +6107,6 @@ version = "0.1.0"
 dependencies = [
  "eth2",
  "health_metrics",
- "lighthouse_version",
  "metrics",
  "regex",
  "reqwest",
@@ -6130,6 +6117,7 @@ dependencies = [
  "task_executor",
  "tokio",
  "tracing",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -6311,7 +6299,6 @@ dependencies = [
  "kzg",
  "libp2p-gossipsub",
  "lighthouse_network",
- "lighthouse_tracing",
  "logging",
  "lru_cache",
  "matches",
@@ -6334,6 +6321,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "types",
+ "vibehouse_tracing",
 ]
 
 [[package]]
@@ -10841,7 +10829,6 @@ dependencies = [
  "health_metrics",
  "initialized_validators",
  "itertools 0.14.0",
- "lighthouse_version",
  "logging",
  "parking_lot",
  "rand 0.9.2",
@@ -10865,6 +10852,7 @@ dependencies = [
  "validator_services",
  "validator_store",
  "vibehouse_validator_store",
+ "vibehouse_version",
  "zeroize",
 ]
 
@@ -10874,7 +10862,6 @@ version = "0.1.0"
 dependencies = [
  "axum 0.8.8",
  "health_metrics",
- "lighthouse_version",
  "logging",
  "malloc_utils",
  "metrics",
@@ -10888,6 +10875,7 @@ dependencies = [
  "validator_metrics",
  "validator_services",
  "vibehouse_validator_store",
+ "vibehouse_version",
 ]
 
 [[package]]
@@ -11017,7 +11005,6 @@ dependencies = [
  "futures",
  "initialized_validators",
  "lighthouse_network",
- "lighthouse_version",
  "logging",
  "malloc_utils",
  "metrics",
@@ -11040,8 +11027,13 @@ dependencies = [
  "validator_client",
  "validator_dir",
  "validator_manager",
+ "vibehouse_version",
  "zeroize",
 ]
+
+[[package]]
+name = "vibehouse_tracing"
+version = "0.1.0"
 
 [[package]]
 name = "vibehouse_validator_store"
@@ -11068,6 +11060,14 @@ dependencies = [
  "validator_metrics",
  "validator_store",
  "zeroize",
+]
+
+[[package]]
+name = "vibehouse_version"
+version = "0.1.0"
+dependencies = [
+ "git-version",
+ "regex",
 ]
 
 [[package]]

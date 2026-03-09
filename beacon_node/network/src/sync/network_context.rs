@@ -31,7 +31,6 @@ use lighthouse_network::service::api_types::{
     DataColumnsByRootRequester, Id, SingleLookupReqId, SyncRequestId,
 };
 use lighthouse_network::{Client, NetworkGlobals, PeerAction, PeerId, ReportSource};
-use lighthouse_tracing::{SPAN_OUTGOING_BLOCK_BY_ROOT_REQUEST, SPAN_OUTGOING_RANGE_REQUEST};
 use parking_lot::RwLock;
 pub use requests::LookupVerifyError;
 use requests::{
@@ -54,6 +53,7 @@ use types::{
     BlobSidecar, BlockImportSource, ColumnIndex, DataColumnSidecar, DataColumnSidecarList, EthSpec,
     ForkContext, Hash256, SignedBeaconBlock, Slot,
 };
+use vibehouse_tracing::{SPAN_OUTGOING_BLOCK_BY_ROOT_REQUEST, SPAN_OUTGOING_RANGE_REQUEST};
 
 pub mod custody;
 mod requests;

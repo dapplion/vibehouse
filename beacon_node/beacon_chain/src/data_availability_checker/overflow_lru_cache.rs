@@ -9,7 +9,6 @@ use crate::block_verification_types::{
 use crate::data_availability_checker::{Availability, AvailabilityCheckError};
 use crate::data_column_verification::KzgVerifiedCustodyDataColumn;
 use crate::{BeaconChainTypes, BlockProcessStatus};
-use lighthouse_tracing::SPAN_PENDING_COMPONENTS;
 use lru::LruCache;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::cmp::Ordering;
@@ -25,6 +24,7 @@ use types::{
     DataColumnSidecarList, Epoch, EthSpec, ExecutionProof, ExecutionProofSubnetId, ForkName,
     Hash256, RuntimeFixedVector, RuntimeVariableList, SignedBeaconBlock,
 };
+use vibehouse_tracing::SPAN_PENDING_COMPONENTS;
 
 #[derive(Clone)]
 pub enum CachedBlock<E: EthSpec> {

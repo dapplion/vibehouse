@@ -11,7 +11,7 @@ members = [
     "beacon_node/http_api",
     "beacon_node/http_metrics",
     "beacon_node/lighthouse_network",
-    "beacon_node/lighthouse_tracing",
+    "beacon_node/vibehouse_tracing",
     "beacon_node/network",
     "beacon_node/operation_pool",
     "beacon_node/store",
@@ -176,7 +176,7 @@ itertools = "0.14"
 kzg = { path = "crypto/kzg" }
 libsecp256k1 = "0.7"
 lighthouse_network = { path = "beacon_node/lighthouse_network" }
-lighthouse_tracing = { path = "beacon_node/lighthouse_tracing" }
+vibehouse_tracing = { path = "beacon_node/vibehouse_tracing" }
 vibehouse_validator_store = { path = "validator_client/vibehouse_validator_store" }
 vibehouse_version = { path = "common/vibehouse_version" }
 lockfile = { path = "common/lockfile" }

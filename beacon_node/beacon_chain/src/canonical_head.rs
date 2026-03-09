@@ -47,7 +47,6 @@ use fork_choice::{
     ResetPayloadStatuses,
 };
 use itertools::process_results;
-use lighthouse_tracing::SPAN_RECOMPUTE_HEAD;
 use logging::crit;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard, RwLockWriteGuard};
 use slot_clock::SlotClock;
@@ -61,6 +60,7 @@ use task_executor::{JoinHandle, ShutdownReason};
 use tracing::info_span;
 use tracing::{debug, error, info, instrument, warn};
 use types::*;
+use vibehouse_tracing::SPAN_RECOMPUTE_HEAD;
 
 /// Simple wrapper around `RwLock` that uses private visibility to prevent any other modules from
 /// accessing the contained lock without it being explicitly noted in this module.

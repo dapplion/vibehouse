@@ -13,7 +13,6 @@ use beacon_chain::BeaconChainTypes;
 use beacon_chain::block_verification_types::RpcBlock;
 use lighthouse_network::service::api_types::Id;
 use lighthouse_network::{PeerAction, PeerId};
-use lighthouse_tracing::SPAN_SYNCING_CHAIN;
 use logging::crit;
 use std::collections::{BTreeMap, HashSet, btree_map::Entry};
 use std::hash::{Hash, Hasher};
@@ -21,6 +20,7 @@ use std::marker::PhantomData;
 use strum::IntoStaticStr;
 use tracing::{Span, debug, instrument, warn};
 use types::{ColumnIndex, Epoch, EthSpec, Hash256, Slot};
+use vibehouse_tracing::SPAN_SYNCING_CHAIN;
 
 /// Blocks are downloaded in batches from peers. This constant specifies how many epochs worth of
 /// blocks per batch are requested _at most_. A batch may request less blocks to account for

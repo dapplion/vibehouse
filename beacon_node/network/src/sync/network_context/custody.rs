@@ -6,7 +6,6 @@ use beacon_chain::validator_monitor::timestamp_now;
 use fnv::FnvHashMap;
 use lighthouse_network::PeerId;
 use lighthouse_network::service::api_types::{CustodyId, DataColumnsByRootRequester};
-use lighthouse_tracing::SPAN_OUTGOING_CUSTODY_REQUEST;
 use parking_lot::RwLock;
 use std::collections::HashSet;
 use std::hash::{BuildHasher, RandomState};
@@ -15,6 +14,7 @@ use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 use tracing::{Span, debug, debug_span, warn};
 use types::{DataColumnSidecar, Hash256, data_column_sidecar::ColumnIndex};
 use types::{DataColumnSidecarList, EthSpec};
+use vibehouse_tracing::SPAN_OUTGOING_CUSTODY_REQUEST;
 
 use super::{LookupRequestResult, PeerGroup, RpcResponseResult, SyncNetworkContext};
 
