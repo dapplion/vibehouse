@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 741)
+- Spec scan: no new Gloas merges (recent merges all CI/tooling/deps), no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
+- CI (22875542079): all 6 jobs passed — check+clippy+fmt, EF tests, network+op_pool, http_api, beacon_chain, unit tests
+- cargo check --release: zero warnings; cargo audit: 1 known rsa advisory, 5 allowed warnings, no new vulnerabilities
+- Dependencies: rand_xorshift has minor update (0.4→0.5), not critical
+- Unwrap audit: consensus production code clean — only safe unwraps on type-bounded collections, zero in fork_choice/state_processing production paths
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 740)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), all 10 tracked PRs still OPEN
 - CI: check+clippy+fmt passed, EF tests passed, network+op_pool passed, http_api passed, beacon_chain/unit still running
