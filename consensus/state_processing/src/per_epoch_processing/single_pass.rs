@@ -2262,4 +2262,201 @@ mod tests {
             "promoted withdrawal should have the correct amount"
         );
     }
+
+    #[test]
+    fn fulu_state_skips_builder_payments_even_when_enabled() {
+        // A Fulu state should not run builder pending payments processing
+        // even when the config flag is enabled, because the fork gate checks
+        // gloas_enabled(). Verify no panic and no side effects.
+        let (mut state, spec) = make_fulu_state_with_lookahead();
+
+        // Initialize total active balance (required for epoch processing caches)
+        let epoch = state.current_epoch();
+        let total_active = NUM_VALIDATORS as u64 * BALANCE;
+        state.set_total_active_balance(epoch, total_active, &spec);
+
+        // Add participation data (required for rewards processing)
+        let mut full_participation = ParticipationFlags::default();
+        for flag_index in 0..NUM_FLAG_INDICES {
+            full_participation.add_flag(flag_index).unwrap();
+        }
+        let participation = List::new(vec![full_participation; NUM_VALIDATORS]).unwrap();
+        *state.previous_epoch_participation_mut().unwrap() = participation.clone();
+        *state.current_epoch_participation_mut().unwrap() = participation;
+        *state.inactivity_scores_mut().unwrap() = List::new(vec![0u64; NUM_VALIDATORS]).unwrap();
+
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            proposer_lookahead: true,
+            ..SinglePassConfig::disable_all()
+        };
+
+        // Should succeed — the fork gate skips builder payments for Fulu.
+        let _summary = process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        // Fulu state doesn't have builder_pending_withdrawals, so just verify
+        // it didn't panic and the state is still valid.
+        assert!(
+            state.as_fulu().is_ok(),
+            "state should still be a valid Fulu variant"
+        );
+    }
+
+    #[test]
+    fn gloas_proposer_lookahead_new_entries_match_independent_computation() {
+        // Verify that process_proposer_lookahead on a Gloas state produces
+        // new entries that match independently computed proposer indices.
+        // This is analogous to the Fulu test new_entries_match_independent_computation
+        // but ensures Gloas doesn't break the inherited proposer lookahead logic.
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![]);
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+
+        // Independently compute what the new epoch's proposers should be.
+        let next_epoch = state
+            .current_epoch()
+            .safe_add(spec.min_seed_lookahead.as_u64())
+            .unwrap()
+            .safe_add(1)
+            .unwrap();
+        let expected_proposers: Vec<u64> = state
+            .get_beacon_proposer_indices(next_epoch, &spec)
+            .unwrap()
+            .into_iter()
+            .map(|x| x as u64)
+            .collect();
+
+        process_proposer_lookahead(&mut state, &spec).unwrap();
+
+        let after = lookahead_vec(&state);
+        assert_eq!(
+            &after[slots_per_epoch..],
+            &expected_proposers,
+            "Gloas proposer lookahead new entries should match independent computation"
+        );
+    }
+
+    #[test]
+    fn gloas_combined_payments_and_lookahead_no_interference() {
+        // Run full epoch processing with both builder payments and proposer
+        // lookahead enabled. Verify that the two features don't interfere:
+        // payments are promoted correctly AND lookahead is shifted correctly.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payments = vec![
+            make_payment(quorum, 2_000_000_000, 0),
+            make_payment(quorum + 100, 3_000_000_000, 0),
+        ];
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(payments);
+
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+        let before = lookahead_vec(&state);
+        let second_epoch_before: Vec<u64> = before[slots_per_epoch..].to_vec();
+
+        let conf = SinglePassConfig::enable_all();
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+
+        // Builder payments: both should be promoted
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            2,
+            "both qualifying payments should be promoted"
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            2_000_000_000
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(1).unwrap().amount,
+            3_000_000_000
+        );
+
+        // Proposer lookahead: first epoch after should be second epoch before
+        let after = lookahead_vec(&state);
+        assert_eq!(
+            &after[..slots_per_epoch],
+            &second_epoch_before,
+            "lookahead shift should work correctly alongside builder payments"
+        );
+
+        // All new entries should be valid validator indices
+        let num_validators = state.validators().len();
+        for &proposer in &after[slots_per_epoch..] {
+            assert!(
+                (proposer as usize) < num_validators,
+                "new proposer {} should be valid index (< {})",
+                proposer,
+                num_validators
+            );
+        }
+    }
+
+    #[test]
+    fn large_total_active_balance_quorum_no_overflow() {
+        // Test that quorum computation works correctly with very large
+        // total_active_balance values. The arithmetic is:
+        //   per_slot = total / slots_per_epoch
+        //   quorum = per_slot * numerator / denominator
+        // With large balances this could overflow if not using safe_arith.
+        let quorum_large = quorum_for_balance(u64::MAX / 2);
+        let payment = make_payment(quorum_large, 1_000_000_000, 0);
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(vec![payment]);
+
+        let epoch = state.slot().epoch(E::slots_per_epoch());
+        state.set_total_active_balance(epoch, u64::MAX / 2, &spec);
+
+        // This should not panic — safe_arith handles the large values.
+        let conf = SinglePassConfig {
+            builder_pending_payments: true,
+            effective_balance_updates: true,
+            ..SinglePassConfig::disable_all()
+        };
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            1,
+            "payment at quorum for large balance should be promoted"
+        );
+    }
+
+    #[test]
+    fn gloas_epoch_processing_withdrawals_preserved_after_effective_balance_update() {
+        // Verify that builder pending withdrawals created during payment
+        // processing survive the effective balance update phase that runs after.
+        let quorum = quorum_for_balance(NUM_VALIDATORS as u64 * BALANCE);
+        let payments = vec![
+            make_payment(quorum, 1_000_000_000, 0),
+            make_payment(quorum, 2_000_000_000, 0),
+            make_payment(quorum, 3_000_000_000, 0),
+        ];
+        let (mut state, spec) = make_gloas_state_for_epoch_processing(payments);
+
+        // Run with full config to exercise effective_balance_updates after payments
+        let conf = SinglePassConfig::enable_all();
+        process_epoch_single_pass(&mut state, &spec, conf).unwrap();
+
+        let gloas = state.as_gloas().unwrap();
+        // All 3 promoted withdrawals should survive effective balance recalculation
+        assert_eq!(
+            gloas.builder_pending_withdrawals.len(),
+            3,
+            "withdrawals should be preserved after effective balance updates"
+        );
+        // Verify amounts are intact (not corrupted by balance updates)
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(0).unwrap().amount,
+            1_000_000_000
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(1).unwrap().amount,
+            2_000_000_000
+        );
+        assert_eq!(
+            gloas.builder_pending_withdrawals.get(2).unwrap().amount,
+            3_000_000_000
+        );
+    }
 }
