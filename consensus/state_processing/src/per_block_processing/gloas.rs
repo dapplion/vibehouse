@@ -8779,4 +8779,116 @@ mod tests {
             result,
         );
     }
+
+    // ── Validator sweep BLS credential handling ──────────────────
+
+    #[test]
+    fn validator_sweep_bls_credentials_skipped_not_withdrawn() {
+        // A validator with BLS (0x00) credentials that is fully withdrawable by epoch
+        // should be silently skipped by the validator sweep. The is_fully_withdrawable
+        // check requires has_execution_withdrawal_credential, which returns false for
+        // 0x00 prefix, so the validator never enters the withdrawal branch.
+        //
+        // This confirms the defense-in-depth guard at line 657 is unreachable
+        // under normal state — the withdrawability check filters first.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make validator 0 exited + past withdrawable epoch
+        let validator = state.get_validator_mut(0).unwrap();
+        validator.exit_epoch = Epoch::new(0);
+        validator.withdrawable_epoch = Epoch::new(0);
+
+        // Change credentials to BLS (0x00 prefix)
+        let mut bls_creds = [0u8; 32];
+        bls_creds[0] = 0x00;
+        bls_creds[1..].copy_from_slice(&[0xBB; 31]);
+        validator.withdrawal_credentials = Hash256::from_slice(&bls_creds);
+
+        // Fix all other validators to have correct effective_balance for partial withdrawals
+        for i in 1..8 {
+            state.get_validator_mut(i).unwrap().effective_balance = spec.min_activation_balance;
+        }
+
+        let result = process_withdrawals_gloas::<E>(&mut state, &spec);
+        assert!(
+            result.is_ok(),
+            "should succeed, skipping BLS validator: {:?}",
+            result
+        );
+
+        // Validator 0 should NOT appear in withdrawals
+        let withdrawals = &state.as_gloas().unwrap().payload_expected_withdrawals;
+        let v0_withdrawals: Vec<_> = withdrawals
+            .iter()
+            .filter(|w| w.validator_index == 0)
+            .collect();
+        assert!(
+            v0_withdrawals.is_empty(),
+            "BLS-credential validator should be skipped, not withdrawn"
+        );
+
+        // Other validators (with 0x01 credentials) should have partial withdrawals
+        let other_withdrawals: Vec<_> = withdrawals
+            .iter()
+            .filter(|w| w.validator_index != 0 && (w.validator_index & BUILDER_INDEX_FLAG) == 0)
+            .collect();
+        assert!(
+            !other_withdrawals.is_empty(),
+            "execution-credential validators should still be withdrawn"
+        );
+    }
+
+    #[test]
+    fn get_expected_withdrawals_bls_credentials_skipped() {
+        // Same scenario through the read-only path — BLS-credential fully withdrawable
+        // validators are silently skipped, consistent with the mutable path.
+        let (mut state, spec) = make_gloas_state(8, 34_000_000_000, 64_000_000_000);
+        make_parent_block_full(&mut state);
+
+        // Make validator 0 fully withdrawable with BLS credentials
+        let validator = state.get_validator_mut(0).unwrap();
+        validator.exit_epoch = Epoch::new(0);
+        validator.withdrawable_epoch = Epoch::new(0);
+        let mut bls_creds = [0u8; 32];
+        bls_creds[0] = 0x00;
+        bls_creds[1..].copy_from_slice(&[0xBB; 31]);
+        validator.withdrawal_credentials = Hash256::from_slice(&bls_creds);
+
+        for i in 1..8 {
+            state.get_validator_mut(i).unwrap().effective_balance = spec.min_activation_balance;
+        }
+
+        let expected = get_expected_withdrawals_gloas::<E>(&state, &spec).unwrap();
+
+        // Validator 0 should NOT appear
+        let v0_withdrawals: Vec<_> = expected.iter().filter(|w| w.validator_index == 0).collect();
+        assert!(
+            v0_withdrawals.is_empty(),
+            "read-only path should also skip BLS-credential validator"
+        );
+    }
+
+    // ── Payload attestation slot overflow ───────────────────────
+
+    #[test]
+    fn process_payload_attestation_slot_max_overflow() {
+        // When data.slot is u64::MAX, safe_add(1) should overflow and return WrongSlot.
+        let (mut state, spec) = make_gloas_state(8, 32_000_000_000, 64_000_000_000);
+        let parent_root = state.latest_block_header().parent_root;
+
+        // Use correct parent root so root check passes, but slot = MAX triggers overflow
+        let att = make_payload_attestation_raw(parent_root, Slot::new(u64::MAX));
+        let result = process_payload_attestation(&mut state, &att, VerifySignatures::False, &spec);
+        assert!(
+            matches!(
+                result,
+                Err(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::WrongSlot { .. }
+                ))
+            ),
+            "slot u64::MAX should trigger overflow → WrongSlot, got {:?}",
+            result,
+        );
+    }
 }
