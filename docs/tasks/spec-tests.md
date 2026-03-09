@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, all clear (run 732)
+- Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- Recent consensus-specs merges: all CI/tooling/deps (reftests, nightly matrix, sampling config, dep cleanups, EIP-6800 removal)
+- Tracked PRs all still OPEN: #4992 (PTC lookbehind minimal), #4979 (PTC lookbehind cache), #4954 (fork choice milliseconds)
+- CI (22871434411): all 6 jobs passed; nightly: 7+ consecutive green (Mar 4-9)
+- cargo check --release: zero warnings; cargo audit: same known rsa advisory, no new vulnerabilities
+- Deep code quality audit: no unwrap() in consensus paths, no unsafe blocks, all production code well-tested
+- Investigated JustifiedBalances clone in find_head hot path (proto_array_fork_choice.rs:611,633) — would require Arc refactor across ForkChoiceStore trait boundary, not worth the risk for unmeasured perf concern
+- No code changes needed
+
 ### 2026-03-09 — spec stable, all clear (run 731)
 - Spec scan: no new Gloas merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Recent consensus-specs merges: all CI/tooling/deps (reftests improvements, renovate, EIP-6800 removal, dep cleanups)
