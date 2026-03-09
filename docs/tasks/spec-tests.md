@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 679)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
+- PTC Lookbehind (#4979) still blocked (last activity Mar 7)
+- Fast Confirmation Rule (#4747) updated today — EIP-7805/FOCIL feature, not core ePBS, no action needed
+- CI in progress for run 678 push, nightly 3 consecutive greens (Mar 7-9)
+- Clippy clean (zero warnings), cargo audit unchanged (1 medium rsa advisory, transitive)
+- No code changes needed — spec stable, codebase in excellent shape
+
 ### 2026-03-09 — PTC edge case test + spec scan (run 678)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
