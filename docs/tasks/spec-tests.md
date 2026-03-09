@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — PTC edge case test + spec scan (run 678)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
+- All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
+- PTC Lookbehind (#4979) still blocked (last activity Mar 7)
+- CI in progress (all 6 jobs running), clippy clean, cargo audit unchanged (1 medium rsa advisory, transitive)
+- Added `ptc_committee_no_validators_returns_error` test: verifies `get_ptc_committee` returns `NoActiveValidators` error when committee has zero validators (previously untested error path)
+- Audited existing test coverage: bid processing error paths (out-of-bounds, insufficient balance, pubkey decompression, invalid signature, inactive builder) all already thoroughly tested
+
 ### 2026-03-09 — dep updates + spec scan (run 677)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - All 9 tracked Gloas PRs still OPEN (#4979, #4962, #4960, #4940, #4939, #4932, #4843, #4840, #4630)
