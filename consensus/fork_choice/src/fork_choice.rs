@@ -5488,6 +5488,114 @@ mod tests {
             );
         }
 
+        // ── on_invalid_execution_payload tests ──────────────────────────────
+
+        /// Invalidating a single block transitions it from Optimistic to Invalid.
+        #[test]
+        fn invalid_execution_payload_invalidate_one() {
+            let mut fc = new_fc();
+            let block_root = root(1);
+            insert_block(&mut fc, 1, block_root);
+
+            // First make it optimistic via envelope
+            let hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(block_root, hash).unwrap();
+
+            let idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&block_root)
+                .unwrap();
+            assert_eq!(
+                fc.proto_array.core_proto_array().nodes[idx].execution_status,
+                ExecutionStatus::Optimistic(hash),
+            );
+
+            fc.on_invalid_execution_payload(&InvalidationOperation::InvalidateOne { block_root })
+                .unwrap();
+
+            assert_eq!(
+                fc.proto_array.core_proto_array().nodes[idx].execution_status,
+                ExecutionStatus::Invalid(hash),
+                "should transition to Invalid after EL rejection"
+            );
+        }
+
+        /// Invalidating an unknown block root returns an error.
+        #[test]
+        fn invalid_execution_payload_unknown_root_errors() {
+            let mut fc = new_fc();
+            let unknown = root(999);
+
+            let err = fc
+                .on_invalid_execution_payload(&InvalidationOperation::InvalidateOne {
+                    block_root: unknown,
+                })
+                .unwrap_err();
+            assert!(
+                matches!(err, Error::FailedToProcessInvalidExecutionPayload(_)),
+                "expected FailedToProcessInvalidExecutionPayload, got {:?}",
+                err
+            );
+        }
+
+        /// InvalidateMany with a known latest_valid_ancestor invalidates
+        /// blocks between head and ancestor but not the ancestor itself.
+        #[test]
+        fn invalid_execution_payload_invalidate_many() {
+            let mut fc = new_fc();
+
+            // Insert parent block at slot 1
+            let parent_root = root(1);
+            insert_block(&mut fc, 1, parent_root);
+            let parent_hash = ExecutionBlockHash::repeat_byte(0xAA);
+            fc.on_execution_payload(parent_root, parent_hash).unwrap();
+
+            // Insert child block at slot 2 (child of genesis for simplicity,
+            // but with a parent_hash matching parent's execution hash)
+            let child_root = root(2);
+            insert_block(&mut fc, 2, child_root);
+            let child_hash = ExecutionBlockHash::repeat_byte(0xBB);
+            fc.on_execution_payload(child_root, child_hash).unwrap();
+
+            // Validate parent first
+            fc.on_valid_execution_payload(parent_root).unwrap();
+
+            // Now invalidate child with parent as latest valid ancestor
+            fc.on_invalid_execution_payload(&InvalidationOperation::InvalidateMany {
+                head_block_root: child_root,
+                always_invalidate_head: true,
+                latest_valid_ancestor: parent_hash,
+            })
+            .unwrap();
+
+            let parent_idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&parent_root)
+                .unwrap();
+            let child_idx = *fc
+                .proto_array
+                .core_proto_array()
+                .indices
+                .get(&child_root)
+                .unwrap();
+
+            assert_eq!(
+                fc.proto_array.core_proto_array().nodes[parent_idx].execution_status,
+                ExecutionStatus::Valid(parent_hash),
+                "latest valid ancestor should remain Valid"
+            );
+            assert!(
+                fc.proto_array.core_proto_array().nodes[child_idx]
+                    .execution_status
+                    .is_invalid(),
+                "head block should be Invalid after InvalidateMany"
+            );
+        }
+
         // ── Envelope → bid → PTC lifecycle integration test ───────────────
 
         /// Full lifecycle where envelope arrives BEFORE the bid gossip.

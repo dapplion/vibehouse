@@ -8405,4 +8405,101 @@ mod test_gloas_fork_choice {
             "same-slot vote with payload_present should still support PENDING"
         );
     }
+
+    // ── contains_invalid_payloads tests ──────────────────────────────
+
+    /// Insert a Gloas block with execution-enabled (Optimistic) status.
+    fn insert_optimistic_block(
+        fc: &mut ProtoArrayForkChoice,
+        slot: u64,
+        block_root: Hash256,
+        parent_root: Hash256,
+        execution_hash: ExecutionBlockHash,
+    ) {
+        fc.proto_array
+            .on_block::<MinimalEthSpec>(
+                Block {
+                    slot: Slot::new(slot),
+                    root: block_root,
+                    parent_root: Some(parent_root),
+                    state_root: Hash256::zero(),
+                    target_root: root(0),
+                    current_epoch_shuffling_id: junk_shuffling_id(),
+                    next_epoch_shuffling_id: junk_shuffling_id(),
+                    justified_checkpoint: genesis_checkpoint(),
+                    finalized_checkpoint: genesis_checkpoint(),
+                    execution_status: ExecutionStatus::Optimistic(execution_hash),
+                    unrealized_justified_checkpoint: Some(genesis_checkpoint()),
+                    unrealized_finalized_checkpoint: Some(genesis_checkpoint()),
+                    builder_index: Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD),
+                    payload_revealed: true,
+                    ptc_weight: 0,
+                    ptc_blob_data_available_weight: 0,
+                    payload_data_available: false,
+                    bid_block_hash: Some(execution_hash),
+                    bid_parent_block_hash: None,
+                    proposer_index: 0,
+                    ptc_timely: false,
+                    envelope_received: true,
+                },
+                Slot::new(slot),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn contains_invalid_payloads_empty_tree() {
+        let (mut fc, _spec) = new_gloas_fc();
+        assert!(
+            !fc.contains_invalid_payloads(),
+            "genesis-only tree should have no invalid payloads"
+        );
+    }
+
+    #[test]
+    fn contains_invalid_payloads_all_valid() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_optimistic_block(&mut fc, 1, root(1), root(0), exec_hash(1));
+        // Mark as valid
+        fc.process_execution_payload_validation(root(1)).unwrap();
+        assert!(
+            !fc.contains_invalid_payloads(),
+            "tree with only valid/irrelevant nodes should return false"
+        );
+    }
+
+    #[test]
+    fn contains_invalid_payloads_after_invalidation() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_optimistic_block(&mut fc, 1, root(1), root(0), exec_hash(1));
+        fc.process_execution_payload_invalidation::<MinimalEthSpec>(
+            &InvalidationOperation::InvalidateOne {
+                block_root: root(1),
+            },
+        )
+        .unwrap();
+        assert!(
+            fc.contains_invalid_payloads(),
+            "tree with an invalidated node should return true"
+        );
+    }
+
+    #[test]
+    fn contains_invalid_payloads_mixed_valid_and_invalid() {
+        let (mut fc, _spec) = new_gloas_fc();
+        insert_optimistic_block(&mut fc, 1, root(1), root(0), exec_hash(1));
+        insert_optimistic_block(&mut fc, 2, root(2), root(0), exec_hash(2));
+        // Validate one, invalidate the other
+        fc.process_execution_payload_validation(root(1)).unwrap();
+        fc.process_execution_payload_invalidation::<MinimalEthSpec>(
+            &InvalidationOperation::InvalidateOne {
+                block_root: root(2),
+            },
+        )
+        .unwrap();
+        assert!(
+            fc.contains_invalid_payloads(),
+            "tree with even one invalid node should return true"
+        );
+    }
 }
