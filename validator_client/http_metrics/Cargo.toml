@@ -8,7 +8,7 @@ authors = ["Sigma Prime <contact@sigmaprime.io>"]
 axum = { workspace = true }
 health_metrics = { workspace = true }
 vibehouse_validator_store = { workspace = true }
-lighthouse_version = { workspace = true }
+vibehouse_version = { workspace = true }
 logging = { workspace = true }
 malloc_utils = { workspace = true }
 metrics = { workspace = true }

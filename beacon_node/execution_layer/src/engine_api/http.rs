@@ -3,7 +3,6 @@
 use super::*;
 use crate::auth::Auth;
 use crate::json_structures::*;
-use lighthouse_version::{COMMIT_PREFIX, VERSION};
 use reqwest::header::CONTENT_TYPE;
 use sensitive_url::SensitiveUrl;
 use serde::de::DeserializeOwned;
@@ -11,6 +10,7 @@ use serde_json::json;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
+use vibehouse_version::{COMMIT_PREFIX, VERSION};
 
 use std::time::{Duration, Instant};
 

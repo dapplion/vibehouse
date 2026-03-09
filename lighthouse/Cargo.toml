@@ -49,7 +49,7 @@ environment = { workspace = true }
 eth2_network_config = { workspace = true }
 ethereum_hashing = { workspace = true }
 futures = { workspace = true }
-lighthouse_version = { workspace = true }
+vibehouse_version = { workspace = true }
 logging = { workspace = true }
 metrics = { workspace = true }
 network_utils = { workspace = true }

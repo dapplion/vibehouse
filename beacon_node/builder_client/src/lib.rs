@@ -27,7 +27,7 @@ pub const DEFAULT_TIMEOUT_MILLIS: u64 = 15000;
 pub const DEFAULT_GET_HEADER_TIMEOUT_MILLIS: u64 = 1000;
 
 /// Default user agent for HTTP requests.
-pub const DEFAULT_USER_AGENT: &str = lighthouse_version::VERSION;
+pub const DEFAULT_USER_AGENT: &str = vibehouse_version::VERSION;
 
 /// The value we set on the `ACCEPT` http header to indicate a preference for ssz response.
 pub const PREFERENCE_ACCEPT_VALUE: &str = "application/octet-stream;q=1.0,application/json;q=0.9";

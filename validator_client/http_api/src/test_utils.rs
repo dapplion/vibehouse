@@ -248,8 +248,8 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_lighthouse_version_invalid(self) -> Self {
-        self.client.get_lighthouse_version().await.unwrap_err();
+    pub async fn test_get_vibehouse_version_invalid(self) -> Self {
+        self.client.get_vibehouse_version().await.unwrap_err();
         self
     }
 
@@ -267,11 +267,11 @@ impl ApiTester {
         self
     }
 
-    pub async fn test_get_lighthouse_version(self) -> Self {
-        let result = self.client.get_lighthouse_version().await.unwrap().data;
+    pub async fn test_get_vibehouse_version(self) -> Self {
+        let result = self.client.get_vibehouse_version().await.unwrap().data;
 
         let expected = VersionData {
-            version: lighthouse_version::version_with_platform(),
+            version: vibehouse_version::version_with_platform(),
         };
 
         assert_eq!(result, expected);

@@ -7,7 +7,6 @@ use crate::NetworkConfig;
 use crate::types::{Enr, EnrAttestationBitfield, EnrSyncCommitteeBitfield};
 use alloy_rlp::bytes::Bytes;
 use libp2p::identity::Keypair;
-use lighthouse_version::{client_name, version};
 use network_utils::enr_ext::CombinedKeyExt;
 use network_utils::enr_ext::{EnrExt, QUIC_ENR_KEY, QUIC6_ENR_KEY};
 use ssz::{Decode, Encode};
@@ -18,6 +17,7 @@ use std::path::Path;
 use std::str::FromStr;
 use tracing::{debug, warn};
 use types::{ChainSpec, EnrForkId, EthSpec};
+use vibehouse_version::{client_name, version};
 
 /// The ENR field specifying the fork id.
 pub const ETH2_ENR_KEY: &str = "eth2";

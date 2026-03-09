@@ -8,7 +8,7 @@ edition = { workspace = true }
 [dependencies]
 eth2 = { workspace = true }
 health_metrics = { workspace = true }
-lighthouse_version = { workspace = true }
+vibehouse_version = { workspace = true }
 metrics = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }

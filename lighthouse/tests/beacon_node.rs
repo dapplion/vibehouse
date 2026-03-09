@@ -344,7 +344,7 @@ fn default_graffiti() {
                 config.beacon_graffiti,
                 GraffitiOrigin::Calculated(_)
             ));
-            let version_bytes = lighthouse_version::VERSION.as_bytes();
+            let version_bytes = vibehouse_version::VERSION.as_bytes();
             let trimmed_len = std::cmp::min(version_bytes.len(), GRAFFITI_BYTES_LEN);
             let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
             bytes[..trimmed_len].copy_from_slice(&version_bytes[..trimmed_len]);

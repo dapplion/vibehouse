@@ -31,7 +31,7 @@ members = [
     "common/eth2_wallet_manager",
     "common/filesystem",
     "common/health_metrics",
-    "common/lighthouse_version",
+    "common/vibehouse_version",
     "common/lockfile",
     "common/logging",
     "common/lru_cache",
@@ -178,7 +178,7 @@ libsecp256k1 = "0.7"
 lighthouse_network = { path = "beacon_node/lighthouse_network" }
 lighthouse_tracing = { path = "beacon_node/lighthouse_tracing" }
 vibehouse_validator_store = { path = "validator_client/vibehouse_validator_store" }
-lighthouse_version = { path = "common/lighthouse_version" }
+vibehouse_version = { path = "common/vibehouse_version" }
 lockfile = { path = "common/lockfile" }
 log = "0.4"
 logging = { path = "common/logging" }

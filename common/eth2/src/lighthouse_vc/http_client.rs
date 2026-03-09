@@ -282,7 +282,7 @@ impl ValidatorClientHttpClient {
     }
 
     /// `GET lighthouse/version`
-    pub async fn get_lighthouse_version(&self) -> Result<GenericResponse<VersionData>, Error> {
+    pub async fn get_vibehouse_version(&self) -> Result<GenericResponse<VersionData>, Error> {
         let mut path = self.server.full.clone();
 
         path.path_segments_mut()

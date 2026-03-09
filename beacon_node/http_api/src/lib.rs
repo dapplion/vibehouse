@@ -69,7 +69,6 @@ use futures::StreamExt;
 use health_metrics::observe::Observe;
 use lighthouse_network::rpc::methods::MetaData;
 use lighthouse_network::{Enr, NetworkGlobals, PeerId, PubsubMessage, types::SyncState};
-use lighthouse_version::version_with_platform;
 use logging::{SSELoggingComponents, crit};
 use network::{NetworkMessage, NetworkSenders, ValidatorSubscriptionMessage};
 use network_utils::enr_ext::EnrExt;
@@ -112,6 +111,7 @@ use version::{
     execution_optimistic_finalized_beacon_response, inconsistent_fork_rejection,
     unsupported_version_rejection,
 };
+use vibehouse_version::version_with_platform;
 
 use axum::{
     Json, Router,

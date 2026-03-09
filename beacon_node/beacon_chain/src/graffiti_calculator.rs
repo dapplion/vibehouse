@@ -34,7 +34,7 @@ impl GraffitiOrigin {
 
 impl Default for GraffitiOrigin {
     fn default() -> Self {
-        let version_bytes = lighthouse_version::VERSION.as_bytes();
+        let version_bytes = vibehouse_version::VERSION.as_bytes();
         let trimmed_len = std::cmp::min(version_bytes.len(), GRAFFITI_BYTES_LEN);
         let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
         bytes[..trimmed_len].copy_from_slice(&version_bytes[..trimmed_len]);
@@ -72,7 +72,7 @@ impl<T: BeaconChainTypes> GraffitiCalculator<T> {
     /// 1. Graffiti specified by the validator client.
     /// 2. Graffiti specified by the user via beacon node CLI options.
     /// 3. The EL & CL client version string, applicable when the EL supports version specification.
-    /// 4. The default lighthouse version string, used if the EL lacks version specification support.
+    /// 4. The default vibehouse version string, used if the EL lacks version specification support.
     pub async fn get_graffiti(&self, validator_graffiti: Option<Graffiti>) -> Graffiti {
         if let Some(graffiti) = validator_graffiti {
             return graffiti;
@@ -91,7 +91,7 @@ impl<T: BeaconChainTypes> GraffitiCalculator<T> {
                 };
 
                 // The engine version cache refresh service ensures this will almost always retrieve this data from the
-                // cache instead of making a request to the execution engine. A cache miss would only occur if lighthouse
+                // cache instead of making a request to the execution engine. A cache miss would only occur if vibehouse
                 // has recently started or the EL recently went offline.
                 let engine_versions = match execution_layer
                     .get_engine_version(Some(
@@ -109,31 +109,31 @@ impl<T: BeaconChainTypes> GraffitiCalculator<T> {
                 let Some(engine_version) = engine_versions.first() else {
                     // Got an empty array which indicates the EL doesn't support the method
                     debug!(
-                        "Using default lighthouse graffiti: EL does not support {} method",
+                        "Using default vibehouse graffiti: EL does not support {} method",
                         ENGINE_GET_CLIENT_VERSION_V1
                     );
                     return default_graffiti;
                 };
                 if engine_versions.len() != 1 {
-                    // More than one version implies lighthouse is connected to
+                    // More than one version implies vibehouse is connected to
                     // an EL multiplexer. We don't support modifying the graffiti
                     // with these configurations.
                     warn!("Execution Engine multiplexer detected, using default graffiti");
                     return default_graffiti;
                 }
 
-                let lighthouse_commit_prefix =
-                    CommitPrefix::try_from(lighthouse_version::COMMIT_PREFIX.to_string())
+                let vibehouse_commit_prefix =
+                    CommitPrefix::try_from(vibehouse_version::COMMIT_PREFIX.to_string())
                         .unwrap_or_else(|error_message| {
                             // This really shouldn't happen but we want to definitly log if it does
                             crit!(
                                 error = error_message,
-                                "Failed to parse lighthouse commit prefix"
+                                "Failed to parse vibehouse commit prefix"
                             );
                             CommitPrefix("00000000".to_string())
                         });
 
-                engine_version.calculate_graffiti(lighthouse_commit_prefix)
+                engine_version.calculate_graffiti(vibehouse_commit_prefix)
             }
         }
     }
@@ -278,8 +278,8 @@ mod tests {
             .await
             .unwrap();
 
-        let version_bytes = std::cmp::min(lighthouse_version::VERSION.len(), GRAFFITI_BYTES_LEN);
-        // grab the slice of the graffiti that corresponds to the lighthouse version
+        let version_bytes = std::cmp::min(vibehouse_version::VERSION.len(), GRAFFITI_BYTES_LEN);
+        // grab the slice of the graffiti that corresponds to the vibehouse version
         let graffiti_slice =
             &harness.chain.graffiti_calculator.get_graffiti(None).await.0[..version_bytes];
 
@@ -288,13 +288,13 @@ mod tests {
             std::str::from_utf8(graffiti_slice).expect("bytes should convert nicely to ascii");
 
         info!(
-            lighthouse_version = lighthouse_version::VERSION,
+            vibehouse_version = vibehouse_version::VERSION,
             graffiti_str, "results"
         );
-        println!("lighthouse_version: '{}'", lighthouse_version::VERSION);
+        println!("vibehouse_version: '{}'", vibehouse_version::VERSION);
         println!("graffiti_str:       '{}'", graffiti_str);
 
-        assert!(lighthouse_version::VERSION.starts_with(graffiti_str));
+        assert!(vibehouse_version::VERSION.starts_with(graffiti_str));
     }
 
     #[tokio::test]
@@ -314,7 +314,7 @@ mod tests {
                 .get(0..4)
                 .expect("should get first 2 bytes in hex"),
             "LH",
-            lighthouse_version::COMMIT_PREFIX
+            vibehouse_version::COMMIT_PREFIX
                 .get(0..4)
                 .expect("should get first 2 bytes in hex")
         );

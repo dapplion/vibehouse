@@ -2779,7 +2779,7 @@ impl ApiTester {
         let result = self.client.get_node_version().await.unwrap().data;
 
         let expected = VersionData {
-            version: lighthouse_version::version_with_platform(),
+            version: vibehouse_version::version_with_platform(),
         };
 
         assert_eq!(result, expected);

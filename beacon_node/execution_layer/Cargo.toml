@@ -20,7 +20,7 @@ fork_choice = { workspace = true }
 hex = { workspace = true }
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 kzg = { workspace = true }
-lighthouse_version = { workspace = true }
+vibehouse_version = { workspace = true }
 logging = { workspace = true }
 lru = { workspace = true }
 metrics = { workspace = true }

@@ -352,7 +352,7 @@ impl Default for Config {
             libp2p_nodes: vec![],
             trusted_peers: vec![],
             disable_peer_scoring: false,
-            client_version: lighthouse_version::version_with_platform(),
+            client_version: vibehouse_version::version_with_platform(),
             disable_discovery: false,
             disable_quic_support: false,
             upnp_enabled: true,

@@ -1,5 +1,5 @@
 [package]
-name = "lighthouse_version"
+name = "vibehouse_version"
 version = "0.1.0"
 authors = ["Sigma Prime <contact@sigmaprime.io>"]
 edition = { workspace = true }

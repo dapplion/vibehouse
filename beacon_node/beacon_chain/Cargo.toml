@@ -33,7 +33,7 @@ int_to_bytes = { workspace = true }
 itertools = { workspace = true }
 kzg = { workspace = true }
 lighthouse_tracing = { workspace = true }
-lighthouse_version = { workspace = true }
+vibehouse_version = { workspace = true }
 logging = { workspace = true }
 lru = { workspace = true }
 merkle_proof = { workspace = true }

@@ -1,8 +1,8 @@
-use lighthouse_version::VERSION;
 pub use metrics::*;
 use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::error;
+use vibehouse_version::VERSION;
 
 pub static PROCESS_START_TIME_SECONDS: LazyLock<Result<IntGauge>> = LazyLock::new(|| {
     try_create_int_gauge(

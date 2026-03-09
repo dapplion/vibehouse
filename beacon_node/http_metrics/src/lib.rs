@@ -5,7 +5,6 @@ mod metrics;
 
 use beacon_chain::{BeaconChain, BeaconChainTypes};
 use lighthouse_network::prometheus_client::registry::Registry;
-use lighthouse_version::version_with_platform;
 use logging::crit;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -13,6 +12,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::info;
+use vibehouse_version::version_with_platform;
 
 use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use tower_http::cors::{AllowOrigin, CorsLayer};

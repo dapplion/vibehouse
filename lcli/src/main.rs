@@ -25,7 +25,7 @@ use types::{EthSpec, EthSpecId};
 
 fn main() {
     let matches = Command::new("vibehouse CLI Tool")
-        .version(lighthouse_version::VERSION)
+        .version(vibehouse_version::VERSION)
         .display_order(0)
         .about("Performs various testing-related tasks, including defining testnets.")
         .arg(

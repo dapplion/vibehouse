@@ -166,7 +166,7 @@ pub struct ValidatorProcessMetrics {
 /// Returns the client version
 fn client_version() -> Option<String> {
     let re = regex::Regex::new(r"\d+\.\d+\.\d+").expect("Regex is valid");
-    re.find(lighthouse_version::VERSION)
+    re.find(vibehouse_version::VERSION)
         .map(|m| m.as_str().to_string())
 }
 

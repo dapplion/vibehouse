@@ -36,7 +36,6 @@ use eth2::lighthouse_vc::{
     },
 };
 use health_metrics::observe::Observe;
-use lighthouse_version::version_with_platform;
 use logging::SSELoggingComponents;
 use logging::crit;
 use parking_lot::RwLock;
@@ -57,6 +56,7 @@ use tracing::{info, warn};
 use types::{ChainSpec, ConfigAndPreset, EthSpec};
 use validator_dir::Builder as ValidatorDirBuilder;
 use validator_services::block_service::BlockService;
+use vibehouse_version::version_with_platform;
 
 use axum::{
     Json, Router,
