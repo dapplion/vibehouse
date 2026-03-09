@@ -130,6 +130,14 @@ Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 635)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged or opened since run 634
+- PTC Lookbehind (#4979): design still not converged — 3 competing approaches (full 2-epoch cache, minimal size-1/2 cache, per-slot update in process_block). Bug is agreed-upon but community debating state size vs complexity trade-off. Not ready to pre-implement.
+- CI: run 626 passed (all 6 jobs), nightly 6 consecutive green (Mar 4-9)
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan (run 634)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
