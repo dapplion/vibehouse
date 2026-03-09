@@ -110,11 +110,20 @@ Changes `if message.slot <= block.slot` to `assert message.slot >= block.slot` +
 
 Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload_quorum`, adds `payload_envelopes` to store, adds `MIN_PAYLOAD_DUE_BPS` config, introduces `get_payload_due_ms`/`get_payload_size` for variable deadline based on payload size. Last updated Feb 19, design still evolving.
 
+## Upcoming: Index-1 Attestation Envelope Validation (PR #4939, OPEN — will need implementation)
+
+Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}`:
+1. **[REJECT]** If `data.index == 1` (payload present for past block), the execution payload for that block must have passed validation
+2. **[IGNORE]** If `data.index == 1`, the execution payload envelope must have been seen. Clients MAY queue the attestation and SHOULD request the envelope via `ExecutionPayloadEnvelopesByRoot`
+
+**vibehouse impact: will need implementation.** Currently, index-1 attestations pass through standard gossip validation without checking payload envelope status. When merged, need to add checks in `attestation_verification.rs` to verify the referenced block's payload has been received/validated before accepting index-1 attestations.
+
 ## Upcoming Spec Test PRs (not yet merged)
 
 - **PR #4940** — "Add initial fork choice tests for Gloas": tests `on_execution_payload` (EMPTY→FULL transition), basic head tracking. Our `ForkChoiceHandler` already supports `on_execution_payload` steps and `head_payload_status` checks — ready to pass when merged.
 - **PR #4932** — "Add Gloas sanity/blocks tests with payload attestation coverage": tests `process_payload_attestation` during full block processing. Our `SanityBlocksHandler` runs all forks — ready to pass when merged.
 - **PR #4960** — "Add Gloas fork choice test for new validator deposit": extends fork choice tests with deposit scenarios. Already supported by our handler.
+- **PR #4962** — "Add Gloas sanity/blocks tests for missed payload withdrawal interactions": tests all 4 combinations of block with/without withdrawals when payload doesn't arrive, then next block with/without new withdrawals. Test-only PR — our handler runs all forks, ready to pass when merged.
 
 ### 10. PR #4918 — Only allow attestations for known payload statuses (merged Feb 13)
 - Adds validation to `validate_on_attestation`: if `attestation.data.index == 1`, `beacon_block_root` must be in `store.payload_states`
@@ -129,6 +138,15 @@ Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### 2026-03-09 — spec scan (run 643)
+- All 10 previously tracked Gloas PRs still OPEN
+- Found 2 new untracked PRs: #4939 (index-1 attestation envelope validation — will need implementation) and #4962 (test-only: missed payload withdrawal interactions)
+- Now tracking 12 open Gloas PRs total
+- No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test release
+- CI green (ef-tests, clippy, network+op_pool passed; others still running)
+- cargo audit: 1 medium advisory (rsa RUSTSEC-2023-0071, no fix available), 5 unmaintained warnings — all transitive, not actionable
+- No code changes needed
 
 ### 2026-03-09 — spec scan (run 642)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
