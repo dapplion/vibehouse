@@ -60,7 +60,7 @@ const SLASHING_PROTECTION_HISTORY_EPOCHS: u64 = 512;
 /// <https://ethpandaops.io/posts/gaslimit-scaling/>.
 pub const DEFAULT_GAS_LIMIT: u64 = 60_000_000;
 
-pub struct LighthouseValidatorStore<T, E> {
+pub struct VibehouseValidatorStore<T, E> {
     validators: Arc<RwLock<InitializedValidators>>,
     slashing_protection: SlashingDatabase,
     slashing_protection_last_prune: Arc<Mutex<Epoch>>,
@@ -78,7 +78,7 @@ pub struct LighthouseValidatorStore<T, E> {
     _phantom: PhantomData<E>,
 }
 
-impl<T: SlotClock + 'static, E: EthSpec> LighthouseValidatorStore<T, E> {
+impl<T: SlotClock + 'static, E: EthSpec> VibehouseValidatorStore<T, E> {
     // All arguments are different types. Making the fields `pub` is undesired. A builder seems
     // unnecessary.
     #[allow(clippy::too_many_arguments)]
@@ -558,7 +558,7 @@ impl<T: SlotClock + 'static, E: EthSpec> LighthouseValidatorStore<T, E> {
     }
 }
 
-impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for LighthouseValidatorStore<T, E> {
+impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for VibehouseValidatorStore<T, E> {
     type Error = SigningError;
     type E = E;
 
@@ -1238,10 +1238,10 @@ mod tests {
 
     type E = MinimalEthSpec;
 
-    /// Build a `LighthouseValidatorStore` with one validator whose keypair is
+    /// Build a `VibehouseValidatorStore` with one validator whose keypair is
     /// known.  Returns `(store, keypair, pubkey_bytes)`.
     async fn store_with_validator() -> (
-        LighthouseValidatorStore<TestingSlotClock, E>,
+        VibehouseValidatorStore<TestingSlotClock, E>,
         Keypair,
         PublicKeyBytes,
     ) {
@@ -1269,7 +1269,7 @@ mod tests {
         );
         let test_runtime = TestRuntime::default();
 
-        let store = LighthouseValidatorStore::<_, E>::new(
+        let store = VibehouseValidatorStore::<_, E>::new(
             initialized_validators,
             slashing_protection,
             Hash256::repeat_byte(42),

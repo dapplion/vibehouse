@@ -1,13 +1,13 @@
 use crate::api_error::ApiError;
 use bls::PublicKey;
-use lighthouse_validator_store::LighthouseValidatorStore;
 use slot_clock::SlotClock;
 use std::sync::Arc;
 use types::{EthSpec, Graffiti, graffiti::GraffitiString};
+use vibehouse_validator_store::VibehouseValidatorStore;
 
 pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
-    validator_store: Arc<LighthouseValidatorStore<T, E>>,
+    validator_store: Arc<VibehouseValidatorStore<T, E>>,
     graffiti_flag: Option<Graffiti>,
 ) -> Result<Graffiti, ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
@@ -30,7 +30,7 @@ pub fn get_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
 pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
     graffiti: GraffitiString,
-    validator_store: Arc<LighthouseValidatorStore<T, E>>,
+    validator_store: Arc<VibehouseValidatorStore<T, E>>,
 ) -> Result<(), ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
     let mut initialized_validators = initialized_validators_rw_lock.write();
@@ -56,7 +56,7 @@ pub fn set_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
 
 pub fn delete_graffiti<T: 'static + SlotClock + Clone, E: EthSpec>(
     validator_pubkey: PublicKey,
-    validator_store: Arc<LighthouseValidatorStore<T, E>>,
+    validator_store: Arc<VibehouseValidatorStore<T, E>>,
 ) -> Result<(), ApiError> {
     let initialized_validators_rw_lock = validator_store.initialized_validators();
     let mut initialized_validators = initialized_validators_rw_lock.write();

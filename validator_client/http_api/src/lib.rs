@@ -15,8 +15,8 @@ use graffiti::{delete_graffiti, get_graffiti, set_graffiti};
 
 use create_signed_voluntary_exit::create_signed_voluntary_exit;
 use graffiti_file::{GraffitiFile, determine_graffiti};
-use lighthouse_validator_store::LighthouseValidatorStore;
 use validator_store::ValidatorStore;
+use vibehouse_validator_store::VibehouseValidatorStore;
 
 use account_utils::{
     mnemonic_from_phrase,
@@ -95,8 +95,8 @@ impl From<String> for Error {
 pub struct Context<T: SlotClock, E> {
     pub task_executor: TaskExecutor,
     pub api_secret: ApiSecret,
-    pub block_service: Option<BlockService<LighthouseValidatorStore<T, E>, T>>,
-    pub validator_store: Option<Arc<LighthouseValidatorStore<T, E>>>,
+    pub block_service: Option<BlockService<VibehouseValidatorStore<T, E>, T>>,
+    pub validator_store: Option<Arc<VibehouseValidatorStore<T, E>>>,
     pub validator_dir: Option<PathBuf>,
     pub secrets_dir: Option<PathBuf>,
     pub graffiti_file: Option<GraffitiFile>,
@@ -401,7 +401,7 @@ where
 
 fn get_validator_store<T: SlotClock, E: EthSpec>(
     state: &AppState<T, E>,
-) -> Result<Arc<LighthouseValidatorStore<T, E>>, ApiError> {
+) -> Result<Arc<VibehouseValidatorStore<T, E>>, ApiError> {
     state
         .ctx
         .validator_store
@@ -427,7 +427,7 @@ fn get_secrets_dir<T: SlotClock, E: EthSpec>(state: &AppState<T, E>) -> Result<P
 
 fn get_block_service<T: SlotClock + Clone, E: EthSpec>(
     state: &AppState<T, E>,
-) -> Result<BlockService<LighthouseValidatorStore<T, E>, T>, ApiError> {
+) -> Result<BlockService<VibehouseValidatorStore<T, E>, T>, ApiError> {
     state
         .ctx
         .block_service

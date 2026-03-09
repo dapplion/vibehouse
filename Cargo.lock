@@ -5673,33 +5673,6 @@ name = "lighthouse_tracing"
 version = "0.1.0"
 
 [[package]]
-name = "lighthouse_validator_store"
-version = "0.1.0"
-dependencies = [
- "account_utils",
- "bls",
- "doppelganger_service",
- "eth2",
- "eth2_keystore",
- "futures",
- "initialized_validators",
- "logging",
- "parking_lot",
- "serde",
- "signing_method",
- "slashing_protection",
- "slot_clock",
- "task_executor",
- "tempfile",
- "tokio",
- "tracing",
- "types",
- "validator_metrics",
- "validator_store",
- "zeroize",
-]
-
-[[package]]
 name = "lighthouse_version"
 version = "0.1.0"
 dependencies = [
@@ -10810,7 +10783,6 @@ dependencies = [
  "graffiti_file",
  "hyper",
  "initialized_validators",
- "lighthouse_validator_store",
  "metrics",
  "monitoring_api",
  "parking_lot",
@@ -10827,6 +10799,7 @@ dependencies = [
  "validator_metrics",
  "validator_services",
  "validator_store",
+ "vibehouse_validator_store",
 ]
 
 [[package]]
@@ -10868,7 +10841,6 @@ dependencies = [
  "health_metrics",
  "initialized_validators",
  "itertools 0.14.0",
- "lighthouse_validator_store",
  "lighthouse_version",
  "logging",
  "parking_lot",
@@ -10892,6 +10864,7 @@ dependencies = [
  "validator_dir",
  "validator_services",
  "validator_store",
+ "vibehouse_validator_store",
  "zeroize",
 ]
 
@@ -10901,7 +10874,6 @@ version = "0.1.0"
 dependencies = [
  "axum 0.8.8",
  "health_metrics",
- "lighthouse_validator_store",
  "lighthouse_version",
  "logging",
  "malloc_utils",
@@ -10915,6 +10887,7 @@ dependencies = [
  "types",
  "validator_metrics",
  "validator_services",
+ "vibehouse_validator_store",
 ]
 
 [[package]]
@@ -11067,6 +11040,33 @@ dependencies = [
  "validator_client",
  "validator_dir",
  "validator_manager",
+ "zeroize",
+]
+
+[[package]]
+name = "vibehouse_validator_store"
+version = "0.1.0"
+dependencies = [
+ "account_utils",
+ "bls",
+ "doppelganger_service",
+ "eth2",
+ "eth2_keystore",
+ "futures",
+ "initialized_validators",
+ "logging",
+ "parking_lot",
+ "serde",
+ "signing_method",
+ "slashing_protection",
+ "slot_clock",
+ "task_executor",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "types",
+ "validator_metrics",
+ "validator_store",
  "zeroize",
 ]
 
@@ -11274,7 +11274,6 @@ dependencies = [
  "eth2_network_config",
  "futures",
  "initialized_validators",
- "lighthouse_validator_store",
  "logging",
  "parking_lot",
  "reqwest",
@@ -11289,6 +11288,7 @@ dependencies = [
  "types",
  "url",
  "validator_store",
+ "vibehouse_validator_store",
  "zip",
 ]
 

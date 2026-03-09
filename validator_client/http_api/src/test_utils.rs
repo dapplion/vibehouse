@@ -14,7 +14,6 @@ use eth2::{
 use eth2_keystore::KeystoreBuilder;
 use initialized_validators::key_cache::{CACHE_FILENAME, KeyCache};
 use initialized_validators::{InitializedValidators, OnDecryptFailure};
-use lighthouse_validator_store::{Config as ValidatorStoreConfig, LighthouseValidatorStore};
 use parking_lot::RwLock;
 use sensitive_url::SensitiveUrl;
 use slashing_protection::{SLASHING_PROTECTION_FILENAME, SlashingDatabase};
@@ -28,6 +27,7 @@ use tempfile::{TempDir, tempdir};
 use tokio::sync::oneshot;
 use types::ChainSpec;
 use validator_services::block_service::BlockService;
+use vibehouse_validator_store::{Config as ValidatorStoreConfig, VibehouseValidatorStore};
 use zeroize::Zeroizing;
 
 pub const PASSWORD_BYTES: &[u8] = &[42, 50, 37];
@@ -55,7 +55,7 @@ pub struct Web3SignerValidatorScenario {
 pub struct ApiTester {
     pub client: ValidatorClientHttpClient,
     pub initialized_validators: Arc<RwLock<InitializedValidators>>,
-    pub validator_store: Arc<LighthouseValidatorStore<TestingSlotClock, E>>,
+    pub validator_store: Arc<VibehouseValidatorStore<TestingSlotClock, E>>,
     pub url: SensitiveUrl,
     pub api_token: String,
     pub test_runtime: TestRuntime,
@@ -111,7 +111,7 @@ impl ApiTester {
 
         let test_runtime = TestRuntime::default();
 
-        let validator_store = Arc::new(LighthouseValidatorStore::new(
+        let validator_store = Arc::new(VibehouseValidatorStore::new(
             initialized_validators,
             slashing_protection,
             genesis_validators_root,
@@ -131,7 +131,7 @@ impl ApiTester {
         let context = Arc::new(Context {
             task_executor: test_runtime.task_executor.clone(),
             api_secret,
-            block_service: None::<BlockService<LighthouseValidatorStore<_, _>, _>>,
+            block_service: None::<BlockService<VibehouseValidatorStore<_, _>, _>>,
             validator_dir: Some(validator_dir.path().into()),
             secrets_dir: Some(secrets_dir.path().into()),
             validator_store: Some(validator_store.clone()),

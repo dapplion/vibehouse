@@ -1,17 +1,17 @@
 use crate::api_error::ApiError;
 use bls::{PublicKey, PublicKeyBytes};
 use eth2::types::GenericResponse;
-use lighthouse_validator_store::LighthouseValidatorStore;
 use slot_clock::SlotClock;
 use std::sync::Arc;
 use tracing::info;
 use types::{Epoch, EthSpec, SignedVoluntaryExit, VoluntaryExit};
 use validator_store::ValidatorStore;
+use vibehouse_validator_store::VibehouseValidatorStore;
 
 pub async fn create_signed_voluntary_exit<T: 'static + SlotClock + Clone, E: EthSpec>(
     pubkey: PublicKey,
     maybe_epoch: Option<Epoch>,
-    validator_store: Arc<LighthouseValidatorStore<T, E>>,
+    validator_store: Arc<VibehouseValidatorStore<T, E>>,
     slot_clock: T,
 ) -> Result<GenericResponse<SignedVoluntaryExit>, ApiError> {
     let epoch = match maybe_epoch {

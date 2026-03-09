@@ -2,7 +2,6 @@
 //!
 //! For other endpoints, see the `http_api` crate.
 
-use lighthouse_validator_store::LighthouseValidatorStore;
 use lighthouse_version::version_with_platform;
 use logging::crit;
 use malloc_utils::scrape_allocator_metrics;
@@ -16,6 +15,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::info;
 use types::EthSpec;
 use validator_services::duties_service::DutiesService;
+use vibehouse_validator_store::VibehouseValidatorStore;
 
 use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -39,7 +39,7 @@ impl From<String> for Error {
     }
 }
 
-type ValidatorStore<E> = LighthouseValidatorStore<SystemTimeSlotClock, E>;
+type ValidatorStore<E> = VibehouseValidatorStore<SystemTimeSlotClock, E>;
 
 /// Contains objects which have shared access from inside/outside of the metrics server.
 pub struct Shared<E> {

@@ -19,7 +19,6 @@ use doppelganger_service::DoppelgangerService;
 use environment::RuntimeContext;
 use eth2::{BeaconNodeHttpClient, StatusCode, Timeouts, reqwest::ClientBuilder};
 use initialized_validators::Error::UnableToOpenVotingKeystore;
-use lighthouse_validator_store::LighthouseValidatorStore;
 use parking_lot::RwLock;
 use reqwest::Certificate;
 use slot_clock::SlotClock;
@@ -48,6 +47,7 @@ use validator_services::{
     sync_committee_service::SyncCommitteeService,
 };
 use validator_store::ValidatorStore as ValidatorStoreTrait;
+use vibehouse_validator_store::VibehouseValidatorStore;
 
 /// The interval between attempts to contact the beacon node during startup.
 const RETRY_DELAY: Duration = Duration::from_secs(2);
@@ -73,7 +73,7 @@ pub const AGGREGATION_PRE_COMPUTE_EPOCHS: u64 = 2;
 /// Number of slots in advance to compute sync selection proofs when in `distributed` mode.
 pub const AGGREGATION_PRE_COMPUTE_SLOTS_DISTRIBUTED: u64 = 1;
 
-type ValidatorStore<E> = LighthouseValidatorStore<SystemTimeSlotClock, E>;
+type ValidatorStore<E> = VibehouseValidatorStore<SystemTimeSlotClock, E>;
 
 #[derive(Clone)]
 pub struct ProductionValidatorClient<E: EthSpec> {
@@ -408,7 +408,7 @@ impl<E: EthSpec> ProductionValidatorClient<E> {
             None
         };
 
-        let validator_store = Arc::new(LighthouseValidatorStore::new(
+        let validator_store = Arc::new(VibehouseValidatorStore::new(
             validators,
             slashing_protection,
             genesis_validators_root,

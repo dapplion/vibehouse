@@ -26,7 +26,6 @@ mod tests {
     use initialized_validators::{
         InitializedValidators, load_pem_certificate, load_pkcs12_identity,
     };
-    use lighthouse_validator_store::LighthouseValidatorStore;
     use parking_lot::Mutex;
     use reqwest::Client;
     use serde::Serialize;
@@ -49,6 +48,7 @@ mod tests {
     use validator_store::{
         Error as ValidatorStoreError, SignedBlock, UnsignedBlock, ValidatorStore,
     };
+    use vibehouse_validator_store::VibehouseValidatorStore;
 
     /// If the we are unable to reach the Web3Signer HTTP API within this time out then we will
     /// assume it failed to start.
@@ -306,7 +306,7 @@ mod tests {
 
     /// A testing rig which holds a `ValidatorStore`.
     struct ValidatorStoreRig {
-        validator_store: Arc<LighthouseValidatorStore<TestingSlotClock, E>>,
+        validator_store: Arc<VibehouseValidatorStore<TestingSlotClock, E>>,
         _validator_dir: TempDir,
         runtime: Arc<tokio::runtime::Runtime>,
         _runtime_shutdown: async_channel::Sender<()>,
@@ -352,12 +352,12 @@ mod tests {
 
             let slot_clock =
                 TestingSlotClock::new(Slot::new(0), Duration::from_secs(0), Duration::from_secs(1));
-            let config = lighthouse_validator_store::Config {
+            let config = vibehouse_validator_store::Config {
                 enable_web3signer_slashing_protection: slashing_protection_config.local,
                 ..Default::default()
             };
 
-            let validator_store = LighthouseValidatorStore::<_, E>::new(
+            let validator_store = VibehouseValidatorStore::<_, E>::new(
                 initialized_validators,
                 slashing_protection,
                 Hash256::repeat_byte(42),
@@ -481,7 +481,7 @@ mod tests {
             generate_sig: F,
         ) -> Self
         where
-            F: Fn(PublicKeyBytes, Arc<LighthouseValidatorStore<TestingSlotClock, E>>) -> R,
+            F: Fn(PublicKeyBytes, Arc<VibehouseValidatorStore<TestingSlotClock, E>>) -> R,
             R: Future<Output = S>,
             // We use the `SignedObject` trait to white-list objects for comparison. This avoids
             // accidentally comparing something meaningless like a `()`.
@@ -516,8 +516,8 @@ mod tests {
             web3signer_should_sign: bool,
         ) -> Self
         where
-            F: Fn(PublicKeyBytes, Arc<LighthouseValidatorStore<TestingSlotClock, E>>) -> R,
-            R: Future<Output = Result<(), lighthouse_validator_store::Error>>,
+            F: Fn(PublicKeyBytes, Arc<VibehouseValidatorStore<TestingSlotClock, E>>) -> R,
+            R: Future<Output = Result<(), vibehouse_validator_store::Error>>,
         {
             for validator_rig in &self.validator_rigs {
                 let result =

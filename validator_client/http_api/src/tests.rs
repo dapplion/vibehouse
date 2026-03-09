@@ -18,7 +18,6 @@ use eth2::{
     types::ErrorMessage as ApiErrorMessage,
 };
 use eth2_keystore::KeystoreBuilder;
-use lighthouse_validator_store::{Config as ValidatorStoreConfig, LighthouseValidatorStore};
 use parking_lot::RwLock;
 use sensitive_url::SensitiveUrl;
 use slashing_protection::{SLASHING_PROTECTION_FILENAME, SlashingDatabase};
@@ -32,6 +31,7 @@ use task_executor::test_utils::TestRuntime;
 use tempfile::{TempDir, tempdir};
 use types::graffiti::GraffitiString;
 use validator_store::ValidatorStore;
+use vibehouse_validator_store::{Config as ValidatorStoreConfig, VibehouseValidatorStore};
 use zeroize::Zeroizing;
 
 const PASSWORD_BYTES: &[u8] = &[42, 50, 37];
@@ -42,7 +42,7 @@ type E = MainnetEthSpec;
 struct ApiTester {
     client: ValidatorClientHttpClient,
     initialized_validators: Arc<RwLock<InitializedValidators>>,
-    validator_store: Arc<LighthouseValidatorStore<TestingSlotClock, E>>,
+    validator_store: Arc<VibehouseValidatorStore<TestingSlotClock, E>>,
     url: SensitiveUrl,
     slot_clock: TestingSlotClock,
     spec: Arc<ChainSpec>,
@@ -92,7 +92,7 @@ impl ApiTester {
 
         let test_runtime = TestRuntime::default();
 
-        let validator_store = Arc::new(LighthouseValidatorStore::<_, E>::new(
+        let validator_store = Arc::new(VibehouseValidatorStore::<_, E>::new(
             initialized_validators,
             slashing_protection,
             Hash256::repeat_byte(42),

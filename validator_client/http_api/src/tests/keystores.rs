@@ -8,7 +8,6 @@ use eth2::lighthouse_vc::{
     types::Web3SignerValidatorRequest,
 };
 use itertools::Itertools;
-use lighthouse_validator_store::DEFAULT_GAS_LIMIT;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use slashing_protection::interchange::{Interchange, InterchangeMetadata};
@@ -16,6 +15,7 @@ use std::{collections::HashMap, path::Path};
 use tokio::runtime::Handle;
 use types::{Address, attestation::AttestationBase};
 use validator_store::ValidatorStore;
+use vibehouse_validator_store::DEFAULT_GAS_LIMIT;
 use zeroize::Zeroizing;
 
 fn new_keystore(password: Zeroizing<String>) -> Keystore {

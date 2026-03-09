@@ -23,7 +23,7 @@ filesystem = { workspace = true }
 graffiti_file = { workspace = true }
 health_metrics = { workspace = true }
 initialized_validators = { workspace = true }
-lighthouse_validator_store = { workspace = true }
+vibehouse_validator_store = { workspace = true }
 lighthouse_version = { workspace = true }
 logging = { workspace = true }
 parking_lot = { workspace = true }

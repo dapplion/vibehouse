@@ -84,7 +84,7 @@ members = [
     "validator_client/http_api",
     "validator_client/http_metrics",
     "validator_client/initialized_validators",
-    "validator_client/lighthouse_validator_store",
+    "validator_client/vibehouse_validator_store",
     "validator_client/signing_method",
     "validator_client/slashing_protection",
     "validator_client/validator_metrics",
@@ -177,7 +177,7 @@ kzg = { path = "crypto/kzg" }
 libsecp256k1 = "0.7"
 lighthouse_network = { path = "beacon_node/lighthouse_network" }
 lighthouse_tracing = { path = "beacon_node/lighthouse_tracing" }
-lighthouse_validator_store = { path = "validator_client/lighthouse_validator_store" }
+vibehouse_validator_store = { path = "validator_client/vibehouse_validator_store" }
 lighthouse_version = { path = "common/lighthouse_version" }
 lockfile = { path = "common/lockfile" }
 log = "0.4"
