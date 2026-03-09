@@ -110,6 +110,16 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 
 ## Progress log
 
+### 2026-03-09 — spec scan + CI verification (run 623)
+- All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- Only 2 PRs merged since last scan (#4990, #4991): CI strategy matrix + release-drafter update — zero Gloas impact
+- Note: #4979 (PTC Lookbehind) now also has `heze` label, suggesting it may be promoted to the next fork
+- CI check+clippy+fmt passed for rebranding commits; remaining test jobs in progress
+- Rebranding audit: only 2 Rust files contain "lighthouse" — both are P2P peer identification (ClientKind::Lighthouse, ClientCode::Lighthouse) for recognizing other Lighthouse clients on the network, correctly kept
+- All kurtosis `cl_type: lighthouse` references correctly kept (infrastructure constraint)
+- Nightly tests: 5 consecutive green runs (Mar 4-8)
+
 ### 2026-03-09 — spec scan (run 622)
 - All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
 - No new consensus-specs release (still v1.7.0-alpha.2)
