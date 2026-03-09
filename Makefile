@@ -254,7 +254,6 @@ lint:
 		-A clippy::derive_partial_eq_without_eq \
 		-A clippy::upper-case-acronyms \
 		-A clippy::vec-init-then-push \
-		-A clippy::question-mark \
 		-A clippy::uninlined-format-args \
 		-A clippy::enum_variant_names
 
