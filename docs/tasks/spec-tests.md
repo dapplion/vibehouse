@@ -28,6 +28,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec stable, routine audit (run 727)
+- Spec scan: no new Gloas merges (last 10 merged PRs all CI/tooling/deps), no new release (still v1.7.0-alpha.2)
+- PTC lookbehind PRs (#4979, #4992) still open; Fast Confirmation Rule PR #4747 updated today
+- CI (22871434411): 3/6 passed (check+clippy+fmt, EF tests, network+op_pool), 3 still running (unit, beacon_chain, http_api)
+- Nightly: 6 consecutive green (Mar 4-9), all 26 jobs passing
+- cargo audit: same 1 vulnerability (rsa RUSTSEC-2023-0071, no fix), 5 unmaintained warnings (ansi_term, bincode, derivative, filesystem, paste — all transitive, not actionable)
+- Dependencies: 0 compatible updates, 30 major-version bumps available (not actionable)
+- Full Gloas test coverage audit: 90%+ across all production code, no critical gaps (observed collections, bid pool, gossip handlers, HTTP API, state processing all well-tested)
+- Devnet verification launched (--no-build), results pending
+- No code changes needed
+
 ### 2026-03-09 — spec stable, comprehensive coverage audit (run 726)
 - Spec scan: all 10 tracked PRs still OPEN, no new Gloas merges, no new release (still v1.7.0-alpha.2)
 - No new spec-test vectors (consensus-spec-tests latest: v1.6.0-beta.0, pre-Gloas)
