@@ -1472,9 +1472,14 @@ async fn verify_block_for_gossip_slashing_detection() {
     create_test_tracing_subscriber();
     let slasher_dir = tempdir().unwrap();
     let spec = Arc::new(test_spec::<E>());
-    let slasher = Arc::new(
-        Slasher::open(SlasherConfig::new(slasher_dir.path().into()), spec.clone()).unwrap(),
-    );
+    let slasher = match Slasher::open(SlasherConfig::new(slasher_dir.path().into()), spec.clone()) {
+        Ok(s) => Arc::new(s),
+        Err(slasher::Error::SlasherDatabaseBackendDisabled) => {
+            // No slasher backend compiled in (needs --features slasher/lmdb), skip test.
+            return;
+        }
+        Err(e) => panic!("unexpected slasher error: {:?}", e),
+    };
 
     let inner_slasher = slasher.clone();
     let harness = BeaconChainHarness::builder(MainnetEthSpec)

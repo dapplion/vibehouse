@@ -50,10 +50,11 @@ fn get_harness(
 async fn rpc_columns_with_invalid_header_signature() {
     let spec = Arc::new(test_spec::<E>());
 
-    // Only run this test if columns are enabled but not on Gloas.
+    // Only run this test if genesis fork is Fulu (columns enabled) but not Gloas.
     // Gloas DataColumnSidecars have a different structure (no signed_block_header),
     // so the header signature corruption test doesn't apply.
-    if !spec.is_fulu_scheduled() || spec.is_gloas_scheduled() {
+    let genesis_fork = spec.fork_name_at_epoch(Epoch::new(0));
+    if !genesis_fork.fulu_enabled() || genesis_fork.gloas_enabled() {
         return;
     }
 
