@@ -118,6 +118,13 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan + internal crate rebrand (run 616)
+- All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related spec PRs since last scan
+- Rebranded `lighthouse_validator_store` crate → `vibehouse_validator_store`, `LighthouseValidatorStore` struct → `VibehouseValidatorStore` (21 files, directory rename)
+- All tests pass, clippy clean
+
 ### 2026-03-09 — spec scan + help text rebrand (run 614)
 - All 6 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4840, #4939
 - No new consensus-specs release (still v1.7.0-alpha.2)
