@@ -43,52 +43,33 @@ Implement Gloas spec changes merged to consensus-specs master after v1.7.0-alpha
 - Already implemented: `PRE_FORK_SUBSCRIBE_EPOCHS=1` in `network/src/service.rs`
 - No code change needed
 
-## Upcoming: PTC Lookbehind (PR #4979, OPEN — not yet merged)
+## Upcoming: PTC Lookbehind (competing PRs #4979 and #4992, both OPEN)
 
-Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` to BeaconState to cache PTC committees for previous + current epochs. Fixes a real bug: when processing payload attestations at epoch boundaries (e.g., slot 32 validating PTC of slot 31), effective balance changes from epoch processing can cause `get_ptc` to return a different committee than what was valid when the attestation was created.
+Fixes a real bug: when processing payload attestations at epoch boundaries (e.g., slot 32 validating PTC of slot 31), effective balance changes from epoch processing can cause `get_ptc` to return a different committee than what was valid when the attestation was created.
 
-**Changes required when merged:**
-1. New BeaconState field: `ptc_lookbehind` (Vector of Vectors, ~256KB)
-2. New helper: `compute_ptc` (current `get_ptc` logic extracted)
-3. Refactored `get_ptc`: lookup from cache for prev/current epoch, compute on demand for next epoch
-4. New epoch processing: `process_ptc_lookbehind` — shift window and pre-compute next epoch
-5. Fork upgrade: `upgrade_to_gloas` initializes `ptc_lookbehind` via `initialize_ptc_lookbehind`
-6. New spec tests: `test_process_ptc_lookbehind`, `test_get_ptc_assignment` variants
+**vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when one of the PRs merges.
 
-**vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when PR merges.
+### PR #4979 (original, potuz, Mar 4) — large cache approach
+- `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` (~256KB per state)
+- Caches all PTC committees for previous + current epoch
+- Epoch processing shifts window and pre-computes next epoch
+- 10 review comments, design debate ongoing
 
-**Detailed implementation plan (from PR #4979 diff analysis):**
+### PR #4992 (alternative, potuz, Mar 9) — minimal cache approach ← SIMPLER
+- `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` (~8KB per state)
+- Only caches 2 committees: previous slot and current slot
+- Updated at every slot transition in `process_slots`: `state.ptc_lookbehind = [state.ptc_lookbehind[1], compute_ptc(state)]`
+- `get_ptc(state, slot)` asserts `slot == state.slot or slot + 1 == state.slot`, returns from cache
+- Much simpler: no epoch processing step, no fork upgrade initialization of full array
+- Just opened Mar 9, no reviews yet
 
-1. **New EthSpec type**: `PtcLookbehindLength` = `2 * SlotsPerEpoch` (mainnet: 64, minimal: 16)
-
-2. **BeaconState field** (`consensus/types/src/beacon_state.rs`):
-   ```rust
-   #[superstruct(only(Gloas))]
-   pub ptc_lookbehind: Vector<Vector<u64, E::PtcSize>, E::PtcLookbehindLength>,
-   ```
-
-3. **Rename current `get_ptc_committee` → `compute_ptc`** (`consensus/state_processing/src/per_block_processing/gloas.rs:377`):
-   - Same logic, just extracted as the "compute from scratch" path
-
-4. **New `get_ptc` function** (cache-aware wrapper):
-   ```
-   epoch < state_epoch → lookup ptc_lookbehind[slot % SLOTS_PER_EPOCH] (previous epoch)
-   epoch == state_epoch → lookup ptc_lookbehind[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH] (current epoch)
-   epoch == state_epoch + 1 → compute_ptc(state, slot) on demand (next epoch)
-   ```
-
-5. **New epoch processing `process_ptc_lookbehind`** (`consensus/state_processing/src/per_epoch_processing/`):
-   - Shift: `ptc_lookbehind[0..SLOTS_PER_EPOCH] = ptc_lookbehind[SLOTS_PER_EPOCH..]`
-   - Fill: compute PTC for each slot in next epoch, store in `ptc_lookbehind[SLOTS_PER_EPOCH..]`
-   - Called at end of `process_epoch`, after `process_proposer_lookahead`
-
-6. **Fork upgrade `initialize_ptc_lookbehind`** (`consensus/state_processing/src/upgrade/gloas.rs`):
-   - Previous epoch slots: all zeros (empty — no previous epoch PTC at fork boundary)
-   - Current epoch slots: `compute_ptc(state, slot)` for each slot in current epoch
-
-7. **SSZ/tree-hash**: Vector<Vector<u64>> needs proper tree-hash support; verify ssz_static tests handle it
-
-8. **Update callers**: `process_payload_attestation`, `get_indexed_payload_attestation`, `validator_ptc_duties` — all call current `get_ptc_committee`, redirect to new `get_ptc`
+**Implementation plan (for whichever merges):**
+1. New BeaconState field: `ptc_lookbehind` (size depends on which PR wins)
+2. Extract `compute_ptc` from current `get_ptc_committee`
+3. Refactor `get_ptc` to read from cache
+4. If #4992: update `process_slots` to shift cache each slot
+5. If #4979: add epoch processing step + fork upgrade initialization
+6. Update callers: `process_payload_attestation`, `get_indexed_payload_attestation`, `validator_ptc_duties`
 
 ## Upcoming: Fork Choice Milliseconds (PR #4954, OPEN — not yet merged)
 

@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — new PTC Lookbehind alternative PR (run 683)
+- Spec stable: no new merges, no new releases
+- New PR #4992 "Add PTC Lookbehind" (potuz, Mar 9): simpler alternative to #4979, only 2 entries (~8KB) instead of 2*SLOTS_PER_EPOCH (~256KB), updated per-slot in process_slots
+- CI run 680: check+clippy ✓, ef-tests ✓, network+op_pool ✓, 3 jobs still running
+- No code changes — waiting for one of #4979/#4992 to merge
+
 ### 2026-03-09 — full scan, all green (run 682)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release (v1.5.0), no new Gloas PR merges
 - PTC Lookbehind (#4979) still blocked (mergeable but needs approvals, 10 review comments, last activity Mar 7)
