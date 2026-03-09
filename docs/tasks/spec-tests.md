@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### 2026-03-09 — spec scan + PR 4979 readiness review (run 665)
+- Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release, no new Gloas PR merges
+- All 12 tracked Gloas PRs still OPEN
+- CI green: 4/6 jobs passed, 2 in progress; nightly 3 consecutive greens (Mar 7-9)
+- PR #4979 (PTC Lookbehind) most active: 10 review comments from jtraglia, potuz, ensi321, nflaig (Mar 6-7); adds `ptc_lookbehind` field to BeaconState (`Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]`), new `compute_ptc` helper (extracted from `get_ptc`), `get_ptc` becomes cache lookup, new `process_ptc_lookbehind` epoch processing step, `initialize_ptc_lookbehind` for fork upgrade/genesis. Not yet approved — monitoring.
+- Verified our `get_ptc_committee` matches what will become `compute_ptc` in the PR; epoch processing ordering ready for insertion of `process_ptc_lookbehind` after `process_proposer_lookahead`
+- cargo audit: 1 vulnerability (RUSTSEC-2023-0071 rsa, medium, no fix), 5 allowed warnings — all transitive, unchanged
+- No code changes needed — spec stable
+
 ### 2026-03-09 — fork transition audit + performance review (run 664)
 - Spec stable: no new consensus-specs release (v1.7.0-alpha.2), no new spec-test release, no new Gloas PR merges
 - All 12 tracked Gloas PRs still OPEN
