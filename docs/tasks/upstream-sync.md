@@ -94,6 +94,11 @@ The entries below are historical records from before the independence policy was
 - **Full gossip validation audit**: verified all 4 Gloas gossip topics against current spec — all REJECT/IGNORE conditions match correctly
 - **CI status**: all green, nightly green
 
+### 2026-03-09 (run 606)
+- **Removed warp dependency entirely**: deleted `common/warp_utils` crate (7 source files, 484 lines), removed `warp` and `warp_utils` from workspace Cargo.toml and beacon_node/http_api Cargo.toml, cleaned up clippy.toml async-wrapper-methods. Lockfile drops 13 packages (1032 → 1019), eliminating duplicate hyper 0.14, http 0.2, h2 0.3, headers 0.3 dependency chains. All 251 http_api tests pass, full workspace compiles clean.
+- **Warp→axum migration complete**: the entire HTTP stack now uses axum 0.8 + tower-http 0.6. Migration path was: http_metrics (run 600) → validator_client/http_api (run 601) → execution_layer test mocks (run 602) → ApiError unification (run 603) → beacon_node/http_api router (run 605) → warp removal (this run).
+- **Spec status**: stable, no new merges
+
 ### 2026-03-09 (run 605)
 - **Completed warp→axum migration for beacon_node/http_api**: converted all 85 warp filter chains to axum async handler functions in a single coordinated push. Key changes:
   - New `extractors.rs` module with custom axum extractors: `MultiKeyQuery` (for `?topics=head&topics=block` style queries), `json_body`/`json_body_or_default` helpers, header parsing utilities (`accept_header`, `consensus_version_header`, `parse_endpoint_version`)
