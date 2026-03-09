@@ -118,6 +118,12 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan + user-facing doc rebrand (run 619)
+- All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- Updated user-facing docs: README.md (replaced stale "upstream tracking" section with "Heritage"), SECURITY.md (pointed to vibehouse repo), book intro/UI pages (rebranded to vibehouse), Cross.toml (removed stale upstream issue link)
+- CI check+clippy+fmt passed, full lint clean
+
 ### 2026-03-09 — spec scan + internal crate rebrand (run 616)
 - All 9 tracked PRs still OPEN: #4979, #4940, #4932, #4960, #4962, #4840, #4843, #4630, #4939
 - No new consensus-specs release (still v1.7.0-alpha.2)
