@@ -130,6 +130,14 @@ Renames `payload_present`→`payload_timely`, `is_payload_timely`→`has_payload
 
 ## Progress log
 
+### 2026-03-09 — spec scan (run 638)
+- All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
+- No new consensus-specs release (still v1.7.0-alpha.2)
+- No new Gloas-related PRs merged since run 637
+- Notable: PRs #4984 (Verkle/EIP-6800) and #4977 (SSLE/EIP-7441) removed from specs as stagnant — no Gloas impact
+- CI: latest ci run passed (all jobs), nightly 4+ consecutive green (Mar 5-8), today's nightly in progress
+- No code changes this run — spec stable, fully compliant
+
 ### 2026-03-09 — spec scan + codebase health check (run 637)
 - All 10 tracked Gloas PRs still OPEN: #4979, #4960, #4954, #4940, #4932, #4898, #4892, #4843, #4840, #4630
 - No new consensus-specs release (still v1.7.0-alpha.2)
