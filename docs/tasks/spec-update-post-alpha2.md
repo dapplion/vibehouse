@@ -118,6 +118,12 @@ Adds `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPO
 - PR #4947 (pre-fork proposer_preferences subscription): already implemented
 - PR #4979 (PTC Lookbehind): open, significant spec change, tracked above
 
+### 2026-03-09 — spec scan (run 608)
+- All 6 tracked PRs still open: #4979 (PTC lookbehind), #4940, #4932, #4960, #4840, #4939
+- PR #4948 (reorder PayloadStatus constants: EMPTY=0, FULL=1, PENDING=2) merged Feb 26 — already matches our `GloasPayloadStatus` enum ordering
+- Cleaned up stale warp references in doc comments + removed dead `config` field from `AppState` (post warp→axum migration)
+- No new Gloas spec changes requiring code updates
+
 ### 2026-03-08 — audit found all changes already implemented
 - Compared consensus-specs master against v1.7.0-alpha.2 tag
 - 4 Gloas spec files changed: beacon-chain.md, fork-choice.md, p2p-interface.md, validator.md
