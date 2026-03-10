@@ -123,8 +123,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### 2026-03-10 — consolidated: runs 746-801 (Mar 10)
-Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (5 consecutive green runs Mar 5-9). PTC lookbehind #4992 unchanged since Mar 10 01:07 UTC (design stable, blocked on approvals). Recent spec commits are all CI/tooling/cleanup — no consensus changes.
+### 2026-03-10 — consolidated: runs 746-802 (Mar 10)
+Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (6 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
+
+Run 802: Spec scan — no new merges, no new release, only CI commit (python 3.14 support #4995). PR #4992 latest commit removes `get_ptc_assignment` helper and cleans up fork upgrade. All tests green: EF 138/138, fork choice 8/8, workspace 2643/2643.
 
 Run 801: Audited PR #4906 ("Add more tests for process_deposit_request", merged upstream). Verified all new test scenarios against our implementation: builder slot reuse (first-of-multiple, current-epoch boundary, future-epoch exclusion, nonzero-balance exclusion), ETH1/compounding credential routing to validator path, nonstandard credential padding address extraction, slot binding. All cases handled correctly by our code — no changes needed.
 
