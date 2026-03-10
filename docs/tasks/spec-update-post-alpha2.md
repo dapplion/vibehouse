@@ -129,6 +129,7 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
+- Run 832: Spec scan (no changes). CI run 22897038351 (fix commit 62df56862) fully green — all 6 jobs passed including network+op_pool. Nightly failure (09:04 UTC) confirmed on pre-fix commit; fix was pushed at 10:00 UTC. Only dep update: schannel 0.1.28→0.1.29 (Windows-only, skipped). No actionable work.
 - Run 831: Spec scan (no changes). Race fix verified stable (5/5 local passes). CI running for fix commit. Only dep update: schannel 0.1.28→0.1.29 (Windows-only, skipped). No actionable work.
 - Run 830: Spec scan (no changes). Nightly network-tests (fulu) failure was on pre-fix commit — `data_column_reconstruction_at_deadline` race fix (run 829) was pushed after nightly. Verified fix is solid: 5/5 local runs pass. CI running with fix. No actionable work — spec stable, all tests green, no dependency updates needed.
 - Run 829: Fixed remaining race in `data_column_reconstruction_at_deadline` — previous fix (run 826) broke out of event loop on reconstruction before all gossip events were drained; now collects both reconstruction AND all gossip events before breaking. 5/5 local runs pass.
