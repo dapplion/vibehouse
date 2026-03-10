@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 859 (Mar 10)
+- Spec scan: no new consensus-specs commits since run 858 (latest: #4995 Python 3.14 support). No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked). potuz addressed review comments (Mar 10 01:05-01:07 UTC) but no new code commits
+- CI green. Nightly Mar 10 failure still on pre-fix commit 0d12a857; fix on main, tonight's nightly should pass
+- cargo check: zero warnings. No compatible dep updates. cargo audit: same rsa advisory (no fix)
+- No code changes needed
+
 ### run 857 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
