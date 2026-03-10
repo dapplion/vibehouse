@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 853 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
+- Recent consensus-specs commits: unchanged — all CI/tooling, no consensus changes
+- CI green (run 22901292778, all 6 jobs passed); nightly Mar 10 failure confirmed as pre-fix commit (data_column_reconstruction_at_deadline race), fix 62df5686 on main
+- EF spec tests: 35/35 passed (minimal, fake_crypto)
+- cargo check: zero warnings; no compatible dep updates
+- No code changes needed
+
 ### run 851 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
