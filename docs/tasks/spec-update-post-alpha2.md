@@ -120,6 +120,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 754 (Mar 10)
+- Spec scan: all 11 tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- EF spec tests: 35/35 passed (operations + epoch_processing + sanity, minimal preset)
+- Beacon chain tests: 768/768 passed (FORK_NAME=gloas, full suite)
+- Clippy clean on consensus crates; no compatible dependency updates; cargo audit unchanged (rsa advisory only)
+- CI green: 5 nightly green runs, CI green, spec-test-check green
+- Block production code audit: no TODOs, no issues in Gloas paths (bid selection, payload attestation packing, self-build envelope, EL fetch)
+
 ### run 753 (Mar 10)
 - Spec scan: all 11 tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - Devnet verification SUCCESS: finalized_epoch=8, clean Gloas fork (run ID 20260310-010545)
