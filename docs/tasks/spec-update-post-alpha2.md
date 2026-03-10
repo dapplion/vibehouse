@@ -123,6 +123,9 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 912 (Mar 10)
+- Spec scan: no new consensus-specs commits (latest: #4995 python 3.14 support, Mar 10). All 11 tracked Gloas PRs still OPEN. No new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): unchanged (head 215962a9, last activity Mar 10 12:05 UTC). CI green, nightly green. 0 compatible dep updates. cargo audit: 1 vuln + 5 allowed (unchanged). No code changes needed.
+
 ### run 911 (Mar 10)
 - Spec scan: no new consensus-specs commits (latest: #4995 python 3.14 support, Mar 10). All 11 tracked Gloas PRs still OPEN. No new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): unchanged (head 215962a9, blocked). Scheduled nightly failed on stale commit 0d12a85 (before data_column_reconstruction race fix 62df568); manual nightly running on 7e2ab4d (includes fix). 0 compatible dep updates. cargo audit: 1 vuln + 5 allowed (unchanged). No code changes needed.
 
