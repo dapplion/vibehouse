@@ -123,6 +123,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 781 (Mar 10)
+- Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- PTC lookbehind #4992: unchanged since Mar 10 01:07 UTC, still open
+- Spec test vectors: still v1.5.0, no new release
+- Codebase: zero compiler warnings, clean clippy, CI green
+- TODO audit: 23 pre-existing TODOs (DAS feature work, pool persistence, design notes) — none Gloas-actionable
+- No code changes needed
+
 ### run 780 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - PTC lookbehind #4992: unchanged since Mar 10 01:07 UTC, still open
