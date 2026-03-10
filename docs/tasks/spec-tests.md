@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 869 (Mar 10)
+- Spec scan: no new consensus-specs commits since run 868. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked, updated 2026-03-10T12:05:25Z)
+- CI green. Nightly Mar 10 failure confirmed on pre-fix commit (ran 09:04 UTC, fix pushed 09:59 UTC) — tonight's nightly should pass
+- 0 compatible dep updates. cargo audit: same rsa advisory (no fix). No code changes needed
+
 ### run 868 (Mar 10)
 - Spec scan: no new consensus-specs commits since run 867. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
