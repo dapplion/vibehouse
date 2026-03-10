@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 850 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- Recent consensus-specs commits: all infrastructure/tooling (Python 3.14, test framework, renovate migration, dep bumps) — no consensus changes
+- CI run 22900909592: clippy failed due to transient 403 fetching quick-protobuf git dep (not a code issue); other jobs still running
+- Added workflow_dispatch trigger to ci.yml for manual re-runs
+- No consensus code changes needed
+
 ### runs 845-849 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked, 10 review comments)
