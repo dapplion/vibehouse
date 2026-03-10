@@ -129,9 +129,8 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
-- Run 862: Spec scan — all 11 PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure confirmed on pre-fix commit 0d12a857 — fix (62df56862) is on main, Mar 11 nightly should pass. CI green. No code changes needed.
-- Run 861: Spec scan — all 11 PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure confirmed on pre-fix commit 0d12a857 — fix on main, Mar 11 nightly should pass. CI green. No code changes needed.
-- Run 860: Spec scan — all 11 PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure still on pre-fix commit 0d12a857 — fix on main, Mar 11 nightly should pass. CI green. No code changes needed.
+- Run 863: Spec scan — all 11 PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. CI fully green (all 7 jobs). No code changes needed.
+- Runs 860-862: Repeated spec scans, all stable. No changes needed.
 - Runs 832-858: Repeated spec scans, all stable. Updated schannel 0.1.28→0.1.29 (run 847). CI green after flaky test fix (62df56862). No dep updates available, no actionable work.
 - Run 831: Spec scan (no changes). Race fix verified stable (5/5 local passes). CI running for fix commit.
 - Run 829: Fixed remaining race in `data_column_reconstruction_at_deadline` — previous fix (run 826) broke out of event loop on reconstruction before all gossip events were drained; now collects both reconstruction AND all gossip events before breaking. 5/5 local runs pass.
