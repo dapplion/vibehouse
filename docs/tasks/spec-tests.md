@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 795 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- EF spec tests: 35/35 passed (operations + epoch_processing + sanity, minimal preset, fake_crypto)
+- cargo check --release: zero warnings; CI green
+- No code changes needed
+
 ### run 784 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - PTC lookbehind #4992: unchanged since Mar 10 01:07 UTC, still open
