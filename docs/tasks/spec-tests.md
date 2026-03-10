@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 885 (Mar 10)
+- Spec scan: no new consensus-specs commits since run 884. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
+- Recently merged PRs: unchanged (latest: #4995 Python 3.14 support — CI/tooling only)
+- CI fully green (run 22905618379: all 7 jobs passed). Nightly Mar 10 failure was pre-fix commit (data_column_reconstruction_at_deadline race) — fix in HEAD, tonight's nightly will pass
+- 0 compatible dep updates. No code changes needed
+
 ### run 884 (Mar 10)
 - Spec scan: no new consensus-specs commits since run 883. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
