@@ -647,6 +647,7 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 Key activities across ~120 runs (routine scans omitted):
 - **run 641**: docker CI paths-ignore for docs-only commits
 - **run 640**: post-rebrand devnet verification SUCCESS
+- **run 762**: spec scan — no new merges/releases, 35/35 EF tests pass, clippy clean, CI green
 - **run 578**: upgraded ethabi 16→18
 - **run 577**: upgraded 7 dependencies (jsonwebtoken 9→10, rpassword 5→7, etc.)
 - **run 576**: upgraded RustCrypto suite + sha2
