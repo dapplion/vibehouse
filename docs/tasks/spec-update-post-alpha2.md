@@ -128,6 +128,8 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 
 Run 816: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). Noted PR #4747 (Fast Confirmation Rule, labeled gloas) updated Mar 9 — still open, not actionable. Workspace tests: 2612/2612 (8 web3signer timeout). EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates.
 
+Run 821: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10, mergeable_state=blocked). No new spec commits since run 820. EF tests: 138/138. Workspace tests: 2643+ pass (8 web3signer timeout). No code changes needed.
+
 Run 820: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10, mergeable_state=blocked). No new spec commits since run 819. CI green. Workspace tests: 2643/2643 (8 web3signer timeout). Committed Cargo.lock update (enr syn 1→syn 2). No code changes needed.
 
 Run 819: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new spec commits since run 818. CI green, nightly green (3 consecutive Mar 7-9). Workspace tests: 2643/2643 (8 web3signer timeout). EF tests: 138/138. Clippy clean. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates. No code changes needed.
