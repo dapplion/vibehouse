@@ -114,6 +114,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - Added workflow_dispatch trigger to ci.yml for manual re-runs
 - No consensus code changes needed
 
+### run 882 (Mar 10)
+- Spec scan: all 11 PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2), no new spec-test vectors
+- PR #4992 (PTC lookbehind): unchanged (215962a9, blocked, no approvals)
+- CI run 22905618379: 4/6 green, beacon_chain/http_api/unit still running
+- No code changes needed
+
 ### runs 845-849 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked, 10 review comments)
