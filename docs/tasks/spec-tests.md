@@ -28,6 +28,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 835 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- #4992 (PTC lookbehind minimal cache) most active — potuz + kevaundray reviewing, community prefers over #4979
+- Latest consensus-specs merges (Mar 7-10): all CI/tooling (#4995, #4994, #4993, #4991, #4990, #4988), no consensus changes
+- cargo check + clippy: zero warnings; CI green
+- EF spec tests: 35/35 passed (minimal, fake_crypto)
+- cargo audit: 1 advisory (rsa, no fix); cargo outdated: only major bumps, no compatible patches
+- Nightly failure (Mar 10 09:04) confirmed on pre-fix commit 0d12a857; fix (62df5686) already in CI green run
+- No code changes needed
+
 ### run 834 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Latest consensus-specs commits: unchanged — all CI/tooling, no consensus changes
