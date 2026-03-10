@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 807 (Mar 10)
+- Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- Latest consensus-specs commits: unchanged from run 806 — all CI/tooling, no consensus changes
+- PTC lookbehind #4992: still OPEN and MERGEABLE, unchanged since Mar 10 01:07 UTC
+- cargo check + clippy: zero warnings; CI in progress
+- EF spec tests: 35/35 passed (operations + epoch_processing + sanity, minimal, fake_crypto)
+- cargo audit: 1 advisory (RUSTSEC-2023-0071 rsa, no fix available, low practical risk); cargo outdated: 3 minor (rand/rand_xorshift/rand_chacha), none actionable
+- No code changes needed
+
 ### run 806 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Latest consensus-specs commits: python 3.14 (#4995), reftest cleanup (#4994, #4993, #4991), release-drafter update (#4990) — all CI/tooling, no consensus changes
