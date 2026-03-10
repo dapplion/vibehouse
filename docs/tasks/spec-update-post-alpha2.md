@@ -126,6 +126,8 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 ### 2026-03-10 — consolidated: runs 746-804 (Mar 10)
 Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (7 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
 
+Run 810: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. No new consensus changes. Workspace tests: 2643/2643. Clippy clean. Cargo audit: 1 vuln, 5 allowed warnings. No dependency updates available. Reviewed PR #4992 diff in detail — implementation plan ready for when it merges: new `ptc_lookbehind` BeaconState field, `compute_ptc` extraction, `process_slots` shift, fork upgrade init, `on_payload_attestation_message` reorder.
+
 Run 809: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. No new consensus changes. Workspace tests: 2643/2643. EF tests: 138/138. Clippy clean. Cargo audit: 1 vuln, 5 allowed warnings. No dependency updates available.
 
 Run 808: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. Only new commit: python 3.14 support (#4995, CI-only). Workspace tests: 2643/2643. EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed warnings). No dependency updates available.
