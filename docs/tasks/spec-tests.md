@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 805 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4940, #4932, #4960, #4962), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- Latest consensus-specs commits: EIP-6800 removal (#4984), renovate/release-drafter updates — no Gloas changes
+- cargo check + clippy: zero warnings; CI in progress (latest green: Mar 9)
+- EF spec tests: 35/35 passed (minimal, fake_crypto)
+- Workspace tests: 2643/2652 passed (9 web3signer_tests timeout — external service)
+- cargo audit: 1 vuln (unchanged), 5 allowed warnings; no lockfile updates available
+- No code changes needed
+
 ### run 800 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Latest consensus-specs commits: python 3.14 support (#4995), reftest cleanup (#4994) — CI/tooling only, no new commits since last run
