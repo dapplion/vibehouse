@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 865 (Mar 10)
+- Spec scan: no new consensus-specs commits since run 864. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked). No new code commits since potuz's Mar 10 01:05 UTC updates
+- Notable merged PRs since last check: #4984 (remove EIP-6800 Verkle specs) — not relevant to Gloas
+- CI green. Nightly Mar 10 failure confirmed on pre-fix commit 0d12a857; fix 62df56862 verified stable (5/5 local passes)
+- cargo check: zero warnings. No compatible dep updates. cargo audit: same rsa advisory (no fix)
+- No code changes needed
+
 ### run 859 (Mar 10)
 - Spec scan: no new consensus-specs commits since run 858 (latest: #4995 Python 3.14 support). No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked). potuz addressed review comments (Mar 10 01:05-01:07 UTC) but no new code commits
