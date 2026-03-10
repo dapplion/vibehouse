@@ -1099,6 +1099,9 @@ async fn data_column_reconstruction_at_deadline() {
     // Since we're at the reconstruction deadline, reconstruction should be triggered
     // immediately once sufficient columns are available. Drain all events and verify
     // both gossip processing and reconstruction occurred.
+    //
+    // Note: reconstruction can fire between gossip column events (the original race),
+    // so we must collect ALL expected events without breaking early on reconstruction.
     if num_data_columns > 0 {
         let mut gossip_count = 0usize;
         let mut saw_reconstruction = false;
@@ -1110,12 +1113,13 @@ async fn data_column_reconstruction_at_deadline() {
                 event = rig.work_journal_rx.recv() => {
                     match event {
                         Some("gossip_data_column_sidecar") => gossip_count += 1,
-                        Some("column_reconstruction") => {
-                            saw_reconstruction = true;
-                            break;
-                        }
+                        Some("column_reconstruction") => saw_reconstruction = true,
                         Some(_) => {} // worker_freed, nothing_to_do, etc.
                         None => break,
+                    }
+                    // Break once we've seen both reconstruction and all gossip events
+                    if saw_reconstruction && gossip_count >= num_data_columns {
+                        break;
                     }
                 }
             }
