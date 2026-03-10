@@ -129,6 +129,7 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
+- Run 847: Spec scan — all stable, all 11 PRs still OPEN. PR #4992: new comment from ensi321 preferring it over #4979, potuz still addressing review. Nightly Mar 10 failure confirmed on pre-fix commit (next nightly will be green). Updated schannel 0.1.28→0.1.29.
 - Runs 839-846: Repeated spec scans, all stable. All 11 PRs still OPEN. PR #4992 unchanged (commit 215962a). CI green on fix commit. Nightly Mar 10 failure confirmed on pre-fix commit 0d12a85 (before 62df5686); next nightly will be green. No dep updates, no actionable work.
 - Runs 832-838: Repeated spec scans, all stable. CI green after flaky test fix (62df56862). No dep updates needed.
 - Run 831: Spec scan (no changes). Race fix verified stable (5/5 local passes). CI running for fix commit.
