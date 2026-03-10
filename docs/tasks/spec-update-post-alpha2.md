@@ -123,8 +123,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### 2026-03-10 — consolidated: runs 746-794 (Mar 10)
-Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green. PTC lookbehind #4992 unchanged since Mar 10 01:07 UTC (design stable, blocked on approvals). Recent spec commits (#4990-4995) are all CI/tooling/cleanup — no consensus changes.
+### 2026-03-10 — consolidated: runs 746-801 (Mar 10)
+Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (5 consecutive green runs Mar 5-9). PTC lookbehind #4992 unchanged since Mar 10 01:07 UTC (design stable, blocked on approvals). Recent spec commits are all CI/tooling/cleanup — no consensus changes.
+
+Run 801: Audited PR #4906 ("Add more tests for process_deposit_request", merged upstream). Verified all new test scenarios against our implementation: builder slot reuse (first-of-multiple, current-epoch boundary, future-epoch exclusion, nonzero-balance exclusion), ETH1/compounding credential routing to validator path, nonstandard credential padding address extraction, slot binding. All cases handled correctly by our code — no changes needed.
 
 Key verifications across these runs:
 - EF spec tests: consistently 35/35 (minimal) and 138/138 (full fake_crypto) passing
