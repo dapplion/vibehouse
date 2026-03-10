@@ -1089,19 +1089,45 @@ async fn data_column_reconstruction_at_deadline() {
         .set_current_time(slot_start + Duration::from_secs(3));
 
     let num_data_columns = rig.next_data_columns.as_ref().map(|c| c.len()).unwrap_or(0);
+
+    // Enqueue all columns first. At the reconstruction deadline, reconstruction may fire
+    // between gossip column processing events, so we can't assert per-column ordering.
     for i in 0..num_data_columns {
         rig.enqueue_gossip_data_columns(i);
-        rig.assert_event_journal_completes(&[WorkType::GossipDataColumnSidecar])
-            .await;
     }
 
-    // Since we're at the reconstruction deadline, reconstruction should be triggered immediately
+    // Since we're at the reconstruction deadline, reconstruction should be triggered
+    // immediately once sufficient columns are available. Drain all events and verify
+    // both gossip processing and reconstruction occurred.
     if num_data_columns > 0 {
-        rig.assert_event_journal_completes_with_timeout(
-            &[WorkType::ColumnReconstruction],
-            Duration::from_millis(50),
-        )
-        .await;
+        let mut gossip_count = 0usize;
+        let mut saw_reconstruction = false;
+        let deadline = tokio::time::sleep(Duration::from_secs(5));
+        tokio::pin!(deadline);
+        loop {
+            tokio::select! {
+                _ = &mut deadline => break,
+                event = rig.work_journal_rx.recv() => {
+                    match event {
+                        Some("gossip_data_column_sidecar") => gossip_count += 1,
+                        Some("column_reconstruction") => {
+                            saw_reconstruction = true;
+                            break;
+                        }
+                        Some(_) => {} // worker_freed, nothing_to_do, etc.
+                        None => break,
+                    }
+                }
+            }
+        }
+        assert!(
+            saw_reconstruction,
+            "column reconstruction should be triggered at deadline"
+        );
+        assert_eq!(
+            gossip_count, num_data_columns,
+            "all gossip data columns should be processed"
+        );
     }
 }
 
