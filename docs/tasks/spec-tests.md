@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 871 (Mar 10)
+- Spec scan: no new consensus-specs commits since run 870. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
+- CI green. Updated Cargo.lock (windows-sys 0.61.2 transitive deps — 10 crates consolidated to latest windows-sys)
+
 ### run 870 (Mar 10)
 - Spec scan: no new consensus-specs commits since run 869. All 11 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked, no approvals)
