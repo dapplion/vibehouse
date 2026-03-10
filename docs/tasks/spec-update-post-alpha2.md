@@ -123,8 +123,8 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### 2026-03-10 — consolidated: runs 746-792 (Mar 10)
-Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors. CI continuously green, nightly continuously green. PTC lookbehind #4992 unchanged since Mar 10 01:07 UTC (design stable, blocked on approvals). Recent spec commits (#4990-4995) are all CI/tooling/cleanup — no consensus changes.
+### 2026-03-10 — consolidated: runs 746-793 (Mar 10)
+Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green. PTC lookbehind #4992 unchanged since Mar 10 01:07 UTC (design stable, blocked on approvals). Recent spec commits (#4990-4995) are all CI/tooling/cleanup — no consensus changes.
 
 Key verifications across these runs:
 - EF spec tests: consistently 35/35 (minimal) and 138/138 (full fake_crypto) passing
