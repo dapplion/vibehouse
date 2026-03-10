@@ -126,9 +126,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 ### 2026-03-10 — consolidated: runs 746-804 (Mar 10)
 Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (7 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
 
-Runs 801-827 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). PR #4747 (Fast Confirmation Rule) updated but not actionable.
+Runs 801-828 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
+- Run 828: Spec scan (no changes), nightly `network-tests (fulu)` failed on pre-fix commit (data_column_reconstruction_at_deadline race) — fix already pushed in run 826
 - Run 826: Fixed flaky `data_column_reconstruction_at_deadline` nightly test (race condition in event ordering)
 - Run 820: Committed Cargo.lock update (enr syn 1→syn 2)
 - Run 810: Reviewed PR #4992 diff — implementation plan ready
