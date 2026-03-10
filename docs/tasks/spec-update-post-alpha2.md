@@ -123,6 +123,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 768 (Mar 10)
+- Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- Recent merges (#4995): Python 3.14 support — CI/tooling only, no consensus changes
+- PTC lookbehind #4992: unchanged since potuz's Mar 10 01:07 UTC updates (removed `get_ptc_assignment`, addressed all review feedback). Mergeable but blocked (needs approvals).
+- EF spec tests: 35/35 passed; CI green; cargo audit unchanged (rsa advisory only)
+- No code changes needed
+
 ### run 767 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - PTC lookbehind #4992: potuz pushed fresh updates (5 new comments within last few hours) — removed `get_ptc_assignment` helper entirely, addressed review feedback. Design: `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]`, rotated each slot in `process_slots`, `get_ptc` becomes pure lookup with slot assertion. Fork choice reorders `on_payload_attestation_message` to check slot before calling `get_ptc`. Validator `get_ptc_assignment` removed.
