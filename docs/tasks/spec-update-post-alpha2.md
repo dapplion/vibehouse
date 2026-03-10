@@ -123,6 +123,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 769 (Mar 10)
+- Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- PTC lookbehind #4992: unchanged since last scan, still open
+- Codebase audit: zero compiler warnings, zero clippy warnings, comprehensive Gloas test coverage confirmed (can_builder_cover_bid 10+ tests, envelope_processing 57 tests, gloas_verification 51 tests), no missing Gloas fork handling in match statements
+- Docker workflow queued >4h (self-hosted runner availability, not code)
+- No code changes needed — next real work: PTC lookbehind implementation when #4992 merges
+
 ### run 768 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - Recent merges (#4995): Python 3.14 support — CI/tooling only, no consensus changes
