@@ -129,6 +129,7 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
+- Run 856: Spec scan — all 11 tracked PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure confirmed on pre-fix commit 0d12a85 — fix already on main (62df5686), tonight's run should pass. CI green (run 22901292778).
 - Run 855: Spec scan — all 11 tracked PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). Today's only spec commit: #4995 Python 3.14 support (no consensus changes). PTC lookbehind: #4992 still 0 approvals, potuz/kevaundray design debate ongoing; #4979 unchanged since Mar 7. No compatible dep updates. Nightly Mar 10 failure: `data_column_reconstruction_at_deadline` on pre-fix commit 0d12a85 — fix 62df5686 is on main, tonight's run should pass. CI green.
 - Run 854: Spec scan — all 11 tracked PRs still OPEN. No compatible dep updates. Searched for test coverage gaps — all identified gaps already have thorough tests.
 - Runs 850-853: Repeated spec scans, all stable. All 11 PRs still OPEN. PR #4992 unchanged (commit 215962a). No dep updates available, no actionable work.
