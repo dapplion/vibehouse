@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 909 (Mar 10)
+- Spec scan: no new consensus-specs commits (latest: #4995 python 3.14 support). All 11 tracked Gloas PRs still OPEN. No new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=true, no new comments since Mar 10 12:05 UTC)
+- Nightly 22894949404 failure was on stale commit 0d12a857 (pre race-fix); nightly 22908449717 on current HEAD: 24/26 jobs passed incl. network-tests (fulu) SUCCESS, http-api fulu/electra still running
+- CI green. 0 compatible dep updates. cargo audit: 1 vuln + 5 allowed (unchanged). No code changes needed
+
 ### run 898 (Mar 10)
 - Spec scan: no new consensus-specs commits since run 889. All 12 tracked PRs still OPEN. No new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
