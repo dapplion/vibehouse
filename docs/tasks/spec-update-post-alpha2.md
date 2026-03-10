@@ -126,9 +126,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 ### 2026-03-10 — consolidated: runs 746-804 (Mar 10)
 Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (7 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
 
-Runs 801-830 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
+Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
+- Run 831: Spec scan (no changes). Race fix verified stable (5/5 local passes). CI running for fix commit. Only dep update: schannel 0.1.28→0.1.29 (Windows-only, skipped). No actionable work.
 - Run 830: Spec scan (no changes). Nightly network-tests (fulu) failure was on pre-fix commit — `data_column_reconstruction_at_deadline` race fix (run 829) was pushed after nightly. Verified fix is solid: 5/5 local runs pass. CI running with fix. No actionable work — spec stable, all tests green, no dependency updates needed.
 - Run 829: Fixed remaining race in `data_column_reconstruction_at_deadline` — previous fix (run 826) broke out of event loop on reconstruction before all gossip events were drained; now collects both reconstruction AND all gossip events before breaking. 5/5 local runs pass.
 - Run 828: Spec scan (no changes), nightly `network-tests (fulu)` failed on pre-fix commit (data_column_reconstruction_at_deadline race) — fix already pushed in run 826
