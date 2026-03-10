@@ -129,7 +129,7 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
-- Run 840: Spec scan (no changes). All 11 PRs still OPEN. PR #4992 unchanged (commit 215962a, last activity Mar 10 01:07 UTC). CI green. Nightly Mar 10 failure was pre-fix commit (data_column_reconstruction_at_deadline race) — fix already on main. No new releases, no new spec test vectors. No actionable work.
+- Runs 840-842: Spec scan (no changes). All 11 PRs still OPEN. PR #4992 unchanged (commit 215962a). CI green for fix commit. Nightly Mar 10 failure was pre-fix commit (data_column_reconstruction_at_deadline race). No new releases, no new spec test vectors. No actionable work.
 - Run 839: Spec scan (no changes). All 11 PRs still OPEN. PR #4992 unchanged (commit 215962a). CI green (fix commit). Nightly Mar 10 failure confirmed pre-fix commit. No new releases, no new spec test vectors. No actionable work.
 - Runs 832-838: Repeated spec scans, all stable. CI green after flaky test fix (62df56862). No dep updates needed.
 - Run 831: Spec scan (no changes). Race fix verified stable (5/5 local passes). CI running for fix commit. Only dep update: schannel 0.1.28→0.1.29 (Windows-only, skipped). No actionable work.
