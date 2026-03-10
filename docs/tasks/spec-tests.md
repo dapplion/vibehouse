@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 845 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- No new consensus-specs commits since run 844
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked, 10 review comments)
+- cargo check: zero warnings; CI green
+- Nightly Mar 10 failure was pre-fix commit; tonight's nightly will be green
+- No code changes needed
+
 ### run 844 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - Recent consensus-specs commits: reference test generation framework overhaul (#4994, #4993, #4991), removed EIP-6800 Verkle specs (#4984), Python 3.14 support (#4995) — no consensus changes
