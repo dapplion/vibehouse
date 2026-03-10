@@ -55,13 +55,16 @@ Fixes a real bug: when processing payload attestations at epoch boundaries (e.g.
 - Epoch processing shifts window and pre-computes next epoch
 - 10 review comments, design debate ongoing
 
-### PR #4992 (alternative, potuz, Mar 9) — minimal cache approach ← SIMPLER
+### PR #4992 (alternative, potuz, Mar 9, actively updated Mar 10) — minimal cache approach ← SIMPLER
 - `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` (~8KB per state)
-- Only caches 2 committees: previous slot and current slot
-- Updated at every slot transition in `process_slots`: `state.ptc_lookbehind = [state.ptc_lookbehind[1], compute_ptc(state)]`
-- `get_ptc(state, slot)` asserts `slot == state.slot or slot + 1 == state.slot`, returns from cache
-- Much simpler: no epoch processing step, no fork upgrade initialization of full array
-- Just opened Mar 9, no reviews yet
+- Only caches 2 committees: previous slot (`[0]`) and current slot (`[1]`)
+- Updated at every slot transition in `process_slots` (after slot increment, after epoch processing): `state.ptc_lookbehind = [state.ptc_lookbehind[1], compute_ptc(state)]`
+- New `compute_ptc(state)` extracted helper — computes PTC for `state.slot` using seed + beacon committees + balance-weighted selection
+- `get_ptc(state, slot)` asserts `slot == state.slot or slot + 1 == state.slot`, returns `[1]` for current, `[0]` for previous
+- Fork upgrade: initialize `[[0; PTC_SIZE], [0; PTC_SIZE]]`, then compute `[1]` after builder onboarding
+- `get_ptc_assignment` removed entirely from validator spec (validators just check `get_ptc` for current slot)
+- Fork choice: reorder `on_payload_attestation_message` to check slot before calling `get_ptc` (assertion safety)
+- Active review: potuz addressing feedback, design converging
 
 **Implementation plan (for whichever merges):**
 1. New BeaconState field: `ptc_lookbehind` (size depends on which PR wins)
@@ -119,6 +122,12 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### run 767 (Mar 10)
+- Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
+- PTC lookbehind #4992: potuz pushed fresh updates (5 new comments within last few hours) — removed `get_ptc_assignment` helper entirely, addressed review feedback. Design: `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]`, rotated each slot in `process_slots`, `get_ptc` becomes pure lookup with slot assertion. Fork choice reorders `on_payload_attestation_message` to check slot before calling `get_ptc`. Validator `get_ptc_assignment` removed.
+- EF spec tests: 35/35 passed; CI green
+- No code changes needed — will implement when PR merges
 
 ### run 766 (Mar 10)
 - Spec scan: all tracked PRs still OPEN, no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
