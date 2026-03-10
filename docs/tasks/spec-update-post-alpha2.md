@@ -123,10 +123,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### 2026-03-10 — consolidated: runs 746-803 (Mar 10)
+### 2026-03-10 — consolidated: runs 746-804 (Mar 10)
 Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (7 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
 
-Run 803: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. Recent merges (#4993-4995) all CI/tooling. PR #4992 unchanged since run 802. Detailed analysis of #4992 design: new `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` state field, `compute_ptc` extraction, `process_slots` rotation, `get_ptc_assignment` removed entirely. Design moderately stable but no approvals yet. Workspace tests: 2643/2643 (8 web3signer timeouts — external service). Nightly: 7 consecutive green.
+Run 804: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. No new merges since run 803. PR #4992 unchanged. Updated libz-sys 1.1.24→1.1.25. Workspace tests: 2643/2643. Clippy clean. Cargo audit unchanged (1 vuln, 5 allowed warnings).
 
 Run 802: Spec scan — no new merges, no new release, only CI commit (python 3.14 support #4995). PR #4992 latest commit removes `get_ptc_assignment` helper and cleans up fork upgrade. All tests green: EF 138/138, fork choice 8/8, workspace 2643/2643.
 
