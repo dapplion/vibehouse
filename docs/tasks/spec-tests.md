@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 800 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- Latest consensus-specs commits: python 3.14 support (#4995), reftest cleanup (#4994) — CI/tooling only, no new commits since last run
+- PTC lookbehind #4992: unchanged since Mar 10 01:07 UTC, design stable but blocked on approvals
+- Analyzed PTC lookbehind implementation plan: 7 code areas to change when PR merges (BeaconState field, compute_ptc extraction, get_ptc cache read, process_slots shift, fork upgrade init, fork choice reorder, validator duties)
+- cargo check + clippy: zero warnings; CI green; nightly: 5 consecutive green (Mar 5-9); cargo audit: no new advisories; no lockfile updates
+- EF spec tests: 35/35 passed (operations + epoch_processing + sanity, minimal preset, fake_crypto)
+- No code changes needed
+
 ### run 799 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
 - Latest consensus-specs commits: python 3.14 support (#4995), reftest cleanup (#4994) — CI/tooling only, no new commits since last run
