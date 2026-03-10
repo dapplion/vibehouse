@@ -129,14 +129,8 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 Runs 801-831 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). Recently merged consensus-specs PRs (#4994, #4995): Python 3.14 support and test framework cleanup — no consensus changes.
 
 Notable activities:
-- Run 858: Spec scan — all stable, no new merges, no new release (still v1.7.0-alpha.2). All 11 tracked PRs still OPEN. PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure same as before (pre-fix commit 0d12a857, fix 62df5686 on main — tonight should pass). CI green. No code changes needed.
-- Run 857: Spec scan — all stable, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure (network-tests fulu) on pre-fix commit 0d12a857 — fix 62df5686 on main. CI green. No code changes needed.
-- Run 856: Spec scan — all 11 tracked PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure confirmed on pre-fix commit 0d12a85 — fix already on main (62df5686), tonight's run should pass. CI green (run 22901292778).
-- Run 855: Spec scan — all 11 tracked PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). Today's only spec commit: #4995 Python 3.14 support (no consensus changes). PTC lookbehind: #4992 still 0 approvals, potuz/kevaundray design debate ongoing; #4979 unchanged since Mar 7. No compatible dep updates. Nightly Mar 10 failure: `data_column_reconstruction_at_deadline` on pre-fix commit 0d12a85 — fix 62df5686 is on main, tonight's run should pass. CI green.
-- Run 854: Spec scan — all 11 tracked PRs still OPEN. No compatible dep updates. Searched for test coverage gaps — all identified gaps already have thorough tests.
-- Runs 850-853: Repeated spec scans, all stable. All 11 PRs still OPEN. PR #4992 unchanged (commit 215962a). No dep updates available, no actionable work.
-- Runs 839-849: Repeated spec scans, all stable. Updated schannel 0.1.28→0.1.29 (run 847). CI green on fix commit (62df5686).
-- Runs 832-838: Repeated spec scans, all stable. CI green after flaky test fix (62df56862). No dep updates needed.
+- Run 860: Spec scan — all 11 PRs still OPEN, no new merges, no new release (still v1.7.0-alpha.2). PR #4992 unchanged (215962a). No compatible dep updates. Nightly Mar 10 failure still on pre-fix commit 0d12a857 — fix on main, Mar 11 nightly should pass. CI green. No code changes needed.
+- Runs 832-858: Repeated spec scans, all stable. Updated schannel 0.1.28→0.1.29 (run 847). CI green after flaky test fix (62df56862). No dep updates available, no actionable work.
 - Run 831: Spec scan (no changes). Race fix verified stable (5/5 local passes). CI running for fix commit.
 - Run 829: Fixed remaining race in `data_column_reconstruction_at_deadline` — previous fix (run 826) broke out of event loop on reconstruction before all gossip events were drained; now collects both reconstruction AND all gossip events before breaking. 5/5 local runs pass.
 - Run 826: Fixed flaky `data_column_reconstruction_at_deadline` nightly test (race condition in event ordering)
