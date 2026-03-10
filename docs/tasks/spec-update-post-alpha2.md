@@ -128,6 +128,8 @@ Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-s
 
 Run 816: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). Noted PR #4747 (Fast Confirmation Rule, labeled gloas) updated Mar 9 — still open, not actionable. Workspace tests: 2612/2612 (8 web3signer timeout). EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates.
 
+Run 818: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new spec commits since run 817. CI green, nightly green (5 consecutive Mar 5-9). Workspace tests: 2643/2643 (8 web3signer timeout). EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No code changes needed.
+
 Run 817: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10 01:07 UTC). Latest spec commits: #4995 (python 3.14), #4994 (remove ad-hoc reftest) — CI/tooling only. CI green, nightly green (5 consecutive Mar 5-9). Workspace tests: 2643/2643 (8 web3signer timeout). EF tests: 138/138. No code changes needed.
 
 Run 815: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new commits since run 814. No new untracked Gloas PRs. CI green, nightly green (8 consecutive). Workspace tests: 2643/2643. EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates.
