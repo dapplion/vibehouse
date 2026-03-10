@@ -123,6 +123,9 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 898 (Mar 10)
+- Spec scan: no new consensus-specs commits. All 12 tracked PRs still OPEN. No new spec release (still v1.7.0-alpha.2), no new spec-test vectors. PR #4992 unchanged. CI green, nightly running. 0 dep updates. No code changes needed.
+
 ### 2026-03-10 — consolidated: runs 746-804 (Mar 10)
 Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (7 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
 
