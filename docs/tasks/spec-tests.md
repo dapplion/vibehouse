@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 851 (Mar 10)
+- Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0)
+- PR #4992 (PTC lookbehind): unchanged (head 215962a9, mergeable=blocked)
+- Recent consensus-specs commits: unchanged — all CI/tooling, no consensus changes
+- CI run 22901292778 (workflow_dispatch commit): all 6 jobs in progress, retrying after previous transient 403
+- cargo check: zero warnings
+- No code changes needed
+
 ### run 850 (Mar 10)
 - Spec scan: all tracked PRs still OPEN (#4992, #4979, #4954, #4898, #4892, #4843, #4939), no new Gloas merges, no new spec release (still v1.7.0-alpha.2)
 - Recent consensus-specs commits: all infrastructure/tooling (Python 3.14, test framework, renovate migration, dep bumps) — no consensus changes
