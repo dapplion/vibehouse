@@ -126,45 +126,16 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 ### 2026-03-10 — consolidated: runs 746-804 (Mar 10)
 Spec stable throughout. All 11 tracked Gloas PRs remain OPEN. No new consensus-specs release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.5.0 stable, v1.6.0-beta.0 latest pre-release — no Gloas). CI continuously green, nightly continuously green (7 consecutive green runs Mar 5-10). PTC lookbehind #4992: potuz pushed commit 215962a (Mar 10 01:05 UTC) removing `get_ptc_assignment` entirely and addressing fork upgrade; design converging but still needs approvals. Recent spec commits are all CI/tooling/cleanup — no consensus changes.
 
-Run 826: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged. Fixed flaky `data_column_reconstruction_at_deadline` nightly test (first failure in 10+ consecutive green runs) — race condition where `column_reconstruction` event fired between gossip column processing iterations. Changed test to enqueue all columns first, then drain events order-independently. All 163 fulu network tests pass.
+Runs 801-827 (Mar 10): Spec completely stable. No new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 unchanged (commit 215962a). PR #4747 (Fast Confirmation Rule) updated but not actionable.
 
-Run 825: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10, mergeable_state=blocked). No new spec commits since run 824. EF tests: 138/138. CI green, nightly running. No code changes needed.
+Notable activities:
+- Run 826: Fixed flaky `data_column_reconstruction_at_deadline` nightly test (race condition in event ordering)
+- Run 820: Committed Cargo.lock update (enr syn 1→syn 2)
+- Run 810: Reviewed PR #4992 diff — implementation plan ready
+- Run 804: Updated libz-sys 1.1.24→1.1.25
+- Run 801: Audited PR #4906 test scenarios — all handled correctly, no changes needed
 
-Run 824: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10, mergeable_state=blocked). Recent merges all CI/tooling (#4995 python 3.14, #4994/#4993 reftests, #4990/#4991 release-drafter). EF tests: 138/138. Consensus unit tests: 877/877. Clippy clean. Cargo audit unchanged (1 vuln, 5 allowed). CI green, nightly running. No code changes needed.
-
-Run 816: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). Noted PR #4747 (Fast Confirmation Rule, labeled gloas) updated Mar 9 — still open, not actionable. Workspace tests: 2612/2612 (8 web3signer timeout). EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates.
-
-Run 821: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10, mergeable_state=blocked). No new spec commits since run 820. EF tests: 138/138. Workspace tests: 2643+ pass (8 web3signer timeout). No code changes needed.
-
-Run 820: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10, mergeable_state=blocked). No new spec commits since run 819. CI green. Workspace tests: 2643/2643 (8 web3signer timeout). Committed Cargo.lock update (enr syn 1→syn 2). No code changes needed.
-
-Run 819: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new spec commits since run 818. CI green, nightly green (3 consecutive Mar 7-9). Workspace tests: 2643/2643 (8 web3signer timeout). EF tests: 138/138. Clippy clean. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates. No code changes needed.
-
-Run 818: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new spec commits since run 817. CI green, nightly green (5 consecutive Mar 5-9). Workspace tests: 2643/2643 (8 web3signer timeout). EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No code changes needed.
-
-Run 817: Spec scan — no new merges, no new release (still v1.7.0-alpha.2), no new spec test vectors (still v1.6.0-beta.0). All tracked Gloas PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10 01:07 UTC). Latest spec commits: #4995 (python 3.14), #4994 (remove ad-hoc reftest) — CI/tooling only. CI green, nightly green (5 consecutive Mar 5-9). Workspace tests: 2643/2643 (8 web3signer timeout). EF tests: 138/138. No code changes needed.
-
-Run 815: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new commits since run 814. No new untracked Gloas PRs. CI green, nightly green (8 consecutive). Workspace tests: 2643/2643. EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed). No dependency updates.
-
-Run 814: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). Recent merges: #4995 (python 3.14), #4994 (remove ad-hoc reftest), #4993 (improve reftests), #4990-4991 (release-drafter/CI) — all CI/tooling. No new untracked Gloas PRs. Workspace tests: 2643/2643. EF tests: 138/138.
-
-Run 813: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new consensus-relevant commits since run 812. No new untracked Gloas PRs. Workspace tests: 2643/2643. EF tests: 138/138.
-
-Run 812: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). No new consensus-relevant commits since run 811. Workspace tests: 2643/2643. EF tests: 138/138. Clippy clean.
-
-Run 811: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. PR #4992 unchanged (last commit 215962a, Mar 10). Recent spec commits: #4995 (python 3.14), #4994 (remove ad-hoc reftest framework), #4993 (improve reftests) — all CI/tooling. Also checked 2 untracked Gloas PRs: #4840 (EIP-7843, stale since Jan 19) and #4630 (EIP-7688 forward-compatible SSZ, stale since Feb 3) — not actionable. Workspace tests: 2643/2643. EF tests: 138/138. Clippy clean. Cargo audit: 1 vuln, 5 allowed warnings.
-
-Run 810: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. No new consensus changes. Workspace tests: 2643/2643. Clippy clean. Cargo audit: 1 vuln, 5 allowed warnings. No dependency updates available. Reviewed PR #4992 diff in detail — implementation plan ready for when it merges: new `ptc_lookbehind` BeaconState field, `compute_ptc` extraction, `process_slots` shift, fork upgrade init, `on_payload_attestation_message` reorder.
-
-Run 809: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. No new consensus changes. Workspace tests: 2643/2643. EF tests: 138/138. Clippy clean. Cargo audit: 1 vuln, 5 allowed warnings. No dependency updates available.
-
-Run 808: Spec scan — no new merges, no new release, no new spec test vectors. All 10 tracked PRs still OPEN. Only new commit: python 3.14 support (#4995, CI-only). Workspace tests: 2643/2643. EF tests: 138/138. Cargo audit unchanged (1 vuln, 5 allowed warnings). No dependency updates available.
-
-Run 804: Spec scan — no new merges, no new release, no new spec test vectors. All 11 tracked PRs still OPEN. No new merges since run 803. PR #4992 unchanged. Updated libz-sys 1.1.24→1.1.25. Workspace tests: 2643/2643. Clippy clean. Cargo audit unchanged (1 vuln, 5 allowed warnings).
-
-Run 802: Spec scan — no new merges, no new release, only CI commit (python 3.14 support #4995). PR #4992 latest commit removes `get_ptc_assignment` helper and cleans up fork upgrade. All tests green: EF 138/138, fork choice 8/8, workspace 2643/2643.
-
-Run 801: Audited PR #4906 ("Add more tests for process_deposit_request", merged upstream). Verified all new test scenarios against our implementation: builder slot reuse (first-of-multiple, current-epoch boundary, future-epoch exclusion, nonzero-balance exclusion), ETH1/compounding credential routing to validator path, nonstandard credential padding address extraction, slot binding. All cases handled correctly by our code — no changes needed.
+All tests green throughout: EF 138/138, workspace 2643/2643, clippy clean, CI and nightly continuously green.
 
 Key verifications across these runs:
 - EF spec tests: consistently 35/35 (minimal) and 138/138 (full fake_crypto) passing
