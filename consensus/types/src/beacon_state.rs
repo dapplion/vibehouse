@@ -1125,13 +1125,20 @@ impl<E: EthSpec> BeaconState<E> {
             }
         }
 
+        let seed_len = seed.len();
+        let mut preimage = Vec::with_capacity(seed_len.saturating_add(8));
+        preimage.extend_from_slice(seed);
+        preimage.extend_from_slice(&[0u8; 8]);
+
         epoch
             .slot_iter(E::slots_per_epoch())
             .map(|slot| {
-                let mut preimage = seed.to_vec();
-                preimage.append(&mut int_to_bytes8(slot.as_u64()));
-                let seed = hash(&preimage);
-                self.compute_proposer_index(indices, &seed, spec)
+                let slot_bytes = int_to_bytes8(slot.as_u64());
+                if let Some(tail) = preimage.get_mut(seed_len..) {
+                    tail.copy_from_slice(&slot_bytes);
+                }
+                let hash = hash(&preimage);
+                self.compute_proposer_index(indices, &hash, spec)
             })
             .collect()
     }
