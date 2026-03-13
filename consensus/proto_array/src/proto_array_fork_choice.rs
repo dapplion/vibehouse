@@ -1101,25 +1101,12 @@ impl ProtoArrayForkChoice {
     ) -> Result<Hash256, String> {
         let filtered_nodes = self.compute_filtered_nodes::<E>(current_slot);
         let children_index = self.build_children_index();
-        let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
-            proposer_boost_root,
-            equivocating_indices,
-            current_slot,
-            spec,
-        );
-
-        // Spec: PAYLOAD_TIMELY_THRESHOLD = PTC_SIZE // 2
-        // Both is_payload_timely and is_payload_data_available use this threshold.
-        let ptc_quorum_threshold = spec.ptc_size / 2;
-
-        let mut head = GloasForkChoiceNode {
-            root: justified_checkpoint.root,
-            payload_status: GloasPayloadStatus::Pending,
-        };
 
         // Pre-compute active votes: filter out validators with zero root or
         // zero balance once, so the inner weight loop (called per-child per-depth)
         // skips them without repeated bounds checks and comparisons.
+        // Computed before should_apply_proposer_boost_gloas so it can reuse the
+        // same filtered set instead of re-iterating all validators.
         let active_votes: Vec<(&VoteTracker, u64)> = self
             .votes
             .0
@@ -1141,6 +1128,23 @@ impl ProtoArrayForkChoice {
                 Some((vote, balance))
             })
             .collect();
+
+        let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
+            proposer_boost_root,
+            equivocating_indices,
+            current_slot,
+            spec,
+            &active_votes,
+        );
+
+        // Spec: PAYLOAD_TIMELY_THRESHOLD = PTC_SIZE // 2
+        // Both is_payload_timely and is_payload_data_available use this threshold.
+        let ptc_quorum_threshold = spec.ptc_size / 2;
+
+        let mut head = GloasForkChoiceNode {
+            root: justified_checkpoint.root,
+            payload_status: GloasPayloadStatus::Pending,
+        };
 
         // Reuse the ancestor cache allocation across loop iterations. Each
         // iteration clears the entries (slots differ per level) but keeps the
@@ -1378,6 +1382,7 @@ impl ProtoArrayForkChoice {
         equivocating_indices: &BTreeSet<u64>,
         _current_slot: Slot,
         spec: &ChainSpec,
+        active_votes: &[(&VoteTracker, u64)],
     ) -> bool {
         if proposer_boost_root.is_zero() {
             return false;
@@ -1415,19 +1420,7 @@ impl ProtoArrayForkChoice {
         // Compute attestation-only weight for the parent (no proposer boost)
         let parent_slot = parent_block.slot;
         let mut parent_att_weight: u64 = 0;
-        for (val_index, vote) in self.votes.0.iter().enumerate() {
-            if vote.current_root.is_zero() {
-                continue;
-            }
-            let balance = self
-                .balances
-                .effective_balances
-                .get(val_index)
-                .copied()
-                .unwrap_or(0);
-            if balance == 0 {
-                continue;
-            }
+        for &(vote, balance) in active_votes {
             if self.is_supporting_vote_gloas_at_slot(&parent_node, vote, parent_slot) {
                 parent_att_weight = parent_att_weight.saturating_add(balance);
             }
@@ -1730,11 +1723,14 @@ impl ProtoArrayForkChoice {
     ) -> u8 {
         let pa = &self.proto_array;
 
-        let is_previous_slot = pa
+        // Resolve the proto_node once — both slot check and should_extend_payload
+        // need it, avoiding two separate HashMap lookups.
+        let proto_node = pa
             .indices
             .get(&node.root)
-            .and_then(|&idx| pa.nodes.get(idx))
-            .is_some_and(|n| n.slot + 1 == current_slot);
+            .and_then(|&idx| pa.nodes.get(idx));
+
+        let is_previous_slot = proto_node.is_some_and(|n| n.slot + 1 == current_slot);
 
         if !is_previous_slot {
             node.payload_status as u8
@@ -1742,7 +1738,12 @@ impl ProtoArrayForkChoice {
             1
         } else {
             // FULL: use 2 if should extend payload, else 0.
-            if self.should_extend_payload(node, ptc_quorum_threshold, proposer_boost_root) {
+            if self.should_extend_payload(
+                node,
+                proto_node,
+                ptc_quorum_threshold,
+                proposer_boost_root,
+            ) {
                 2
             } else {
                 0
@@ -1760,6 +1761,7 @@ impl ProtoArrayForkChoice {
     fn should_extend_payload(
         &self,
         node: &GloasForkChoiceNode,
+        proto_node: Option<&ProtoNode>,
         ptc_quorum_threshold: u64,
         proposer_boost_root: Hash256,
     ) -> bool {
@@ -1769,15 +1771,11 @@ impl ProtoArrayForkChoice {
         // Spec: is_payload_timely(store, root) AND is_payload_data_available(store, root)
         // Both require `root in store.payload_states` (envelope actually received/processed)
         // AND PTC quorum strictly above threshold (sum > PAYLOAD_TIMELY_THRESHOLD).
-        let is_timely_and_available = pa
-            .indices
-            .get(&node.root)
-            .and_then(|&idx| pa.nodes.get(idx))
-            .is_some_and(|n| {
-                n.envelope_received
-                    && n.ptc_weight > ptc_quorum_threshold
-                    && n.ptc_blob_data_available_weight > ptc_quorum_threshold
-            });
+        let is_timely_and_available = proto_node.is_some_and(|n| {
+            n.envelope_received
+                && n.ptc_weight > ptc_quorum_threshold
+                && n.ptc_blob_data_available_weight > ptc_quorum_threshold
+        });
 
         if is_timely_and_available {
             return true;
@@ -1819,6 +1817,63 @@ impl ProtoArrayForkChoice {
         }
 
         false
+    }
+
+    /// Test helper: computes active_votes and delegates to
+    /// `should_apply_proposer_boost_gloas`.
+    #[cfg(test)]
+    fn should_apply_proposer_boost_gloas_test<E: EthSpec>(
+        &self,
+        proposer_boost_root: Hash256,
+        equivocating_indices: &BTreeSet<u64>,
+        current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> bool {
+        let active_votes: Vec<(&VoteTracker, u64)> = self
+            .votes
+            .0
+            .iter()
+            .enumerate()
+            .filter_map(|(val_index, vote)| {
+                if vote.current_root.is_zero() {
+                    return None;
+                }
+                let balance = self
+                    .balances
+                    .effective_balances
+                    .get(val_index)
+                    .copied()
+                    .unwrap_or(0);
+                if balance == 0 {
+                    return None;
+                }
+                Some((vote, balance))
+            })
+            .collect();
+        self.should_apply_proposer_boost_gloas::<E>(
+            proposer_boost_root,
+            equivocating_indices,
+            current_slot,
+            spec,
+            &active_votes,
+        )
+    }
+
+    /// Test helper: resolves the proto_node for the given GloasForkChoiceNode
+    /// and delegates to `should_extend_payload`.
+    #[cfg(test)]
+    fn should_extend_payload_test(
+        &self,
+        node: &GloasForkChoiceNode,
+        ptc_quorum_threshold: u64,
+        proposer_boost_root: Hash256,
+    ) -> bool {
+        let proto_node = self
+            .proto_array
+            .indices
+            .get(&node.root)
+            .and_then(|&idx| self.proto_array.nodes.get(idx));
+        self.should_extend_payload(node, proto_node, ptc_quorum_threshold, proposer_boost_root)
     }
 }
 
@@ -4035,7 +4090,7 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4060,7 +4115,7 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4081,7 +4136,7 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4113,7 +4168,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // block_b's parent is block_c, not block_a → should extend
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4149,7 +4204,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Child builds on FULL parent → should extend
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4183,7 +4238,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Child builds on EMPTY parent → should NOT extend
-        assert!(!fc.should_extend_payload(
+        assert!(!fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4207,7 +4262,7 @@ mod test_gloas_fork_choice {
             root: block_root,
             payload_status: GloasPayloadStatus::Full,
         };
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4235,7 +4290,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Genesis has no parent → should extend
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4263,7 +4318,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Falls through to proposer boost — no boost → true
-        assert!(fc.should_extend_payload(
+        assert!(fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4303,7 +4358,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
         // Envelope not received → not timely+available. Boost child builds on EMPTY → false
-        assert!(!fc.should_extend_payload(
+        assert!(!fc.should_extend_payload_test(
             &gloas_node,
             MINIMAL_PTC_THRESHOLD,
             fc.proto_array.previous_proposer_boost.root
@@ -4907,23 +4962,27 @@ mod test_gloas_fork_choice {
     #[test]
     fn proposer_boost_zero_root_returns_false() {
         let (fc, spec) = new_gloas_fc();
-        assert!(!fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
-            Hash256::zero(),
-            &BTreeSet::new(),
-            Slot::new(1),
-            &spec,
-        ));
+        assert!(
+            !fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
+                Hash256::zero(),
+                &BTreeSet::new(),
+                Slot::new(1),
+                &spec,
+            )
+        );
     }
 
     #[test]
     fn proposer_boost_unknown_root_returns_false() {
         let (fc, spec) = new_gloas_fc();
-        assert!(!fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
-            root(999),
-            &BTreeSet::new(),
-            Slot::new(1),
-            &spec,
-        ));
+        assert!(
+            !fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
+                root(999),
+                &BTreeSet::new(),
+                Slot::new(1),
+                &spec,
+            )
+        );
     }
 
     #[test]
@@ -4931,7 +4990,7 @@ mod test_gloas_fork_choice {
         // Genesis block has no parent → always boost
         let (fc, spec) = new_gloas_fc();
         let genesis_root = genesis_checkpoint().root;
-        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        assert!(fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             genesis_root,
             &BTreeSet::new(),
             Slot::new(1),
@@ -4964,7 +5023,7 @@ mod test_gloas_fork_choice {
             false,
         );
 
-        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        assert!(fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &BTreeSet::new(),
             Slot::new(5),
@@ -5016,7 +5075,7 @@ mod test_gloas_fork_choice {
         .unwrap();
 
         // Parent is strong → boost
-        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        assert!(fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &BTreeSet::new(),
             Slot::new(3),
@@ -5063,7 +5122,7 @@ mod test_gloas_fork_choice {
         .unwrap();
 
         // Parent is weak but no equivocation → still boost
-        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        assert!(fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &BTreeSet::new(),
             Slot::new(3),
@@ -5145,12 +5204,14 @@ mod test_gloas_fork_choice {
         .unwrap();
 
         // Parent is weak AND equivocating proposer exists → suppress boost
-        assert!(!fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
-            root(2),
-            &BTreeSet::new(),
-            Slot::new(3),
-            &spec,
-        ));
+        assert!(
+            !fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
+                root(2),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            )
+        );
     }
 
     #[test]
@@ -5193,7 +5254,7 @@ mod test_gloas_fork_choice {
 
         // With enough equivocating indices, parent should be "strong"
         let equivocating: BTreeSet<u64> = (0..10).collect();
-        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        assert!(fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &equivocating,
             Slot::new(3),
@@ -5830,7 +5891,7 @@ mod test_gloas_fork_choice {
         let boost_node = &mut fc.proto_array.nodes[boost_idx];
         boost_node.parent = Some(usize::MAX);
 
-        assert!(fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        assert!(fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(1),
             &BTreeSet::new(),
             Slot::new(2),
@@ -6013,7 +6074,7 @@ mod test_gloas_fork_choice {
         // No votes for parent root(1) → parent is weak (0 < 16.8e9).
         // With boost on root(2): boost should be suppressed because parent root(1)
         // is weak AND has an equivocating proposer (root(10) by same proposer_index=5).
-        let apply_boost = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        let apply_boost = fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &BTreeSet::new(),
             Slot::new(3),
@@ -6096,7 +6157,7 @@ mod test_gloas_fork_choice {
         )
         .unwrap();
 
-        let apply_boost = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        let apply_boost = fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &BTreeSet::new(),
             Slot::new(3),
@@ -6399,7 +6460,7 @@ mod test_gloas_fork_choice {
         );
 
         // No votes for parent (parent is weak), but skipped slots → boost applied
-        let apply_boost = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        let apply_boost = fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(2),
             &BTreeSet::new(),
             Slot::new(4),
@@ -6465,12 +6526,13 @@ mod test_gloas_fork_choice {
 
         // No attestation votes for parent → parent is weak.
         // Without equivocating indices, boost should be suppressed.
-        let apply_boost_no_equivocators = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
-            root(2),
-            &BTreeSet::new(),
-            Slot::new(3),
-            &spec,
-        );
+        let apply_boost_no_equivocators = fc
+            .should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
+                root(2),
+                &BTreeSet::new(),
+                Slot::new(3),
+                &spec,
+            );
         assert!(
             !apply_boost_no_equivocators,
             "boost suppressed: parent weak, equivocating proposer"
@@ -6480,12 +6542,13 @@ mod test_gloas_fork_choice {
         // Reorg threshold = 672e9 / 8 * 20 / 100 = 16.8e9
         // 1 equivocating validator at 32e9 > 16.8e9 → parent becomes strong.
         let equivocators: BTreeSet<u64> = [0u64].into_iter().collect();
-        let apply_boost_with_equivocators = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
-            root(2),
-            &equivocators,
-            Slot::new(3),
-            &spec,
-        );
+        let apply_boost_with_equivocators = fc
+            .should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
+                root(2),
+                &equivocators,
+                Slot::new(3),
+                &spec,
+            );
         assert!(
             apply_boost_with_equivocators,
             "boost applied: equivocating indices make parent strong"
@@ -7186,7 +7249,7 @@ mod test_gloas_fork_choice {
         // == root(3).slot) and head-weak (0 attestation weight). The equivocation check
         // looks for nodes with ptc_timely=true, same proposer as root(1), at same slot.
         // root(2) has the same proposer but ptc_timely=false → no equivocation detected.
-        let result = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        let result = fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(3),
             &BTreeSet::new(),
             Slot::new(3),
@@ -7201,7 +7264,7 @@ mod test_gloas_fork_choice {
         // Now flip root(2) to ptc_timely=true and verify boost IS suppressed
         get_node_mut(&mut fc, &root(2)).ptc_timely = true;
 
-        let result_suppressed = fc.should_apply_proposer_boost_gloas::<MinimalEthSpec>(
+        let result_suppressed = fc.should_apply_proposer_boost_gloas_test::<MinimalEthSpec>(
             root(3),
             &BTreeSet::new(),
             Slot::new(3),
@@ -7247,7 +7310,7 @@ mod test_gloas_fork_choice {
         // envelope_received but PTC quorum not above threshold → timely check fails.
         // Boosted child builds on EMPTY parent of block_root → should NOT extend.
         assert!(
-            !fc.should_extend_payload(
+            !fc.should_extend_payload_test(
                 &gloas_node,
                 MINIMAL_PTC_THRESHOLD,
                 fc.proto_array.previous_proposer_boost.root
@@ -7559,7 +7622,7 @@ mod test_gloas_fork_choice {
         };
 
         assert!(
-            !fc.should_extend_payload(
+            !fc.should_extend_payload_test(
                 &gloas_node,
                 MINIMAL_PTC_THRESHOLD,
                 fc.proto_array.previous_proposer_boost.root
@@ -7590,7 +7653,7 @@ mod test_gloas_fork_choice {
         };
 
         assert!(
-            !fc.should_extend_payload(
+            !fc.should_extend_payload_test(
                 &gloas_node,
                 MINIMAL_PTC_THRESHOLD,
                 fc.proto_array.previous_proposer_boost.root
@@ -7619,7 +7682,7 @@ mod test_gloas_fork_choice {
         };
 
         assert!(
-            fc.should_extend_payload(
+            fc.should_extend_payload_test(
                 &gloas_node,
                 MINIMAL_PTC_THRESHOLD,
                 fc.proto_array.previous_proposer_boost.root
