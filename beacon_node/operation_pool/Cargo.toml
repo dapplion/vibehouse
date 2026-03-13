@@ -19,6 +19,7 @@ parking_lot = { workspace = true }
 rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
+smallvec = { workspace = true }
 state_processing = { workspace = true }
 store = { workspace = true }
 types = { workspace = true }

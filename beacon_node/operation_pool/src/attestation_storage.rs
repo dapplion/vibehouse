@@ -297,23 +297,57 @@ impl<E: EthSpec> CompactIndexedAttestationElectra<E> {
     }
 }
 
-// TODO(electra): upstream this or a more efficient implementation
+/// Concatenate two bitlists using bulk byte operations instead of bit-by-bit iteration.
 fn bitlist_extend<N: Unsigned>(list1: &BitList<N>, list2: &BitList<N>) -> Option<BitList<N>> {
-    let new_length = list1.len() + list2.len();
-    let mut list = BitList::<N>::with_capacity(new_length).ok()?;
+    let len1 = list1.len();
+    let len2 = list2.len();
+    let new_length = len1 + len2;
 
-    // Copy bits from list1.
-    for (i, bit) in list1.iter().enumerate() {
-        list.set(i, bit).ok()?;
+    if new_length > N::to_usize() {
+        return None;
     }
 
-    // Copy bits from list2, starting from the end of list1.
-    let offset = list1.len();
-    for (i, bit) in list2.iter().enumerate() {
-        list.set(offset + i, bit).ok()?;
+    // SSZ BitList encoding: data bits followed by a 1-bit at position `new_length`.
+    let total_bits = new_length + 1;
+    let num_bytes = total_bits.div_ceil(8).max(1);
+    let mut bytes = smallvec::smallvec![0u8; num_bytes];
+
+    let src1 = list1.as_slice();
+    let src2 = list2.as_slice();
+
+    // Copy list1's raw bytes directly.
+    let full_bytes1 = len1 / 8;
+    bytes[..full_bytes1].copy_from_slice(&src1[..full_bytes1]);
+
+    let bit_offset = len1 % 8;
+
+    if bit_offset == 0 {
+        // Byte-aligned: copy list2's bytes directly after list1.
+        let full_bytes2 = len2 / 8;
+        bytes[full_bytes1..full_bytes1 + full_bytes2].copy_from_slice(&src2[..full_bytes2]);
+        // Copy remaining partial byte from list2.
+        if !len2.is_multiple_of(8) {
+            bytes[full_bytes1 + full_bytes2] = src2[full_bytes2];
+        }
+    } else {
+        // Not byte-aligned: copy partial byte from list1, then shift-and-OR list2's bytes.
+        if full_bytes1 < src1.len() {
+            bytes[full_bytes1] = src1[full_bytes1];
+        }
+        for (i, &b) in src2.iter().enumerate() {
+            bytes[full_bytes1 + i] |= b << bit_offset;
+            if full_bytes1 + i + 1 < num_bytes {
+                bytes[full_bytes1 + i + 1] |= b >> (8 - bit_offset);
+            }
+        }
     }
 
-    Some(list)
+    // Set the length bit (SSZ BitList sentinel).
+    let sentinel_byte = new_length / 8;
+    let sentinel_bit = new_length % 8;
+    bytes[sentinel_byte] |= 1 << sentinel_bit;
+
+    BitList::from_bytes(bytes).ok()
 }
 
 impl<E: EthSpec> AttestationMap<E> {
@@ -496,7 +530,7 @@ impl<E: EthSpec> AttestationDataMap<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::{FixedBytesExtended, MinimalEthSpec};
+    use types::{FixedBytesExtended, MinimalEthSpec, typenum};
 
     type E = MinimalEthSpec;
 
@@ -655,5 +689,95 @@ mod tests {
             let reconstructed = att_ref.clone_as_attestation();
             assert_eq!(reconstructed.data().index, index);
         }
+    }
+
+    #[test]
+    fn bitlist_extend_byte_aligned() {
+        // 8-bit list1 (byte-aligned) + 8-bit list2
+        type B = typenum::U64;
+        let mut l1 = BitList::<B>::with_capacity(8).unwrap();
+        l1.set(0, true).unwrap();
+        l1.set(7, true).unwrap();
+        let mut l2 = BitList::<B>::with_capacity(8).unwrap();
+        l2.set(3, true).unwrap();
+
+        let result = bitlist_extend(&l1, &l2).unwrap();
+        assert_eq!(result.len(), 16);
+        assert!(result.get(0).unwrap()); // from l1
+        assert!(result.get(7).unwrap()); // from l1
+        assert!(result.get(11).unwrap()); // from l2 (bit 3 + offset 8)
+        assert!(!result.get(1).unwrap());
+        assert!(!result.get(8).unwrap());
+    }
+
+    #[test]
+    fn bitlist_extend_non_aligned() {
+        // 5-bit list1 (not byte-aligned) + 7-bit list2
+        type B = typenum::U64;
+        let mut l1 = BitList::<B>::with_capacity(5).unwrap();
+        l1.set(0, true).unwrap();
+        l1.set(4, true).unwrap();
+        let mut l2 = BitList::<B>::with_capacity(7).unwrap();
+        l2.set(0, true).unwrap();
+        l2.set(6, true).unwrap();
+
+        let result = bitlist_extend(&l1, &l2).unwrap();
+        assert_eq!(result.len(), 12);
+        assert!(result.get(0).unwrap()); // l1 bit 0
+        assert!(result.get(4).unwrap()); // l1 bit 4
+        assert!(result.get(5).unwrap()); // l2 bit 0 at offset 5
+        assert!(result.get(11).unwrap()); // l2 bit 6 at offset 5
+        assert!(!result.get(1).unwrap());
+        assert!(!result.get(6).unwrap());
+    }
+
+    #[test]
+    fn bitlist_extend_empty_lists() {
+        type B = typenum::U64;
+        let l1 = BitList::<B>::with_capacity(0).unwrap();
+        let mut l2 = BitList::<B>::with_capacity(3).unwrap();
+        l2.set(1, true).unwrap();
+
+        // Empty + non-empty
+        let result = bitlist_extend(&l1, &l2).unwrap();
+        assert_eq!(result.len(), 3);
+        assert!(result.get(1).unwrap());
+
+        // Non-empty + empty
+        let result = bitlist_extend(&l2, &l1).unwrap();
+        assert_eq!(result.len(), 3);
+        assert!(result.get(1).unwrap());
+
+        // Empty + empty
+        let result = bitlist_extend(&l1, &l1).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn bitlist_extend_all_bits_set() {
+        type B = typenum::U64;
+        let mut l1 = BitList::<B>::with_capacity(6).unwrap();
+        for i in 0..6 {
+            l1.set(i, true).unwrap();
+        }
+        let mut l2 = BitList::<B>::with_capacity(5).unwrap();
+        for i in 0..5 {
+            l2.set(i, true).unwrap();
+        }
+
+        let result = bitlist_extend(&l1, &l2).unwrap();
+        assert_eq!(result.len(), 11);
+        for i in 0..11 {
+            assert!(result.get(i).unwrap(), "bit {} should be set", i);
+        }
+    }
+
+    #[test]
+    fn bitlist_extend_exceeds_max() {
+        type B = typenum::U8;
+        let l1 = BitList::<B>::with_capacity(5).unwrap();
+        let l2 = BitList::<B>::with_capacity(5).unwrap();
+        // 5 + 5 = 10 > 8, should return None
+        assert!(bitlist_extend(&l1, &l2).is_none());
     }
 }
