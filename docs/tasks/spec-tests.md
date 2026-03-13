@@ -28,8 +28,8 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 1119-1133 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5004 (Mar 13, release notes tooling only). No new spec-test vectors (still v1.6.0-beta.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. PR #5003: OPEN. All tracked spec PRs (#4932, #4939, #4960, #4962) unchanged. CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa). No cargo dep updates available.
+### runs 1119-1136 (Mar 13) — all stable, no changes needed
+Spec stable — no new consensus-specs commits since #5004 (Mar 13, release notes tooling only). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. PR #5003: OPEN. All tracked spec PRs (#4932, #4939, #4960, #4962) unchanged. CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa). No cargo dep updates available.
 
 ### runs 1111-1118 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #5003 (simplify process_proposer_lookahead): OPEN, cosmetic-only, no impact on our code. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), jihoonsong feedback (Mar 13) re: `get_ptc_assignment` still used in 3 sections — review discussion, no new commits. CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable).
