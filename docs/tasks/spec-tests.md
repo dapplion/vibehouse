@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1170 (Mar 13) — cache hash across balance-weighted selection loops
+
+Spec stable: no new consensus-specs commits since last check. #5004 (docs-only) is the most recent. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix). No semver-compatible dependency updates.
+
+Shipped: cached the SHA-256 hash result across iterations in three balance-weighted selection loops: `get_ptc_committee` (gloas.rs), `compute_proposer_index` (beacon_state.rs), and `get_next_sync_committee_indices` (beacon_state.rs). These loops compute a hash that only changes every 16 (Electra+) or 32 (pre-Electra) iterations, but previously recomputed it on every single iteration. The PTC committee selection (512+ iterations per slot) saves ~480 hash computations per call. Also removed the per-iteration `seed.to_vec()` allocation from proposer/sync committee selection by hoisting the hash buffer. Removed now-unused `shuffling_random_value`, `shuffling_random_byte`, and `shuffling_random_u16_electra` helper functions. All 715 types tests, 575 state_processing tests, 139/139 EF spec tests, 9/9 fork choice tests, 307 proto_array+fork_choice tests pass. Clippy clean, lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1169 (Mar 13) — reuse preimage buffer in compute_proposer_indices
 
 Spec stable: no new consensus-specs commits since last check. #5004 (release notes dependency section) is a docs-only change. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases (latest pre-release still v1.6.0-beta.0, our Gloas tests from custom alpha.3 build). cargo audit unchanged (1 rsa, no fix).
