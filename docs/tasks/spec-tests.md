@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 941 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged. Still OPEN.
+- All tracked PRs (#4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962, #5002): all still OPEN.
+- CI run 23035917712 **fully green** (all 6 jobs passed).
+- cargo audit unchanged (1 vuln + 5 allowed).
+- No code changes needed.
+
 ### run 940 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #4992 (PTC lookbehind)**: unchanged. 1 APPROVED (jtraglia Mar 12). Still OPEN. Branch `ptc-lookbehind` ready.
