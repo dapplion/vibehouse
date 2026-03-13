@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1172 (Mar 14) — avoid cloning SyncCommittee in sync aggregate processing
+
+Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. #4992 has 1 approval (jtraglia). No new spec test releases. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: eliminated SyncCommittee clone (~24KB on mainnet with 512×48-byte pubkeys) in `process_sync_aggregate` (sync_committee.rs) and `compute_sync_committee_rewards` (sync_committee_rewards.rs). Previously both cloned the entire `current_sync_committee` to break the borrow cycle needed for `get_sync_committee_indices(&mut self)`. Now call `update_pubkey_cache()` first, then compute committee indices inline using immutable `state.current_sync_committee()?.pubkeys` and `state.pubkey_cache()` accessors — two simultaneous `&self` borrows, no clone needed. Removed now-unused `get_sync_committee_indices` method from BeaconState. All 575 state_processing tests, EF sync_aggregate + sanity tests pass. Clippy clean, lint passes.
+
+Open PRs to track: #4992 (cached PTCs in state — 1 approval, approaching merge), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1171 (Mar 13) — replace hash() with hash_fixed() to avoid heap allocations
 
 Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
