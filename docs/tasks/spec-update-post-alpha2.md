@@ -122,6 +122,12 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 943 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged head d76a278b0a, 1 APPROVED (jtraglia Mar 12). Still OPEN. Title changed to "Add cached PTCs to the state".
+- All other tracked PRs (#5002, #4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+- CI run 23035917712: SUCCESS (all 7 jobs passed). 0 compatible dep updates. cargo audit unchanged. No code changes needed.
+
 ### run 939 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #4992 (PTC lookbehind)**: unchanged head d76a278b0a, 1 APPROVED (jtraglia Mar 12). Still OPEN.
