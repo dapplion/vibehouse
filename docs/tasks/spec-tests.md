@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1167 (Mar 13) — HashSet lookup optimizations in state processing
+
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check (v1.7.0-alpha.3). All tracked PRs (#4992, #4939) OPEN, unchanged. Updated serde_with 3.17.0 → 3.18.0. cargo audit unchanged (1 rsa, no fix).
+
+Shipped two HashSet optimizations:
+1. `onboard_builders_from_pending_deposits` in upgrade/gloas.rs: replaced `Vec<PublicKeyBytes>` with `HashSet<PublicKeyBytes>` for both `validator_pubkeys` and `new_validator_pubkeys`. The `.contains()` calls were O(n) linear scans over all validator pubkeys — now O(1) hash lookups. On mainnet with 500k+ validators, this eliminates O(validators × deposits) work during the Gloas fork transition.
+2. `get_attestation_deltas_subset` in base/rewards_and_penalties.rs: changed `validators_subset` parameter from `&Vec<usize>` to `&[usize]` and converted to `HashSet<usize>` internally for O(1) `.contains()` lookups. Previously O(n) per validator per delta calculation in the HTTP API attestation rewards endpoint.
+
+All 575 state_processing tests pass, EF rewards + fork tests pass. Clippy clean, lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1166 (Mar 13) — eliminate intermediate Vec in find_head_gloas
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check (v1.7.0-alpha.3). All tracked PRs (#4992, #4939) OPEN, unchanged. #4979 (PTC Lookbehind) closed without merging — #4992 (cached PTCs) is the chosen approach. No semver-compatible dep updates. cargo audit unchanged (1 rsa, no fix).
 
