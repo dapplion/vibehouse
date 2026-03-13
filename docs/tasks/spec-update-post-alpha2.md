@@ -110,6 +110,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 963 (Mar 13) — rebased ptc-lookbehind branch, all stable
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
+- **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
+- Rebased `ptc-lookbehind` branch onto main (was 37 commits behind). Clean rebase, 575/575 state_processing tests pass, clippy clean. Pushed.
+- All other tracked PRs unchanged. PR #4939, #4940 still OPEN.
+- CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa, 5 warnings). No dependency patch updates available.
+
 ### run 962 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
 - **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
