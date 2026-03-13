@@ -1126,6 +1126,11 @@ impl ProtoArrayForkChoice {
 
             // Pre-compute weights once per child to avoid redundant O(validators)
             // scans. max_by would re-compute weights on each comparison.
+            // Share the ancestor cache across siblings: children at the same level
+            // share the same node_slot, so ancestor lookups (keyed by vote root)
+            // are identical and can be reused across EMPTY/FULL weight calculations.
+            let mut ancestor_cache: HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>> =
+                HashMap::new();
             let weighted: Vec<_> = children
                 .into_iter()
                 .map(|child| {
@@ -1135,6 +1140,7 @@ impl ProtoArrayForkChoice {
                         apply_boost,
                         current_slot,
                         spec,
+                        &mut ancestor_cache,
                     );
                     (child, w)
                 })
@@ -1446,6 +1452,7 @@ impl ProtoArrayForkChoice {
         apply_proposer_boost: bool,
         current_slot: Slot,
         spec: &ChainSpec,
+        ancestor_cache: &mut HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>>,
     ) -> u64 {
         let pa = &self.proto_array;
 
@@ -1464,9 +1471,9 @@ impl ProtoArrayForkChoice {
         }
 
         // Sum attestation scores from supporting votes.
-        // Cache ancestor lookups: many validators vote for the same root, so
-        // get_ancestor_gloas(root, node_slot) would repeat the same tree walk.
-        let mut ancestor_cache: HashMap<Hash256, Option<GloasForkChoiceNode>> = HashMap::new();
+        // The ancestor cache is shared across sibling calls: when the caller
+        // computes weights for EMPTY and FULL children of a PENDING node, both
+        // have the same node_slot, so ancestor lookups are reused.
         let mut weight: u64 = 0;
         for (val_index, vote) in self.votes.0.iter().enumerate() {
             if vote.current_root.is_zero() {
@@ -1481,7 +1488,7 @@ impl ProtoArrayForkChoice {
             if balance == 0 {
                 continue;
             }
-            if self.is_supporting_vote_gloas_cached(node, vote, node_slot, &mut ancestor_cache) {
+            if self.is_supporting_vote_gloas_cached(node, vote, node_slot, ancestor_cache) {
                 weight = weight.saturating_add(balance);
             }
         }
@@ -1504,6 +1511,27 @@ impl ProtoArrayForkChoice {
         }
 
         weight
+    }
+
+    /// Test helper: calls `get_gloas_weight` with a fresh ancestor cache.
+    #[cfg(test)]
+    fn get_gloas_weight_test<E: EthSpec>(
+        &self,
+        node: &GloasForkChoiceNode,
+        proposer_boost_root: Hash256,
+        apply_proposer_boost: bool,
+        current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> u64 {
+        let mut cache = HashMap::new();
+        self.get_gloas_weight::<E>(
+            node,
+            proposer_boost_root,
+            apply_proposer_boost,
+            current_slot,
+            spec,
+            &mut cache,
+        )
     }
 
     /// Check if a vote supports a Gloas fork choice node.
@@ -1566,13 +1594,15 @@ impl ProtoArrayForkChoice {
     ///
     /// The ancestor walk (`get_ancestor_gloas`) is O(depth) and called once per
     /// validator per node. Since many validators vote for the same root, caching
-    /// the result per `vote.current_root` avoids redundant tree walks.
+    /// the result per `(vote.current_root, node_slot)` avoids redundant tree
+    /// walks. The cache is keyed on slot too so it can be safely shared across
+    /// sibling calls at different slots.
     fn is_supporting_vote_gloas_cached(
         &self,
         node: &GloasForkChoiceNode,
         vote: &VoteTracker,
         node_slot: Slot,
-        ancestor_cache: &mut HashMap<Hash256, Option<GloasForkChoiceNode>>,
+        ancestor_cache: &mut HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>>,
     ) -> bool {
         if node.root == vote.current_root {
             match node.payload_status {
@@ -1590,7 +1620,7 @@ impl ProtoArrayForkChoice {
             }
         } else {
             let ancestor = ancestor_cache
-                .entry(vote.current_root)
+                .entry((vote.current_root, node_slot))
                 .or_insert_with(|| self.get_ancestor_gloas(vote.current_root, node_slot));
             match ancestor {
                 Some(ancestor) => {
@@ -4500,7 +4530,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &node,
             Hash256::zero(),
             false,
@@ -4544,7 +4574,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &node,
             Hash256::zero(),
             false,
@@ -4591,7 +4621,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &node,
             Hash256::zero(),
             false,
@@ -4636,7 +4666,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Full,
         };
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &full_node,
             Hash256::zero(),
             false,
@@ -4653,7 +4683,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Empty,
         };
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &empty_node,
             Hash256::zero(),
             false,
@@ -4667,7 +4697,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Pending,
         };
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &pending_node,
             Hash256::zero(),
             false,
@@ -4714,7 +4744,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Full,
         };
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &full_node,
             Hash256::zero(),
             false,
@@ -4753,7 +4783,7 @@ mod test_gloas_fork_choice {
         // The boost vote is a synthetic vote at root(1), slot=2
         // Since node is PENDING and vote is for same root → supports
         let weight =
-            fc.get_gloas_weight::<MinimalEthSpec>(&node, root(1), true, Slot::new(2), &spec);
+            fc.get_gloas_weight_test::<MinimalEthSpec>(&node, root(1), true, Slot::new(2), &spec);
         // committee_fraction = total_balance * 40 / 64 (slots_per_epoch=8, so committee=total/8)
         // For MinimalEthSpec: committee_size = total_balance / 8
         // boost = committee_size * 40 / 100 = (32G / 8) * 40 / 100 = 4G * 40 / 100 = 1.6G
@@ -4785,7 +4815,7 @@ mod test_gloas_fork_choice {
 
         // apply_boost = false → no boost even if proposer_boost_root matches
         let weight =
-            fc.get_gloas_weight::<MinimalEthSpec>(&node, root(1), false, Slot::new(2), &spec);
+            fc.get_gloas_weight_test::<MinimalEthSpec>(&node, root(1), false, Slot::new(2), &spec);
         assert_eq!(
             weight, 0,
             "should have no weight when boost disabled and no votes"
@@ -4814,7 +4844,7 @@ mod test_gloas_fork_choice {
         };
 
         // Zero boost root → no boost
-        let weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &node,
             Hash256::zero(),
             true,
@@ -7226,14 +7256,14 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
 
-        let empty_weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let empty_weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &empty_node,
             Hash256::zero(),
             false,
             Slot::new(2),
             &spec,
         );
-        let full_weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let full_weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &full_node,
             Hash256::zero(),
             false,
@@ -7256,7 +7286,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Pending,
         };
-        let pending_weight = fc.get_gloas_weight::<MinimalEthSpec>(
+        let pending_weight = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &pending_node,
             Hash256::zero(),
             false,
@@ -7270,7 +7300,7 @@ mod test_gloas_fork_choice {
         );
 
         // Verify: at current_slot=100 (not previous slot), EMPTY/FULL DO get weight
-        let empty_weight_far = fc.get_gloas_weight::<MinimalEthSpec>(
+        let empty_weight_far = fc.get_gloas_weight_test::<MinimalEthSpec>(
             &empty_node,
             Hash256::zero(),
             false,
