@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1005 (Mar 13) — v1.7.0-alpha.3 audit, all changes already implemented
+Spec bumped to v1.7.0-alpha.3 (d2cfa51c, Mar 11). Audited all gloas changes between alpha.2 and alpha.3: PayloadStatus reorder (EMPTY=0,FULL=1,PENDING=2) ✓, is_pending_validator + deposit routing ✓, payload_data_availability_vote dual tracking ✓, should_extend_payload requires DA ✓, validate_on_attestation index=1 check ✓, P2P bid parent_block_root filtering ✓, envelope serve range ✓. All changes confirmed in codebase (see docs/tasks/spec-update-post-alpha2.md). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). No new spec-test vectors (still v1.6.0-beta.0). CI green. Nightly in progress. cargo audit unchanged (1 rsa, 5 warnings).
+
 ### run 1004 (Mar 13) — no spec changes, all stable
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). CI green. Nightly in progress. cargo audit unchanged (1 rsa, 5 warnings). No dependency updates available. No open issues or PRs requiring action.
 
