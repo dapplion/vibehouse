@@ -15,8 +15,6 @@ pub fn process_sync_aggregate<E: EthSpec>(
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<(), BlockProcessingError> {
-    let current_sync_committee = state.current_sync_committee()?.clone();
-
     // Verify sync committee aggregate signature signing over the previous slot block root
     if verify_signatures.is_true() {
         // This decompression could be avoided with a cache, but we're not likely
@@ -46,8 +44,20 @@ pub fn process_sync_aggregate<E: EthSpec>(
     // Compute participant and proposer rewards
     let (participant_reward, proposer_reward) = compute_sync_aggregate_rewards(state, spec)?;
 
-    // Apply participant and proposer rewards
-    let committee_indices = state.get_sync_committee_indices(&current_sync_committee)?;
+    // Ensure pubkey cache is populated, then compute committee indices inline
+    // to avoid cloning the SyncCommittee (~24KB on mainnet)
+    state.update_pubkey_cache()?;
+    let committee_indices: Vec<usize> = state
+        .current_sync_committee()?
+        .pubkeys
+        .iter()
+        .map(|pubkey| {
+            state
+                .pubkey_cache()
+                .get(pubkey)
+                .ok_or(BeaconStateError::PubkeyCacheInconsistent)
+        })
+        .collect::<Result<_, BeaconStateError>>()?;
 
     let proposer_index = proposer_index as usize;
     let mut proposer_balance = *state

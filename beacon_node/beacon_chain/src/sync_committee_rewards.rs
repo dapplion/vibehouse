@@ -6,7 +6,7 @@ use state_processing::per_block_processing::altair::sync_committee::compute_sync
 use std::collections::HashMap;
 use store::RelativeEpoch;
 use tracing::error;
-use types::{AbstractExecPayload, BeaconBlockRef, BeaconState};
+use types::{AbstractExecPayload, BeaconBlockRef, BeaconState, BeaconStateError};
 
 impl<T: BeaconChainTypes> BeaconChain<T> {
     pub fn compute_sync_committee_rewards<Payload: AbstractExecPayload<T::EthSpec>>(
@@ -24,9 +24,19 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         let sync_aggregate = block.body().sync_aggregate()?;
 
-        let sync_committee = state.current_sync_committee()?.clone();
-
-        let sync_committee_indices = state.get_sync_committee_indices(&sync_committee)?;
+        // Compute committee indices inline to avoid cloning the SyncCommittee (~24KB)
+        state.update_pubkey_cache()?;
+        let sync_committee_indices: Vec<usize> = state
+            .current_sync_committee()?
+            .pubkeys
+            .iter()
+            .map(|pubkey| {
+                state
+                    .pubkey_cache()
+                    .get(pubkey)
+                    .ok_or(BeaconStateError::PubkeyCacheInconsistent)
+            })
+            .collect::<Result<_, _>>()?;
 
         let (participant_reward_value, proposer_reward_per_bit) =
             compute_sync_aggregate_rewards(state, spec).map_err(|e| {

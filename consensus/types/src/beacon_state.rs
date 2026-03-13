@@ -1355,23 +1355,6 @@ impl<E: EthSpec> BeaconState<E> {
         }
     }
 
-    /// Get the validator indices of all validators from `sync_committee`.
-    pub fn get_sync_committee_indices(
-        &mut self,
-        sync_committee: &SyncCommittee<E>,
-    ) -> Result<Vec<usize>, Error> {
-        self.update_pubkey_cache()?;
-        sync_committee
-            .pubkeys
-            .iter()
-            .map(|pubkey| {
-                self.pubkey_cache()
-                    .get(pubkey)
-                    .ok_or(Error::PubkeyCacheInconsistent)
-            })
-            .collect()
-    }
-
     /// Compute the sync committee indices for the next sync committee.
     fn get_next_sync_committee_indices(&self, spec: &ChainSpec) -> Result<Vec<usize>, Error> {
         let epoch = self.current_epoch().safe_add(1)?;
