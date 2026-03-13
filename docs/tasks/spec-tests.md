@@ -28,10 +28,10 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### run 1114 (Mar 13) — all stable, no changes needed
-Spec version bumped to v1.7.0-alpha.3 (#4999, Mar 11) but no GitHub release yet. PR #5001 (add parent_block_root to bid filtering key) MERGED Mar 12 — vibehouse already implements the 3-tuple `(slot, parent_block_hash, parent_block_root)` in ObservedExecutionBids, no code change needed. PR #5002 (self-build payload signature wording) MERGED Mar 13 — documentation only. PR #5003 (simplify process_proposer_lookahead) OPEN — no action yet. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): OPEN. CI green. cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable).
+### run 1115 (Mar 13) — all stable, no changes needed
+Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #5003 (simplify process_proposer_lookahead) OPEN, blocked — our impl already equivalent (last_epoch_start == SLOTS_PER_EPOCH). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), new feedback from jihoonsong (Mar 13) re: `get_ptc_assignment` still used in 3 sections. CI green. cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable).
 
-### runs 1111-1113 (Mar 13) — all stable, no changes needed
+### runs 1111-1114 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia). CI green. cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable).
 
 ### runs 1099-1103 (Mar 13) — all stable, no changes needed
