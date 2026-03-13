@@ -1,4 +1,4 @@
-use ethereum_hashing::hash;
+use ethereum_hashing::hash_fixed;
 use int_to_bytes::int_to_bytes32;
 use merkle_proof::{MerkleTree, MerkleTreeError};
 use safe_arith::SafeArith;
@@ -34,7 +34,7 @@ impl DepositDataTree {
         let mut preimage = [0; 64];
         preimage[0..32].copy_from_slice(&self.tree.hash()[..]);
         preimage[32..64].copy_from_slice(&self.length_bytes());
-        Hash256::from_slice(&hash(&preimage))
+        Hash256::from_slice(&hash_fixed(&preimage))
     }
 
     /// Return the leaf at `index` and a Merkle proof of its inclusion.

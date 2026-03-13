@@ -8,7 +8,7 @@ pub use builder_pubkey_cache::BuilderPubkeyCache;
 use compare_fields::CompareFields;
 use compare_fields_derive::CompareFields;
 use derivative::Derivative;
-use ethereum_hashing::hash;
+use ethereum_hashing::hash_fixed;
 use int_to_bytes::{int_to_bytes4, int_to_bytes8};
 use metastruct::{NumFields, metastruct};
 pub use pubkey_cache::PubkeyCache;
@@ -1060,7 +1060,7 @@ impl<E: EthSpec> BeaconState<E> {
 
         // Cache the hash output — only recompute when i/items_per_group changes
         let mut cached_hash_group: usize = usize::MAX;
-        let mut random_bytes = vec![0u8; 32];
+        let mut random_bytes = [0u8; 32];
 
         let mut i = 0;
         loop {
@@ -1080,7 +1080,7 @@ impl<E: EthSpec> BeaconState<E> {
                 if let Some(tail) = hash_input.get_mut(seed_len..) {
                     tail.copy_from_slice(&int_to_bytes8(hash_group as u64));
                 }
-                random_bytes = hash(&hash_input);
+                random_bytes = hash_fixed(&hash_input);
                 cached_hash_group = hash_group;
             }
             let random_value = if is_electra {
@@ -1173,7 +1173,7 @@ impl<E: EthSpec> BeaconState<E> {
                 if let Some(tail) = preimage.get_mut(seed_len..) {
                     tail.copy_from_slice(&slot_bytes);
                 }
-                let hash = hash(&preimage);
+                let hash = hash_fixed(&preimage);
                 self.compute_proposer_index(indices, &hash, spec)
             })
             .collect()
@@ -1245,12 +1245,11 @@ impl<E: EthSpec> BeaconState<E> {
             1,
             (committee.committee.len() as u64).safe_div(spec.target_aggregators_per_committee)?,
         );
-        let signature_hash = hash(&slot_signature.as_ssz_bytes());
+        let signature_hash = hash_fixed(&slot_signature.as_ssz_bytes());
         let signature_hash_int = u64::from_le_bytes(
-            signature_hash
-                .get(0..8)
-                .and_then(|bytes| bytes.try_into().ok())
-                .ok_or(Error::IsAggregatorOutOfBounds)?,
+            signature_hash[0..8]
+                .try_into()
+                .map_err(|_| Error::IsAggregatorOutOfBounds)?,
         );
 
         Ok(signature_hash_int.safe_rem(modulo)? == 0)
@@ -1321,14 +1320,17 @@ impl<E: EthSpec> BeaconState<E> {
     /// Compute the seed to use for the beacon proposer selection at the given `slot`.
     ///
     /// Spec v0.12.1
-    pub fn get_beacon_proposer_seed(&self, slot: Slot, spec: &ChainSpec) -> Result<Vec<u8>, Error> {
+    pub fn get_beacon_proposer_seed(
+        &self,
+        slot: Slot,
+        spec: &ChainSpec,
+    ) -> Result<[u8; 32], Error> {
         let epoch = slot.epoch(E::slots_per_epoch());
-        let mut preimage = self
-            .get_seed(epoch, Domain::BeaconProposer, spec)?
-            .as_slice()
-            .to_vec();
-        preimage.append(&mut int_to_bytes8(slot.as_u64()));
-        Ok(hash(&preimage))
+        let seed = self.get_seed(epoch, Domain::BeaconProposer, spec)?;
+        let mut preimage = [0u8; 32 + 8];
+        preimage[..32].copy_from_slice(seed.as_slice());
+        preimage[32..].copy_from_slice(&int_to_bytes8(slot.as_u64()));
+        Ok(hash_fixed(&preimage))
     }
 
     /// Get the already-built current or next sync committee from the state.
@@ -1395,7 +1397,7 @@ impl<E: EthSpec> BeaconState<E> {
         hash_input.extend_from_slice(&[0u8; 8]);
 
         let mut cached_hash_group: usize = usize::MAX;
-        let mut random_bytes = vec![0u8; 32];
+        let mut random_bytes = [0u8; 32];
 
         let mut i = 0;
         let mut sync_committee_indices = Vec::with_capacity(E::SyncCommitteeSize::to_usize());
@@ -1416,7 +1418,7 @@ impl<E: EthSpec> BeaconState<E> {
                 if let Some(tail) = hash_input.get_mut(seed_len..) {
                     tail.copy_from_slice(&int_to_bytes8(hash_group as u64));
                 }
-                random_bytes = hash(&hash_input);
+                random_bytes = hash_fixed(&hash_input);
                 cached_hash_group = hash_group;
             }
             let random_value = if is_electra {
@@ -1601,7 +1603,7 @@ impl<E: EthSpec> BeaconState<E> {
             .as_usize()
             .safe_rem(E::EpochsPerHistoricalVector::to_usize())?;
 
-        let signature_hash = Hash256::from_slice(&hash(&ssz_encode(signature)));
+        let signature_hash = Hash256::from_slice(&hash_fixed(&ssz_encode(signature)));
 
         *self
             .randao_mixes_mut()
@@ -1883,7 +1885,7 @@ impl<E: EthSpec> BeaconState<E> {
         preimage[NUM_DOMAIN_BYTES..MIX_OFFSET].copy_from_slice(&epoch_bytes);
         preimage[MIX_OFFSET..].copy_from_slice(mix.as_slice());
 
-        Ok(Hash256::from_slice(&hash(&preimage)))
+        Ok(Hash256::from_slice(&hash_fixed(&preimage)))
     }
 
     /// Safe indexer for the `validators` list.

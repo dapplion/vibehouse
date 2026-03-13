@@ -3,7 +3,7 @@ use crate::blob_sidecar::BlobIdentifier;
 use crate::data_column_sidecar::DataColumnsByRootIdentifier;
 use crate::*;
 use derivative::Derivative;
-use ethereum_hashing::hash;
+use ethereum_hashing::hash_fixed;
 use int_to_bytes::int_to_bytes4;
 use safe_arith::{ArithError, SafeArith};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -709,12 +709,12 @@ impl ChainSpec {
         match self.fulu_fork_epoch {
             Some(fulu_epoch) if epoch >= fulu_epoch => {
                 // Concatenate epoch and max_blobs_per_block as u64 bytes
-                let mut input = Vec::with_capacity(16);
-                input.extend_from_slice(&blob_parameters.epoch.as_u64().to_le_bytes());
-                input.extend_from_slice(&blob_parameters.max_blobs_per_block.to_le_bytes());
+                let mut input = [0u8; 16];
+                input[..8].copy_from_slice(&blob_parameters.epoch.as_u64().to_le_bytes());
+                input[8..].copy_from_slice(&blob_parameters.max_blobs_per_block.to_le_bytes());
 
                 // Hash the concatenated bytes
-                let hash = hash(&input);
+                let hash = hash_fixed(&input);
 
                 // XOR the base digest with the first 4 bytes of the hash
                 let mut masked_digest = [0u8; 4];

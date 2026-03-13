@@ -1,7 +1,7 @@
 use super::errors::{BlockOperationError, BlsExecutionChangeInvalid as Invalid};
 use crate::VerifySignatures;
 use crate::per_block_processing::signature_sets::bls_execution_change_signature_set;
-use ethereum_hashing::hash;
+use ethereum_hashing::hash_fixed;
 use types::*;
 
 type Result<T> = std::result::Result<T, BlockOperationError<Invalid>>;
@@ -39,7 +39,7 @@ pub fn verify_bls_to_execution_change<E: EthSpec>(
 
     // Re-hashing the pubkey isn't necessary during block replay, so we may want to skip that in
     // future.
-    let pubkey_hash = hash(address_change.from_bls_pubkey.as_serialized());
+    let pubkey_hash = hash_fixed(address_change.from_bls_pubkey.as_serialized());
     verify!(
         validator.withdrawal_credentials.as_slice().get(1..) == pubkey_hash.get(1..),
         Invalid::WithdrawalCredentialsMismatch

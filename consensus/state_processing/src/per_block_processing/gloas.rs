@@ -1,7 +1,7 @@
 use crate::VerifySignatures;
 use crate::common::decrease_balance;
 use crate::per_block_processing::errors::{BlockProcessingError, PayloadAttestationInvalid};
-use ethereum_hashing::hash;
+use ethereum_hashing::hash_fixed;
 use int_to_bytes::int_to_bytes8;
 use safe_arith::SafeArith;
 use tree_hash::TreeHash;
@@ -389,7 +389,7 @@ pub fn get_ptc_committee<E: EthSpec>(
     let mut seed_input = [0u8; 40]; // 32 + 8
     seed_input[..32].copy_from_slice(base_seed.as_slice());
     seed_input[32..].copy_from_slice(&slot_bytes);
-    let seed = hash(&seed_input);
+    let seed = hash_fixed(&seed_input);
 
     // Concatenate all committees for this slot in order
     let committees = state
@@ -421,11 +421,11 @@ pub fn get_ptc_committee<E: EthSpec>(
     let mut selected: Vec<u64> = Vec::with_capacity(ptc_size);
     let mut i: u64 = 0;
     let mut hash_input = [0u8; 40];
-    hash_input[..32].copy_from_slice(seed.as_slice());
+    hash_input[..32].copy_from_slice(&seed);
     // Cache the hash output — it only changes every 16 iterations since the
     // input uses i/16. Avoids ~15/16 redundant SHA-256 computations.
     let mut cached_hash_group: u64 = u64::MAX; // impossible initial value
-    let mut random_bytes = vec![0u8; 32];
+    let mut random_bytes = [0u8; 32];
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;
         // shuffle_indices=False, so just use next_index directly
@@ -440,7 +440,7 @@ pub fn get_ptc_committee<E: EthSpec>(
         let hash_group = i.safe_div(16)?;
         if hash_group != cached_hash_group {
             hash_input[32..].copy_from_slice(&int_to_bytes8(hash_group));
-            random_bytes = hash(&hash_input);
+            random_bytes = hash_fixed(&hash_input);
             cached_hash_group = hash_group;
         }
         let offset = i.safe_rem(16)?.safe_mul(2)? as usize;

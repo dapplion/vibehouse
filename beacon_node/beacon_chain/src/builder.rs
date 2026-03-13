@@ -1325,7 +1325,7 @@ mod test {
     use crate::test_utils::{
         EphemeralHarnessType, generate_data_column_indices_rand_order, get_kzg,
     };
-    use ethereum_hashing::hash;
+    use ethereum_hashing::hash_fixed;
     use genesis::{
         DEFAULT_ETH1_BLOCK_HASH, generate_deterministic_keypairs, interop_genesis_state,
     };
@@ -1463,7 +1463,7 @@ mod test {
             );
             assert_eq!(
                 &creds[1..],
-                &hash(&v.pubkey.as_ssz_bytes())[1..],
+                &hash_fixed(&v.pubkey.as_ssz_bytes())[1..],
                 "rest of withdrawal creds should be pubkey hash"
             )
         }
