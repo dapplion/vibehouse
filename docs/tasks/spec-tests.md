@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 968 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, head d76a278b0a, mergeable=clean). PR #4939 rebased on master (fdfad73e31, merge commit Mar 13), no semantic changes. All 10 tracked Gloas PRs unchanged. No dependency updates available (all at latest compatible). CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa, 5 warnings).
+
 ### run 965 (Mar 13) — no spec changes, all stable
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, head d76a278b0a, mergeable=clean). All tracked PRs (#4939, #4940, #5002) unchanged. No dependency updates available. CI green. Nightly green (4 consecutive). cargo audit unchanged (1 rsa, 5 warnings).
 
