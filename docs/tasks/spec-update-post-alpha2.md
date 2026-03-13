@@ -110,6 +110,9 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1058 (Mar 13) — all stable, PR #5002 merged (wording-only)
+Spec stable — PR #5002 ("Make wording clearer for payload signature verification") merged today, wording-only, no code impact. No new release (still v1.7.0-alpha.2, version bump commit exists but no tag). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), same head d76a278b0a. CI in progress (3/6 jobs passed — check+clippy, ef-tests, network+op_pool). cargo audit unchanged (1 rsa). No actionable dep updates.
+
 ### run 1057 (Mar 13) — all stable, ptc-lookbehind rebased
 Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. Rebased `ptc-lookbehind` onto main — 575/575 tests pass. CI in progress (transitive deps commit). Nightly green (3 consecutive). cargo audit unchanged (1 rsa).
 
