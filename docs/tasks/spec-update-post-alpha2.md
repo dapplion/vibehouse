@@ -110,17 +110,8 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### run 1111 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. cargo audit unchanged (1 rsa, 5 warnings). No semver dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. All tracked spec PRs (#4932, #4939, #4960, #4962, #5003) unchanged.
-
-### runs 1100-1108 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. Nightly green. Clippy clean. cargo audit unchanged (1 rsa, 5 warnings). No semver dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. All tracked spec PRs unchanged. ptc-lookbehind branch 40 commits behind main (all task-doc-only, no rebase needed).
-
-### run 1099 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2, v1.7.0-alpha.3 version bump in master but no GitHub release published). No new spec-test vectors (still v1.6.0-beta.0). CI green (docker queued — runner unavailable). Clippy clean. cargo audit unchanged (1 rsa, 5 warnings). No dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), active discussion (kevaundray, potuz). All tracked spec PRs unchanged.
-
-### run 1098 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. Clippy clean. cargo audit unchanged (1 rsa, 5 warnings). No dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia). All 8 tracked spec PRs unchanged.
+### runs 1098-1112 (Mar 13) — all stable, no changes needed
+Spec completely stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2, v1.7.0-alpha.3 version bump in master but no GitHub release published). No new spec-test vectors (still v1.5.0 release). CI green. Nightly green (3 consecutive). Clippy clean (zero warnings). cargo audit unchanged (1 rsa, 5 warnings). No semver dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a — new review comments from jihoonsong (Mar 13) noting `get_ptc_assignment` still referenced in spec. All tracked spec PRs (#4932, #4939, #4960, #4962, #5003) unchanged. Comprehensive test coverage audit (run 1112): all Gloas code paths covered (~280 unit tests in state_processing, ~23k lines in beacon_chain integration tests). `process_proposer_lookahead` (PR #5003) not affected — our Rust impl uses explicit index writes, not Python slice assignment.
 
 ### runs 1058-1097 consolidated (Mar 13) — all stable, no code changes needed
 Spec completely stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). CI and nightly continuously green. cargo audit unchanged (1 rsa, 5 warnings). No semver-compatible dep updates available.
