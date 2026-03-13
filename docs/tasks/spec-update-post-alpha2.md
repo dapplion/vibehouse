@@ -49,11 +49,10 @@ Fixes a real bug: when processing payload attestations at epoch boundaries (e.g.
 
 **vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when one of the PRs merges.
 
-### PR #4979 (original, potuz, Mar 4) — large cache approach
+### PR #4979 (original, potuz, Mar 4) — large cache approach — CLOSED (rejected)
 - `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` (~256KB per state)
 - Caches all PTC committees for previous + current epoch
-- Epoch processing shifts window and pre-computes next epoch
-- 10 review comments, design debate ongoing
+- Closed in favor of #4992 (minimal approach)
 
 ### PR #4992 (alternative, potuz, Mar 9, actively updated Mar 10) — minimal cache approach ← SIMPLER
 - `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]` (~8KB per state)
@@ -122,6 +121,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### run 925 (Mar 13)
+- **Spec change implemented: PR #5001** — "Add parent_block_root to bid filtering key" (merged since last run). Changed bid highest-value gossip filtering from `(slot, parent_block_hash)` to `(slot, parent_block_hash, parent_block_root)`. Prevents cross-fork bid interference when competing beacon chain forks share the same execution parent. Updated `is_highest_value_bid()` signature, caller in `gloas_verification.rs`, and all tests. New test `highest_value_different_parent_root_independent` added.
+- Version bump to v1.7.0-alpha.3 (#4999) committed to consensus-specs but not yet released as a GitHub release.
+- PR #4979 (PTC lookbehind large cache) CLOSED without merge — #4992 (minimal 2-slot cache) is the surviving approach, still open.
+- Other tracked PRs (#4992, #4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+- No new spec-test vectors (still v1.6.0-beta.0). CI green, nightly green.
+- All tests pass: observed_execution_bids 19/19, bid verification integration 4/4, network bid gossip 18/18, HTTP API bid 16/16.
 
 ### run 922 (Mar 10)
 - Spec scan: no new consensus-specs commits (latest: #4995 python 3.14 support, Mar 10). All 11 tracked Gloas PRs still OPEN. No new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): updated today, still open. CI green, nightly green. No code changes needed.
