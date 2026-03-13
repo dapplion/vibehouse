@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 926 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (v1.7.0-alpha.3 committed but GitHub release still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- PR #4992 (PTC lookbehind): major update — 8 commits, head d76a278b0a, mergeable=clean. Design: two separate state fields `previous_ptc`/`current_ptc` instead of vector. Approaching merge.
+- New PR #5002 (p2p wording, no consensus impact). All other tracked PRs still OPEN.
+- Updated deps (clap 4.6, openssl 0.10.76, c-kzg 2.1.7, tempfile 3.27). Build clean, types 715/715 pass.
+- CI in_progress. Nightly green. cargo audit unchanged (1 vuln + 5 allowed).
+
 ### run 924 (Mar 10)
 - Spec scan: no new consensus-specs commits (latest: #4995 python 3.14 support, Mar 10). All 11 tracked Gloas PRs still OPEN. No new spec release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): unchanged (head 215962a9, last activity Mar 10 12:05 UTC). CI green, nightly green. cargo audit: 1 vuln + 5 allowed (unchanged). No code changes needed.
 

@@ -122,6 +122,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 926 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (v1.7.0-alpha.3 committed but not released on GitHub, still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind) major evolution**: now 8 commits (was 2), head d76a278b0a (was 215962a9), **mergeable=clean** (was blocked). Design changed: split single `ptc_lookbehind` vector into two separate BeaconState fields `previous_ptc`/`current_ptc`. New `compute_ptc` helper extracted. `get_ptc` now reads from cached fields with slot assertion. `process_slots` rotates cache each slot (after epoch processing + slot increment). `get_ptc_assignment` removed from validator spec. Fork upgrade: zeros + compute after builder onboarding. New tests: ptc rotation, epoch boundary crossing. Approaching merge readiness.
+- **New PR #5002**: "Make wordings clearer for self build payload signature verification" (ensi321, p2p-interface.md only, 2 line wording change, no consensus impact).
+- Other tracked PRs (#4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+- Updated dependencies: clap 4.5→4.6, openssl 0.10.75→0.10.76, c-kzg 2.1.6→2.1.7, tempfile 3.26→3.27, once_cell 1.21.3→1.21.4, anstream 0.6→1.0. Build clean, types 715/715 pass.
+- CI in_progress for latest commit. Nightly green. cargo audit unchanged (1 vuln + 5 allowed).
+
 ### run 925 (Mar 13)
 - **Spec change implemented: PR #5001** — "Add parent_block_root to bid filtering key" (merged since last run). Changed bid highest-value gossip filtering from `(slot, parent_block_hash)` to `(slot, parent_block_hash, parent_block_root)`. Prevents cross-fork bid interference when competing beacon chain forks share the same execution parent. Updated `is_highest_value_bid()` signature, caller in `gloas_verification.rs`, and all tests. New test `highest_value_different_parent_root_independent` added.
 - Version bump to v1.7.0-alpha.3 (#4999) committed to consensus-specs but not yet released as a GitHub release.
