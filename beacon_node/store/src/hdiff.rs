@@ -326,16 +326,31 @@ impl BytesDiff {
     }
 
     pub fn compute_xdelta(source_bytes: &[u8], target_bytes: &[u8]) -> Result<Self, Error> {
-        // TODO(hdiff): Use a smaller estimate for the output diff buffer size, currently the
-        // xdelta3 lib will use 2x the size of the source plus the target length, which is 4x the
-        // size of the hdiff buffer. In practice, diffs are almost always smaller than buffers (by a
-        // signficiant factor), so this is 4-16x larger than necessary in a temporary allocation.
-        //
-        // We should use an estimated size that *should* be enough, and then dynamically increase it
-        // if we hit an insufficient space error.
-        let bytes =
-            xdelta3::encode(target_bytes, source_bytes).map_err(Error::UnableToComputeDiff)?;
-        Ok(Self { bytes })
+        // Start with a conservative estimate: diffs between similar beacon states are typically
+        // much smaller than the states themselves. Use 1/4 of total size as initial guess,
+        // with a minimum of 1024 bytes to handle tiny inputs.
+        let total_len = source_bytes.len().saturating_add(target_bytes.len());
+        let mut output_length = (total_len / 4).max(1024);
+        let mut num_resizes = 0u32;
+        loop {
+            match xdelta3::encode_with_output_len(target_bytes, source_bytes, output_length as u32)
+            {
+                Ok(bytes) => {
+                    metrics::observe(
+                        &metrics::BEACON_HDIFF_BUFFER_COMPUTE_RESIZES,
+                        num_resizes as f64,
+                    );
+                    return Ok(Self { bytes });
+                }
+                Err(xdelta3::Error::InsufficientOutputLength) => {
+                    output_length = output_length.saturating_mul(2);
+                    num_resizes = num_resizes.saturating_add(1);
+                }
+                Err(err) => {
+                    return Err(Error::UnableToComputeDiff(err));
+                }
+            }
+        }
     }
 
     pub fn apply(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {

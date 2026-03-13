@@ -208,6 +208,13 @@ pub static BEACON_HDIFF_BUFFER_APPLY_RESIZES: LazyLock<Result<Histogram>> = Lazy
         Ok(vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0]),
     )
 });
+pub static BEACON_HDIFF_BUFFER_COMPUTE_RESIZES: LazyLock<Result<Histogram>> = LazyLock::new(|| {
+    try_create_histogram_with_buckets(
+        "store_hdiff_buffer_compute_resizes",
+        "Number of times during diff computation that the output buffer had to be resized before encoding succeeded",
+        Ok(vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0]),
+    )
+});
 // This metric is not split hot/cold because both databases use the same hierarchy config anyway
 // and that's all that affects diff sizes.
 pub static BEACON_HDIFF_SIZES: LazyLock<Result<HistogramVec>> = LazyLock::new(|| {
