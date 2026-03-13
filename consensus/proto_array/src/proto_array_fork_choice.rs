@@ -1406,7 +1406,10 @@ impl ProtoArrayForkChoice {
             return 0;
         }
 
-        // Sum attestation scores from supporting votes
+        // Sum attestation scores from supporting votes.
+        // Cache ancestor lookups: many validators vote for the same root, so
+        // get_ancestor_gloas(root, node_slot) would repeat the same tree walk.
+        let mut ancestor_cache: HashMap<Hash256, Option<GloasForkChoiceNode>> = HashMap::new();
         let mut weight: u64 = 0;
         for (val_index, vote) in self.votes.0.iter().enumerate() {
             if vote.current_root.is_zero() {
@@ -1421,7 +1424,7 @@ impl ProtoArrayForkChoice {
             if balance == 0 {
                 continue;
             }
-            if self.is_supporting_vote_gloas_at_slot(node, vote, node_slot) {
+            if self.is_supporting_vote_gloas_cached(node, vote, node_slot, &mut ancestor_cache) {
                 weight = weight.saturating_add(balance);
             }
         }
@@ -1492,6 +1495,47 @@ impl ProtoArrayForkChoice {
         } else {
             // Ancestor check: does the vote's chain pass through this node?
             match self.get_ancestor_gloas(vote.current_root, node_slot) {
+                Some(ancestor) => {
+                    node.root == ancestor.root
+                        && (node.payload_status == GloasPayloadStatus::Pending
+                            || node.payload_status == ancestor.payload_status)
+                }
+                None => false,
+            }
+        }
+    }
+
+    /// Like `is_supporting_vote_gloas_at_slot` but caches ancestor lookups.
+    ///
+    /// The ancestor walk (`get_ancestor_gloas`) is O(depth) and called once per
+    /// validator per node. Since many validators vote for the same root, caching
+    /// the result per `vote.current_root` avoids redundant tree walks.
+    fn is_supporting_vote_gloas_cached(
+        &self,
+        node: &GloasForkChoiceNode,
+        vote: &VoteTracker,
+        node_slot: Slot,
+        ancestor_cache: &mut HashMap<Hash256, Option<GloasForkChoiceNode>>,
+    ) -> bool {
+        if node.root == vote.current_root {
+            match node.payload_status {
+                GloasPayloadStatus::Pending => true,
+                GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
+                    if vote.current_slot == node_slot {
+                        return false;
+                    }
+                    if vote.current_payload_present {
+                        node.payload_status == GloasPayloadStatus::Full
+                    } else {
+                        node.payload_status == GloasPayloadStatus::Empty
+                    }
+                }
+            }
+        } else {
+            let ancestor = ancestor_cache
+                .entry(vote.current_root)
+                .or_insert_with(|| self.get_ancestor_gloas(vote.current_root, node_slot));
+            match ancestor {
                 Some(ancestor) => {
                     node.root == ancestor.root
                         && (node.payload_status == GloasPayloadStatus::Pending
