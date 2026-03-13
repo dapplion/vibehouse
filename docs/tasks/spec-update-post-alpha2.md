@@ -110,6 +110,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1018 (Mar 13) — dep update, code audit, all stable
+- Updated tracing-subscriber 0.3.22→0.3.23. Build clean, 368/368 Gloas state_processing tests pass.
+- Deep audit of envelope processing path (envelope_processing.rs, gloas_verification.rs, beacon_chain.rs self-build): no critical bugs, no panics, all arithmetic safe, spec-compliant.
+- PR #4992 (PTC lookbehind): still OPEN, MERGEABLE, 1 APPROVED (jtraglia). Implementation ready on `ptc-lookbehind` branch.
+- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
+- CI and nightly green. Clippy clean. cargo audit unchanged (1 rsa).
+
 ### runs 968-1017 consolidated (Mar 13) — all stable, no code changes needed
 Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0).
 - Run 1005: Formal audit of v1.7.0-alpha.3 diffs — all 7 changes already implemented (PayloadStatus reorder, is_pending_validator, dual PTC voting, should_extend_payload DA requirement, index-1 validation, bid filtering, envelope serve range).
