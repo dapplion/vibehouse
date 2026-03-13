@@ -110,6 +110,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 971 (Mar 13) — no spec changes, all stable
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
+- All tracked Gloas PRs unchanged. PR #4992 still 1 APPROVED (jtraglia), MERGEABLE. PR #4939 still OPEN.
+- Rebased `ptc-lookbehind` branch onto main (8 task-doc commits, clean rebase).
+- CI green. Nightly green. Docker build jobs queued ~3hrs (runner availability). cargo audit unchanged (1 rsa).
+- Deep test coverage audit: no significant gaps found across state_processing (208 tests), gossip verification (40+ tests), beacon_chain integration (290+ tests), fork choice (290+ tests).
+
 ### run 970 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
 - All 10 tracked Gloas PRs unchanged. PR #4992 still 1 APPROVED (jtraglia), MERGEABLE. PR #4939 still OPEN.
