@@ -1606,4 +1606,73 @@ mod tests {
                 .unwrap()
         );
     }
+
+    // ── SSZ round-trip tests for Gloas fields ─────────────────
+
+    #[test]
+    fn proto_node_ssz_round_trip_gloas_fields() {
+        use ssz::{Decode, Encode};
+
+        let mut node = make_node(Some(42), true);
+        node.ptc_weight = 257;
+        node.ptc_blob_data_available_weight = 128;
+        node.payload_data_available = true;
+        node.bid_block_hash = Some(ExecutionBlockHash::from_root(Hash256::from_low_u64_be(999)));
+        node.bid_parent_block_hash =
+            Some(ExecutionBlockHash::from_root(Hash256::from_low_u64_be(998)));
+        node.proposer_index = 77;
+        node.ptc_timely = true;
+        node.envelope_received = true;
+
+        let encoded = node.as_ssz_bytes();
+        let decoded = ProtoNode::from_ssz_bytes(&encoded).expect("SSZ decode failed");
+
+        assert_eq!(decoded.builder_index, Some(42));
+        assert!(decoded.payload_revealed);
+        assert_eq!(decoded.ptc_weight, 257);
+        assert_eq!(decoded.ptc_blob_data_available_weight, 128);
+        assert!(decoded.payload_data_available);
+        assert_eq!(decoded.bid_block_hash, node.bid_block_hash);
+        assert_eq!(decoded.bid_parent_block_hash, node.bid_parent_block_hash);
+        assert_eq!(decoded.proposer_index, 77);
+        assert!(decoded.ptc_timely);
+        assert!(decoded.envelope_received);
+    }
+
+    #[test]
+    fn proto_node_ssz_round_trip_pre_gloas() {
+        use ssz::{Decode, Encode};
+
+        // Pre-Gloas node: builder_index=None, all Gloas fields at defaults
+        let node = make_node(None, false);
+
+        let encoded = node.as_ssz_bytes();
+        let decoded = ProtoNode::from_ssz_bytes(&encoded).expect("SSZ decode failed");
+
+        assert_eq!(decoded.builder_index, None);
+        assert!(!decoded.payload_revealed);
+        assert_eq!(decoded.ptc_weight, 0);
+        assert_eq!(decoded.ptc_blob_data_available_weight, 0);
+        assert!(!decoded.payload_data_available);
+        assert_eq!(decoded.bid_block_hash, None);
+        assert_eq!(decoded.bid_parent_block_hash, None);
+        assert_eq!(decoded.proposer_index, 0);
+        assert!(!decoded.ptc_timely);
+        assert!(!decoded.envelope_received);
+    }
+
+    #[test]
+    fn proto_node_ssz_round_trip_self_build() {
+        use ssz::{Decode, Encode};
+
+        let node = make_node(Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD), false);
+
+        let encoded = node.as_ssz_bytes();
+        let decoded = ProtoNode::from_ssz_bytes(&encoded).expect("SSZ decode failed");
+
+        assert_eq!(
+            decoded.builder_index,
+            Some(types::consts::gloas::BUILDER_INDEX_SELF_BUILD)
+        );
+    }
 }

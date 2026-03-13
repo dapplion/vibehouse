@@ -21,7 +21,7 @@ use types::{
 
 pub const DEFAULT_PRUNE_THRESHOLD: usize = 256;
 
-#[derive(Default, PartialEq, Clone, Encode, Decode)]
+#[derive(Default, Debug, PartialEq, Clone, Encode, Decode)]
 pub struct VoteTracker {
     current_root: Hash256,
     next_root: Hash256,
