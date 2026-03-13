@@ -110,6 +110,15 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1019 (Mar 13) — spec scan, all stable
+- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
+- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
+- PR #4939 (index-1 attestation): rebased + "Review feedback" commit (Mar 13). No semantic changes — still matches our implementation.
+- All 9 tracked PRs unchanged. No new Gloas spec PRs requiring action.
+- No compatible dependency updates available. cargo audit unchanged (1 rsa).
+- CI from last push (run 1018) still in progress; nightly green.
+- Test coverage audit: withdrawal processing has ~50 tests, epoch processing well-covered, no significant gaps found.
+
 ### run 1018 (Mar 13) — dep update, code audit, all stable
 - Updated tracing-subscriber 0.3.22→0.3.23. Build clean, 368/368 Gloas state_processing tests pass.
 - Deep audit of envelope processing path (envelope_processing.rs, gloas_verification.rs, beacon_chain.rs self-build): no critical bugs, no panics, all arithmetic safe, spec-compliant.
