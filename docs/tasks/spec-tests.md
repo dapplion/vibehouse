@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 929 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged (head d76a278b0a, mergeable=clean, 1 APPROVED jtraglia). Still OPEN.
+- **Implemented PTC lookbehind on branch `ptc-lookbehind`**: Added `previous_ptc`/`current_ptc` fields to BeaconStateGloas, renamed `get_ptc_committee`→`compute_ptc`, added `get_ptc` (cached reads), rotation in `per_slot_processing`, initialization in `upgrade_to_gloas`. All 575 state_processing unit tests pass. **NOT merged to main** — blocks on PR #4992 merge + new spec test vectors (SSZ layout change breaks EF test parsing).
+- Fixed pre-existing `clippy::large_stack_frames` error in `proposer_boost_re_org_test` (introduced by Rust 1.91 bump in PR #30).
+- Other tracked PRs (#4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+
 ### run 926 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (v1.7.0-alpha.3 committed but GitHub release still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - PR #4992 (PTC lookbehind): major update — 8 commits, head d76a278b0a, mergeable=clean. Design: two separate state fields `previous_ptc`/`current_ptc` instead of vector. Approaching merge.

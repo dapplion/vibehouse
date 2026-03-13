@@ -47,7 +47,7 @@ Implement Gloas spec changes merged to consensus-specs master after v1.7.0-alpha
 
 Fixes a real bug: when processing payload attestations at epoch boundaries (e.g., slot 32 validating PTC of slot 31), effective balance changes from epoch processing can cause `get_ptc` to return a different committee than what was valid when the attestation was created.
 
-**vibehouse has the same bug** — our `get_ptc_committee` (gloas.rs:377) computes PTC from scratch using current state balances. Will fix when one of the PRs merges.
+**vibehouse has the same bug** — our `compute_ptc` (gloas.rs) computes PTC from scratch using current state balances. **Implementation ready on branch `ptc-lookbehind`** — adds `previous_ptc`/`current_ptc` to BeaconState, rotates in per_slot_processing, all 575 unit tests pass. Blocks on PR #4992 merge + new spec test vectors (SSZ layout change).
 
 ### PR #4979 (original, potuz, Mar 4) — large cache approach — CLOSED (rejected)
 - `ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]` (~256KB per state)
