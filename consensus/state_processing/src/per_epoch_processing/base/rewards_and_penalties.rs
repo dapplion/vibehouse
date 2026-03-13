@@ -7,6 +7,7 @@ use crate::per_epoch_processing::{
     base::{TotalBalances, ValidatorStatus, ValidatorStatuses},
 };
 use safe_arith::SafeArith;
+use std::collections::HashSet;
 use types::{BeaconState, ChainSpec, EthSpec};
 
 /// Combination of several deltas for different components of an attestation reward.
@@ -102,21 +103,22 @@ pub fn get_attestation_deltas_subset<E: EthSpec>(
     state: &BeaconState<E>,
     validator_statuses: &ValidatorStatuses,
     proposer_reward: ProposerRewardCalculation,
-    validators_subset: &Vec<usize>,
+    validators_subset: &[usize],
     spec: &ChainSpec,
 ) -> Result<Vec<(usize, AttestationDelta)>, Error> {
+    let subset_set: HashSet<usize> = validators_subset.iter().copied().collect();
     get_attestation_deltas(
         state,
         validator_statuses,
         proposer_reward,
-        Some(validators_subset),
+        Some(&subset_set),
         spec,
     )
     .map(|deltas| {
         deltas
             .into_iter()
             .enumerate()
-            .filter(|(index, _)| validators_subset.contains(index))
+            .filter(|(index, _)| subset_set.contains(index))
             .collect()
     })
 }
@@ -130,7 +132,7 @@ fn get_attestation_deltas<E: EthSpec>(
     state: &BeaconState<E>,
     validator_statuses: &ValidatorStatuses,
     proposer_reward: ProposerRewardCalculation,
-    maybe_validators_subset: Option<&Vec<usize>>,
+    maybe_validators_subset: Option<&HashSet<usize>>,
     spec: &ChainSpec,
 ) -> Result<Vec<AttestationDelta>, Error> {
     let finality_delay = state
