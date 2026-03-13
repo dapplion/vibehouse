@@ -28,8 +28,8 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 959-1140 consolidated (Mar 11-13) — spec stable, monitoring only
-Spec completely stable since v1.7.0-alpha.3 version bump (#4999, Mar 11). No new spec-test vectors (still v1.5.0). No new formal release (still v1.7.0-alpha.2 published). All tracked spec-test PRs (#4932, #4939, #4960, #4962) remain OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a throughout. CI and nightly continuously green. cargo audit unchanged (1 rsa). PR #4940 (Gloas fork choice tests) merged Mar 13 — test generators only, no new vectors yet. ptc-lookbehind branch rebased multiple times, 575/575 state_processing tests pass each time.
+### runs 959-1141 consolidated (Mar 11-13) — spec stable, monitoring only
+Spec completely stable since v1.7.0-alpha.3 version bump (#4999, Mar 11). No new spec-test vectors (still v1.6.0-beta.0). No new formal release (still v1.7.0-alpha.2 published). All tracked spec-test PRs (#4932, #4939, #4960, #4962) remain OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a, new comment from jihoonsong (Mar 13). CI and nightly continuously green. cargo audit unchanged (1 rsa). PR #4940 (Gloas fork choice tests) merged Mar 13 — test generators only, no new vectors yet. ptc-lookbehind branch rebased onto main, 575/575 state_processing tests pass. PR #5001 (parent_block_root in bid filtering key) merged — already implemented in vibehouse. PR #5002 (wording clarification) — no code change needed. PR #5004 (release notes dependencies section) — tooling only.
 
 Notable activities:
 - Run 1054: Committed Cargo.lock transitive dep update (windows-sys 0.61.2, syn 2).
