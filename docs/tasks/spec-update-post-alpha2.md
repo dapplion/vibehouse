@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1162 (Mar 13) — perf: pre-filter active votes in find_head_gloas
+Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new releases or spec-test vectors. No semver-compatible cargo updates.
+Pre-compute active votes (non-zero root + non-zero balance) once before the find_head_gloas loop, then pass the filtered slice to `get_gloas_weight`. Eliminates per-validator zero-root checks, balance bounds checks, and zero-balance checks from the inner loop that runs at every depth level for every child node. On mainnet with ~1M validators, this avoids ~3 comparisons × N_inactive_validators × depth × children_per_level iterations. 188/188 proto_array + 119/119 fork_choice + 8/8 EF fork choice tests pass. Clippy clean.
+
 ### run 1161 (Mar 13) — perf: reuse ancestor cache allocation in find_head_gloas
 Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). PR #5003 CLOSED by author (not merged). No new releases or spec-test vectors. No semver-compatible cargo updates.
 Moved `ancestor_cache` HashMap allocation outside the `find_head_gloas` loop, using `clear()` between iterations instead of reallocating. Avoids ~30 HashMap heap allocations per find_head call (one per tree depth level). 188/188 proto_array + 119/119 fork_choice + 8/8 EF fork choice tests pass. Clippy clean.
