@@ -422,6 +422,10 @@ pub fn get_ptc_committee<E: EthSpec>(
     let mut i: u64 = 0;
     let mut hash_input = [0u8; 40];
     hash_input[..32].copy_from_slice(seed.as_slice());
+    // Cache the hash output — it only changes every 16 iterations since the
+    // input uses i/16. Avoids ~15/16 redundant SHA-256 computations.
+    let mut cached_hash_group: u64 = u64::MAX; // impossible initial value
+    let mut random_bytes = vec![0u8; 32];
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;
         // shuffle_indices=False, so just use next_index directly
@@ -433,8 +437,12 @@ pub fn get_ptc_committee<E: EthSpec>(
                 ))?;
 
         // compute_balance_weighted_acceptance
-        hash_input[32..].copy_from_slice(&int_to_bytes8(i.safe_div(16)?));
-        let random_bytes = hash(&hash_input);
+        let hash_group = i.safe_div(16)?;
+        if hash_group != cached_hash_group {
+            hash_input[32..].copy_from_slice(&int_to_bytes8(hash_group));
+            random_bytes = hash(&hash_input);
+            cached_hash_group = hash_group;
+        }
         let offset = i.safe_rem(16)?.safe_mul(2)? as usize;
         let random_byte_0 =
             *random_bytes

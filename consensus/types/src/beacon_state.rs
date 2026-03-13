@@ -1043,11 +1043,24 @@ impl<E: EthSpec> BeaconState<E> {
         }
 
         let max_effective_balance = spec.max_effective_balance_for_fork(self.fork_name_unchecked());
-        let max_random_value = if self.fork_name_unchecked().electra_enabled() {
+        let is_electra = self.fork_name_unchecked().electra_enabled();
+        let max_random_value = if is_electra {
             MAX_RANDOM_VALUE
         } else {
             MAX_RANDOM_BYTE
         };
+        // Items per hash group: 16 for Electra+ (2 bytes each), 32 for pre-Electra (1 byte each)
+        let items_per_group: usize = if is_electra { 16 } else { 32 };
+
+        // Reusable hash buffer: seed || i/items_per_group as 8-byte LE
+        let seed_len = seed.len();
+        let mut hash_input = Vec::with_capacity(seed_len.saturating_add(8));
+        hash_input.extend_from_slice(seed);
+        hash_input.extend_from_slice(&[0u8; 8]);
+
+        // Cache the hash output — only recompute when i/items_per_group changes
+        let mut cached_hash_group: usize = usize::MAX;
+        let mut random_bytes = vec![0u8; 32];
 
         let mut i = 0;
         loop {
@@ -1061,7 +1074,30 @@ impl<E: EthSpec> BeaconState<E> {
             let candidate_index = *indices
                 .get(shuffled_index)
                 .ok_or(Error::ShuffleIndexOutOfBounds(shuffled_index))?;
-            let random_value = self.shuffling_random_value(i, seed)?;
+
+            let hash_group = i.safe_div(items_per_group)?;
+            if hash_group != cached_hash_group {
+                if let Some(tail) = hash_input.get_mut(seed_len..) {
+                    tail.copy_from_slice(&int_to_bytes8(hash_group as u64));
+                }
+                random_bytes = hash(&hash_input);
+                cached_hash_group = hash_group;
+            }
+            let random_value = if is_electra {
+                let offset = i.safe_rem(16)?.safe_mul(2)?;
+                let bytes: [u8; 2] = random_bytes
+                    .get(offset..offset.safe_add(2)?)
+                    .ok_or(Error::ShuffleIndexOutOfBounds(offset))?
+                    .try_into()
+                    .map_err(|_| Error::ShuffleIndexOutOfBounds(offset))?;
+                u16::from_le_bytes(bytes) as u64
+            } else {
+                let index = i.safe_rem(32)?;
+                *random_bytes
+                    .get(index)
+                    .ok_or(Error::ShuffleIndexOutOfBounds(index))? as u64
+            };
+
             // Use the epoch cache for O(1) balance lookups when available,
             // falling back to the tree-backed validator list.
             let effective_balance = match self.epoch_cache().get_effective_balance(candidate_index)
@@ -1141,47 +1177,6 @@ impl<E: EthSpec> BeaconState<E> {
                 self.compute_proposer_index(indices, &hash, spec)
             })
             .collect()
-    }
-
-    /// Fork-aware abstraction for the shuffling.
-    ///
-    /// In Electra and later, the random value is a 16-bit integer stored in a `u64`.
-    ///
-    /// Prior to Electra, the random value is an 8-bit integer stored in a `u64`.
-    fn shuffling_random_value(&self, i: usize, seed: &[u8]) -> Result<u64, Error> {
-        if self.fork_name_unchecked().electra_enabled() {
-            Self::shuffling_random_u16_electra(i, seed).map(u64::from)
-        } else {
-            Self::shuffling_random_byte(i, seed).map(u64::from)
-        }
-    }
-
-    /// Get a random byte from the given `seed`.
-    ///
-    /// Used by the proposer & sync committee selection functions.
-    fn shuffling_random_byte(i: usize, seed: &[u8]) -> Result<u8, Error> {
-        let mut preimage = seed.to_vec();
-        preimage.append(&mut int_to_bytes8(i.safe_div(32)? as u64));
-        let index = i.safe_rem(32)?;
-        hash(&preimage)
-            .get(index)
-            .copied()
-            .ok_or(Error::ShuffleIndexOutOfBounds(index))
-    }
-
-    /// Get two random bytes from the given `seed`.
-    ///
-    /// This is used in place of `shuffling_random_byte` from Electra onwards.
-    fn shuffling_random_u16_electra(i: usize, seed: &[u8]) -> Result<u16, Error> {
-        let mut preimage = seed.to_vec();
-        preimage.append(&mut int_to_bytes8(i.safe_div(16)? as u64));
-        let offset = i.safe_rem(16)?.safe_mul(2)?;
-        hash(&preimage)
-            .get(offset..offset.safe_add(2)?)
-            .ok_or(Error::ShuffleIndexOutOfBounds(offset))?
-            .try_into()
-            .map(u16::from_le_bytes)
-            .map_err(|_| Error::ShuffleIndexOutOfBounds(offset))
     }
 
     /// Convenience accessor for the `execution_payload_header` as an `ExecutionPayloadHeaderRef`.
@@ -1384,11 +1379,23 @@ impl<E: EthSpec> BeaconState<E> {
 
         let seed = self.get_seed(epoch, Domain::SyncCommittee, spec)?;
         let max_effective_balance = spec.max_effective_balance_for_fork(self.fork_name_unchecked());
-        let max_random_value = if self.fork_name_unchecked().electra_enabled() {
+        let is_electra = self.fork_name_unchecked().electra_enabled();
+        let max_random_value = if is_electra {
             MAX_RANDOM_VALUE
         } else {
             MAX_RANDOM_BYTE
         };
+        let items_per_group: usize = if is_electra { 16 } else { 32 };
+
+        // Reusable hash buffer: seed || i/items_per_group as 8-byte LE
+        let seed_slice = seed.as_slice();
+        let seed_len = seed_slice.len();
+        let mut hash_input = Vec::with_capacity(seed_len.saturating_add(8));
+        hash_input.extend_from_slice(seed_slice);
+        hash_input.extend_from_slice(&[0u8; 8]);
+
+        let mut cached_hash_group: usize = usize::MAX;
+        let mut random_bytes = vec![0u8; 32];
 
         let mut i = 0;
         let mut sync_committee_indices = Vec::with_capacity(E::SyncCommitteeSize::to_usize());
@@ -1396,14 +1403,37 @@ impl<E: EthSpec> BeaconState<E> {
             let shuffled_index = compute_shuffled_index(
                 i.safe_rem(active_validator_count)?,
                 active_validator_count,
-                seed.as_slice(),
+                seed_slice,
                 spec.shuffle_round_count,
             )
             .ok_or(Error::UnableToShuffle)?;
             let candidate_index = *active_validator_indices
                 .get(shuffled_index)
                 .ok_or(Error::ShuffleIndexOutOfBounds(shuffled_index))?;
-            let random_value = self.shuffling_random_value(i, seed.as_slice())?;
+
+            let hash_group = i.safe_div(items_per_group)?;
+            if hash_group != cached_hash_group {
+                if let Some(tail) = hash_input.get_mut(seed_len..) {
+                    tail.copy_from_slice(&int_to_bytes8(hash_group as u64));
+                }
+                random_bytes = hash(&hash_input);
+                cached_hash_group = hash_group;
+            }
+            let random_value = if is_electra {
+                let offset = i.safe_rem(16)?.safe_mul(2)?;
+                let bytes: [u8; 2] = random_bytes
+                    .get(offset..offset.safe_add(2)?)
+                    .ok_or(Error::ShuffleIndexOutOfBounds(offset))?
+                    .try_into()
+                    .map_err(|_| Error::ShuffleIndexOutOfBounds(offset))?;
+                u16::from_le_bytes(bytes) as u64
+            } else {
+                let index = i.safe_rem(32)?;
+                *random_bytes
+                    .get(index)
+                    .ok_or(Error::ShuffleIndexOutOfBounds(index))? as u64
+            };
+
             let effective_balance = self.get_validator(candidate_index)?.effective_balance;
             if effective_balance.safe_mul(max_random_value)?
                 >= max_effective_balance.safe_mul(random_value)?
