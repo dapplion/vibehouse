@@ -110,6 +110,14 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1026 (Mar 13) — spec stable, all unchanged
+- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
+- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
+- PR #4747 (Fast Confirmation Rule): still dirty — not ready.
+- CI from run 1018 push: 5/6 jobs passed (check+clippy, ef-tests, network+op_pool, http_api, beacon_chain still running). Nightly green.
+- Verified all unwraps in consensus/state_processing production code are zero (all in test modules only).
+- No compatible dep updates. cargo audit unchanged (1 rsa).
+
 ### run 1025 (Mar 13) — spec stable, all unchanged
 - Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
 - PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
