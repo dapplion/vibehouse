@@ -1054,7 +1054,9 @@ impl PendingDepositsContext {
                 processed_amount.safe_add_assign(deposit.amount)?;
 
                 // Deposit fits in the churn, process it. Increase balance and consume churn.
-                if let Some(validator_index) = state.pubkey_cache().get(&deposit.pubkey) {
+                // Reuse opt_validator_index from the lookup above to avoid a redundant
+                // pubkey cache HashMap lookup per deposit.
+                if let Some(validator_index) = opt_validator_index {
                     validator_deposits_to_process
                         .entry(validator_index)
                         .or_insert(0)
