@@ -1117,6 +1117,12 @@ impl ProtoArrayForkChoice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
+        // Reuse the ancestor cache allocation across loop iterations. Each
+        // iteration clears the entries (slots differ per level) but keeps the
+        // HashMap's internal storage to avoid repeated heap allocations.
+        let mut ancestor_cache: HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>> =
+            HashMap::new();
+
         loop {
             let children = self.get_gloas_children(&head, &filtered_nodes, Some(&children_index));
             if children.is_empty() {
@@ -1129,8 +1135,7 @@ impl ProtoArrayForkChoice {
             // Share the ancestor cache across siblings: children at the same level
             // share the same node_slot, so ancestor lookups (keyed by vote root)
             // are identical and can be reused across EMPTY/FULL weight calculations.
-            let mut ancestor_cache: HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>> =
-                HashMap::new();
+            ancestor_cache.clear();
             let weighted: Vec<_> = children
                 .into_iter()
                 .map(|child| {
