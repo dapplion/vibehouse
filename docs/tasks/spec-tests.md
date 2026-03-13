@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 995 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). PR #4939: still OPEN, no approvals, updated today. CI green. cargo audit unchanged (1 rsa, 5 warnings). No open issues requiring action.
+
 ### run 994 (Mar 13) — no spec changes, code audit clean
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2, GitHub latest=v1.6.1). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE, labels: testing+gloas+heze). Ran code audit on all Gloas consensus paths (gloas.rs, envelope_processing.rs, fork_choice.rs, proto_array, gloas_verification.rs, block_verification.rs): no bugs, no unsafe arithmetic, no unwraps in production code, no TODOs. All 56 envelope processing tests cover every error variant. CI green. cargo audit unchanged (1 rsa, 5 warnings). 0 compatible dep updates.
 
