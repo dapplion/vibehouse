@@ -71,28 +71,38 @@ where
     let mut result = vec![];
 
     for _ in 0..limit {
-        // Select the item with the maximum score.
-        let best = match all_items
-            .iter_mut()
-            .filter(|x| x.available && x.item.score() != 0)
-            .max_by_key(|x| x.item.score())
-        {
-            Some(x) => {
-                x.available = false;
-                x.item.clone()
+        // Select the item with the maximum score, computing score() once per item.
+        // Previously score() was called up to 3 times per item per iteration (filter,
+        // max_by_key, and update filter). For attestations, score() sums a HashMap of
+        // rewards, so reducing calls from 3n to n saves significant work.
+        let best_idx = all_items
+            .iter()
+            .enumerate()
+            .filter_map(|(i, x)| {
+                if !x.available {
+                    return None;
+                }
+                let score = x.item.score();
+                (score != 0).then_some((i, score))
+            })
+            .max_by_key(|&(_, score)| score)
+            .map(|(i, _)| i);
+
+        let best = match best_idx {
+            Some(i) => {
+                all_items[i].available = false;
+                all_items[i].item.clone()
             }
             None => return result,
         };
 
         // Update the covering sets of the other items, for the inclusion of the selected item.
-        // Items covered by the selected item can't be re-covered.
-        all_items
-            .iter_mut()
-            .filter(|x| x.available && x.item.score() != 0)
-            .for_each(|x| {
-                x.item
-                    .update_covering_set(best.intermediate(), best.covering_set())
-            });
+        // Items covered by the selected item can't be re-covered. Skip the score() != 0 check
+        // here — update_covering_set on an empty set is a no-op.
+        all_items.iter_mut().filter(|x| x.available).for_each(|x| {
+            x.item
+                .update_covering_set(best.intermediate(), best.covering_set())
+        });
 
         result.push(best);
     }
