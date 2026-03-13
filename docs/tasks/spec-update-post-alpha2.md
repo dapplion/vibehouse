@@ -110,150 +110,17 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### run 1050 (Mar 13) — spec stable, rebased ptc-lookbehind
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (latest published: v1.5.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). Rebased ptc-lookbehind onto main (was 3 behind). 575/575 state_processing tests pass. Pushed.
-- CI green. Nightly green. No new issues or PRs on dapplion/vibehouse.
+### runs 1019-1051 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
+Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2). No new spec-test vectors. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN.
 
-### run 1049 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (latest published: v1.6.1).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse. No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1048 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind 1 commit behind main (task-doc only).
-- CI green. Nightly green. Docker build queued (runner availability). No new issues or PRs on dapplion/vibehouse.
-
-### run 1047 (Mar 13) — spec stable, rebased ptc-lookbehind
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.5.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). Rebased ptc-lookbehind onto main (was 3 behind). 575/575 state_processing tests pass. Pushed.
-- All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN.
-- CI green. Nightly green. Docker build queued (runner availability). Clippy clean. No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1046 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release (v1.7.0-alpha.3 version bump in code but NOT formally released). No new spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI green. Nightly green. No new issues or PRs on dapplion/vibehouse.
-
-### run 1044 (Mar 13) — spec stable, rebased ptc-lookbehind
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). Rebased ptc-lookbehind onto main (was 11 behind). 575/575 state_processing tests pass. Pushed.
-- CI green. Nightly green. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1042 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 9 commits behind main (task-doc updates only).
-- CI green. Nightly green. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1041 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 8 commits behind main (task-doc updates only).
-- CI green. Nightly green. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1040 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 7 commits behind main (task-doc updates only).
-- CI green. Nightly green. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1039 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 6 commits behind main (task-doc updates only).
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1038 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 5 commits behind main (task-doc updates only).
-- CI green. Nightly green. Docker build still queued. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1037 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1035 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 2 commits behind main.
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1034 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 1 commit behind main.
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates.
-
-### run 1033 (Mar 13) — spec stable, rebased ptc-lookbehind
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- Rebased `ptc-lookbehind` branch onto main (was 13 commits behind, all task-doc updates). 368/368 state_processing tests pass. Pushed.
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1032 (Mar 13) — spec stable, full audit pass
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.5.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12). ptc-lookbehind branch 12 commits behind main (all task-doc updates, no code changes).
-- Full codebase audit: clippy clean, cargo doc clean (-D warnings), cargo audit unchanged (1 rsa). No compatible dep updates.
-- Production unwrap audit: only `dump_as_dot()` debug utility (dead code, already reviewed in code-review-quality.md). All consensus/state_processing production code unwrap-free.
-- 28 TODO comments found in beacon_node — all inherited DAS sync code, none Gloas-related. consensus/ dirs clean.
-
-### run 1031 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.5.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-
-### run 1030 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.5.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-
-### run 1029 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.5.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI green. Nightly green. Docker build queued. No new issues or PRs on dapplion/vibehouse.
-
-### run 1028 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- CI: previous run green, current in progress. Nightly green. cargo audit unchanged (1 rsa). No compatible dep updates.
-
-### run 1026 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- PR #4747 (Fast Confirmation Rule): still dirty — not ready.
-- CI from run 1018 push: 5/6 jobs passed (check+clippy, ef-tests, network+op_pool, http_api, beacon_chain still running). Nightly green.
-- Verified all unwraps in consensus/state_processing production code are zero (all in test modules only).
-- No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1025 (Mar 13) — spec stable, all unchanged
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- PR #4747 (Fast Confirmation Rule): still dirty — not ready.
-- CI in progress, nightly green. No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1020 (Mar 13) — spec stable, rebased ptc-lookbehind
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- PR #4939 (index-1 attestation): latest "Review feedback" commit is wording-only (no semantic changes). Still matches our implementation.
-- Rebased `ptc-lookbehind` branch onto main (was 11 commits behind, all task-doc/dep updates). 575/575 state_processing tests pass. Pushed.
-- CI from run 1018 push: check/clippy/fmt passed, tests in progress. Nightly green.
-- No new Gloas spec PRs requiring action. No compatible dep updates. cargo audit unchanged (1 rsa).
-
-### run 1019 (Mar 13) — spec scan, all stable
-- Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors (still v1.6.0-beta.0).
-- PR #4992 (PTC lookbehind): still OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
-- PR #4939 (index-1 attestation): rebased + "Review feedback" commit (Mar 13). No semantic changes — still matches our implementation.
-- All 9 tracked PRs unchanged. No new Gloas spec PRs requiring action.
-- No compatible dependency updates available. cargo audit unchanged (1 rsa).
-- CI from last push (run 1018) still in progress; nightly green.
-- Test coverage audit: withdrawal processing has ~50 tests, epoch processing well-covered, no significant gaps found.
+Notable activities:
+- Runs 1020, 1033, 1044, 1047, 1050: Rebased `ptc-lookbehind` branch onto main (task-doc drift only). 575/575 state_processing tests pass each time.
+- Run 1032: Full codebase audit — clippy clean, cargo doc clean, production unwrap audit (zero unwraps in consensus/state_processing prod code), 28 TODOs in beacon_node (all inherited DAS sync, none Gloas).
+- Run 1026: Verified all unwraps in consensus/state_processing are test-only.
+- Run 1019: Test coverage audit — withdrawal processing (~50 tests), epoch processing well-covered, no significant gaps.
+- PR #4992 (PTC lookbehind): continuously OPEN, APPROVED, MERGEABLE. No new commits since d76a278b0a (Mar 12).
+- PR #4939 (index-1 attestation): wording-only update Mar 13, no semantic changes — our implementation still matches.
+- CI and nightly continuously green. cargo audit unchanged (1 rsa). No compatible dep updates.
 
 ### run 1018 (Mar 13) — dep update, code audit, all stable
 - Updated tracing-subscriber 0.3.22→0.3.23. Build clean, 368/368 Gloas state_processing tests pass.
