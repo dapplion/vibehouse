@@ -122,6 +122,12 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 954 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged head d76a278b0a, 1 APPROVED (jtraglia Mar 12). Still OPEN, mergeable=clean.
+- All other tracked PRs (#5002, #4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+- CI green. 0 compatible dep updates. cargo audit unchanged (1 vuln + 5 allowed). No code changes needed.
+
 ### run 953 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). v1.7.0-alpha.3 version bump merged (PR #4999, Mar 11) but no tag pushed yet. No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #5001 (parent_block_root bid filtering)**: merged Mar 12. Verified vibehouse already compliant — `observed_execution_bids.rs` uses `(slot, parent_block_hash, parent_block_root)` key, `gloas_verification.rs` passes all 3 fields.
