@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1022 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). PR #4747 (Fast Confirmation Rule): updated today, still dirty — not ready. PR #5002 (wording cleanup): still open, no code impact. CI in progress (previous run green). Nightly green (3+ consecutive). No new issues or PRs on dapplion/vibehouse. ptc-lookbehind branch 2 doc-only commits behind main. cargo audit unchanged (1 rsa).
+
 ### run 1021 (Mar 13) — no spec changes, all stable
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). PR #4747 (Fast Confirmation Rule): updated today, still CONFLICTING/REVIEW_REQUIRED — not ready. CI in progress (check+clippy+ef-tests passed, others running). Nightly green. No new issues or PRs on dapplion/vibehouse. ptc-lookbehind branch 1 doc-only commit behind main. No compatible dep updates. cargo audit unchanged (1 rsa).
 
