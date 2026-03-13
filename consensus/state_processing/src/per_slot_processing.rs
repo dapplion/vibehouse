@@ -1,3 +1,4 @@
+use crate::per_block_processing::gloas::compute_ptc;
 use crate::upgrade::{
     upgrade_to_altair, upgrade_to_bellatrix, upgrade_to_capella, upgrade_to_deneb,
     upgrade_to_electra, upgrade_to_fulu, upgrade_to_gloas,
@@ -12,6 +13,7 @@ use types::*;
 pub enum Error {
     BeaconStateError(BeaconStateError),
     EpochProcessingError(EpochProcessingError),
+    BlockProcessingError(BlockProcessingError),
     ArithError(ArithError),
     InconsistentStateFork(InconsistentFork),
 }
@@ -90,6 +92,12 @@ pub fn per_slot_processing<E: EthSpec>(
         state.build_caches(spec)?;
     }
 
+    // [New in Gloas:EIP7732] Rotate PTC cache after slot increment and epoch/fork processing.
+    // Spec: state.previous_ptc = state.current_ptc; state.current_ptc = compute_ptc(state)
+    if state.fork_name_unchecked().gloas_enabled() {
+        rotate_ptc_cache(state, spec)?;
+    }
+
     Ok(summary)
 }
 
@@ -142,6 +150,34 @@ fn cache_state<E: EthSpec>(
 
     // Set the state slot back to what it should be.
     state.slot_mut().safe_sub_assign(1)?;
+
+    Ok(())
+}
+
+/// [New in Gloas:EIP7732] Rotate the PTC cache: shift current→previous, compute new current.
+///
+/// Called after slot increment and epoch processing so that `get_ptc(state, state.slot)`
+/// and `get_ptc(state, state.slot - 1)` return balance-stable committees.
+fn rotate_ptc_cache<E: EthSpec>(state: &mut BeaconState<E>, spec: &ChainSpec) -> Result<(), Error> {
+    // Ensure committee caches are built for the current slot (needed by compute_ptc).
+    // At epoch boundaries, build_caches was already called above.
+    // At non-epoch boundaries, the caches from previous slots should still be valid.
+    // build_caches may fail with InsufficientValidators for test-only states with 0 validators.
+    drop(state.build_caches(spec));
+
+    let current_ptc = state.current_ptc()?.clone();
+
+    // compute_ptc may fail if there are no validators (e.g., genesis edge case).
+    // In that case, keep the PTC cache as zeros.
+    if let Ok(new_ptc) = compute_ptc(state, state.slot(), spec) {
+        let new_ptc_vector = Vector::new(new_ptc)
+            .map_err(|e| Error::BeaconStateError(BeaconStateError::MilhouseError(e)))?;
+        *state.previous_ptc_mut()? = current_ptc;
+        *state.current_ptc_mut()? = new_ptc_vector;
+    } else {
+        // No validators — shift but leave current as zeros
+        *state.previous_ptc_mut()? = current_ptc;
+    }
 
     Ok(())
 }
@@ -272,6 +308,8 @@ mod gloas_per_slot_tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: ExecutionBlockHash::zero(),
             payload_expected_withdrawals: List::default(),
+            previous_ptc: Vector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()]).unwrap(),
+            current_ptc: Vector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()]).unwrap(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),

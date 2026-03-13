@@ -641,6 +641,18 @@ where
     #[superstruct(only(Gloas))]
     pub payload_expected_withdrawals: List<Withdrawal, E::MaxWithdrawalsPerPayload>,
 
+    // PTC lookbehind cache: cached PTC committees to avoid recomputation across epoch boundaries
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[serde(with = "ssz_types::serde_utils::quoted_u64_fixed_vec")]
+    pub previous_ptc: Vector<u64, E::PtcSize>,
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[serde(with = "ssz_types::serde_utils::quoted_u64_fixed_vec")]
+    pub current_ptc: Vector<u64, E::PtcSize>,
+
     // Caching (not in the spec)
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing, skip_deserializing)]

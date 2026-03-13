@@ -110,7 +110,7 @@ use state_processing::{
         VerifySignatures,
         errors::AttestationValidationError,
         get_expected_withdrawals,
-        gloas::{get_indexed_payload_attestation, get_ptc_committee},
+        gloas::{compute_ptc, get_indexed_payload_attestation},
         verify_attestation_for_block_inclusion,
     },
     per_slot_processing,
@@ -1817,7 +1817,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         for slot_num in start_slot.as_u64()..end_slot.as_u64() {
             let slot = Slot::new(slot_num);
-            let ptc = get_ptc_committee::<T::EthSpec>(&state, slot, &self.spec)
+            let ptc = compute_ptc::<T::EthSpec>(&state, slot, &self.spec)
                 .map_err(Error::BlockProcessingError)?;
 
             for (ptc_position, &validator_index) in ptc.iter().enumerate() {
@@ -3514,8 +3514,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
 
-        let ptc_indices = get_ptc_committee::<T::EthSpec>(state, message.data.slot, &self.spec)
-            .map_err(Error::BlockProcessingError)?;
+        // Use cached PTC if within range, fallback to compute for edge cases
+        let ptc_indices =
+            state_processing::per_block_processing::gloas::get_ptc(state, message.data.slot)
+                .or_else(|_| compute_ptc::<T::EthSpec>(state, message.data.slot, &self.spec))
+                .map_err(Error::BlockProcessingError)?;
 
         // Find the validator's position in the PTC
         let ptc_position = ptc_indices

@@ -473,4 +473,9 @@ pub enum PayloadAttestationInvalid {
     AttesterIndexOutOfBounds,
     /// No active validators to form PTC
     NoActiveValidators,
+    /// Requested PTC slot is outside the cached range (must be state.slot or state.slot - 1)
+    PtcSlotOutOfRange {
+        requested_slot: Slot,
+        state_slot: Slot,
+    },
 }

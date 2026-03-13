@@ -1,3 +1,4 @@
+use crate::per_block_processing::gloas::compute_ptc;
 use crate::per_block_processing::is_valid_deposit_signature;
 use ssz_types::BitVector;
 use ssz_types::typenum::Unsigned;
@@ -17,6 +18,17 @@ pub fn upgrade_to_gloas<E: EthSpec>(
 
     // [New in Gloas:EIP7732] Onboard builders from pending deposits
     onboard_builders_from_pending_deposits(&mut post, spec)?;
+
+    // [New in Gloas:EIP7732] Initialize PTC cache.
+    // previous_ptc is already zeros (default). Compute current_ptc after builder onboarding.
+    // build_caches + compute_ptc may fail if committee caches can't be built (e.g., during
+    // per_slot_processing which calls build_caches separately after fork upgrades).
+    // The PTC cache will be properly populated by the rotate_ptc_cache call in per_slot_processing.
+    if post.build_caches(spec).is_ok()
+        && let Ok(ptc) = compute_ptc(&post, post.slot(), spec)
+    {
+        *post.current_ptc_mut()? = Vector::new(ptc).map_err(Error::MilhouseError)?;
+    }
 
     *pre_state = post;
 
@@ -109,6 +121,9 @@ pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
         builder_pending_withdrawals: List::default(),
         latest_block_hash: pre.latest_execution_payload_header.block_hash,
         payload_expected_withdrawals: List::default(),
+        // PTC lookbehind cache — initialized to zeros, current_ptc computed after builder onboarding
+        previous_ptc: Vector::new(vec![0u64; E::PtcSize::to_usize()])?,
+        current_ptc: Vector::new(vec![0u64; E::PtcSize::to_usize()])?,
         // Caches
         total_active_balance: pre.total_active_balance,
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),

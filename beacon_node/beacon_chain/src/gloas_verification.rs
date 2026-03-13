@@ -634,19 +634,25 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         }
 
-        // Check 4: Get PTC committee for this slot
+        // Check 4: Get PTC committee for this slot from the cached state fields.
+        // The head state's previous_ptc/current_ptc are immune to epoch-boundary balance changes.
         let head = self.canonical_head.cached_head();
         let state = &head.snapshot.beacon_state;
 
-        // Get PTC committee using state processing function
-        let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
-            state,
-            attestation_slot,
-            &self.spec,
-        )
-        .map_err(|_| PayloadAttestationError::PtcCommitteeError {
-            slot: attestation_slot,
-        })?;
+        // Use cached PTC (get_ptc) if the slot is within range (current or previous),
+        // otherwise fall back to compute_ptc for edge cases.
+        let ptc_indices =
+            state_processing::per_block_processing::gloas::get_ptc(state, attestation_slot)
+                .or_else(|_| {
+                    state_processing::per_block_processing::gloas::compute_ptc(
+                        state,
+                        attestation_slot,
+                        &self.spec,
+                    )
+                })
+                .map_err(|_| PayloadAttestationError::PtcCommitteeError {
+                    slot: attestation_slot,
+                })?;
 
         // Convert aggregation bits to attesting indices
         let mut indexed_attestation_indices = Vec::with_capacity(ptc_indices.len());

@@ -880,7 +880,7 @@ async fn payload_attestation_data_future_slot_uses_head() {
 /// POST beacon/pool/payload_attestations should accept a valid PTC member attestation.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_payload_attestation_valid_ptc_member() {
-    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use state_processing::per_block_processing::gloas::compute_ptc;
     use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
 
     let validator_count = 32;
@@ -908,7 +908,7 @@ async fn post_payload_attestation_valid_ptc_member() {
     let state = &head.beacon_state;
 
     // Find a PTC member for the head slot
-    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &spec).expect("should get PTC committee");
     assert!(!ptc.is_empty(), "PTC committee should not be empty");
     let validator_index = ptc[0];
 
@@ -949,7 +949,7 @@ async fn post_payload_attestation_valid_ptc_member() {
 /// POST beacon/pool/payload_attestations should reject a non-PTC validator.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_payload_attestation_non_ptc_rejected() {
-    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use state_processing::per_block_processing::gloas::compute_ptc;
     use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
 
     let validator_count = 32;
@@ -977,7 +977,7 @@ async fn post_payload_attestation_non_ptc_rejected() {
     let state = &head.beacon_state;
 
     // Find a validator NOT in the PTC
-    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &spec).expect("should get PTC committee");
     let non_ptc_validator = (0..validator_count as u64)
         .find(|idx| !ptc.contains(idx))
         .expect("should find a non-PTC validator");
@@ -2279,7 +2279,7 @@ async fn ptc_duties_next_epoch() {
 /// POST payload attestation with wrong signature should fail.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_payload_attestation_wrong_signature() {
-    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use state_processing::per_block_processing::gloas::compute_ptc;
     use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
 
     let validator_count = 32;
@@ -2305,7 +2305,7 @@ async fn post_payload_attestation_wrong_signature() {
     let head_slot = head.beacon_block.slot();
     let state = &head.beacon_state;
 
-    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &spec).expect("should get PTC committee");
     let validator_index = ptc[0];
 
     let data = PayloadAttestationData {
@@ -2346,7 +2346,7 @@ async fn post_payload_attestation_wrong_signature() {
 /// POST mixed valid and invalid payload attestations returns indexed errors.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_payload_attestation_mixed_valid_invalid() {
-    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use state_processing::per_block_processing::gloas::compute_ptc;
     use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
 
     let validator_count = 32;
@@ -2372,7 +2372,7 @@ async fn post_payload_attestation_mixed_valid_invalid() {
     let head_slot = head.beacon_block.slot();
     let state = &head.beacon_state;
 
-    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &spec).expect("should get PTC committee");
     assert!(ptc.len() >= 2, "need at least 2 PTC members for this test");
 
     let epoch = head_slot.epoch(E::slots_per_epoch());
@@ -3206,7 +3206,7 @@ async fn get_payload_attestation_pool_empty() {
 /// GET beacon/pool/payload_attestations should return attestations after POST submits one.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn get_payload_attestation_pool_after_post() {
-    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use state_processing::per_block_processing::gloas::compute_ptc;
     use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
 
     let validator_count = 32;
@@ -3234,7 +3234,7 @@ async fn get_payload_attestation_pool_after_post() {
     let state = &head.beacon_state;
 
     // Find a PTC member and submit an attestation
-    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &spec).expect("should get PTC committee");
     let validator_index = ptc[0];
 
     let data = PayloadAttestationData {
@@ -3551,7 +3551,7 @@ async fn gloas_block_production_via_http_api_v3() {
 /// "UnknownBeaconBlockRoot" failure message.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn post_payload_attestation_unknown_block_root() {
-    use state_processing::per_block_processing::gloas::get_ptc_committee;
+    use state_processing::per_block_processing::gloas::compute_ptc;
     use types::{Domain, PayloadAttestationData, PayloadAttestationMessage, SignedRoot};
 
     let validator_count = 32;
@@ -3578,7 +3578,7 @@ async fn post_payload_attestation_unknown_block_root() {
     let state = &head.beacon_state;
 
     // Find a PTC member for the head slot
-    let ptc = get_ptc_committee::<E>(state, head_slot, &spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &spec).expect("should get PTC committee");
     assert!(!ptc.is_empty(), "PTC committee should not be empty");
     let validator_index = ptc[0];
 

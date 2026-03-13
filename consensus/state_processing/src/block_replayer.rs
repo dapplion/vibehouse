@@ -608,6 +608,8 @@ mod tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: parent_block_hash,
             payload_expected_withdrawals: List::default(),
+            previous_ptc: Vector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()]).unwrap(),
+            current_ptc: Vector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()]).unwrap(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),

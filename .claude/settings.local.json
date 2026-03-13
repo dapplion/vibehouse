@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(journalctl:*)",
+      "Bash(systemctl status:*)",
+      "Bash(openclaw --version:*)",
+      "Bash(python3:*)",
+      "Bash(for f in /home/openclaw/.openclaw/delivery-queue/*.json)",
+      "Bash(do echo '=== $\\(basename $f\\) ===')",
+      "Bash(done)",
+      "Bash(openclaw status:*)",
+      "Bash(systemctl:*)",
+      "Bash(sudo systemctl status:*)",
+      "Bash(sudo -u openclaw bash -c 'export XDG_RUNTIME_DIR=/run/user/$\\(id -u\\); export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$\\(id -u\\)/bus; systemctl --user status openclaw-gateway 2>&1')",
+      "Bash(sudo -u openclaw bash -lc 'export XDG_RUNTIME_DIR=/run/user/$\\(id -u\\); export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$\\(id -u\\)/bus; systemctl --user status openclaw-gateway')",
+      "Bash(echo:*)",
+      "Bash(sudo -u openclaw bash -c 'export XDG_RUNTIME_DIR=/run/user/$\\(id -u\\); journalctl --user -u openclaw-gateway --no-pager -n 100 2>&1; echo \"\"EXIT:$?\"\"')",
+      "Bash(du:*)",
+      "Bash(cargo clean:*)",
+      "Bash(/home/openclaw/.cargo/bin/cargo clean --manifest-path /home/openclaw/.openclaw/workspace/vibehouse/Cargo.toml)",
+      "Bash(sudo -u openclaw bash -c 'export XDG_RUNTIME_DIR=/run/user/$\\(id -u\\); export DBUS_SESSION_BUS_ADDRESS=\"\"unix:path=/run/user/$\\(id -u\\)/bus\"\"; systemctl --user restart openclaw-gateway 2>&1; sleep 3; systemctl --user status openclaw-gateway 2>&1')"
+    ]
+  }
+}

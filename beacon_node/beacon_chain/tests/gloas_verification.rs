@@ -840,7 +840,7 @@ async fn attestation_validator_equivocation() {
     let state = &head.beacon_state;
 
     // Get the PTC committee for the head slot
-    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
+    let ptc_indices = state_processing::per_block_processing::gloas::compute_ptc(
         state,
         head_slot,
         &harness.chain.spec,
@@ -1398,7 +1398,7 @@ async fn attestation_valid_single_ptc_signer_passes() {
 
     // Get PTC committee for the head slot
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty(), "PTC committee should not be empty");
 
@@ -1465,7 +1465,7 @@ async fn attestation_invalid_signature_rejected() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty());
 
@@ -1523,7 +1523,7 @@ async fn attestation_multiple_ptc_signers_passes() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
 
     // Need at least 2 PTC members for this test
@@ -1593,7 +1593,7 @@ async fn attestation_payload_not_present_passes() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty());
 
@@ -1866,7 +1866,7 @@ async fn attestation_duplicate_same_value_still_passes() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty());
 
@@ -1930,7 +1930,7 @@ async fn attestation_mixed_duplicate_and_new_passes() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     if ptc_indices.len() < 2 {
         return; // Need at least 2 PTC members
@@ -2381,7 +2381,7 @@ async fn attestation_blob_data_available_true_passes() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty());
 
@@ -2435,7 +2435,7 @@ async fn attestation_payload_absent_blob_available_passes() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty());
 
@@ -2928,7 +2928,7 @@ async fn attestation_invalid_signature_does_not_poison_observation_cache() {
     let state = &head.beacon_state;
 
     let ptc_indices =
-        state_processing::per_block_processing::gloas::get_ptc_committee(state, head_slot, spec)
+        state_processing::per_block_processing::gloas::compute_ptc(state, head_slot, spec)
             .expect("should compute PTC committee");
     assert!(!ptc_indices.is_empty());
 

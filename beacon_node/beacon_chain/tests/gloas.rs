@@ -32,7 +32,7 @@ use fork_choice::{
     ExecutionStatus, ForkChoiceStore, ForkchoiceUpdateParameters, InvalidationOperation,
     PayloadVerificationStatus,
 };
-use state_processing::per_block_processing::gloas::get_ptc_committee;
+use state_processing::per_block_processing::gloas::compute_ptc;
 use std::sync::Arc;
 use std::time::Duration;
 use tree_hash::TreeHash;
@@ -1416,7 +1416,7 @@ fn sign_payload_attestation_data(
 
 /// Helper: get the PTC committee for a slot and return the first member's validator index.
 fn first_ptc_member(state: &BeaconState<E>, slot: Slot, spec: &ChainSpec) -> u64 {
-    let ptc = get_ptc_committee::<E>(state, slot, spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, slot, spec).expect("should get PTC committee");
     assert!(!ptc.is_empty(), "PTC committee should not be empty");
     ptc[0]
 }
@@ -1488,8 +1488,7 @@ async fn gloas_import_payload_attestation_message_not_in_ptc() {
     let state = &head.beacon_state;
 
     // Find a validator NOT in the PTC for this slot
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let non_ptc_validator = (0..VALIDATOR_COUNT as u64)
         .find(|idx| !ptc.contains(idx))
         .expect("should find a non-PTC validator");
@@ -1612,8 +1611,7 @@ async fn gloas_import_payload_attestation_message_single_bit_set() {
     let head_slot = head.beacon_block.slot();
     let state = &head.beacon_state;
 
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let validator_index = ptc[0];
     // The expected PTC position is 0 (first member)
 
@@ -1661,8 +1659,7 @@ async fn gloas_import_payload_attestation_message_second_ptc_member() {
     let head_slot = head.beacon_block.slot();
     let state = &head.beacon_state;
 
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
 
     // MinimalEthSpec PTC size is 2, so we need at least 2 members
     if ptc.len() < 2 {
@@ -1812,8 +1809,7 @@ async fn gloas_get_all_payload_attestations_unfiltered() {
     let state = &head.beacon_state;
 
     // Import two attestations from different PTC members at the head slot
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(ptc.len() >= 2, "need at least 2 PTC members");
 
     for &validator_index in &ptc[..2] {
@@ -1912,8 +1908,7 @@ async fn gloas_get_payload_attestations_for_block_aggregates() {
     let state = &head.beacon_state;
 
     // Import attestations from the first two PTC members with identical data
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(ptc.len() >= 2, "need at least 2 PTC members");
 
     for &validator_index in &ptc[..2] {
@@ -7116,8 +7111,7 @@ async fn gloas_import_attestation_quorum_triggers_payload_revealed() {
     }
 
     // Get all PTC members for this slot
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let ptc_size = harness.spec.ptc_size;
     let quorum_threshold = ptc_size / 2; // Need > threshold, so quorum_threshold+1 votes
 
@@ -7266,8 +7260,7 @@ async fn gloas_blob_quorum_via_ptc_updates_attestation_data() {
     );
 
     // Get all PTC members and import blob_data_available=true attestations
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let quorum_threshold = harness.spec.ptc_size / 2;
 
     for (i, &validator_index) in ptc.iter().enumerate() {
@@ -7381,8 +7374,7 @@ async fn gloas_ptc_payload_quorum_without_envelope() {
     );
 
     // Import payload_present=true AND blob_data_available=true from all PTC members
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let quorum_threshold = harness.spec.ptc_size / 2;
 
     for (i, &validator_index) in ptc.iter().enumerate() {
@@ -7476,8 +7468,7 @@ async fn gloas_blob_quorum_strictly_greater_than_threshold() {
         node.ptc_blob_data_available_weight = 0;
     }
 
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     let quorum_threshold = harness.spec.ptc_size / 2; // 1 for minimal
 
     // Import first PTC member's blob attestation — exactly at threshold, NOT above
@@ -11494,8 +11485,7 @@ async fn gloas_payload_absent_attestations_do_not_reveal_payload() {
     }
 
     // Get all PTC members
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
 
     // Import attestations from ALL PTC members with payload_present=false
     for (i, &validator_index) in ptc.iter().enumerate() {
@@ -13918,8 +13908,7 @@ async fn gloas_payload_attestation_invalid_sig_does_not_poison_cache() {
     let state = &head.beacon_state;
 
     // Find a PTC member for the head slot
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(!ptc.is_empty(), "PTC committee should not be empty");
     let ptc_member_index = ptc[0];
 
@@ -15961,8 +15950,7 @@ async fn gloas_payload_attestation_gossip_duplicate_same_value_not_equivocation(
     let state = &head.beacon_state;
 
     // Find a PTC member
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(!ptc.is_empty(), "PTC committee should not be empty");
     let ptc_position = 0;
 
@@ -16151,8 +16139,7 @@ async fn gloas_payload_attestation_gossip_genesis_root_passes_block_check() {
     let head_root = head.beacon_block_root;
 
     // Find a PTC member
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(!ptc.is_empty());
 
     let mut aggregation_bits = BitVector::default();
@@ -18120,8 +18107,7 @@ async fn gloas_full_ptc_gossip_then_block_no_double_count() {
     let head_slot = head.beacon_block.slot();
     let state = &head.beacon_state;
 
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(ptc.len() >= 2, "minimal PTC should have at least 2 members");
 
     // Import gossip attestations from ALL PTC members
@@ -18206,8 +18192,7 @@ async fn gloas_partial_gossip_full_inblock_no_double_count() {
     let head_slot = head.beacon_block.slot();
     let state = &head.beacon_state;
 
-    let ptc =
-        get_ptc_committee::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
+    let ptc = compute_ptc::<E>(state, head_slot, &harness.spec).expect("should get PTC committee");
     assert!(ptc.len() >= 2, "minimal PTC should have at least 2 members");
 
     // Import ONLY the first PTC member via gossip

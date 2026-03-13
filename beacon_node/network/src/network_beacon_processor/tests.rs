@@ -2472,12 +2472,9 @@ async fn test_gloas_gossip_payload_attestation_unknown_root_ignored() {
     let spec = &rig.chain.spec;
 
     // Get a valid PTC member so the conversion succeeds, but use an unknown block root
-    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
-        head_state,
-        current_slot,
-        spec,
-    )
-    .expect("should get PTC committee");
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::compute_ptc(head_state, current_slot, spec)
+            .expect("should get PTC committee");
     let validator_index = ptc_indices[0];
 
     let message = types::PayloadAttestationMessage {
@@ -2617,12 +2614,9 @@ fn build_valid_payload_attestation_message(
     let spec = &rig.chain.spec;
 
     // Get the PTC committee for the current slot
-    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
-        head_state,
-        current_slot,
-        spec,
-    )
-    .expect("should get PTC committee");
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::compute_ptc(head_state, current_slot, spec)
+            .expect("should get PTC committee");
 
     // Pick the first PTC member
     let ptc_bit_index = 0;
@@ -2741,12 +2735,9 @@ async fn test_gloas_gossip_payload_attestation_invalid_signature_rejected() {
     let spec = &rig.chain.spec;
 
     // Get the PTC committee for the current slot
-    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
-        head_state,
-        current_slot,
-        spec,
-    )
-    .expect("should get PTC committee");
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::compute_ptc(head_state, current_slot, spec)
+            .expect("should get PTC committee");
 
     let validator_index = ptc_indices[0];
 
@@ -2830,10 +2821,9 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
     // Use head_slot (the block's slot) for the attestation data, NOT the wall clock.
     // on_payload_attestation silently skips if data.slot != node.slot (spec rule),
     // and the wall clock may have advanced 1 slot past the head.
-    let ptc_indices = state_processing::per_block_processing::gloas::get_ptc_committee(
-        head_state, head_slot, spec,
-    )
-    .expect("should get PTC committee");
+    let ptc_indices =
+        state_processing::per_block_processing::gloas::compute_ptc(head_state, head_slot, spec)
+            .expect("should get PTC committee");
 
     assert!(
         ptc_indices.len() >= 2,
