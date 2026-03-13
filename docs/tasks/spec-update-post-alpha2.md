@@ -110,6 +110,11 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1006 (Mar 13) — no spec changes, all stable
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0).
+- PR #4992 (PTC lookbehind): still OPEN, MERGEABLE, clean. Implementation ready on ptc-lookbehind branch.
+- CI green. Nightly in progress. cargo audit unchanged (1 rsa). No compatible dep updates. Zero compiler warnings.
+
 ### run 1005 (Mar 13) — v1.7.0-alpha.3 formal audit, all implemented
 - Spec bumped to v1.7.0-alpha.3 (d2cfa51c, Mar 11). Full audit of gloas diffs between alpha.2 and alpha.3:
   - PayloadStatus reorder (EMPTY=0,FULL=1,PENDING=2) ✓ already correct
