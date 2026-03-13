@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 933 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged (head d76a278b0a). Still OPEN. Branch `ptc-lookbehind` ready.
+- **PR #4939 (index-1 attestation)**: updated Mar 13, still OPEN.
+- All other tracked PRs (#4954, #4843, #4898, #4892, #4940, #4932, #4960, #4962, #5002): all still OPEN.
+- CI run 23035917712 in_progress for commit 2f3aaf9: check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, beacon_chain/http_api/unit tests still running.
+- cargo audit unchanged (1 vuln + 5 allowed). No compatible dep updates.
+- No code changes needed.
+
 ### run 932 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #5001 (parent_block_root in bid filtering key)**: merged Mar 12. Verified vibehouse already implements the 3-tuple `(slot, parent_block_hash, parent_block_root)` key in `ObservedExecutionBids::is_highest_value_bid()` — no code change needed.
