@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1153 (Mar 13) — all stable, Cargo.lock fix
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. v1.7.0-alpha.3 tag exists but no release published yet. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4939 updated (2026-03-13). No new Gloas PRs beyond existing tracked set.
+
+Shipped: committed Cargo.lock with smallvec dependency for operation_pool (was added as dep but lockfile not committed). Audited consensus hot paths for optimization opportunities — codebase is in good shape. All production `collect()`, `clone()`, and `HashMap` usages are either necessary (borrow conflicts with mutation) or in test code. Clippy clean across state_processing, proto_array, fork_choice, beacon_chain.
+
 ### run 1150 (Mar 13) — bitlist_extend bulk byte optimization
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4992 same head d76a278b0a.
 
