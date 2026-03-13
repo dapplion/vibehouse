@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1158 (Mar 13) — children index in find_head_gloas
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. cargo audit unchanged (1 rsa, 5 allowed warnings). No semver-compatible dep updates. CI green.
+
+Shipped: built parent→children HashMap index in `find_head_gloas` — the EMPTY/FULL branch of `get_gloas_children` previously scanned ALL proto_array nodes to find children of a specific parent (O(n) per call). Since `find_head_gloas` calls this repeatedly during traversal from justified root to head, total cost was O(depth × num_nodes). Now builds the index once at the start and passes it through, reducing child lookups to O(k) where k is actual children. All 188 proto_array + 119 fork_choice + 8/8 EF fork choice spec tests pass. Clippy clean.
+
 ### run 1157 (Mar 13) — attestation clone + ancestor cache
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. cargo audit unchanged (1 rsa, 5 allowed warnings). Nightly tests green. No semver-compatible dep updates.
 
