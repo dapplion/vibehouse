@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1148 (Mar 13) — hdiff encode buffer optimization
+Spec stable: no new releases (still v1.7.0-alpha.2 published), no new spec-test vectors (still v1.6.0-beta.0). Tracked PRs (#4932, #4939, #4960, #4962, #4992) all OPEN. PR #4940 (Gloas fork choice tests) merged — test generators only, no new vectors. CI green. cargo audit unchanged (1 rsa, no fix available).
+
+Shipped: reduced xdelta3 encode buffer over-allocation in `compute_xdelta` — initial buffer now 1/4 of total size (was 2x), with retry-on-resize matching the existing `apply_xdelta` pattern. Added `store_hdiff_buffer_compute_resizes` metric. All 30 store tests + 7 hdiff tests pass.
+
 ### runs 959-1144 consolidated (Mar 11-13) — spec stable, monitoring only
 Spec completely stable since v1.7.0-alpha.3 version bump (#4999, Mar 11). No new spec-test vectors (still v1.6.0-beta.0). No new formal release (still v1.7.0-alpha.2 published). All tracked spec-test PRs (#4932, #4939, #4960, #4962) remain OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a, new comment from jihoonsong (Mar 13). CI and nightly continuously green. cargo audit unchanged (1 rsa). PR #4940 (Gloas fork choice tests) merged Mar 13 — test generators only, no new vectors yet. ptc-lookbehind branch rebased onto main, 575/575 state_processing tests pass. PR #5001 (parent_block_root in bid filtering key) merged — already implemented in vibehouse. PR #5002 (wording clarification) — no code change needed. PR #5004 (release notes dependencies section) — tooling only. No semver-compatible dep updates. Codebase audit: no TODOs/FIXMEs/untested paths in Gloas code.
 
