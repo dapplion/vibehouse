@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1154 (Mar 13) — max_cover score() optimization
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. No semver-compatible dep updates available. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: optimized `maximum_cover` in operation_pool — reduced redundant `score()` calls from 3× per item per iteration to 1×. For attestations, `score()` sums a HashMap of validator rewards, so this eliminates ~2n HashMap iterations per outer loop step. Also removed score check from update pass (update_covering_set on empty set is a no-op). All 36 operation_pool tests pass. Clippy clean.
+
 ### run 1153 (Mar 13) — all stable, Cargo.lock fix
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. v1.7.0-alpha.3 tag exists but no release published yet. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4939 updated (2026-03-13). No new Gloas PRs beyond existing tracked set.
 
