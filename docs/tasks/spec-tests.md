@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1155 (Mar 13) — cached attestation reward sum
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4940 (Gloas fork choice tests) merged — test generators only, no new vectors yet. cargo audit unchanged (1 rsa, 5 allowed warnings, no fixes).
+
+Shipped: cached `reward_numerator_sum` field in `AttMaxCover` — `score()` now returns the pre-computed sum instead of iterating the entire `fresh_validators_rewards` HashMap on every call. The cached sum is initialized at construction and decremented in `update_covering_set` when validators are removed. This eliminates O(n) HashMap value iteration per `score()` call (where n = remaining fresh validators per attestation). Combined with run 1154's call reduction, attestation scoring during max cover is now O(1) per item. All 36 operation_pool tests pass. Clippy clean.
+
 ### run 1154 (Mar 13) — max_cover score() optimization
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. No semver-compatible dep updates available. cargo audit unchanged (1 rsa, no fix).
 
