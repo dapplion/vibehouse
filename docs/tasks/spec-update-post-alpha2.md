@@ -110,7 +110,7 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### runs 1019-1052 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
+### runs 1019-1053 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
 Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2). No new spec-test vectors. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN.
 
 Notable activities:
