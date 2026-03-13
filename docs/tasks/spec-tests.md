@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1171 (Mar 13) — replace hash() with hash_fixed() to avoid heap allocations
+
+Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: replaced `ethereum_hashing::hash()` (returns `Vec<u8>`, heap allocation) with `hash_fixed()` (returns `[u8; 32]`, stack array) across 11 files and ~15 call sites. Key hot paths affected: proposer index computation (per-slot), sync committee selection (every ~27 hours), PTC committee selection (per-slot in Gloas), RANDAO mix updates (per-slot), seed generation, and deposit tree hashing. Also converted several preimage buffers from Vec to stack arrays (e.g. `get_beacon_proposer_seed` return type from `Result<Vec<u8>, Error>` to `Result<[u8; 32], Error>`, `compute_blob_parameters_hash` from `Vec::with_capacity(16)` to `[0u8; 16]`). All 715 types tests, 575 state_processing tests, 42 bls/genesis tests, 44 EF spec tests pass. Clippy clean, lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1170 (Mar 13) — cache hash across balance-weighted selection loops
 
 Spec stable: no new consensus-specs commits since last check. #5004 (docs-only) is the most recent. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix). No semver-compatible dependency updates.
