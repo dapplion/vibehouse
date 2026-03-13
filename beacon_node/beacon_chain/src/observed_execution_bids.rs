@@ -41,11 +41,11 @@ pub enum BidObservationOutcome {
 pub struct ObservedExecutionBids<E: EthSpec> {
     /// Map of slot -> (builder_index -> bid_root)
     observed_bids: HashMap<Slot, HashMap<BuilderIndex, Hash256>>,
-    /// Highest bid value seen per (slot, parent_block_hash).
+    /// Highest bid value seen per (slot, parent_block_hash, parent_block_root).
     ///
-    /// Spec: `[IGNORE] this bid is the highest value bid seen for the
-    /// corresponding slot and the given parent block hash.`
-    highest_bid_values: HashMap<(Slot, ExecutionBlockHash), u64>,
+    /// Spec: `[IGNORE] this bid is the highest value bid seen for the tuple
+    /// (bid.slot, bid.parent_block_hash, bid.parent_block_root).`
+    highest_bid_values: HashMap<(Slot, ExecutionBlockHash, Hash256), u64>,
     /// Slots we've observed, in insertion order for efficient pruning
     observed_slots: Vec<Slot>,
     _phantom: PhantomData<E>,
@@ -99,21 +99,22 @@ impl<E: EthSpec> ObservedExecutionBids<E> {
     }
 
     /// Check whether this bid is the highest value for the given
-    /// (slot, parent_block_hash) pair, and update the tracker.
+    /// (slot, parent_block_hash, parent_block_root) tuple, and update the tracker.
     ///
     /// Returns `true` if the bid value is strictly greater than all previously
     /// seen values for this key (or if this is the first bid for the key).
     /// Returns `false` if a bid with equal or greater value has already been seen.
     ///
-    /// Spec: `[IGNORE] this bid is the highest value bid seen for the
-    /// corresponding slot and the given parent block hash.`
+    /// Spec: `[IGNORE] this bid is the highest value bid seen for the tuple
+    /// (bid.slot, bid.parent_block_hash, bid.parent_block_root).`
     pub fn is_highest_value_bid(
         &mut self,
         slot: Slot,
         parent_block_hash: ExecutionBlockHash,
+        parent_block_root: Hash256,
         value: u64,
     ) -> bool {
-        let key = (slot, parent_block_hash);
+        let key = (slot, parent_block_hash, parent_block_root);
         match self.highest_bid_values.get(&key) {
             Some(&existing_value) if value <= existing_value => false,
             _ => {
@@ -133,7 +134,7 @@ impl<E: EthSpec> ObservedExecutionBids<E> {
         // Remove slots older than earliest_slot
         self.observed_bids.retain(|&slot, _| slot >= earliest_slot);
         self.highest_bid_values
-            .retain(|&(slot, _), _| slot >= earliest_slot);
+            .retain(|&(slot, _, _), _| slot >= earliest_slot);
 
         // Also prune the observed_slots vector
         self.observed_slots.retain(|&slot| slot >= earliest_slot);
@@ -367,56 +368,68 @@ mod tests {
         ExecutionBlockHash::from_root(Hash256::from_low_u64_be(n))
     }
 
+    fn root(n: u64) -> Hash256 {
+        Hash256::from_low_u64_be(n)
+    }
+
     #[test]
     fn highest_value_first_bid_accepted() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
     }
 
     #[test]
     fn highest_value_higher_bid_replaces() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 200));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 200));
     }
 
     #[test]
     fn highest_value_lower_bid_rejected() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 200));
-        assert!(!cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 200));
+        assert!(!cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
     }
 
     #[test]
     fn highest_value_equal_bid_rejected() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
-        assert!(!cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
+        assert!(!cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
     }
 
     #[test]
     fn highest_value_different_parent_hash_independent() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
         // Different parent_block_hash → independent tracking
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(2), 50));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(2), root(1), 50));
+    }
+
+    #[test]
+    fn highest_value_different_parent_root_independent() {
+        let mut cache = ObservedExecutionBids::<E>::new();
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
+        // Different parent_block_root → independent tracking (cross-fork isolation)
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(2), 50));
     }
 
     #[test]
     fn highest_value_different_slot_independent() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
         // Different slot → independent tracking
-        assert!(cache.is_highest_value_bid(Slot::new(2), ebh(1), 50));
+        assert!(cache.is_highest_value_bid(Slot::new(2), ebh(1), root(1), 50));
     }
 
     #[test]
     fn highest_value_pruned_with_old_slots() {
         let mut cache = ObservedExecutionBids::<E>::new();
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 100));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 100));
         cache.prune_old_slots(Slot::new(100));
         // After pruning slot 1, a new bid for slot 1 is accepted
         // (but slot 1 data was removed so it's like a fresh start)
-        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), 50));
+        assert!(cache.is_highest_value_bid(Slot::new(1), ebh(1), root(1), 50));
     }
 }

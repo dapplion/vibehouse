@@ -137,10 +137,10 @@ pub enum ExecutionBidError {
         parent_block_hash: ExecutionBlockHash,
     },
     /// A higher-value bid has already been seen for this slot and parent
-    /// block hash.
+    /// block hash and parent block root.
     ///
-    /// Spec: `[IGNORE] this bid is the highest value bid seen for the
-    /// corresponding slot and the given parent block hash.`
+    /// Spec: `[IGNORE] this bid is the highest value bid seen for the tuple
+    /// (bid.slot, bid.parent_block_hash, bid.parent_block_root).`
     ///
     /// ## Peer scoring
     /// Not malicious — the builder was outbid.
@@ -556,11 +556,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Check 6: Highest-value bid filtering (after signature verification
         // to prevent invalid bids from blocking legitimate higher-value ones).
-        // Spec: [IGNORE] this bid is the highest value bid seen for the
-        // corresponding slot and the given parent block hash.
+        // Spec: [IGNORE] this bid is the highest value bid seen for the tuple
+        // (bid.slot, bid.parent_block_hash, bid.parent_block_root).
         if !self.observed_execution_bids.lock().is_highest_value_bid(
             bid_slot,
             bid.message.parent_block_hash,
+            bid.message.parent_block_root,
             bid.message.value,
         ) {
             return Err(ExecutionBidError::NotHighestValue {
