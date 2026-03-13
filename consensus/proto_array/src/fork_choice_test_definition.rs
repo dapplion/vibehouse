@@ -85,7 +85,7 @@ impl ForkChoiceTestDefinition {
             Hash256::zero(),
             self.justified_checkpoint,
             self.finalized_checkpoint,
-            junk_shuffling_id.clone(),
+            junk_shuffling_id,
             junk_shuffling_id,
             ExecutionStatus::Optimistic(ExecutionBlockHash::zero()),
         )

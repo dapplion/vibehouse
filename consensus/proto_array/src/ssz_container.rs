@@ -81,8 +81,8 @@ mod tests {
             Hash256::zero(),
             genesis_checkpoint,
             genesis_checkpoint,
-            shuffling_id.clone(),
-            shuffling_id.clone(),
+            shuffling_id,
+            shuffling_id,
             ExecutionStatus::irrelevant(),
         )
         .unwrap();
@@ -97,7 +97,7 @@ mod tests {
                     parent_root: Some(Hash256::from_low_u64_be(1)),
                     state_root: Hash256::from_low_u64_be(3),
                     target_root: Hash256::from_low_u64_be(1),
-                    current_epoch_shuffling_id: shuffling_id.clone(),
+                    current_epoch_shuffling_id: shuffling_id,
                     next_epoch_shuffling_id: shuffling_id,
                     justified_checkpoint: genesis_checkpoint,
                     finalized_checkpoint: genesis_checkpoint,

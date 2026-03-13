@@ -8236,8 +8236,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .ok_or(Error::MissingBeaconBlock(head_block_root))?;
 
         let shuffling_id = BlockShufflingIds {
-            current: head_block.current_epoch_shuffling_id.clone(),
-            next: head_block.next_epoch_shuffling_id.clone(),
+            current: head_block.current_epoch_shuffling_id,
+            next: head_block.next_epoch_shuffling_id,
             previous: None,
             block_root: head_block.root,
         }
@@ -8268,7 +8268,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             //
             // Creating the promise whilst we hold the `shuffling_cache` lock will prevent the same
             // promise from being created twice.
-            let sender = shuffling_cache.create_promise(shuffling_id.clone())?;
+            let sender = shuffling_cache.create_promise(shuffling_id)?;
 
             // Drop the shuffling cache to avoid holding the lock for any longer than
             // required.

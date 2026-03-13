@@ -87,7 +87,7 @@ impl ShufflingCache {
                     metrics::inc_counter(&metrics::SHUFFLING_CACHE_PROMISE_HITS);
                     metrics::inc_counter(&metrics::SHUFFLING_CACHE_HITS);
                     let ready = CacheItem::Committee(committee);
-                    self.insert_cache_item(key.clone(), ready.clone());
+                    self.insert_cache_item(*key, ready.clone());
                     Some(ready)
                 }
                 // The promise has not yet been resolved. Return the promise so the caller can await
@@ -245,15 +245,15 @@ impl BlockShufflingIds {
     /// `self.current.shuffling_epoch` (if `previous` is `None`).
     pub fn id_for_epoch(&self, epoch: Epoch) -> Option<AttestationShufflingId> {
         if epoch == self.current.shuffling_epoch {
-            Some(self.current.clone())
+            Some(self.current)
         } else if self
             .previous
             .as_ref()
             .is_some_and(|id| id.shuffling_epoch == epoch)
         {
-            self.previous.clone()
+            self.previous
         } else if epoch == self.next.shuffling_epoch {
-            Some(self.next.clone())
+            Some(self.next)
         } else if epoch > self.next.shuffling_epoch {
             Some(AttestationShufflingId::from_components(
                 epoch,
@@ -355,7 +355,7 @@ mod test {
         let mut cache = new_shuffling_cache();
 
         // Create a promise.
-        let sender = cache.create_promise(id_a.clone()).unwrap();
+        let sender = cache.create_promise(id_a).unwrap();
 
         // Retrieve the newly created promise.
         let item = cache.get(&id_a).unwrap();
@@ -382,7 +382,7 @@ mod test {
         let mut cache = new_shuffling_cache();
 
         // Create a promise.
-        let sender = cache.create_promise(id_a.clone()).unwrap();
+        let sender = cache.create_promise(id_a).unwrap();
 
         // Retrieve the newly created promise.
         let item = cache.get(&id_a).unwrap();
@@ -407,7 +407,7 @@ mod test {
         let mut cache = new_shuffling_cache();
 
         // Create promise A.
-        let sender_a = cache.create_promise(id_a.clone()).unwrap();
+        let sender_a = cache.create_promise(id_a).unwrap();
 
         // Retrieve promise A.
         let item = cache.get(&id_a).unwrap();
@@ -417,7 +417,7 @@ mod test {
         );
 
         // Create promise B.
-        let sender_b = cache.create_promise(id_b.clone()).unwrap();
+        let sender_b = cache.create_promise(id_b).unwrap();
 
         // Retrieve promise B.
         let item = cache.get(&id_b).unwrap();
@@ -484,7 +484,7 @@ mod test {
         let mut cache = new_shuffling_cache();
         let id_a = shuffling_id(1);
         let committee_cache_a = Arc::new(CommitteeCache::default());
-        cache.insert_committee_cache(id_a.clone(), &committee_cache_a);
+        cache.insert_committee_cache(id_a, &committee_cache_a);
         assert!(
             matches!(cache.get(&id_a).unwrap(), CacheItem::Committee(committee_cache) if committee_cache == committee_cache_a),
             "should insert committee cache"
@@ -499,7 +499,7 @@ mod test {
             .collect::<Vec<_>>();
 
         for (shuffling_id, committee_cache) in shuffling_id_and_committee_caches.iter() {
-            cache.insert_committee_cache(shuffling_id.clone(), committee_cache);
+            cache.insert_committee_cache(*shuffling_id, committee_cache);
         }
 
         for i in 1..(TEST_CACHE_SIZE + 1) {
@@ -545,12 +545,9 @@ mod test {
         cache.update_head_shuffling_ids(head_shuffling_ids.clone());
 
         // Insert head state shuffling ids. Should not be overridden by other shuffling ids.
-        cache.insert_committee_cache(head_shuffling_ids.current.clone(), &committee_cache);
-        cache.insert_committee_cache(head_shuffling_ids.next.clone(), &committee_cache);
-        cache.insert_committee_cache(
-            head_shuffling_ids.previous.clone().unwrap(),
-            &committee_cache,
-        );
+        cache.insert_committee_cache(head_shuffling_ids.current, &committee_cache);
+        cache.insert_committee_cache(head_shuffling_ids.next, &committee_cache);
+        cache.insert_committee_cache(head_shuffling_ids.previous.unwrap(), &committee_cache);
 
         // Insert a few entries for older epochs.
         for i in 0..TEST_CACHE_SIZE {

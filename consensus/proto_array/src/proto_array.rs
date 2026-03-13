@@ -1176,7 +1176,7 @@ mod tests {
             slot: Slot::new(0),
             state_root: Hash256::zero(),
             target_root: Hash256::zero(),
-            current_epoch_shuffling_id: shuffling_id.clone(),
+            current_epoch_shuffling_id: shuffling_id,
             next_epoch_shuffling_id: shuffling_id,
             root: Hash256::zero(),
             parent: None,

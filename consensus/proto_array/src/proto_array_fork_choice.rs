@@ -975,8 +975,8 @@ impl ProtoArrayForkChoice {
             parent_root,
             state_root: block.state_root,
             target_root: block.target_root,
-            current_epoch_shuffling_id: block.current_epoch_shuffling_id.clone(),
-            next_epoch_shuffling_id: block.next_epoch_shuffling_id.clone(),
+            current_epoch_shuffling_id: block.current_epoch_shuffling_id,
+            next_epoch_shuffling_id: block.next_epoch_shuffling_id,
             justified_checkpoint: block.justified_checkpoint,
             finalized_checkpoint: block.finalized_checkpoint,
             execution_status: block.execution_status,
@@ -2022,8 +2022,8 @@ mod test_compute_deltas {
             state_root,
             genesis_checkpoint,
             genesis_checkpoint,
-            junk_shuffling_id.clone(),
-            junk_shuffling_id.clone(),
+            junk_shuffling_id,
+            junk_shuffling_id,
             execution_status,
         )
         .unwrap();
@@ -2037,8 +2037,8 @@ mod test_compute_deltas {
                     parent_root: Some(finalized_root),
                     state_root,
                     target_root: finalized_root,
-                    current_epoch_shuffling_id: junk_shuffling_id.clone(),
-                    next_epoch_shuffling_id: junk_shuffling_id.clone(),
+                    current_epoch_shuffling_id: junk_shuffling_id,
+                    next_epoch_shuffling_id: junk_shuffling_id,
                     justified_checkpoint: genesis_checkpoint,
                     finalized_checkpoint: genesis_checkpoint,
                     execution_status,
@@ -2068,7 +2068,7 @@ mod test_compute_deltas {
                     parent_root: None,
                     state_root,
                     target_root: finalized_root,
-                    current_epoch_shuffling_id: junk_shuffling_id.clone(),
+                    current_epoch_shuffling_id: junk_shuffling_id,
                     next_epoch_shuffling_id: junk_shuffling_id,
                     // Use the junk checkpoint for the next to values to prevent
                     // the loop-shortcutting mechanism from triggering.
@@ -2168,8 +2168,8 @@ mod test_compute_deltas {
             junk_state_root,
             genesis_checkpoint,
             genesis_checkpoint,
-            junk_shuffling_id.clone(),
-            junk_shuffling_id.clone(),
+            junk_shuffling_id,
+            junk_shuffling_id,
             execution_status,
         )
         .unwrap();
@@ -2189,8 +2189,8 @@ mod test_compute_deltas {
                         parent_root: Some(get_block_root(block.parent_root)),
                         state_root: Hash256::zero(),
                         target_root: Hash256::zero(),
-                        current_epoch_shuffling_id: junk_shuffling_id.clone(),
-                        next_epoch_shuffling_id: junk_shuffling_id.clone(),
+                        current_epoch_shuffling_id: junk_shuffling_id,
+                        next_epoch_shuffling_id: junk_shuffling_id,
                         justified_checkpoint: Checkpoint {
                             epoch: Epoch::new(0),
                             root: get_block_root(0),

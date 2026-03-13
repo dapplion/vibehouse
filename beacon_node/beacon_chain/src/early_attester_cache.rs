@@ -231,7 +231,7 @@ mod tests {
             parent_root: Some(Hash256::zero()),
             state_root: Hash256::zero(),
             target_root: Hash256::zero(),
-            current_epoch_shuffling_id: shuffling_id.clone(),
+            current_epoch_shuffling_id: shuffling_id,
             next_epoch_shuffling_id: shuffling_id,
             justified_checkpoint: Checkpoint::default(),
             finalized_checkpoint: Checkpoint::default(),
