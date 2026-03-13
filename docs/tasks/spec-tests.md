@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1016 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.5.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED from jtraglia, MERGEABLE). PR #4747 (Fast Confirmation Rule): updated today but still dirty/early-stage. CI green. Nightly green. No new issues or PRs on dapplion/vibehouse. ptc-lookbehind branch 5 doc-only commits behind main — clean merge when #4992 lands.
+
 ### run 1015 (Mar 13) — no spec changes, all stable
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED from jtraglia, MERGEABLE). CI green. Nightly green. Zero clippy warnings. Audited envelope_processing.rs test coverage — all 12 EnvelopeProcessingError variants have dedicated test coverage (40+ tests total). No gaps found. No dependency updates available.
 
