@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     fmt,
 };
 use types::{
@@ -1099,7 +1099,7 @@ impl ProtoArrayForkChoice {
         current_slot: Slot,
         spec: &ChainSpec,
     ) -> Result<Hash256, String> {
-        let filtered_roots = self.compute_filtered_roots::<E>(current_slot);
+        let filtered_nodes = self.compute_filtered_nodes::<E>(current_slot);
         let children_index = self.build_children_index();
         let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
             proposer_boost_root,
@@ -1118,7 +1118,7 @@ impl ProtoArrayForkChoice {
         };
 
         loop {
-            let children = self.get_gloas_children(&head, &filtered_roots, Some(&children_index));
+            let children = self.get_gloas_children(&head, &filtered_nodes, Some(&children_index));
             if children.is_empty() {
                 self.gloas_head_payload_status = Some(head.payload_status as u8);
                 return Ok(head.root);
@@ -1164,9 +1164,11 @@ impl ProtoArrayForkChoice {
         }
     }
 
-    /// Compute the set of block roots that lead to viable heads.
+    /// Compute a boolean mask of nodes that lead to viable heads.
     /// This implements the spec's `get_filtered_block_tree`.
-    fn compute_filtered_roots<E: EthSpec>(&self, current_slot: Slot) -> HashSet<Hash256> {
+    /// Returns a Vec<bool> indexed by node index — true if the node is on
+    /// a path to a viable head.
+    fn compute_filtered_nodes<E: EthSpec>(&self, current_slot: Slot) -> Vec<bool> {
         let pa = &self.proto_array;
         let mut filtered = vec![false; pa.nodes.len()];
 
@@ -1177,22 +1179,18 @@ impl ProtoArrayForkChoice {
             }
         }
 
-        // Pass 2 (reverse): propagate upward and collect roots in one pass.
-        // Nodes are ordered parent-before-child, so reverse iteration ensures parents
-        // are marked before we reach them. We collect each filtered node's root as we go.
-        let initial_count = filtered.iter().filter(|&&b| b).count();
-        let mut roots = HashSet::with_capacity(initial_count);
+        // Pass 2 (reverse): propagate viability upward to ancestors.
+        // Nodes are ordered parent-before-child, so reverse iteration ensures
+        // children are processed before parents.
         for i in (0..pa.nodes.len()).rev() {
-            if filtered[i] {
-                roots.insert(pa.nodes[i].root);
-                if let Some(parent_idx) = pa.nodes[i].parent
-                    && let Some(f) = filtered.get_mut(parent_idx)
-                {
-                    *f = true;
-                }
+            if filtered[i]
+                && let Some(parent_idx) = pa.nodes[i].parent
+                && let Some(f) = filtered.get_mut(parent_idx)
+            {
+                *f = true;
             }
         }
-        roots
+        filtered
     }
 
     /// Build a mapping from parent node index to child node indices.
@@ -1220,7 +1218,7 @@ impl ProtoArrayForkChoice {
     fn get_gloas_children(
         &self,
         node: &GloasForkChoiceNode,
-        filtered_roots: &HashSet<Hash256>,
+        filtered_nodes: &[bool],
         children_index: Option<&HashMap<usize, Vec<usize>>>,
     ) -> Vec<GloasForkChoiceNode> {
         let pa = &self.proto_array;
@@ -1256,27 +1254,26 @@ impl ProtoArrayForkChoice {
                     if let Some(idx) = children_index {
                         if let Some(child_indices) = idx.get(&parent_idx) {
                             for &ci in child_indices {
-                                if let Some(child_node) = pa.nodes.get(ci) {
-                                    if !filtered_roots.contains(&child_node.root) {
-                                        continue;
-                                    }
-                                    if self.get_parent_payload_status_of(child_node, parent_node)
+                                if !filtered_nodes.get(ci).copied().unwrap_or(false) {
+                                    continue;
+                                }
+                                if let Some(child_node) = pa.nodes.get(ci)
+                                    && self.get_parent_payload_status_of(child_node, parent_node)
                                         == node.payload_status
-                                    {
-                                        children.push(GloasForkChoiceNode {
-                                            root: child_node.root,
-                                            payload_status: GloasPayloadStatus::Pending,
-                                        });
-                                    }
+                                {
+                                    children.push(GloasForkChoiceNode {
+                                        root: child_node.root,
+                                        payload_status: GloasPayloadStatus::Pending,
+                                    });
                                 }
                             }
                         }
                     } else {
-                        for child_node in &pa.nodes {
+                        for (ci, child_node) in pa.nodes.iter().enumerate() {
                             if child_node.parent != Some(parent_idx) {
                                 continue;
                             }
-                            if !filtered_roots.contains(&child_node.root) {
+                            if !filtered_nodes.get(ci).copied().unwrap_or(false) {
                                 continue;
                             }
                             if self.get_parent_payload_status_of(child_node, parent_node)
@@ -1301,9 +1298,19 @@ impl ProtoArrayForkChoice {
     fn get_gloas_children_test(
         &self,
         node: &GloasForkChoiceNode,
-        filtered_roots: &HashSet<Hash256>,
+        filtered_nodes: &[bool],
     ) -> Vec<GloasForkChoiceNode> {
-        self.get_gloas_children(node, filtered_roots, None)
+        self.get_gloas_children(node, filtered_nodes, None)
+    }
+
+    /// Test helper: check if a root is in the filtered nodes set.
+    #[cfg(test)]
+    fn is_filtered(&self, root: &Hash256, filtered_nodes: &[bool]) -> bool {
+        self.proto_array
+            .indices
+            .get(root)
+            .and_then(|&idx| filtered_nodes.get(idx).copied())
+            .unwrap_or(false)
     }
 
     /// Determine the parent payload status of a child block relative to its parent.
@@ -3101,7 +3108,7 @@ mod test_gloas_fork_choice {
             false, // not revealed
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
         let pending = GloasForkChoiceNode {
             root: root(1),
             payload_status: GloasPayloadStatus::Pending,
@@ -3126,7 +3133,7 @@ mod test_gloas_fork_choice {
             true, // revealed
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
         let pending = GloasForkChoiceNode {
             root: root(1),
             payload_status: GloasPayloadStatus::Pending,
@@ -3164,7 +3171,7 @@ mod test_gloas_fork_choice {
             false,
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(3));
         let empty_node = GloasForkChoiceNode {
             root: root(1),
             payload_status: GloasPayloadStatus::Empty,
@@ -3200,7 +3207,7 @@ mod test_gloas_fork_choice {
             false,
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(3));
         let full_node = GloasForkChoiceNode {
             root: root(1),
             payload_status: GloasPayloadStatus::Full,
@@ -5116,15 +5123,15 @@ mod test_gloas_fork_choice {
         ));
     }
 
-    // ───────────────────── compute_filtered_roots ─────────────────────
+    // ───────────────────── compute_filtered_nodes ─────────────────────
 
     #[test]
     fn filtered_roots_genesis_only() {
         // Genesis block alone is always viable and filtered in
         let (fc, _spec) = new_gloas_fc();
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(0));
-        assert!(filtered.contains(&root(0)));
-        assert_eq!(filtered.len(), 1);
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(0));
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert_eq!(filtered.iter().filter(|&&b| b).count(), 1);
     }
 
     #[test]
@@ -5159,13 +5166,13 @@ mod test_gloas_fork_choice {
             false,
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(4));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(4));
         // All blocks should be in filtered set (genesis + 3 self-build)
-        assert!(filtered.contains(&root(0)));
-        assert!(filtered.contains(&root(1)));
-        assert!(filtered.contains(&root(2)));
-        assert!(filtered.contains(&root(3)));
-        assert_eq!(filtered.len(), 4);
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert!(fc.is_filtered(&root(1), &filtered));
+        assert!(fc.is_filtered(&root(2), &filtered));
+        assert!(fc.is_filtered(&root(3), &filtered));
+        assert_eq!(filtered.iter().filter(|&&b| b).count(), 4);
     }
 
     #[test]
@@ -5175,11 +5182,11 @@ mod test_gloas_fork_choice {
         let (mut fc, _spec) = new_gloas_fc();
         insert_external_builder_block(&mut fc, 1, root(1), root(0), 42);
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
         // External builder not revealed → not viable for head → not in filtered set
         // Genesis is viable on its own, so it stays
-        assert!(filtered.contains(&root(0)));
-        assert!(!filtered.contains(&root(1)));
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert!(!fc.is_filtered(&root(1), &filtered));
     }
 
     #[test]
@@ -5192,9 +5199,9 @@ mod test_gloas_fork_choice {
         let node = get_node_mut(&mut fc, &root(1));
         node.payload_revealed = true;
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
-        assert!(filtered.contains(&root(0)));
-        assert!(filtered.contains(&root(1)));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert!(fc.is_filtered(&root(1), &filtered));
     }
 
     #[test]
@@ -5214,12 +5221,12 @@ mod test_gloas_fork_choice {
             false,
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(3));
         // root(1) is not viable for head itself, but has a viable descendant (root(2))
         // → should be included via upward propagation
-        assert!(filtered.contains(&root(0)));
-        assert!(filtered.contains(&root(1)));
-        assert!(filtered.contains(&root(2)));
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert!(fc.is_filtered(&root(1), &filtered));
+        assert!(fc.is_filtered(&root(2), &filtered));
     }
 
     #[test]
@@ -5232,21 +5239,21 @@ mod test_gloas_fork_choice {
         insert_external_builder_block(&mut fc, 3, root(3), root(2), 42);
 
         // Without viable leaf: only genesis is viable
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(4));
-        assert!(filtered.contains(&root(0)));
-        assert!(!filtered.contains(&root(1)));
-        assert!(!filtered.contains(&root(2)));
-        assert!(!filtered.contains(&root(3)));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(4));
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert!(!fc.is_filtered(&root(1), &filtered));
+        assert!(!fc.is_filtered(&root(2), &filtered));
+        assert!(!fc.is_filtered(&root(3), &filtered));
 
         // Reveal payload on the leaf → makes it viable → propagates up
         let node = get_node_mut(&mut fc, &root(3));
         node.payload_revealed = true;
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(4));
-        assert!(filtered.contains(&root(0)));
-        assert!(filtered.contains(&root(1)));
-        assert!(filtered.contains(&root(2)));
-        assert!(filtered.contains(&root(3)));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(4));
+        assert!(fc.is_filtered(&root(0), &filtered));
+        assert!(fc.is_filtered(&root(1), &filtered));
+        assert!(fc.is_filtered(&root(2), &filtered));
+        assert!(fc.is_filtered(&root(3), &filtered));
     }
 
     #[test]
@@ -5265,10 +5272,10 @@ mod test_gloas_fork_choice {
         );
         insert_external_builder_block(&mut fc, 1, root(2), root(0), 99);
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
-        assert!(filtered.contains(&root(0))); // parent of viable
-        assert!(filtered.contains(&root(1))); // self-build, viable
-        assert!(!filtered.contains(&root(2))); // external, not revealed, no viable descendants
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
+        assert!(fc.is_filtered(&root(0), &filtered)); // parent of viable
+        assert!(fc.is_filtered(&root(1), &filtered)); // self-build, viable
+        assert!(!fc.is_filtered(&root(2), &filtered)); // external, not revealed, no viable descendants
     }
 
     // ───────────────────── get_ancestor_gloas (additional) ────────────
@@ -5569,9 +5576,9 @@ mod test_gloas_fork_choice {
         );
         insert_external_builder_block(&mut fc, 2, root(3), root(1), 42);
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(3));
         // root(3) is external builder not revealed → not in filtered
-        assert!(!filtered.contains(&root(3)));
+        assert!(!fc.is_filtered(&root(3), &filtered));
 
         let empty_node = GloasForkChoiceNode {
             root: root(1),
@@ -5588,7 +5595,7 @@ mod test_gloas_fork_choice {
         // For PENDING node with root not in proto_array → still returns EMPTY child
         // (the EMPTY child doesn't check payload_revealed)
         let (fc, _spec) = new_gloas_fc();
-        let filtered: HashSet<Hash256> = HashSet::new();
+        let filtered: Vec<bool> = Vec::new();
         let pending = GloasForkChoiceNode {
             root: Hash256::repeat_byte(0xFF),
             payload_status: GloasPayloadStatus::Pending,
@@ -5634,7 +5641,7 @@ mod test_gloas_fork_choice {
             false,
         ); // EMPTY path
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(3));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(3));
 
         // FULL node should only get root(2) (FULL path child)
         let full_node = GloasForkChoiceNode {
@@ -5659,7 +5666,7 @@ mod test_gloas_fork_choice {
     fn children_empty_unknown_root_returns_empty_vec() {
         // EMPTY node whose root is not in proto_array → returns empty Vec
         let (fc, _spec) = new_gloas_fc();
-        let filtered: HashSet<Hash256> = HashSet::new();
+        let filtered: Vec<bool> = Vec::new();
         let empty = GloasForkChoiceNode {
             root: Hash256::repeat_byte(0xFF),
             payload_status: GloasPayloadStatus::Empty,
@@ -5673,7 +5680,7 @@ mod test_gloas_fork_choice {
     fn children_full_unknown_root_returns_empty_vec() {
         // FULL node whose root is not in proto_array → returns empty Vec
         let (fc, _spec) = new_gloas_fc();
-        let filtered: HashSet<Hash256> = HashSet::new();
+        let filtered: Vec<bool> = Vec::new();
         let full = GloasForkChoiceNode {
             root: Hash256::repeat_byte(0xFF),
             payload_status: GloasPayloadStatus::Full,
@@ -5708,7 +5715,7 @@ mod test_gloas_fork_choice {
             false, // envelope_received = false (envelope never arrived)
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
         let pending = GloasForkChoiceNode {
             root: root(1),
             payload_status: GloasPayloadStatus::Pending,
@@ -6925,7 +6932,7 @@ mod test_gloas_fork_choice {
     }
 
     /// Verify that blocks with invalid execution status are filtered out
-    /// (not viable for head) by `compute_filtered_roots`, which `find_head_gloas`
+    /// (not viable for head) by `compute_filtered_nodes`, which `find_head_gloas`
     /// uses to restrict the traversal.
     ///
     /// Two blocks at slot 1: root(1) valid, root(2) marked with
@@ -7683,7 +7690,7 @@ mod test_gloas_fork_choice {
             true,
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
 
         let empty_node = GloasForkChoiceNode {
             root: root(1),
@@ -7711,7 +7718,7 @@ mod test_gloas_fork_choice {
             true,
         );
 
-        let filtered = fc.compute_filtered_roots::<MinimalEthSpec>(Slot::new(2));
+        let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(2));
 
         let full_node = GloasForkChoiceNode {
             root: root(1),
