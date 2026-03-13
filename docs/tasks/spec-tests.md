@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 992 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2, GitHub latest=v1.6.1). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE, head d76a278b0a). All 10 tracked Gloas PRs unchanged. PR #4939 updated Mar 13 (rebase, no semantic changes). CI in progress (4/6 jobs passed, 2 running). Nightly green (3 consecutive). cargo audit unchanged (1 rsa). clippy clean on consensus crates. ptc-lookbehind 3 doc-only commits behind main, clean merge. No outdated deps (only major version bumps available: rand 0.8→0.9).
+
 ### run 991 (Mar 13) — no spec changes, all stable
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). All tracked Gloas PRs unchanged. CI in progress from last push. Nightly green (3 consecutive). cargo audit unchanged (1 rsa). Audited test coverage across state_processing — all high-priority areas (withdrawal OOB, builder index validation, payload attestation, epoch payment processing, per-slot availability, PTC committee, deposit routing, envelope processing) have comprehensive edge case tests. ptc-lookbehind branch 2 commits behind main.
 
