@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1068 (Mar 13) — PR #4940 merged, no code changes needed
+Latest consensus-specs commit: #4940 (initial Gloas fork choice tests, merged Mar 13). These are test generators — no new spec-test vectors yet (still v1.5.0). Our fork choice test handler already supports `on_execution_payload`, `on_payload_info`, `head_payload_status` — ready when vectors drop. PR #5001 (parent_block_root in bid filtering): already implemented. PR #5002 (wording): no code impact. Tracked PRs: #4932 OPEN, #4939 OPEN, #4940 MERGED, #4960 OPEN, #4962 OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, rebased onto main. No new release (still v1.7.0-alpha.2). CI green. Clippy clean. cargo audit unchanged (1 rsa). No cargo dep updates. Rebased ptc-lookbehind branch.
+
 ### run 1063 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new spec-test vectors (consensus-spec-tests still v1.5.0). No new release (still v1.7.0-alpha.2). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE, no new activity since Mar 12. CI 5/6 passed (beacon_chain running). Clippy clean. cargo audit unchanged (1 rsa). No cargo dep updates available.
 
