@@ -41,12 +41,13 @@ pub fn upgrade_to_electra<E: EthSpec>(
     *post.consolidation_balance_to_consume_mut()? = post.get_consolidation_churn_limit(spec)?;
 
     // Add validators that are not yet active to pending balance deposits
-    let validators = post.validators().clone();
-    let pre_activation = validators
+    let pre_activation = post
+        .validators()
         .iter()
         .enumerate()
         .filter(|(_, validator)| validator.activation_epoch == spec.far_future_epoch)
-        .sorted_by_key(|(index, validator)| (validator.activation_eligibility_epoch, *index))
+        .map(|(index, validator)| (index, validator.activation_eligibility_epoch))
+        .sorted_by_key(|(index, epoch)| (*epoch, *index))
         .map(|(index, _)| index)
         .collect::<Vec<_>>();
 
@@ -80,11 +81,15 @@ pub fn upgrade_to_electra<E: EthSpec>(
     }
 
     // Ensure early adopters of compounding credentials go through the activation churn
-    let validators = post.validators().clone();
-    for (index, validator) in validators.iter().enumerate() {
-        if validator.has_compounding_withdrawal_credential(spec) {
-            post.queue_excess_active_balance(index, spec)?;
-        }
+    let compounding_indices: Vec<usize> = post
+        .validators()
+        .iter()
+        .enumerate()
+        .filter(|(_, validator)| validator.has_compounding_withdrawal_credential(spec))
+        .map(|(index, _)| index)
+        .collect();
+    for index in compounding_indices {
+        post.queue_excess_active_balance(index, spec)?;
     }
 
     *pre_state = post;

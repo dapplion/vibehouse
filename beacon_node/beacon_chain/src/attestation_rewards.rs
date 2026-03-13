@@ -208,13 +208,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         }
 
         // Calculate total_rewards
-        let mut total_rewards: Vec<TotalAttestationRewards> = Vec::new();
-
         let validators = if validators.is_empty() {
             Self::all_eligible_validator_indices(&state, previous_epoch)?
         } else {
             Self::validators_ids_to_indices(&mut state, validators)?
         };
+
+        let mut total_rewards: Vec<TotalAttestationRewards> = Vec::with_capacity(validators.len());
 
         for &validator_index in &validators {
             // Return 0s for unknown/inactive validator indices.

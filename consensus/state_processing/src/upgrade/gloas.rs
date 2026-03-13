@@ -134,7 +134,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
         state.validators().iter().map(|v| v.pubkey).collect();
 
     let pending_deposits = state.pending_deposits()?.clone();
-    let mut new_pending_deposits = Vec::new();
+    let mut new_pending_deposits = Vec::with_capacity(pending_deposits.len());
     let mut new_validator_pubkeys: HashSet<PublicKeyBytes> = HashSet::new();
 
     for deposit in pending_deposits.iter() {
