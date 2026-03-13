@@ -110,6 +110,9 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1054 (Mar 13) — all stable, Cargo.lock dep update
+Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. Committed Cargo.lock transitive dep update (windows-sys 0.61.2, syn 2). CI green, nightly green, clippy clean. cargo audit unchanged (1 rsa).
+
 ### runs 1019-1053 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
 Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2). No new spec-test vectors. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN.
 
