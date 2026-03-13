@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1161 (Mar 13) — perf: reuse ancestor cache allocation in find_head_gloas
+Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). PR #5003 CLOSED by author (not merged). No new releases or spec-test vectors. No semver-compatible cargo updates.
+Moved `ancestor_cache` HashMap allocation outside the `find_head_gloas` loop, using `clear()` between iterations instead of reallocating. Avoids ~30 HashMap heap allocations per find_head call (one per tree depth level). 188/188 proto_array + 119/119 fork_choice + 8/8 EF fork choice tests pass. Clippy clean.
+
 ### run 1152 (Mar 13) — perf: reduce repeated borrows in attestation flag updates
 Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new releases or spec-test vectors. No semver-compatible cargo updates.
 Optimized `process_attestation` inner loop (all post-Altair forks): restructured participation flag updates to call `get_epoch_participation_mut()` once per validator instead of 3 times (once per flag), and `get_base_reward()` once instead of up to 3. Uses a bitmask to track newly-set flags, then processes rewards in a second pass. Reduces superstruct match overhead on every attestation in every block. 575/575 state_processing tests + 35/35 EF operations/epoch/sanity tests pass. Clippy clean.
