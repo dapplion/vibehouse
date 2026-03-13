@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1168 (Mar 13) — allocation optimizations, new fork choice tests verified
+
+Spec checked: 3 new commits since alpha.3 release — #5001 (parent_block_root in bid filtering key, MERGED), #4940 (initial Gloas fork choice tests, MERGED), #5002 (wording clarification for self-build envelope signature, MERGED). All already implemented/compatible:
+- #5001: vibehouse already uses `(slot, parent_block_hash, parent_block_root)` tuple in `ObservedExecutionBids` — ahead of spec.
+- #4940: new `on_execution_payload` fork choice test vectors included in alpha.3 download. Test runner already has `OnExecutionPayload` step type and `head_payload_status` check. All 9/9 fork choice tests pass including the new one.
+- #5002: wording-only change, no code impact.
+
+Shipped allocation optimizations:
+1. Electra upgrade (`upgrade/electra.rs`): eliminated full validators list `.clone()` by collecting indices during the immutable borrow phase, then releasing the borrow before mutation. Saves cloning hundreds of validator structs during fork transitions.
+2. Gloas upgrade (`upgrade/gloas.rs`): pre-allocate `new_pending_deposits` Vec with `with_capacity(pending_deposits.len())`.
+3. Attestation rewards (`attestation_rewards.rs`): pre-allocate `total_rewards` Vec with `with_capacity(validators.len())`.
+
+All 32 upgrade tests, EF fork + rewards tests, fork choice tests pass. Clippy clean, lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1167 (Mar 13) — HashSet lookup optimizations in state processing
 
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check (v1.7.0-alpha.3). All tracked PRs (#4992, #4939) OPEN, unchanged. Updated serde_with 3.17.0 → 3.18.0. cargo audit unchanged (1 rsa, no fix).
