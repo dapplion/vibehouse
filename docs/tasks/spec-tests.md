@@ -28,35 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### run 958 (Mar 13)
-- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
-- **PR #4992 (PTC lookbehind)**: unchanged (head d76a278b0a, mergeable=clean, 1 APPROVED jtraglia Mar 12). Still OPEN.
-- All other tracked PRs (#5002, #4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
-- CI green. 0 compatible dep updates. cargo audit unchanged (1 vuln + 5 allowed). No code changes needed.
-
-### runs 933-957 consolidated (Mar 13)
-Spec completely stable — no new consensus-specs commits since #5001 (Mar 12), no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remain OPEN. PR #4992 (PTC lookbehind) unchanged at head d76a278b0a, mergeable=clean, 1 APPROVED (jtraglia Mar 12). CI fully green (run 23035917712). cargo audit unchanged (1 vuln + 5 allowed). 0 compatible dep updates. No code changes needed across all runs.
-
-Notable observations during this period:
-- Run 940: PR #4940 (Gloas fork choice tests) appeared — our test runner already supports all step types
-- Run 938: PR #5002 (self-build wording) got 1 APPROVED — documentation only, no consensus impact
-- Run 942: Verified PR #5001 (`parent_block_root` bid filtering key) already implemented
-
-### run 929 (Mar 13)
-- **Implemented PTC lookbehind on branch `ptc-lookbehind`**: Added `previous_ptc`/`current_ptc` fields to BeaconStateGloas, renamed `get_ptc_committee`→`compute_ptc`, added `get_ptc` (cached reads), rotation in `per_slot_processing`, initialization in `upgrade_to_gloas`. All 575 state_processing unit tests pass. **NOT merged to main** — blocks on PR #4992 merge + new spec test vectors (SSZ layout change breaks EF test parsing).
-- Fixed pre-existing `clippy::large_stack_frames` error in `proposer_boost_re_org_test` (introduced by Rust 1.91 bump in PR #30).
-
-### run 926 (Mar 13)
-- PR #4992 (PTC lookbehind): major update — 8 commits, head d76a278b0a, mergeable=clean. Design: two separate state fields `previous_ptc`/`current_ptc` instead of vector. Approaching merge.
-- New PR #5002 (p2p wording, no consensus impact). All other tracked PRs still OPEN.
-- Updated deps (clap 4.6, openssl 0.10.76, c-kzg 2.1.7, tempfile 3.27). Build clean, types 715/715 pass.
-
-### runs 759-924, 930-932 consolidated (Mar 10-13)
+### runs 759-959 consolidated (Mar 10-13) — spec stable, no code changes needed
 Spec completely stable — no new consensus-specs commits with consensus changes since #5001 (Mar 12), no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remained OPEN throughout. PR #4992 (PTC lookbehind) evolved from head 215962a9 (blocked) to d76a278b0a (clean, 1 APPROVED jtraglia Mar 12). CI and nightly continuously green. EF spec tests: consistently 35/35 (minimal, fake_crypto), fork choice: 8/8 (real crypto). Workspace tests: 2643/2651 (8 web3signer timeout). cargo audit: 1 rsa advisory (no fix). Recent consensus-specs merges were all CI/tooling (#4984 remove Verkle, #4988-#4995 Python/reftest/release-drafter).
 
 Notable activities:
-- Run 850: Added workflow_dispatch trigger to ci.yml
+- Run 929: Implemented PTC lookbehind on branch `ptc-lookbehind` (previous_ptc/current_ptc fields, compute_ptc, get_ptc cached reads, per_slot rotation, upgrade initialization). All 575 state_processing tests pass. NOT merged — blocks on PR #4992 merge + new spec test vectors.
+- Run 929: Fixed `clippy::large_stack_frames` in `proposer_boost_re_org_test` (Rust 1.91 bump)
+- Run 926: Updated deps (clap 4.6, openssl 0.10.76, c-kzg 2.1.7, tempfile 3.27)
 - Run 871: Updated Cargo.lock (windows-sys transitive deps)
+- Run 850: Added workflow_dispatch trigger to ci.yml
 - Run 834: Codebase audit — 39 TODOs (all inherited/spec-dependent), gloas.rs has 208 unit tests across 9216 lines
 - Run 800: Analyzed PTC lookbehind implementation plan (7 code areas)
 - Run 760: Discovered PR #4962 (sanity/blocks tests)
