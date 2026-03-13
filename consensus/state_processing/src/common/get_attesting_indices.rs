@@ -44,8 +44,6 @@ pub mod attesting_indices_base {
 }
 
 pub mod attesting_indices_electra {
-    use std::collections::HashSet;
-
     use crate::per_block_processing::errors::{AttestationInvalid as Invalid, BlockOperationError};
     use safe_arith::SafeArith;
     use types::*;
@@ -89,21 +87,22 @@ pub mod attesting_indices_electra {
 
     /// Returns validator indices which participated in the attestation, sorted by increasing index.
     ///
-    /// Committees must be sorted by ascending order 0..committees_per_slot
+    /// Committees must be sorted by ascending order 0..committees_per_slot.
+    /// Each validator appears in at most one committee per slot, so we collect
+    /// directly into a Vec (no HashSet needed) and sort at the end.
     pub fn get_attesting_indices<E: EthSpec>(
         committees: &[BeaconCommittee],
         aggregation_bits: &BitList<E::MaxValidatorsPerSlot>,
         committee_bits: &BitVector<E::MaxCommitteesPerSlot>,
     ) -> Result<Vec<u64>, BeaconStateError> {
-        let mut attesting_indices = vec![];
-
-        let committee_indices = get_committee_indices::<E>(committee_bits);
+        let mut attesting_indices = Vec::with_capacity(aggregation_bits.num_set_bits());
 
         let mut committee_offset = 0;
 
         let committee_count_per_slot = committees.len() as u64;
         let mut participant_count = 0;
-        for committee_index in committee_indices {
+        for (committee_index, _) in committee_bits.iter().enumerate().filter(|(_, bit)| *bit) {
+            let committee_index = committee_index as u64;
             let beacon_committee = committees
                 .get(committee_index as usize)
                 .ok_or(Error::NoCommitteeFound(committee_index))?;
@@ -113,27 +112,22 @@ pub mod attesting_indices_electra {
                 return Err(BeaconStateError::InvalidCommitteeIndex(committee_index));
             }
             participant_count.safe_add_assign(beacon_committee.committee.len() as u64)?;
-            let committee_attesters = beacon_committee
-                .committee
-                .iter()
-                .enumerate()
-                .filter_map(|(i, &index)| {
-                    if let Ok(aggregation_bit_index) = committee_offset.safe_add(i)
-                        && aggregation_bits.get(aggregation_bit_index).unwrap_or(false)
-                    {
-                        return Some(index as u64);
-                    }
-                    None
-                })
-                .collect::<HashSet<u64>>();
+
+            let count_before = attesting_indices.len();
+            for (i, &index) in beacon_committee.committee.iter().enumerate() {
+                if let Ok(aggregation_bit_index) = committee_offset.safe_add(i)
+                    && aggregation_bits.get(aggregation_bit_index).unwrap_or(false)
+                {
+                    attesting_indices.push(index as u64);
+                }
+            }
 
             // Require at least a single non-zero bit for each attesting committee bitfield.
             // This check is new to the spec's `process_attestation` in Electra.
-            if committee_attesters.is_empty() {
+            if attesting_indices.len() == count_before {
                 return Err(BeaconStateError::EmptyCommittee);
             }
 
-            attesting_indices.extend(committee_attesters);
             committee_offset.safe_add_assign(beacon_committee.committee.len())?;
         }
 
