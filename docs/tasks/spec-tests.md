@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1104 (Mar 13) — all stable, no changes needed
+Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), latest review feedback from jihoonsong (Mar 13) — notes `get_ptc_assignment` still used in 3 sections. CI green. cargo audit unchanged (1 rsa). No cargo dep updates available. Audited test coverage — all Gloas verification error paths covered (60 tests in gloas_verification.rs, 56 in envelope_processing.rs), no actionable gaps.
+
 ### runs 1099-1103 (Mar 13) — all stable, no changes needed
 Spec stable — no new release (still v1.7.0-alpha.2). No new spec-test vectors. PR #5002 merged (wording-only, no code change). PR #4940 merged (Gloas fork choice tests) — our handler already supports `on_execution_payload` steps and `head_payload_status` checks; vectors will be in next release. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), new review feedback from jihoonsong (Mar 13) — `get_ptc_assignment` still used in 3 sections, may need revision. CI green. Nightly green. No dep updates available.
 
