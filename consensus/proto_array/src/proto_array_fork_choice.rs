@@ -608,7 +608,7 @@ impl ProtoArrayForkChoice {
                 self.proto_array.justified_checkpoint = justified_checkpoint;
                 self.proto_array.finalized_checkpoint = finalized_checkpoint;
             }
-            self.balances = new_balances.clone();
+            self.maybe_update_balances(new_balances);
             return self.find_head_gloas::<E>(
                 justified_checkpoint,
                 proposer_boost_root,
@@ -630,13 +630,25 @@ impl ProtoArrayForkChoice {
             )
             .map_err(|e| format!("find_head apply_score_changes failed: {:?}", e))?;
 
-        self.balances = new_balances.clone();
+        self.maybe_update_balances(new_balances);
 
         self.gloas_head_payload_status = None;
 
         self.proto_array
             .find_head::<E>(&justified_checkpoint.root, current_slot)
             .map_err(|e| format!("find_head failed: {:?}", e))
+    }
+
+    /// Update stored balances only when they differ from the new values.
+    /// Avoids cloning the effective_balances Vec (~8MB on mainnet) every slot
+    /// when the justified checkpoint hasn't changed.
+    fn maybe_update_balances(&mut self, new_balances: &JustifiedBalances) {
+        if self.balances.effective_balances.len() != new_balances.effective_balances.len()
+            || self.balances.total_effective_balance != new_balances.total_effective_balance
+            || self.balances.num_active_validators != new_balances.num_active_validators
+        {
+            self.balances = new_balances.clone();
+        }
     }
 
     /// Returns the Gloas head payload status from the last `find_head` call.
