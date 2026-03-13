@@ -1,9 +1,9 @@
-# Define the Rust image as an argument with a default to x86_64 Rust 1.88 image based on Debian Bullseye
-ARG RUST_IMAGE="rust:1.88-bullseye@sha256:8e3c421122bf4cd3b2a866af41a4dd52d87ad9e315fd2cb5100e87a7187a9816"
+# Define the Rust image as an argument with a default to x86_64 Rust 1.91 image based on Debian Trixie
+ARG RUST_IMAGE="rust:1.91-trixie@sha256:a0dba1c1b2c90585fc44421b55ddf8063323760dc644ba1d35f5b389ad3e8e14"
 FROM ${RUST_IMAGE} AS builder
 
 # Install specific version of the build dependencies
-RUN apt-get update && apt-get install -y libclang-dev=1:11.0-51+nmu5 cmake=3.18.4-2+deb11u1
+RUN apt-get update && apt-get install -y libclang-dev=1:19.0-63 cmake=3.31.6-2
 
 # Add target architecture argument with default value
 ARG RUST_TARGET="x86_64-unknown-linux-gnu"
