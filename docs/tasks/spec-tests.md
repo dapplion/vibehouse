@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1111 (Mar 13) — all stable, no changes needed
+Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. CI green. cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable).
+
 ### runs 1104-1110 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), latest review feedback from jihoonsong (Mar 13) — notes `get_ptc_assignment` still used in 3 sections. New PR #5003 (simplify process_proposer_lookahead, jihoonsong, labeled fulu) — Python spec clarity fix, our Rust implementation already correct. CI green. cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable). Rebased ptc-lookbehind onto main, 575/575 tests pass.
 
