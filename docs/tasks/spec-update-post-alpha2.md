@@ -122,6 +122,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 927 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged head d76a278b0a, 8 commits, mergeable=true, 1 approval. jtraglia actively reviewing (Mar 11-12 comments on initialization syntax). Approaching merge.
+- **Merged community PR #30**: Rust 1.88→1.91 + Bullseye→Trixie Docker base (barnabasbusa). Required because alloy-consensus 1.7.3 needs rustc 1.91+, redb 3.1.1 needs 1.89+.
+- Other tracked PRs (#4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+- CI in_progress for run 926 commit. No compatible dep updates. cargo audit unchanged (1 vuln + 5 allowed).
+
 ### run 926 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (v1.7.0-alpha.3 committed but not released on GitHub, still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #4992 (PTC lookbehind) major evolution**: now 8 commits (was 2), head d76a278b0a (was 215962a9), **mergeable=clean** (was blocked). Design changed: split single `ptc_lookbehind` vector into two separate BeaconState fields `previous_ptc`/`current_ptc`. New `compute_ptc` helper extracted. `get_ptc` now reads from cached fields with slot assertion. `process_slots` rotates cache each slot (after epoch processing + slot increment). `get_ptc_assignment` removed from validator spec. Fork upgrade: zeros + compute after builder onboarding. New tests: ptc rotation, epoch boundary crossing. Approaching merge readiness.
