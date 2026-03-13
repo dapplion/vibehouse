@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 964 (Mar 13) — no spec changes, PR #4939 wording update
+No new spec commits, release, or test vectors. PR #4992 still OPEN (1 APPROVED, head d76a278b0a). PR #4939 got wording update (Mar 13) — no semantic changes, our implementation still matches. PR #4940 (fork choice tests) updated Mar 12 — our handler supports `on_execution_payload` steps and `head_payload_status` checks. CI green. Nightly green. cargo audit unchanged.
+
 ### run 963 (Mar 13) — rebased ptc-lookbehind, all stable
 No new spec commits, release, or test vectors. PR #4992 still OPEN (1 APPROVED). Rebased `ptc-lookbehind` branch onto main (37 commits behind → clean, 575/575 tests pass). CI green. Nightly green (3 consecutive). cargo audit unchanged.
 

@@ -110,6 +110,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 964 (Mar 13) — PR #4939 wording update, no spec changes
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
+- **PR #4939** (index-1 attestation envelope validation): wording update Mar 13 ("Review feedback" commit). No semantic changes — our proactive implementation (run 701) still matches.
+- **PR #4940** (initial fork choice tests): updated Mar 12 (4 commits). Adds `on_execution_payload` step type and `head_payload_status` check. Our fork choice test handler already supports both.
+- **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
+- CI green. Nightly green. cargo audit unchanged (1 rsa, 5 warnings).
+
 ### run 963 (Mar 13) — rebased ptc-lookbehind branch, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
 - **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
