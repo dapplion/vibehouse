@@ -28,6 +28,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 932 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #5001 (parent_block_root in bid filtering key)**: merged Mar 12. Verified vibehouse already implements the 3-tuple `(slot, parent_block_hash, parent_block_root)` key in `ObservedExecutionBids::is_highest_value_bid()` — no code change needed.
+- **PR #4992 (PTC lookbehind)**: unchanged (head d76a278b0a, mergeable=clean, 1 APPROVED jtraglia Mar 12). Still OPEN. Branch `ptc-lookbehind` ready to merge once upstream lands + new spec test vectors released.
+- All other tracked PRs (#4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962, #5002): all still OPEN.
+- CI in_progress for latest commit (386bb7d). EF tests (fake_crypto + real crypto) and check+clippy+fmt passed. Nightly green. cargo audit unchanged (1 vuln + 5 allowed). No compatible dep updates.
+- No code changes needed.
+
 ### run 930 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #4992 (PTC lookbehind)**: unchanged (head d76a278b0a, mergeable=clean, 1 APPROVED jtraglia Mar 12). Still OPEN.
