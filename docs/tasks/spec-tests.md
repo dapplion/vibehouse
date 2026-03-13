@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 990 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). PR #4940 (fork choice tests): file rename only, no semantic changes. PR #4939: rebased on master, no semantic changes. Noted PR #4747 (Fast Confirmation Rule, mkalinin) — labeled gloas, early-stage proposal, dirty mergeable, not ready for implementation. CI in progress (check+clippy+ef-tests+network+op_pool passed). Nightly green (3 consecutive). cargo audit unchanged (1 rsa).
+
 ### run 989 (Mar 13) — rebased ptc-lookbehind, no spec changes
 No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, MERGEABLE). Rebased `ptc-lookbehind` branch onto main (19 commits behind → clean, 575/575 state_processing tests pass). CI in progress (check+clippy passed). Nightly green (3 consecutive). cargo audit unchanged (1 rsa).
 
