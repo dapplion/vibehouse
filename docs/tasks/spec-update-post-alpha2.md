@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1152 (Mar 13) — perf: reduce repeated borrows in attestation flag updates
+Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new releases or spec-test vectors. No semver-compatible cargo updates.
+Optimized `process_attestation` inner loop (all post-Altair forks): restructured participation flag updates to call `get_epoch_participation_mut()` once per validator instead of 3 times (once per flag), and `get_base_reward()` once instead of up to 3. Uses a bitmask to track newly-set flags, then processes rewards in a second pass. Reduces superstruct match overhead on every attestation in every block. 575/575 state_processing tests + 35/35 EF operations/epoch/sanity tests pass. Clippy clean.
+
 ### run 1151 (Mar 13) — perf: eliminate HashSet in get_attesting_indices
 Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED. No new releases or spec-test vectors. No semver-compatible cargo updates.
 Optimized `get_attesting_indices` (Electra/Gloas hot path): replaced per-committee `HashSet<u64>` with direct `Vec::push`, pre-allocated output Vec via `num_set_bits()`, and inlined committee_bits iteration. Removes HashSet allocation overhead on every attestation verification. 575/575 state_processing tests + 15/15 EF operations tests pass. Clippy clean.
