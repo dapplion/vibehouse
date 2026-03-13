@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1151 (Mar 13) — perf: eliminate HashSet in get_attesting_indices
+Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED. No new releases or spec-test vectors. No semver-compatible cargo updates.
+Optimized `get_attesting_indices` (Electra/Gloas hot path): replaced per-committee `HashSet<u64>` with direct `Vec::push`, pre-allocated output Vec via `num_set_bits()`, and inlined committee_bits iteration. Removes HashSet allocation overhead on every attestation verification. 575/575 state_processing tests + 15/15 EF operations tests pass. Clippy clean.
+
 ### runs 1130-1147 (Mar 13) — all stable
 Spec completely stable — latest commit #5004 (release notes tooling, no code). No new release (v1.7.0-alpha.3 version bump in master but no GitHub release published, latest published still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. Nightly green (3 consecutive). No dep updates available. No semver-compatible cargo updates. PR #4992 still OPEN, NOT MERGED, same head d76a278b0a, 1 APPROVED (jtraglia). All tracked spec PRs (#4932, #4939, #4960, #4962) unchanged.
 
