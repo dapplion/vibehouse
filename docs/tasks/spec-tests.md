@@ -28,6 +28,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 955 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged head d76a278b0a, 1 APPROVED (jtraglia Mar 12). Still OPEN, mergeable=clean.
+- All other tracked PRs (#5002, #4954, #4843, #4898, #4892, #4939, #4940, #4932, #4960, #4962): all still OPEN.
+- CI green. 0 compatible dep updates. No code changes needed.
+
 ### run 942 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - Verified PR #5001 (`parent_block_root` bid filtering key) already implemented: `observed_execution_bids.rs:48` uses `HashMap<(Slot, ExecutionBlockHash, Hash256), u64>`.
