@@ -110,6 +110,11 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1007 (Mar 13) — no spec changes, all stable
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0).
+- PR #4992 (PTC lookbehind): still OPEN, MERGEABLE, clean. Implementation ready on ptc-lookbehind branch.
+- CI green. Zero clippy warnings. cargo audit unchanged (1 rsa). No compatible dep updates.
+
 ### run 1006 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.3). No new spec-test vectors (still v1.6.0-beta.0).
 - PR #4992 (PTC lookbehind): still OPEN, MERGEABLE, clean. Implementation ready on ptc-lookbehind branch.
