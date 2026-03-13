@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1160 (Mar 13) — shared ancestor cache across siblings in fork choice
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. Version bump to v1.7.0-alpha.3 tagged (commit d2cfa51c, Mar 11) but not yet published as a release. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4939 updated today. cargo audit unchanged (1 rsa, 5 allowed warnings). No semver-compatible dep updates.
+
+Shipped: shared the ancestor lookup cache across sibling weight calculations in `find_head_gloas`. Previously, each call to `get_gloas_weight` (one per child node) allocated its own `HashMap` for caching `get_ancestor_gloas` tree walks. Since sibling nodes at the same level share the same `node_slot`, ancestor lookups are identical and can be reused. Now allocates the cache once per tree level and passes it into all sibling calls. Cache key changed from `Hash256` to `(Hash256, Slot)` so entries remain correct when siblings have different slots (EMPTY/FULL → PENDING children case). For the common PENDING → EMPTY/FULL case, the FULL child reuses all ancestor walks computed for the EMPTY child, eliminating redundant O(depth) traversals per unique validator vote root. Added `get_gloas_weight_test` helper for tests. All 188 proto_array + 119 fork_choice + 8/8 EF fork choice spec tests pass. Clippy clean.
+
 ### run 1159 (Mar 13) — Vec<bool> filtered nodes in fork choice
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4940 (Gloas fork choice tests) merged — test generators only, no new vectors yet. PR #5001 (parent_block_root in bid filtering key) merged — already implemented in vibehouse. PR #5002 (wording clarification) — no code change needed. PR #5004 (release notes dependencies section) — tooling only. cargo audit unchanged (1 rsa, 5 allowed warnings). No semver-compatible dep updates.
 
