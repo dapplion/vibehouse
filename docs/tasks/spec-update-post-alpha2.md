@@ -110,6 +110,11 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 965 (Mar 13) — no spec changes, all stable
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
+- All tracked PRs unchanged: #4992 (PTC lookbehind, 1 APPROVED, OPEN), #4939, #4940, #5002 all OPEN.
+- No dependency updates available. CI green. Nightly green (4 consecutive). cargo audit unchanged (1 rsa, 5 warnings).
+
 ### run 964 (Mar 13) — PR #4939 wording update, no spec changes
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
 - **PR #4939** (index-1 attestation envelope validation): wording update Mar 13 ("Review feedback" commit). No semantic changes — our proactive implementation (run 701) still matches.

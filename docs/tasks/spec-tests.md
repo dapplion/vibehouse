@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 965 (Mar 13) — no spec changes, all stable
+No new spec commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): still OPEN (1 APPROVED, head d76a278b0a, mergeable=clean). All tracked PRs (#4939, #4940, #5002) unchanged. No dependency updates available. CI green. Nightly green (4 consecutive). cargo audit unchanged (1 rsa, 5 warnings).
+
 ### run 964 (Mar 13) — no spec changes, PR #4939 wording update
 No new spec commits, release, or test vectors. PR #4992 still OPEN (1 APPROVED, head d76a278b0a). PR #4939 got wording update (Mar 13) — no semantic changes, our implementation still matches. PR #4940 (fork choice tests) updated Mar 12 — our handler supports `on_execution_payload` steps and `head_payload_status` checks. CI green. Nightly green. cargo audit unchanged.
 
