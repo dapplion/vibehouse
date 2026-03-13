@@ -29,6 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1166 (Mar 13) — eliminate intermediate Vec in find_head_gloas
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check (v1.7.0-alpha.3). All tracked PRs (#4992, #4939) OPEN, unchanged. #4979 (PTC Lookbehind) closed without merging — #4992 (cached PTCs) is the chosen approach. No semver-compatible dep updates. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: eliminated intermediate `weighted` Vec allocation in `find_head_gloas`. Previously, weights and tiebreakers were computed in separate passes — weights collected into a Vec via `.map().collect()`, then tiebreakers computed lazily inside `max_by`. Now precomputes both weight and tiebreaker in a single `.map()` step and chains directly into `max_by()`, avoiding the Vec heap allocation per tree level per fork choice update. This is possible because moving the tiebreaker computation into the map closure removes the `&self` borrow from `max_by`, so both closures can coexist on the iterator chain (map borrows `&self` + `&mut ancestor_cache`, max_by borrows nothing). All 188 proto_array + 119 fork_choice + 9/9 EF fork choice spec tests pass. Clippy clean, lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1165 (Mar 13) — update spec tests to v1.7.0-alpha.3
 New release v1.7.0-alpha.3 published today with 15 Gloas changes. Reviewed all 6 key spec PRs (#4897, #4884, #4916, #4923, #4918, #4948) — all already implemented in vibehouse. Downloaded new test vectors. Added `fork_choice_on_execution_payload` test handler for new Gloas fork choice tests from PR #4940 (on_execution_payload step + head_payload_status check + execution_payload_envelope files). Removed PayloadNotRevealed workaround from attestation processing — alpha.3 vectors include PR #4918 fix so index=1 attestations now properly sequence after on_execution_payload steps. Updated Makefile version pin. All 79/79 real-crypto + 138/138 fake-crypto tests pass. Clippy clean, pre-push lint-full passes.
 
