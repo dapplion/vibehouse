@@ -91,7 +91,7 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Upcoming Spec Test PRs (not yet merged)
 
-- **PR #4940** — "Add initial fork choice tests for Gloas": tests `on_execution_payload` (EMPTY→FULL transition), basic head tracking. Our `ForkChoiceHandler` already supports `on_execution_payload` steps and `head_payload_status` checks — ready to pass when merged.
+- **PR #4940** — "Add initial fork choice tests for Gloas": MERGED (Mar 13). Tests `on_execution_payload` (EMPTY→FULL transition), basic head tracking. Our `ForkChoiceHandler` already supports `on_execution_payload` steps and `head_payload_status` checks — ready to pass when spec-test vectors are released.
 - **PR #4932** — "Add Gloas sanity/blocks tests with payload attestation coverage": tests `process_payload_attestation` during full block processing. Our `SanityBlocksHandler` runs all forks — ready to pass when merged.
 - **PR #4960** — "Add Gloas fork choice test for new validator deposit": extends fork choice tests with deposit scenarios. Already supported by our handler.
 - **PR #4962** — "Add Gloas sanity/blocks tests for missed payload withdrawal interactions": tests all 4 combinations of block with/without withdrawals when payload doesn't arrive, then next block with/without new withdrawals. Test-only PR — our handler runs all forks, ready to pass when merged.
@@ -109,6 +109,9 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 - Not relevant for vibehouse's Gloas implementation
 
 ## Progress log
+
+### run 1069 (Mar 13) — PR #4940 merged (fork choice tests), no code changes needed
+PR #4940 ("Add initial fork choice tests for Gloas") merged — test-only, adds `on_execution_payload` and `head_payload_status` fork choice test steps which our handler already supports. No new spec-test release yet (still v1.6.0-beta.0). No new spec release (still v1.7.0-alpha.2). Remaining tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green (nightly green). No compatible dep updates.
 
 ### run 1067 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green (nightly green 3 consecutive). No compatible dep updates. cargo audit unchanged (1 rsa, 5 warnings).
