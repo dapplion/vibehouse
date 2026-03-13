@@ -28,6 +28,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1157 (Mar 13) — attestation clone + ancestor cache
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. cargo audit unchanged (1 rsa, 5 allowed warnings). Nightly tests green. No semver-compatible dep updates.
+
+Shipped two optimizations:
+1. Eliminated unnecessary `attestation.clone()` in `SplitAttestation::new` — the function already takes ownership of the attestation, so it can be destructured directly by consuming the match. Also avoids a redundant `signature.clone()` by moving the field directly from the variant. All 36 operation_pool tests pass.
+2. Added ancestor lookup cache in `get_gloas_weight` — many validators vote for the same block root, causing `get_ancestor_gloas(root, slot)` to repeat the same O(depth) tree walk for each validator. Now caches results per `vote.current_root` within each weight calculation, avoiding redundant walks. All 188 proto_array + 119 fork_choice + 8/8 EF fork choice spec tests pass. Clippy clean.
+
 ### run 1156 (Mar 13) — zero-clone maximum_cover
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. cargo audit unchanged (1 rsa, 5 allowed warnings). Nightly tests green. Rebased ptc-lookbehind branch (17 commits behind), 575/575 state_processing tests pass on branch.
 
