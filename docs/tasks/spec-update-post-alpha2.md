@@ -110,10 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### run 1055 (Mar 13) — all stable, ptc-lookbehind rebased
-Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. Rebased `ptc-lookbehind` onto main — 575/575 tests pass. cargo audit unchanged (1 rsa).
+### run 1056 (Mar 13) — all stable, ptc-lookbehind rebased
+Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. Rebased `ptc-lookbehind` onto main — 575/575 tests pass. CI from run 1055: check/clippy/fmt + ef-tests SUCCESS, others in progress. Nightly green (3 consecutive). cargo audit unchanged (1 rsa).
 
-### runs 1019-1054 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
+### runs 1055 + 1019-1054 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
 Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2). No new spec-test vectors. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN.
 
 Notable activities:
