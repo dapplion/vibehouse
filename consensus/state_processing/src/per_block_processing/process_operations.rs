@@ -192,28 +192,34 @@ pub mod altair_deneb {
             let validator_effective_balance = state.epoch_cache().get_effective_balance(index)?;
             let validator_slashed = state.slashings_cache().is_slashed(index);
 
-            // [New in Gloas:EIP7732] Track if any new flag is set for this validator
-            let mut will_set_new_flag = false;
-
-            for (flag_index, &weight) in PARTICIPATION_FLAG_WEIGHTS.iter().enumerate() {
+            // Track which flags are newly set as a bitmask to avoid re-borrowing
+            // epoch_participation on each flag iteration.
+            let new_flags = {
                 let epoch_participation = state.get_epoch_participation_mut(
                     data.target.epoch,
                     previous_epoch,
                     current_epoch,
                 )?;
+                let validator_participation = epoch_participation
+                    .get_mut(index)
+                    .ok_or(BeaconStateError::ParticipationOutOfBounds(index))?;
 
-                if participation_flag_indices.contains(&flag_index) {
-                    let validator_participation = epoch_participation
-                        .get_mut(index)
-                        .ok_or(BeaconStateError::ParticipationOutOfBounds(index))?;
-
+                let mut flags = 0u8;
+                for &flag_index in &participation_flag_indices {
                     if !validator_participation.has_flag(flag_index)? {
                         validator_participation.add_flag(flag_index)?;
-                        proposer_reward_numerator
-                            .safe_add_assign(state.get_base_reward(index)?.safe_mul(weight)?)?;
+                        flags |= 1 << flag_index;
+                    }
+                }
+                flags
+            };
 
-                        // [New in Gloas:EIP7732]
-                        will_set_new_flag = true;
+            // Compute rewards and update progressive balances for newly set flags.
+            if new_flags != 0 {
+                let base_reward = state.get_base_reward(index)?;
+                for (flag_index, &weight) in PARTICIPATION_FLAG_WEIGHTS.iter().enumerate() {
+                    if new_flags & (1 << flag_index) != 0 {
+                        proposer_reward_numerator.safe_add_assign(base_reward.safe_mul(weight)?)?;
 
                         update_progressive_balances_on_attestation(
                             state,
@@ -225,6 +231,9 @@ pub mod altair_deneb {
                     }
                 }
             }
+
+            // [New in Gloas:EIP7732] Track if any new flag is set for this validator
+            let will_set_new_flag = new_flags != 0;
 
             // [New in Gloas:EIP7732] Add weight for same-slot attestations
             if is_gloas && will_set_new_flag && same_slot {
