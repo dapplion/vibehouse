@@ -110,8 +110,8 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### runs 1123-1128 (Mar 13) — all stable
-Spec completely stable — latest commit #5004 (release notes tooling, no code). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. Nightly green (3 consecutive). No dep updates available. cargo audit unchanged (1 rsa, 5 warnings). PR #4992 still OPEN, NOT MERGED, same head d76a278b0a. All tracked spec PRs (#4932, #4939, #4960, #4962, #5003) unchanged.
+### runs 1123-1129 (Mar 13) — all stable
+Spec completely stable — latest commit #5004 (release notes tooling, no code). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. No dep updates available. PR #4992 still OPEN, NOT MERGED, same head d76a278b0a. PR #4939 got wording-only commit (2b9e66eca3 "Refactor sentences for clarity/consistency") — adds index-1 rules to aggregate section, no semantic changes, our implementation already covers both paths. All tracked spec PRs (#4932, #4939, #4960, #4962, #5003) unchanged in substance.
 
 ### run 1122 (Mar 13) — dep update, all stable
 Spec completely stable — no new consensus-specs commits since #4940 (Mar 13). No new release. No new spec-test vectors. CI green. Updated derive-where 1.6.0→1.6.1. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, same head d76a278b0a. All tracked spec PRs (#4932, #4939, #4960, #4962, #5003) unchanged. cargo audit unchanged (1 rsa, 5 warnings).
