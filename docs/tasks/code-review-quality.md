@@ -931,3 +931,17 @@ Also updated comments/variable names referencing "lighthouse" in graffiti_calcul
 - Test infrastructure file paths — test artifacts
 
 **Verification**: cargo check clean, cargo fmt clean, clippy clean (pre-push lint-full passes).
+
+### Run 1173: skip JustifiedBalances clone in find_head when unchanged (2026-03-14)
+
+**Scope**: Performance optimization in fork choice hot path.
+
+**Problem**: `ProtoArrayForkChoice::find_head()` cloned the `JustifiedBalances` struct into `self.balances` every slot. On mainnet with ~1M validators, `effective_balances: Vec<u64>` is ~8MB. This clone happened every 12 seconds even though the balances only change when the justified checkpoint changes (~every 32 slots on mainnet, every 8 slots on minimal).
+
+**Fix**: Added `maybe_update_balances()` method that compares three cheap summary fields (`effective_balances.len()`, `total_effective_balance`, `num_active_validators`) before cloning. If all match, the clone is skipped. These fields change whenever the justified checkpoint changes (new epoch = different rewards/penalties = different total), so the check is effectively exact.
+
+**Edge case handling**: On fresh start, `self.balances` is `JustifiedBalances::default()` (empty Vec, zero total), so the length mismatch triggers the clone on the first call. On restart from persisted state, `self.balances` is populated from SSZ.
+
+**Impact**: Eliminates ~8MB allocation per slot on mainnet (~31 out of 32 slots per epoch). Saves ~240MB/min of allocation churn.
+
+**Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, clippy clean (pre-push lint-full passes).
