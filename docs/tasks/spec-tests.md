@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1169 (Mar 13) — reuse preimage buffer in compute_proposer_indices
+
+Spec stable: no new consensus-specs commits since last check. #5004 (release notes dependency section) is a docs-only change. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases (latest pre-release still v1.6.0-beta.0, our Gloas tests from custom alpha.3 build). cargo audit unchanged (1 rsa, no fix).
+
+Shipped: eliminated per-slot Vec allocation in `compute_proposer_indices` (beacon_state.rs). Previously allocated a new `seed.to_vec()` + appended 8 bytes on each slot iteration (8-32 times per call, called during epoch processing via `process_proposer_lookahead`). Now hoists the preimage buffer outside the loop and overwrites only the slot bytes each iteration. All 32 proposer tests, 18 EF epoch processing tests, 2 sanity tests, 9 fork choice tests pass. Clippy clean, lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1168 (Mar 13) — allocation optimizations, new fork choice tests verified
 
 Spec checked: 3 new commits since alpha.3 release — #5001 (parent_block_root in bid filtering key, MERGED), #4940 (initial Gloas fork choice tests, MERGED), #5002 (wording clarification for self-build envelope signature, MERGED). All already implemented/compatible:
