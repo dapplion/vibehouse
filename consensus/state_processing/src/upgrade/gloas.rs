@@ -1,6 +1,7 @@
 use crate::per_block_processing::is_valid_deposit_signature;
 use ssz_types::BitVector;
 use ssz_types::typenum::Unsigned;
+use std::collections::HashSet;
 use std::mem;
 use types::{
     Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
@@ -128,13 +129,13 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    // Collect validator pubkeys for lookup
-    let validator_pubkeys: Vec<PublicKeyBytes> =
+    // Collect validator pubkeys into a HashSet for O(1) lookup
+    let validator_pubkeys: HashSet<PublicKeyBytes> =
         state.validators().iter().map(|v| v.pubkey).collect();
 
     let pending_deposits = state.pending_deposits()?.clone();
     let mut new_pending_deposits = Vec::new();
-    let mut new_validator_pubkeys: Vec<PublicKeyBytes> = Vec::new();
+    let mut new_validator_pubkeys: HashSet<PublicKeyBytes> = HashSet::new();
 
     for deposit in pending_deposits.iter() {
         // If pubkey belongs to a validator, keep as validator deposit
@@ -172,7 +173,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
             signature: deposit.signature.clone(),
         };
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
-            new_validator_pubkeys.push(deposit.pubkey);
+            new_validator_pubkeys.insert(deposit.pubkey);
             new_pending_deposits.push(deposit.clone());
         }
     }
