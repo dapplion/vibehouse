@@ -1159,13 +1159,12 @@ impl ProtoArrayForkChoice {
                 return Ok(head.root);
             }
 
-            // Pre-compute weights once per child to avoid redundant O(validators)
-            // scans. max_by would re-compute weights on each comparison.
-            // Share the ancestor cache across siblings: children at the same level
-            // share the same node_slot, so ancestor lookups (keyed by vote root)
-            // are identical and can be reused across EMPTY/FULL weight calculations.
+            // Pre-compute weight and tiebreaker per child, then select the best
+            // via max_by without an intermediate Vec. Sharing the ancestor cache
+            // across siblings reuses ancestor lookups (children at the same level
+            // have the same node_slot).
             ancestor_cache.clear();
-            let weighted: Vec<_> = children
+            head = children
                 .into_iter()
                 .map(|child| {
                     let w = self.get_gloas_weight::<E>(
@@ -1177,28 +1176,18 @@ impl ProtoArrayForkChoice {
                         &mut ancestor_cache,
                         &active_votes,
                     );
-                    (child, w)
+                    let tb = self.get_payload_tiebreaker(
+                        &child,
+                        current_slot,
+                        ptc_quorum_threshold,
+                        proposer_boost_root,
+                    );
+                    (child, w, tb)
                 })
-                .collect();
-
-            head = weighted
-                .into_iter()
-                .max_by(|(a, wa), (b, wb)| {
-                    wa.cmp(wb).then_with(|| a.root.cmp(&b.root)).then_with(|| {
-                        let ta = self.get_payload_tiebreaker(
-                            a,
-                            current_slot,
-                            ptc_quorum_threshold,
-                            proposer_boost_root,
-                        );
-                        let tb = self.get_payload_tiebreaker(
-                            b,
-                            current_slot,
-                            ptc_quorum_threshold,
-                            proposer_boost_root,
-                        );
-                        ta.cmp(&tb)
-                    })
+                .max_by(|(a, wa, ta), (b, wb, tb)| {
+                    wa.cmp(wb)
+                        .then_with(|| a.root.cmp(&b.root))
+                        .then_with(|| ta.cmp(tb))
                 })
                 .ok_or_else(|| "find_head_gloas: no children despite non-empty check".to_string())?
                 .0;
