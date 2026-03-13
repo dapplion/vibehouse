@@ -110,6 +110,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 962 (Mar 13) — no spec changes, all stable
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
+- **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
+- **PR #5002**: still OPEN.
+- All other tracked PRs unchanged.
+- CI green. Nightly green. Docker build queued (runner scheduling). cargo audit unchanged (1 rsa, 5 warnings).
+
 ### run 961 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
 - **PR #5002** (wording clarification for self-build signature verification): got APPROVED by jtraglia (Mar 13). No code impact — our implementation already correct.
