@@ -28,6 +28,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 940 (Mar 13)
+- Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- **PR #4992 (PTC lookbehind)**: unchanged. 1 APPROVED (jtraglia Mar 12). Still OPEN. Branch `ptc-lookbehind` ready.
+- **PR #4940 (Gloas fork choice tests)**: new (Mar 12). Adds `test_on_execution_payload` + `on_execution_payload` step type + `head_payload_status` check + `execution_payload_envelope_<root>.ssz_snappy` files. **Our test runner already supports all of these** (`OnExecutionPayload` step, `check_head_payload_status`, envelope deserialization).
+- All other tracked PRs (#4954, #4843, #4898, #4892, #4939, #4932, #4960, #4962, #5002): all still OPEN.
+- CI run 23035917712 **fully green** (all 6 jobs passed). Nightly tests green.
+- cargo audit unchanged (1 vuln + 5 allowed). No dependency updates available.
+- No code changes needed.
+
 ### run 939 (Mar 13)
 - Spec scan: no new consensus-specs merges since #5001 (Mar 12). No new spec release (still v1.7.0-alpha.2, alpha.3 version bump merged but no release tag yet). No new spec-test vectors (still v1.6.0-beta.0).
 - **PR #4992 (PTC lookbehind)**: unchanged. 1 APPROVED (jtraglia Mar 12). Still OPEN. Branch `ptc-lookbehind` ready.
