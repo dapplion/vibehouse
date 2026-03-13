@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1101 (Mar 13) — all stable, no changes needed
+Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. Nightly green. cargo audit unchanged (1 rsa, 5 warnings). No dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, same head d76a278b0a. All tracked spec PRs unchanged.
+
 ### run 1100 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). CI green. cargo audit unchanged (1 rsa, 5 warnings). No dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), new commenter jihoonsong. All tracked spec PRs unchanged.
 
