@@ -28,14 +28,8 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### run 1101 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). CI green. Nightly green. cargo audit unchanged (1 rsa, 5 warnings). No dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, same head d76a278b0a. All tracked spec PRs unchanged.
-
-### run 1100 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). CI green. cargo audit unchanged (1 rsa, 5 warnings). No dep updates available. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia), new commenter jihoonsong. All tracked spec PRs unchanged.
-
-### run 1099 (Mar 13) — all stable, no changes needed
-Spec stable — no new spec-test vectors (still v1.6.0-beta.0). No new release (still v1.7.0-alpha.2). CI green. All tracked PRs unchanged.
+### runs 1099-1102 (Mar 13) — all stable, no changes needed
+Spec stable — no new release (still v1.7.0-alpha.2). No new spec-test vectors. PR #5002 merged (wording-only, no code change). PR #4940 merged (Gloas fork choice tests) — our handler already supports `on_execution_payload` steps and `head_payload_status` checks; vectors will be in next release. PR #4992 (PTC lookbehind) still OPEN, MERGEABLE, 1 APPROVED (jtraglia). Full codebase audit: zero clippy warnings, zero doc warnings, zero compiler warnings, no dep updates available. CI green. Nightly green.
 
 ### run 1095 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). Tracked PRs: #4932 OPEN, #4960 OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No cargo dep updates available. cargo audit unchanged (1 rsa).
