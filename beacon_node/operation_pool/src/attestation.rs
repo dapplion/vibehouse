@@ -20,6 +20,9 @@ pub struct AttMaxCover<'a, E: EthSpec> {
     pub att: CompactAttestationRef<'a, E>,
     /// Mapping of validator indices and their reward *numerators*.
     pub fresh_validators_rewards: HashMap<u64, u64>,
+    /// Cached sum of reward numerators, updated incrementally by `update_covering_set`
+    /// to avoid re-iterating the HashMap in `score()`.
+    reward_numerator_sum: u64,
 }
 
 impl<'a, E: EthSpec> AttMaxCover<'a, E> {
@@ -64,9 +67,11 @@ impl<'a, E: EthSpec> AttMaxCover<'a, E> {
                 Some((validator_index, reward))
             })
             .collect();
+        let reward_numerator_sum: u64 = fresh_validators_rewards.values().sum();
         Some(Self {
             att,
             fresh_validators_rewards,
+            reward_numerator_sum,
         })
     }
 
@@ -84,7 +89,7 @@ impl<'a, E: EthSpec> AttMaxCover<'a, E> {
             get_attestation_participation_flag_indices(state, &att_data, inclusion_delay, spec)
                 .ok()?;
 
-        let fresh_validators_rewards = att
+        let fresh_validators_rewards: HashMap<u64, u64> = att
             .indexed
             .attesting_indices()
             .iter()
@@ -110,9 +115,11 @@ impl<'a, E: EthSpec> AttMaxCover<'a, E> {
             })
             .collect();
 
+        let reward_numerator_sum: u64 = fresh_validators_rewards.values().sum();
         Some(Self {
             att,
             fresh_validators_rewards,
+            reward_numerator_sum,
         })
     }
 }
@@ -158,13 +165,19 @@ impl<'a, E: EthSpec> MaxCover for AttMaxCover<'a, E> {
         covered_validators: &HashMap<u64, u64>,
     ) {
         if self.att.data.slot == best_att.data.slot && self.att.data.index == best_att.data.index {
-            self.fresh_validators_rewards
-                .retain(|k, _| !covered_validators.contains_key(k))
+            self.fresh_validators_rewards.retain(|k, v| {
+                if covered_validators.contains_key(k) {
+                    self.reward_numerator_sum = self.reward_numerator_sum.saturating_sub(*v);
+                    false
+                } else {
+                    true
+                }
+            })
         }
     }
 
     fn score(&self) -> usize {
-        (self.fresh_validators_rewards.values().sum::<u64>() / PROPOSER_REWARD_DENOMINATOR) as usize
+        (self.reward_numerator_sum / PROPOSER_REWARD_DENOMINATOR) as usize
     }
 }
 
