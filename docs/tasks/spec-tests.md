@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1159 (Mar 13) — Vec<bool> filtered nodes in fork choice
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4940 (Gloas fork choice tests) merged — test generators only, no new vectors yet. PR #5001 (parent_block_root in bid filtering key) merged — already implemented in vibehouse. PR #5002 (wording clarification) — no code change needed. PR #5004 (release notes dependencies section) — tooling only. cargo audit unchanged (1 rsa, 5 allowed warnings). No semver-compatible dep updates.
+
+Shipped: replaced `HashSet<Hash256>` with `Vec<bool>` in `compute_filtered_nodes` (renamed from `compute_filtered_roots`). The filtered block tree computation previously built a HashSet of 32-byte block roots — each insert/lookup required hashing 32 bytes. Now uses a `Vec<bool>` indexed by node index for O(1) lookups with no hashing. Also eliminates the intermediate HashSet allocation and the second pass that collected roots into it. Updated `get_gloas_children` to accept `&[bool]` and check by index. Added `is_filtered` test helper. Fixed 2 collapsible_if clippy warnings. All 188 proto_array + 119 fork_choice + 8/8 EF fork choice spec tests pass. Clippy clean.
+
 ### run 1158 (Mar 13) — children index in find_head_gloas
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. cargo audit unchanged (1 rsa, 5 allowed warnings). No semver-compatible dep updates. CI green.
 
