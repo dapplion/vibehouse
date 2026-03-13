@@ -28,7 +28,7 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 1104-1105 (Mar 13) — all stable, no changes needed
+### runs 1104-1109 (Mar 13) — all stable, no changes needed
 Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new spec-test vectors (still v1.5.0). No new release (still v1.7.0-alpha.2). PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), latest review feedback from jihoonsong (Mar 13) — notes `get_ptc_assignment` still used in 3 sections. CI green. cargo audit unchanged (1 rsa). No cargo dep updates available (0 lockable).
 
 ### runs 1099-1103 (Mar 13) — all stable, no changes needed
