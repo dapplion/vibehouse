@@ -6,13 +6,14 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 ## Status: DONE
 
 ### Current results
-- **78/78 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
+- **79/79 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
 - **138/138 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass)
-- **check_all_files_accessed passes** — 209,677 files accessed, 122,748 intentionally excluded
-- All 8 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update)
+- **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
+- All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
 - rewards/inactivity_scores tests running across all forks (was missing)
 - 3 altair proposer_boost tests now pass (were skipped, sigp/lighthouse#8689 — fixed by implementing PR #4807)
+- Spec tracked to v1.7.0-alpha.3 (updated from alpha.2)
 
 ### Tasks
 - [x] Audit spec test runner — understand download, cache, run flow
@@ -27,6 +28,11 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, operations, random, rewards, sanity, ssz_static, transition
 
 ## Progress log
+
+### run 1165 (Mar 13) — update spec tests to v1.7.0-alpha.3
+New release v1.7.0-alpha.3 published today with 15 Gloas changes. Reviewed all 6 key spec PRs (#4897, #4884, #4916, #4923, #4918, #4948) — all already implemented in vibehouse. Downloaded new test vectors. Added `fork_choice_on_execution_payload` test handler for new Gloas fork choice tests from PR #4940 (on_execution_payload step + head_payload_status check + execution_payload_envelope files). Removed PayloadNotRevealed workaround from attestation processing — alpha.3 vectors include PR #4918 fix so index=1 attestations now properly sequence after on_execution_payload steps. Updated Makefile version pin. All 79/79 real-crypto + 138/138 fake-crypto tests pass. Clippy clean, pre-push lint-full passes.
+
+Open PRs to track: #4992 (cached PTCs in state — substantial change if merged), #4939 (request missing payload envelopes for index-1 attestations), #4979 (PTC Lookbehind — alternative to #4992).
 
 ### run 1160 (Mar 13) — shared ancestor cache across siblings in fork choice
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. Version bump to v1.7.0-alpha.3 tagged (commit d2cfa51c, Mar 11) but not yet published as a release. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4939 updated today. cargo audit unchanged (1 rsa, 5 allowed warnings). No semver-compatible dep updates.
