@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1150 (Mar 13) — bitlist_extend bulk byte optimization
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4992 same head d76a278b0a.
+
+Shipped: optimized `bitlist_extend` in operation_pool attestation storage — replaced O(n) bit-by-bit iteration (with bounds check per bit) with bulk byte copy + shift-OR for non-aligned cases. Added 5 unit tests (byte-aligned, non-aligned, empty, all-set, overflow). All 36 operation_pool tests pass. Clippy clean.
+
 ### run 1149 (Mar 13) — all stable, monitoring
 Spec stable: no new consensus-specs commits since #5004 (Mar 13). No new releases (still v1.7.0-alpha.2 published), no new spec-test vectors (still v1.6.0-beta.0). All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. CI green (clippy passed, other jobs running). cargo audit unchanged (1 rsa, no fix available). No semver-compatible dep updates. No outdated direct deps (only rand dev dep version mismatch in network tests). moonrepo/setup-rust@v1 Node.js 20 deprecation warning — upstream hasn't published Node.js 24 version yet, nothing actionable.
 
