@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1164 (Mar 13) — perf: eliminate redundant pubkey cache lookup in process_pending_deposits
+Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec-test vectors. No semver-compatible cargo updates.
+Optimized `process_pending_deposits` in single_pass.rs: the inner loop was doing two separate `pubkey_cache().get()` lookups for the same deposit pubkey — once at the top (line 1015) to check exit/withdrawal status, and again later (line 1057) to route the deposit. Replaced the second lookup with the cached `opt_validator_index` from the first. On mainnet with thousands of pending deposits per epoch, this avoids one HashMap lookup per deposit. 575/575 state_processing + 18/18 EF epoch_processing + 2/2 EF sanity tests pass. Clippy clean.
+
 ### run 1163 (Mar 13) — perf: reuse active_votes in proposer boost, eliminate double lookups in tiebreaker
 Spec stable — v1.7.0-alpha.3 now published (no new code since #5004). PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec-test vectors. No semver-compatible cargo updates.
 Two optimizations: (1) `should_apply_proposer_boost_gloas` now receives the pre-filtered `active_votes` slice instead of re-iterating all validators with per-validator zero-root/zero-balance checks. (2) `get_payload_tiebreaker` resolves the proto_node once and passes it to `should_extend_payload`, eliminating redundant HashMap lookups that previously occurred in both functions. 188/188 proto_array + 119/119 fork_choice + 8/8 EF fork choice tests pass. Clippy clean.
