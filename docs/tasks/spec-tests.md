@@ -28,6 +28,11 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1156 (Mar 13) — zero-clone maximum_cover
+Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. cargo audit unchanged (1 rsa, 5 allowed warnings). Nightly tests green. Rebased ptc-lookbehind branch (17 commits behind), 575/575 state_processing tests pass on branch.
+
+Shipped: eliminated clone in `maximum_cover` greedy selection loop. Previously, each selected item was cloned (including its entire covering set HashMap) so it could be referenced while updating other items. Now uses `split_at_mut` to borrow the best item in-place while mutating others, and `Option::take()` to move items into the result instead of cloning. Removed `Clone` bounds from `MaxCover` trait and associated types. For attestation packing, this eliminates one `HashMap<u64, u64>` clone per selected attestation per iteration (up to 128 per epoch). Also updated transitive deps (anstyle 1.0.14, colorchoice 1.0.5). All 36 operation_pool tests pass. Clippy clean.
+
 ### run 1155 (Mar 13) — cached attestation reward sum
 Spec stable: no new consensus-specs commits, releases, or spec-test vectors since last check. Latest published release still v1.7.0-alpha.2. All tracked PRs (#4932, #4939, #4960, #4962, #4992) OPEN, unchanged. PR #4940 (Gloas fork choice tests) merged — test generators only, no new vectors yet. cargo audit unchanged (1 rsa, 5 allowed warnings, no fixes).
 

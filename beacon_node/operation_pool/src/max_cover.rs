@@ -68,9 +68,8 @@ where
             .max_by_key(|&(_, score)| score)
             .map(|(i, _)| i);
 
-        let best_idx = match best_idx {
-            Some(i) => i,
-            None => return result,
+        let Some(best_idx) = best_idx else {
+            return result;
         };
 
         // Use split_at_mut to borrow the best item immutably while mutating others,
