@@ -110,6 +110,12 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 988 (Mar 13) — SSZ round-trip tests, no spec changes
+- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
+- PR #4992 (PTC lookbehind): still OPEN, MERGEABLE, 1 APPROVED (jtraglia). No new reviews.
+- Added 5 SSZ round-trip tests for proto_array Gloas fields (ProtoNode, VoteTracker, SszContainer). Verifies restart correctness for all ePBS fork choice state.
+- CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa). No compatible dep updates.
+
 ### run 987 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release (latest: v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0).
 - PR #4992 (PTC lookbehind): still OPEN, MERGEABLE, 1 APPROVED (jtraglia). No new reviews.
