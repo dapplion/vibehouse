@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 960 (Mar 13) — consolidated spec-update-post-alpha2.md, no spec changes
+Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new spec release (v1.7.0-alpha.3 version bumped but not released on GitHub). No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind): unchanged, 1 APPROVED (jtraglia Mar 12), still OPEN. All other tracked PRs still OPEN. CI green. Nightly green. cargo audit: 1 rsa advisory (no fix) + 5 allowed. Consolidated spec-update-post-alpha2.md progress log from 445→~140 lines.
+
 ### run 959 (Mar 13) — alpha.3 version bump, all changes already implemented
 consensus-specs bumped to v1.7.0-alpha.3 (#4999, Mar 11). Reviewed all commits between alpha.2 and alpha.3 — all consensus changes already implemented in vibehouse: #5001 (parent_block_root bid filtering — already had 3-tuple key), #4918 (attestation payload status check), #4923 (ignore block if parent payload unknown), #4897 (is_pending_validator deposit check), #4916 (deposit request refactor), #4948 (payload status constant reorder), #4930 (payload_states rename — naming-only), #4914 (execution proof validator_index — our own proof type). PR #4915 (proof dedup optimization) noted as future improvement. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind) now has 1 APPROVED (jtraglia Mar 12). New PR #5002 (wording clarification only). EF tests: 138/138 fake_crypto, 8/8 fork choice. cargo audit: 1 rsa advisory (no fix). CI green.
 
