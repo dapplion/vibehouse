@@ -28,6 +28,9 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1062 (Mar 13) — all stable, no changes needed
+Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new spec-test vectors (still v1.6.0-beta.0). No new release (still v1.7.0-alpha.2). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. CI in progress for transitive deps commit. cargo audit unchanged (1 rsa). No cargo dep updates available.
+
 ### run 1056 (Mar 13) — all stable, ptc-lookbehind rebased
 Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new spec-test vectors (still v1.6.0-beta.0). No new release (still v1.7.0-alpha.2). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. Rebased `ptc-lookbehind` onto main — 575/575 state_processing tests pass. CI from run 1055 dep update: check/clippy/fmt SUCCESS, ef-tests SUCCESS, others in progress. Nightly green (3 consecutive). cargo audit unchanged (1 rsa). No cargo dep updates available.
 
