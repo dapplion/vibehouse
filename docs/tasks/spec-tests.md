@@ -28,7 +28,10 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 759-959 consolidated (Mar 10-13) — spec stable, no code changes needed
+### run 959 (Mar 13) — alpha.3 version bump, all changes already implemented
+consensus-specs bumped to v1.7.0-alpha.3 (#4999, Mar 11). Reviewed all commits between alpha.2 and alpha.3 — all consensus changes already implemented in vibehouse: #5001 (parent_block_root bid filtering — already had 3-tuple key), #4918 (attestation payload status check), #4923 (ignore block if parent payload unknown), #4897 (is_pending_validator deposit check), #4916 (deposit request refactor), #4948 (payload status constant reorder), #4930 (payload_states rename — naming-only), #4914 (execution proof validator_index — our own proof type). PR #4915 (proof dedup optimization) noted as future improvement. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 (PTC lookbehind) now has 1 APPROVED (jtraglia Mar 12). New PR #5002 (wording clarification only). EF tests: 138/138 fake_crypto, 8/8 fork choice. cargo audit: 1 rsa advisory (no fix). CI green.
+
+### runs 759-958 consolidated (Mar 10-13) — spec stable, no code changes needed
 Spec completely stable — no new consensus-specs commits with consensus changes since #5001 (Mar 12), no new release (still v1.7.0-alpha.2), no new spec-test vectors (still v1.6.0-beta.0). All 11 tracked Gloas PRs remained OPEN throughout. PR #4992 (PTC lookbehind) evolved from head 215962a9 (blocked) to d76a278b0a (clean, 1 APPROVED jtraglia Mar 12). CI and nightly continuously green. EF spec tests: consistently 35/35 (minimal, fake_crypto), fork choice: 8/8 (real crypto). Workspace tests: 2643/2651 (8 web3signer timeout). cargo audit: 1 rsa advisory (no fix). Recent consensus-specs merges were all CI/tooling (#4984 remove Verkle, #4988-#4995 Python/reftest/release-drafter).
 
 Notable activities:

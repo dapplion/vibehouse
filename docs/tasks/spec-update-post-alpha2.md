@@ -3,7 +3,7 @@
 ## Objective
 Implement Gloas spec changes merged to consensus-specs master after v1.7.0-alpha.2.
 
-## Status: DONE (all changes already implemented)
+## Status: DONE (all changes already implemented — verified through v1.7.0-alpha.3)
 
 ## Changes identified (all already in codebase)
 
