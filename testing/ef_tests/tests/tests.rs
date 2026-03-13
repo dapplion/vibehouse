@@ -1057,6 +1057,12 @@ fn fork_choice_get_proposer_head() {
 }
 
 #[test]
+fn fork_choice_on_execution_payload() {
+    ForkChoiceHandler::<MinimalEthSpec>::new("on_execution_payload").run();
+    ForkChoiceHandler::<MainnetEthSpec>::new("on_execution_payload").run();
+}
+
+#[test]
 fn fork_choice_deposit_with_reorg() {
     ForkChoiceHandler::<MinimalEthSpec>::new("deposit_with_reorg").run();
     // There is no mainnet variant for this test.
