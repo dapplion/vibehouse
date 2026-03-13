@@ -28,8 +28,8 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
-### runs 1008-1051 consolidated (Mar 13) — spec completely stable
-Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2; v1.7.0-alpha.3 version bump in code but not formally released). No new spec-test vectors. PR #4992 (PTC lookbehind): continuously OPEN, APPROVED, MERGEABLE. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. CI and nightly continuously green. cargo audit unchanged (1 rsa).
+### runs 1008-1052 consolidated (Mar 13) — spec completely stable
+Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2; v1.7.0-alpha.3 version bump in code but not formally released). No new spec-test vectors. PR #4992 (PTC lookbehind): continuously OPEN, APPROVED, MERGEABLE. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. CI and nightly continuously green. cargo audit unchanged (1 rsa). Clippy clean, cargo doc clean, no dependency updates available.
 
 Notable activities:
 - Runs 1009, 1020, 1033, 1044, 1047, 1050: Rebased `ptc-lookbehind` branch onto main. 575/575 state_processing tests pass each time.
