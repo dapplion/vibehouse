@@ -8,13 +8,13 @@ use itertools::Itertools;
 /// * `element`: something contained in a set, and covered by the covering set of an item
 /// * `object`: something extracted from an item in order to comprise a solution
 ///   See: <https://en.wikipedia.org/wiki/Maximum_coverage_problem>
-pub trait MaxCover: Clone {
+pub trait MaxCover {
     /// The result type, of which we would eventually like a collection of maximal quality.
-    type Object: Clone;
+    type Object;
     /// The intermediate object type, which can be converted to `Object`.
-    type Intermediate: Clone;
+    type Intermediate;
     /// The type used to represent sets.
-    type Set: Clone;
+    type Set;
 
     /// Extract the intermediate object.
     fn intermediate(&self) -> &Self::Intermediate;
@@ -30,22 +30,6 @@ pub trait MaxCover: Clone {
     fn score(&self) -> usize;
 }
 
-/// Helper struct to track which items of the input are still available for inclusion.
-/// Saves removing elements from the work vector.
-struct MaxCoverItem<T> {
-    item: T,
-    available: bool,
-}
-
-impl<T> MaxCoverItem<T> {
-    fn new(item: T) -> Self {
-        MaxCoverItem {
-            item,
-            available: true,
-        }
-    }
-}
-
 /// Compute an approximate maximum cover using a greedy algorithm.
 ///
 /// * Time complexity: `O(limit * items_iter.len())`
@@ -55,11 +39,12 @@ where
     I: IntoIterator<Item = T>,
     T: MaxCover,
 {
-    // Construct an initial vec of all items, marked available.
-    let mut all_items: Vec<_> = items_iter
+    // Construct an initial vec of all items wrapped in Option. Items are taken (moved)
+    // when selected, avoiding expensive clones of covering set data (e.g. HashMaps).
+    let mut all_items: Vec<Option<T>> = items_iter
         .into_iter()
-        .map(MaxCoverItem::new)
-        .filter(|x| x.item.score() != 0)
+        .filter(|x| x.score() != 0)
+        .map(Some)
         .collect();
 
     metrics::set_int_gauge(
@@ -72,39 +57,38 @@ where
 
     for _ in 0..limit {
         // Select the item with the maximum score, computing score() once per item.
-        // Previously score() was called up to 3 times per item per iteration (filter,
-        // max_by_key, and update filter). For attestations, score() sums a HashMap of
-        // rewards, so reducing calls from 3n to n saves significant work.
         let best_idx = all_items
             .iter()
             .enumerate()
             .filter_map(|(i, x)| {
-                if !x.available {
-                    return None;
-                }
-                let score = x.item.score();
+                let item = x.as_ref()?;
+                let score = item.score();
                 (score != 0).then_some((i, score))
             })
             .max_by_key(|&(_, score)| score)
             .map(|(i, _)| i);
 
-        let best = match best_idx {
-            Some(i) => {
-                all_items[i].available = false;
-                all_items[i].item.clone()
-            }
+        let best_idx = match best_idx {
+            Some(i) => i,
             None => return result,
         };
 
-        // Update the covering sets of the other items, for the inclusion of the selected item.
-        // Items covered by the selected item can't be re-covered. Skip the score() != 0 check
-        // here — update_covering_set on an empty set is a no-op.
-        all_items.iter_mut().filter(|x| x.available).for_each(|x| {
-            x.item
-                .update_covering_set(best.intermediate(), best.covering_set())
-        });
+        // Use split_at_mut to borrow the best item immutably while mutating others,
+        // avoiding the need to clone the item (which includes its covering set).
+        let (before, rest) = all_items.split_at_mut(best_idx);
+        let (best_slot, after) = rest.split_first_mut().unwrap();
+        let best_item = best_slot.as_ref().unwrap();
+        let best_intermediate = best_item.intermediate();
+        let best_set = best_item.covering_set();
 
-        result.push(best);
+        for slot in before.iter_mut().chain(after.iter_mut()) {
+            if let Some(item) = slot.as_mut() {
+                item.update_covering_set(best_intermediate, best_set);
+            }
+        }
+
+        // Move the best item into the result (no clone needed).
+        result.push(best_slot.take().unwrap());
     }
 
     result
