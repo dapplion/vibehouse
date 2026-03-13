@@ -1100,6 +1100,7 @@ impl ProtoArrayForkChoice {
         spec: &ChainSpec,
     ) -> Result<Hash256, String> {
         let filtered_roots = self.compute_filtered_roots::<E>(current_slot);
+        let children_index = self.build_children_index();
         let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
             proposer_boost_root,
             equivocating_indices,
@@ -1117,7 +1118,7 @@ impl ProtoArrayForkChoice {
         };
 
         loop {
-            let children = self.get_gloas_children(&head, &filtered_roots);
+            let children = self.get_gloas_children(&head, &filtered_roots, Some(&children_index));
             if children.is_empty() {
                 self.gloas_head_payload_status = Some(head.payload_status as u8);
                 return Ok(head.root);
@@ -1194,14 +1195,33 @@ impl ProtoArrayForkChoice {
         roots
     }
 
+    /// Build a mapping from parent node index to child node indices.
+    ///
+    /// Used by `find_head_gloas` to avoid scanning all nodes when looking up
+    /// children in the EMPTY/FULL branch of `get_gloas_children`.
+    fn build_children_index(&self) -> HashMap<usize, Vec<usize>> {
+        let pa = &self.proto_array;
+        let mut index: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (i, node) in pa.nodes.iter().enumerate() {
+            if let Some(parent_idx) = node.parent {
+                index.entry(parent_idx).or_default().push(i);
+            }
+        }
+        index
+    }
+
     /// Get children of a Gloas fork choice node.
     ///
     /// - PENDING → [EMPTY, optionally FULL if payload revealed]
     /// - EMPTY/FULL → [PENDING children matching parent_payload_status]
+    ///
+    /// When `children_index` is provided, uses it for O(k) child lookup instead
+    /// of scanning all nodes (O(n)).
     fn get_gloas_children(
         &self,
         node: &GloasForkChoiceNode,
         filtered_roots: &HashSet<Hash256>,
+        children_index: Option<&HashMap<usize, Vec<usize>>>,
     ) -> Vec<GloasForkChoiceNode> {
         let pa = &self.proto_array;
 
@@ -1232,21 +1252,41 @@ impl ProtoArrayForkChoice {
                 if let Some(&parent_idx) = pa.indices.get(&node.root)
                     && let Some(parent_node) = pa.nodes.get(parent_idx)
                 {
-                    // Find all blocks whose parent is node.root with matching payload status
-                    for child_node in &pa.nodes {
-                        if child_node.parent != Some(parent_idx) {
-                            continue;
+                    // Use the pre-built children index when available, otherwise scan all nodes
+                    if let Some(idx) = children_index {
+                        if let Some(child_indices) = idx.get(&parent_idx) {
+                            for &ci in child_indices {
+                                if let Some(child_node) = pa.nodes.get(ci) {
+                                    if !filtered_roots.contains(&child_node.root) {
+                                        continue;
+                                    }
+                                    if self.get_parent_payload_status_of(child_node, parent_node)
+                                        == node.payload_status
+                                    {
+                                        children.push(GloasForkChoiceNode {
+                                            root: child_node.root,
+                                            payload_status: GloasPayloadStatus::Pending,
+                                        });
+                                    }
+                                }
+                            }
                         }
-                        if !filtered_roots.contains(&child_node.root) {
-                            continue;
-                        }
-                        if self.get_parent_payload_status_of(child_node, parent_node)
-                            == node.payload_status
-                        {
-                            children.push(GloasForkChoiceNode {
-                                root: child_node.root,
-                                payload_status: GloasPayloadStatus::Pending,
-                            });
+                    } else {
+                        for child_node in &pa.nodes {
+                            if child_node.parent != Some(parent_idx) {
+                                continue;
+                            }
+                            if !filtered_roots.contains(&child_node.root) {
+                                continue;
+                            }
+                            if self.get_parent_payload_status_of(child_node, parent_node)
+                                == node.payload_status
+                            {
+                                children.push(GloasForkChoiceNode {
+                                    root: child_node.root,
+                                    payload_status: GloasPayloadStatus::Pending,
+                                });
+                            }
                         }
                     }
                 }
@@ -1254,6 +1294,16 @@ impl ProtoArrayForkChoice {
                 children
             }
         }
+    }
+
+    /// Test helper: calls `get_gloas_children` without a pre-built children index.
+    #[cfg(test)]
+    fn get_gloas_children_test(
+        &self,
+        node: &GloasForkChoiceNode,
+        filtered_roots: &HashSet<Hash256>,
+    ) -> Vec<GloasForkChoiceNode> {
+        self.get_gloas_children(node, filtered_roots, None)
     }
 
     /// Determine the parent payload status of a child block relative to its parent.
@@ -3057,7 +3107,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let children = fc.get_gloas_children(&pending, &filtered);
+        let children = fc.get_gloas_children_test(&pending, &filtered);
         assert_eq!(children.len(), 1);
         assert_eq!(children[0].payload_status, GloasPayloadStatus::Empty);
         assert_eq!(children[0].root, root(1));
@@ -3082,7 +3132,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let children = fc.get_gloas_children(&pending, &filtered);
+        let children = fc.get_gloas_children_test(&pending, &filtered);
         assert_eq!(children.len(), 2);
 
         let statuses: Vec<_> = children.iter().map(|c| c.payload_status).collect();
@@ -3120,7 +3170,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Empty,
         };
 
-        let children = fc.get_gloas_children(&empty_node, &filtered);
+        let children = fc.get_gloas_children_test(&empty_node, &filtered);
         assert_eq!(children.len(), 1);
         assert_eq!(children[0].root, root(2));
         assert_eq!(children[0].payload_status, GloasPayloadStatus::Pending);
@@ -3156,7 +3206,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
 
-        let children = fc.get_gloas_children(&full_node, &filtered);
+        let children = fc.get_gloas_children_test(&full_node, &filtered);
         assert_eq!(children.len(), 1);
         assert_eq!(children[0].root, root(2));
         assert_eq!(children[0].payload_status, GloasPayloadStatus::Pending);
@@ -3166,7 +3216,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Empty,
         };
-        let empty_children = fc.get_gloas_children(&empty_node, &filtered);
+        let empty_children = fc.get_gloas_children_test(&empty_node, &filtered);
         assert!(empty_children.is_empty());
     }
 
@@ -5527,7 +5577,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Empty,
         };
-        let children = fc.get_gloas_children(&empty_node, &filtered);
+        let children = fc.get_gloas_children_test(&empty_node, &filtered);
         // Only root(2) should be returned (root(3) filtered out)
         assert_eq!(children.len(), 1);
         assert_eq!(children[0].root, root(2));
@@ -5544,7 +5594,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let children = fc.get_gloas_children(&pending, &filtered);
+        let children = fc.get_gloas_children_test(&pending, &filtered);
         // PENDING always generates an EMPTY child (doesn't look up proto_array for that)
         assert_eq!(children.len(), 1);
         assert_eq!(children[0].payload_status, GloasPayloadStatus::Empty);
@@ -5591,7 +5641,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Full,
         };
-        let full_children = fc.get_gloas_children(&full_node, &filtered);
+        let full_children = fc.get_gloas_children_test(&full_node, &filtered);
         assert_eq!(full_children.len(), 1);
         assert_eq!(full_children[0].root, root(2));
 
@@ -5600,7 +5650,7 @@ mod test_gloas_fork_choice {
             root: root(1),
             payload_status: GloasPayloadStatus::Empty,
         };
-        let empty_children = fc.get_gloas_children(&empty_node, &filtered);
+        let empty_children = fc.get_gloas_children_test(&empty_node, &filtered);
         assert_eq!(empty_children.len(), 1);
         assert_eq!(empty_children[0].root, root(3));
     }
@@ -5615,7 +5665,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Empty,
         };
 
-        let children = fc.get_gloas_children(&empty, &filtered);
+        let children = fc.get_gloas_children_test(&empty, &filtered);
         assert!(children.is_empty());
     }
 
@@ -5629,7 +5679,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
 
-        let children = fc.get_gloas_children(&full, &filtered);
+        let children = fc.get_gloas_children_test(&full, &filtered);
         assert!(children.is_empty());
     }
 
@@ -5664,7 +5714,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        let children = fc.get_gloas_children(&pending, &filtered);
+        let children = fc.get_gloas_children_test(&pending, &filtered);
 
         // Must have ONLY the EMPTY child — no FULL child without envelope
         assert_eq!(children.len(), 1, "should have exactly one child (EMPTY)");
@@ -7640,7 +7690,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Empty,
         };
 
-        let children = fc.get_gloas_children(&empty_node, &filtered);
+        let children = fc.get_gloas_children_test(&empty_node, &filtered);
         assert!(
             children.is_empty(),
             "EMPTY leaf with no child blocks should have no children"
@@ -7668,7 +7718,7 @@ mod test_gloas_fork_choice {
             payload_status: GloasPayloadStatus::Full,
         };
 
-        let children = fc.get_gloas_children(&full_node, &filtered);
+        let children = fc.get_gloas_children_test(&full_node, &filtered);
         assert!(
             children.is_empty(),
             "FULL leaf with no child blocks should have no children"
