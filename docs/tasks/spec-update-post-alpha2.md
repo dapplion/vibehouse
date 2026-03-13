@@ -110,11 +110,13 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### run 966 (Mar 13) — no spec changes, all stable
+### run 967 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- **PR #4939**: wording update (uses `beacon_block_root` for envelope request, matches our impl). Still OPEN.
+- **PR #4939**: rebased on master (fdfad73e31), no semantic changes. Still OPEN.
 - **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
-- All other tracked PRs unchanged. CI green. Nightly green (5 consecutive). Docker build queued (runner scheduling). cargo audit unchanged (1 rsa).
+- **PR #4940**: test file rename only. Still OPEN.
+- All 9 tracked PRs unchanged. CI green. Nightly green (3 consecutive). Docker build in progress. cargo audit unchanged (1 rsa).
+- Reviewed test coverage across state_processing/gloas.rs (~208 tests), fork_choice (~290 tests), beacon_chain/tests/gloas.rs (~290 tests). Coverage is comprehensive — no significant gaps found.
 
 ### runs 960-965 consolidated (Mar 13) — all stable, no code changes
 Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). All tracked PRs remained OPEN.
