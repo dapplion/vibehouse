@@ -110,41 +110,19 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### run 965 (Mar 13) — no spec changes, all stable
+### run 966 (Mar 13) — no spec changes, all stable
 - Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- All tracked PRs unchanged: #4992 (PTC lookbehind, 1 APPROVED, OPEN), #4939, #4940, #5002 all OPEN.
-- No dependency updates available. CI green. Nightly green (4 consecutive). cargo audit unchanged (1 rsa, 5 warnings).
-
-### run 964 (Mar 13) — PR #4939 wording update, no spec changes
-- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- **PR #4939** (index-1 attestation envelope validation): wording update Mar 13 ("Review feedback" commit). No semantic changes — our proactive implementation (run 701) still matches.
-- **PR #4940** (initial fork choice tests): updated Mar 12 (4 commits). Adds `on_execution_payload` step type and `head_payload_status` check. Our fork choice test handler already supports both.
+- **PR #4939**: wording update (uses `beacon_block_root` for envelope request, matches our impl). Still OPEN.
 - **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
-- CI green. Nightly green. cargo audit unchanged (1 rsa, 5 warnings).
+- All other tracked PRs unchanged. CI green. Nightly green (5 consecutive). Docker build queued (runner scheduling). cargo audit unchanged (1 rsa).
 
-### run 963 (Mar 13) — rebased ptc-lookbehind branch, all stable
-- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
-- Rebased `ptc-lookbehind` branch onto main (was 37 commits behind). Clean rebase, 575/575 state_processing tests pass, clippy clean. Pushed.
-- All other tracked PRs unchanged. PR #4939, #4940 still OPEN.
-- CI green. Nightly green (3 consecutive). cargo audit unchanged (1 rsa, 5 warnings). No dependency patch updates available.
-
-### run 962 (Mar 13) — no spec changes, all stable
-- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- **PR #4992 (PTC lookbehind)**: unchanged, 1 APPROVED (jtraglia), MERGEABLE. Still OPEN.
-- **PR #5002**: still OPEN.
-- All other tracked PRs unchanged.
-- CI green. Nightly green. Docker build queued (runner scheduling). cargo audit unchanged (1 rsa, 5 warnings).
-
-### run 961 (Mar 13) — no spec changes, all stable
-- Spec scan: no new consensus-specs commits since #5001 (Mar 12). No new release or spec-test vectors.
-- **PR #5002** (wording clarification for self-build signature verification): got APPROVED by jtraglia (Mar 13). No code impact — our implementation already correct.
-- **PR #4992 (PTC lookbehind)**: unchanged, APPROVED, MERGEABLE. Still OPEN.
-- All other tracked PRs: all still OPEN.
-- CI green. Nightly green. cargo audit unchanged (1 rsa, 5 warnings).
-
-### run 960 (Mar 13) — consolidated progress logs, no spec changes
-- Consolidated spec-update-post-alpha2.md progress log: 445→~140 lines. Runs 898-959 and 746-897 merged into summaries.
+### runs 960-965 consolidated (Mar 13) — all stable, no code changes
+Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). All tracked PRs remained OPEN.
+- Run 964: PR #4939 got wording update ("Review feedback"), no semantic changes — our implementation still matches.
+- Run 963: Rebased `ptc-lookbehind` branch onto main. Clean rebase, 575/575 tests pass.
+- Run 961: PR #5002 got APPROVED (jtraglia). No code impact.
+- Run 960: Consolidated progress log (445→140 lines).
+- CI and nightly continuously green. cargo audit unchanged (1 rsa, 5 warnings).
 
 ### runs 925-959 consolidated (Mar 13) — PR #5001 implemented, PTC lookbehind approaching merge
 Spec stable — no new consensus-specs commits with consensus changes since #5001 (Mar 12), no new release, no new spec-test vectors. All tracked PRs remained OPEN.
