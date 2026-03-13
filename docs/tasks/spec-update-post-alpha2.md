@@ -110,119 +110,16 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
-### run 1096 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
+### runs 1058-1097 consolidated (Mar 13) — all stable, no code changes needed
+Spec completely stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). CI and nightly continuously green. cargo audit unchanged (1 rsa, 5 warnings). No semver-compatible dep updates available.
 
-### run 1095 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1094 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1092 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates. cargo audit unchanged (1 rsa, no fix available).
-
-### run 1091 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1090 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1089 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. Codebase audit: zero clippy/compiler warnings, zero unwraps in production consensus code, no actionable TODOs. No dep updates.
-
-### run 1088 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1087 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, APPROVED, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1086 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, APPROVED, MERGEABLE, same head d76a278b0a. CI green. No dep updates.
-
-### run 1085 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, APPROVED, MERGEABLE, same head d76a278b0a. CI green. Nightly green (5 consecutive). No dep updates.
-
-### run 1084 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, APPROVED, MERGEABLE, same head d76a278b0a. CI green. Nightly green (4 consecutive). Docker build queued. No dep updates.
-
-### run 1083 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors. Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. Nightly green (3 consecutive). No dep updates.
-
-### run 1082 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. No dep updates. cargo audit unchanged (1 rsa).
-
-### run 1081 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. Nightly green. No dep updates. cargo audit unchanged (1 rsa).
-
-### run 1080 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. No dep updates.
-
-### run 1079 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. No dep updates. cargo audit unchanged (1 rsa).
-
-### run 1078 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. Nightly green. No dep updates. cargo audit unchanged (1 rsa).
-
-### run 1077 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). Tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head, 1 APPROVED (jtraglia). CI green. Nightly green. No dep updates.
-
-### run 1076 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2, latest published v1.6.1). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, 1 APPROVED (jtraglia). CI green. No compatible dep updates.
-
-### run 1075 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2, latest published v1.6.1). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, 1 APPROVED (jtraglia). PR #4954 (fork choice ms): OPEN, MERGEABLE. CI green. No compatible dep updates.
-
-### run 1074 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green. No compatible dep updates.
-
-### run 1073 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green. No compatible dep updates.
-
-### run 1072 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green. Nightly green. No compatible dep updates.
-
-### run 1071 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green. No compatible dep updates.
-
-### run 1070 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #4940 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). Tracked spec-test PRs (#4932, #4939, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green. No compatible dep updates.
-
-### run 1069 (Mar 13) — PR #4940 merged (fork choice tests), no code changes needed
-PR #4940 ("Add initial fork choice tests for Gloas") merged — test-only, adds `on_execution_payload` and `head_payload_status` fork choice test steps which our handler already supports. No new spec-test release yet (still v1.6.0-beta.0). No new spec release (still v1.7.0-alpha.2). Remaining tracked spec-test PRs (#4932, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a. CI green (nightly green). No compatible dep updates.
-
-### run 1067 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, same head d76a278b0a, no new activity. CI green (nightly green 3 consecutive). No compatible dep updates. cargo audit unchanged (1 rsa, 5 warnings).
-
-### run 1066 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a, no new activity. CI green (nightly green). No compatible dep updates.
-
-### run 1065 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a, no new activity. CI green (nightly green). cargo audit unchanged (1 rsa, 5 warnings). No compatible dep updates.
-
-### run 1064 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a, no new activity. CI green. cargo audit unchanged (1 rsa, 5 warnings). No compatible dep updates.
-
-### run 1063 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (consensus-spec-tests still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a, no new activity since Mar 12. CI 5/6 passed (beacon_chain running). Clippy clean. cargo audit unchanged (1 rsa, 5 warnings). No compatible dep updates.
-
-### run 1062 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. CI in progress for transitive deps commit. cargo audit unchanged (1 rsa, 5 warnings). No compatible dep updates.
-
-### run 1061 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a — no rebase needed (2 task-doc commits behind). CI in progress — 4/6 passed (check+clippy, ef-tests, network+op_pool, http_api; unit+beacon_chain running). cargo audit unchanged (1 rsa, 5 warnings). No compatible dep updates.
-
-### run 1060 (Mar 13) — all stable, no changes needed
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a — no rebase needed (1 task-doc commit behind). CI in progress for transitive deps commit — 4/6 passed (check+clippy, ef-tests, network+op_pool, http_api). cargo audit unchanged (1 rsa, 5 warnings). No compatible dep updates.
-
-### run 1059 (Mar 13) — all stable, ptc-lookbehind rebased
-Spec stable — no new consensus-specs commits since #5002 (Mar 13). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.6.0-beta.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a. Rebased `ptc-lookbehind` onto main — 575/575 state_processing tests pass. CI in progress (check+clippy, ef-tests, network+op_pool passed; http_api, unit, beacon_chain running). cargo audit: 1 vulnerability (rsa), 5 warnings (unmaintained transitive deps — unchanged).
-
-### run 1058 (Mar 13) — all stable, PR #5002 merged (wording-only)
-Spec stable — PR #5002 ("Make wording clearer for payload signature verification") merged today, wording-only, no code impact. No new release (still v1.7.0-alpha.2, version bump commit exists but no tag). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), same head d76a278b0a. CI in progress (3/6 jobs passed — check+clippy, ef-tests, network+op_pool). cargo audit unchanged (1 rsa). No actionable dep updates.
-
-### run 1057 (Mar 13) — all stable, ptc-lookbehind rebased
-Spec stable — no new consensus-specs commits since #5001 (Mar 12). No new release (still v1.7.0-alpha.2). No new spec-test vectors (still v1.5.0). All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN. PR #4992 (PTC lookbehind): OPEN, 1 APPROVED (jtraglia), MERGEABLE. Rebased `ptc-lookbehind` onto main — 575/575 tests pass. CI in progress (transitive deps commit). Nightly green (3 consecutive). cargo audit unchanged (1 rsa).
+Notable events:
+- Run 1069: PR #4940 ("Add initial fork choice tests for Gloas") merged — test-only, our handler already supports the new steps
+- Run 1058: PR #5002 ("Make wording clearer for payload signature verification") merged — wording-only, no code impact
+- Run 1059: Rebased `ptc-lookbehind` onto main — 575/575 state_processing tests pass
+- PR #4992 (PTC lookbehind): continuously OPEN, MERGEABLE, 1 APPROVED (jtraglia), same head d76a278b0a
+- Tracked spec-test PRs (#4932, #4960) still OPEN
+- Codebase audit (run 1089): zero clippy/compiler warnings, zero unwraps in production consensus code, no actionable TODOs
 
 ### runs 1055 + 1019-1054 consolidated (Mar 13) — all stable, ptc-lookbehind kept rebased
 Spec completely stable — no new consensus-specs commits since #5001 (Mar 12). No new release (latest published: v1.7.0-alpha.2). No new spec-test vectors. All tracked spec-test PRs (#4932, #4939, #4940, #4960, #4962) still OPEN.
