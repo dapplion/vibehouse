@@ -314,9 +314,9 @@ impl<T: BeaconChainTypes> VerifiedSyncContribution<T> {
         let pubkey_bytes = chain
             .validator_pubkey_bytes(aggregator_index as usize)?
             .ok_or(Error::UnknownValidatorIndex(aggregator_index as usize))?;
-        let sync_subcommittee_pubkeys = chain
-            .sync_committee_at_next_slot(contribution.get_slot())?
-            .get_subcommittee_pubkeys(subcommittee_index)?;
+        let sync_committee = chain.sync_committee_at_next_slot(contribution.get_slot())?;
+        let sync_subcommittee_pubkeys =
+            sync_committee.get_subcommittee_pubkeys(subcommittee_index)?;
 
         if !sync_subcommittee_pubkeys.contains(&pubkey_bytes) {
             return Err(Error::AggregatorNotInCommittee { aggregator_index });
@@ -370,9 +370,9 @@ impl<T: BeaconChainTypes> VerifiedSyncContribution<T> {
 
         // Gather all validator pubkeys that signed this contribution.
         let participant_pubkeys = sync_subcommittee_pubkeys
-            .into_iter()
+            .iter()
             .zip(contribution.aggregation_bits.iter())
-            .filter_map(|(pubkey, bit)| bit.then_some(pubkey))
+            .filter_map(|(pubkey, bit)| bit.then_some(*pubkey))
             .collect::<Vec<_>>();
 
         // Ensure that all signatures are valid.

@@ -51,7 +51,7 @@ impl<E: EthSpec> SyncCommittee<E> {
     pub fn get_subcommittee_pubkeys(
         &self,
         subcommittee_index: usize,
-    ) -> Result<Vec<PublicKeyBytes>, Error> {
+    ) -> Result<&[PublicKeyBytes], Error> {
         let start_subcommittee_index = subcommittee_index.safe_mul(E::sync_subcommittee_size())?;
         let end_subcommittee_index =
             start_subcommittee_index.safe_add(E::sync_subcommittee_size())?;
@@ -62,7 +62,6 @@ impl<E: EthSpec> SyncCommittee<E> {
                 end_subcommittee_index,
                 subcommittee_index,
             })
-            .map(|s| s.to_vec())
     }
 
     /// For a given `pubkey`, finds all subcommittees that it is included in, and maps the
