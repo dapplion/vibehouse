@@ -29,6 +29,28 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1225 (Mar 14) — add envelope download and processing for range sync
+
+Implemented full range sync envelope support for Gloas (ePBS) blocks. This was the "known limitation" from run 1224 — range sync didn't download execution payload envelopes, causing StateRootMismatch when syncing chains with FULL (envelope-delivered) Gloas blocks.
+
+Changes across 6 files (+593 lines):
+
+**Beacon chain layer:**
+- `RpcBlock` extended with optional `envelope` field (+ `envelope()`, `set_envelope()`, `take_envelope()` methods)
+- `process_envelope_for_sync` method on BeaconChain: loads blinded block to validate bid match, verifies envelope signature, optionally calls EL newPayload, applies `process_execution_payload_envelope` state transition, caches post-envelope state, updates fork choice EMPTY→FULL, persists envelope
+- `process_chain_segment` extracts envelopes from RpcBlocks before filter_chain_segment, processes each envelope after its block imports successfully
+
+**Network layer:**
+- `SyncRequestId::EnvelopesByRoot` variant + `EnvelopesByRootRequestId` struct for tracking envelope RPC requests
+- `SyncMessage::RpcEnvelope` variant for routing envelope responses through sync manager
+- `SyncNetworkContext`: `PendingEnvelopeBatch` struct, `request_envelopes_if_needed()` (detects Gloas blocks in coupled batch, fires ExecutionPayloadEnvelopesByRoot RPC, stashes blocks), `on_envelope_by_root_response()` (accumulates responses, attaches to blocks on stream termination)
+- `SyncManager::rpc_envelope_received` routes completed batches to range/backfill sync
+- `on_range_components_response` intercepts coupled blocks to check for envelope needs
+- `inject_error` handles envelope request failures (delivers batch without envelopes, blocks retry naturally via StateRootMismatch)
+- Router wired: `ExecutionPayloadEnvelopesByRoot` responses forwarded to sync manager (was previously dropped)
+
+770/770 beacon_chain tests pass (FORK_NAME=gloas), 163/163 network tests pass, 9/9 EF fork choice tests pass. Full workspace clippy clean.
+
 ### run 1224 (Mar 14) — fix load_parent pre-envelope state for FULL parents
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.5.0 on consensus-spec-tests). cargo audit unchanged (1 rsa). CI from run 1223 (1fea43800) — check+clippy, ef-tests, network+op_pool all passed; beacon_chain, http_api, unit tests still running at run start.
@@ -43,7 +65,7 @@ Shipped: full envelope re-application in `load_parent` (19d4b51a5). When the cac
 
 Other audits (all false positives): envelope_processing.rs payment index calculation (bounds correct: index in [SLOTS_PER_EPOCH, 2*SLOTS_PER_EPOCH)), zero hash edge case in is_parent_block_full (intentional, tested), builder index bounds in withdrawals (validated by construction), missing recompute_head after process_self_build_envelope (recompute IS at publish_blocks.rs:623), payload attestation doppelganger bypass (correct: payload attestations are NOT slashable — no PayloadAttestationSlashing type in EIP-7732).
 
-Known limitation: range sync doesn't download envelopes for Gloas blocks. Blocks with self-build (value=0) and empty execution requests work correctly (only latest_block_hash matters). Blocks with external builders or non-empty execution requests would produce StateRootMismatch during range sync. Fix requires adding envelope download to the range sync pipeline (using ExecutionPayloadEnvelopesByRoot RPC).
+Known limitation (fixed in run 1225): range sync didn't download envelopes for Gloas blocks. Blocks with self-build (value=0) and empty execution requests work correctly (only latest_block_hash matters). Blocks with external builders or non-empty execution requests would produce StateRootMismatch during range sync. Fixed by adding envelope download to the range sync pipeline (using ExecutionPayloadEnvelopesByRoot RPC).
 
 ### run 1223 (Mar 14) — defensive error handling in fork choice Gloas methods
 
