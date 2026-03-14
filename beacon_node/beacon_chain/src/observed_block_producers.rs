@@ -145,10 +145,9 @@ impl<E: EthSpec> ObservedBlockProducers<E> {
 
         if let Some(block_roots) = self.items.get(&key) {
             let block_already_known = block_roots.contains(&block_root);
-            let no_prev_known_blocks =
-                block_roots.difference(&HashSet::from([block_root])).count() == 0;
+            let has_other_blocks = block_roots.iter().any(|r| r != &block_root);
 
-            if !no_prev_known_blocks {
+            if has_other_blocks {
                 Ok(SeenBlock::Slashable)
             } else if block_already_known {
                 Ok(SeenBlock::Duplicate)

@@ -102,10 +102,9 @@ impl<E: EthSpec> ObservedSlashable<E> {
         };
 
         if let Some(block_roots) = self.items.get(&key) {
-            let no_prev_known_blocks =
-                block_roots.difference(&HashSet::from([block_root])).count() == 0;
+            let has_other_blocks = block_roots.iter().any(|r| r != &block_root);
 
-            Ok(!no_prev_known_blocks)
+            Ok(has_other_blocks)
         } else {
             Ok(false)
         }
