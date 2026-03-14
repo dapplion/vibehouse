@@ -1364,3 +1364,19 @@ All remaining `.clone()` calls are either:
 - Borrow checker constraints (simultaneous read+write)
 
 **Conclusion**: Phase 4 (Performance) is comprehensively complete. Runs 1151-1214 eliminated heap allocations across all hot paths: BLS verification, attestation processing, fork choice head computation, state transitions, gossip processing, merkle proofs, and crypto formatting.
+
+### Run 1216: fix self-build envelope signature verification (2026-03-14)
+
+**Scope**: Spec conformance audit found that self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) had signature verification entirely skipped. Per spec, `verify_execution_payload_envelope_signature` always verifies — for self-build it uses the proposer's validator pubkey instead of a builder pubkey.
+
+**Root cause**: Original implementation assumed self-build envelopes skip verification, based on an incorrect interpretation. The comment referenced a non-existent `is_valid_indexed_execution_payload_envelope` function. The VC already signs self-build envelopes with the proposer's key (correct), but other nodes skipped verifying that signature (incorrect).
+
+**Fix**:
+- `execution_payload_envelope_signature_set` (signature_sets.rs): handle self-build by looking up `state.validators[state.latest_block_header.proposer_index].pubkey`
+- `process_execution_payload_envelope` (envelope_processing.rs): remove `!= BUILDER_INDEX_SELF_BUILD` guard
+- `verify_payload_envelope_for_gossip` (gloas_verification.rs): remove `!= BUILDER_INDEX_SELF_BUILD` guard
+- Tests updated: 3 tests changed from "any signer accepted" to "wrong signer rejected", 2 new tests added (empty signature rejected, proposer signature verified in gossip)
+
+**Impact**: Without this fix, any node could forge self-build envelopes with arbitrary payloads for any slot — the empty/forged signature would be accepted. The bid's block_hash commitment provides some protection, but the signature is an additional cryptographic guarantee.
+
+**Verification**: 575/575 state_processing tests, 79/79 EF spec tests (real crypto), 139/139 EF spec tests (fake crypto), full workspace lint-full passes.

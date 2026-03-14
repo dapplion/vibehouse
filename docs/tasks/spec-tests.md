@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1216 (Mar 14) — fix self-build envelope signature verification
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, mergeable=clean. cargo audit unchanged (1 rsa, no fix). No new spec test releases.
+
+Spec conformance audit found that self-build envelope signature verification was being skipped entirely. Per spec, `verify_execution_payload_envelope_signature` verifies self-build envelopes against the proposer's validator pubkey. Fixed in `execution_payload_envelope_signature_set`, `process_execution_payload_envelope`, and `verify_payload_envelope_for_gossip`. Also audited 10 recent optimization commits for semantic bugs — all correct. 575/575 state_processing tests, 79/79 EF spec tests (real crypto), 139/139 EF spec tests (fake crypto) pass.
+
 ### run 1207 (Mar 14) — avoid Vec allocation in sync contribution aggregation bit check
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3). Note: v1.7.0-alpha.3 spec test vectors have NOT been published yet (latest release is v1.6.0-beta.0).
