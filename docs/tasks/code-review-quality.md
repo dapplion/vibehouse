@@ -1230,3 +1230,17 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Spec check**: No new consensus-specs commits since run 1205 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.7.0-alpha.3).
 
 **Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests (including bls_batch_verify), 52/52 signature state_processing tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1208: remove unnecessary AggregateSignature clone in verify functions (2026-03-14)
+
+**Scope**: Remove unnecessary `.clone()` calls on `blst_core::AggregateSignature` in `fast_aggregate_verify` and `aggregate_verify`.
+
+**Problem**: `BlstAggregateSignature::fast_aggregate_verify` (line 257) and `aggregate_verify` (line 271) both did `self.0.clone().to_signature()`, cloning the entire `AggregateSignature` before converting to `Signature`. However, `AggregateSignature::to_signature()` takes `&self` — proven by `serialize()` (line 241) which calls `self.0.to_signature()` without clone successfully.
+
+**Fix**: Changed both call sites from `self.0.clone().to_signature()` to `self.0.to_signature()`, eliminating two unnecessary cryptographic type clones per signature verification.
+
+**Impact**: `fast_aggregate_verify` is called for every attestation and sync committee signature verification. `aggregate_verify` is used in batch verification paths. Each clone copies the internal BLS point representation (~96 bytes). On mainnet with ~128 attestations per block, this eliminates ~128 unnecessary aggregate signature copies per block import.
+
+**Spec check**: No new consensus-specs commits since run 1207 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.7.0-alpha.3).
+
+**Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests (including bls_batch_verify), 52/52 signature state_processing tests, full workspace clippy clean (lint-full + make lint), pre-push hook passes.
