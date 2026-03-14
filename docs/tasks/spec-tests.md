@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1181 (Mar 14) — derive Copy for BeaconBlockHeader, EnrForkId, FinalizedExecutionBlock
+
+Spec update: two new PRs merged since last check. #5001 (add `parent_block_root` to bid filtering key, Mar 12) — already compliant, our `ObservedExecutionBids` already uses the 3-tuple `(slot, parent_block_hash, parent_block_root)`. #5002 (wording clarification for self-build envelope signature verification, Mar 13) — docs-only, no code change needed. #4979 (PTC Lookbehind) is now CLOSED (was OPEN). #4939 is also closed. #4992 (cached PTCs in state) still OPEN.
+
+Shipped: derived Copy for 3 small fixed-size types: `BeaconBlockHeader` (104 bytes: Slot + u64 + 3×Hash256), `EnrForkId` (16 bytes: 2×[u8;4] + Epoch), `FinalizedExecutionBlock` (80 bytes: 2×Hash256 + 2×u64). Removed ~20 `.clone()` calls across 19 files: state upgrades (7 files), envelope_processing (3 sites), block_replayer (4 sites), beacon_state, beacon_fork_choice_store, test files (block_tests, inject_slashing, per_block_processing tests). BeaconBlockHeader is the most impactful — cloned in per-slot hot paths (envelope processing, block replay, state root computation).
+
+Open PRs to track: #4992 (cached PTCs in state — approaching merge).
+
 ### run 1180 (Mar 14) — return fixed-size arrays from int_to_bytes functions
 
 Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
