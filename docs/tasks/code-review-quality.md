@@ -1156,3 +1156,20 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 - The Vec is bounded by the per-epoch consolidation churn limit (typically single-digit entries), so the allocation is minimal compared to cloning the entire list.
 
 **Verification**: 575/575 state_processing tests, 19/19 EF epoch_processing + consolidation tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1202: avoid intermediate Vec allocation in PTC committee computation (2026-03-14)
+
+**Scope**: Eliminate unnecessary Vec allocation in `get_ptc_committee`, the per-slot Gloas PTC selection function.
+
+**Problem**: `get_ptc_committee` concatenated all beacon committee validator indices into an intermediate `Vec<u64>` before doing weighted selection. On mainnet with 64 committees per slot and ~64 validators per committee, this allocated a ~32KB Vec (~4000 entries × 8 bytes) on every call. The Vec was only used for random-access lookups (`indices[i % total]`) during the ~16-20 iteration selection loop.
+
+**Fix**: Replaced the intermediate `indices` Vec with direct committee-walk lookups. For each candidate, the function now walks the committees array to find the validator at the flat index. The committee walk is O(committees_per_slot) per candidate (~64 comparisons), but the total work (~20 × 64 = 1280 comparisons) is much cheaper than the eliminated allocation + 4000 push operations + cache pressure from the 32KB Vec.
+
+**Changes**:
+- Replaced `.sum()` with `.fold(0, |acc, c| acc.saturating_add(...))` (disallowed method)
+- Replaced `indices` Vec construction with inline committee walk using `.get()` (no panicking index)
+- Used `saturating_sub` for the remaining-index arithmetic (no arithmetic side effects)
+
+**Spec check**: No new consensus-specs commits since run 1201 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix).
+
+**Verification**: 374/374 Gloas+PTC+payload_attestation tests, 15/15 EF operations spec tests, full workspace clippy clean (lint-full + all targets), pre-push hook passes.
