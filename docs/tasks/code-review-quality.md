@@ -1185,3 +1185,28 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 **Spec check**: No new consensus-specs commits since run 1202 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0).
 
 **Verification**: 52/52 signature tests, 5/5 attester_slashing tests, clippy clean, fmt clean.
+
+### Run 1205: eliminate heap allocations in merkle_root_from_branch (2026-03-14)
+
+**Scope**: Remove all Vec heap allocations from `merkle_root_from_branch`, the core merkle proof verification function.
+
+**Problem**: `merkle_root_from_branch` used `Vec<u8>` for the running hash, allocating on every loop iteration:
+- Line 385: `leaf.as_slice().to_vec()` — heap-allocated a 32-byte Vec from a fixed-size H256
+- Line 390: `hash32_concat(...)[..].to_vec()` — heap-allocated a Vec from the `[u8; 32]` return of `hash32_concat`
+- Line 392-394: `extend_from_slice` + `hash(&input)` — grew the Vec to 64 bytes, then `hash()` returned a new `Vec<u8>`
+- Line 398: `H256::from_slice(&merkle_root)` — runtime length check on what was always 32 bytes
+
+Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard), that's 32+ heap allocations per proof verification.
+
+**Fix**: Replaced the `Vec<u8>` with a `[u8; 32]` stack array throughout:
+- `leaf.into()` for the initial conversion (zero-cost, H256 is B256 which is `[u8; 32]`)
+- `hash32_concat(a, b)` directly returns `[u8; 32]` — no `.to_vec()` needed
+- The `else` branch previously used `hash()` (returns `Vec<u8>`) with manual concatenation; replaced with `hash32_concat(&merkle_root, leaf.as_slice())` which is semantically identical (`hash(h1 || h2)`)
+- `H256::from(merkle_root)` for the final conversion (zero-cost `From<[u8; 32]>`)
+- Removed unused `hash` import from `ethereum_hashing`
+
+**Impact**: `merkle_root_from_branch` is called by `verify_merkle_proof` which is used in deposit verification (`verify_deposit`), blob sidecar KZG inclusion proofs, and data column sidecar proofs. Eliminates ~depth heap allocations per call (typically 32).
+
+**Spec check**: No new consensus-specs commits since run 1204 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0).
+
+**Verification**: 7/7 merkle_proof tests (including quickcheck), 2/2 EF genesis tests, full workspace clippy clean (lint-full), pre-push hook passes.
