@@ -284,21 +284,32 @@ pub(crate) fn build_data_column_sidecars<E: EthSpec>(
         }
     }
 
-    let sidecars: Vec<Arc<DataColumnSidecar<E>>> = columns
-        .into_iter()
-        .zip(column_kzg_proofs)
-        .enumerate()
-        .map(|(index, (col, proofs))| {
-            Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
-                index: index as u64,
-                column: DataColumn::<E>::from(col),
-                kzg_commitments: kzg_commitments.clone(),
-                kzg_proofs: VariableList::from(proofs),
-                signed_block_header: signed_block_header.clone(),
-                kzg_commitments_inclusion_proof: kzg_commitments_inclusion_proof.clone(),
-            }))
-        })
-        .collect();
+    let columns_len = columns.len();
+    let mut columns_iter = columns.into_iter().zip(column_kzg_proofs).enumerate();
+    let mut sidecars: Vec<Arc<DataColumnSidecar<E>>> = Vec::with_capacity(columns_len);
+
+    // Clone shared fields for all columns except the last, which moves them.
+    for _ in 1..columns_len {
+        let (index, (col, proofs)) = columns_iter.next().ok_or("expected more columns")?;
+        sidecars.push(Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
+            index: index as u64,
+            column: DataColumn::<E>::from(col),
+            kzg_commitments: kzg_commitments.clone(),
+            kzg_proofs: VariableList::from(proofs),
+            signed_block_header: signed_block_header.clone(),
+            kzg_commitments_inclusion_proof: kzg_commitments_inclusion_proof.clone(),
+        })));
+    }
+    if let Some((index, (col, proofs))) = columns_iter.next() {
+        sidecars.push(Arc::new(DataColumnSidecar::Fulu(DataColumnSidecarFulu {
+            index: index as u64,
+            column: DataColumn::<E>::from(col),
+            kzg_commitments,
+            kzg_proofs: VariableList::from(proofs),
+            signed_block_header,
+            kzg_commitments_inclusion_proof,
+        })));
+    }
 
     Ok(sidecars)
 }
