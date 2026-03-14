@@ -1056,3 +1056,23 @@ These allocations were discarded after each call, creating unnecessary allocatio
 **Also reviewed**: Checked 3 post-alpha.3 consensus-specs PRs (#5001, #4940, #5002) — all already handled by vibehouse.
 
 **Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, clippy clean.
+
+### Run 1183: reuse active_votes allocation in find_head_gloas (2026-03-14)
+
+**Scope**: Allocation optimization in the per-slot Gloas fork choice hot path.
+
+**Problem**: `find_head_gloas` allocated a fresh `Vec<(&VoteTracker, u64)>` every slot, collecting all active validators' vote references and balances. On mainnet with ~1M validators, each entry is 16 bytes (reference + u64), totaling ~12MB of allocation per slot. This Vec was discarded after each call.
+
+**Fix**: Added `gloas_active_votes_buf: Vec<(u32, u64)>` field to `ProtoArrayForkChoice`. Instead of storing vote references (which create lifetime issues preventing field storage), the buffer stores `(vote_index, balance)` pairs. Inner loops access vote data via `self.votes.0[idx as usize]`. The buffer is cleared and refilled each call but retains its heap allocation across slots.
+
+**Changes**:
+- Added `gloas_active_votes_buf` field to `ProtoArrayForkChoice`, initialized empty in `from_parts` and `new`
+- Changed `find_head_gloas` to fill `self.gloas_active_votes_buf` instead of allocating a local Vec
+- Changed `get_gloas_weight` and `should_apply_proposer_boost_gloas` signature: `active_votes: &[(u32, u64)]` instead of `&[(&VoteTracker, u64)]`
+- Inner loops now access votes via index: `let vote = &self.votes.0[vote_idx as usize]`
+- Added `compute_active_votes()` test helper for test functions that need one-off active vote slices
+- Note: `ancestor_cache` HashMap could NOT be made a field due to `&mut` borrow conflict with `&self` method calls
+
+**Impact**: Eliminates ~12MB of allocation per slot on mainnet (after first slot). The extra array index lookup per vote in the inner loop is negligible compared to the saved allocation.
+
+**Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, full workspace clippy clean (lint-full), pre-push hook passes.
