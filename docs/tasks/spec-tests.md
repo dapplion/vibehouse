@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1177 (Mar 14) — reuse find_head_gloas allocations
+
+Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix). Only semver-compatible dep update: cc 1.2.56 → 1.2.57.
+
+Shipped: reuse `filtered_nodes` Vec<bool> and `children_index` HashMap allocations across `find_head_gloas` calls by storing them as struct fields on `ProtoArrayForkChoice`. Previously allocated fresh each slot (~20-37KB), now cleared and refilled in-place. All 188 proto_array tests, 119 fork_choice tests, 9/9 EF fork choice spec tests pass. Clippy clean.
+
+Open PRs to track: #4992 (cached PTCs in state — 1 approval, approaching merge), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1172 (Mar 14) — avoid cloning SyncCommittee in sync aggregate processing
 
 Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. #4992 has 1 approval (jtraglia). No new spec test releases. cargo audit unchanged (1 rsa, no fix).

@@ -988,3 +988,19 @@ Also updated comments/variable names referencing "lighthouse" in graffiti_calcul
 **Clone removals**: 32 files changed, ~25 `.clone()` calls removed across production and test code. Replaced with either direct copy (field access), dereference (`*getter()`), or removal of redundant clone call.
 
 **Verification**: 715/715 types tests, 575/575 state_processing tests, 307/307 fork_choice+proto_array tests, 69/69 EF SSZ static tests, 72/72 slasher+slashing_protection tests, 30/30 store tests. Full workspace clippy clean (lib + all targets + benches), pre-push lint-full passes.
+
+### Run 1177: reuse filtered_nodes and children_index allocations in find_head_gloas (2026-03-14)
+
+**Scope**: Allocation reuse in the per-slot Gloas fork choice hot path.
+
+**Problem**: `find_head_gloas` is called every slot and allocated two fresh data structures each time:
+1. `filtered_nodes: Vec<bool>` (~4-5KB, one entry per proto_array node) via `compute_filtered_nodes`
+2. `children_index: HashMap<usize, Vec<usize>>` (~16-32KB) via `build_children_index`
+
+These allocations were discarded after each call, creating unnecessary allocation churn on the per-slot hot path.
+
+**Fix**: Added `gloas_filtered_buf: Vec<bool>` and `gloas_children_buf: HashMap<usize, Vec<usize>>` fields to `ProtoArrayForkChoice`. The `compute_filtered_nodes_into` method now reuses the Vec (clear + resize), and `build_children_index_into` clears the HashMap values but keeps the bucket storage. Both methods fill the buffers in-place. Added `from_parts` constructor for SSZ deserialization. Test-facing `compute_filtered_nodes` wrapper returns a clone of the buffer.
+
+**Impact**: Eliminates ~20-37KB of heap allocation per slot on mainnet. The allocations now happen once and are reused across all subsequent `find_head_gloas` calls. The `ancestor_cache` HashMap was already reused (from a prior optimization); this extends the same pattern to the remaining two per-call allocations.
+
+**Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, clippy clean.
