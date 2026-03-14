@@ -29,6 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1241 (Mar 14) — full spec audit, all alpha.3 changes verified, CI green
+
+Spec stable: no new Gloas spec changes after v1.7.0-alpha.3. Post-alpha.3 merges (#5001 parent_block_root bid filtering, #5002 wording clarification, #5004 release notes) — all non-functional or already implemented. No new spec test releases. Nightly green (10+ consecutive).
+
+**Alpha.2→Alpha.3 spec diff audit** (comprehensive review of all Gloas changes):
+- PayloadStatus enum values reordered (EMPTY=0, FULL=1, PENDING=2): vibehouse uses Rust enum, behavior correct, fork choice tests pass
+- `blob_data_available` field in PayloadAttestationMessage: implemented in fork_choice.rs + validator_services
+- `payload_data_availability_vote` store field: implemented as `ptc_blob_data_available_weight` in proto_array
+- `is_payload_data_available` function: implemented, wired into `should_extend_payload`
+- `should_extend_payload` requires both `is_payload_timely AND is_payload_data_available`: implemented
+- `is_pending_validator` function: implemented in process_operations.rs with 15+ unit tests
+- `process_deposit_request` updated routing: implemented (checks `!is_pending_validator` before builder path)
+- `validate_on_attestation` new check (index==1 requires payload in payload_states): implemented in fork_choice.rs:1194
+- Block gossip: `GloasParentPayloadUnknown` IGNORE check: implemented with tests
+- Bid filtering three-tuple `(slot, parent_block_hash, parent_block_root)`: implemented in observed_execution_bids.rs
+- Anchor initialization: `payload_timeliness_vote` and `payload_data_availability_vote` initialized to True: implemented
+- Store renames (`execution_payload_states`→`payload_states`, `ptc_vote`→`payload_timeliness_vote`): internal naming differs but semantics match
+- RPC envelope serving range: spec says MAY return ResourceUnavailable for old blocks; our impl skips silently (spec-compliant)
+
+All tracked spec PRs still OPEN: #4992, #4843, #4939, #4898, #4892, #4954, #4840. None approaching merge.
+
+**Previous CI failure**: `gloas_reconstruct_states_with_pruned_payloads` failed on commit 36c8756 — already fixed in f88f7d24e (Gloas payloads skip pruning). Current CI run on HEAD (7405f69) in progress, 4/6 jobs passing.
+
 ### run 1240 (Mar 14) — spec stable, codebase audit, all green
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (9+ consecutive: Mar 6-14). CI for latest commit (dc6d36d6f) in progress — check+clippy passed. All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
