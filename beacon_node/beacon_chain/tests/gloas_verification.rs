@@ -1998,10 +1998,9 @@ async fn attestation_mixed_duplicate_and_new_passes() {
 // =============================================================================
 
 #[tokio::test]
-async fn envelope_self_build_skips_signature_verification() {
-    // Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) skip BLS
-    // signature verification. Verify that an envelope with an empty signature
-    // passes all checks when it matches a self-build block.
+async fn envelope_self_build_verifies_proposer_signature() {
+    // Per spec, self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD)
+    // must be signed with the proposer's validator key using DOMAIN_BEACON_BUILDER.
     let harness = gloas_harness(2).await;
 
     let head = harness.chain.head_snapshot();
@@ -2036,7 +2035,72 @@ async fn envelope_self_build_skips_signature_verification() {
     envelope_msg.builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
     envelope_msg.payload.block_hash = committed_bid.message.block_hash;
 
-    // Use an empty signature — self-build should not require signature verification
+    // Sign with the proposer's key
+    let proposer_index = block.message().proposer_index() as usize;
+    let proposer_kp = &KEYPAIRS[proposer_index];
+    let state = &head.beacon_state;
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = harness.spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = envelope_msg.signing_root(domain);
+    let signature = proposer_kp.sk.sign(signing_root);
+
+    let signed_envelope = SignedExecutionPayloadEnvelope {
+        message: envelope_msg,
+        signature,
+    };
+
+    let result = harness
+        .chain
+        .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
+    assert!(
+        result.is_ok(),
+        "self-build envelope with proposer signature should pass, got {:?}",
+        result.err()
+    );
+
+    let verified = result.unwrap();
+    assert_eq!(verified.beacon_block_root(), head_root);
+}
+
+#[tokio::test]
+async fn envelope_self_build_empty_signature_rejected() {
+    // An unsigned self-build envelope should be rejected by gossip validation.
+    let harness = gloas_harness(2).await;
+
+    let head = harness.chain.head_snapshot();
+    let head_root = head.beacon_block_root;
+    let head_slot = head.beacon_block.slot();
+
+    let block = harness
+        .chain
+        .store
+        .get_blinded_block(&head_root)
+        .unwrap()
+        .unwrap();
+    let committed_bid = block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .unwrap();
+
+    assert_eq!(
+        committed_bid.message.builder_index,
+        types::consts::gloas::BUILDER_INDEX_SELF_BUILD,
+    );
+
+    harness.chain.observed_payload_envelopes.lock().clear();
+
+    let mut envelope_msg = ExecutionPayloadEnvelope::<E>::empty();
+    envelope_msg.beacon_block_root = head_root;
+    envelope_msg.slot = head_slot;
+    envelope_msg.builder_index = types::consts::gloas::BUILDER_INDEX_SELF_BUILD;
+    envelope_msg.payload.block_hash = committed_bid.message.block_hash;
+
     let signed_envelope = SignedExecutionPayloadEnvelope {
         message: envelope_msg,
         signature: Signature::empty(),
@@ -2046,13 +2110,10 @@ async fn envelope_self_build_skips_signature_verification() {
         .chain
         .verify_payload_envelope_for_gossip(Arc::new(signed_envelope));
     assert!(
-        result.is_ok(),
-        "self-build envelope with empty signature should pass, got {:?}",
-        result.err()
+        matches!(result, Err(PayloadEnvelopeError::InvalidSignature)),
+        "self-build envelope with empty signature should be rejected, got {:?}",
+        result.as_ref().err()
     );
-
-    let verified = result.unwrap();
-    assert_eq!(verified.beacon_block_root(), head_root);
 }
 
 // =============================================================================

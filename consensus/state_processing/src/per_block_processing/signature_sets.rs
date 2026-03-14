@@ -739,10 +739,12 @@ where
     ))
 }
 
-/// A signature set that is valid if an execution payload envelope was signed by the builder.
+/// A signature set that is valid if an execution payload envelope was signed correctly.
 ///
-/// This checks the `SignedExecutionPayloadEnvelope` signature against the builder's public key
-/// using the `DOMAIN_BEACON_BUILDER` domain.
+/// For external builders, this checks against the builder's public key.
+/// For self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD), this checks
+/// against the proposer's validator public key per the spec.
+/// Uses the `DOMAIN_BEACON_BUILDER` domain in both cases.
 pub fn execution_payload_envelope_signature_set<'a, E, F>(
     state: &'a BeaconState<E>,
     get_builder_pubkey: F,
@@ -755,8 +757,20 @@ where
 {
     let builder_index = signed_envelope.message.builder_index;
 
-    let builder_pubkey =
-        get_builder_pubkey(builder_index).ok_or(Error::ValidatorUnknown(builder_index))?;
+    let pubkey = if builder_index == types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
+        // Self-build: use the proposer's validator pubkey
+        let proposer_index = state.latest_block_header().proposer_index as usize;
+        state
+            .validators()
+            .get(proposer_index)
+            .ok_or(Error::ValidatorUnknown(proposer_index as u64))?
+            .pubkey
+            .decompress()
+            .map(Cow::Owned)
+            .map_err(|_| Error::ValidatorUnknown(proposer_index as u64))?
+    } else {
+        get_builder_pubkey(builder_index).ok_or(Error::ValidatorUnknown(builder_index))?
+    };
 
     let epoch = signed_envelope.message.slot.epoch(E::slots_per_epoch());
     let domain = spec.get_domain(
@@ -770,7 +784,7 @@ where
 
     Ok(SignatureSet::single_pubkey(
         &signed_envelope.signature,
-        builder_pubkey,
+        pubkey,
         message,
     ))
 }

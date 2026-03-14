@@ -3656,10 +3656,10 @@ async fn test_gloas_gossip_payload_envelope_block_hash_mismatch_rejected() {
 
 /// Gloas gossip: self-build payload envelope with matching fields is ACCEPTED.
 ///
-/// Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) skip BLS
-/// signature verification. This test constructs an envelope that matches the
-/// committed bid's builder_index, block_hash, and slot — verifying the handler
-/// accepts it and propagates Accept to gossip.
+/// Per spec, self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) must
+/// be signed with the proposer's validator key. This test constructs an envelope
+/// that matches the committed bid's builder_index, block_hash, and slot, signs it
+/// with the proposer's key, and verifies the handler accepts it.
 #[tokio::test]
 async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
     if test_spec::<E>().gloas_fork_epoch.is_none() {
@@ -3682,20 +3682,35 @@ async fn test_gloas_gossip_payload_envelope_self_build_accepted() {
     // of the self-build envelope that was already processed during block production)
     rig.chain.observed_payload_envelopes.lock().clear();
 
-    // Construct a self-build envelope matching all committed bid fields
-    let envelope = SignedExecutionPayloadEnvelope {
-        message: ExecutionPayloadEnvelope {
-            payload: ExecutionPayloadGloas {
-                block_hash: bid.message.block_hash,
-                ..Default::default()
-            },
-            execution_requests: <_>::default(),
-            builder_index: bid.message.builder_index, // BUILDER_INDEX_SELF_BUILD
-            beacon_block_root: head_root,
-            slot: head_slot,
-            state_root: Hash256::ZERO,
+    let envelope_msg = ExecutionPayloadEnvelope {
+        payload: ExecutionPayloadGloas {
+            block_hash: bid.message.block_hash,
+            ..Default::default()
         },
-        signature: bls::Signature::empty(),
+        execution_requests: <_>::default(),
+        builder_index: bid.message.builder_index, // BUILDER_INDEX_SELF_BUILD
+        beacon_block_root: head_root,
+        slot: head_slot,
+        state_root: Hash256::ZERO,
+    };
+
+    // Sign with the proposer's key
+    let state = &head.beacon_state;
+    let proposer_index = head.beacon_block.message().proposer_index() as usize;
+    let keypairs = generate_deterministic_keypairs(VALIDATOR_COUNT);
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = rig.chain.spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+    let signing_root = envelope_msg.signing_root(domain);
+    let signature = keypairs[proposer_index].sk.sign(signing_root);
+
+    let envelope = SignedExecutionPayloadEnvelope {
+        message: envelope_msg,
+        signature,
     };
 
     rig.network_beacon_processor

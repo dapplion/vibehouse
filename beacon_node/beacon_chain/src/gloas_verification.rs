@@ -855,12 +855,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Check 6: Signature verification
         //
-        // Self-build envelopes (builder_index == BUILDER_INDEX_SELF_BUILD) are signed
-        // with an empty/infinity signature — they have no external builder and the
-        // proposer is always authorized for their own slot. Skip BLS verification for
-        // these; the bid already committed to the block_hash and builder_index (checked
-        // above), so accepting the envelope is safe.
-        if envelope.builder_index != BUILDER_INDEX_SELF_BUILD {
+        // Per spec, all envelopes must have valid signatures. For external builders,
+        // verify against the builder's pubkey. For self-build envelopes
+        // (BUILDER_INDEX_SELF_BUILD), verify against the proposer's validator pubkey.
+        // Both use DOMAIN_BEACON_BUILDER.
+        {
             let head = self.canonical_head.cached_head();
             let state = &head.snapshot.beacon_state;
 
