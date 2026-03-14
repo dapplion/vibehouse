@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1224 (Mar 14) — fix load_parent pre-envelope state for FULL parents
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.5.0 on consensus-spec-tests). cargo audit unchanged (1 rsa). CI from run 1223 (1fea43800) — check+clippy, ef-tests, network+op_pool all passed; beacon_chain, http_api, unit tests still running at run start.
+
+Deep audit of beacon chain block import, execution layer, and validator client code. Found one real correctness bug in `load_parent` (block_verification.rs):
+
+When a child block references a FULL parent (envelope was delivered), `load_parent` needs the post-envelope state. The DB path in `get_advanced_hot_state` re-applies envelopes correctly, but the cache path could return a pre-envelope state (e.g., from block import before envelope processing, or state advance timer). Previously, only `latest_block_hash` was patched — but the envelope also mutates execution requests (deposits, withdrawals, consolidations), builder payments, and the availability bit. Missing these mutations causes `StateRootMismatch` when the envelope has non-trivial state changes.
+
+Shipped: full envelope re-application in `load_parent` (19d4b51a5). When the cached state is pre-envelope for a FULL parent AND the state is at the parent's slot, `load_parent` now re-applies the full envelope from the store (trying full envelope, then blinded fallback). Falls back to `latest_block_hash`-only patch when: (1) envelope not in store (range sync without envelope download — documented known limitation), or (2) state has been slot-advanced past parent's slot. Pattern matches `get_advanced_hot_state`'s DB path.
+
+402/402 Gloas beacon_chain tests, 18/18 block_verification tests, 78/78 store tests, 67/67 Gloas network tests, 9/9 EF fork choice tests pass. Full clippy lint clean.
+
+Other audits (all false positives): envelope_processing.rs payment index calculation (bounds correct: index in [SLOTS_PER_EPOCH, 2*SLOTS_PER_EPOCH)), zero hash edge case in is_parent_block_full (intentional, tested), builder index bounds in withdrawals (validated by construction), missing recompute_head after process_self_build_envelope (recompute IS at publish_blocks.rs:623), payload attestation doppelganger bypass (correct: payload attestations are NOT slashable — no PayloadAttestationSlashing type in EIP-7732).
+
+Known limitation: range sync doesn't download envelopes for Gloas blocks. Blocks with self-build (value=0) and empty execution requests work correctly (only latest_block_hash matters). Blocks with external builders or non-empty execution requests would produce StateRootMismatch during range sync. Fix requires adding envelope download to the range sync pipeline (using ExecutionPayloadEnvelopesByRoot RPC).
+
 ### run 1223 (Mar 14) — defensive error handling in fork choice Gloas methods
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, same head d76a278b0a. No new spec test releases (latest v1.5.0 on consensus-spec-tests). cargo audit unchanged (1 rsa). CI from run 1222 (13b7ed7c1) in progress — all 6 jobs running.
