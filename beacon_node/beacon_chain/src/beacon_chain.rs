@@ -3275,7 +3275,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Convert to IndexedPayloadAttestation
         let indexed = IndexedPayloadAttestation {
             attesting_indices: verified_attestation.attesting_indices().to_vec().into(),
-            data: verified_attestation.attestation().data.clone(),
+            data: verified_attestation.attestation().data,
             signature: verified_attestation.attestation().signature.clone(),
         };
 
@@ -3327,7 +3327,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         Ok(PayloadAttestation {
             aggregation_bits,
-            data: message.data.clone(),
+            data: message.data,
             signature: agg_sig,
         })
     }
@@ -3421,7 +3421,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .iter()
             .filter(|att| att.data.beacon_block_root == parent_block_root)
         {
-            match aggregated.entry(att.data.clone()) {
+            match aggregated.entry(att.data) {
                 std::collections::hash_map::Entry::Vacant(entry) => {
                     entry.insert(att.clone());
                 }
@@ -5223,7 +5223,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
                             let filtered = IndexedPayloadAttestation {
                                 attesting_indices: new_indices.into(),
-                                data: indexed.data.clone(),
+                                data: indexed.data,
                                 signature: indexed.signature.clone(),
                             };
 

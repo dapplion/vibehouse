@@ -10,7 +10,9 @@ use tree_hash_derive::TreeHash;
 /// payload was revealed on time and blob data is available.
 ///
 /// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#payloadattestationdata>
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Encode, Decode, TreeHash,
+)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[context_deserialize(ForkName)]
 pub struct PayloadAttestationData {
@@ -98,7 +100,7 @@ mod tests {
         };
         let data_true = PayloadAttestationData {
             payload_present: true,
-            ..data_false.clone()
+            ..data_false
         };
         assert_ne!(data_false.tree_hash_root(), data_true.tree_hash_root());
     }
@@ -113,25 +115,25 @@ mod tests {
         };
         let data_true = PayloadAttestationData {
             blob_data_available: true,
-            ..data_false.clone()
+            ..data_false
         };
         assert_ne!(data_false.tree_hash_root(), data_true.tree_hash_root());
     }
 
     #[test]
-    fn equality_and_clone() {
+    fn equality_and_copy() {
         let data = PayloadAttestationData {
             beacon_block_root: Hash256::repeat_byte(0xdd),
             slot: Slot::new(42),
             payload_present: true,
             blob_data_available: true,
         };
-        let cloned = data.clone();
-        assert_eq!(data, cloned);
+        let copied = data;
+        assert_eq!(data, copied);
 
         let different = PayloadAttestationData {
             slot: Slot::new(43),
-            ..data.clone()
+            ..data
         };
         assert_ne!(data, different);
     }

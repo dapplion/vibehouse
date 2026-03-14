@@ -2866,7 +2866,7 @@ async fn test_gloas_gossip_payload_attestation_accumulates_ptc_weight() {
     let sk0 = &rig._harness.validator_keypairs[validator_index_0 as usize].sk;
     let message_0 = types::PayloadAttestationMessage {
         validator_index: validator_index_0,
-        data: data.clone(),
+        data,
         signature: sk0.sign(signing_root),
     };
 
@@ -5081,7 +5081,7 @@ async fn test_gloas_sse_event_payload_attestation() {
     let mut att_rx = event_handler.subscribe_payload_attestation();
 
     let (message, _validator_index, _ptc_bit) = build_valid_payload_attestation_message(&rig, true);
-    let expected_data = message.data.clone();
+    let expected_data = message.data;
 
     rig.network_beacon_processor
         .process_gossip_payload_attestation(junk_message_id(), junk_peer_id(), message)

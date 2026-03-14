@@ -457,7 +457,7 @@ mod produce_tests {
             }
             Ok(PayloadAttestationMessage {
                 validator_index,
-                data: data.clone(),
+                data: *data,
                 signature: bls::Signature::empty(),
             })
         }
@@ -681,7 +681,7 @@ mod produce_tests {
             blob_data_available: true,
         };
 
-        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data.clone());
+        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data);
         let _m_pool = mock.mock_post_beacon_pool_payload_attestations();
 
         let epoch = current_slot.epoch(slots_per_epoch);
@@ -725,7 +725,7 @@ mod produce_tests {
             blob_data_available: false,
         };
 
-        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data.clone());
+        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data);
         let _m_pool = mock.mock_post_beacon_pool_payload_attestations();
 
         let epoch = current_slot.epoch(slots_per_epoch);
@@ -892,7 +892,7 @@ mod produce_tests {
             blob_data_available: false,
         };
 
-        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data.clone());
+        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data);
         let _m_pool = mock.mock_post_beacon_pool_payload_attestations();
 
         let epoch = current_slot.epoch(slots_per_epoch);
@@ -936,7 +936,7 @@ mod produce_tests {
             blob_data_available: true,
         };
 
-        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data.clone());
+        let _m_data = mock.mock_get_validator_payload_attestation_data(attestation_data);
         let _m_pool = mock.mock_post_beacon_pool_payload_attestations();
 
         let epoch = current_slot.epoch(slots_per_epoch);
@@ -1153,7 +1153,7 @@ mod produce_tests {
             }
             Ok(PayloadAttestationMessage {
                 validator_index,
-                data: data.clone(),
+                data: *data,
                 signature: bls::Signature::empty(),
             })
         }

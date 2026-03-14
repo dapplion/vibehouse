@@ -2394,7 +2394,7 @@ async fn post_payload_attestation_mixed_valid_invalid() {
     let keypair = generate_deterministic_keypair(ptc[0] as usize);
     let valid_message = PayloadAttestationMessage {
         validator_index: ptc[0],
-        data: data.clone(),
+        data,
         signature: keypair.sk.sign(message_root),
     };
 
@@ -3256,7 +3256,7 @@ async fn get_payload_attestation_pool_after_post() {
 
     let message = PayloadAttestationMessage {
         validator_index,
-        data: data.clone(),
+        data,
         signature,
     };
 

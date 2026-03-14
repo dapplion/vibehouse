@@ -137,12 +137,11 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
 
         // Spec: Full nodes SHOULD provide the LightClientOptimisticUpdate with the highest
         // attested_header.beacon.slot (if multiple, highest signature_slot) as selected by fork choice
-        let is_latest_optimistic = match &self.latest_optimistic_update.read().clone() {
-            Some(latest_optimistic_update) => {
-                latest_optimistic_update.is_latest(attested_slot, signature_slot)
-            }
-            None => true,
-        };
+        let is_latest_optimistic = self
+            .latest_optimistic_update
+            .read()
+            .as_ref()
+            .is_none_or(|u| u.is_latest(attested_slot, signature_slot));
         if is_latest_optimistic {
             // can create an optimistic update, that is more recent
             *self.latest_optimistic_update.write() = Some(LightClientOptimisticUpdate::new(
@@ -155,12 +154,11 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
 
         // Spec: Full nodes SHOULD provide the LightClientFinalityUpdate with the highest
         // attested_header.beacon.slot (if multiple, highest signature_slot) as selected by fork choice
-        let is_latest_finality = match &self.latest_finality_update.read().clone() {
-            Some(latest_finality_update) => {
-                latest_finality_update.is_latest(attested_slot, signature_slot)
-            }
-            None => true,
-        };
+        let is_latest_finality = self
+            .latest_finality_update
+            .read()
+            .as_ref()
+            .is_none_or(|u| u.is_latest(attested_slot, signature_slot));
 
         if is_latest_finality & !cached_parts.finalized_block_root.is_zero() {
             // Immediately after checkpoint sync the finalized block may not be available yet.
@@ -251,13 +249,16 @@ impl<T: BeaconChainTypes> LightClientServerCache<T> {
         sync_committee_period: u64,
         chain_spec: &ChainSpec,
     ) -> Result<Option<LightClientUpdate<T::EthSpec>>, BeaconChainError> {
-        if let Some(latest_light_client_update) = self.latest_light_client_update.read().clone() {
-            let latest_lc_update_sync_committee_period = latest_light_client_update
-                .signature_slot()
-                .epoch(T::EthSpec::slots_per_epoch())
-                .sync_committee_period(chain_spec)?;
-            if latest_lc_update_sync_committee_period == sync_committee_period {
-                return Ok(Some(latest_light_client_update));
+        {
+            let guard = self.latest_light_client_update.read();
+            if let Some(latest) = guard.as_ref() {
+                let cached_period = latest
+                    .signature_slot()
+                    .epoch(T::EthSpec::slots_per_epoch())
+                    .sync_committee_period(chain_spec)?;
+                if cached_period == sync_committee_period {
+                    return Ok(Some(latest.clone()));
+                }
             }
         }
 

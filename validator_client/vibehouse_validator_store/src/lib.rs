@@ -807,7 +807,7 @@ impl<T: SlotClock + 'static, E: EthSpec> ValidatorStore for VibehouseValidatorSt
 
         Ok(PayloadAttestationMessage {
             validator_index,
-            data: data.clone(),
+            data: *data,
             signature,
         })
     }

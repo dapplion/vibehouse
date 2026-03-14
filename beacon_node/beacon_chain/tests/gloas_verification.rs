@@ -2896,7 +2896,7 @@ async fn attestation_invalid_signature_does_not_poison_observation_cache() {
 
     let mut bad_attestation = PayloadAttestation::<E> {
         aggregation_bits: BitVector::new(),
-        data: data.clone(),
+        data,
         signature: bad_agg_sig,
     };
     bad_attestation.aggregation_bits.set(0, true).unwrap();

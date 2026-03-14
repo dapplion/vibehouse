@@ -362,7 +362,7 @@ pub fn get_indexed_payload_attestation<E: EthSpec>(
 
     Ok(IndexedPayloadAttestation {
         attesting_indices: attesting_indices.into(),
-        data: attestation.data.clone(),
+        data: attestation.data,
         signature: attestation.signature.clone(),
     })
 }

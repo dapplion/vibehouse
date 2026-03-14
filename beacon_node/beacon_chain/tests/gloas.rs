@@ -1448,7 +1448,7 @@ async fn gloas_import_payload_attestation_message_happy_path() {
 
     let message = PayloadAttestationMessage {
         validator_index,
-        data: data.clone(),
+        data,
         signature,
     };
 
@@ -1585,7 +1585,7 @@ async fn gloas_import_payload_attestation_message_payload_absent() {
 
     let message = PayloadAttestationMessage {
         validator_index,
-        data: data.clone(),
+        data,
         signature,
     };
 
@@ -5891,7 +5891,7 @@ async fn fc_on_payload_attestation_rejects_future_slot() {
             list.push(0).unwrap();
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -5939,7 +5939,7 @@ async fn fc_on_payload_attestation_rejects_too_old() {
             list.push(0).unwrap();
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -5994,7 +5994,7 @@ async fn fc_on_payload_attestation_ignores_slot_mismatch() {
             list.push(0).unwrap();
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6077,7 +6077,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
             }
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6118,7 +6118,7 @@ async fn fc_on_payload_attestation_quorum_triggers_payload_revealed() {
             list.push(quorum_threshold as u64).unwrap();
             list
         },
-        data: attestation_one_more.data.clone(),
+        data: attestation_one_more.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6193,7 +6193,7 @@ async fn fc_on_payload_attestation_blob_quorum_independent() {
             }
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6258,7 +6258,7 @@ async fn fc_on_payload_attestation_rejects_unknown_root() {
             list.push(0).unwrap();
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6403,7 +6403,7 @@ async fn fc_payload_attestation_quorum_sets_optimistic_from_bid_hash() {
             }
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6489,7 +6489,7 @@ async fn fc_on_payload_attestation_exact_quorum_does_not_reveal() {
             }
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6578,7 +6578,7 @@ async fn fc_on_payload_attestation_one_above_quorum_reveals() {
             }
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
 
@@ -6902,7 +6902,7 @@ async fn fc_full_external_builder_lifecycle() {
             }
             list
         },
-        data: attestation.data.clone(),
+        data: attestation.data,
         ..IndexedPayloadAttestation::empty()
     };
     harness
@@ -7492,7 +7492,7 @@ async fn gloas_blob_quorum_strictly_greater_than_threshold() {
         sign_payload_attestation_data(&data, first_validator as usize, state, &harness.spec);
     let message = PayloadAttestationMessage {
         validator_index: first_validator,
-        data: data.clone(),
+        data,
         signature,
     };
     harness
@@ -18222,7 +18222,7 @@ async fn gloas_partial_gossip_full_inblock_no_double_count() {
         .chain
         .import_payload_attestation_message(PayloadAttestationMessage {
             validator_index: ptc[0],
-            data: data.clone(),
+            data,
             signature: sig,
         })
         .expect("gossip import should succeed");
@@ -18233,7 +18233,7 @@ async fn gloas_partial_gossip_full_inblock_no_double_count() {
         .chain
         .import_payload_attestation_message(PayloadAttestationMessage {
             validator_index: ptc[1],
-            data: data.clone(),
+            data,
             signature: sig2,
         })
         .expect("gossip import should succeed");
