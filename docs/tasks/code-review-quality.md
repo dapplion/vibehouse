@@ -945,3 +945,15 @@ Also updated comments/variable names referencing "lighthouse" in graffiti_calcul
 **Impact**: Eliminates ~8MB allocation per slot on mainnet (~31 out of 32 slots per epoch). Saves ~240MB/min of allocation churn.
 
 **Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, clippy clean (pre-push lint-full passes).
+
+### Run 1174: derive Copy for AttestationShufflingId (2026-03-14)
+
+**Scope**: Type-level optimization to eliminate unnecessary clone overhead.
+
+**Problem**: `AttestationShufflingId` is a 40-byte struct (8-byte `Epoch` + 32-byte `Hash256`) with both fields already `Copy`, but the type only derived `Clone`. Every use of `.clone()` went through the Clone trait's heap-awareness machinery instead of a simple bitwise copy.
+
+**Fix**: Added `Copy` to the derive list on `AttestationShufflingId`, then removed all `.clone()` calls on this type across the codebase (9 files, ~15 call sites in proto_array, beacon_chain, shuffling_cache, early_attester_cache, state_advance_timer).
+
+**Impact**: Minor — eliminates Clone trait overhead for a small Copy-eligible type. Mainly a correctness-of-trait-bounds improvement.
+
+**Verification**: 307/307 proto_array + fork_choice tests, 9/9 EF fork choice spec tests, clippy clean workspace-wide, pre-push lint-full passes.
