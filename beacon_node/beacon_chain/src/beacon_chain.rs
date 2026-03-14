@@ -2964,8 +2964,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         )
         .map_err(Error::EnvelopeProcessingError)?;
 
-        // Update tree hash cache.
-        state.update_tree_hash_cache().map_err(Error::from)?;
+        // Update tree hash cache and verify the post-envelope state root.
+        // We skip BLS verification above (already done manually) but still need
+        // to verify the state root to detect corrupted/tampered envelopes.
+        let post_envelope_root = state.update_tree_hash_cache().map_err(Error::from)?;
+        if post_envelope_root != signed_envelope.message.state_root {
+            return Err(Error::EnvelopeError(format!(
+                "Sync envelope state root mismatch: computed={:?}, envelope={:?}",
+                post_envelope_root, signed_envelope.message.state_root
+            )));
+        }
 
         // Cache the post-envelope state (same logic as gossip path).
         {
@@ -4392,6 +4400,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                             ?block_root,
                             "Ignoring already known blocks while processing chain segment"
                         );
+                        // Still try to process the envelope if we have one — the block
+                        // might be imported but its envelope not yet processed (EMPTY
+                        // fork choice state from gossip timing race).
+                        if let Some(envelope) = envelopes.remove(&block_root)
+                            && let Err(e) = self
+                                .process_envelope_for_sync(
+                                    block_root,
+                                    envelope,
+                                    notify_execution_layer,
+                                )
+                                .await
+                        {
+                            debug!(
+                                ?block_root,
+                                ?e,
+                                "Failed to process envelope for duplicate block (may already be FULL)"
+                            );
+                        }
                         continue;
                     }
                     Err(error) => {
