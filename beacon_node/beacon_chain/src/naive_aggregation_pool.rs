@@ -343,21 +343,18 @@ impl<E: EthSpec> AggregateMap for SyncContributionAggregateMap<E> {
         let _timer =
             metrics::start_timer(&metrics::SYNC_CONTRIBUTION_PROCESSING_AGG_POOL_CORE_INSERT);
 
-        let set_bits = contribution
+        let mut set_bits_iter = contribution
             .aggregation_bits
             .iter()
             .enumerate()
             .filter(|(_i, bit)| *bit)
-            .map(|(i, _bit)| i)
-            .collect::<Vec<_>>();
+            .map(|(i, _bit)| i);
 
-        let committee_index = set_bits
-            .first()
-            .copied()
-            .ok_or(Error::NoAggregationBitsSet)?;
+        let committee_index = set_bits_iter.next().ok_or(Error::NoAggregationBitsSet)?;
 
-        if set_bits.len() > 1 {
-            return Err(Error::MoreThanOneAggregationBitSet(set_bits.len()));
+        if set_bits_iter.next().is_some() {
+            let count = 2 + set_bits_iter.count();
+            return Err(Error::MoreThanOneAggregationBitSet(count));
         }
 
         let sync_data_root = SyncContributionData::from_contribution(contribution).tree_hash_root();
