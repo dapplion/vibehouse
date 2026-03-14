@@ -110,6 +110,12 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1219 (Mar 14) — spec stable, ptc-lookbehind rebased
+
+Spec stable — no new consensus-specs commits since #5004 (latest e50889e1ca). PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec-test vectors (latest v1.6.0-beta.0). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). Nightly green (3 consecutive). No new Gloas-related PRs opened.
+
+Rebased `ptc-lookbehind` branch onto main (128 commits behind → current). 575/575 state_processing + 9/9 fork choice EF tests pass. Pushed.
+
 ### run 1215 (Mar 14) — fix consolidation processing regression
 **Critical fix**: `electra/sanity/blocks/multi_epoch_consolidation_chain` EF test was failing since run 1201 (commit 9cf1e78d5). The "avoid cloning pending_consolidations" optimization broke inline balance application semantics — consolidations must see prior balance changes within the same epoch. Fixed by reverting to single-pass with clone. Bisected in 6 steps. 79/79 + 139/139 EF tests pass. 575/575 state_processing tests pass.
 

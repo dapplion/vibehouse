@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1219 (Mar 14) — spec stable, ptc-lookbehind rebased
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec test releases (latest v1.6.0-beta.0). No semver-compatible dependency updates. cargo audit unchanged (1 rsa). Nightly green (3 consecutive: Mar 12-14).
+
+CI fix from run 1218 (b82b5557a) in-flight — check+clippy+fmt passed, remaining jobs running. Previous CI failure was on 13ac9ae15 (pre-fix commit).
+
+Rebased `ptc-lookbehind` branch onto main (was 128 commits behind). One conflict in `consensus/state_processing/src/per_block_processing/gloas.rs` — stale `indices.len()` reference vs already-computed `total` from committees fold. Resolved by keeping HEAD's version. All 575/575 state_processing tests + 9/9 fork choice EF tests pass on rebased branch. Pushed to origin. Lint clean.
+
+No actionable TODOs in Gloas code (searched all production code in consensus/, beacon_node/, validator_client/). No open PRs on dapplion/vibehouse. No new issues worth working on.
+
 ### run 1218 (Mar 14) — fix CI failures from self-build envelope signature verification
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases.
