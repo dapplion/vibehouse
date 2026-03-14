@@ -29,6 +29,10 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1190 (Mar 14) — verify official v1.7.0-alpha.3 spec test release
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED, same head d76a278b0a. **Official v1.7.0-alpha.3 spec test release published Mar 13** — first official release with Gloas test vectors (previously we used custom-built vectors from the tag). Downloaded and verified: 139/139 fake_crypto minimal pass, 79/79 real crypto minimal pass. check_all_files_accessed passes for minimal preset. New `heze` fork directory present in test vectors — already excluded in check_all_files_accessed.py (line 51). PR #5001 (`parent_block_root` in bid filtering key) already implemented in our `observed_execution_bids.rs`. PR #5002 (wording clarification) is docs-only. cargo audit unchanged (1 rsa, no fix). No dependency updates.
+
 ### run 1189 (Mar 14) — replace Hash256::from_slice with From for fixed-size arrays
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED, same head d76a278b0a. No new spec test releases (still v1.6.0-beta.0). No new dependency updates.
