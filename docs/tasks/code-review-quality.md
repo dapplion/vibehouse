@@ -1276,3 +1276,17 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Impact**: Eliminates one 96-byte Vec allocation per aggregator check. These checks run on every aggregate attestation and sync committee contribution received via gossip. On mainnet, this eliminates hundreds of unnecessary heap allocations per slot.
 
 **Verification**: 1/1 sync_selection_proof test, 4/4 attestation + sync committee verification tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1211: replace HashSet allocation in block producer observation checks (2026-03-14)
+
+**Scope**: Eliminate unnecessary HashSet heap allocation in `observed_block_producers.rs` and `observed_slashable.rs`.
+
+**Problem**: Both files used `block_roots.difference(&HashSet::from([block_root])).count() == 0` to check whether the set contains any block roots OTHER than the given one. This allocates a `HashSet` (with internal `HashMap` — bucket allocation + hashing) on every call, just to compare a single element.
+
+**Fix**: Replaced with `block_roots.iter().any(|r| r != &block_root)`, which does a simple iteration with no allocations. The `observed_block_producers` check additionally uses `block_roots.contains(&block_root)` for the duplicate check, which was already present.
+
+**Impact**: `observe_proposal_slashable` and `observe_proposer` are called for every gossip block received. On mainnet with ~1 block/slot across many peers propagating it, this eliminates one HashSet allocation per gossip block observation. The HashSet allocation included HashMap bucket allocation, hashing the block_root, and constructing the set structure — all for a single-element set.
+
+**Spec check**: No new consensus-specs commits since run 1210 (latest e50889e1ca, #5004). No new spec test releases (latest v1.6.0-beta.0).
+
+**Verification**: 4/4 observed_block_producers + observed_slashable tests, full workspace clippy clean (lint-full), pre-push hook passes.
