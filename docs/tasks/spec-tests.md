@@ -29,6 +29,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1226 (Mar 14) — verify envelope state root during sync, fix duplicate block envelopes
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. PR #4940 (initial Gloas fork choice tests) MERGED — new spec test vectors, but no new test release (latest v1.5.0 on consensus-spec-tests). No new spec test releases. CI from run 1225 (8ac808afb) in progress — check+clippy passed, other jobs running.
+
+Audited the range sync envelope code from run 1225. Found two real issues in `process_envelope_for_sync` and `process_chain_segment`:
+
+1. **State root verification skipped during sync** (7f6b64a3a): `process_envelope_for_sync` passed `VerifySignatures::False` to skip BLS re-verification (signature was already verified manually). But this also skipped the state root check in `process_execution_payload_envelope` (line 280 of envelope_processing.rs), since state root verification is gated on the same flag. A corrupted or tampered envelope would pass validation and persist bad state. Fixed by computing the post-envelope state root via `update_tree_hash_cache()` and comparing against `envelope.state_root` before caching.
+
+2. **Orphaned envelopes for duplicate blocks** (7f6b64a3a): When a block in a chain segment was `DuplicateFullyImported`, its envelope was silently discarded. If the block was imported via gossip but its envelope hadn't arrived yet (timing race), the fork choice node would stay EMPTY, causing subsequent blocks referencing it as a FULL parent to fail validation. Fixed by attempting to process the envelope even for duplicate blocks, with debug-level logging on expected failures (block already FULL).
+
+Other audit findings evaluated as false positives:
+- Pending envelope batch cleanup on peer disconnect: handled through the normal RPC error path — peer disconnect triggers RPCError callbacks for active requests, which hit the `EnvelopesByRoot` error handler that cleans up the batch
+- Unbounded pending batches: bounded in practice by concurrent range sync batches (limited by chain sync state machine) and cleaned up on RPC completion/error
+- Missing envelope request timeout: RPC layer has its own request timeout; batches stashed awaiting envelopes will be cleaned up when the RPC times out
+
+770/770 beacon_chain tests (FORK_NAME=gloas), 163/163 network tests, 9/9 EF fork choice tests pass. Full workspace clippy clean.
+
 ### run 1225 (Mar 14) — add envelope download and processing for range sync
 
 Implemented full range sync envelope support for Gloas (ePBS) blocks. This was the "known limitation" from run 1224 — range sync didn't download execution payload envelopes, causing StateRootMismatch when syncing chains with FULL (envelope-delivered) Gloas blocks.
