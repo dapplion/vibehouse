@@ -1020,3 +1020,25 @@ These allocations were discarded after each call, creating unnecessary allocatio
 - `create_validators.rs`: 1 `deposit.signature.clone()` → direct copy
 
 **Verification**: 575/575 state_processing tests, 715/715 types tests, 307/307 fork_choice+proto_array tests, 69/69 EF SSZ static tests, 35/35 EF operations+epoch+sanity tests, full workspace lint-full clean.
+
+### Run 1179: derive Copy for 10 small fixed-size types + historical_data_columns clone fix (2026-03-14)
+
+**Scope**: Type-level optimization — derive Copy for 10 small, all-Copy-field types to eliminate unnecessary Clone trait overhead. Plus one unnecessary HashSet clone fix.
+
+**Types made Copy**:
+1. **Withdrawal** (32 bytes: 3×u64 + Address) — used in every block's withdrawal processing
+2. **PendingDeposit** (177 bytes: PublicKeyBytes + Hash256 + u64 + SignatureBytes + Slot) — used in epoch deposit processing
+3. **DepositData** (184 bytes: PublicKeyBytes + Hash256 + u64 + SignatureBytes) — used in deposit verification
+4. **DepositRequest** (192 bytes: PublicKeyBytes + Hash256 + u64 + SignatureBytes + u64) — used in execution request processing
+5. **DepositMessage** (88 bytes: PublicKeyBytes + Hash256 + u64) — deposit signature verification
+6. **WithdrawalRequest** (68 bytes: Address + PublicKeyBytes + u64) — execution request processing
+7. **ConsolidationRequest** (116 bytes: Address + 2×PublicKeyBytes) — consolidation request processing
+8. **PendingConsolidation** (16 bytes: 2×u64) — epoch consolidation processing
+9. **PendingPartialWithdrawal** (24 bytes: 2×u64 + Epoch) — withdrawal processing
+10. **SyncAggregatorSelectionData** (16 bytes: Slot + u64) — sync committee selection
+
+**Clone removals**: 17 files changed. ~12 `.clone()` calls removed across production and test code (state_processing, execution_layer, types).
+
+**Additional fix**: `historical_data_columns.rs` — replaced `unique_column_indices.clone()` (HashSet clone per outer loop iteration) with `&unique_column_indices` iteration by reference. ColumnIndex is u64 (Copy), so iterating by reference works fine.
+
+**Verification**: 715/715 types tests, 575/575 state_processing tests, 307/307 fork_choice+proto_array tests, 69/69 EF SSZ static tests, 35/35 EF operations+epoch+sanity tests, full workspace clippy clean (lib + all targets), pre-push lint-full passes.
