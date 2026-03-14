@@ -13,7 +13,7 @@ pub const DEFAULT_ETH1_BLOCK_HASH: &[u8] = &[0x42; 32];
 pub fn bls_withdrawal_credentials(pubkey: &PublicKey, spec: &ChainSpec) -> Hash256 {
     let mut credentials = hash_fixed(&pubkey.as_ssz_bytes());
     credentials[0] = spec.bls_withdrawal_prefix_byte;
-    Hash256::from_slice(&credentials)
+    Hash256::from(credentials)
 }
 
 fn eth1_withdrawal_credentials(pubkey: &PublicKey, spec: &ChainSpec) -> Hash256 {
@@ -21,7 +21,7 @@ fn eth1_withdrawal_credentials(pubkey: &PublicKey, spec: &ChainSpec) -> Hash256 
     let mut credentials = [0u8; 32];
     credentials[0] = spec.eth1_address_withdrawal_prefix_byte;
     credentials[12..].copy_from_slice(fake_execution_address);
-    Hash256::from_slice(&credentials)
+    Hash256::from(credentials)
 }
 
 pub type WithdrawalCredentialsFn =

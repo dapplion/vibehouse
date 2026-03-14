@@ -43,7 +43,7 @@ impl BeaconBlockHeader {
     ///
     /// Spec v0.12.1
     pub fn canonical_root(&self) -> Hash256 {
-        Hash256::from_slice(&self.tree_hash_root()[..])
+        self.tree_hash_root()
     }
 
     /// Signs `self`, producing a `SignedBeaconBlockHeader`.

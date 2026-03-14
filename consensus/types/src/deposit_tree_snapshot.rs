@@ -69,7 +69,7 @@ impl DepositTreeSnapshot {
         // add mix-in-length
         deposit_root = hash32_concat(&deposit_root, &int_to_bytes32(self.deposit_count));
 
-        Some(Hash256::from_slice(&deposit_root))
+        Some(Hash256::from(deposit_root))
     }
     pub fn is_valid(&self) -> bool {
         self.calculate_root() == Some(self.deposit_root)

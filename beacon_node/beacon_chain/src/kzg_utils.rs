@@ -147,7 +147,7 @@ pub fn compute_kzg_proof<E: EthSpec>(
     let z = z.0.into();
     let kzg_blob = ssz_blob_to_crypto_blob_boxed::<E>(blob)?;
     kzg.compute_kzg_proof(&kzg_blob, &z)
-        .map(|(proof, z)| (proof, Hash256::from_slice(&z.to_vec())))
+        .map(|(proof, z)| (proof, Hash256::from(*z)))
 }
 
 /// Verify a `kzg_proof` for a `kzg_commitment` that evaluating a polynomial at `z` results in `y`

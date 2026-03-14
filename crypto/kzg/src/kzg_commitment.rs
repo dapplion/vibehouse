@@ -20,7 +20,7 @@ impl KzgCommitment {
     pub fn calculate_versioned_hash(&self) -> Hash256 {
         let mut versioned_hash = hash_fixed(&self.0);
         versioned_hash[0] = VERSIONED_HASH_VERSION_KZG;
-        Hash256::from_slice(versioned_hash.as_slice())
+        Hash256::from(versioned_hash)
     }
 
     pub fn empty_for_testing() -> Self {
