@@ -462,6 +462,89 @@ pub struct ProtoArrayForkChoice {
     /// Reusable buffer for active votes in `find_head_gloas` to avoid per-slot allocation.
     /// Stores (vote_index, balance) pairs for validators with non-zero root and balance.
     gloas_active_votes_buf: Vec<(u32, u64)>,
+    /// Reusable buffer for `get_gloas_children` results to avoid per-iteration allocation
+    /// in `find_head_gloas`.
+    gloas_children_result_buf: Vec<GloasForkChoiceNode>,
+}
+
+/// Collect the Gloas children of `node` into `out`, clearing it first.
+/// Free function to avoid borrow conflicts with `ProtoArrayForkChoice` fields.
+fn collect_gloas_children(
+    pa: &ProtoArray,
+    node: &GloasForkChoiceNode,
+    filtered_nodes: &[bool],
+    children_index: Option<&HashMap<usize, Vec<usize>>>,
+    out: &mut Vec<GloasForkChoiceNode>,
+) {
+    out.clear();
+
+    match node.payload_status {
+        GloasPayloadStatus::Pending => {
+            out.push(GloasForkChoiceNode {
+                root: node.root,
+                payload_status: GloasPayloadStatus::Empty,
+            });
+            if let Some(&idx) = pa.indices.get(&node.root)
+                && let Some(proto_node) = pa.nodes.get(idx)
+                && proto_node.envelope_received
+            {
+                out.push(GloasForkChoiceNode {
+                    root: node.root,
+                    payload_status: GloasPayloadStatus::Full,
+                });
+            }
+        }
+        GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
+            if let Some(&parent_idx) = pa.indices.get(&node.root)
+                && let Some(parent_node) = pa.nodes.get(parent_idx)
+            {
+                if let Some(idx) = children_index {
+                    if let Some(child_indices) = idx.get(&parent_idx) {
+                        for &ci in child_indices {
+                            if !filtered_nodes.get(ci).copied().unwrap_or(false) {
+                                continue;
+                            }
+                            if let Some(child_node) = pa.nodes.get(ci)
+                                && parent_payload_status_of(child_node, parent_node)
+                                    == node.payload_status
+                            {
+                                out.push(GloasForkChoiceNode {
+                                    root: child_node.root,
+                                    payload_status: GloasPayloadStatus::Pending,
+                                });
+                            }
+                        }
+                    }
+                } else {
+                    for (ci, child_node) in pa.nodes.iter().enumerate() {
+                        if child_node.parent != Some(parent_idx) {
+                            continue;
+                        }
+                        if !filtered_nodes.get(ci).copied().unwrap_or(false) {
+                            continue;
+                        }
+                        if parent_payload_status_of(child_node, parent_node) == node.payload_status
+                        {
+                            out.push(GloasForkChoiceNode {
+                                root: child_node.root,
+                                payload_status: GloasPayloadStatus::Pending,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Determine the parent payload status of a child block relative to its parent.
+fn parent_payload_status_of(child: &ProtoNode, parent: &ProtoNode) -> GloasPayloadStatus {
+    match (child.bid_parent_block_hash, parent.bid_block_hash) {
+        (Some(child_parent_hash), Some(parent_hash)) if child_parent_hash == parent_hash => {
+            GloasPayloadStatus::Full
+        }
+        _ => GloasPayloadStatus::Empty,
+    }
 }
 
 impl ProtoArrayForkChoice {
@@ -537,6 +620,7 @@ impl ProtoArrayForkChoice {
             gloas_filtered_buf: Vec::new(),
             gloas_children_buf: HashMap::new(),
             gloas_active_votes_buf: Vec::new(),
+            gloas_children_result_buf: Vec::new(),
         }
     }
 
@@ -1189,12 +1273,14 @@ impl ProtoArrayForkChoice {
             HashMap::new();
 
         loop {
-            let children = self.get_gloas_children(
+            collect_gloas_children(
+                &self.proto_array,
                 &head,
                 &self.gloas_filtered_buf,
                 Some(&self.gloas_children_buf),
+                &mut self.gloas_children_result_buf,
             );
-            if children.is_empty() {
+            if self.gloas_children_result_buf.is_empty() {
                 self.gloas_head_payload_status = Some(head.payload_status as u8);
                 return Ok(head.root);
             }
@@ -1204,8 +1290,10 @@ impl ProtoArrayForkChoice {
             // across siblings reuses ancestor lookups (children at the same level
             // have the same node_slot).
             ancestor_cache.clear();
-            head = children
-                .into_iter()
+            head = self
+                .gloas_children_result_buf
+                .iter()
+                .copied()
                 .map(|child| {
                     let w = self.get_gloas_weight::<E>(
                         &child,
@@ -1297,82 +1385,22 @@ impl ProtoArrayForkChoice {
     ///
     /// When `children_index` is provided, uses it for O(k) child lookup instead
     /// of scanning all nodes (O(n)).
+    #[cfg(test)]
     fn get_gloas_children(
         &self,
         node: &GloasForkChoiceNode,
         filtered_nodes: &[bool],
         children_index: Option<&HashMap<usize, Vec<usize>>>,
     ) -> Vec<GloasForkChoiceNode> {
-        let pa = &self.proto_array;
-
-        match node.payload_status {
-            GloasPayloadStatus::Pending => {
-                let mut children = vec![GloasForkChoiceNode {
-                    root: node.root,
-                    payload_status: GloasPayloadStatus::Empty,
-                }];
-
-                // Include FULL child only if the execution payload envelope has been received
-                // (not just PTC quorum). Maps to `root in store.payload_states` in the spec.
-                if let Some(&idx) = pa.indices.get(&node.root)
-                    && let Some(proto_node) = pa.nodes.get(idx)
-                    && proto_node.envelope_received
-                {
-                    children.push(GloasForkChoiceNode {
-                        root: node.root,
-                        payload_status: GloasPayloadStatus::Full,
-                    });
-                }
-
-                children
-            }
-            GloasPayloadStatus::Empty | GloasPayloadStatus::Full => {
-                let mut children = Vec::with_capacity(2);
-
-                if let Some(&parent_idx) = pa.indices.get(&node.root)
-                    && let Some(parent_node) = pa.nodes.get(parent_idx)
-                {
-                    // Use the pre-built children index when available, otherwise scan all nodes
-                    if let Some(idx) = children_index {
-                        if let Some(child_indices) = idx.get(&parent_idx) {
-                            for &ci in child_indices {
-                                if !filtered_nodes.get(ci).copied().unwrap_or(false) {
-                                    continue;
-                                }
-                                if let Some(child_node) = pa.nodes.get(ci)
-                                    && self.get_parent_payload_status_of(child_node, parent_node)
-                                        == node.payload_status
-                                {
-                                    children.push(GloasForkChoiceNode {
-                                        root: child_node.root,
-                                        payload_status: GloasPayloadStatus::Pending,
-                                    });
-                                }
-                            }
-                        }
-                    } else {
-                        for (ci, child_node) in pa.nodes.iter().enumerate() {
-                            if child_node.parent != Some(parent_idx) {
-                                continue;
-                            }
-                            if !filtered_nodes.get(ci).copied().unwrap_or(false) {
-                                continue;
-                            }
-                            if self.get_parent_payload_status_of(child_node, parent_node)
-                                == node.payload_status
-                            {
-                                children.push(GloasForkChoiceNode {
-                                    root: child_node.root,
-                                    payload_status: GloasPayloadStatus::Pending,
-                                });
-                            }
-                        }
-                    }
-                }
-
-                children
-            }
-        }
+        let mut children = Vec::new();
+        collect_gloas_children(
+            &self.proto_array,
+            node,
+            filtered_nodes,
+            children_index,
+            &mut children,
+        );
+        children
     }
 
     /// Test helper: calls `get_gloas_children` without a pre-built children index.
@@ -1405,12 +1433,7 @@ impl ProtoArrayForkChoice {
         child: &ProtoNode,
         parent: &ProtoNode,
     ) -> GloasPayloadStatus {
-        match (child.bid_parent_block_hash, parent.bid_block_hash) {
-            (Some(child_parent_hash), Some(parent_hash)) if child_parent_hash == parent_hash => {
-                GloasPayloadStatus::Full
-            }
-            _ => GloasPayloadStatus::Empty,
-        }
+        parent_payload_status_of(child, parent)
     }
 
     /// Implements the Gloas spec's `should_apply_proposer_boost`.
