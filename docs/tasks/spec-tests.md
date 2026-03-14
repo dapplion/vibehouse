@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1187 (Mar 14) — reuse children Vec allocation in find_head_gloas
+
+Spec stable: no new consensus-specs commits since last check. PR #4992 (cached PTCs in state) still OPEN. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: eliminated per-iteration heap allocation in `find_head_gloas` (proto_array_fork_choice.rs). Previously `get_gloas_children` returned a new `Vec<GloasForkChoiceNode>` on every loop iteration (3-10 iterations per slot depending on chain depth). Extracted the logic into a free function `collect_gloas_children` that writes into a caller-provided buffer. `find_head_gloas` now stores the buffer as a struct field (`gloas_children_result_buf`) that is cleared and refilled each iteration, retaining its heap allocation across slots. Also extracted `parent_payload_status_of` as a free function to avoid code duplication. The allocating `get_gloas_children` wrapper is retained for test code only (`#[cfg(test)]`). All 188 proto_array tests, 119 fork_choice tests, 9/9 EF fork choice spec tests pass. Clippy clean.
+
+Open PRs to track: #4992 (cached PTCs in state — approaching merge).
+
 ### run 1186 (Mar 14) — avoid Vec allocation in is_valid_indexed_attestation
 
 Spec stable: no new consensus-specs commits since last check. PR #4992 (cached PTCs in state) still OPEN. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
