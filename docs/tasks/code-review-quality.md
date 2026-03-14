@@ -957,3 +957,19 @@ Also updated comments/variable names referencing "lighthouse" in graffiti_calcul
 **Impact**: Minor — eliminates Clone trait overhead for a small Copy-eligible type. Mainly a correctness-of-trait-bounds improvement.
 
 **Verification**: 307/307 proto_array + fork_choice tests, 9/9 EF fork choice spec tests, clippy clean workspace-wide, pre-push lint-full passes.
+
+### Run 1175: derive Copy for PayloadAttestationData + light client cache clone avoidance (2026-03-14)
+
+**Scope**: Two performance optimizations targeting unnecessary clones.
+
+**Change 1 — PayloadAttestationData Copy derivation**:
+- `PayloadAttestationData` is a 42-byte struct (Hash256 + Slot + 2 bools) with all Copy fields, but only derived Clone.
+- Added `Copy` to the derive list, then removed all `.clone()` calls on this type across the codebase (10 files, ~20 call sites in beacon_chain, state_processing, network, http_api, validator_client, types tests).
+- Eliminates Clone trait overhead for a frequently-used type (HashMap key in payload attestation aggregation, struct field copies in gossip verification).
+
+**Change 2 — Light client server cache clone avoidance**:
+- `LightClientServerCache::recompute_and_cache_updates()` cloned entire `LightClientOptimisticUpdate` and `LightClientFinalityUpdate` structs just to call `is_latest()` (which only compares two Slot values).
+- Replaced `.read().clone()` pattern with `.read().as_ref().is_none_or(|u| u.is_latest(...))` — borrows through the read guard instead of cloning.
+- Also optimized `get_light_client_update()` to check period via read guard before cloning, only cloning when the cached value matches the requested period.
+
+**Verification**: 1597/1597 types+state_processing+fork_choice+proto_array tests, 56/56 validator_store+validator_services tests, 2/2 light client tests, full workspace clippy clean (lib + all targets), pre-push lint-full passes.
