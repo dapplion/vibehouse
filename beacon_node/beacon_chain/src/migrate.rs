@@ -802,7 +802,7 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
             Self::prune_finalized_payloads(
                 new_finalized_slot,
                 &newly_finalized_blocks,
-                &store.get_chain_spec(),
+                store.get_chain_spec(),
                 &mut batch,
             );
         }
