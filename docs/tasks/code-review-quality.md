@@ -973,3 +973,18 @@ Also updated comments/variable names referencing "lighthouse" in graffiti_calcul
 - Also optimized `get_light_client_update()` to check period via read guard before cloning, only cloning when the cached value matches the requested period.
 
 **Verification**: 1597/1597 types+state_processing+fork_choice+proto_array tests, 56/56 validator_store+validator_services tests, 2/2 light client tests, full workspace clippy clean (lib + all targets), pre-push lint-full passes.
+
+### Run 1176: derive Copy for 5 small fixed-size types (2026-03-14)
+
+**Scope**: Type-level optimization — derive Copy for small, all-Copy-field types to eliminate unnecessary Clone trait overhead.
+
+**Types made Copy**:
+1. **AttestationData** (128 bytes: Slot + u64 + Hash256 + 2×Checkpoint) — heavily used in attestation processing, 15+ clone sites removed
+2. **Eth1Data** (72 bytes: Hash256 + u64 + Hash256) — used in every state upgrade and block body, 10 clone sites removed
+3. **VoluntaryExit** (16 bytes: Epoch + u64) — compact exit type, 1 clone site removed
+4. **SigningData** (64 bytes: 2×Hash256) — used in all signing operations
+5. **ForkData** (36 bytes: [u8;4] + Hash256) — fork specification type
+
+**Clone removals**: 32 files changed, ~25 `.clone()` calls removed across production and test code. Replaced with either direct copy (field access), dereference (`*getter()`), or removal of redundant clone call.
+
+**Verification**: 715/715 types tests, 575/575 state_processing tests, 307/307 fork_choice+proto_array tests, 69/69 EF SSZ static tests, 72/72 slasher+slashing_protection tests, 30/30 store tests. Full workspace clippy clean (lib + all targets + benches), pre-push lint-full passes.
