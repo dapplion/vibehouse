@@ -21080,3 +21080,172 @@ async fn gloas_load_parent_blinded_envelope_fallback_after_pruning() {
         "after import, head state latest_block_hash should match child's bid block_hash"
     );
 }
+
+/// Helper: build a chain of N Gloas blocks, return the harness plus blocks and envelopes.
+async fn build_gloas_chain_for_sync_tests(
+    n: usize,
+) -> (
+    BeaconChainHarness<EphemeralHarnessType<E>>,
+    Vec<Arc<SignedBeaconBlock<E>>>,
+    Vec<Option<SignedExecutionPayloadEnvelope<E>>>,
+) {
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(n)).await;
+    let chain_dump = harness.chain.chain_dump().expect("should dump chain");
+    let mut blocks = Vec::new();
+    let mut envelopes = Vec::new();
+    for snapshot in chain_dump.iter().skip(1) {
+        let full_block = harness
+            .chain
+            .get_block(&snapshot.beacon_block_root)
+            .await
+            .unwrap()
+            .unwrap();
+        let envelope = harness
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap();
+        blocks.push(Arc::new(full_block));
+        envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), n);
+    (harness, blocks, envelopes)
+}
+
+/// Test process_envelope_for_sync rejects envelopes with mismatched builder_index.
+/// Uses the same harness where blocks are already imported with envelopes — the
+/// validation checks (builder_index, block_hash) happen before state transition,
+/// so a tampered envelope is rejected even if the original was already processed.
+#[tokio::test]
+async fn gloas_sync_envelope_builder_index_mismatch() {
+    let (harness, blocks, envelopes) = build_gloas_chain_for_sync_tests(2).await;
+
+    // Tamper with the first envelope: change builder_index
+    let signed_env = envelopes[0].as_ref().expect("should have envelope");
+    let mut tampered = signed_env.clone();
+    tampered.message.builder_index = 9999;
+
+    let block_root = blocks[0].canonical_root();
+    let result = harness
+        .chain
+        .process_envelope_for_sync(block_root, Arc::new(tampered), NotifyExecutionLayer::Yes)
+        .await;
+
+    assert!(result.is_err(), "should reject mismatched builder_index");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("Builder index mismatch"),
+        "error should mention builder index mismatch, got: {}",
+        err_msg
+    );
+}
+
+/// Test process_envelope_for_sync rejects envelopes with mismatched block_hash.
+#[tokio::test]
+async fn gloas_sync_envelope_block_hash_mismatch() {
+    let (harness, blocks, envelopes) = build_gloas_chain_for_sync_tests(2).await;
+
+    // Tamper with the first envelope: change payload block_hash
+    let signed_env = envelopes[0].as_ref().expect("should have envelope");
+    let mut tampered = signed_env.clone();
+    tampered.message.payload.block_hash = ExecutionBlockHash::from_root(Hash256::repeat_byte(0xab));
+
+    let block_root = blocks[0].canonical_root();
+    let result = harness
+        .chain
+        .process_envelope_for_sync(block_root, Arc::new(tampered), NotifyExecutionLayer::Yes)
+        .await;
+
+    assert!(result.is_err(), "should reject mismatched block_hash");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("Block hash mismatch"),
+        "error should mention block hash mismatch, got: {}",
+        err_msg
+    );
+}
+
+/// Test process_envelope_for_sync rejects envelopes with tampered state_root.
+/// Since state_root is part of the signed envelope message, tampering it
+/// invalidates the signature — the signature check catches this before the
+/// state root comparison, which is the correct defense-in-depth behavior.
+#[tokio::test]
+async fn gloas_sync_envelope_tampered_state_root_rejected() {
+    let (harness, blocks, envelopes) = build_gloas_chain_for_sync_tests(2).await;
+
+    let signed_env = envelopes[0].as_ref().expect("should have envelope");
+    let mut tampered = signed_env.clone();
+    tampered.message.state_root = Hash256::repeat_byte(0xcd);
+
+    let block_root = blocks[0].canonical_root();
+    let result = harness
+        .chain
+        .process_envelope_for_sync(block_root, Arc::new(tampered), NotifyExecutionLayer::Yes)
+        .await;
+
+    // Tampering state_root changes the signing root, so signature verification
+    // catches this before the state root comparison — this is correct behavior.
+    assert!(result.is_err(), "should reject tampered state_root");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("signature"),
+        "tampered state_root should be caught by signature verification, got: {}",
+        err_msg
+    );
+}
+
+/// Test process_envelope_for_sync returns error for unknown block root.
+#[tokio::test]
+async fn gloas_sync_envelope_missing_block() {
+    let (harness, _blocks, envelopes) = build_gloas_chain_for_sync_tests(1).await;
+
+    let signed_env = envelopes[0].as_ref().expect("should have envelope");
+    let fake_root = Hash256::repeat_byte(0xff);
+
+    // Try to process envelope for a block root that doesn't exist in the store
+    let result = harness
+        .chain
+        .process_envelope_for_sync(
+            fake_root,
+            Arc::new(signed_env.clone()),
+            NotifyExecutionLayer::Yes,
+        )
+        .await;
+
+    assert!(result.is_err(), "should reject envelope for unknown block");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("Missing beacon block"),
+        "error should mention missing block, got: {}",
+        err_msg
+    );
+}
+
+/// Test process_envelope_for_sync rejects envelopes with an invalid (zeroed)
+/// BLS signature while builder_index and block_hash are correct. This ensures
+/// the signature verification step is not accidentally skipped.
+#[tokio::test]
+async fn gloas_sync_envelope_invalid_signature() {
+    let (harness, blocks, envelopes) = build_gloas_chain_for_sync_tests(2).await;
+
+    // Keep builder_index and block_hash correct (pass bid checks) but zero
+    // the signature so BLS verification fails.
+    let signed_env = envelopes[0].as_ref().expect("should have envelope");
+    let mut tampered = signed_env.clone();
+    tampered.signature = Signature::empty();
+
+    let block_root = blocks[0].canonical_root();
+    let result = harness
+        .chain
+        .process_envelope_for_sync(block_root, Arc::new(tampered), NotifyExecutionLayer::Yes)
+        .await;
+
+    assert!(result.is_err(), "should reject invalid signature");
+    let err_msg = format!("{:?}", result.unwrap_err());
+    assert!(
+        err_msg.contains("signature"),
+        "error should mention signature, got: {}",
+        err_msg
+    );
+}
