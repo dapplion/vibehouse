@@ -38,11 +38,13 @@ impl<E: EthSpec> ExecutionBidPool<E> {
     ///
     /// Only stores one bid per (slot, builder_index). If a bid from this builder
     /// already exists for this slot, it is not replaced (equivocation is rejected
-    /// at the gossip validation layer).
+    /// at the gossip validation layer). Prunes old slots on every insert to
+    /// prevent accumulation when block production is delayed.
     pub fn insert(&mut self, bid: SignedExecutionPayloadBid<E>) {
         let slot = bid.message.slot;
         let builder_index = bid.message.builder_index;
 
+        self.prune(slot);
         self.bids
             .entry(slot)
             .or_default()
@@ -456,22 +458,24 @@ mod tests {
     #[test]
     fn sequential_prune_calls_preserve_window_correctly() {
         let mut pool = ExecutionBidPool::<E>::new();
-        // Insert bids for slots 5 through 12
+        // Insert bids for slots 5 through 12. Since insert() prunes at the
+        // inserted slot, inserting slot 12 removes slots < 8 (12 - 4 = 8).
         for slot in 5..=12 {
             pool.insert(make_bid(slot, 1, slot * 100));
         }
-        assert_eq!(pool.total_bid_count(), 8);
+        // After inserting slot 12, only slots 8..=12 survive (5 bids)
+        assert_eq!(pool.total_bid_count(), 5);
 
-        // Prune at slot 10: keeps slots >= 6 (10 - 4 = 6)
+        // Prune at slot 10: keeps slots >= 6 (10 - 4 = 6), so all 5 remain
         pool.prune(Slot::new(10));
         assert!(pool.get_best_bid(Slot::new(5), Hash256::zero()).is_none());
-        assert!(pool.get_best_bid(Slot::new(6), Hash256::zero()).is_some());
+        assert!(pool.get_best_bid(Slot::new(8), Hash256::zero()).is_some());
         assert!(pool.get_best_bid(Slot::new(10), Hash256::zero()).is_some());
 
         // Prune at slot 11: keeps slots >= 7 (11 - 4 = 7)
         pool.prune(Slot::new(11));
         assert!(pool.get_best_bid(Slot::new(6), Hash256::zero()).is_none());
-        assert!(pool.get_best_bid(Slot::new(7), Hash256::zero()).is_some());
+        assert!(pool.get_best_bid(Slot::new(8), Hash256::zero()).is_some());
         assert!(pool.get_best_bid(Slot::new(11), Hash256::zero()).is_some());
         assert!(pool.get_best_bid(Slot::new(12), Hash256::zero()).is_some());
 
