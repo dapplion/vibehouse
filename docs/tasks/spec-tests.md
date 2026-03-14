@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1200 (Mar 14) — avoid intermediate Vec allocation in range sync data column coupling
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3).
+
+Shipped: in `RangeBlockComponentsRequest::responses()` DataColumns path, replaced `data_columns.extend(data.clone())` with `data_columns.extend(data.iter().cloned())` — avoids allocating an intermediate Vec per sub-request (the `.clone()` on a Vec allocates a new Vec then extends from it, while `.iter().cloned()` extends directly from the iterator). Also pre-allocated `data_columns` with `Vec::with_capacity` using the sum of completed request lengths. 7/7 block_sidecar_coupling tests pass, clippy clean.
+
 ### run 1199 (Mar 14) — avoid unnecessary clones in range sync batch requests
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. cargo audit unchanged (1 rsa, no fix). No new spec test releases.
