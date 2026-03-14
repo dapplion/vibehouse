@@ -17,26 +17,24 @@ pub fn is_valid_indexed_attestation<E: EthSpec>(
     verify_signatures: VerifySignatures,
     spec: &ChainSpec,
 ) -> Result<()> {
-    let indices = indexed_attestation.attesting_indices_to_vec();
-
     // Verify that indices aren't empty
-    verify!(!indices.is_empty(), Invalid::IndicesEmpty);
+    verify!(
+        !indexed_attestation.attesting_indices_is_empty(),
+        Invalid::IndicesEmpty
+    );
 
-    // Check that indices are sorted and unique
-    let check_sorted = |list: &[u64]| -> Result<()> {
-        list.iter()
-            .tuple_windows()
-            .enumerate()
-            .try_for_each(|(i, (x, y))| {
-                if x < y {
-                    Ok(())
-                } else {
-                    Err(error(Invalid::BadValidatorIndicesOrdering(i)))
-                }
-            })?;
-        Ok(())
-    };
-    check_sorted(&indices)?;
+    // Check that indices are sorted and unique (using iterator, no Vec allocation)
+    indexed_attestation
+        .attesting_indices_iter()
+        .tuple_windows()
+        .enumerate()
+        .try_for_each(|(i, (x, y))| {
+            if x < y {
+                Ok(())
+            } else {
+                Err(error(Invalid::BadValidatorIndicesOrdering(i)))
+            }
+        })?;
 
     if verify_signatures.is_true() {
         verify!(
