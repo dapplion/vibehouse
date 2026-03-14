@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1195 (Mar 14) — reuse ancestor cache allocation in find_head_gloas
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. No new spec test releases (v1.7.0-alpha.3 verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates.
+
+Open spec PRs tracked: #4992 (cached PTCs — approved, likely next to merge), #4954 (milliseconds — no impact), #4843 (variable PTC deadline), #4939 (request missing envelope for index-1 attestation). When #4992 merges, need to add `ptc_lookbehind` to BeaconState, update epoch processing rotation, and fork transition initialization.
+
+Shipped: moved the `ancestor_cache` HashMap in `find_head_gloas` from a local variable (allocated/deallocated per call) to a persistent field `gloas_ancestor_cache_buf` on `ProtoArrayForkChoice`. Uses `std::mem::take` to temporarily move out during the call to avoid borrow conflicts with `get_gloas_weight(&self, ..., &mut cache)`. The HashMap's internal storage is now retained across slots, avoiding one heap allocation per slot. All 188 proto_array tests + 119 fork_choice tests + 9 EF fork_choice spec tests pass.
+
 ### run 1194 (Mar 14) — migrate CI from moonrepo/setup-rust to dtolnay/rust-toolchain
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (v1.7.0-alpha.3 verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates.
