@@ -80,7 +80,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             let (block_root, slot) = block_iter_result
                 .map_err(|e| HistoricalDataColumnError::BeaconChainError(Box::new(e)))?;
 
-            for column_index in unique_column_indices.clone() {
+            for &column_index in &unique_column_indices {
                 if let Some(data_column) =
                     slot_and_column_index_to_data_columns.remove(&(slot, column_index))
                 {

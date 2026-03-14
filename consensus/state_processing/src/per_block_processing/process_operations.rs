@@ -492,7 +492,7 @@ pub fn process_deposits<E: EthSpec>(
 
     // Update the state in series.
     for deposit in deposits {
-        apply_deposit(state, deposit.data.clone(), None, true, spec)?;
+        apply_deposit(state, deposit.data, None, true, spec)?;
     }
 
     Ok(())
@@ -510,7 +510,7 @@ pub fn apply_deposit<E: EthSpec>(
     if let Some(proof) = proof {
         let deposit = Deposit {
             proof,
-            data: deposit_data.clone(),
+            data: deposit_data,
         };
         verify_deposit_merkle_proof(state, &deposit, state.eth1_deposit_index(), spec)
             .map_err(|e| e.into_with_index(deposit_index))?;
@@ -2332,7 +2332,7 @@ mod builder_deposit_tests {
         );
         // 4 original + 1 new pending deposit
         assert_eq!(state.pending_deposits().unwrap().len(), 5);
-        let last = state.pending_deposits().unwrap().get(4).unwrap().clone();
+        let last = *state.pending_deposits().unwrap().get(4).unwrap();
         assert_eq!(last.pubkey, new_kp.pk.compress());
         assert_eq!(last.amount, 5_000_000_000);
     }

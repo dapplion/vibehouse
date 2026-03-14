@@ -8,7 +8,17 @@ use tree_hash_derive::TreeHash;
 
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, Hash, Encode, Decode, TreeHash, TestRandom,
+    Debug,
+    PartialEq,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Hash,
+    Encode,
+    Decode,
+    TreeHash,
+    TestRandom,
 )]
 #[context_deserialize(ForkName)]
 pub struct SyncAggregatorSelectionData {

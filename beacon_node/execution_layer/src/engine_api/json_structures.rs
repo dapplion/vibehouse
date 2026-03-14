@@ -1317,7 +1317,7 @@ mod tests {
             base_fee_per_gas: Uint256::from(7u128),
             ..Default::default()
         };
-        payload.withdrawals.push(withdrawal.clone()).unwrap();
+        payload.withdrawals.push(withdrawal).unwrap();
 
         let json: super::JsonExecutionPayloadGloas<MainnetEthSpec> = payload.clone().into();
         let back: ExecutionPayloadGloas<MainnetEthSpec> = json.into();

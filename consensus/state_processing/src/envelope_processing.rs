@@ -843,7 +843,7 @@ mod tests {
             .as_gloas_mut()
             .unwrap()
             .payload_expected_withdrawals
-            .push(stale_withdrawal.clone())
+            .push(stale_withdrawal)
             .unwrap();
 
         // Case 1: Envelope with correct stale withdrawals → accepted
@@ -853,7 +853,7 @@ mod tests {
                 .message
                 .payload
                 .withdrawals
-                .push(stale_withdrawal.clone())
+                .push(stale_withdrawal)
                 .unwrap();
 
             let result = process_execution_payload_envelope(
@@ -2361,7 +2361,7 @@ mod tests {
         };
 
         let mut requests = ExecutionRequests::default();
-        requests.deposits.push(deposit_request.clone()).unwrap();
+        requests.deposits.push(deposit_request).unwrap();
 
         assert!(
             state.pending_deposits().unwrap().is_empty(),

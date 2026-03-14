@@ -7,7 +7,17 @@ use tree_hash_derive::TreeHash;
 
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[derive(
-    Debug, PartialEq, Hash, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, TestRandom,
+    Debug,
+    PartialEq,
+    Hash,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
+    TreeHash,
+    TestRandom,
 )]
 #[context_deserialize(ForkName)]
 pub struct PendingDeposit {

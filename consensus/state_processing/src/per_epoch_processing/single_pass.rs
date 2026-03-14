@@ -1043,7 +1043,7 @@ impl PendingDepositsContext {
                     .safe_add_assign(deposit.amount)?;
             } else if is_validator_exited {
                 // Validator is exiting, postpone the deposit until after withdrawable epoch
-                deposits_to_postpone.push(deposit.clone());
+                deposits_to_postpone.push(*deposit);
             } else {
                 // Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
                 is_churn_limit_reached =
@@ -1063,7 +1063,7 @@ impl PendingDepositsContext {
                         .safe_add_assign(deposit.amount)?;
                 } else {
                     // The `PendingDeposit` is for a new validator
-                    new_validator_deposits.push(deposit.clone());
+                    new_validator_deposits.push(*deposit);
                 }
             }
 

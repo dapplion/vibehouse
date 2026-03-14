@@ -39,7 +39,7 @@ pub fn calculate_execution_block_hash<E: EthSpec>(
     let rlp_withdrawals_root = if let Ok(withdrawals) = payload.withdrawals() {
         let encoded: Vec<_> = withdrawals
             .iter()
-            .map(|withdrawal| rlp_encode_withdrawal(&JsonWithdrawal::from(withdrawal.clone())))
+            .map(|withdrawal| rlp_encode_withdrawal(&JsonWithdrawal::from(*withdrawal)))
             .collect();
         Some(Hash256::from(
             ordered_trie_root_with_encoder(&encoded, |item, buf| buf.extend_from_slice(item))

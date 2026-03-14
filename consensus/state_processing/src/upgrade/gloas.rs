@@ -142,7 +142,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
         if validator_pubkeys.contains(&deposit.pubkey)
             || new_validator_pubkeys.contains(&deposit.pubkey)
         {
-            new_pending_deposits.push(deposit.clone());
+            new_pending_deposits.push(*deposit);
             continue;
         }
 
@@ -174,7 +174,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
         };
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
             new_validator_pubkeys.insert(deposit.pubkey);
-            new_pending_deposits.push(deposit.clone());
+            new_pending_deposits.push(*deposit);
         }
     }
 
