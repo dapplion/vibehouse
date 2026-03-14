@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1198 (Mar 14) — avoid Arc clone in data column gossip verification
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. Official v1.7.0-alpha.3 spec test release confirmed (published Mar 13). cargo audit unchanged (1 rsa, no fix). No patch-level dependency updates available (lockfile fully current).
+
+Shipped: changed `verify_parent_block_and_finalized_descendant` to take `&DataColumnSidecar` instead of `Arc<DataColumnSidecar>` by value. The function only reads `block_parent_root()` and does fork choice lookups — it never transfers ownership. Eliminates one `Arc::clone` per gossip data column verification (hot path). 2/2 data column verification tests pass, clippy clean.
+
 ### run 1197 (Mar 14) — avoid Hash256 wrapper in compute_shuffled_index
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix). No dependency updates.
