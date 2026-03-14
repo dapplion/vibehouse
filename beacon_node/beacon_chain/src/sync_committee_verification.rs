@@ -355,15 +355,10 @@ impl<T: BeaconChainTypes> VerifiedSyncContribution<T> {
             Err(e) => Err(BeaconChainError::from(e).into()),
         }?;
 
-        // Note: this clones the signature which is known to be a relatively slow operation.
-        //
-        // Future optimizations should remove this clone.
-        let selection_proof =
-            SyncSelectionProof::from(signed_aggregate.message.selection_proof.clone());
-
-        if !selection_proof
-            .is_aggregator::<T::EthSpec>()
-            .map_err(|e| Error::BeaconChainError(Box::new(e.into())))?
+        if !SyncSelectionProof::is_aggregator_sig::<T::EthSpec>(
+            &signed_aggregate.message.selection_proof,
+        )
+        .map_err(|e| Error::BeaconChainError(Box::new(e.into())))?
         {
             return Err(Error::InvalidSelectionProof { aggregator_index });
         }

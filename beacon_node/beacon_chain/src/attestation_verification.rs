@@ -643,13 +643,11 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
         // Committees must be sorted by ascending index order 0..committees_per_slot
         let get_indexed_attestation_with_committee =
             |(committees, _): (Vec<BeaconCommittee>, CommitteesPerSlot)| {
-                let (index, aggregator_index, selection_proof, data) = match signed_aggregate {
+                let (index, aggregator_index, selection_proof_ref, data) = match signed_aggregate {
                     SignedAggregateAndProof::Base(signed_aggregate) => (
                         signed_aggregate.message.aggregate.data.index,
                         signed_aggregate.message.aggregator_index,
-                        // Note: this clones the signature which is known to be a relatively slow operation.
-                        // Future optimizations should remove this clone.
-                        signed_aggregate.message.selection_proof.clone(),
+                        &signed_aggregate.message.selection_proof,
                         signed_aggregate.message.aggregate.data,
                     ),
                     SignedAggregateAndProof::Electra(signed_aggregate) => (
@@ -659,7 +657,7 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
                             .committee_index()
                             .ok_or(Error::NotExactlyOneCommitteeBitSet(0))?,
                         signed_aggregate.message.aggregator_index,
-                        signed_aggregate.message.selection_proof.clone(),
+                        &signed_aggregate.message.selection_proof,
                         signed_aggregate.message.aggregate.data,
                     ),
                 };
@@ -669,9 +667,12 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
                     .get(index as usize)
                     .ok_or(Error::NoCommitteeForSlotAndIndex { slot, index })?;
 
-                if !SelectionProof::from(selection_proof)
-                    .is_aggregator(committee.committee.len(), &chain.spec)
-                    .map_err(|e| Error::BeaconChainError(Box::new(e.into())))?
+                if !SelectionProof::is_aggregator_sig(
+                    selection_proof_ref,
+                    committee.committee.len(),
+                    &chain.spec,
+                )
+                .map_err(|e| Error::BeaconChainError(Box::new(e.into())))?
                 {
                     return Err(Error::InvalidSelectionProof { aggregator_index });
                 }
