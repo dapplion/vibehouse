@@ -78,7 +78,7 @@ pub fn run<E: EthSpec>(
         }
         let mut arr = [0u8; 32];
         arr.copy_from_slice(&bytes);
-        ExecutionBlockHash::from_root(Hash256::from_slice(&arr))
+        ExecutionBlockHash::from_root(Hash256::from(arr))
     } else {
         ExecutionBlockHash::zero()
     };

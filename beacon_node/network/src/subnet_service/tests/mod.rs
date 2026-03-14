@@ -62,7 +62,7 @@ impl TestBeaconChain {
                     interop_genesis_state::<MainnetEthSpec>(
                         &keypairs,
                         0,
-                        Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+                        Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
                         None,
                         &spec,
                     )

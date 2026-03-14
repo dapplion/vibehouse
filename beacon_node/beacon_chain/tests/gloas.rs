@@ -941,7 +941,7 @@ fn gloas_harness_with_builders(
         .build_genesis_state(
             &keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");
@@ -4438,7 +4438,7 @@ async fn gloas_self_build_envelope_missing_block_root_errors() {
     Box::pin(harness.extend_slots(2)).await;
 
     // Construct a fake envelope referencing a non-existent block
-    let fake_root = Hash256::from_slice(&[0xab; 32]);
+    let fake_root = Hash256::from([0xab; 32]);
     let mut envelope = SignedExecutionPayloadEnvelope::<E>::default();
     envelope.message.beacon_block_root = fake_root;
     envelope.message.slot = Slot::new(3);
@@ -16401,7 +16401,7 @@ fn gloas_harness_with_pending_withdrawals(
         .build_genesis_state(
             &keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");
@@ -17231,7 +17231,7 @@ async fn gloas_builder_payment_quorum_promotion_end_to_end() {
         .build_genesis_state(
             &keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");

@@ -82,7 +82,7 @@ fn get_harness_capella_spec(
     let genesis_state = interop_genesis_state(
         &validator_keypairs,
         HARNESS_GENESIS_TIME,
-        Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+        Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
         None,
         &spec,
     )

@@ -2227,7 +2227,7 @@ async fn gloas_rig_with_builders(chain_length: u64, builders: &[(u64, u64)]) -> 
         .build_genesis_state(
             &keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");

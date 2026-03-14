@@ -1356,7 +1356,7 @@ mod test {
         let genesis_state = interop_genesis_state(
             &generate_deterministic_keypairs(validator_count),
             genesis_time,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             None,
             &spec,
         )
@@ -1430,7 +1430,7 @@ mod test {
         let state = interop_genesis_state::<TestEthSpec>(
             &keypairs,
             genesis_time,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             None,
             spec,
         )
@@ -1438,7 +1438,7 @@ mod test {
 
         assert_eq!(
             state.eth1_data().block_hash,
-            Hash256::from_slice(&[0x42; 32]),
+            Hash256::from([0x42; 32]),
             "eth1 block hash should be co-ordinated junk"
         );
 

@@ -413,7 +413,7 @@ async fn bls_to_execution_changes_update_all_around_capella_fork() {
         .build_genesis_state(
             &validator_keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .unwrap();
@@ -2473,7 +2473,7 @@ async fn expected_withdrawals_gloas_includes_builder_withdrawals() {
         .build_genesis_state(
             &validator_keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");
@@ -2822,7 +2822,7 @@ async fn gloas_tester_with_builders(
         .build_genesis_state(
             &validator_keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");

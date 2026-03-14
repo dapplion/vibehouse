@@ -3446,7 +3446,7 @@ mod yaml_tests {
         let spec =
             ChainSpec::from_config::<MainnetEthSpec>(&config).expect("error while creating spec");
 
-        let genesis_validators_root = Hash256::from_slice(&[0; 32]);
+        let genesis_validators_root = Hash256::from([0; 32]);
 
         let digest = spec.compute_fork_digest(genesis_validators_root, Epoch::new(100));
         assert_eq!(digest, [0xdf, 0x67, 0x55, 0x7b]);

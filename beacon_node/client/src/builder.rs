@@ -270,7 +270,7 @@ where
                 let genesis_state = interop_genesis_state(
                     &keypairs,
                     genesis_time,
-                    Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+                    Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
                     None,
                     &spec,
                 )?;
@@ -285,7 +285,7 @@ where
                 let genesis_state = interop_genesis_state(
                     &keypairs,
                     genesis_time,
-                    Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+                    Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
                     execution_payload_header,
                     &spec,
                 )?;

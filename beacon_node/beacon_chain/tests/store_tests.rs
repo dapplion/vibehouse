@@ -5895,7 +5895,7 @@ async fn gloas_reconstruct_states_with_empty_path_block() {
         .build_genesis_state(
             &validators_keypairs,
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");

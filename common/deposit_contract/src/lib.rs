@@ -75,7 +75,7 @@ mod tests {
     fn get_deposit(keypair: Keypair, spec: &ChainSpec) -> DepositData {
         let mut deposit_data = DepositData {
             pubkey: keypair.pk.into(),
-            withdrawal_credentials: Hash256::from_slice(&[42; 32]),
+            withdrawal_credentials: Hash256::from([42; 32]),
             amount: u64::MAX,
             signature: Signature::empty().into(),
         };

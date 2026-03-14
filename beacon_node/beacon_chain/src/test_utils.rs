@@ -246,7 +246,7 @@ impl<E: EthSpec> Builder<EphemeralHarnessType<E>> {
                 .build_genesis_state(
                     &validator_keypairs,
                     HARNESS_GENESIS_TIME,
-                    Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+                    Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
                     builder.get_spec(),
                 )
                 .expect("should generate interop state");
@@ -313,7 +313,7 @@ impl<E: EthSpec> Builder<DiskHarnessType<E>> {
                 .build_genesis_state(
                     &validator_keypairs,
                     HARNESS_GENESIS_TIME,
-                    Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+                    Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
                     builder.get_spec(),
                 )
                 .expect("should generate interop state");

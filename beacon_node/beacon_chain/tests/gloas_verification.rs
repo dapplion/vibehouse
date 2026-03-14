@@ -113,7 +113,7 @@ async fn gloas_harness_with_builders(
         .build_genesis_state(
             &KEYPAIRS[0..VALIDATOR_COUNT],
             HARNESS_GENESIS_TIME,
-            Hash256::from_slice(DEFAULT_ETH1_BLOCK_HASH),
+            Hash256::from(DEFAULT_ETH1_BLOCK_HASH),
             &spec,
         )
         .expect("should generate interop state");
