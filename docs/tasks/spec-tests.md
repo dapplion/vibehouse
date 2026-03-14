@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1204 (Mar 14) — use pubkey_cache instead of HashSet in builder onboarding
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3).
+
+Open spec PRs tracked: #4992 (cached PTCs — approved, adds `previous_ptc`/`current_ptc` to BeaconState, rotates in `process_slots`, simplifies `get_ptc` to state lookup), #4939 (request missing envelopes for index-1 attestation), #4747 (fast confirmation rule). When #4992 merges: add 2 FixedVector fields to BeaconStateGloas, add `compute_ptc` function, modify per_slot_processing to rotate, update fork upgrade initialization, simplify `get_ptc_committee` to read from state.
+
+Shipped: replaced HashSet<PublicKeyBytes> allocation in `onboard_builders_from_pending_deposits` (upgrade/gloas.rs) with lookups against the existing `pubkey_cache`. The HashSet copied all validator pubkeys (~48 bytes × validator count; ~48MB on mainnet) to check if a pending deposit belongs to a validator. The pubkey_cache is already populated from the pre-state via `mem::take` — just needs an `update_pubkey_cache()` call to ensure it's current. Also changed the small `new_validator_pubkeys` tracker from HashSet to Vec (typically holds 0-2 entries). All 368 state_processing Gloas tests + 575 total state_processing tests + 10/10 EF fork spec tests pass, clippy clean.
+
 ### run 1200 (Mar 14) — avoid intermediate Vec allocation in range sync data column coupling
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3).
