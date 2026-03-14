@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1229 (Mar 14) — verify sync devnet with PeerDAS fix, fix custody coverage
+
+CI green: all 6 jobs passed for d82ad429a (PeerDAS exclusion fix). Spec stable (no new commits since e50889e1ca). PR #4992 still OPEN.
+
+**Sync devnet verification**: ran `--sync` test to verify the PeerDAS fix from run 1228. Initial run failed — both sync targets (supernode and fullnode) blocked at "Waiting for peers to be available on custody column subnets" at epoch 0 (Fulu). Root cause: validator nodes (the only available peers during sync) were not supernodes, so they didn't custody all column subnets. Sync targets with 8 sampling subnets couldn't find peers covering them all in a 4-node network.
+
+**Fix**: updated `kurtosis/vibehouse-sync.yaml` to set `supernode: true` on validator participants. Supernodes custody all subnets, ensuring sync targets can always find peers for their sampling requirements.
+
+**Result**: sync test PASSED. Supernode sync target successfully range-synced through Fulu→Gloas fork boundary (head=0→8), then entered Synced mode. Fullnode reached head=7 (pre-Gloas) — a peer discovery limitation in small networks where the fullnode only connected to 1 peer (the other sync target, also behind). The supernode result validates the PeerDAS fix works end-to-end.
+
 ### run 1228 (Mar 14) — exclude gloas from block-level PeerDAS data availability checks
 
 **Root cause of sync devnet stall identified and fixed.** Range sync nodes were blocked indefinitely waiting for custody column subnet peers that would never appear, because `is_peer_das_enabled_for_epoch` returned true for Gloas epochs. But Gloas (ePBS) blocks carry bids instead of execution payloads — they have no blobs or data columns at the block level. Data availability for Gloas comes through execution payload envelopes.

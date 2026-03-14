@@ -1,9 +1,12 @@
 participants:
   # 2 validator nodes (keep running, produce blocks)
+  # supernode: true ensures they custody all column subnets, so sync targets
+  # can find peers for all their sampling subnets during PeerDAS range sync
   - el_type: geth
     el_image: ethpandaops/geth:epbs-devnet-0
     cl_type: lighthouse
     cl_image: vibehouse:local
+    supernode: true
     count: 2
   # 2 non-validator nodes (sync targets — stopped and restarted)
   - el_type: geth
