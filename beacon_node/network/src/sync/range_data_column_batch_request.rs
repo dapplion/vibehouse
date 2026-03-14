@@ -28,18 +28,15 @@ impl<T: BeaconChainTypes> RangeDataColumnBatchRequest<T> {
         beacon_chain: Arc<BeaconChain<T>>,
         epoch: Epoch,
     ) -> Self {
-        let requests = by_range_requests
-            .clone()
-            .into_iter()
-            .map(|(req, _)| (req, ByRangeRequest::Active(req)))
-            .collect::<HashMap<_, _>>();
+        let mut requests = HashMap::with_capacity(by_range_requests.len());
+        let mut column_peers = HashMap::with_capacity(by_range_requests.len());
+        let mut expected_custody_columns = HashSet::new();
 
-        let column_peers = by_range_requests.clone().into_iter().collect();
-
-        let expected_custody_columns = by_range_requests
-            .into_iter()
-            .flat_map(|(_, column_indices)| column_indices)
-            .collect();
+        for (req_id, column_indices) in by_range_requests {
+            requests.insert(req_id, ByRangeRequest::Active(req_id));
+            expected_custody_columns.extend(&column_indices);
+            column_peers.insert(req_id, column_indices);
+        }
 
         Self {
             requests,

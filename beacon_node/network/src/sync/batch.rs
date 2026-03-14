@@ -481,7 +481,7 @@ impl<E: EthSpec, B: BatchConfig> BatchInfo<E, B, DataColumnSidecarList<E>> {
             ByRangeRequestType::Columns(columns) => Ok(DataColumnsByRangeRequest {
                 start_slot: self.start_slot.into(),
                 count: self.end_slot.sub(self.start_slot).into(),
-                columns: columns.clone().into_iter().collect(),
+                columns: columns.iter().copied().collect(),
             }),
             _ => Err(WrongState(
                 "Custody backfill sync can only make data columns by range requests.".to_string(),
