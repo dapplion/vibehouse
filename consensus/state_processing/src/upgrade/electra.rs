@@ -154,7 +154,7 @@ pub fn upgrade_state_to_electra<E: EthSpec>(
         // Capella
         next_withdrawal_index: pre.next_withdrawal_index,
         next_withdrawal_validator_index: pre.next_withdrawal_validator_index,
-        historical_summaries: pre.historical_summaries.clone(),
+        historical_summaries: mem::take(&mut pre.historical_summaries),
         // Electra
         deposit_requests_start_index: spec.unset_deposit_requests_start_index,
         deposit_balance_to_consume: 0,

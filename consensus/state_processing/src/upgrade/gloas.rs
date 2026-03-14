@@ -82,7 +82,7 @@ pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
         // Capella
         next_withdrawal_index: pre.next_withdrawal_index,
         next_withdrawal_validator_index: pre.next_withdrawal_validator_index,
-        historical_summaries: pre.historical_summaries.clone(),
+        historical_summaries: mem::take(&mut pre.historical_summaries),
         // Electra
         deposit_requests_start_index: pre.deposit_requests_start_index,
         deposit_balance_to_consume: pre.deposit_balance_to_consume,
@@ -90,9 +90,9 @@ pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
         earliest_exit_epoch: pre.earliest_exit_epoch,
         consolidation_balance_to_consume: pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch: pre.earliest_consolidation_epoch,
-        pending_deposits: pre.pending_deposits.clone(),
-        pending_partial_withdrawals: pre.pending_partial_withdrawals.clone(),
-        pending_consolidations: pre.pending_consolidations.clone(),
+        pending_deposits: mem::take(&mut pre.pending_deposits),
+        pending_partial_withdrawals: mem::take(&mut pre.pending_partial_withdrawals),
+        pending_consolidations: mem::take(&mut pre.pending_consolidations),
         proposer_lookahead: mem::take(&mut pre.proposer_lookahead),
         // Gloas
         builders: List::default(),

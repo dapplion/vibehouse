@@ -63,7 +63,7 @@ pub fn upgrade_to_deneb<E: EthSpec>(
         // Capella
         next_withdrawal_index: pre.next_withdrawal_index,
         next_withdrawal_validator_index: pre.next_withdrawal_validator_index,
-        historical_summaries: pre.historical_summaries.clone(),
+        historical_summaries: mem::take(&mut pre.historical_summaries),
         // Caches
         total_active_balance: pre.total_active_balance,
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),
