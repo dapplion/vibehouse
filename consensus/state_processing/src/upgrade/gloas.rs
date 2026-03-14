@@ -1,7 +1,6 @@
 use crate::per_block_processing::is_valid_deposit_signature;
 use ssz_types::BitVector;
 use ssz_types::typenum::Unsigned;
-use std::collections::HashSet;
 use std::mem;
 use types::{
     Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
@@ -129,17 +128,19 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
     state: &mut BeaconState<E>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    // Collect validator pubkeys into a HashSet for O(1) lookup
-    let validator_pubkeys: HashSet<PublicKeyBytes> =
-        state.validators().iter().map(|v| v.pubkey).collect();
+    // Use the existing pubkey_cache for O(1) validator lookup instead of
+    // allocating a HashSet of all validator pubkeys (~48 bytes × validator count).
+    // Ensure the cache is populated (it was moved from the pre-state during upgrade).
+    state.update_pubkey_cache()?;
 
     let pending_deposits = state.pending_deposits()?.clone();
     let mut new_pending_deposits = Vec::with_capacity(pending_deposits.len());
-    let mut new_validator_pubkeys: HashSet<PublicKeyBytes> = HashSet::new();
+    // Track pubkeys of deposits that will become new validators (not yet in the cache)
+    let mut new_validator_pubkeys = Vec::<PublicKeyBytes>::new();
 
     for deposit in pending_deposits.iter() {
         // If pubkey belongs to a validator, keep as validator deposit
-        if validator_pubkeys.contains(&deposit.pubkey)
+        if state.pubkey_cache().get(&deposit.pubkey).is_some()
             || new_validator_pubkeys.contains(&deposit.pubkey)
         {
             new_pending_deposits.push(*deposit);
@@ -173,7 +174,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
             signature: deposit.signature,
         };
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
-            new_validator_pubkeys.insert(deposit.pubkey);
+            new_validator_pubkeys.push(deposit.pubkey);
             new_pending_deposits.push(*deposit);
         }
     }
