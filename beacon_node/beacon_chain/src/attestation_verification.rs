@@ -38,7 +38,7 @@ use crate::{
     BeaconChain, BeaconChainError, BeaconChainTypes, metrics,
     observed_aggregates::{ObserveOutcome, ObservedAttestationKey},
     observed_attesters::Error as ObservedAttestersError,
-    single_attestation::single_attestation_to_attestation,
+    single_attestation::build_attestation_from_single,
 };
 use bls::verify_signature_sets;
 use itertools::Itertools;
@@ -1027,33 +1027,40 @@ impl<'a, T: BeaconChainTypes> VerifiedUnaggregatedAttestation<'a, T> {
         subnet_id: Option<SubnetId>,
         chain: &BeaconChain<T>,
     ) -> Result<(Attestation<T::EthSpec>, SubnetId), Error> {
-        // Check that the attester is a member of the committee
-        let (committee_opt, committees_per_slot) = chain.with_committee_cache(
+        // Extract only the aggregation bit position and committee length from the cache,
+        // avoiding a full committee Vec clone on every attestation.
+        let (committee_info, committees_per_slot) = chain.with_committee_cache(
             attestation.data.target.root,
             attestation.data.slot.epoch(T::EthSpec::slots_per_epoch()),
             |committee_cache, _| {
-                let committee_opt = committee_cache
+                let committee_info = committee_cache
                     .get_beacon_committee(attestation.data.slot, attestation.committee_index)
-                    .map(|beacon_committee| beacon_committee.committee.to_vec());
+                    .map(|beacon_committee| {
+                        let committee = beacon_committee.committee;
+                        let aggregation_bit = committee
+                            .iter()
+                            .position(|&i| i == attestation.attester_index as usize);
+                        (aggregation_bit, committee.len())
+                    });
 
-                Ok((committee_opt, committee_cache.committees_per_slot()))
+                Ok((committee_info, committee_cache.committees_per_slot()))
             },
         )?;
 
-        let Some(committee) = committee_opt else {
+        let Some((aggregation_bit, committee_len)) = committee_info else {
             return Err(Error::NoCommitteeForSlotAndIndex {
                 slot: attestation.data.slot,
                 index: attestation.committee_index,
             });
         };
 
-        if !committee.contains(&(attestation.attester_index as usize)) {
+        let Some(aggregation_bit) = aggregation_bit else {
             return Err(Error::AttesterNotInCommittee {
                 attester_index: attestation.attester_index,
                 committee_index: attestation.committee_index,
                 slot: attestation.data.slot,
             });
-        }
+        };
 
         let expected_subnet_id = SubnetId::compute_subnet_for_single_attestation::<T::EthSpec>(
             attestation,
@@ -1093,8 +1100,12 @@ impl<'a, T: BeaconChainTypes> VerifiedUnaggregatedAttestation<'a, T> {
             .spec
             .fork_name_at_slot::<T::EthSpec>(attestation.data.slot);
 
-        let unaggregated_attestation =
-            single_attestation_to_attestation(attestation, &committee, fork_name)?;
+        let unaggregated_attestation = build_attestation_from_single::<T::EthSpec>(
+            attestation,
+            aggregation_bit,
+            committee_len,
+            fork_name,
+        )?;
 
         Ok((unaggregated_attestation, expected_subnet_id))
     }
