@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1196 (Mar 14) — use mem::take for variable-length Lists in fork upgrades
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. No new spec test releases (v1.7.0-alpha.3 verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates.
+
+Verified two new post-alpha.3 spec PRs: #5001 (add parent_block_root to bid filtering key) — already implemented in vibehouse's `ObservedExecutionBids::is_highest_value_bid` which tracks by `(slot, parent_block_hash, parent_block_root)`. #4940 (initial fork choice tests for Gloas) — test infrastructure already handles `on_execution_payload` step. No code changes needed.
+
+Reviewed `node_is_viable_for_head` in proto_array for potential genesis block edge case — confirmed no issue: genesis/fork-transition blocks have `builder_index = None` or `BUILDER_INDEX_SELF_BUILD`, never a real external builder index without a corresponding bid.
+
+Checked nightly test history: March 10 `network-tests (fulu)` failure was `data_column_reconstruction_at_deadline` race condition — already fixed (test rewritten to collect events in any order). Subsequent nightlies (March 11-13) all pass.
+
+Shipped: replaced `.clone()` with `mem::take()` for `historical_summaries`, `pending_deposits`, `pending_partial_withdrawals`, and `pending_consolidations` in fork upgrade functions (deneb, electra, fulu, gloas). These are variable-length Lists that can grow large; `mem::take` moves the backing allocation instead of cloning it. 368 state_processing tests + 139/139 EF spec tests pass.
+
 ### run 1195 (Mar 14) — reuse ancestor cache allocation in find_head_gloas
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. No new spec test releases (v1.7.0-alpha.3 verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates.
