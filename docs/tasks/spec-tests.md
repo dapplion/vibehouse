@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1239 (Mar 14) — process_envelope_for_sync error path tests, spec stable
+
+Spec stable: no new consensus-specs commits since 4b6f527c5c9 (#4940, fork choice tests only). No new spec test releases (latest v1.7.0-alpha.3). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892) still OPEN, none merged. Two new spec-change PRs to monitor: #4954 (fork choice milliseconds) and #4840 (EIP-7843 in Gloas) — neither merged.
+
+**Test coverage**: Added 5 integration tests for `process_envelope_for_sync` error paths (beacon_chain.rs:2815-3017):
+1. `gloas_sync_envelope_builder_index_mismatch` — tampered builder_index rejected before state transition
+2. `gloas_sync_envelope_block_hash_mismatch` — tampered block_hash rejected before state transition
+3. `gloas_sync_envelope_tampered_state_root_rejected` — tampered state_root caught by signature verification (state_root is part of signed message, so tampering invalidates the signature — correct defense-in-depth)
+4. `gloas_sync_envelope_missing_block` — envelope for unknown block root rejected
+5. `gloas_sync_envelope_invalid_signature` — zeroed signature with correct bid fields rejected
+
+Also added `build_gloas_chain_for_sync_tests` helper for building chain + extracting blocks/envelopes.
+
+Total Gloas beacon_chain integration tests: ~779.
+
 ### run 1238 (Mar 14) — load_parent blinded envelope fallback test, spec stable
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892) still OPEN, none merged. Spec PR #5001 (add parent_block_root to bid filtering key) merged Mar 12 — vibehouse already implements this (observed_execution_bids.rs uses `(slot, parent_block_hash, parent_block_root)` tuple). PR #5002 (wording clarification) — no code change needed.
