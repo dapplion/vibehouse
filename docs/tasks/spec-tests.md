@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1244 (Mar 15) — spec stable, all fork choice EF tests verified, CI green
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (12+ consecutive: Mar 4-15). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
+
+**CI status**: Latest commit (732aec9c2) CI run — check+clippy, EF tests, network+op_pool all passed. beacon_chain, http_api, unit tests in progress.
+
+**Local verification**: Ran all 9 fork choice EF test categories locally (real crypto, minimal preset): all pass. Specifically verified `fork_choice_on_execution_payload` (from spec PR #4940, merged Mar 13) — tests EMPTY→FULL payload status transition via `on_execution_payload` handler. Already passing since v1.7.0-alpha.3 vectors.
+
+**Spec PR monitoring**: Re-checked all 7 tracked PRs — none merged, none have new activity since run 1243. PR #4992 (cached PTCs) remains approved but with unresolved review comments. PR #4954 (milliseconds) is blocked.
+
+**Coverage status**: Reviewed upgrade/gloas.rs slot reuse logic (line 227-268) — runtime `process_deposit_request` path has 6 dedicated unit tests for builder slot reuse; upgrade path shares same pattern but slot reuse is unreachable during fork upgrade (builders are freshly created). No new test gaps found. Total Gloas beacon_chain integration tests: ~780.
+
 ### run 1243 (Mar 15) — spec stable, comprehensive coverage audit, CI green
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (11+ consecutive: Mar 5-15). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
