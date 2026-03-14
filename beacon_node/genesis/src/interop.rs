@@ -1,7 +1,6 @@
 use crate::common::genesis_deposits;
 use ethereum_hashing::hash_fixed;
 use rayon::prelude::*;
-use ssz::Encode;
 use state_processing::initialize_beacon_state_from_eth1;
 use types::{
     BeaconState, ChainSpec, DepositData, EthSpec, ExecutionPayloadHeader, Hash256, Keypair,
@@ -11,13 +10,13 @@ use types::{
 pub const DEFAULT_ETH1_BLOCK_HASH: [u8; 32] = [0x42; 32];
 
 pub fn bls_withdrawal_credentials(pubkey: &PublicKey, spec: &ChainSpec) -> Hash256 {
-    let mut credentials = hash_fixed(&pubkey.as_ssz_bytes());
+    let mut credentials = hash_fixed(&pubkey.serialize());
     credentials[0] = spec.bls_withdrawal_prefix_byte;
     Hash256::from(credentials)
 }
 
 fn eth1_withdrawal_credentials(pubkey: &PublicKey, spec: &ChainSpec) -> Hash256 {
-    let fake_execution_address = &hash_fixed(&pubkey.as_ssz_bytes())[0..20];
+    let fake_execution_address = &hash_fixed(&pubkey.serialize())[0..20];
     let mut credentials = [0u8; 32];
     credentials[0] = spec.eth1_address_withdrawal_prefix_byte;
     credentials[12..].copy_from_slice(fake_execution_address);
@@ -243,7 +242,7 @@ mod test {
             );
             assert_eq!(
                 &creds.as_slice()[1..],
-                &hash_fixed(&v.pubkey.as_ssz_bytes())[1..],
+                &hash_fixed(&v.pubkey.serialize())[1..],
                 "rest of withdrawal creds should be pubkey hash"
             )
         }
@@ -307,7 +306,7 @@ mod test {
                 );
                 assert_eq!(
                     &creds[1..],
-                    &hash_fixed(&v.pubkey.as_ssz_bytes())[1..],
+                    &hash_fixed(&v.pubkey.serialize())[1..],
                     "rest of withdrawal creds should be pubkey hash"
                 );
             } else {
@@ -322,7 +321,7 @@ mod test {
                 );
                 assert_eq!(
                     &creds[12..],
-                    &hash_fixed(&v.pubkey.as_ssz_bytes())[0..20],
+                    &hash_fixed(&v.pubkey.serialize())[0..20],
                     "rest of withdrawal creds should be first 20 bytes of pubkey hash"
                 )
             }

@@ -82,7 +82,7 @@ macro_rules! impl_ssz_decode {
 macro_rules! impl_display {
     () => {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", hex_encode(self.serialize().to_vec()))
+            write!(f, "{}", hex_encode(self.serialize()))
         }
     };
 }
@@ -157,7 +157,7 @@ macro_rules! impl_serde_deserialize {
 macro_rules! impl_debug {
     () => {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{}", hex_encode(&self.serialize().to_vec()))
+            write!(f, "{}", hex_encode(self.serialize()))
         }
     };
 }

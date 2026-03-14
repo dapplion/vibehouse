@@ -1331,7 +1331,7 @@ mod test {
     };
     use rand::SeedableRng;
     use rand::rngs::StdRng;
-    use ssz::Encode;
+
     use std::time::Duration;
     use store::config::StoreConfig;
     use store::{HotColdDB, MemoryStore};
@@ -1463,7 +1463,7 @@ mod test {
             );
             assert_eq!(
                 &creds[1..],
-                &hash_fixed(&v.pubkey.as_ssz_bytes())[1..],
+                &hash_fixed(&v.pubkey.serialize())[1..],
                 "rest of withdrawal creds should be pubkey hash"
             )
         }
