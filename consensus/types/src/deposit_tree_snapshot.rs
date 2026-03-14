@@ -6,7 +6,7 @@ use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
 use test_utils::TestRandom;
 
-#[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, PartialEq, TestRandom)]
+#[derive(Encode, Decode, Deserialize, Serialize, Clone, Copy, Debug, PartialEq, TestRandom)]
 pub struct FinalizedExecutionBlock {
     pub deposit_root: Hash256,
     pub deposit_count: u64,

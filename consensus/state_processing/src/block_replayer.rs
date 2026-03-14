@@ -660,7 +660,7 @@ mod tests {
         let bid = state.latest_execution_payload_bid().unwrap().clone();
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
-        let mut header = state.latest_block_header().clone();
+        let mut header = *state.latest_block_header();
         header.state_root = state.clone().canonical_root().unwrap();
         let beacon_block_root = header.tree_hash_root();
 
@@ -1474,7 +1474,7 @@ mod tests {
         *state.payload_expected_withdrawals_mut().unwrap() = List::new(vec![withdrawal]).unwrap();
 
         // Build envelope with matching withdrawals (so envelope processing succeeds)
-        let mut header = state.latest_block_header().clone();
+        let mut header = *state.latest_block_header();
         header.state_root = state.clone().canonical_root().unwrap();
         let beacon_block_root = header.tree_hash_root();
         let timestamp = compute_timestamp_at_slot(&state, state.slot(), &spec).unwrap();
@@ -1833,7 +1833,7 @@ mod tests {
             .clone();
         let latest_block_hash = *post_block_state.latest_block_hash().unwrap();
 
-        let mut header = post_block_state.latest_block_header().clone();
+        let mut header = *post_block_state.latest_block_header();
         header.state_root = post_block_state.clone().canonical_root().unwrap();
         let beacon_block_root = header.tree_hash_root();
 
@@ -2038,7 +2038,7 @@ mod tests {
             .clone();
         let latest_block_hash = *post_block_state.latest_block_hash().unwrap();
 
-        let mut header = post_block_state.latest_block_header().clone();
+        let mut header = *post_block_state.latest_block_header();
         header.state_root = post_block_state.clone().canonical_root().unwrap();
         let beacon_block_root = header.tree_hash_root();
 

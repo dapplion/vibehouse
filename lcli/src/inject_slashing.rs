@@ -179,7 +179,7 @@ async fn inject_proposer_slashing<E: EthSpec>(
     };
 
     // Create header_2: same as header_1 but with a different state_root → makes it a valid equivocation
-    let mut header_2 = header_1.clone();
+    let mut header_2 = header_1;
     header_2.state_root = Hash256::repeat_byte(0xDE);
 
     // Sign both headers with DOMAIN_BEACON_PROPOSER

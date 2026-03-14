@@ -1117,7 +1117,7 @@ impl<E: EthSpec> Network<E> {
 
     /// Updates the local ENR's "eth2" field with the latest EnrForkId.
     pub fn update_fork_version(&mut self, enr_fork_id: EnrForkId) {
-        self.discovery_mut().update_eth2_enr(enr_fork_id.clone());
+        self.discovery_mut().update_eth2_enr(enr_fork_id);
 
         // update the local reference
         self.enr_fork_id = enr_fork_id;

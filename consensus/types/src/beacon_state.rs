@@ -1488,7 +1488,7 @@ impl<E: EthSpec> BeaconState<E> {
     /// Spec v0.12.1
     pub fn get_latest_block_root(&self, current_state_root: Hash256) -> Hash256 {
         if self.latest_block_header().state_root.is_zero() {
-            let mut latest_block_header = self.latest_block_header().clone();
+            let mut latest_block_header = *self.latest_block_header();
             latest_block_header.state_root = current_state_root;
             latest_block_header.canonical_root()
         } else {

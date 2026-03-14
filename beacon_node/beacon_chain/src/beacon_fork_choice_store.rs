@@ -156,7 +156,7 @@ where
     ) -> Result<Self, Error> {
         let unadvanced_state_root = anchor.beacon_state_root();
         let mut anchor_state = anchor.beacon_state;
-        let mut anchor_block_header = anchor_state.latest_block_header().clone();
+        let mut anchor_block_header = *anchor_state.latest_block_header();
 
         // The anchor state MUST be on an epoch boundary (it should be advanced by the caller).
         if !anchor_state

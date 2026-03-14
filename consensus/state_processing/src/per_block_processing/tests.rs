@@ -845,7 +845,7 @@ async fn invalid_proposer_slashing_proposals_identical() {
     let harness = get_harness::<MainnetEthSpec>(EPOCH_OFFSET, VALIDATOR_COUNT).await;
 
     let mut proposer_slashing = harness.make_proposer_slashing(1);
-    proposer_slashing.signed_header_1.message = proposer_slashing.signed_header_2.message.clone();
+    proposer_slashing.signed_header_1.message = proposer_slashing.signed_header_2.message;
 
     let mut state = harness.get_current_state();
     let mut ctxt = ConsensusContext::new(state.slot());

@@ -2181,7 +2181,7 @@ where
             block_header_1.slot = slot;
         }
 
-        let mut block_header_2 = block_header_1.clone();
+        let mut block_header_2 = block_header_1;
         block_header_2.state_root = Hash256::zero();
 
         let sk = &self.validator_keypairs[validator_index as usize].sk;

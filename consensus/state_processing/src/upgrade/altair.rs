@@ -75,7 +75,7 @@ pub fn upgrade_to_altair<E: EthSpec>(
             epoch,
         },
         // History
-        latest_block_header: pre.latest_block_header.clone(),
+        latest_block_header: pre.latest_block_header,
         block_roots: pre.block_roots.clone(),
         state_roots: pre.state_roots.clone(),
         historical_roots: mem::take(&mut pre.historical_roots),

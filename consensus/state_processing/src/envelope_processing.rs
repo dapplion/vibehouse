@@ -476,7 +476,7 @@ mod tests {
         // The state's latest_block_header has state_root=0x00..00, so we need to
         // first compute canonical_root which will fill it in. But since the
         // function will do that itself, we just need the final root after filling.
-        let mut header = state.latest_block_header().clone();
+        let mut header = *state.latest_block_header();
         header.state_root = state.clone().canonical_root().unwrap();
         let beacon_block_root = header.tree_hash_root();
 
@@ -1212,7 +1212,7 @@ mod tests {
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
         // Compute the beacon_block_root accounting for parent_state_root
-        let mut header = state.latest_block_header().clone();
+        let mut header = *state.latest_block_header();
         if header.state_root == Hash256::default() {
             header.state_root =
                 parent_state_root.unwrap_or_else(|| state.clone().canonical_root().unwrap());
@@ -2308,7 +2308,7 @@ mod tests {
         let bid = state.latest_execution_payload_bid().unwrap().clone();
         let latest_block_hash = *state.latest_block_hash().unwrap();
 
-        let mut header = state.latest_block_header().clone();
+        let mut header = *state.latest_block_header();
         header.state_root = state.clone().canonical_root().unwrap();
         let beacon_block_root = header.tree_hash_root();
 

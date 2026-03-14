@@ -41,10 +41,7 @@ fn valid_blocks() {
 fn valid_same_block() {
     let block = block(100);
     StreamTest {
-        cases: vec![
-            Test::single(block.clone()),
-            Test::single(block).expect_same_data(),
-        ],
+        cases: vec![Test::single(block), Test::single(block).expect_same_data()],
         ..StreamTest::default()
     }
     .run()
@@ -68,7 +65,7 @@ fn valid_same_block_different_validator() {
     StreamTest {
         registered_validators: vec![pubkey(0), pubkey(1)],
         cases: vec![
-            Test::with_pubkey(pubkey(0), block.clone()),
+            Test::with_pubkey(pubkey(0), block),
             Test::with_pubkey(pubkey(1), block),
         ],
     }
@@ -80,7 +77,7 @@ fn invalid_double_block_proposal() {
     let first_block = block(1);
     StreamTest {
         cases: vec![
-            Test::single(first_block.clone()),
+            Test::single(first_block),
             Test::single(block(1)).expect_invalid_block(InvalidBlock::DoubleBlockProposal(
                 SignedBlock::from_header(&first_block, DEFAULT_DOMAIN),
             )),
@@ -97,8 +94,8 @@ fn invalid_double_block_proposal_diff_domain() {
     let domain2 = Hash256::from_low_u64_be(2);
     StreamTest {
         cases: vec![
-            Test::single(first_block.clone()).with_domain(domain1),
-            Test::single(first_block.clone())
+            Test::single(first_block).with_domain(domain1),
+            Test::single(first_block)
                 .with_domain(domain2)
                 .expect_invalid_block(InvalidBlock::DoubleBlockProposal(SignedBlock::from_header(
                     &first_block,
