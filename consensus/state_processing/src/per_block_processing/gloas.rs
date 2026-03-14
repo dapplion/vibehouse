@@ -391,24 +391,18 @@ pub fn get_ptc_committee<E: EthSpec>(
     seed_input[32..].copy_from_slice(&slot_bytes);
     let seed = hash_fixed(&seed_input);
 
-    // Concatenate all committees for this slot in order
+    // Get all committees for this slot and compute total validator count.
+    // Instead of concatenating all validator indices into an intermediate Vec,
+    // look up candidates directly from the committees by flat index.
     let committees = state
         .get_beacon_committees_at_slot(slot)
         .map_err(BlockProcessingError::BeaconStateError)?;
-    let mut indices: Vec<u64> = Vec::with_capacity(
-        committees
-            .iter()
-            .fold(0usize, |acc, c| acc.saturating_add(c.committee.len())),
-    );
-    for committee in &committees {
-        for &validator_index in committee.committee {
-            indices.push(validator_index as u64);
-        }
-    }
+    let total: usize = committees
+        .iter()
+        .fold(0usize, |acc, c| acc.saturating_add(c.committee.len()));
 
     // compute_balance_weighted_selection(state, indices, seed, PTC_SIZE, shuffle_indices=False)
     let ptc_size = E::PtcSize::to_usize();
-    let total = indices.len();
     if total == 0 {
         return Err(BlockProcessingError::PayloadAttestationInvalid(
             PayloadAttestationInvalid::NoActiveValidators,
@@ -428,13 +422,23 @@ pub fn get_ptc_committee<E: EthSpec>(
     let mut random_bytes = [0u8; 32];
     while selected.len() < ptc_size {
         let next_index = i.safe_rem(total as u64)? as usize;
-        // shuffle_indices=False, so just use next_index directly
-        let candidate_index =
-            *indices
-                .get(next_index)
-                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
-                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
-                ))?;
+        // shuffle_indices=False, so just use next_index directly.
+        // Look up the validator at this flat index across all committees.
+        let candidate_index = {
+            let mut remaining = next_index;
+            let mut found = None;
+            for committee in &committees {
+                let len = committee.committee.len();
+                if remaining < len {
+                    found = committee.committee.get(remaining).map(|&idx| idx as u64);
+                    break;
+                }
+                remaining = remaining.saturating_sub(len);
+            }
+            found.ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?
+        };
 
         // compute_balance_weighted_acceptance
         let hash_group = i.safe_div(16)?;
