@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1221 (Mar 14) — spec stable, bid pool eager pruning
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.5.0 on consensus-spec-tests, v1.7.0-alpha.3 on consensus-specs). cargo audit unchanged (1 rsa). Nightly green (5 consecutive: Mar 10-14). CI from run 1220 (8d684988f) — check+clippy, ef-tests, network+op_pool all passed; beacon_chain, http_api, unit tests still running.
+
+Conducted deep audit of Gloas ePBS code (gloas.rs, gloas_verification.rs, execution_bid_pool.rs, signature_sets.rs) via subagent. Verified all reported findings against actual code and spec:
+- Self-build envelope signature: already handled in `execution_payload_envelope_signature_set` (line 760, BUILDER_INDEX_SELF_BUILD branch). False positive.
+- `value` vs `execution_payment` validation: spec does NOT require these to match. `execution_payment` is defined in the container but not used in state processing. Only gossip validation checks `execution_payment != 0` (already implemented at line 422). False positive.
+- `is_parent_block_full` zero hash: intentionally returns true when both hashes are zero (genesis/fork activation). Test at line 4909 documents this. False positive.
+- Bid pool unbounded growth: real but bounded in practice by builder count. Fixed anyway.
+
+Shipped: prune execution bid pool on insert (4b216dde7). Previously the pool was only pruned during `get_best_bid()` (block production). If block production stalled, bids could accumulate from gossip without bound. Now `insert()` prunes old slots eagerly, capping the pool to MAX_BID_POOL_SLOTS (4) worth of data at all times. Updated test to account for insert-time pruning. 40/40 bid pool + observed_bids tests pass. Lint clean.
+
 ### run 1220 (Mar 14) — spec stable, attestation verification allocation optimization
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa). Nightly green (5 consecutive: Mar 10-14). CI from run 1218 fix (b82b5557a) — check+ef passed, remaining jobs still running.
