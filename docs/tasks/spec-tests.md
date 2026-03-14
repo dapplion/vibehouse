@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1238 (Mar 14) — load_parent blinded envelope fallback test, spec stable
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892) still OPEN, none merged. Spec PR #5001 (add parent_block_root to bid filtering key) merged Mar 12 — vibehouse already implements this (observed_execution_bids.rs uses `(slot, parent_block_hash, parent_block_root)` tuple). PR #5002 (wording clarification) — no code change needed.
+
+**Test coverage**: Added `gloas_load_parent_blinded_envelope_fallback_after_pruning` — integration test for block_verification.rs:2035-2053, the path where `load_parent` detects a FULL parent whose full payload was pruned, falls back to the blinded envelope via `get_blinded_payload_envelope`, reconstructs it with `into_full_with_withdrawals`, and re-applies it to get correct `latest_block_hash`. This path was previously only tested indirectly via `get_advanced_hot_state` (different code path in hot_cold_store.rs).
+
+Total Gloas beacon_chain integration tests: ~774.
+
 ### run 1237 (Mar 14) — add process_envelope_for_sync integration tests, spec stable
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (8 consecutive: Mar 7-14). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892) still OPEN, none merged.
