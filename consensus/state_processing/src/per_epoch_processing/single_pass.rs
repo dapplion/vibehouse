@@ -1140,14 +1140,11 @@ fn process_pending_consolidations<E: EthSpec>(
     state_ctxt: &StateContext,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let next_epoch = state.next_epoch()?;
-
-    // First pass: read pending consolidations and determine which ones to process,
-    // collecting (source_index, target_index, consolidated_balance) tuples.
-    // This avoids cloning the entire pending_consolidations list.
     let mut next_pending_consolidation: usize = 0;
-    let mut to_process = Vec::new();
-    for pending_consolidation in state.pending_consolidations()?.iter() {
+    let next_epoch = state.next_epoch()?;
+    let pending_consolidations = state.pending_consolidations()?.clone();
+
+    for pending_consolidation in &pending_consolidations {
         let source_index = pending_consolidation.source_index as usize;
         let target_index = pending_consolidation.target_index as usize;
         let source_validator = state.get_validator(source_index)?;
@@ -1159,6 +1156,7 @@ fn process_pending_consolidations<E: EthSpec>(
             break;
         }
 
+        // Calculate the consolidated balance
         let source_effective_balance = std::cmp::min(
             *state
                 .balances()
@@ -1167,14 +1165,11 @@ fn process_pending_consolidations<E: EthSpec>(
             source_validator.effective_balance,
         );
 
-        to_process.push((source_index, target_index, source_effective_balance));
-        next_pending_consolidation.safe_add_assign(1)?;
-    }
-
-    // Second pass: apply balance changes.
-    for (source_index, target_index, source_effective_balance) in to_process {
+        // Move active balance to target. Excess balance is withdrawable.
         decrease_balance(state, source_index, source_effective_balance)?;
         increase_balance(state, target_index, source_effective_balance)?;
+
+        next_pending_consolidation.safe_add_assign(1)?;
     }
 
     state
