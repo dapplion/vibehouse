@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1207 (Mar 14) — avoid Vec allocation in sync contribution aggregation bit check
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3). Note: v1.7.0-alpha.3 spec test vectors have NOT been published yet (latest release is v1.6.0-beta.0).
+
+Shipped: replaced `collect::<Vec<_>>()` with iterator-based approach in `SyncContributionAggregateMap::insert` (naive_aggregation_pool.rs). The old code collected all set bit indices into a Vec just to check that exactly one bit is set and get its index. Now uses `iter.next()` to get the first set bit, then `iter.next().is_some()` to detect multiple set bits — avoids a heap allocation per sync contribution insertion (hot path). 13/13 naive_aggregation_pool tests pass, clippy clean.
+
 ### run 1206 (Mar 14) — eliminate heap allocations in batch signature verification
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3).
