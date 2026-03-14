@@ -216,11 +216,16 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 column_peers,
                 attempt,
             } => {
-                let mut data_columns = vec![];
+                let mut data_columns = Vec::with_capacity(
+                    requests
+                        .values()
+                        .filter_map(|r| r.to_finished().map(|d| d.len()))
+                        .sum(),
+                );
                 let mut column_to_peer_id: HashMap<u64, PeerId> = HashMap::new();
                 for req in requests.values() {
                     let data = req.to_finished()?;
-                    data_columns.extend(data.clone())
+                    data_columns.extend(data.iter().cloned())
                 }
 
                 // An "attempt" is complete here after we have received a response for all the
