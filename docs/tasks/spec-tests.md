@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1234 (Mar 14) — fix pruning perf, spec PR impact analysis
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.6.0-beta.0). Nightly green (6 consecutive: Mar 9-14). CI green for latest commit.
+
+**Performance fix**: `already_pruned` heuristic in `try_prune_execution_payloads` caused unnecessary full backward iteration through all finalized block roots once the chain was in the Gloas era. The split parent's payload was intentionally retained (for envelope serving), so `already_pruned` was always false. Fixed by skipping Gloas-era blocks when searching for the parent to test. 9/9 Gloas store tests pass, clippy clean.
+
+**Spec PR impact analysis**:
+- #4892 (remove impossible branch, 2 approvals): vibehouse already uses `==` comparison in `is_supporting_vote_gloas_at_slot`. No code change needed.
+- #4898 (remove pending tiebreaker, 1 approval): vibehouse `get_payload_tiebreaker` already handles this correctly. No code change needed.
+- #4992 (cached PTCs, 1 approval): HIGH IMPACT if merged. Adds `previous_ptc`/`current_ptc` to BeaconState, rotated in per_slot_processing. Requires: new state fields, `get_ptc_committee` split into compute/lookup, ~60 call site updates, upgrade_to_gloas/genesis init, validator duties API rethink. Not implementing until merged.
+- #4954 (fork choice milliseconds, 0 reviews): no action needed.
+
+Notable open spec PRs to monitor: #4992 (cached PTCs, 1 approval), #4954 (fork choice milliseconds), #4898 (remove pending tiebreaker), #4892 (remove impossible branch). None merged.
+
 ### run 1233 (Mar 14) — CI green, sync devnet verified, spec stable
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). PR #4992 (cached PTCs) still OPEN, 1 APPROVED (jtraglia), mergeable_state=clean — may merge soon. No new spec test releases (latest v1.6.0-beta.0). Nightly green (6 consecutive: Mar 9-14).
