@@ -547,8 +547,11 @@ impl<T: BeaconChainTypes> DataAvailabilityChecker<T> {
 
     /// Determines the blob requirements for a block. If the block is pre-deneb, no blobs are required.
     /// If the epoch is from prior to the data availability boundary, no blobs are required.
+    /// Gloas blocks don't carry blobs (payloads are in envelopes, not blocks).
     pub fn blobs_required_for_epoch(&self, epoch: Epoch) -> bool {
-        self.da_check_required_for_epoch(epoch) && !self.spec.is_peer_das_enabled_for_epoch(epoch)
+        self.da_check_required_for_epoch(epoch)
+            && !self.spec.is_peer_das_enabled_for_epoch(epoch)
+            && !self.spec.is_gloas_epoch(epoch)
     }
 
     /// Determines the data column requirements for an epoch.

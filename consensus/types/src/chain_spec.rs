@@ -497,10 +497,13 @@ impl ChainSpec {
         }
     }
 
-    /// Returns true if the given epoch is greater than or equal to the `FULU_FORK_EPOCH`.
+    /// Returns true if PeerDAS block-level data columns apply to the given epoch.
+    /// PeerDAS is enabled from Fulu but not in Gloas — Gloas blocks carry bids instead
+    /// of execution payloads, so block-level blobs/data columns don't exist.
     pub fn is_peer_das_enabled_for_epoch(&self, block_epoch: Epoch) -> bool {
         self.fulu_fork_epoch
             .is_some_and(|fulu_fork_epoch| block_epoch >= fulu_fork_epoch)
+            && !self.is_gloas_epoch(block_epoch)
     }
 
     /// Returns true if PeerDAS is scheduled. Alias for [`Self::is_fulu_scheduled`]
@@ -521,7 +524,7 @@ impl ChainSpec {
     }
 
     /// Returns true if the given epoch is at or after the Gloas fork.
-    fn is_gloas_epoch(&self, epoch: Epoch) -> bool {
+    pub fn is_gloas_epoch(&self, epoch: Epoch) -> bool {
         self.gloas_fork_epoch
             .is_some_and(|fork_epoch| epoch >= fork_epoch)
     }

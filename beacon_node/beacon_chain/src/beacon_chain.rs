@@ -9081,13 +9081,16 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .da_check_required_for_epoch(epoch)
     }
 
-    /// Returns true if we should fetch blobs for this block
+    /// Returns true if we should fetch blobs for this block.
+    /// Gloas blocks don't carry blobs (payloads are in envelopes, not blocks).
     pub fn should_fetch_blobs(&self, block_epoch: Epoch) -> bool {
         self.da_check_required_for_epoch(block_epoch)
             && !self.spec.is_peer_das_enabled_for_epoch(block_epoch)
+            && !self.spec.is_gloas_epoch(block_epoch)
     }
 
-    /// Returns true if we should fetch custody columns for this block
+    /// Returns true if we should fetch custody columns for this block.
+    /// Gloas blocks don't carry data columns (payloads are in envelopes, not blocks).
     pub fn should_fetch_custody_columns(&self, block_epoch: Epoch) -> bool {
         self.da_check_required_for_epoch(block_epoch)
             && self.spec.is_peer_das_enabled_for_epoch(block_epoch)

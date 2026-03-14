@@ -577,8 +577,8 @@ fn finalized_sync_enough_global_custody_peers_few_chain_peers() {
 #[test]
 fn finalized_sync_not_enough_custody_peers_on_start() {
     let mut r = TestRig::test_setup();
-    // Only run post-PeerDAS
-    if !r.fork_name.fulu_enabled() {
+    // Only run post-PeerDAS (Gloas blocks don't use block-level data columns)
+    if !r.fork_name.fulu_enabled() || r.fork_name.gloas_enabled() {
         return;
     }
 

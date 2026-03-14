@@ -305,29 +305,26 @@ impl TestRig {
         assert!(beacon_processor.is_ok());
         let block = next_block_tuple.0;
         let (blob_sidecars, data_columns) = if let Some((kzg_proofs, blobs)) = next_block_tuple.1 {
-            if chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
-                // In Gloas (ePBS), blob_kzg_commitments are in the ExecutionPayloadBid,
-                // not the block body, so blobs_to_data_column_sidecars will fail.
-                // Data columns in Gloas come via the execution payload envelope path.
-                if block.message().body().blob_kzg_commitments().is_err() {
-                    (None, None)
-                } else {
-                    let kzg = get_kzg(&chain.spec);
-                    let epoch = block.slot().epoch(E::slots_per_epoch());
-                    let sampling_indices = chain.sampling_columns_for_epoch(epoch);
-                    let custody_columns: DataColumnSidecarList<E> = blobs_to_data_column_sidecars(
-                        &blobs.iter().collect_vec(),
-                        &kzg_proofs,
-                        &block,
-                        &kzg,
-                        &chain.spec,
-                    )
-                    .unwrap()
-                    .into_iter()
-                    .filter(|c| sampling_indices.contains(&c.index()))
-                    .collect::<Vec<_>>();
-                    (None, Some(custody_columns))
-                }
+            // Gloas blocks don't carry blobs or data columns at the block level
+            // (payloads are in envelopes, not blocks)
+            if block.message().body().blob_kzg_commitments().is_err() {
+                (None, None)
+            } else if chain.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
+                let kzg = get_kzg(&chain.spec);
+                let epoch = block.slot().epoch(E::slots_per_epoch());
+                let sampling_indices = chain.sampling_columns_for_epoch(epoch);
+                let custody_columns: DataColumnSidecarList<E> = blobs_to_data_column_sidecars(
+                    &blobs.iter().collect_vec(),
+                    &kzg_proofs,
+                    &block,
+                    &kzg,
+                    &chain.spec,
+                )
+                .unwrap()
+                .into_iter()
+                .filter(|c| sampling_indices.contains(&c.index()))
+                .collect::<Vec<_>>();
+                (None, Some(custody_columns))
             } else {
                 let blob_sidecars =
                     BlobSidecar::build_sidecars(blobs, &block, kzg_proofs, &chain.spec).unwrap();

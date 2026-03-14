@@ -155,11 +155,11 @@ impl TestRig {
     }
 
     pub fn after_deneb(&self) -> bool {
-        self.fork_name.deneb_enabled()
+        self.fork_name.deneb_enabled() && !self.fork_name.gloas_enabled()
     }
 
     pub fn after_fulu(&self) -> bool {
-        self.fork_name.fulu_enabled()
+        self.fork_name.fulu_enabled() && !self.fork_name.gloas_enabled()
     }
 
     fn trigger_unknown_parent_block(&mut self, peer_id: PeerId, block: Arc<SignedBeaconBlock<E>>) {

@@ -2540,6 +2540,15 @@ where
         block: Arc<SignedBeaconBlock<E, FullPayload<E>>>,
         blob_items: Option<(KzgProofs<E>, BlobsList<E>)>,
     ) -> Result<RpcBlock<E>, BlockError> {
+        // Gloas blocks don't carry blobs or data columns at the block level
+        // (payloads are in envelopes, not blocks)
+        if self
+            .spec
+            .is_gloas_epoch(block.slot().epoch(E::slots_per_epoch()))
+        {
+            return Ok(RpcBlock::new_without_blobs(Some(block_root), block));
+        }
+
         Ok(if self.spec.is_peer_das_enabled_for_epoch(block.epoch()) {
             let epoch = block.slot().epoch(E::slots_per_epoch());
             let sampling_columns = self.chain.sampling_columns_for_epoch(epoch);
@@ -3414,6 +3423,13 @@ where
         proofs: impl Iterator<Item = &'a KzgProof>,
         custody_columns_opt: Option<HashSet<ColumnIndex>>,
     ) {
+        // Gloas blocks don't carry blobs or data columns at the block level
+        if self
+            .spec
+            .is_gloas_epoch(block.slot().epoch(E::slots_per_epoch()))
+        {
+            return;
+        }
         let is_peerdas_enabled = self.chain.spec.is_peer_das_enabled_for_epoch(block.epoch());
         if is_peerdas_enabled {
             let custody_columns = custody_columns_opt.unwrap_or_else(|| {
