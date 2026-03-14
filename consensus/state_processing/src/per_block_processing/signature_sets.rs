@@ -340,12 +340,12 @@ pub fn attester_slashing_signature_sets<'a, E, F>(
 ) -> Result<(SignatureSet<'a>, SignatureSet<'a>)>
 where
     E: EthSpec,
-    F: Fn(usize) -> Option<Cow<'a, PublicKey>> + Clone,
+    F: Fn(usize) -> Option<Cow<'a, PublicKey>>,
 {
     Ok((
         indexed_attestation_signature_set(
             state,
-            get_pubkey.clone(),
+            &get_pubkey,
             attester_slashing.attestation_1().signature(),
             attester_slashing.attestation_1(),
             spec,
