@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1186 (Mar 14) — avoid Vec allocation in is_valid_indexed_attestation
+
+Spec stable: no new consensus-specs commits since last check. PR #4992 (cached PTCs in state) still OPEN. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: eliminated per-attestation Vec allocation in `is_valid_indexed_attestation` (is_valid_indexed_attestation.rs). Previously called `attesting_indices_to_vec()` which copied the entire VariableList into a heap-allocated Vec, just to check emptiness and sorted ordering. Now uses `attesting_indices_is_empty()` and `attesting_indices_iter()` directly — zero allocation, same O(n) sorted check via `tuple_windows()`. This function is called for every attestation in every block (typically 64-128 attestations per slot on mainnet). All 575 state_processing tests, 15/15 EF operations spec tests pass. Clippy clean.
+
+Open PRs to track: #4992 (cached PTCs in state — approaching merge).
+
 ### run 1185 (Mar 14) — skip delta Vec allocation in Gloas fork choice
 
 Spec stable: no new consensus-specs commits since last check. PR #4992 (cached PTCs in state) still OPEN. PR #4940 (Gloas fork choice tests) confirmed included in v1.7.0-alpha.3 — all 46 Gloas fork choice test cases pass. cargo audit unchanged (1 rsa, no fix).
