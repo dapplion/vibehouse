@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1185 (Mar 14) — skip delta Vec allocation in Gloas fork choice
+
+Spec stable: no new consensus-specs commits since last check. PR #4992 (cached PTCs in state) still OPEN. PR #4940 (Gloas fork choice tests) confirmed included in v1.7.0-alpha.3 — all 46 Gloas fork choice test cases pass. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: split vote-tracker side effects from compute_deltas into apply_vote_updates for Gloas path, eliminating unnecessary Vec allocation per slot.
+
+Open PRs to track: #4992 (cached PTCs in state — approaching merge).
+
 ### run 1184 (Mar 14) — zero-allocation sorted merge intersection in on_attester_slashing
 
 Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix).

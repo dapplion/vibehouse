@@ -1076,3 +1076,19 @@ These allocations were discarded after each call, creating unnecessary allocatio
 **Impact**: Eliminates ~12MB of allocation per slot on mainnet (after first slot). The extra array index lookup per vote in the inner loop is negligible compared to the saved allocation.
 
 **Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1185: skip delta Vec allocation in Gloas fork choice path (2026-03-14)
+
+**Scope**: Eliminate unnecessary allocation in the per-slot fork choice hot path.
+
+**Problem**: `find_head` called `compute_deltas` unconditionally, which allocates `vec![0_i64; indices.len()]` (one i64 per proto_array node) and does HashMap lookups + arithmetic for every changed vote. In Gloas mode, `find_head_gloas` was called immediately after, and the delta Vec was dropped without ever being used — Gloas computes weights directly from votes via `get_gloas_weight`, not from accumulated deltas.
+
+The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing equivocated votes) are needed before `find_head_gloas` runs, but the actual delta values are not.
+
+**Fix**: Split the vote-tracker side effects into a new `apply_vote_updates` function that performs the same mutations as `compute_deltas` but without allocating the delta Vec or doing any delta arithmetic/HashMap lookups. In Gloas mode, `apply_vote_updates` is called instead of `compute_deltas`. In pre-Gloas mode, `compute_deltas` is still called (moved after the `is_gloas` check).
+
+**Impact**: Eliminates one Vec allocation per slot (`indices.len() * 8` bytes, typically 8-80KB on mainnet depending on tree depth) plus O(changed_votes) HashMap lookups for delta computation that were immediately discarded.
+
+**Also verified**: Spec stable — no new consensus-specs commits since run 1184. PR #4992 (cached PTCs in state) still OPEN. PR #4940 (Gloas fork choice tests) merged into v1.7.0-alpha.3 — all 46 Gloas fork choice test cases pass (ex_ante: 3, get_head: 9, on_block: 23, on_execution_payload: 1, reorg: 8, withholding: 2).
+
+**Verification**: 307/307 proto_array+fork_choice tests, 9/9 EF fork choice spec tests, full workspace clippy clean (lint-full + all targets), pre-push hook passes.
