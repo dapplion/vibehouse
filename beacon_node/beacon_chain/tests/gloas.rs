@@ -20447,6 +20447,285 @@ async fn gloas_gossip_envelope_generates_execution_proofs() {
 /// This exercises a realistic production scenario where some builders withhold
 /// their payloads but the chain must continue to finalize.
 #[tokio::test]
+async fn gloas_range_sync_rpc_blocks_with_envelopes() {
+    // Test that process_chain_segment correctly processes envelopes attached to
+    // RpcBlocks via set_envelope(). This exercises the process_envelope_for_sync
+    // code path used during range sync when envelopes are downloaded alongside
+    // blocks — the path fixed in run 1236 for stale head state.
+
+    // Harness 1: build 4 blocks with all envelopes processed
+    let harness1 = gloas_harness_at_epoch(0);
+    Box::pin(harness1.extend_slots(4)).await;
+
+    // Extract blocks and envelopes from harness1
+    let chain_dump = harness1.chain.chain_dump().expect("should dump chain");
+    let mut blocks: Vec<Arc<SignedBeaconBlock<E>>> = Vec::new();
+    let mut signed_envelopes = Vec::new();
+    for snapshot in chain_dump.iter().skip(1) {
+        let full_block = harness1
+            .chain
+            .get_block(&snapshot.beacon_block_root)
+            .await
+            .unwrap()
+            .unwrap();
+        let envelope = harness1
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap();
+        blocks.push(Arc::new(full_block));
+        signed_envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), 4, "should have 4 blocks");
+
+    // Harness 2: fresh chain to replay blocks into (simulates range sync)
+    let harness2 = gloas_harness_at_epoch(0);
+
+    // Build RpcBlocks with envelopes attached — this is the key difference from
+    // other range sync tests which use process_self_build_envelope separately.
+    let last_slot = blocks.last().unwrap().slot();
+    harness2.set_current_slot(last_slot);
+
+    let mut rpc_blocks: Vec<beacon_chain::block_verification_types::RpcBlock<E>> = Vec::new();
+    for (block, envelope) in blocks.iter().zip(signed_envelopes.iter()) {
+        let mut rpc_block = beacon_chain::block_verification_types::RpcBlock::new_without_blobs(
+            None,
+            block.clone(),
+        );
+        if let Some(signed_env) = envelope {
+            rpc_block.set_envelope(Arc::new(signed_env.clone()));
+        }
+        rpc_blocks.push(rpc_block);
+    }
+
+    // Import the entire batch via process_chain_segment.
+    // This will call process_envelope_for_sync for each block that has an envelope,
+    // using the block's post-import state (not cached_head) for signature verification.
+    harness2
+        .chain
+        .process_chain_segment(rpc_blocks, NotifyExecutionLayer::Yes)
+        .await
+        .into_block_error()
+        .expect("chain segment with envelopes should import successfully");
+
+    // Verify: all 4 blocks are in fork choice with payload_revealed=true
+    harness2.chain.recompute_head_at_current_slot().await;
+    {
+        let fc = harness2.chain.canonical_head.fork_choice_read_lock();
+        for (i, block) in blocks.iter().enumerate() {
+            let root = block.canonical_root();
+            let proto = fc
+                .get_block(&root)
+                .unwrap_or_else(|| panic!("block {} should be in fork choice", i + 1));
+            assert!(
+                proto.payload_revealed,
+                "block {} should have payload_revealed=true after range sync with attached envelopes",
+                i + 1
+            );
+        }
+    }
+
+    // Verify head is the last block and latest_block_hash is consistent
+    let head = harness2.chain.head_snapshot();
+    assert_eq!(
+        head.beacon_block_root,
+        blocks.last().unwrap().canonical_root(),
+        "head should be the last imported block"
+    );
+
+    let head_latest_hash = *head
+        .beacon_state
+        .latest_block_hash()
+        .expect("Gloas state should have latest_block_hash");
+    let last_envelope_hash = signed_envelopes
+        .last()
+        .unwrap()
+        .as_ref()
+        .expect("last block should have envelope")
+        .message
+        .payload
+        .block_hash;
+    assert_eq!(
+        head_latest_hash, last_envelope_hash,
+        "latest_block_hash should match the last envelope's payload block_hash"
+    );
+}
+
+/// Test that process_chain_segment handles a mix of blocks where some have
+/// envelopes attached (FULL path) and some don't (EMPTY path). This exercises
+/// the process_envelope_for_sync path alongside the normal EMPTY import path
+/// within the same chain segment.
+#[tokio::test]
+async fn gloas_range_sync_rpc_blocks_mixed_envelope_attachment() {
+    // Harness 1: build 6 blocks with envelopes
+    let harness1 = gloas_harness_at_epoch(0);
+    Box::pin(harness1.extend_slots(6)).await;
+
+    let chain_dump = harness1.chain.chain_dump().expect("should dump chain");
+    let mut blocks: Vec<Arc<SignedBeaconBlock<E>>> = Vec::new();
+    let mut signed_envelopes = Vec::new();
+    for snapshot in chain_dump.iter().skip(1) {
+        let full_block = harness1
+            .chain
+            .get_block(&snapshot.beacon_block_root)
+            .await
+            .unwrap()
+            .unwrap();
+        let envelope = harness1
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap();
+        blocks.push(Arc::new(full_block));
+        signed_envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), 6);
+
+    // Harness 2: fresh chain
+    let harness2 = gloas_harness_at_epoch(0);
+    let last_slot = blocks.last().unwrap().slot();
+    harness2.set_current_slot(last_slot);
+
+    // Import one at a time: odd-indexed blocks get envelopes, even-indexed don't.
+    // After each block, process the envelope separately for the even-indexed ones
+    // so subsequent blocks can reference them as FULL parents.
+    for (i, (block, envelope)) in blocks.iter().zip(signed_envelopes.iter()).enumerate() {
+        harness2.set_current_slot(block.slot());
+
+        let mut rpc_block = beacon_chain::block_verification_types::RpcBlock::new_without_blobs(
+            None,
+            block.clone(),
+        );
+
+        let has_attached_envelope = i % 2 == 1; // odd blocks get envelope in RpcBlock
+        if has_attached_envelope && let Some(signed_env) = envelope {
+            rpc_block.set_envelope(Arc::new(signed_env.clone()));
+        }
+
+        harness2
+            .chain
+            .process_chain_segment(vec![rpc_block], NotifyExecutionLayer::Yes)
+            .await
+            .into_block_error()
+            .unwrap_or_else(|e| {
+                panic!(
+                    "block {} (slot {}) should import: {:?}",
+                    i + 1,
+                    block.slot(),
+                    e
+                )
+            });
+
+        // For even-indexed blocks: process envelope separately (like gossip path)
+        if !has_attached_envelope && let Some(signed_env) = envelope {
+            harness2
+                .chain
+                .process_self_build_envelope(signed_env)
+                .await
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "envelope {} separate processing should succeed: {:?}",
+                        i + 1,
+                        e
+                    )
+                });
+        }
+
+        harness2.chain.recompute_head_at_current_slot().await;
+    }
+
+    // All blocks should have payload_revealed=true regardless of how the envelope arrived
+    let fc = harness2.chain.canonical_head.fork_choice_read_lock();
+    for (i, block) in blocks.iter().enumerate() {
+        let root = block.canonical_root();
+        let proto = fc
+            .get_block(&root)
+            .unwrap_or_else(|| panic!("block {} should be in fork choice", i + 1));
+        assert!(
+            proto.payload_revealed,
+            "block {} should have payload_revealed=true (attached_env={})",
+            i + 1,
+            i % 2 == 1
+        );
+    }
+}
+
+/// Test that process_chain_segment processes orphaned envelopes for blocks
+/// that are filtered as DuplicateFullyImported. This exercises the code path
+/// added in run 1232: when filter_chain_segment removes already-imported blocks,
+/// their attached envelopes should still be processed (they may not have been
+/// processed during the initial gossip import).
+#[tokio::test]
+async fn gloas_range_sync_rpc_blocks_duplicate_block_envelope_processed() {
+    // Harness: build 3 blocks normally (all envelopes processed via self-build)
+    let harness = gloas_harness_at_epoch(0);
+    Box::pin(harness.extend_slots(3)).await;
+
+    let chain_dump = harness.chain.chain_dump().expect("should dump chain");
+    let mut blocks: Vec<Arc<SignedBeaconBlock<E>>> = Vec::new();
+    let mut signed_envelopes = Vec::new();
+    for snapshot in chain_dump.iter().skip(1) {
+        let full_block = harness
+            .chain
+            .get_block(&snapshot.beacon_block_root)
+            .await
+            .unwrap()
+            .unwrap();
+        let envelope = harness
+            .chain
+            .store
+            .get_payload_envelope(&snapshot.beacon_block_root)
+            .unwrap();
+        blocks.push(Arc::new(full_block));
+        signed_envelopes.push(envelope);
+    }
+    assert_eq!(blocks.len(), 3);
+
+    // All blocks are already imported. Re-submit them as a chain segment with
+    // envelopes attached. filter_chain_segment should mark them as
+    // DuplicateFullyImported, and the orphaned envelope processing code should
+    // attempt to process the envelopes (which will be no-ops since they're already
+    // FULL, but should not error).
+    let last_slot = blocks.last().unwrap().slot();
+    harness.set_current_slot(last_slot);
+
+    let mut rpc_blocks = Vec::new();
+    for (block, envelope) in blocks.iter().zip(signed_envelopes.iter()) {
+        let mut rpc_block = beacon_chain::block_verification_types::RpcBlock::new_without_blobs(
+            None,
+            block.clone(),
+        );
+        if let Some(signed_env) = envelope {
+            rpc_block.set_envelope(Arc::new(signed_env.clone()));
+        }
+        rpc_blocks.push(rpc_block);
+    }
+
+    // This should succeed — all blocks are duplicates, envelopes are re-processed
+    // (no-op since already FULL), and no errors should occur.
+    harness
+        .chain
+        .process_chain_segment(rpc_blocks, NotifyExecutionLayer::Yes)
+        .await
+        .into_block_error()
+        .expect("re-importing duplicate blocks with envelopes should succeed");
+
+    // Verify all blocks still have payload_revealed=true
+    let fc = harness.chain.canonical_head.fork_choice_read_lock();
+    for (i, block) in blocks.iter().enumerate() {
+        let root = block.canonical_root();
+        let proto = fc
+            .get_block(&root)
+            .unwrap_or_else(|| panic!("block {} should be in fork choice", i + 1));
+        assert!(
+            proto.payload_revealed,
+            "block {} should remain payload_revealed=true after duplicate import",
+            i + 1
+        );
+    }
+}
+
+#[tokio::test]
 async fn gloas_multi_epoch_mixed_full_empty_chain_finalizes() {
     let harness = gloas_harness_with_builders(&[(0, 10_000_000_000)]);
     // Extend 64 slots: finalizes, activates builder.
