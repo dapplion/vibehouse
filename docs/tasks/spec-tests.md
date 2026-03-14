@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1194 (Mar 14) — migrate CI from moonrepo/setup-rust to dtolnay/rust-toolchain
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (v1.7.0-alpha.3 verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates.
+
+Open spec PRs analyzed: #4954 (fork choice milliseconds — no impact, vibehouse uses Slot abstraction), #4898 (remove pending tiebreaker — already implemented), #4892 (remove impossible branch — already implemented). Test vector PRs #4960, #4932, #4962 add Gloas fork_choice and sanity/blocks tests — existing test infrastructure handles both without changes.
+
+Shipped: migrated CI workflows (ci.yml, nightly-tests.yml) from `moonrepo/setup-rust@v1` to `dtolnay/rust-toolchain@stable` + `Swatinem/rust-cache@v2` + `taiki-e/install-action@cargo-nextest`. `moonrepo/setup-rust` uses Node.js 20 which GitHub is deprecating (forced Node.js 24 starting June 2, 2026). `dtolnay/rust-toolchain` is a composite action (no Node.js), `Swatinem/rust-cache@v2.9.0` already migrated to Node.js 24, `taiki-e/install-action` is actively maintained.
+
 ### run 1193 (Mar 14) — replace remaining Hash256::from_slice with From for fixed-size arrays
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (v1.7.0-alpha.3 already verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates. Two open spec PRs to track: #4960 (Gloas fork choice deposit_with_reorg tests) and #4932 (Gloas sanity/blocks tests with payload attestation coverage) — both add test vectors to existing categories, no code changes needed when they merge.

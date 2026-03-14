@@ -41,13 +41,9 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
-      - uses: moonrepo/setup-rust@v1
-        with:
-          channel: stable
-          cache-target: release
-          bins: cargo-nextest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - name: Run beacon_chain tests for ${{ matrix.fork }}
         # Gloas-specific integration tests (gloas::*, gloas_verification::*) are
         # already tested on every push via ci.yml with FORK_NAME=gloas. Exclude
@@ -76,13 +72,9 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
-      - uses: moonrepo/setup-rust@v1
-        with:
-          channel: stable
-          cache-target: release
-          bins: cargo-nextest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - name: Run operation_pool tests for ${{ matrix.fork }}
         run: make test-op-pool-${{ matrix.fork }}
         timeout-minutes: 60
@@ -99,13 +91,9 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
-      - uses: moonrepo/setup-rust@v1
-        with:
-          channel: stable
-          cache-target: release
-          bins: cargo-nextest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - name: Run network tests for ${{ matrix.fork }}
         run: make test-network-${{ matrix.fork }}
         timeout-minutes: 60
@@ -122,13 +110,9 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
-      - uses: moonrepo/setup-rust@v1
-        with:
-          channel: stable
-          cache-target: release
-          bins: cargo-nextest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - name: Run http_api tests for ${{ matrix.fork }}
         run: make test-http-api-${{ matrix.fork }}
         timeout-minutes: 60
@@ -140,13 +124,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v5
-      - uses: moonrepo/setup-rust@v1
-        with:
-          channel: stable
-          cache-target: release
-          bins: cargo-nextest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - name: Run slasher tests (all backends)
         run: make test-slasher
         timeout-minutes: 30
@@ -158,13 +138,9 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v5
-      - uses: moonrepo/setup-rust@v1
-        with:
-          channel: stable
-          cache-target: release
-          bins: cargo-nextest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-nextest
       - name: Run state transition vector tests
         run: cargo nextest run --release -p state_transition_vectors
         timeout-minutes: 30
