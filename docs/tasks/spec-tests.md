@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1218 (Mar 14) — fix CI failures from self-build envelope signature verification
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases.
+
+Fixed CI failures caused by 13ac9ae15 (self-build envelope signature verification). Two test suites failed: beacon_chain (`gloas_execution_status_lifecycle_bid_optimistic_to_valid`) and network (`test_gloas_envelope_before_block_full_gossip_pipeline`, `test_gloas_gossip_payload_envelope_duplicate_ignored`). Root causes:
+
+1. `make_block_with_envelope` in test_utils returned unsigned self-build envelopes (Signature::empty). Fix: sign with proposer's validator key using DOMAIN_BEACON_BUILDER, matching what the VC does in production.
+
+2. `process_pending_envelope` in gossip_methods.rs ran BEFORE `recompute_head_at_current_slot`, so the cached head state had the wrong `proposer_index` for signature verification. Fix: moved `process_pending_envelope` after `recompute_head`.
+
+3. Network test `test_gloas_gossip_payload_envelope_duplicate_ignored` constructed envelopes with `Signature::empty()`. Fix: properly sign with proposer key.
+
+All tests pass: 770/770 beacon_chain, 163/163 network, 575/575 state_processing, 139/139 EF spec tests (fake_crypto). Clippy clean.
+
 ### run 1217 (Mar 14) — spec conformance audits, all stable
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec test releases (latest v1.7.0-alpha.3 on consensus-specs, v1.6.0-beta.0 on consensus-spec-tests). cargo audit unchanged (1 rsa, no fix). No semver-compatible dependency updates. CI green, nightlies passing (Mar 10-14).
