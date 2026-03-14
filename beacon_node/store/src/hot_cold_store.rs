@@ -3312,7 +3312,15 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
                 break;
             }
 
-            if Some(block_root) != last_pruned_block_root
+            // Skip Gloas blocks: their execution payloads are needed to serve
+            // full envelopes via ExecutionPayloadEnvelopesByRoot during range sync.
+            let is_gloas = self
+                .spec
+                .gloas_fork_epoch
+                .is_some_and(|e| slot >= e.start_slot(E::slots_per_epoch()));
+
+            if !is_gloas
+                && Some(block_root) != last_pruned_block_root
                 && self.execution_payload_exists(&block_root)?
             {
                 debug!(%slot, ?block_root, "Pruning execution payload");
@@ -3324,6 +3332,9 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
             // They are small (no transactions/withdrawals lists) and are needed
             // by the block replayer for state reconstruction of finalized blocks.
             // Only the full payload in ExecPayload is pruned (above).
+            // Gloas payloads in ExecPayload are also NOT pruned (above) because
+            // they are needed to reconstruct full envelopes for serving via the
+            // ExecutionPayloadEnvelopesByRoot RPC during range sync.
 
             if slot <= anchor_info.oldest_block_slot {
                 info!(%slot, "Payload pruning reached anchor oldest block slot");

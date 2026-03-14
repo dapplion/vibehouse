@@ -799,7 +799,12 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
 
         // Prune all payloads of the canonical finalized blocks
         if store.get_config().prune_payloads {
-            Self::prune_finalized_payloads(new_finalized_slot, &newly_finalized_blocks, &mut batch);
+            Self::prune_finalized_payloads(
+                new_finalized_slot,
+                &newly_finalized_blocks,
+                &store.get_chain_spec(),
+                &mut batch,
+            );
         }
 
         store.do_atomically_with_block_and_blobs_cache(batch)?;
@@ -817,13 +822,22 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> BackgroundMigrator<E, Ho
     fn prune_finalized_payloads(
         new_finalized_slot: Slot,
         finalized_blocks: &[(Hash256, Slot)],
+        spec: &types::ChainSpec,
         hot_db_ops: &mut Vec<StoreOp<E>>,
     ) {
+        let gloas_start_slot = spec
+            .gloas_fork_epoch
+            .map(|e| e.start_slot(E::slots_per_epoch()));
+
         for (block_root, slot) in finalized_blocks {
             // Delete the execution payload if payload pruning is enabled. At a skipped slot we may
             // delete the payload for the finalized block itself, but that's OK as we only guarantee
             // that payloads are present for slots >= the split slot.
-            if *slot < new_finalized_slot {
+            //
+            // Skip Gloas blocks: their execution payloads are needed to serve
+            // full envelopes via ExecutionPayloadEnvelopesByRoot during range sync.
+            let is_gloas = gloas_start_slot.is_some_and(|gs| *slot >= gs);
+            if *slot < new_finalized_slot && !is_gloas {
                 hot_db_ops.push(StoreOp::DeleteExecutionPayload(*block_root));
             }
         }
