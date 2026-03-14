@@ -477,9 +477,12 @@ if [ "$SYNC_MODE" = true ] && [ "${VALIDATOR_HEAD_SLOT:-0}" -gt 0 ]; then
         super_status=$(echo "$super_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
       fi
 
-      # Check if synced: not syncing and head within 2 slots of validator head
-      if [ "$super_is_syncing" = "false" ] && [ "$super_head" != "0" ]; then
-        super_synced=true
+      # Check if synced: not syncing and head within 4 slots of validator head
+      if [ "$super_is_syncing" = "false" ] && [ "$super_head" != "0" ] && [ "$val_head" != "?" ]; then
+        head_diff=$((val_head - super_head))
+        if [ "$head_diff" -le 4 ]; then
+          super_synced=true
+        fi
       fi
     fi
 
@@ -497,8 +500,12 @@ if [ "$SYNC_MODE" = true ] && [ "${VALIDATOR_HEAD_SLOT:-0}" -gt 0 ]; then
         full_status=$(echo "$full_lh" | jq -r 'if (.data | type) == "string" then .data else (.data | keys[0] // "unknown") end' 2>/dev/null || echo "unknown")
       fi
 
-      if [ "$full_is_syncing" = "false" ] && [ "$full_head" != "0" ]; then
-        full_synced=true
+      # Check if synced: not syncing and head within 4 slots of validator head
+      if [ "$full_is_syncing" = "false" ] && [ "$full_head" != "0" ] && [ "$val_head" != "?" ]; then
+        head_diff=$((val_head - full_head))
+        if [ "$head_diff" -le 4 ]; then
+          full_synced=true
+        fi
       fi
     fi
 
