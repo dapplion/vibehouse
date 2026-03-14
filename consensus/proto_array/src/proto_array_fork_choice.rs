@@ -1885,7 +1885,7 @@ impl ProtoArrayForkChoice {
                         }
                     }
                 } else {
-                    // Boosted block has no parent — can't extend from this root
+                    // Boosted block has no parent (genesis) — not a descendant, extend
                     return true;
                 }
             }

@@ -1354,20 +1354,21 @@ where
         // Update the proto_array node with builder information
         let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
 
-        if let Some(node) = nodes.get_mut(block_index) {
-            // Record which builder won this slot's bid
-            node.builder_index = Some(bid.message.builder_index);
+        let node = nodes
+            .get_mut(block_index)
+            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
-            // Only reset payload state if neither the envelope has been received
-            // nor PTC quorum has already established payload_revealed. A late gossip
-            // bid arriving after either event should not invalidate the already-confirmed
-            // payload status — the PTC attestations that established quorum are tracked
-            // in observed_payload_attestations and won't be re-applied.
-            if !node.envelope_received && !node.payload_revealed {
-                node.ptc_weight = 0;
-                node.ptc_blob_data_available_weight = 0;
-                node.payload_data_available = false;
-            }
+        // Record which builder won this slot's bid
+        node.builder_index = Some(bid.message.builder_index);
+
+        // Only reset payload state if neither the envelope has been received
+        // nor PTC quorum has already established payload_revealed. A late gossip
+        // bid arriving after either event should not invalidate the already-confirmed
+        // payload status — gossip validation prevents duplicate PTC attestations.
+        if !node.envelope_received && !node.payload_revealed {
+            node.ptc_weight = 0;
+            node.ptc_blob_data_available_weight = 0;
+            node.payload_data_available = false;
         }
 
         debug!(
@@ -1462,53 +1463,53 @@ where
         // True votes since gossip validation prevents duplicate attestations.
         let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
 
-        if let Some(node) = nodes.get_mut(block_index) {
-            // Accumulate payload_present votes (spec: payload_timeliness_vote)
-            if attestation.data.payload_present {
-                node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
-            }
+        let node = nodes
+            .get_mut(block_index)
+            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
-            // Accumulate blob_data_available votes (spec: payload_data_availability_vote)
-            if attestation.data.blob_data_available {
-                node.ptc_blob_data_available_weight = node
-                    .ptc_blob_data_available_weight
-                    .saturating_add(attester_count);
-            }
+        // Accumulate payload_present votes (spec: payload_timeliness_vote)
+        if attestation.data.payload_present {
+            node.ptc_weight = node.ptc_weight.saturating_add(attester_count);
+        }
 
-            // Check payload timeliness quorum (strictly greater than threshold per spec)
-            if node.ptc_weight > quorum_threshold && !node.payload_revealed {
-                node.payload_revealed = true;
-                // If the envelope path hasn't already set execution_status,
-                // use the bid_block_hash so head_hash is available for forkchoice_updated.
-                if !node.execution_status.is_execution_enabled()
-                    && let Some(block_hash) = node.bid_block_hash
-                {
-                    node.execution_status = ExecutionStatus::Optimistic(block_hash);
-                }
+        // Accumulate blob_data_available votes (spec: payload_data_availability_vote)
+        if attestation.data.blob_data_available {
+            node.ptc_blob_data_available_weight = node
+                .ptc_blob_data_available_weight
+                .saturating_add(attester_count);
+        }
 
-                debug!(
-                    ?beacon_block_root,
-                    ptc_weight = node.ptc_weight,
-                    quorum_threshold = quorum_threshold,
-                    slot = %node.slot,
-                    "Payload timeliness quorum reached"
-                );
-            }
-
-            // Check blob data availability quorum
-            if node.ptc_blob_data_available_weight > quorum_threshold
-                && !node.payload_data_available
+        // Check payload timeliness quorum (strictly greater than threshold per spec)
+        if node.ptc_weight > quorum_threshold && !node.payload_revealed {
+            node.payload_revealed = true;
+            // If the envelope path hasn't already set execution_status,
+            // use the bid_block_hash so head_hash is available for forkchoice_updated.
+            if !node.execution_status.is_execution_enabled()
+                && let Some(block_hash) = node.bid_block_hash
             {
-                node.payload_data_available = true;
-
-                debug!(
-                    ?beacon_block_root,
-                    blob_weight = node.ptc_blob_data_available_weight,
-                    quorum_threshold = quorum_threshold,
-                    slot = %node.slot,
-                    "Blob data availability quorum reached"
-                );
+                node.execution_status = ExecutionStatus::Optimistic(block_hash);
             }
+
+            debug!(
+                ?beacon_block_root,
+                ptc_weight = node.ptc_weight,
+                quorum_threshold = quorum_threshold,
+                slot = %node.slot,
+                "Payload timeliness quorum reached"
+            );
+        }
+
+        // Check blob data availability quorum
+        if node.ptc_blob_data_available_weight > quorum_threshold && !node.payload_data_available {
+            node.payload_data_available = true;
+
+            debug!(
+                ?beacon_block_root,
+                blob_weight = node.ptc_blob_data_available_weight,
+                quorum_threshold = quorum_threshold,
+                slot = %node.slot,
+                "Blob data availability quorum reached"
+            );
         }
 
         Ok(())
@@ -1538,22 +1539,24 @@ where
 
         let nodes = &mut self.proto_array.core_proto_array_mut().nodes;
 
-        if let Some(node) = nodes.get_mut(block_index) {
-            node.payload_revealed = true;
-            node.envelope_received = true;
-            // When the envelope is received locally, blob data is also available
-            node.payload_data_available = true;
-            // Set execution status so that head_hash is available for forkchoice_updated.
-            // Starts as Optimistic until the EL confirms via newPayload.
-            node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);
+        let node = nodes
+            .get_mut(block_index)
+            .ok_or(Error::MissingProtoArrayBlock(beacon_block_root))?;
 
-            debug!(
-                ?beacon_block_root,
-                ?payload_block_hash,
-                slot = %node.slot,
-                "Marked payload as revealed via execution payload envelope"
-            );
-        }
+        node.payload_revealed = true;
+        node.envelope_received = true;
+        // When the envelope is received locally, blob data is also available
+        node.payload_data_available = true;
+        // Set execution status so that head_hash is available for forkchoice_updated.
+        // Starts as Optimistic until the EL confirms via newPayload.
+        node.execution_status = ExecutionStatus::Optimistic(payload_block_hash);
+
+        debug!(
+            ?beacon_block_root,
+            ?payload_block_hash,
+            slot = %node.slot,
+            "Marked payload as revealed via execution payload envelope"
+        );
 
         Ok(())
     }
@@ -2343,9 +2346,9 @@ mod tests {
 
             // Simulate PTC quorum establishing payload_revealed=true before bid.
             // This can happen when PTC members have seen the envelope via gossip
-            // but our node hasn't imported the envelope yet. The accumulated PTC
-            // votes that established quorum are tracked in observed_payload_attestations
-            // and won't be re-applied, so resetting here would be permanent.
+            // but our node hasn't imported the envelope yet. Gossip validation
+            // prevents duplicate PTC attestations, so resetting the accumulated
+            // quorum here would be permanent.
             let idx = *fc
                 .proto_array
                 .core_proto_array()
