@@ -1624,6 +1624,12 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                 // the block's proposer.
                 self.chain.process_pending_envelope(*block_root).await;
 
+                // Recompute head again if the buffered envelope updated fork choice
+                // (EMPTY→FULL transition). Without this, the EL won't receive
+                // forkchoiceUpdated with the correct head_hash until the next event.
+                // This matches the recompute in the normal gossip envelope handler.
+                self.chain.recompute_head_at_current_slot().await;
+
                 metrics::set_gauge(
                     &metrics::BEACON_BLOCK_DELAY_FULL_VERIFICATION,
                     processing_start_time.elapsed().as_millis() as i64,
