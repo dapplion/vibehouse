@@ -607,15 +607,6 @@ impl ProtoArrayForkChoice {
     ) -> Result<Hash256, String> {
         let new_balances = justified_state_balances;
 
-        let deltas = compute_deltas(
-            &self.proto_array.indices,
-            &mut self.votes,
-            &self.balances.effective_balances,
-            &new_balances.effective_balances,
-            equivocating_indices,
-        )
-        .map_err(|e| format!("find_head compute_deltas failed: {:?}", e))?;
-
         // Check if Gloas fork choice applies.
         // Use gloas_fork_epoch from spec: if current epoch >= gloas fork epoch, use Gloas algorithm.
         let is_gloas = spec
@@ -623,6 +614,16 @@ impl ProtoArrayForkChoice {
             .is_some_and(|fork_epoch| current_slot.epoch(E::slots_per_epoch()) >= fork_epoch);
 
         if is_gloas {
+            // Gloas uses its own weight computation (get_gloas_weight) and doesn't
+            // need the per-node delta Vec. Apply only the vote tracker side effects
+            // (advancing current_root to next_root, zeroing equivocated votes).
+            apply_vote_updates(
+                &mut self.votes,
+                &self.balances.effective_balances,
+                &new_balances.effective_balances,
+                equivocating_indices,
+            );
+
             // Update the proto_array's checkpoints so that node_is_viable_for_head
             // uses the correct justified/finalized values for filtering.
             if justified_checkpoint != self.proto_array.justified_checkpoint
@@ -640,6 +641,15 @@ impl ProtoArrayForkChoice {
                 spec,
             );
         }
+
+        let deltas = compute_deltas(
+            &self.proto_array.indices,
+            &mut self.votes,
+            &self.balances.effective_balances,
+            &new_balances.effective_balances,
+            equivocating_indices,
+        )
+        .map_err(|e| format!("find_head compute_deltas failed: {:?}", e))?;
 
         self.proto_array
             .apply_score_changes::<E>(
@@ -1898,10 +1908,46 @@ impl ProtoArrayForkChoice {
     }
 }
 
+/// Apply vote tracker side effects without computing per-node deltas.
+///
+/// This performs the same vote mutation logic as `compute_deltas` — advancing
+/// `current_root` to `next_root` and zeroing equivocated votes — but skips
+/// the delta Vec allocation and arithmetic. Used by Gloas fork choice which
+/// computes weights directly from votes instead of using accumulated deltas.
+fn apply_vote_updates(
+    votes: &mut ElasticList<VoteTracker>,
+    old_balances: &[u64],
+    new_balances: &[u64],
+    equivocating_indices: &BTreeSet<u64>,
+) {
+    for (val_index, vote) in votes.iter_mut().enumerate() {
+        if vote.current_root == Hash256::zero() && vote.next_root == Hash256::zero() {
+            continue;
+        }
+
+        if equivocating_indices.contains(&(val_index as u64)) {
+            if !vote.current_root.is_zero() {
+                vote.current_root = Hash256::zero();
+            }
+            continue;
+        }
+
+        let old_balance = old_balances.get(val_index).copied().unwrap_or(0);
+        let new_balance = new_balances.get(val_index).copied().unwrap_or(0);
+
+        if vote.current_root != vote.next_root || old_balance != new_balance {
+            vote.current_root = vote.next_root;
+            vote.current_slot = vote.next_slot;
+            vote.current_payload_present = vote.next_payload_present;
+        }
+    }
+}
+
 /// Returns a list of `deltas`, where there is one delta for each of the indices in
 /// `0..indices.len()`.
 ///
-/// The deltas are formed by a change between `old_balances` and `new_balances`, and/or a change of vote in `votes`.
+/// The deltas are formed by a change between `old_balances` and `new_balances`, and/or a change of
+/// vote in `votes`.
 ///
 /// ## Errors
 ///
