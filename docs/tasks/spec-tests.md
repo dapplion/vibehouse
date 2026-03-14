@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1245 (Mar 15) — spec stable, CI fully green, comprehensive coverage confirmed
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (12+ consecutive: Mar 4-15). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
+
+**CI status**: Latest commit (4537f0f10) — all 6 CI jobs passed (check+clippy, EF tests, unit tests, beacon_chain, http_api, network+op_pool). Clippy clean (0 warnings). Cargo audit unchanged (1 rsa advisory, no fix).
+
+**Coverage audit**: Systematic search for untested Gloas code paths across gloas_verification.rs, state_processing gloas.rs, operation_pool, network gossip handlers, per_slot_processing, and execution_payload.rs. Key findings:
+- gloas_verification.rs: 126 test references across gloas.rs + gloas_verification.rs — all error variants for ExecutionBidError (16), PayloadAttestationError (10), PayloadEnvelopeError (11) have dedicated test coverage
+- per_block_processing/gloas.rs: production code (1-1020) has zero unwrap() calls; all unwraps in test code only
+- Network gossip handlers: 12+ envelope tests, 8+ bid tests, 6+ payload attestation tests, 3+ execution proof tests, 8+ proposer preferences tests
+- per_slot_processing: 6 payload availability tests covering clear, wraparound, skip slots, idempotency
+- PtcDutiesMap: 18 unit tests + 7 poll integration tests with MockBeaconNode
+
+**Conclusion**: No untested consensus-critical paths found. Total Gloas beacon_chain integration tests: ~780. Production code free of unwrap() in consensus-critical paths.
+
 ### run 1244 (Mar 15) — spec stable, all fork choice EF tests verified, CI green
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (12+ consecutive: Mar 4-15). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
