@@ -110,6 +110,9 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1214 (Mar 14) — all stable, no code changes
+Spec stable — no new consensus-specs commits since #5004. v1.7.0-alpha.3 GitHub release published (Mar 13), all changes already implemented (verified in run 1005). No new spec-test vectors (latest v1.6.0-beta.0). PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). Lint clean (zero warnings). Performance micro-optimizations exhausted — all hot paths (BLS, attestation verification, fork choice, state transitions, gossip processing) thoroughly optimized across runs 1151-1213. No remaining actionable allocation targets found in production code.
+
 ### run 1164 (Mar 13) — perf: eliminate redundant pubkey cache lookup in process_pending_deposits
 Spec stable — no new consensus-specs commits since #5004. PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec-test vectors. No semver-compatible cargo updates.
 Optimized `process_pending_deposits` in single_pass.rs: the inner loop was doing two separate `pubkey_cache().get()` lookups for the same deposit pubkey — once at the top (line 1015) to check exit/withdrawal status, and again later (line 1057) to route the deposit. Replaced the second lookup with the cached `opt_validator_index` from the first. On mainnet with thousands of pending deposits per epoch, this avoids one HashMap lookup per deposit. 575/575 state_processing + 18/18 EF epoch_processing + 2/2 EF sanity tests pass. Clippy clean.

@@ -1327,3 +1327,28 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Spec check**: No new consensus-specs commits since run 1212 (latest e50889e1ca, #5004). No new spec test releases (latest v1.7.0-alpha.3).
 
 **Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests, 2/2 genesis tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1214: performance optimization sweep complete (2026-03-14)
+
+**Scope**: Searched for remaining allocation optimization opportunities across entire codebase.
+
+**Method**: Comprehensive scan of all production code for:
+- `as_ssz_bytes()` on fixed-size types → all converted to `serialize()` in runs 1210-1213
+- `to_vec()` on fixed-size arrays → all converted in runs 1204-1213
+- `collect::<Vec<_>>()` where iterator would suffice → all optimized in runs 1151-1164
+- `hash()` (Vec return) vs `hash_fixed()` ([u8; 32] return) → all using `hash_fixed` already
+- `ssz_encode()` → all converted to `serialize()` in run 1212
+- Unnecessary clones in hot paths → all optimized in runs 1199-1211
+
+**Result**: No remaining actionable optimization targets in production code. All remaining `collect::<Vec<_>>()` calls are either:
+- Required by borrow checker (need to materialize before mutable state access, e.g. `slashings.rs`)
+- On complex types without `FromIterator` (e.g. `VariableList` in `block_replayer.rs`)
+- In low-frequency paths (once per block/epoch, not per-attestation)
+- In test code
+
+All remaining `.clone()` calls are either:
+- Required by ownership semantics (API boundaries, channel sends)
+- `Arc::clone` (cheap atomic increment)
+- Borrow checker constraints (simultaneous read+write)
+
+**Conclusion**: Phase 4 (Performance) is comprehensively complete. Runs 1151-1214 eliminated heap allocations across all hot paths: BLS verification, attestation processing, fork choice head computation, state transitions, gossip processing, merkle proofs, and crypto formatting.
