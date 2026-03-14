@@ -82,7 +82,7 @@ use ssz_derive::{Decode, Encode};
 use state_processing::per_block_processing::{errors::IntoWithIndex, is_merge_transition_block};
 use state_processing::{
     AllCaches, BlockProcessingError, BlockSignatureStrategy, ConsensusContext, SlotProcessingError,
-    VerifyBlockRoot,
+    VerifyBlockRoot, VerifySignatures,
     block_signature_verifier::{BlockSignatureVerifier, Error as BlockSignatureVerifierError},
     per_block_processing, per_slot_processing,
     state_advance::partial_state_advance,
@@ -2007,14 +2007,77 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
             let is_full_parent = child_bid.message.parent_block_hash == parent_bid_block_hash
                 && parent_bid_block_hash != ExecutionBlockHash::zero();
             if is_full_parent {
-                // Parent is FULL: ensure latest_block_hash reflects the parent's
-                // revealed payload. Defensive patch for the cache-hit path where
-                // the cached state may be pre-envelope.
+                // Parent is FULL: the state must be post-envelope (payload_states
+                // in the spec). The DB path in get_advanced_hot_state re-applies
+                // the full envelope, but the cache path may return a pre-envelope
+                // state. Detect this by checking latest_block_hash.
                 metrics::inc_counter(&metrics::BLOCK_IMPORT_FULL_PARENT_TOTAL);
-                if let Ok(h) = state.latest_block_hash_mut()
-                    && *h != parent_bid_block_hash
-                {
-                    *h = parent_bid_block_hash;
+                let is_pre_envelope = state
+                    .latest_block_hash()
+                    .ok()
+                    .is_some_and(|h| *h != parent_bid_block_hash);
+                if is_pre_envelope && state.slot() == parent_block.slot() {
+                    // State is at the parent's slot (not yet advanced) — we can
+                    // re-apply the envelope to get the full post-envelope state.
+                    // This handles all envelope mutations: execution requests,
+                    // builder payments, availability, and latest_block_hash.
+                    let envelope_applied = if let Ok(Some(env)) =
+                        chain.store.get_payload_envelope(&root)
+                    {
+                        state_processing::envelope_processing::process_execution_payload_envelope(
+                            &mut state,
+                            None,
+                            &env,
+                            VerifySignatures::False,
+                            &chain.spec,
+                        )
+                        .is_ok()
+                    } else if let Ok(Some(blinded)) =
+                        chain.store.get_blinded_payload_envelope(&root)
+                    {
+                        let withdrawals = state
+                            .payload_expected_withdrawals()
+                            .map(|w| w.iter().cloned().collect::<Vec<_>>().into())
+                            .unwrap_or_default();
+                        let env = blinded.into_full_with_withdrawals(withdrawals);
+                        state_processing::envelope_processing::process_execution_payload_envelope(
+                            &mut state,
+                            None,
+                            &env,
+                            VerifySignatures::False,
+                            &chain.spec,
+                        )
+                        .is_ok()
+                    } else {
+                        false
+                    };
+                    if !envelope_applied {
+                        // Envelope not in store (e.g., range sync without envelope
+                        // download). Fall back to patching just latest_block_hash.
+                        // This produces correct results only when the envelope has
+                        // no other state mutations (self-build with value=0 and
+                        // empty execution requests).
+                        debug!(
+                            ?root,
+                            "FULL parent envelope not in store, patching latest_block_hash only"
+                        );
+                        if let Ok(h) = state.latest_block_hash_mut() {
+                            *h = parent_bid_block_hash;
+                        }
+                    }
+                } else if is_pre_envelope {
+                    // State has been slot-advanced past the parent's slot (e.g.
+                    // by the state advance timer). We can't re-apply the envelope
+                    // at the wrong slot. Fall back to latest_block_hash patch.
+                    debug!(
+                        ?root,
+                        state_slot = %state.slot(),
+                        parent_slot = %parent_block.slot(),
+                        "FULL parent cached state is advanced, patching latest_block_hash only"
+                    );
+                    if let Ok(h) = state.latest_block_hash_mut() {
+                        *h = parent_bid_block_hash;
+                    }
                 }
             } else if parent_bid_block_hash != ExecutionBlockHash::zero() {
                 // Parent is EMPTY: state.latest_block_hash is already the grandparent's
