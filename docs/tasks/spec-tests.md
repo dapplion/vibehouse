@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1197 (Mar 14) — avoid Hash256 wrapper in compute_shuffled_index
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix). No dependency updates.
+
+Shipped: removed Hash256 wrapper from compute_shuffled_index hash helpers (return [u8; 32] directly), and used Hash256::from instead of from_slice in deposit_data_tree where input is already [u8; 32]. 5/5 shuffle tests + 1/1 EF shuffling test + 3/3 EF deposit/genesis tests pass.
+
 ### run 1196 (Mar 14) — use mem::take for variable-length Lists in fork upgrades
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. No new spec test releases (v1.7.0-alpha.3 verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates.

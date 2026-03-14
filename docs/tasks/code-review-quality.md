@@ -1121,3 +1121,21 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 **Verification**: 2/2 KZG tests pass, bench + test compilation clean, full clippy clean.
 
 **Spec check**: No new consensus-specs commits since run 1190. Spec at v1.7.0-alpha.3. PR #4992 (cached PTCs) still OPEN.
+
+### Run 1197: avoid Hash256 wrapper in compute_shuffled_index + deposit tree direct conversion (2026-03-14)
+
+**Scope**: Remove unnecessary Hash256 construction in shuffling and deposit tree code.
+
+**Problem 1**: `compute_shuffled_index.rs` used `Hash256::from_slice(digest.as_ref())` in `hash_with_round` and `hash_with_round_and_position`, constructing a full Hash256 wrapper only to read 1 or 8 bytes from it. The `from_slice` call also performed a runtime length check on what was already a `[u8; 32]` return from `finalize()`.
+
+**Fix 1**: Changed both hash helper functions to return `[u8; 32]` directly instead of Hash256, removing the `use crate::Hash256` import entirely. Simplified `bytes_to_int64` to take `&[u8; 32]` and use `try_into` for the slice-to-array conversion.
+
+**Problem 2**: `deposit_data_tree.rs` used `Hash256::from_slice(&hash_fixed(...))` and `Hash256::from_slice(&self.length_bytes())` where the arguments were already `[u8; 32]` arrays.
+
+**Fix 2**: Changed both to `Hash256::from(...)` for direct zero-cost conversion.
+
+**Impact**: `compute_shuffled_index` is called for single-index shuffling (e.g. computing a specific validator's committee assignment). While `shuffle_list` is the primary hot path for full committee computation, `compute_shuffled_index` is used when only one index is needed. Removing the Hash256 intermediary eliminates unnecessary type wrapping per hash call (2 hashes per round × 90 rounds = 180 eliminated Hash256 constructions per index lookup).
+
+**Spec check**: No new consensus-specs commits since run 1196 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix).
+
+**Verification**: 5/5 swap_or_not_shuffle tests, 1/1 EF shuffling tests, 3/3 EF deposit + genesis tests, full clippy clean (all targets).
