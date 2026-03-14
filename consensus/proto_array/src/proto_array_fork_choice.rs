@@ -748,15 +748,10 @@ impl ProtoArrayForkChoice {
         disallowed_offsets: &DisallowedReOrgOffsets,
         max_epochs_since_finalization: Epoch,
     ) -> Result<ProposerHeadInfo, ProposerHeadError<Error>> {
-        let mut nodes = self
-            .proto_array
-            .iter_nodes(&canonical_head)
-            .take(2)
-            .cloned()
-            .collect::<Vec<_>>();
+        let mut iter = self.proto_array.iter_nodes(&canonical_head).cloned();
 
-        let parent_node = nodes.pop().ok_or(DoNotReOrg::MissingHeadOrParentNode)?;
-        let head_node = nodes.pop().ok_or(DoNotReOrg::MissingHeadOrParentNode)?;
+        let head_node = iter.next().ok_or(DoNotReOrg::MissingHeadOrParentNode)?;
+        let parent_node = iter.next().ok_or(DoNotReOrg::MissingHeadOrParentNode)?;
 
         let parent_slot = parent_node.slot;
         let head_slot = head_node.slot;
