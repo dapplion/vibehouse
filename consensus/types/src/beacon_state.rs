@@ -14,7 +14,7 @@ use metastruct::{NumFields, metastruct};
 pub use pubkey_cache::PubkeyCache;
 use safe_arith::{ArithError, SafeArith};
 use serde::{Deserialize, Deserializer, Serialize};
-use ssz::{Decode, DecodeError, Encode, ssz_encode};
+use ssz::{Decode, DecodeError};
 use ssz_derive::{Decode, Encode};
 use std::hash::Hash;
 use std::{fmt, mem, sync::Arc};
@@ -1245,7 +1245,7 @@ impl<E: EthSpec> BeaconState<E> {
             1,
             (committee.committee.len() as u64).safe_div(spec.target_aggregators_per_committee)?,
         );
-        let signature_hash = hash_fixed(&slot_signature.as_ssz_bytes());
+        let signature_hash = hash_fixed(&slot_signature.serialize());
         let signature_hash_int = u64::from_le_bytes(
             signature_hash[0..8]
                 .try_into()
@@ -1586,7 +1586,7 @@ impl<E: EthSpec> BeaconState<E> {
             .as_usize()
             .safe_rem(E::EpochsPerHistoricalVector::to_usize())?;
 
-        let signature_hash = Hash256::from_slice(&hash_fixed(&ssz_encode(signature)));
+        let signature_hash = Hash256::from_slice(&hash_fixed(&signature.serialize()));
 
         *self
             .randao_mixes_mut()

@@ -5,7 +5,6 @@ use crate::{
 use core::slice::Iter;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use ssz::Encode;
 use ssz_derive::{Decode, Encode};
 use std::hash::{Hash, Hasher};
 use superstruct::superstruct;
@@ -200,7 +199,7 @@ impl<E: EthSpec> Hash for IndexedAttestation<E> {
             IndexedAttestation::Electra(att) => att.attesting_indices.hash(state),
         };
         self.data().hash(state);
-        self.signature().as_ssz_bytes().hash(state);
+        self.signature().serialize().hash(state);
     }
 }
 
