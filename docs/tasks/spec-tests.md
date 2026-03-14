@@ -29,6 +29,29 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1243 (Mar 15) — spec stable, comprehensive coverage audit, CI green
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (11+ consecutive: Mar 5-15). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
+
+**CI status**: Latest commit (732aec9c2) — check+clippy passed, EF tests passed, remaining jobs (beacon_chain, http_api, network+op_pool, unit tests) in progress.
+
+**Comprehensive coverage audit**: Systematically searched for untested consensus-critical paths across beacon_chain.rs, block_verification.rs, gloas_verification.rs, execution_payload.rs, envelope_processing.rs, and block_replayer.rs. Key findings:
+
+- envelope_processing.rs error paths (ParentHashMismatch, TimestampMismatch, GasLimitMismatch, BlockHashMismatch): tested via EF spec tests (79/79 + 138/138) and unit tests in envelope_processing.rs
+- verify_payload_envelope_for_gossip: all 8 error variants tested (BlockRootUnknown, DuplicateEnvelope, PriorToFinalization, SlotMismatch, MissingBeaconBlock, NotGloasBlock, BuilderIndexMismatch, BlockHashMismatch, InvalidSignature)
+- process_pending_envelope: 6 tests covering success, re-verification failure, EL Invalid, EL Syncing, unknown root, duplicate
+- process_self_build_envelope: tested for head/non-head blocks, EL Valid/Invalid/Syncing, try_update_head_state behavior
+- process_envelope_for_sync: 8 tests covering normal path, error paths (builder_index/block_hash/state_root/signature mismatch), and range sync with RpcBlocks
+- load_parent Gloas paths: tested for FULL parent (hash patching), EMPTY parent (no patching), blinded envelope fallback, advanced state patch
+- Block replayer: tested via store_tests.rs with envelope + blinded envelope replay
+- is_parent_block_full: 4 unit tests + integration coverage through withdrawal/block production tests
+- execution_payload_availability: tested for fork transition initialization, multi-epoch tracking
+- Fork transitions (Fulu→Gloas): 8+ tests covering skipped fork slot, multiple skipped slots, bid parent_hash continuity
+- Range sync: tested for mixed FULL/EMPTY chains, Fulu→Gloas boundary, duplicate blocks, RpcBlock envelope attachment
+- Skipped slots: tested for latest_block_hash continuity, bid parent references
+
+**Conclusion**: No untested consensus-critical paths found. Total Gloas beacon_chain integration tests: ~780. cargo audit unchanged (1 rsa advisory, no fix). Clippy clean.
+
 ### run 1242 (Mar 15) — load_parent advanced state patch test, spec stable
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (10+ consecutive). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged. PR #4992 (cached PTCs in state) is approved+CI-green but has unresolved review comments.
