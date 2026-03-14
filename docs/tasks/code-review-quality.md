@@ -1173,3 +1173,15 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 **Spec check**: No new consensus-specs commits since run 1201 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix).
 
 **Verification**: 374/374 Gloas+PTC+payload_attestation tests, 15/15 EF operations spec tests, full workspace clippy clean (lint-full + all targets), pre-push hook passes.
+
+### Run 1203: attester_slashing_signature_sets closure reference (2026-03-14)
+
+**Scope**: Remove unnecessary `Clone` bound and closure clone in `attester_slashing_signature_sets`.
+
+**Problem**: `attester_slashing_signature_sets` required `F: Fn(...) + Clone` and cloned the `get_pubkey` closure to pass it to `indexed_attestation_signature_set` twice. Since `&F` implements `Fn` when `F: Fn`, the first call can receive `&get_pubkey` instead of a clone, and the `Clone` bound is no longer needed.
+
+**Fix**: Changed `get_pubkey.clone()` to `&get_pubkey` for the first call, removed the `+ Clone` bound from `F`. The caller in `block_signature_verifier.rs` already passes `&self.get_pubkey`, so no caller changes needed.
+
+**Spec check**: No new consensus-specs commits since run 1202 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0).
+
+**Verification**: 52/52 signature tests, 5/5 attester_slashing tests, clippy clean, fmt clean.
