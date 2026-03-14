@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1236 (Mar 14) — fix range sync envelope sig verification, spec stable
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (8 consecutive: Mar 7-14). CI for previous commit (849d0b521) in progress — 5/6 passed (check+clippy, EF tests, network+op_pool, http_api).
+
+**Bug fix**: `process_envelope_for_sync` used `cached_head()` to look up builder pubkeys for envelope signature verification. During range sync the canonical head can be far behind the sync target. If builders were registered between the head and the envelope's block, their pubkeys wouldn't be found, causing signature verification to fail and aborting the chain segment import. Fixed by loading the block's post-import state from the store instead. This also removes a redundant state load (state was loaded twice before). All 104 envelope tests + 6 range sync tests pass.
+
+**Spec PR status** (all still OPEN, none merged):
+- #4992 (cached PTCs): OPEN, APPROVED, MERGEABLE. HIGH IMPACT — not implementing until merged.
+- #4843 (variable PTC deadline): OPEN, APPROVED, MERGEABLE. HIGH IMPACT — renames `payload_present`→`payload_timely`, variable deadline based on payload size.
+- #4939 (request missing envelopes for index-1 attestation): OPEN, blocked.
+- #4898 (remove pending tiebreaker): APPROVED, MERGEABLE. No code change needed.
+- #4892 (remove impossible branch): APPROVED, MERGEABLE. No code change needed.
+
 ### run 1235 (Mar 14) — spec stable, all green, new Gloas fork choice tests verified
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (7 consecutive: Mar 8-14). CI green for latest commit (c66e3a3ff), EF tests pass including new Gloas fork choice vectors from spec PR #4940.
