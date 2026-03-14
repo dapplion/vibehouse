@@ -2860,10 +2860,24 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             )));
         }
 
-        // Verify envelope signature.
+        // Load the post-block state for both signature verification and state
+        // transition. We must NOT use cached_head() here because during range sync
+        // the canonical head may be far behind the current sync position — builders
+        // registered after the head would not be found, causing signature verification
+        // to fail and aborting the entire chain segment import.
+        let mut state = self
+            .store
+            .get_state(&block_state_root, Some(envelope.slot), false)
+            .map_err(Error::DBError)?
+            .ok_or_else(|| {
+                Error::EnvelopeError(format!(
+                    "Missing state {:?} for sync envelope block {:?}",
+                    block_state_root, beacon_block_root
+                ))
+            })?;
+
+        // Verify envelope signature using the block's own state (has correct builders).
         {
-            let head = self.canonical_head.cached_head();
-            let state = &head.snapshot.beacon_state;
             use state_processing::per_block_processing::signature_sets::execution_payload_envelope_signature_set;
 
             let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
@@ -2875,7 +2889,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             };
 
             let signature_set = execution_payload_envelope_signature_set(
-                state,
+                &state,
                 get_builder_pubkey,
                 &signed_envelope,
                 block.message().proposer_index(),
@@ -2942,18 +2956,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 }
             }
         }
-
-        // Apply the envelope state transition.
-        let mut state = self
-            .store
-            .get_state(&block_state_root, Some(envelope.slot), false)
-            .map_err(Error::DBError)?
-            .ok_or_else(|| {
-                Error::EnvelopeError(format!(
-                    "Missing state {:?} for sync envelope block {:?}",
-                    block_state_root, beacon_block_root
-                ))
-            })?;
 
         // Skip BLS re-verification — we verified the signature above.
         state_processing::envelope_processing::process_execution_payload_envelope(
