@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1180 (Mar 14) — return fixed-size arrays from int_to_bytes functions
+
+Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: converted all int_to_bytes functions (int_to_bytes1/2/3/8/32/48/96) from returning `Vec<u8>` (heap-allocated via BytesMut) to returning fixed-size stack arrays (`[u8; N]`). `int_to_bytes4` already returned `[u8; 4]` — now all functions follow the same pattern using `to_le_bytes()`. Removed duplicate `int_to_fixed_bytes32` (now identical to `int_to_bytes32`). Dropped `bytes` crate dependency from int_to_bytes. Key hot paths affected: `get_seed` (per-slot RANDAO mix), `compute_proposer_indices` (per-epoch), `get_ptc_committee` (per-slot in Gloas), `get_next_sync_committee_indices`, `get_beacon_proposer_seed`. All 1290 types+state_processing tests, 104/104 EF spec tests (operations+epoch+sanity+ssz_static), 9/9 fork choice tests pass. Clippy clean.
+
+Open PRs to track: #4992 (cached PTCs in state — 1 approval, approaching merge), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1177 (Mar 14) — reuse find_head_gloas allocations
 
 Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix). Only semver-compatible dep update: cc 1.2.56 → 1.2.57.
