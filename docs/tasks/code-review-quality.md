@@ -1328,6 +1328,18 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 
 **Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests, 2/2 genesis tests, full workspace clippy clean (lint-full), pre-push hook passes.
 
+### Run 1215: fix consolidation processing regression (2026-03-14)
+
+**Scope**: CI failure — `electra/sanity/blocks/multi_epoch_consolidation_chain` EF spec test failing with state root mismatch (real crypto only).
+
+**Root cause**: Commit 9cf1e78d5 (run 1201, "avoid cloning entire pending_consolidations list in epoch processing") introduced a semantic bug. The optimization split `process_pending_consolidations` into two passes: first collect `(source, target, balance)` tuples, then apply balance changes. But the spec requires balance changes to be applied **inline** — when multiple consolidations affect the same validator, later consolidations must see the decreased balance from earlier ones. The two-pass approach read all balances before any were modified, producing incorrect results for multi-consolidation chains.
+
+**Fix**: Reverted to single-pass inline processing. The clone of `pending_consolidations` is necessary here because we need immutable iteration while mutating balances. This is one of the cases where the borrow checker correctly forces the clone.
+
+**Bisect**: Used `git bisect` to identify 9cf1e78d5 as the first bad commit (6 steps, ~10 minutes).
+
+**Verification**: 79/79 real-crypto EF tests, 139/139 fake-crypto EF tests, 575/575 state_processing tests, lint clean.
+
 ### Run 1214: performance optimization sweep complete (2026-03-14)
 
 **Scope**: Searched for remaining allocation optimization opportunities across entire codebase.

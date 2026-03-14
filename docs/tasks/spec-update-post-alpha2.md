@@ -110,6 +110,11 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1215 (Mar 14) — fix consolidation processing regression
+**Critical fix**: `electra/sanity/blocks/multi_epoch_consolidation_chain` EF test was failing since run 1201 (commit 9cf1e78d5). The "avoid cloning pending_consolidations" optimization broke inline balance application semantics — consolidations must see prior balance changes within the same epoch. Fixed by reverting to single-pass with clone. Bisected in 6 steps. 79/79 + 139/139 EF tests pass. 575/575 state_processing tests pass.
+
+Spec stable — no new consensus-specs commits since #5004 (latest e50889e1ca). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). No new spec-test vectors (latest v1.6.0-beta.0). No semver-compatible cargo updates.
+
 ### run 1214 (Mar 14) — all stable, no code changes
 Spec stable — no new consensus-specs commits since #5004. v1.7.0-alpha.3 GitHub release published (Mar 13), all changes already implemented (verified in run 1005). No new spec-test vectors (latest v1.6.0-beta.0). PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). Lint clean (zero warnings). Performance micro-optimizations exhausted — all hot paths (BLS, attestation verification, fork choice, state transitions, gossip processing) thoroughly optimized across runs 1151-1213. No remaining actionable allocation targets found in production code.
 
