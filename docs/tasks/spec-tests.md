@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1222 (Mar 14) — fix missing head recompute after buffered envelope processing
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, same head d76a278b0a. No new spec test releases. cargo audit unchanged (1 rsa). Nightly green (6 consecutive: Mar 10-14). CI from run 1221 (4b216dde7) — check+clippy+fmt, ef-tests passed; beacon_chain, http_api, unit tests, network+op_pool still running.
+
+Conducted deep audit of: (1) production code for `.unwrap()`/`.expect()` panics — all consensus-critical code clean, only debug utility `dump_as_dot` has unwraps. (2) Direct array indexing in consensus — all properly bounds-checked. (3) Block production path for Gloas — no bugs found, fork boundary handling correct, external bid path correct.
+
+Found and fixed: missing `recompute_head_at_current_slot()` call after processing buffered gossip envelopes (13b7ed7c1). When an envelope arrives before its block (a timing race), it's buffered in `pending_gossip_envelopes` and processed after block import. The normal gossip envelope handler calls `recompute_head` after processing (line 3719) to ensure the EL receives `forkchoiceUpdated` with the correct head_hash after EMPTY→FULL transition. The buffered path was missing this recompute, leaving the EL with a stale `forkchoiceUpdated` until the next unrelated event. 163/163 network tests, 104/104 envelope beacon_chain tests, 13/13 envelope gossip tests pass. Clippy clean.
+
 ### run 1221 (Mar 14) — spec stable, bid pool eager pruning
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.5.0 on consensus-spec-tests, v1.7.0-alpha.3 on consensus-specs). cargo audit unchanged (1 rsa). Nightly green (5 consecutive: Mar 10-14). CI from run 1220 (8d684988f) — check+clippy, ef-tests, network+op_pool all passed; beacon_chain, http_api, unit tests still running.
