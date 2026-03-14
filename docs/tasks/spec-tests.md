@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1232 (Mar 14) — fix filtered block envelope loss, fix store test
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). PR #4992 (cached PTCs) still OPEN. No new spec test releases (latest v1.6.0-beta.0). Nightly green (5 consecutive). Open Gloas PRs: #4960 (fork choice deposit test), #4932 (sanity/blocks tests), #4840 (EIP-7843 SLOTNUM), #4630 (EIP-7688 SSZ) — none merged, nothing to implement.
+
+**Bug fix**: `process_chain_segment` extracted envelopes from RpcBlocks into a HashMap, but `filter_chain_segment` removed `DuplicateFullyImported` blocks before they reached the import loop. Their envelopes stayed in the HashMap and were silently dropped. If a block was imported via gossip without its envelope (EMPTY fork choice state), subsequent blocks referencing it as a FULL parent would fail with StateRootMismatch and retry indefinitely. Fixed by processing orphaned envelopes after `filter_chain_segment` returns. Run 1226 fixed this for the `process_block` error path but missed the `filter_chain_segment` path.
+
+**Test fix**: `gloas_reconstruct_states_with_pruned_payloads` store test expected Gloas payloads to be pruned, but commit 9ba21620e (run 1231) intentionally skips Gloas payloads during pruning (needed for range sync envelope serving). Updated test assertions to verify Gloas payloads are retained.
+
+770/770 beacon_chain tests (FORK_NAME=gloas), 9/9 EF fork choice tests. Clippy clean. Pushed.
+
 ### run 1230 (Mar 14) — spec stable, codebase audits, all clean
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). PR #4992 (cached PTCs) still OPEN, 1 APPROVED (jtraglia), same head d76a278b0a. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix). Nightly green (5 consecutive: Mar 10-14). CI for 7e08c29f6 (supernode sync fix) in progress — check+clippy passed.
