@@ -1210,3 +1210,23 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Spec check**: No new consensus-specs commits since run 1204 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0).
 
 **Verification**: 7/7 merkle_proof tests (including quickcheck), 2/2 EF genesis tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1206: eliminate heap allocations in batch signature verification (2026-03-14)
+
+**Scope**: Remove unnecessary heap allocations from `verify_signature_sets` in `crypto/bls/src/impls/blst.rs`, the core batch BLS signature verification function used for every block and attestation.
+
+**Problem**: Three unnecessary allocations:
+1. Line 39: `signature_sets.collect::<Vec<_>>()` — collected an `ExactSizeIterator` into a Vec just to get `.len()` and iterate. The length is available from the iterator directly via `.len()`.
+2. Lines 92-96: `set.signing_keys.iter().map(|pk| pk.point()).collect::<Vec<_>>()` — allocated a new Vec of public key references on every iteration of the main loop (once per signature set). For a typical block with ~128 attestations, that's ~128 heap allocations.
+3. Line 106: `sigs.iter().zip(pks.iter()).unzip()` — created two new Vecs via zip+unzip when simple `.iter().collect()` on each Vec is cleaner (same allocation count but avoids the zip overhead).
+
+**Fix**:
+1. Use `signature_sets.len()` before consuming the iterator, then iterate directly — eliminates one Vec allocation
+2. Declare `signing_keys_buf: Vec<&blst_core::PublicKey>` outside the loop, `.clear()` + `.extend()` each iteration — the buffer's heap allocation is retained across iterations, eliminating N-1 allocations where N is the number of signature sets
+3. Replace `unzip()` with two direct `.iter().collect()` calls
+
+**Impact**: `verify_signature_sets` is called on every block import (batch verifying all signatures: block signature, RANDAO, proposer slashings, attester slashings, attestations, voluntary exits, sync committee). A typical mainnet block has 5-10 signature sets with 1-128 signing keys each. This eliminates 1 + (N-1) heap allocations per call where N is the number of signature sets.
+
+**Spec check**: No new consensus-specs commits since run 1205 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.7.0-alpha.3).
+
+**Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests (including bls_batch_verify), 52/52 signature state_processing tests, full workspace clippy clean (lint-full), pre-push hook passes.

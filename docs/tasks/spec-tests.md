@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1206 (Mar 14) — eliminate heap allocations in batch signature verification
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3).
+
+Open spec PRs tracked: #4992 (cached PTCs — approved, adds `previous_ptc`/`current_ptc` to BeaconState), #4939 (request missing envelopes for index-1 attestation), #4747 (fast confirmation rule), #4843 (variable PTC deadline), #4840 (EIP-7843 support), #4630 (EIP-7688 forward-compatible SSZ).
+
+Shipped: eliminated heap allocations in `verify_signature_sets` (crypto/bls/src/impls/blst.rs), the core batch BLS verification function. (1) Removed `collect::<Vec<_>>()` of the `ExactSizeIterator` input — use `.len()` directly then consume the iterator. (2) Reused a single `signing_keys_buf` Vec across loop iterations instead of allocating a new Vec per signature set. (3) Replaced `zip().unzip()` with direct `.iter().collect()`. Eliminates N heap allocations per call (N = number of signature sets, typically 5-10 per block). 37/37 BLS tests, 8/8 EF BLS spec tests, 52/52 signature state_processing tests pass, clippy clean.
+
 ### run 1204 (Mar 14) — use pubkey_cache instead of HashSet in builder onboarding
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. cargo audit unchanged (1 rsa, no fix). No new spec test releases (latest v1.7.0-alpha.3).
