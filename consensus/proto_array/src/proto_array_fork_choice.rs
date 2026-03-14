@@ -459,6 +459,9 @@ pub struct ProtoArrayForkChoice {
     gloas_filtered_buf: Vec<bool>,
     /// Reusable buffer for `build_children_index` to avoid per-slot HashMap allocation.
     gloas_children_buf: HashMap<usize, Vec<usize>>,
+    /// Reusable buffer for active votes in `find_head_gloas` to avoid per-slot allocation.
+    /// Stores (vote_index, balance) pairs for validators with non-zero root and balance.
+    gloas_active_votes_buf: Vec<(u32, u64)>,
 }
 
 impl ProtoArrayForkChoice {
@@ -533,6 +536,7 @@ impl ProtoArrayForkChoice {
             gloas_head_payload_status: None,
             gloas_filtered_buf: Vec::new(),
             gloas_children_buf: HashMap::new(),
+            gloas_active_votes_buf: Vec::new(),
         }
     }
 
@@ -1128,39 +1132,35 @@ impl ProtoArrayForkChoice {
         self.compute_filtered_nodes_into::<E>(current_slot);
         self.build_children_index_into();
 
-        // Pre-compute active votes: filter out validators with zero root or
-        // zero balance once, so the inner weight loop (called per-child per-depth)
-        // skips them without repeated bounds checks and comparisons.
-        // Computed before should_apply_proposer_boost_gloas so it can reuse the
-        // same filtered set instead of re-iterating all validators.
-        let active_votes: Vec<(&VoteTracker, u64)> = self
-            .votes
-            .0
-            .iter()
-            .enumerate()
-            .filter_map(|(val_index, vote)| {
-                if vote.current_root.is_zero() {
-                    return None;
-                }
-                let balance = self
-                    .balances
-                    .effective_balances
-                    .get(val_index)
-                    .copied()
-                    .unwrap_or(0);
-                if balance == 0 {
-                    return None;
-                }
-                Some((vote, balance))
-            })
-            .collect();
+        // Pre-compute active votes into a reusable buffer: filter out validators
+        // with zero root or zero balance once, so the inner weight loop (called
+        // per-child per-depth) skips them without repeated bounds checks and
+        // comparisons. The buffer is cleared and refilled each call but retains
+        // its heap allocation across slots.
+        self.gloas_active_votes_buf.clear();
+        for (val_index, vote) in self.votes.0.iter().enumerate() {
+            if vote.current_root.is_zero() {
+                continue;
+            }
+            let balance = self
+                .balances
+                .effective_balances
+                .get(val_index)
+                .copied()
+                .unwrap_or(0);
+            if balance == 0 {
+                continue;
+            }
+            self.gloas_active_votes_buf
+                .push((val_index as u32, balance));
+        }
 
         let apply_boost = self.should_apply_proposer_boost_gloas::<E>(
             proposer_boost_root,
             equivocating_indices,
             current_slot,
             spec,
-            &active_votes,
+            &self.gloas_active_votes_buf,
         );
 
         // Spec: PAYLOAD_TIMELY_THRESHOLD = PTC_SIZE // 2
@@ -1204,7 +1204,7 @@ impl ProtoArrayForkChoice {
                         current_slot,
                         spec,
                         &mut ancestor_cache,
-                        &active_votes,
+                        &self.gloas_active_votes_buf,
                     );
                     let tb = self.get_payload_tiebreaker(
                         &child,
@@ -1413,7 +1413,7 @@ impl ProtoArrayForkChoice {
         equivocating_indices: &BTreeSet<u64>,
         _current_slot: Slot,
         spec: &ChainSpec,
-        active_votes: &[(&VoteTracker, u64)],
+        active_votes: &[(u32, u64)],
     ) -> bool {
         if proposer_boost_root.is_zero() {
             return false;
@@ -1451,7 +1451,8 @@ impl ProtoArrayForkChoice {
         // Compute attestation-only weight for the parent (no proposer boost)
         let parent_slot = parent_block.slot;
         let mut parent_att_weight: u64 = 0;
-        for &(vote, balance) in active_votes {
+        for &(vote_idx, balance) in active_votes {
+            let vote = &self.votes.0[vote_idx as usize];
             if self.is_supporting_vote_gloas_at_slot(&parent_node, vote, parent_slot) {
                 parent_att_weight = parent_att_weight.saturating_add(balance);
             }
@@ -1501,9 +1502,10 @@ impl ProtoArrayForkChoice {
     /// Non-PENDING nodes from the previous slot get 0 weight (reorg resistance).
     /// Otherwise, sum of supporting attestation balances + proposer boost.
     ///
-    /// `active_votes` is a pre-filtered slice of (vote, balance) pairs with
+    /// `active_votes` is a pre-filtered slice of (vote_index, balance) pairs with
     /// non-zero root and non-zero balance, computed once in `find_head_gloas`
-    /// to avoid repeated filtering in this inner loop.
+    /// to avoid repeated filtering in this inner loop. Vote data is accessed
+    /// via `self.votes` using the stored index.
     #[allow(clippy::too_many_arguments)]
     fn get_gloas_weight<E: EthSpec>(
         &self,
@@ -1513,7 +1515,7 @@ impl ProtoArrayForkChoice {
         current_slot: Slot,
         spec: &ChainSpec,
         ancestor_cache: &mut HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>>,
-        active_votes: &[(&VoteTracker, u64)],
+        active_votes: &[(u32, u64)],
     ) -> u64 {
         let pa = &self.proto_array;
 
@@ -1536,7 +1538,8 @@ impl ProtoArrayForkChoice {
         // computes weights for EMPTY and FULL children of a PENDING node, both
         // have the same node_slot, so ancestor lookups are reused.
         let mut weight: u64 = 0;
-        for &(vote, balance) in active_votes {
+        for &(vote_idx, balance) in active_votes {
+            let vote = &self.votes.0[vote_idx as usize];
             if self.is_supporting_vote_gloas_cached(node, vote, node_slot, ancestor_cache) {
                 weight = weight.saturating_add(balance);
             }
@@ -1562,20 +1565,12 @@ impl ProtoArrayForkChoice {
         weight
     }
 
-    /// Test helper: calls `get_gloas_weight` with a fresh ancestor cache and
-    /// auto-computed active votes.
+    /// Compute active votes as (vote_index, balance) pairs, filtering out
+    /// validators with zero root or zero balance. Used by test helpers that
+    /// need a one-off active votes slice without filling the reusable buffer.
     #[cfg(test)]
-    fn get_gloas_weight_test<E: EthSpec>(
-        &self,
-        node: &GloasForkChoiceNode,
-        proposer_boost_root: Hash256,
-        apply_proposer_boost: bool,
-        current_slot: Slot,
-        spec: &ChainSpec,
-    ) -> u64 {
-        let mut cache = HashMap::new();
-        let active_votes: Vec<(&VoteTracker, u64)> = self
-            .votes
+    fn compute_active_votes(&self) -> Vec<(u32, u64)> {
+        self.votes
             .0
             .iter()
             .enumerate()
@@ -1592,9 +1587,24 @@ impl ProtoArrayForkChoice {
                 if balance == 0 {
                     return None;
                 }
-                Some((vote, balance))
+                Some((val_index as u32, balance))
             })
-            .collect();
+            .collect()
+    }
+
+    /// Test helper: calls `get_gloas_weight` with a fresh ancestor cache and
+    /// auto-computed active votes.
+    #[cfg(test)]
+    fn get_gloas_weight_test<E: EthSpec>(
+        &self,
+        node: &GloasForkChoiceNode,
+        proposer_boost_root: Hash256,
+        apply_proposer_boost: bool,
+        current_slot: Slot,
+        spec: &ChainSpec,
+    ) -> u64 {
+        let mut cache = HashMap::new();
+        let active_votes = self.compute_active_votes();
         self.get_gloas_weight::<E>(
             node,
             proposer_boost_root,
@@ -1860,27 +1870,7 @@ impl ProtoArrayForkChoice {
         current_slot: Slot,
         spec: &ChainSpec,
     ) -> bool {
-        let active_votes: Vec<(&VoteTracker, u64)> = self
-            .votes
-            .0
-            .iter()
-            .enumerate()
-            .filter_map(|(val_index, vote)| {
-                if vote.current_root.is_zero() {
-                    return None;
-                }
-                let balance = self
-                    .balances
-                    .effective_balances
-                    .get(val_index)
-                    .copied()
-                    .unwrap_or(0);
-                if balance == 0 {
-                    return None;
-                }
-                Some((vote, balance))
-            })
-            .collect();
+        let active_votes = self.compute_active_votes();
         self.should_apply_proposer_boost_gloas::<E>(
             proposer_boost_root,
             equivocating_indices,
