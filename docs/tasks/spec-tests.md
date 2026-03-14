@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1223 (Mar 14) — defensive error handling in fork choice Gloas methods
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, same head d76a278b0a. No new spec test releases (latest v1.5.0 on consensus-spec-tests). cargo audit unchanged (1 rsa). CI from run 1222 (13b7ed7c1) in progress — all 6 jobs running.
+
+Deep audit of Gloas fork choice and gossip validation code via subagents. Verified findings against actual code and spec:
+
+- Proposer preferences pool keyed by Slot: correct, only one proposer per slot. False positive.
+- Payload attestation duplicate handling: gossip validation already handles this via `ObservedPayloadAttestations`. False positive.
+- PTC committee race condition: theoretical but prevented by gossip dedup and slot-level locking. False positive.
+
+Shipped: defensive error handling in fork choice on_execution_bid, on_payload_attestation, on_execution_payload (1fea43800). All three methods used `if let Some` for the mutable node lookup after already validating the index via `indices.get()`. While proto_array indices/nodes are always in sync, the silent `if let Some` would hide any future divergence. Replaced with `.ok_or(Error::MissingProtoArrayBlock(...))` to return explicit errors. Also fixed misleading comment in `should_extend_payload` (said "can't extend" but returned true for genesis nodes), and removed stale reference to non-existent `observed_payload_attestations` field. 307/307 fork_choice+proto_array tests pass, 9/9 EF fork choice tests pass. Clippy clean.
+
 ### run 1222 (Mar 14) — fix missing head recompute after buffered envelope processing
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, same head d76a278b0a. No new spec test releases. cargo audit unchanged (1 rsa). Nightly green (6 consecutive: Mar 10-14). CI from run 1221 (4b216dde7) — check+clippy+fmt, ef-tests passed; beacon_chain, http_api, unit tests, network+op_pool still running.
