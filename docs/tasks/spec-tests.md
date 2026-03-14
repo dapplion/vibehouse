@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1233 (Mar 14) — CI green, sync devnet verified, spec stable
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). PR #4992 (cached PTCs) still OPEN, 1 APPROVED (jtraglia), mergeable_state=clean — may merge soon. No new spec test releases (latest v1.6.0-beta.0). Nightly green (6 consecutive: Mar 9-14).
+
+CI for b4bcbd40c (run 1232 fix) fully green: all 6 jobs passed — 770/770 beacon_chain, 163/163 network, 139/139 EF spec, http_api, unit tests, clippy all clean. The `gloas_reconstruct_states_with_pruned_payloads` test fix resolved the CI failure from the previous commit.
+
+**Sync devnet verification**: Both supernode AND fullnode synced to head=56 (25s sync time), finalized at epoch 5 on Gloas fork. Major improvement from run 1229 where fullnode only reached head=7. The filtered block envelope fix (run 1232) + supernode peer fix (run 1229) together resolved all known range sync issues. Basic devnet also passed (finalized_epoch=8, no stalls).
+
+Notable open spec PRs to monitor: #4992 (cached PTCs, 1 approval), #4954 (fork choice milliseconds), #4898 (remove pending tiebreaker), #4892 (remove impossible branch). None merged.
+
 ### run 1232 (Mar 14) — fix filtered block envelope loss, fix store test
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). PR #4992 (cached PTCs) still OPEN. No new spec test releases (latest v1.6.0-beta.0). Nightly green (5 consecutive). Open Gloas PRs: #4960 (fork choice deposit test), #4932 (sanity/blocks tests), #4840 (EIP-7843 SLOTNUM), #4630 (EIP-7688 SSZ) — none merged, nothing to implement.
