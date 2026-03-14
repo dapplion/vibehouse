@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1193 (Mar 14) — replace remaining Hash256::from_slice with From for fixed-size arrays
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (v1.7.0-alpha.3 already verified in run 1190). cargo audit unchanged (1 rsa, no fix). No dependency updates. Two open spec PRs to track: #4960 (Gloas fork choice deposit_with_reorg tests) and #4932 (Gloas sanity/blocks tests with payload attestation coverage) — both add test vectors to existing categories, no code changes needed when they merge.
+
+Shipped: changed `DEFAULT_ETH1_BLOCK_HASH` from `&[u8]` to `[u8; 32]` and replaced all `Hash256::from_slice` calls on fixed-size `[u8; 32]` arrays with `Hash256::from` across 16 files. Also fixed `withdrawal_credentials.rs` eth1 path. Eliminates runtime length checks when the source is already a fixed-size array. All tests pass, clippy clean.
+
 ### run 1192 (Mar 14) — avoid cloning shared fields in data column sidecar construction
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases. cargo audit unchanged (1 rsa, no fix). No dependency updates.
