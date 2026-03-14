@@ -288,7 +288,7 @@ macro_rules! impl_ssz {
             }
 
             fn tree_hash_root(&self) -> tree_hash::Hash256 {
-                tree_hash::Hash256::from_slice(&int_to_bytes::int_to_fixed_bytes32(self.0))
+                tree_hash::Hash256::from_slice(&int_to_bytes::int_to_bytes32(self.0))
             }
         }
 

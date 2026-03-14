@@ -25,7 +25,7 @@ impl DepositDataTree {
     }
 
     /// Returns 32 bytes representing the "mix in length" for the merkle root of this tree.
-    fn length_bytes(&self) -> Vec<u8> {
+    fn length_bytes(&self) -> [u8; 32] {
         int_to_bytes32(self.mix_in_length as u64)
     }
 

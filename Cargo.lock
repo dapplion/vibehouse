@@ -4907,7 +4907,6 @@ dependencies = [
 name = "int_to_bytes"
 version = "0.2.0"
 dependencies = [
- "bytes",
  "hex",
  "yaml-rust2",
 ]

@@ -1,4 +1,4 @@
-use int_to_bytes::int_to_fixed_bytes32;
+use int_to_bytes::int_to_bytes32;
 use merkle_proof::MerkleTree;
 use rayon::prelude::*;
 use tree_hash::TreeHash;
@@ -26,7 +26,7 @@ pub fn genesis_deposits(
         let (_, mut proof) = tree
             .generate_proof(i, depth)
             .map_err(|e| format!("Error generating merkle proof: {:?}", e))?;
-        proof.push(Hash256::from_slice(&int_to_fixed_bytes32((i + 1) as u64)));
+        proof.push(Hash256::from_slice(&int_to_bytes32((i + 1) as u64)));
 
         assert_eq!(
             proof.len(),

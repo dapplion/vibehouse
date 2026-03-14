@@ -1556,7 +1556,7 @@ async fn proposer_shuffling_changing_with_lookahead() {
             .slot_iter(E::slots_per_epoch())
             .map(|slot| {
                 let mut preimage = preimage.to_vec();
-                preimage.append(&mut int_to_bytes::int_to_bytes8(slot.as_u64()));
+                preimage.extend_from_slice(&int_to_bytes::int_to_bytes8(slot.as_u64()));
                 let seed = ethereum_hashing::hash(&preimage);
                 state.compute_proposer_index(&indices, &seed, spec).unwrap()
             })
