@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1230 (Mar 14) — spec stable, codebase audits, all clean
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). PR #4992 (cached PTCs) still OPEN, 1 APPROVED (jtraglia), same head d76a278b0a. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix). Nightly green (5 consecutive: Mar 10-14). CI for 7e08c29f6 (supernode sync fix) in progress — check+clippy passed.
+
+Audited range sync envelope code (added in runs 1225-1226) for correctness issues. All three reported concerns were false positives, matching the run 1225 audit conclusions: (1) pending batch cleanup on peer disconnect — handled through RPC error path, (2) envelope ID collisions — monotonic u64 counter, wrapping impossible, (3) stale batch timeout — bounded by RPC layer timeouts. Backfill sync correctly does not download envelopes (stores blocks only, no state transitions).
+
+Audited consensus-critical code for `.unwrap()`/`.expect()` panics. All clean — only `dump_as_dot` (debug diagnostic method) has unwraps, documented as acceptable in run 1222. Zero unwraps in state_processing, fork_choice, proto_array, block_verification, gloas_verification, envelope_processing.
+
+Checked open spec PRs: #4939 (index-1 attestation envelope validation) already implemented. #4960, #4932 (test-only) ready when vectors released. No code changes needed.
+
 ### run 1229 (Mar 14) — verify sync devnet with PeerDAS fix, fix custody coverage
 
 CI green: all 6 jobs passed for d82ad429a (PeerDAS exclusion fix). Spec stable (no new commits since e50889e1ca). PR #4992 still OPEN.
