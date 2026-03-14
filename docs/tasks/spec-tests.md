@@ -29,6 +29,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1235 (Mar 14) — spec stable, all green, new Gloas fork choice tests verified
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (7 consecutive: Mar 8-14). CI green for latest commit (c66e3a3ff), EF tests pass including new Gloas fork choice vectors from spec PR #4940.
+
+**New Gloas fork choice test vectors (from PR #4940, merged Mar 13)**:
+- `on_execution_payload`: 1 test — block import → head_payload_status=0 (EMPTY) → envelope reveal → head_payload_status=1 (FULL) → next block → status resets. All pass.
+- Total Gloas fork choice tests: ex_ante(3), get_head(9), on_block(23), on_execution_payload(1), reorg(8), withholding(2) = 46 tests. All pass.
+
+**Spec PR status update**:
+- #4992 (cached PTCs): still OPEN, APPROVED, MERGEABLE. HIGH IMPACT — not implementing until merged.
+- #4843 (variable PTC deadline): OPEN, APPROVED, MERGEABLE. HIGH IMPACT — renames `payload_present`→`payload_timely`, adds variable deadline based on payload size (`MIN_PAYLOAD_DUE_BPS` config), adds `payload_envelopes` to fork choice store. Will need ~200 LOC of changes across types, fork choice, validator client, and config when merged.
+- #4939 (request missing envelopes for index-1 attestation): OPEN, REVIEW_REQUIRED. Medium impact — adds attestation validation rules requiring payload seen before accepting index=1 attestations.
+- #4898 (remove pending tiebreaker): APPROVED, MERGEABLE. No code change needed.
+- #4892 (remove impossible branch): APPROVED, MERGEABLE. No code change needed.
+
+**Code already aligned**: vibehouse `is_highest_value_bid` already uses `(slot, parent_block_hash, parent_block_root)` tuple per spec PR #5001. No changes needed.
+
 ### run 1234 (Mar 14) — fix pruning perf, spec PR impact analysis
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.6.0-beta.0). Nightly green (6 consecutive: Mar 9-14). CI green for latest commit.
