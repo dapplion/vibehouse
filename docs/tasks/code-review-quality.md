@@ -1305,3 +1305,25 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Impact**: `update_randao_mix` is called once per block. `is_aggregator` is called during aggregation checks. The `Hash` impl for `IndexedAttestation` is used in the operation pool's `HashSet`/`HashMap` operations. Each call previously allocated a 96-byte Vec on the heap; now uses the stack.
 
 **Verification**: 715/715 types tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1213: remove unnecessary heap allocations in BLS Display/Debug and pubkey hashing (2026-03-14)
+
+**Scope**: Eliminate unnecessary `.to_vec()` and `.as_ssz_bytes()` calls in BLS crypto formatting and pubkey hashing functions.
+
+**Problem**: Four categories of unnecessary allocations:
+1. `impl_display!` macro (macros.rs:85): `hex_encode(self.serialize().to_vec())` — `.to_vec()` converts the stack-allocated `[u8; N]` array from `serialize()` to a heap-allocated `Vec<u8>`, but `hex_encode` takes `T: AsRef<[u8]>` which `[u8; N]` already implements.
+2. `impl_debug!` macro (macros.rs:160): Same pattern with `hex_encode(&self.serialize().to_vec())`.
+3. `get_withdrawal_credentials` (get_withdrawal_credentials.rs:9): `pubkey.as_ssz_bytes()` allocates a 48-byte `Vec<u8>` when `pubkey.serialize()` returns `[u8; 48]` on the stack.
+4. `bls_withdrawal_credentials` and `eth1_withdrawal_credentials` (interop.rs:14,20): Same `as_ssz_bytes()` pattern. Plus 3 test assertions using `v.pubkey.as_ssz_bytes()`.
+5. `builder.rs:1466` test: Same pattern.
+
+**Fix**:
+- Removed `.to_vec()` from both `impl_display!` and `impl_debug!` macros — pass the array directly to `hex_encode`.
+- Replaced `as_ssz_bytes()` with `serialize()` in `get_withdrawal_credentials`, `bls_withdrawal_credentials`, `eth1_withdrawal_credentials`, and test assertions.
+- Removed now-unused `use ssz::Encode` imports from `get_withdrawal_credentials.rs`, `interop.rs`, and `builder.rs`.
+
+**Impact**: The Display/Debug macros are used by `GenericPublicKey`, `GenericSignature`, `GenericAggregateSignature`, and their `*Bytes` variants. Every `format!("{}", pubkey)`, `format!("{:?}", sig)`, log statement, or serde serialization of these types previously allocated a Vec (48 bytes for pubkeys, 96 bytes for signatures). In a running node, pubkeys and signatures are logged and serialized frequently (peer discovery, attestation processing, API responses).
+
+**Spec check**: No new consensus-specs commits since run 1212 (latest e50889e1ca, #5004). No new spec test releases (latest v1.7.0-alpha.3).
+
+**Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests, 2/2 genesis tests, full workspace clippy clean (lint-full), pre-push hook passes.
