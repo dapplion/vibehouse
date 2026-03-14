@@ -1605,18 +1605,24 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     "Gossipsub block processed"
                 );
 
-                // Process any buffered gossip envelope for this block. When an envelope
-                // arrives before its block (a timing race), it is stored in
-                // `pending_gossip_envelopes`. Now that the block is imported, we can
-                // process it so the EL receives `newPayload` and the block transitions
-                // out of optimistic status.
-                self.chain.process_pending_envelope(*block_root).await;
-
                 // For stateless nodes: process any buffered execution proofs that arrived
                 // before this block was in fork choice.
                 self.chain.process_pending_execution_proofs(*block_root);
 
                 self.chain.recompute_head_at_current_slot().await;
+
+                // Process any buffered gossip envelope for this block. When an envelope
+                // arrives before its block (a timing race), it is stored in
+                // `pending_gossip_envelopes`. Now that the block is imported, we can
+                // process it so the EL receives `newPayload` and the block transitions
+                // out of optimistic status.
+                //
+                // This must run AFTER recompute_head so the cached head state reflects
+                // the newly imported block. verify_payload_envelope_for_gossip uses the
+                // cached head state for signature verification, and for self-build
+                // envelopes it needs state.latest_block_header().proposer_index to match
+                // the block's proposer.
+                self.chain.process_pending_envelope(*block_root).await;
 
                 metrics::set_gauge(
                     &metrics::BEACON_BLOCK_DELAY_FULL_VERIFICATION,

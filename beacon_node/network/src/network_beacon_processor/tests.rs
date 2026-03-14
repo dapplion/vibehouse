@@ -3745,8 +3745,19 @@ async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
         .signed_execution_payload_bid()
         .expect("head is a Gloas block");
 
-    let make_envelope = || SignedExecutionPayloadEnvelope {
-        message: ExecutionPayloadEnvelope {
+    let proposer_index = head.beacon_block.message().proposer_index() as usize;
+    let proposer_sk = &rig._harness.validator_keypairs[proposer_index].sk;
+    let state = &head.beacon_state;
+    let epoch = head_slot.epoch(E::slots_per_epoch());
+    let domain = rig.chain.spec.get_domain(
+        epoch,
+        Domain::BeaconBuilder,
+        &state.fork(),
+        state.genesis_validators_root(),
+    );
+
+    let make_envelope = || {
+        let message = ExecutionPayloadEnvelope {
             payload: ExecutionPayloadGloas {
                 block_hash: bid.message.block_hash,
                 ..Default::default()
@@ -3756,8 +3767,12 @@ async fn test_gloas_gossip_payload_envelope_duplicate_ignored() {
             beacon_block_root: head_root,
             slot: head_slot,
             state_root: Hash256::ZERO,
-        },
-        signature: bls::Signature::empty(),
+        };
+        let signing_root = message.signing_root(domain);
+        SignedExecutionPayloadEnvelope {
+            signature: proposer_sk.sign(signing_root),
+            message,
+        }
     };
 
     // Self-build envelope was already processed during block production, so
@@ -6355,7 +6370,7 @@ async fn test_gloas_envelope_before_block_full_gossip_pipeline() {
     );
 
     // Step 2: Send the block via the gossip handler. This triggers:
-    // gossip verification → process_block → process_pending_envelope → recompute_head
+    // gossip verification → process_block → recompute_head → process_pending_envelope
     rig.network_beacon_processor
         .send_gossip_beacon_block(
             junk_message_id(),

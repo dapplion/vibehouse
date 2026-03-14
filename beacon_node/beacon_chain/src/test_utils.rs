@@ -1102,11 +1102,25 @@ where
                 (signed_block, None)
             };
 
-        (
-            block_contents,
-            block_response.state,
-            block_response.execution_payload_envelope,
-        )
+        // Sign the self-build envelope with the proposer's validator key.
+        // In production, the VC signs this; in the test harness we do it here
+        // so that gossip verification (which checks the BLS signature) passes.
+        let signed_envelope = block_response.execution_payload_envelope.map(|mut env| {
+            if env.message.builder_index == types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
+                let epoch = env.message.slot.epoch(E::slots_per_epoch());
+                let domain = self.spec.get_domain(
+                    epoch,
+                    Domain::BeaconBuilder,
+                    &block_response.state.fork(),
+                    block_response.state.genesis_validators_root(),
+                );
+                let message = env.message.signing_root(domain);
+                env.signature = self.validator_keypairs[proposer_index].sk.sign(message);
+            }
+            env
+        });
+
+        (block_contents, block_response.state, signed_envelope)
     }
 
     /// Useful for the `per_block_processing` tests. Creates a block, and returns the state after
