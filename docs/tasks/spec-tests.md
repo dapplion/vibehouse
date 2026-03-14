@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1237 (Mar 14) — add process_envelope_for_sync integration tests, spec stable
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (8 consecutive: Mar 7-14). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892) still OPEN, none merged.
+
+**Test coverage**: Added 3 integration tests for `process_envelope_for_sync` via RpcBlock — the code path used during range sync when envelopes are attached to blocks. This was the exact path fixed in runs 1232 (filtered block envelope loss) and 1236 (stale head state for sig verification), but had zero direct integration test coverage:
+1. `gloas_range_sync_rpc_blocks_with_envelopes` — full batch import with envelopes attached to RpcBlocks
+2. `gloas_range_sync_rpc_blocks_mixed_envelope_attachment` — mixed import: some envelopes via RpcBlock, some via process_self_build_envelope
+3. `gloas_range_sync_rpc_blocks_duplicate_block_envelope_processed` — re-import duplicate blocks with envelopes (orphaned envelope path from run 1232)
+
+All 3 tests pass. Total Gloas beacon_chain integration tests: ~773.
+
 ### run 1236 (Mar 14) — fix range sync envelope sig verification, spec stable
 
 Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (8 consecutive: Mar 7-14). CI for previous commit (849d0b521) in progress — 5/6 passed (check+clippy, EF tests, network+op_pool, http_api).
