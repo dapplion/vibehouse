@@ -316,6 +316,7 @@ pub struct ChainSpec {
     pub max_blocks_by_root_request_deneb: usize,
     pub max_blobs_by_root_request: usize,
     pub max_data_columns_by_root_request: usize,
+    pub max_request_payloads: usize,
     pub max_execution_payload_envelopes_by_root_request: usize,
 
     /*
@@ -1310,6 +1311,7 @@ impl ChainSpec {
             min_epochs_for_data_column_sidecars_requests:
                 default_min_epochs_for_data_column_sidecars_requests(),
             max_data_columns_by_root_request: default_data_columns_by_root_request(),
+            max_request_payloads: 128,
             max_execution_payload_envelopes_by_root_request:
                 default_max_execution_payload_envelopes_by_root_request(),
 
@@ -1689,6 +1691,7 @@ impl ChainSpec {
             min_epochs_for_data_column_sidecars_requests:
                 default_min_epochs_for_data_column_sidecars_requests(),
             max_data_columns_by_root_request: default_data_columns_by_root_request(),
+            max_request_payloads: 128,
             max_execution_payload_envelopes_by_root_request:
                 default_max_execution_payload_envelopes_by_root_request(),
 
@@ -2362,7 +2365,14 @@ fn default_data_columns_by_root_request() -> usize {
 
 /// MAX_REQUEST_PAYLOADS = 2^7 = 128 (Gloas p2p spec)
 fn default_max_execution_payload_envelopes_by_root_request() -> usize {
-    128
+    let max_request_payloads = 128;
+    RuntimeVariableList::<Hash256>::new(
+        vec![Hash256::zero(); max_request_payloads],
+        max_request_payloads,
+    )
+    .expect("creating a RuntimeVariableList of size `max_request_payloads` should succeed")
+    .as_ssz_bytes()
+    .len()
 }
 
 impl Default for Config {

@@ -549,11 +549,8 @@ pub struct ExecutionPayloadEnvelopesByRootRequest {
 
 impl ExecutionPayloadEnvelopesByRootRequest {
     pub fn new(block_roots: Vec<Hash256>, spec: &ChainSpec) -> Result<Self, String> {
-        let block_roots = RuntimeVariableList::new(
-            block_roots,
-            spec.max_execution_payload_envelopes_by_root_request,
-        )
-        .map_err(|e| format!("ExecutionPayloadEnvelopesByRootRequest too many roots: {e:?}"))?;
+        let block_roots = RuntimeVariableList::new(block_roots, spec.max_request_payloads)
+            .map_err(|e| format!("ExecutionPayloadEnvelopesByRootRequest too many roots: {e:?}"))?;
         Ok(Self { block_roots })
     }
 }

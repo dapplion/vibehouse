@@ -596,9 +596,7 @@ impl TestRig {
         let request = ExecutionPayloadEnvelopesByRootRequest {
             block_roots: RuntimeVariableList::new(
                 block_roots,
-                self.chain
-                    .spec
-                    .max_execution_payload_envelopes_by_root_request,
+                self.chain.spec.max_request_payloads,
             )
             .unwrap(),
         };

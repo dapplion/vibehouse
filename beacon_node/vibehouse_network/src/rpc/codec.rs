@@ -577,7 +577,7 @@ fn handle_rpc_request<E: EthSpec>(
             RequestType::ExecutionPayloadEnvelopesByRoot(ExecutionPayloadEnvelopesByRootRequest {
                 block_roots: RuntimeVariableList::from_ssz_bytes(
                     decoded_buffer,
-                    spec.max_execution_payload_envelopes_by_root_request,
+                    spec.max_request_payloads,
                 )?,
             }),
         )),
