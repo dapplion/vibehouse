@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1217 (Mar 14) — spec conformance audits, all stable
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec test releases (latest v1.7.0-alpha.3 on consensus-specs, v1.6.0-beta.0 on consensus-spec-tests). cargo audit unchanged (1 rsa, no fix). No semver-compatible dependency updates. CI green, nightlies passing (Mar 10-14).
+
+Conducted two deep spec conformance audits: (1) proposer lookahead — all components (state field, fork upgrade initialization, epoch rotation, single/multi-epoch lookup, gossip validation, fork boundary handling) fully compliant, safe arithmetic throughout, comprehensive test coverage. (2) execution payload envelope processing — all validation steps (signature verification, bid consistency, withdrawals, parent hash, timestamp, builder payments, execution requests, state root), fork choice integration (3-state EMPTY/FULL/PENDING model), self-build path, gossip validation all spec-compliant. Recent fixes (13ac9ae15: self-build signature, 15174086e: consolidation inline balance) verified correct. Zero clippy warnings. 79/79 EF spec tests (real crypto), 139/139 EF spec tests (fake crypto) pass.
+
+Open spec PRs tracked: #4992 (cached PTCs — approaching merge), #4939 (request missing envelope for index-1 attestation), #4954 (fork choice milliseconds — no impact), #4843 (variable PTC deadline), #4840 (EIP-7843), #4630 (EIP-7688 forward-compatible SSZ). Test-only PRs: #4960, #4962, #4932 — all handled by existing test infrastructure.
+
 ### run 1216 (Mar 14) — fix self-build envelope signature verification
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, mergeable=clean. cargo audit unchanged (1 rsa, no fix). No new spec test releases.
