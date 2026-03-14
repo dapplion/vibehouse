@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1220 (Mar 14) — spec stable, attestation verification allocation optimization
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa). Nightly green (5 consecutive: Mar 10-14). CI from run 1218 fix (b82b5557a) — check+ef passed, remaining jobs still running.
+
+Confirmed vibehouse already conforms to recently merged spec PR #5001 (parent_block_root in bid filtering key) — was implemented proactively.
+
+Shipped: avoid committee Vec allocation in unaggregated attestation verification (8d684988f). The `verify_late_checks` hot path was cloning the entire committee slice (`to_vec()`) for every gossip attestation just to check membership and build the aggregation bitfield. Refactored to extract only the aggregation bit position and committee length inside the committee cache closure, then build the attestation from those two scalars via new `build_attestation_from_single()` function. Eliminates one heap allocation per gossip attestation. 143/143 attestation tests + 23/23 attestation_verification tests pass. Lint clean.
+
 ### run 1219 (Mar 14) — spec stable, ptc-lookbehind rebased
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec test releases (latest v1.6.0-beta.0). No semver-compatible dependency updates. cargo audit unchanged (1 rsa). Nightly green (3 consecutive: Mar 12-14).
