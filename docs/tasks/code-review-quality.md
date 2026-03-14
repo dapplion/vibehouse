@@ -1004,3 +1004,19 @@ These allocations were discarded after each call, creating unnecessary allocatio
 **Impact**: Eliminates ~20-37KB of heap allocation per slot on mainnet. The allocations now happen once and are reused across all subsequent `find_head_gloas` calls. The `ancestor_cache` HashMap was already reused (from a prior optimization); this extends the same pattern to the remaining two per-call allocations.
 
 **Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, clippy clean.
+
+### Run 1178: derive Copy for SignatureBytes (2026-03-14)
+
+**Scope**: Type-level optimization — make `GenericSignatureBytes` (the `SignatureBytes` type alias) implement `Copy`.
+
+**Problem**: `GenericSignatureBytes<Pub, Sig>` is a fixed `[u8; 96]` + two `PhantomData` fields — entirely bitwise-copyable — but only derived `Clone`. Every `.signature.clone()` on types like `PendingDeposit`, `DepositRequest`, `DepositData` went through the Clone trait instead of a simple memcpy. `GenericPublicKeyBytes` (48 bytes) already had a manual `Copy` impl as precedent.
+
+**Fix**: Added manual `Copy` impl for `GenericSignatureBytes<Pub, Sig>` (matching the `GenericPublicKeyBytes` pattern — manual `Copy` impl + manual `Clone` via `*self`, no bounds on `Pub`/`Sig` since only `PhantomData` uses them). Replaced `#[derive(Clone)]` with manual `Clone` impl.
+
+**Clone removals**: 8 `.clone()` calls removed across 5 files:
+- `process_operations.rs`: 5 `request.signature.clone()` / `pending_deposit.signature.clone()` → direct copy
+- `upgrade/gloas.rs`: 2 `deposit.signature.clone()` / `signature.clone()` → direct copy / `*signature`
+- `test_utils.rs`: 1 `invalid_signature.clone()` on `Option<SignatureBytes>` → direct copy
+- `create_validators.rs`: 1 `deposit.signature.clone()` → direct copy
+
+**Verification**: 575/575 state_processing tests, 715/715 types tests, 307/307 fork_choice+proto_array tests, 69/69 EF SSZ static tests, 35/35 EF operations+epoch+sanity tests, full workspace lint-full clean.
