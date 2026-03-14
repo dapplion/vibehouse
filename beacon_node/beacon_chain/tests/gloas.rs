@@ -21042,12 +21042,13 @@ async fn gloas_load_parent_blinded_envelope_fallback_after_pruning() {
         .expect("child block import should succeed via blinded envelope fallback in load_parent");
 
     // Verify child is in fork choice.
-    let fc = harness.chain.canonical_head.fork_choice_read_lock();
-    assert!(
-        fc.get_block(&child_block_root).is_some(),
-        "child block should be in fork choice after import"
-    );
-    drop(fc);
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        assert!(
+            fc.get_block(&child_block_root).is_some(),
+            "child block should be in fork choice after import"
+        );
+    }
 
     // Process the child's envelope.
     if let Some(envelope) = child_envelope {
