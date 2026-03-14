@@ -31,6 +31,17 @@ pub enum SyncRequestId {
     BlobsByRange(BlobsByRangeRequestId),
     /// Data columns by range request
     DataColumnsByRange(DataColumnsByRangeRequestId),
+    /// Execution payload envelopes by root request (range sync)
+    EnvelopesByRoot(EnvelopesByRootRequestId),
+}
+
+/// Request ID for envelopes_by_root requests used during range sync.
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct EnvelopesByRootRequestId {
+    /// Id to identify this request.
+    pub id: Id,
+    /// The parent components-by-range request that triggered this envelope download.
+    pub parent_request_id: ComponentsByRangeRequestId,
 }
 
 /// Request ID for data_columns_by_root requests. Block lookups do not issue this request directly.

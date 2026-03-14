@@ -61,9 +61,10 @@ use std::ops::Sub;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 use types::{
-    BlobSidecar, DataColumnSidecar, EthSpec, ForkContext, Hash256, SignedBeaconBlock, Slot,
+    BlobSidecar, DataColumnSidecar, EthSpec, ForkContext, Hash256, SignedBeaconBlock,
+    SignedExecutionPayloadEnvelope, Slot,
 };
 use vibehouse_network::SyncInfo;
 use vibehouse_network::rpc::RPCError;
@@ -129,6 +130,14 @@ pub enum SyncMessage<E: EthSpec> {
         sync_request_id: SyncRequestId,
         peer_id: PeerId,
         data_column: Option<Arc<DataColumnSidecar<E>>>,
+        seen_timestamp: Duration,
+    },
+
+    /// An execution payload envelope has been received from the RPC (range sync).
+    RpcEnvelope {
+        sync_request_id: SyncRequestId,
+        peer_id: PeerId,
+        envelope: Option<Arc<SignedExecutionPayloadEnvelope<E>>>,
         seen_timestamp: Duration,
     },
 
@@ -500,6 +509,49 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             SyncRequestId::DataColumnsByRange(req_id) => {
                 self.on_data_columns_by_range_response(req_id, peer_id, RpcEvent::RPCError(error))
             }
+            SyncRequestId::EnvelopesByRoot(id) => {
+                // Envelope request failed — deliver the batch without envelopes.
+                // Blocks will fail state root check if they needed FULL parent state,
+                // which will trigger a retry from a different peer.
+                warn!(
+                    ?id,
+                    %peer_id,
+                    "Envelope request failed, delivering batch without envelopes"
+                );
+                if let Some((blocks, parent_request_id, batch_peer)) =
+                    self.network.on_envelope_by_root_response(id, peer_id, None)
+                {
+                    match parent_request_id.requester {
+                        RangeRequestId::RangeSync { chain_id, batch_id } => {
+                            self.range_sync.blocks_by_range_response(
+                                &mut self.network,
+                                batch_peer,
+                                chain_id,
+                                batch_id,
+                                parent_request_id.id,
+                                blocks,
+                            );
+                            self.update_sync_state();
+                        }
+                        RangeRequestId::BackfillSync { batch_id } => {
+                            match self.backfill_sync.on_block_response(
+                                &mut self.network,
+                                batch_id,
+                                &batch_peer,
+                                parent_request_id.id,
+                                blocks,
+                            ) {
+                                Ok(ProcessResult::SyncCompleted) => self.update_sync_state(),
+                                Ok(ProcessResult::Successful) => {}
+                                Err(_error) => {
+                                    self.network.remove_backfill_range_components();
+                                    self.update_sync_state();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -833,6 +885,12 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             } => {
                 self.rpc_data_column_received(sync_request_id, peer_id, data_column, seen_timestamp)
             }
+            SyncMessage::RpcEnvelope {
+                sync_request_id,
+                peer_id,
+                envelope,
+                seen_timestamp,
+            } => self.rpc_envelope_received(sync_request_id, peer_id, envelope, seen_timestamp),
             SyncMessage::UnknownParentBlock(peer_id, block, block_root) => {
                 let block_slot = block.slot();
                 let parent_root = block.parent_root();
@@ -1187,6 +1245,58 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         }
     }
 
+    fn rpc_envelope_received(
+        &mut self,
+        sync_request_id: SyncRequestId,
+        peer_id: PeerId,
+        envelope: Option<Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
+        _seen_timestamp: Duration,
+    ) {
+        match sync_request_id {
+            SyncRequestId::EnvelopesByRoot(id) => {
+                if let Some((blocks, parent_request_id, batch_peer)) = self
+                    .network
+                    .on_envelope_by_root_response(id, peer_id, envelope)
+                {
+                    // All envelopes received — route the completed batch as if it just came
+                    // from range_block_component_response.
+                    match parent_request_id.requester {
+                        RangeRequestId::RangeSync { chain_id, batch_id } => {
+                            self.range_sync.blocks_by_range_response(
+                                &mut self.network,
+                                batch_peer,
+                                chain_id,
+                                batch_id,
+                                parent_request_id.id,
+                                blocks,
+                            );
+                            self.update_sync_state();
+                        }
+                        RangeRequestId::BackfillSync { batch_id } => {
+                            match self.backfill_sync.on_block_response(
+                                &mut self.network,
+                                batch_id,
+                                &batch_peer,
+                                parent_request_id.id,
+                                blocks,
+                            ) {
+                                Ok(ProcessResult::SyncCompleted) => self.update_sync_state(),
+                                Ok(ProcessResult::Successful) => {}
+                                Err(_error) => {
+                                    self.network.remove_backfill_range_components();
+                                    self.update_sync_state();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                crit!(%peer_id, "bad request id for envelope");
+            }
+        }
+    }
+
     fn on_single_blob_response(
         &mut self,
         id: SingleLookupReqId,
@@ -1314,6 +1424,16 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         {
             match resp {
                 Ok(blocks) => {
+                    // Check if any blocks need envelope downloads (Gloas ePBS).
+                    // If so, the blocks are stashed and will be delivered via
+                    // rpc_envelope_received once envelopes arrive.
+                    let Some(blocks) =
+                        self.network
+                            .request_envelopes_if_needed(blocks, range_request_id, peer_id)
+                    else {
+                        return;
+                    };
+
                     match range_request_id.requester {
                         RangeRequestId::RangeSync { chain_id, batch_id } => {
                             self.range_sync.blocks_by_range_response(

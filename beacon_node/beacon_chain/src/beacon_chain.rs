@@ -2803,6 +2803,208 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(el_valid)
     }
 
+    /// Process an execution payload envelope received during range sync.
+    ///
+    /// This is a lighter alternative to `process_payload_envelope` that does not require
+    /// gossip verification. It validates the envelope against the block's committed bid,
+    /// verifies the signature, optionally calls the EL, applies the state transition,
+    /// persists the envelope, and updates fork choice (EMPTY → FULL).
+    ///
+    /// `notify_execution_layer` controls whether to send `newPayload` to the EL. During
+    /// finalized sync this should be `No` (the EL syncs independently).
+    pub async fn process_envelope_for_sync(
+        &self,
+        beacon_block_root: Hash256,
+        signed_envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,
+        notify_execution_layer: NotifyExecutionLayer,
+    ) -> Result<(), Error> {
+        let envelope = &signed_envelope.message;
+
+        // Load the blinded block to access the committed bid.
+        let block = self
+            .store
+            .get_blinded_block(&beacon_block_root)
+            .map_err(Error::DBError)?
+            .ok_or_else(|| {
+                Error::EnvelopeError(format!(
+                    "Missing beacon block {:?} for sync envelope processing",
+                    beacon_block_root
+                ))
+            })?;
+        let block_state_root = block.message().state_root();
+
+        let execution_bid = block
+            .message()
+            .body()
+            .signed_execution_payload_bid()
+            .map_err(|_| {
+                Error::EnvelopeError(format!(
+                    "Block {:?} is not a Gloas block (no bid)",
+                    beacon_block_root
+                ))
+            })?;
+
+        // Validate: builder_index matches committed bid.
+        if envelope.builder_index != execution_bid.message.builder_index {
+            return Err(Error::EnvelopeError(format!(
+                "Builder index mismatch: bid={}, envelope={}",
+                execution_bid.message.builder_index, envelope.builder_index
+            )));
+        }
+
+        // Validate: payload block_hash matches committed bid.
+        if envelope.payload.block_hash != execution_bid.message.block_hash {
+            return Err(Error::EnvelopeError(format!(
+                "Block hash mismatch: bid={:?}, envelope={:?}",
+                execution_bid.message.block_hash, envelope.payload.block_hash
+            )));
+        }
+
+        // Verify envelope signature.
+        {
+            let head = self.canonical_head.cached_head();
+            let state = &head.snapshot.beacon_state;
+            use state_processing::per_block_processing::signature_sets::execution_payload_envelope_signature_set;
+
+            let get_builder_pubkey = |builder_idx: u64| -> Option<Cow<PublicKey>> {
+                state
+                    .builders()
+                    .ok()?
+                    .get(builder_idx as usize)
+                    .and_then(|builder| builder.pubkey.decompress().ok().map(Cow::Owned))
+            };
+
+            let signature_set = execution_payload_envelope_signature_set(
+                state,
+                get_builder_pubkey,
+                &signed_envelope,
+                &self.spec,
+            )
+            .map_err(|_| Error::EnvelopeError("Invalid envelope signature".to_string()))?;
+
+            if !signature_set.verify() {
+                return Err(Error::EnvelopeError(
+                    "Envelope signature verification failed".to_string(),
+                ));
+            }
+        }
+
+        // Optionally call EL newPayload. During finalized sync we skip this since
+        // the EL is syncing independently via its own P2P.
+        if matches!(notify_execution_layer, NotifyExecutionLayer::Yes)
+            && let Some(execution_layer) = self.execution_layer.as_ref()
+        {
+            use execution_layer::NewPayloadRequest;
+            use execution_layer::NewPayloadRequestGloas;
+            use state_processing::per_block_processing::deneb::kzg_commitment_to_versioned_hash;
+
+            let versioned_hashes = execution_bid
+                .message
+                .blob_kzg_commitments
+                .iter()
+                .map(kzg_commitment_to_versioned_hash)
+                .collect();
+            let parent_beacon_block_root = block.message().parent_root();
+
+            let new_payload_request = NewPayloadRequest::Gloas(NewPayloadRequestGloas {
+                execution_payload: &envelope.payload,
+                versioned_hashes,
+                parent_beacon_block_root,
+                execution_requests: &envelope.execution_requests,
+            });
+
+            let payload_status = execution_layer
+                .notify_new_payload(new_payload_request)
+                .await
+                .map_err(|e| {
+                    Error::EnvelopeError(format!("newPayload failed during sync: {:?}", e))
+                })?;
+
+            match payload_status {
+                PayloadStatus::Valid | PayloadStatus::Syncing | PayloadStatus::Accepted => {}
+                PayloadStatus::Invalid {
+                    ref latest_valid_hash,
+                    ref validation_error,
+                } => {
+                    return Err(Error::EnvelopeError(format!(
+                        "Sync envelope payload invalid: lvh={:?}, err={:?}",
+                        latest_valid_hash, validation_error
+                    )));
+                }
+                PayloadStatus::InvalidBlockHash {
+                    ref validation_error,
+                } => {
+                    return Err(Error::EnvelopeError(format!(
+                        "Sync envelope invalid block hash: {:?}",
+                        validation_error
+                    )));
+                }
+            }
+        }
+
+        // Apply the envelope state transition.
+        let mut state = self
+            .store
+            .get_state(&block_state_root, Some(envelope.slot), false)
+            .map_err(Error::DBError)?
+            .ok_or_else(|| {
+                Error::EnvelopeError(format!(
+                    "Missing state {:?} for sync envelope block {:?}",
+                    block_state_root, beacon_block_root
+                ))
+            })?;
+
+        // Skip BLS re-verification — we verified the signature above.
+        state_processing::envelope_processing::process_execution_payload_envelope(
+            &mut state,
+            Some(block_state_root),
+            &signed_envelope,
+            state_processing::VerifySignatures::False,
+            &self.spec,
+        )
+        .map_err(Error::EnvelopeProcessingError)?;
+
+        // Update tree hash cache.
+        state.update_tree_hash_cache().map_err(Error::from)?;
+
+        // Cache the post-envelope state (same logic as gossip path).
+        {
+            let mut cache = self.store.state_cache.lock();
+            cache.delete_state(&block_state_root);
+            cache
+                .put_state(block_state_root, beacon_block_root, &state)
+                .map_err(Error::DBError)?;
+        }
+
+        let payload_block_hash = signed_envelope.message.payload.block_hash;
+
+        // Persist the envelope.
+        self.store
+            .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
+                beacon_block_root,
+                signed_envelope,
+            )])
+            .map_err(Error::DBError)?;
+
+        // Update fork choice: EMPTY → FULL.
+        self.canonical_head
+            .fork_choice_write_lock()
+            .on_execution_payload(beacon_block_root, payload_block_hash)
+            .map_err(Error::ForkChoiceError)?;
+
+        // Update canonical head snapshot if this block is the current head.
+        self.canonical_head
+            .try_update_head_state(beacon_block_root, state);
+
+        debug!(
+            ?beacon_block_root,
+            block_hash = ?payload_block_hash,
+            "Processed execution payload envelope during sync"
+        );
+
+        Ok(())
+    }
+
     /// Prune Gloas ePBS pools and pending buffers to prevent unbounded memory growth.
     ///
     /// Called once per slot from `per_slot_task`. Removes stale entries from:
@@ -4041,7 +4243,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// `Self::process_block`.
     pub async fn process_chain_segment(
         self: &Arc<Self>,
-        chain_segment: Vec<RpcBlock<T::EthSpec>>,
+        mut chain_segment: Vec<RpcBlock<T::EthSpec>>,
         notify_execution_layer: NotifyExecutionLayer,
     ) -> ChainSegmentResult {
         for block in chain_segment.iter() {
@@ -4050,6 +4252,17 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     imported_blocks: vec![],
                     error,
                 };
+            }
+        }
+
+        // Extract envelopes from RpcBlocks before filter_chain_segment takes
+        // ownership. These will be processed after each corresponding block import
+        // to transition the fork choice node from EMPTY → FULL.
+        let mut envelopes: HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>> =
+            HashMap::new();
+        for block in chain_segment.iter_mut() {
+            if let Some(envelope) = block.take_envelope() {
+                envelopes.insert(block.block_root(), envelope);
             }
         }
 
@@ -4135,6 +4348,30 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     Ok(status) => match status {
                         AvailabilityProcessingStatus::Imported(block_root) => {
                             imported_blocks.push((block_root, block_slot));
+
+                            // Process the envelope for this block if one was provided
+                            // (range sync). This transitions the fork choice node from
+                            // EMPTY → FULL so that subsequent blocks referencing this
+                            // block as a FULL parent can be verified correctly.
+                            if let Some(envelope) = envelopes.remove(&block_root)
+                                && let Err(e) = self
+                                    .process_envelope_for_sync(
+                                        block_root,
+                                        envelope,
+                                        notify_execution_layer,
+                                    )
+                                    .await
+                            {
+                                warn!(
+                                    ?block_root,
+                                    ?e,
+                                    "Failed to process envelope during chain segment import"
+                                );
+                                return ChainSegmentResult::Failed {
+                                    imported_blocks,
+                                    error: BlockError::BeaconChainError(Box::new(e)),
+                                };
+                            }
                         }
                         AvailabilityProcessingStatus::MissingComponents(slot, block_root) => {
                             warn!(

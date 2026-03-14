@@ -10,7 +10,7 @@ use std::sync::Arc;
 use types::blob_sidecar::BlobIdentifier;
 use types::{
     BeaconBlockRef, BeaconState, BlindedPayload, BlobSidecarList, Epoch, EthSpec, Hash256,
-    SignedBeaconBlock, SignedBeaconBlockHeader, Slot,
+    SignedBeaconBlock, SignedBeaconBlockHeader, SignedExecutionPayloadEnvelope, Slot,
 };
 
 /// A block that has been received over RPC. It has 2 internal variants:
@@ -31,6 +31,10 @@ use types::{
 pub struct RpcBlock<E: EthSpec> {
     block_root: Hash256,
     block: RpcBlockInner<E>,
+    /// Optional execution payload envelope for Gloas ePBS blocks.
+    /// Set during range sync when envelopes are downloaded alongside blocks.
+    #[derivative(Hash = "ignore")]
+    envelope: Option<Arc<SignedExecutionPayloadEnvelope<E>>>,
 }
 
 impl<E: EthSpec> Debug for RpcBlock<E> {
@@ -104,6 +108,7 @@ impl<E: EthSpec> RpcBlock<E> {
         Self {
             block_root,
             block: RpcBlockInner::Block(block),
+            envelope: None,
         }
     }
 
@@ -145,6 +150,7 @@ impl<E: EthSpec> RpcBlock<E> {
         Ok(Self {
             block_root,
             block: inner,
+            envelope: None,
         })
     }
 
@@ -168,6 +174,7 @@ impl<E: EthSpec> RpcBlock<E> {
         Ok(Self {
             block_root,
             block: inner,
+            envelope: None,
         })
     }
 
@@ -200,6 +207,21 @@ impl<E: EthSpec> RpcBlock<E> {
             RpcBlockInner::Block(_) | RpcBlockInner::BlockAndBlobs(_, _) => 0,
             RpcBlockInner::BlockAndCustodyColumns(_, data_columns) => data_columns.len(),
         }
+    }
+
+    /// Returns the optional execution payload envelope (Gloas ePBS).
+    pub fn envelope(&self) -> Option<&Arc<SignedExecutionPayloadEnvelope<E>>> {
+        self.envelope.as_ref()
+    }
+
+    /// Attaches an execution payload envelope to this block (for range sync).
+    pub fn set_envelope(&mut self, envelope: Arc<SignedExecutionPayloadEnvelope<E>>) {
+        self.envelope = Some(envelope);
+    }
+
+    /// Takes the envelope out of this block, leaving `None` in its place.
+    pub fn take_envelope(&mut self) -> Option<Arc<SignedExecutionPayloadEnvelope<E>>> {
+        self.envelope.take()
     }
 }
 

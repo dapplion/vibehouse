@@ -19,7 +19,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{debug, error, trace, warn};
-use types::{BlobSidecar, DataColumnSidecar, EthSpec, ForkContext, SignedBeaconBlock};
+use types::{
+    BlobSidecar, DataColumnSidecar, EthSpec, ForkContext, SignedBeaconBlock,
+    SignedExecutionPayloadEnvelope,
+};
 use vibehouse_network::rpc::*;
 use vibehouse_network::{
     MessageId, NetworkGlobals, PeerId, PubsubMessage, Response,
@@ -319,13 +322,7 @@ impl<T: BeaconChainTypes> Router<T> {
                 self.on_data_columns_by_range_response(peer_id, app_request_id, data_column);
             }
             Response::ExecutionPayloadEnvelopesByRoot(envelope) => {
-                // Outbound requests for envelopes by root are not yet issued by sync;
-                // log and drop for now.
-                debug!(
-                    %peer_id,
-                    received = envelope.is_some(),
-                    "Received unexpected ExecutionPayloadEnvelopesByRoot response"
-                );
+                self.on_envelopes_by_root_response(peer_id, app_request_id, envelope);
             }
             // Light client responses should not be received
             Response::LightClientBootstrap(_)
@@ -772,6 +769,39 @@ impl<T: BeaconChainTypes> Router<T> {
         } else {
             crit!("All data columns by range responses should belong to sync");
         }
+    }
+
+    pub fn on_envelopes_by_root_response(
+        &mut self,
+        peer_id: PeerId,
+        app_request_id: AppRequestId,
+        envelope: Option<Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
+    ) {
+        let sync_request_id = match app_request_id {
+            AppRequestId::Sync(sync_id) => match sync_id {
+                id @ SyncRequestId::EnvelopesByRoot(..) => id,
+                other => {
+                    crit!(request = ?other, "EnvelopesByRoot response on incorrect request");
+                    return;
+                }
+            },
+            AppRequestId::Router => {
+                crit!(%peer_id, "All EnvelopesByRoot requests belong to sync");
+                return;
+            }
+            AppRequestId::Internal => unreachable!("Handled internally"),
+        };
+
+        trace!(
+            %peer_id,
+            "Received EnvelopesByRoot Response"
+        );
+        self.send_to_sync(SyncMessage::RpcEnvelope {
+            sync_request_id,
+            peer_id,
+            envelope,
+            seen_timestamp: timestamp_now(),
+        });
     }
 
     fn handle_beacon_processor_send_result(

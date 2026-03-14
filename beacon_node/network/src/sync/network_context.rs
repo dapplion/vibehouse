@@ -17,7 +17,7 @@ use crate::sync::block_lookups::SingleLookupId;
 use crate::sync::block_sidecar_coupling::CouplingError;
 use crate::sync::network_context::requests::BlobsByRootSingleBlockRequest;
 use crate::sync::range_data_column_batch_request::RangeDataColumnBatchRequest;
-use beacon_chain::block_verification_types::RpcBlock;
+use beacon_chain::block_verification_types::{AsBlock, RpcBlock};
 use beacon_chain::{BeaconChain, BeaconChainTypes, BlockProcessStatus, EngineState};
 use custody::CustodyRequestResult;
 use fnv::FnvHashMap;
@@ -41,16 +41,18 @@ use tracing::{Span, debug, debug_span, error, warn};
 use types::blob_sidecar::FixedBlobSidecarList;
 use types::{
     BlobSidecar, BlockImportSource, ColumnIndex, DataColumnSidecar, DataColumnSidecarList, EthSpec,
-    ForkContext, Hash256, SignedBeaconBlock, Slot,
+    ForkContext, Hash256, SignedBeaconBlock, SignedExecutionPayloadEnvelope, Slot,
 };
-use vibehouse_network::rpc::methods::{BlobsByRangeRequest, DataColumnsByRangeRequest};
+use vibehouse_network::rpc::methods::{
+    BlobsByRangeRequest, DataColumnsByRangeRequest, ExecutionPayloadEnvelopesByRootRequest,
+};
 use vibehouse_network::rpc::{BlocksByRangeRequest, GoodbyeReason, RPCError, RequestType};
 pub use vibehouse_network::service::api_types::RangeRequestId;
 use vibehouse_network::service::api_types::{
     AppRequestId, BlobsByRangeRequestId, BlocksByRangeRequestId, ComponentsByRangeRequestId,
     CustodyBackFillBatchRequestId, CustodyBackfillBatchId, CustodyId, CustodyRequester,
     DataColumnsByRangeRequestId, DataColumnsByRangeRequester, DataColumnsByRootRequestId,
-    DataColumnsByRootRequester, Id, SingleLookupReqId, SyncRequestId,
+    DataColumnsByRootRequester, EnvelopesByRootRequestId, Id, SingleLookupReqId, SyncRequestId,
 };
 use vibehouse_network::{Client, NetworkGlobals, PeerAction, PeerId, ReportSource};
 use vibehouse_tracing::{SPAN_OUTGOING_BLOCK_BY_ROOT_REQUEST, SPAN_OUTGOING_RANGE_REQUEST};
@@ -190,6 +192,23 @@ pub enum LookupRequestResult<I = ReqId> {
 }
 
 /// Wraps a Network channel to employ various RPC related network functionality for the Sync manager. This includes management of a global RPC request Id.
+/// Result of a completed envelope batch: (blocks, parent_request_id, peer).
+type EnvelopeBatchResult<E> = (Vec<RpcBlock<E>>, ComponentsByRangeRequestId, PeerId);
+
+/// Tracks a batch of coupled RPC blocks awaiting envelope downloads for Gloas blocks.
+struct PendingEnvelopeBatch<E: EthSpec> {
+    /// The coupled blocks ready for processing once envelopes arrive.
+    blocks: Vec<RpcBlock<E>>,
+    /// Block roots of Gloas blocks that need envelopes.
+    expected_roots: HashSet<Hash256>,
+    /// Envelopes received so far, keyed by block root.
+    received_envelopes: HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<E>>>,
+    /// The original components-by-range request ID (for routing the result).
+    parent_request_id: ComponentsByRangeRequestId,
+    /// The peer that provided the blocks.
+    peer: PeerId,
+}
+
 pub struct SyncNetworkContext<T: BeaconChainTypes> {
     /// The network channel to relay messages to the Network service.
     network_send: mpsc::UnboundedSender<NetworkMessage<T::EthSpec>>,
@@ -220,6 +239,10 @@ pub struct SyncNetworkContext<T: BeaconChainTypes> {
     /// BlocksByRange requests paired with other ByRange requests for data components
     components_by_range_requests:
         FnvHashMap<ComponentsByRangeRequestId, RangeBlockComponentsRequest<T::EthSpec>>,
+
+    /// Batches waiting for envelope downloads before being sent to the processor.
+    /// Keyed by the envelope request ID, maps to the coupled blocks and metadata.
+    pending_envelope_batches: FnvHashMap<Id, PendingEnvelopeBatch<T::EthSpec>>,
 
     /// A batch of data columns by range request for custody sync
     custody_backfill_data_column_batch_requests:
@@ -301,6 +324,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             data_columns_by_range_requests: ActiveRequests::new("data_columns_by_range"),
             custody_by_root_requests: <_>::default(),
             components_by_range_requests: FnvHashMap::default(),
+            pending_envelope_batches: FnvHashMap::default(),
             custody_backfill_data_column_batch_requests: FnvHashMap::default(),
             network_beacon_processor,
             chain,
@@ -331,6 +355,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             custody_by_root_requests: _,
             // components_by_range_requests is a meta request of various _by_range requests
             components_by_range_requests: _,
+            pending_envelope_batches: _,
             custody_backfill_data_column_batch_requests: _,
             execution_engine_state: _,
             network_beacon_processor: _,
@@ -428,6 +453,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             custody_by_root_requests: _,
             // components_by_range_requests is a meta request of various _by_range requests
             components_by_range_requests: _,
+            pending_envelope_batches: _,
             custody_backfill_data_column_batch_requests: _,
             execution_engine_state: _,
             network_beacon_processor: _,
@@ -831,6 +857,137 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             Some(blocks_result.map_err(RpcResponseError::BlockComponentCouplingError))
         } else {
             None
+        }
+    }
+
+    /// After blocks are coupled, check if any are Gloas blocks that need envelopes.
+    /// If so, fire off an `ExecutionPayloadEnvelopesByRoot` request and stash the blocks.
+    /// Returns `Some(blocks)` if no envelopes are needed (pass-through), `None` if waiting.
+    pub fn request_envelopes_if_needed(
+        &mut self,
+        blocks: Vec<RpcBlock<T::EthSpec>>,
+        parent_request_id: ComponentsByRangeRequestId,
+        peer_id: PeerId,
+    ) -> Option<Vec<RpcBlock<T::EthSpec>>> {
+        let gloas_roots: Vec<Hash256> = blocks
+            .iter()
+            .filter(|b| {
+                self.chain
+                    .spec
+                    .fork_name_at_slot::<T::EthSpec>(b.slot())
+                    .gloas_enabled()
+            })
+            .map(|b| b.block_root())
+            .collect();
+
+        if gloas_roots.is_empty() {
+            return Some(blocks);
+        }
+
+        let request = match ExecutionPayloadEnvelopesByRootRequest::new(
+            gloas_roots.clone(),
+            &self.chain.spec,
+        ) {
+            Ok(req) => req,
+            Err(e) => {
+                warn!(error = ?e, "Failed to create envelope request");
+                return Some(blocks);
+            }
+        };
+
+        let id = self.next_id();
+        let envelope_id = EnvelopesByRootRequestId {
+            id,
+            parent_request_id,
+        };
+
+        if let Err(e) = self.network_send.send(NetworkMessage::SendRequest {
+            peer_id,
+            request: RequestType::ExecutionPayloadEnvelopesByRoot(request),
+            app_request_id: AppRequestId::Sync(SyncRequestId::EnvelopesByRoot(envelope_id)),
+        }) {
+            warn!(error = ?e, "Failed to send envelope request");
+            return Some(blocks);
+        }
+
+        debug!(
+            count = gloas_roots.len(),
+            %id,
+            peer = %peer_id,
+            "Requesting envelopes for range sync batch"
+        );
+
+        let expected_roots: HashSet<Hash256> = gloas_roots.into_iter().collect();
+        self.pending_envelope_batches.insert(
+            id,
+            PendingEnvelopeBatch {
+                blocks,
+                expected_roots,
+                received_envelopes: HashMap::new(),
+                parent_request_id,
+                peer: peer_id,
+            },
+        );
+
+        None
+    }
+
+    /// Handle an incoming envelope response for a range sync batch.
+    /// Returns `Some((blocks, parent_request_id, peer))` when all envelopes are received.
+    pub fn on_envelope_by_root_response(
+        &mut self,
+        id: EnvelopesByRootRequestId,
+        _peer_id: PeerId,
+        envelope: Option<Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>>,
+    ) -> Option<EnvelopeBatchResult<T::EthSpec>> {
+        let Some(batch) = self.pending_envelope_batches.get_mut(&id.id) else {
+            warn!(%id.id, "Envelope response for unknown batch");
+            return None;
+        };
+
+        match envelope {
+            Some(env) => {
+                let block_root = env.message.beacon_block_root;
+                if batch.expected_roots.contains(&block_root) {
+                    batch.received_envelopes.insert(block_root, env);
+                } else {
+                    warn!(
+                        ?block_root,
+                        "Received envelope for unexpected block root in batch"
+                    );
+                }
+                None
+            }
+            None => {
+                // Stream terminated — attach envelopes to blocks and return
+                let mut batch = self.pending_envelope_batches.remove(&id.id)?;
+
+                for block in batch.blocks.iter_mut() {
+                    if let Some(env) = batch.received_envelopes.remove(&block.block_root()) {
+                        block.set_envelope(env);
+                    }
+                }
+
+                let missing: usize = batch
+                    .expected_roots
+                    .iter()
+                    .filter(|r| {
+                        !batch
+                            .blocks
+                            .iter()
+                            .any(|b| b.block_root() == **r && b.envelope().is_some())
+                    })
+                    .count();
+
+                if missing > 0 {
+                    warn!(
+                        count = missing,
+                        "Missing envelopes in range sync batch — blocks may fail state root check"
+                    );
+                }
+
+                Some((batch.blocks, batch.parent_request_id, batch.peer))
+            }
         }
     }
 
