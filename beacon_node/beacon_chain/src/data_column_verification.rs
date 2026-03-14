@@ -511,7 +511,7 @@ pub fn validate_data_column_sidecar_for_gossip<T: BeaconChainTypes, O: Observati
     }
 
     verify_column_inclusion_proof(&data_column)?;
-    let parent_block = verify_parent_block_and_finalized_descendant(data_column.clone(), chain)?;
+    let parent_block = verify_parent_block_and_finalized_descendant(&data_column, chain)?;
     verify_slot_higher_than_parent(&parent_block, column_slot)?;
     verify_proposer_and_signature(&data_column, &parent_block, chain)?;
     let kzg = &chain.kzg;
@@ -631,7 +631,7 @@ fn verify_slot_higher_than_parent(
 }
 
 fn verify_parent_block_and_finalized_descendant<T: BeaconChainTypes>(
-    data_column: Arc<DataColumnSidecar<T::EthSpec>>,
+    data_column: &DataColumnSidecar<T::EthSpec>,
     chain: &BeaconChain<T>,
 ) -> Result<ProtoBlock, GossipDataColumnError> {
     let fork_choice = chain.canonical_head.fork_choice_read_lock();
