@@ -1111,3 +1111,13 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 **Also checked**: Spec stable — no new consensus-specs commits since run 1188. PR #4992 (cached PTCs in state) still OPEN, NOT MERGED (1 APPROVED). No new spec test releases (still v1.6.0-beta.0). PRs #5001 and #5002 already implemented/compatible.
 
 **Verification**: 715/715 types tests, 2/2 kzg tests, 2/2 genesis tests, 69/69 EF SSZ static tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1191: accept cell_proofs by reference in blobs_to_data_column_sidecars
+
+**Problem**: `blobs_to_data_column_sidecars` took `cell_proofs: Vec<KzgProof>` by value, but only used `.len()` and `.chunks_exact()` on it — both of which work on `&[T]`. This forced every caller to allocate a new Vec via `.to_vec()` on their `KzgProofs<E>` (VariableList), copying all proof data unnecessarily.
+
+**Fix**: Changed the parameter type from `Vec<KzgProof>` to `&[KzgProof]`. Updated all 9 call sites (1 production in block_verification.rs, 1 production in fetch_blobs/mod.rs, 6 tests in kzg_utils.rs, 1 bench). Since `VariableList<T, N>` implements `Deref<Target = [T]>`, callers now simply pass `&proofs` instead of `proofs.to_vec()`.
+
+**Verification**: 2/2 KZG tests pass, bench + test compilation clean, full clippy clean.
+
+**Spec check**: No new consensus-specs commits since run 1190. Spec at v1.7.0-alpha.3. PR #4992 (cached PTCs) still OPEN.
