@@ -1290,3 +1290,18 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Spec check**: No new consensus-specs commits since run 1210 (latest e50889e1ca, #5004). No new spec test releases (latest v1.6.0-beta.0).
 
 **Verification**: 4/4 observed_block_producers + observed_slashable tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1212: use serialize() instead of as_ssz_bytes()/ssz_encode() for signature hashing (2026-03-14)
+
+**Scope**: Eliminate Vec heap allocations from signature hashing in BeaconState and IndexedAttestation.
+
+**Problem**: Three call sites used `as_ssz_bytes()` or `ssz_encode()` on `Signature`/`AggregateSignature` types, allocating a 96-byte `Vec<u8>` when `serialize()` returns a stack-allocated `[u8; 96]`:
+1. `beacon_state.rs:1248` — `is_aggregator()` called `slot_signature.as_ssz_bytes()` for aggregator check hash
+2. `beacon_state.rs:1589` — `update_randao_mix()` called `ssz_encode(signature)` for RANDAO mix update
+3. `indexed_attestation.rs:203` — `Hash` impl called `self.signature().as_ssz_bytes()` for HashMap/HashSet hashing
+
+**Fix**: Replaced all three with `.serialize()` which returns `[u8; 96]` on the stack. Removed now-unused `use ssz::Encode` from `indexed_attestation.rs` and `use ssz::{Encode, ssz_encode}` from `beacon_state.rs`.
+
+**Impact**: `update_randao_mix` is called once per block. `is_aggregator` is called during aggregation checks. The `Hash` impl for `IndexedAttestation` is used in the operation pool's `HashSet`/`HashMap` operations. Each call previously allocated a 96-byte Vec on the heap; now uses the stack.
+
+**Verification**: 715/715 types tests, full workspace clippy clean (lint-full), pre-push hook passes.
