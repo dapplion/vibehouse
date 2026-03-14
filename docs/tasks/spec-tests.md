@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1199 (Mar 14) — avoid unnecessary clones in range sync batch requests
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. cargo audit unchanged (1 rsa, no fix). No new spec test releases.
+
+Shipped: eliminated two unnecessary `Vec` clones in `RangeDataColumnBatchRequest::new` by restructuring to a single-pass loop over `by_range_requests`, and replaced `HashSet::clone().into_iter().collect()` with `iter().copied().collect()` in `to_data_columns_by_range_request`. Both in the network range sync hot path. 2/2 range sync tests pass, clippy clean.
+
 ### run 1198 (Mar 14) — avoid Arc clone in data column gossip verification
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, approved. Official v1.7.0-alpha.3 spec test release confirmed (published Mar 13). cargo audit unchanged (1 rsa, no fix). No patch-level dependency updates available (lockfile fully current).
