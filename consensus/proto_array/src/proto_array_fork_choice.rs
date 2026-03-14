@@ -465,6 +465,9 @@ pub struct ProtoArrayForkChoice {
     /// Reusable buffer for `get_gloas_children` results to avoid per-iteration allocation
     /// in `find_head_gloas`.
     gloas_children_result_buf: Vec<GloasForkChoiceNode>,
+    /// Reusable buffer for ancestor lookups in `get_gloas_weight` to avoid per-slot
+    /// HashMap allocation. Cleared between depth levels within `find_head_gloas`.
+    gloas_ancestor_cache_buf: HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>>,
 }
 
 /// Collect the Gloas children of `node` into `out`, clearing it first.
@@ -621,6 +624,7 @@ impl ProtoArrayForkChoice {
             gloas_children_buf: HashMap::new(),
             gloas_active_votes_buf: Vec::new(),
             gloas_children_result_buf: Vec::new(),
+            gloas_ancestor_cache_buf: HashMap::new(),
         }
     }
 
@@ -1266,11 +1270,10 @@ impl ProtoArrayForkChoice {
             payload_status: GloasPayloadStatus::Pending,
         };
 
-        // Reuse the ancestor cache allocation across loop iterations. Each
-        // iteration clears the entries (slots differ per level) but keeps the
-        // HashMap's internal storage to avoid repeated heap allocations.
-        let mut ancestor_cache: HashMap<(Hash256, Slot), Option<GloasForkChoiceNode>> =
-            HashMap::new();
+        // Temporarily take the ancestor cache out of self to avoid borrow
+        // conflicts (get_gloas_weight needs &self while the cache needs &mut).
+        // The HashMap retains its heap allocation across calls.
+        let mut ancestor_cache = std::mem::take(&mut self.gloas_ancestor_cache_buf);
 
         loop {
             collect_gloas_children(
@@ -1281,6 +1284,7 @@ impl ProtoArrayForkChoice {
                 &mut self.gloas_children_result_buf,
             );
             if self.gloas_children_result_buf.is_empty() {
+                self.gloas_ancestor_cache_buf = ancestor_cache;
                 self.gloas_head_payload_status = Some(head.payload_status as u8);
                 return Ok(head.root);
             }
