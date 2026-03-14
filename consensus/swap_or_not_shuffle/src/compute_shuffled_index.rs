@@ -1,4 +1,3 @@
-use crate::Hash256;
 use ethereum_hashing::{Context, Sha256Context};
 use std::cmp::max;
 
@@ -34,7 +33,7 @@ pub fn compute_shuffled_index(
 
     let mut index = index;
     for round in 0..shuffle_round_count {
-        let pivot = bytes_to_int64(&hash_with_round(seed, round)[..]) as usize % list_size;
+        let pivot = bytes_to_int64(&hash_with_round(seed, round)) as usize % list_size;
         index = do_round(seed, index, pivot, round, list_size);
     }
     Some(index)
@@ -49,7 +48,7 @@ fn do_round(seed: &[u8], index: usize, pivot: usize, round: u8, list_size: usize
     if bit == 1 { flip } else { index }
 }
 
-fn hash_with_round_and_position(seed: &[u8], round: u8, position: usize) -> Hash256 {
+fn hash_with_round_and_position(seed: &[u8], round: u8, position: usize) -> [u8; 32] {
     let mut context = Context::new();
 
     context.update(seed);
@@ -60,24 +59,20 @@ fn hash_with_round_and_position(seed: &[u8], round: u8, position: usize) -> Hash
      */
     context.update(&(position / 256).to_le_bytes()[0..4]);
 
-    let digest = context.finalize();
-    Hash256::from_slice(digest.as_ref())
+    context.finalize()
 }
 
-fn hash_with_round(seed: &[u8], round: u8) -> Hash256 {
+fn hash_with_round(seed: &[u8], round: u8) -> [u8; 32] {
     let mut context = Context::new();
 
     context.update(seed);
     context.update(&[round]);
 
-    let digest = context.finalize();
-    Hash256::from_slice(digest.as_ref())
+    context.finalize()
 }
 
-fn bytes_to_int64(slice: &[u8]) -> u64 {
-    let mut bytes = [0; 8];
-    bytes.copy_from_slice(&slice[0..8]);
-    u64::from_le_bytes(bytes)
+fn bytes_to_int64(bytes: &[u8; 32]) -> u64 {
+    u64::from_le_bytes(bytes[..8].try_into().unwrap())
 }
 
 #[cfg(test)]

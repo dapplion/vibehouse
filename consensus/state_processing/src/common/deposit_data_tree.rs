@@ -34,7 +34,7 @@ impl DepositDataTree {
         let mut preimage = [0; 64];
         preimage[0..32].copy_from_slice(&self.tree.hash()[..]);
         preimage[32..64].copy_from_slice(&self.length_bytes());
-        Hash256::from_slice(&hash_fixed(&preimage))
+        Hash256::from(hash_fixed(&preimage))
     }
 
     /// Return the leaf at `index` and a Merkle proof of its inclusion.
@@ -43,7 +43,7 @@ impl DepositDataTree {
     /// and moving up the tree. Its length will be exactly equal to `depth + 1`.
     pub fn generate_proof(&self, index: usize) -> Result<(Hash256, Vec<Hash256>), MerkleTreeError> {
         let (root, mut proof) = self.tree.generate_proof(index, self.depth)?;
-        proof.push(Hash256::from_slice(&self.length_bytes()));
+        proof.push(Hash256::from(self.length_bytes()));
         Ok((root, proof))
     }
 
