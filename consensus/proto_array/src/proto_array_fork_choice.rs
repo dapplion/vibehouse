@@ -455,6 +455,10 @@ pub struct ProtoArrayForkChoice {
     /// Gloas: payload status of the head from the last `find_head_gloas` call.
     /// 0 = EMPTY, 1 = FULL, 2 = PENDING. `None` for pre-Gloas heads.
     pub(crate) gloas_head_payload_status: Option<u8>,
+    /// Reusable buffer for `compute_filtered_nodes` to avoid per-slot allocation.
+    gloas_filtered_buf: Vec<bool>,
+    /// Reusable buffer for `build_children_index` to avoid per-slot HashMap allocation.
+    gloas_children_buf: HashMap<usize, Vec<usize>>,
 }
 
 impl ProtoArrayForkChoice {
@@ -509,12 +513,27 @@ impl ProtoArrayForkChoice {
             .on_block::<E>(block, current_slot)
             .map_err(|e| format!("Failed to add finalized block to proto_array: {:?}", e))?;
 
-        Ok(Self {
+        Ok(Self::from_parts(
             proto_array,
-            votes: ElasticList::default(),
-            balances: JustifiedBalances::default(),
+            ElasticList::default(),
+            JustifiedBalances::default(),
+        ))
+    }
+
+    /// Construct from pre-built parts (used by SSZ deserialization).
+    pub(crate) fn from_parts(
+        proto_array: ProtoArray,
+        votes: ElasticList<VoteTracker>,
+        balances: JustifiedBalances,
+    ) -> Self {
+        Self {
+            proto_array,
+            votes,
+            balances,
             gloas_head_payload_status: None,
-        })
+            gloas_filtered_buf: Vec::new(),
+            gloas_children_buf: HashMap::new(),
+        }
     }
 
     /// See `ProtoArray::propagate_execution_payload_validation` for documentation.
@@ -1111,8 +1130,8 @@ impl ProtoArrayForkChoice {
         current_slot: Slot,
         spec: &ChainSpec,
     ) -> Result<Hash256, String> {
-        let filtered_nodes = self.compute_filtered_nodes::<E>(current_slot);
-        let children_index = self.build_children_index();
+        self.compute_filtered_nodes_into::<E>(current_slot);
+        self.build_children_index_into();
 
         // Pre-compute active votes: filter out validators with zero root or
         // zero balance once, so the inner weight loop (called per-child per-depth)
@@ -1165,7 +1184,11 @@ impl ProtoArrayForkChoice {
             HashMap::new();
 
         loop {
-            let children = self.get_gloas_children(&head, &filtered_nodes, Some(&children_index));
+            let children = self.get_gloas_children(
+                &head,
+                &self.gloas_filtered_buf,
+                Some(&self.gloas_children_buf),
+            );
             if children.is_empty() {
                 self.gloas_head_payload_status = Some(head.payload_status as u8);
                 return Ok(head.root);
@@ -1206,48 +1229,60 @@ impl ProtoArrayForkChoice {
         }
     }
 
-    /// Compute a boolean mask of nodes that lead to viable heads.
-    /// This implements the spec's `get_filtered_block_tree`.
-    /// Returns a Vec<bool> indexed by node index — true if the node is on
-    /// a path to a viable head.
-    fn compute_filtered_nodes<E: EthSpec>(&self, current_slot: Slot) -> Vec<bool> {
+    /// Compute a boolean mask of nodes that lead to viable heads into
+    /// `self.gloas_filtered_buf`, reusing the allocation from previous calls.
+    fn compute_filtered_nodes_into<E: EthSpec>(&mut self, current_slot: Slot) {
         let pa = &self.proto_array;
-        let mut filtered = vec![false; pa.nodes.len()];
+        let len = pa.nodes.len();
+
+        // Reuse the buffer: resize and zero-fill.
+        self.gloas_filtered_buf.clear();
+        self.gloas_filtered_buf.resize(len, false);
 
         // Pass 1 (forward): mark nodes that are viable for head
         for (i, node) in pa.nodes.iter().enumerate() {
             if pa.node_is_viable_for_head::<E>(node, current_slot) {
-                filtered[i] = true;
+                self.gloas_filtered_buf[i] = true;
             }
         }
 
         // Pass 2 (reverse): propagate viability upward to ancestors.
         // Nodes are ordered parent-before-child, so reverse iteration ensures
         // children are processed before parents.
-        for i in (0..pa.nodes.len()).rev() {
-            if filtered[i]
+        for i in (0..len).rev() {
+            if self.gloas_filtered_buf[i]
                 && let Some(parent_idx) = pa.nodes[i].parent
-                && let Some(f) = filtered.get_mut(parent_idx)
+                && let Some(f) = self.gloas_filtered_buf.get_mut(parent_idx)
             {
                 *f = true;
             }
         }
-        filtered
     }
 
-    /// Build a mapping from parent node index to child node indices.
-    ///
-    /// Used by `find_head_gloas` to avoid scanning all nodes when looking up
-    /// children in the EMPTY/FULL branch of `get_gloas_children`.
-    fn build_children_index(&self) -> HashMap<usize, Vec<usize>> {
+    /// Compute a boolean mask of nodes that lead to viable heads.
+    /// Test-facing wrapper that returns a fresh Vec (calls the in-place version).
+    #[cfg(test)]
+    fn compute_filtered_nodes<E: EthSpec>(&mut self, current_slot: Slot) -> Vec<bool> {
+        self.compute_filtered_nodes_into::<E>(current_slot);
+        self.gloas_filtered_buf.clone()
+    }
+
+    /// Build a mapping from parent node index to child node indices into
+    /// `self.gloas_children_buf`, reusing the allocation from previous calls.
+    fn build_children_index_into(&mut self) {
         let pa = &self.proto_array;
-        let mut index: HashMap<usize, Vec<usize>> = HashMap::new();
+        // Clear all Vec values but keep the HashMap's bucket storage.
+        for v in self.gloas_children_buf.values_mut() {
+            v.clear();
+        }
         for (i, node) in pa.nodes.iter().enumerate() {
             if let Some(parent_idx) = node.parent {
-                index.entry(parent_idx).or_default().push(i);
+                self.gloas_children_buf
+                    .entry(parent_idx)
+                    .or_default()
+                    .push(i);
             }
         }
-        index
     }
 
     /// Get children of a Gloas fork choice node.
@@ -5268,7 +5303,7 @@ mod test_gloas_fork_choice {
     #[test]
     fn filtered_roots_genesis_only() {
         // Genesis block alone is always viable and filtered in
-        let (fc, _spec) = new_gloas_fc();
+        let (mut fc, _spec) = new_gloas_fc();
         let filtered = fc.compute_filtered_nodes::<MinimalEthSpec>(Slot::new(0));
         assert!(fc.is_filtered(&root(0), &filtered));
         assert_eq!(filtered.iter().filter(|&&b| b).count(), 1);

@@ -48,12 +48,11 @@ impl TryFrom<(SszContainer, JustifiedBalances)> for ProtoArrayForkChoice {
             previous_proposer_boost: from.previous_proposer_boost,
         };
 
-        Ok(Self {
+        Ok(ProtoArrayForkChoice::from_parts(
             proto_array,
-            votes: ElasticList(from.votes),
+            ElasticList(from.votes),
             balances,
-            gloas_head_payload_status: None,
-        })
+        ))
     }
 }
 
