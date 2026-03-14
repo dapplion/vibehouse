@@ -73,7 +73,7 @@ impl From<BlockOperationError<AttestationInvalid>> for Error {
 pub struct BlockSignatureVerifier<'a, E, F, D>
 where
     E: EthSpec,
-    F: Fn(usize) -> Option<Cow<'a, PublicKey>> + Clone,
+    F: Fn(usize) -> Option<Cow<'a, PublicKey>>,
     D: Fn(&'a PublicKeyBytes) -> Option<Cow<'a, PublicKey>>,
 {
     get_pubkey: F,
@@ -97,7 +97,7 @@ impl<'a> From<Vec<SignatureSet<'a>>> for ParallelSignatureSets<'a> {
 impl<'a, E, F, D> BlockSignatureVerifier<'a, E, F, D>
 where
     E: EthSpec,
-    F: Fn(usize) -> Option<Cow<'a, PublicKey>> + Clone,
+    F: Fn(usize) -> Option<Cow<'a, PublicKey>>,
     D: Fn(&'a PublicKeyBytes) -> Option<Cow<'a, PublicKey>>,
 {
     /// Create a new verifier without any included signatures. See the `include...` functions to
@@ -185,7 +185,7 @@ where
     ) -> Result<()> {
         let set = block_proposal_signature_set(
             self.state,
-            self.get_pubkey.clone(),
+            &self.get_pubkey,
             block,
             block_root,
             verified_proposer_index,
@@ -203,7 +203,7 @@ where
     ) -> Result<()> {
         let set = randao_signature_set(
             self.state,
-            self.get_pubkey.clone(),
+            &self.get_pubkey,
             block.message(),
             verified_proposer_index,
             self.spec,
@@ -229,7 +229,7 @@ where
             .try_for_each(|proposer_slashing| {
                 let (set_1, set_2) = proposer_slashing_signature_set(
                     self.state,
-                    self.get_pubkey.clone(),
+                    &self.get_pubkey,
                     proposer_slashing,
                     self.spec,
                 )?;
@@ -257,7 +257,7 @@ where
             .try_for_each(|attester_slashing| {
                 let (set_1, set_2) = attester_slashing_signature_sets(
                     self.state,
-                    self.get_pubkey.clone(),
+                    &self.get_pubkey,
                     attester_slashing,
                     self.spec,
                 )?;
@@ -288,7 +288,7 @@ where
 
                 self.sets.push(indexed_attestation_signature_set(
                     self.state,
-                    self.get_pubkey.clone(),
+                    &self.get_pubkey,
                     attestation.signature(),
                     indexed_attestation,
                     self.spec,
@@ -334,8 +334,7 @@ where
                     let set = exit_signature_set(self.state, get_builder_pubkey, exit, self.spec)?;
                     self.sets.push(set);
                 } else {
-                    let set =
-                        exit_signature_set(self.state, self.get_pubkey.clone(), exit, self.spec)?;
+                    let set = exit_signature_set(self.state, &self.get_pubkey, exit, self.spec)?;
                     self.sets.push(set);
                 }
 
