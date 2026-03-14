@@ -875,6 +875,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 state,
                 get_builder_pubkey,
                 &signed_envelope,
+                block.message().proposer_index(),
                 &self.spec,
             )
             .map_err(|_| PayloadEnvelopeError::InvalidSignature)?;

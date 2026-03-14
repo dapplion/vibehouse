@@ -749,6 +749,7 @@ pub fn execution_payload_envelope_signature_set<'a, E, F>(
     state: &'a BeaconState<E>,
     get_builder_pubkey: F,
     signed_envelope: &'a types::SignedExecutionPayloadEnvelope<E>,
+    proposer_index: u64,
     spec: &'a ChainSpec,
 ) -> Result<SignatureSet<'a>>
 where
@@ -759,7 +760,7 @@ where
 
     let pubkey = if builder_index == types::consts::gloas::BUILDER_INDEX_SELF_BUILD {
         // Self-build: use the proposer's validator pubkey
-        let proposer_index = state.latest_block_header().proposer_index as usize;
+        let proposer_index = proposer_index as usize;
         state
             .validators()
             .get(proposer_index)
@@ -1231,6 +1232,7 @@ mod tests {
             &state,
             |_| None,
             &signed_envelope,
+            state.latest_block_header().proposer_index,
             &spec,
         ));
         assert_eq!(err, Error::ValidatorUnknown(0));
@@ -1271,6 +1273,7 @@ mod tests {
                 }
             },
             &signed_envelope,
+            state.latest_block_header().proposer_index,
             &spec,
         )
         .expect("should succeed");
@@ -1313,6 +1316,7 @@ mod tests {
                 }
             },
             &signed_envelope,
+            state.latest_block_header().proposer_index,
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1353,6 +1357,7 @@ mod tests {
                 }
             },
             &signed_envelope,
+            state.latest_block_header().proposer_index,
             &spec,
         )
         .expect("should succeed constructing set");
@@ -1636,6 +1641,7 @@ mod tests {
                 }
             },
             &signed_envelope,
+            state.latest_block_header().proposer_index,
             &spec,
         )
         .expect("should succeed constructing set");

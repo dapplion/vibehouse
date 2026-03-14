@@ -131,6 +131,7 @@ pub fn process_execution_payload_envelope<E: EthSpec>(
             state,
             get_builder_pubkey,
             signed_envelope,
+            state.latest_block_header().proposer_index,
             spec,
         )
         .map_err(|_| EnvelopeProcessingError::BadSignature)?;
