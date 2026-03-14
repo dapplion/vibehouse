@@ -10,7 +10,6 @@ use state_processing::{
     per_block_processing::errors::AttesterSlashingValidationError, per_epoch_processing,
 };
 use std::cmp::Ordering;
-use std::collections::BTreeSet;
 use std::marker::PhantomData;
 use std::time::Duration;
 use tracing::{debug, instrument, warn};
@@ -1280,15 +1279,30 @@ where
     pub fn on_attester_slashing(&mut self, slashing: AttesterSlashingRef<'_, E>) {
         let _timer = metrics::start_timer(&metrics::FORK_CHOICE_ON_ATTESTER_SLASHING_TIMES);
 
-        let attesting_indices_set = |att: IndexedAttestationRef<'_, E>| {
-            att.attesting_indices_iter()
-                .copied()
-                .collect::<BTreeSet<_>>()
-        };
-        let att1_indices = attesting_indices_set(slashing.attestation_1());
-        let att2_indices = attesting_indices_set(slashing.attestation_2());
+        // Attesting indices are sorted by spec, so we can compute the intersection
+        // with a merge walk in O(n+m) without allocating two BTreeSets.
+        let att1 = slashing.attestation_1();
+        let att2 = slashing.attestation_2();
+        let mut it1 = att1.attesting_indices_iter().peekable();
+        let mut it2 = att2.attesting_indices_iter().peekable();
         self.fc_store
-            .extend_equivocating_indices(att1_indices.intersection(&att2_indices).copied());
+            .extend_equivocating_indices(std::iter::from_fn(|| {
+                loop {
+                    let (a, b) = (it1.peek()?, it2.peek()?);
+                    match a.cmp(b) {
+                        Ordering::Less => {
+                            it1.next();
+                        }
+                        Ordering::Greater => {
+                            it2.next();
+                        }
+                        Ordering::Equal => {
+                            it2.next();
+                            return it1.next().copied();
+                        }
+                    }
+                }
+            }));
     }
 
     /// Gloas ePBS: Process a builder's execution payload bid.
