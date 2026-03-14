@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1227 (Mar 14) — fix self-build envelope signature verification using wrong proposer index
+
+New spec commits since e50889e1ca: 85ab2d2 (sig wording clarification), f0f4119 (parent_block_root in bid filtering key — already implemented), 84a6428 (SECONDS_PER_SLOT→SLOT_DURATION_MS — already implemented), 171caac (by_root serve range — networking docs, no code change needed), 14e6ce5 (pre-fork subscription note), 0596bd5 (reorder payload status constants). No code changes needed.
+
+**Critical bug found and fixed**: `execution_payload_envelope_signature_set` used `state.latest_block_header().proposer_index` to look up the proposer pubkey for self-build envelopes. In gossip verification and sync, the function received the canonical head state, not the state at the envelope's block root. When the envelope's block wasn't the canonical head (e.g., node receives block+envelope for slot N while head is at slot N-1), the proposer index was wrong, causing valid self-build envelopes to be rejected with `InvalidSignature`. This also triggered `LowToleranceError` peer scoring penalties, leading to peer disconnection and chain stalls.
+
+**Fix**: Added explicit `proposer_index: u64` parameter to `execution_payload_envelope_signature_set`. Callers now pass the correct proposer index:
+- `envelope_processing.rs`: `state.latest_block_header().proposer_index` (correct — state is post-block)
+- `gloas_verification.rs`: `block.message().proposer_index()` (correct — from the actual block)
+- `beacon_chain.rs` (sync): `block.message().proposer_index()` (correct — from the actual block)
+
+**Tests**: 575/575 state_processing, 770/770 beacon_chain (gloas), 139/139 EF spec tests, 163/163 network tests. Basic devnet passes: finalized_epoch=8, no stalls. Sync devnet: validator chain runs without stalls (fix confirmed), but sync targets blocked by pre-existing custody column subnet availability issue (unrelated).
+
 ### run 1226 (Mar 14) — verify envelope state root during sync, fix duplicate block envelopes
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. PR #4940 (initial Gloas fork choice tests) MERGED — new spec test vectors, but no new test release (latest v1.5.0 on consensus-spec-tests). No new spec test releases. CI from run 1225 (8ac808afb) in progress — check+clippy passed, other jobs running.
