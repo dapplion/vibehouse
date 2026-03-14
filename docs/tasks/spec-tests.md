@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1240 (Mar 14) — spec stable, codebase audit, all green
+
+Spec stable: no new consensus-specs commits since e50889e1ca (#5004). No new spec test releases (latest v1.7.0-alpha.3). Nightly green (9+ consecutive: Mar 6-14). CI for latest commit (dc6d36d6f) in progress — check+clippy passed. All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
+
+**Codebase health**: Clippy clean (0 warnings, `cargo clippy --workspace --release --exclude ef_tests`). Cargo audit unchanged (1 rsa advisory, no fix available). 321 `#[tokio::test]` in `beacon_node/beacon_chain/tests/gloas.rs` (21,252 lines). Total Gloas beacon_chain integration tests: ~779.
+
+**Test coverage audit**: Comprehensive analysis of untested code paths across beacon_chain.rs, gloas_verification.rs, execution_payload.rs, and gossip_methods.rs. All critical paths are covered:
+- State transition failure after EL Valid: tested (both gossip and self-build paths)
+- Blinded envelope fallback in load_parent: tested
+- Fork choice update failures in pending envelope handler: tested (5 tests)
+- EL transport errors during sync: tested (error path tests from run 1239)
+- Payload attestation aggregation and filtering: tested (15+ tests)
+- Builder deposit routing (is_pending_validator): covered by EF spec tests (79/79 + 138/138)
+- Process_pending_execution_proofs: tested (4 tests)
+- Proposer preferences bid validation: tested (3 tests)
+- Consecutive EMPTY blocks chain continuation: tested
+- Multi-epoch mixed FULL/EMPTY chain finalization: tested
+
+No untested consensus-critical paths found. VC payload attestation service has 8 integration tests. Store tests cover Gloas envelope handling, cold state dual-indexing, and payload pruning.
+
 ### run 1239 (Mar 14) — process_envelope_for_sync error path tests, spec stable
 
 Spec stable: no new consensus-specs commits since 4b6f527c5c9 (#4940, fork choice tests only). No new spec test releases (latest v1.7.0-alpha.3). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892) still OPEN, none merged. Two new spec-change PRs to monitor: #4954 (fork choice milliseconds) and #4840 (EIP-7843 in Gloas) — neither merged.
