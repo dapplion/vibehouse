@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1228 (Mar 14) — exclude gloas from block-level PeerDAS data availability checks
+
+**Root cause of sync devnet stall identified and fixed.** Range sync nodes were blocked indefinitely waiting for custody column subnet peers that would never appear, because `is_peer_das_enabled_for_epoch` returned true for Gloas epochs. But Gloas (ePBS) blocks carry bids instead of execution payloads — they have no blobs or data columns at the block level. Data availability for Gloas comes through execution payload envelopes.
+
+**Fix**: `is_peer_das_enabled_for_epoch` now returns false for Gloas epochs (PeerDAS block-level data columns apply to Fulu only, not Gloas). `blobs_required_for_epoch` and `should_fetch_blobs` also exclude Gloas. Range sync `good_peers_on_sampling_subnets` now returns true for Gloas batches (no custody column peers needed). `batch_type` returns `Blocks` for Gloas epochs (not `BlocksAndColumns`).
+
+**Test fixes**: 3 test helper files needed Gloas guards for blob/data column test paths (`test_utils.rs`, `network_beacon_processor/tests.rs`, `sync/tests/lookups.rs`). 1 range sync test (`finalized_sync_not_enough_custody_peers_on_start`) now correctly skips for Gloas since it tests PeerDAS-specific behavior.
+
+**Tests**: 139/139 EF spec tests, 770/770 beacon_chain (gloas), 163/163 network (gloas). Full clippy clean. Devnet verification pending (next run).
+
 ### run 1227 (Mar 14) — fix self-build envelope signature verification using wrong proposer index
 
 New spec commits since e50889e1ca: 85ab2d2 (sig wording clarification), f0f4119 (parent_block_root in bid filtering key — already implemented), 84a6428 (SECONDS_PER_SLOT→SLOT_DURATION_MS — already implemented), 171caac (by_root serve range — networking docs, no code change needed), 14e6ce5 (pre-fork subscription note), 0596bd5 (reorder payload status constants). No code changes needed.
