@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1242 (Mar 15) — load_parent advanced state patch test, spec stable
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (10+ consecutive). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged. PR #4992 (cached PTCs in state) is approved+CI-green but has unresolved review comments.
+
+**Test coverage**: Added `gloas_load_parent_advanced_state_patches_latest_block_hash` — integration test for block_verification.rs:2068-2080, the path where `load_parent` detects a FULL parent whose cached state was slot-advanced past the parent's slot by the state advance timer (pre-envelope state at child_slot). Since the state is at the wrong slot, the envelope can't be re-applied; instead `latest_block_hash` is patched directly. This covers a real race condition: block imported → state advance timer advances pre-envelope state → envelope arrives (updates cache at parent_slot but not the advanced entry) → next block import gets the advanced pre-envelope state.
+
+Total Gloas beacon_chain integration tests: ~780.
+
 ### run 1241 (Mar 14) — full spec audit, all alpha.3 changes verified, CI green
 
 Spec stable: no new Gloas spec changes after v1.7.0-alpha.3. Post-alpha.3 merges (#5001 parent_block_root bid filtering, #5002 wording clarification, #5004 release notes) — all non-functional or already implemented. No new spec test releases. Nightly green (10+ consecutive).

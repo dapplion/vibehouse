@@ -21222,6 +21222,158 @@ async fn gloas_sync_envelope_missing_block() {
     );
 }
 
+/// When the state advance timer has already advanced the cached head state past
+/// the parent's slot (e.g. from slot N to slot N+1), and the cached state is
+/// pre-envelope (envelope arrived after the advance), `load_parent` cannot
+/// re-apply the envelope (wrong slot). It falls back to patching just
+/// `latest_block_hash` to match the parent bid's block_hash.
+///
+/// This covers the code path at block_verification.rs:2068-2080 — the
+/// `is_pre_envelope && state.slot() != parent_block.slot()` branch.
+///
+/// Real scenario: Block A imported → pre-envelope state cached at slot N →
+/// state advance timer advances it to slot N+1 → envelope arrives (updates
+/// fork choice + cache at slot N, but the slot N+1 entry remains pre-envelope)
+/// → Block B arrives at slot N+1, load_parent gets the advanced entry.
+#[tokio::test]
+async fn gloas_load_parent_advanced_state_patches_latest_block_hash() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build 3 blocks so we have a stable parent chain with envelopes processed.
+    Box::pin(harness.extend_slots(3)).await;
+
+    let parent_block = harness.chain.head_snapshot().beacon_block.clone();
+    let parent_root = parent_block.canonical_root();
+    let parent_state = harness.chain.head_beacon_state_cloned();
+    let parent_slot = parent_state.slot();
+    let parent_state_root = parent_block.message().state_root();
+
+    // Record parent's bid block_hash.
+    let parent_bid_hash = parent_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .block_hash;
+
+    // Pre-condition: parent state has correct latest_block_hash (post-envelope).
+    assert_eq!(
+        *parent_state
+            .latest_block_hash()
+            .expect("should have latest_block_hash"),
+        parent_bid_hash,
+        "pre-condition: parent state latest_block_hash should match bid"
+    );
+
+    // Produce the child block from the correct post-envelope state.
+    harness.advance_slot();
+    let child_slot = parent_slot + 1;
+    let (child_block_contents, _child_state, child_envelope) = harness
+        .make_block_with_envelope(parent_state.clone(), child_slot)
+        .await;
+    let child_block_root = child_block_contents.0.canonical_root();
+
+    // Verify child references parent as FULL.
+    let child_bid = child_block_contents
+        .0
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .clone();
+    assert_eq!(
+        child_bid.parent_block_hash, parent_bid_hash,
+        "child should reference parent as FULL"
+    );
+    let child_bid_hash = child_bid.block_hash;
+
+    // Simulate the state advance timer race condition:
+    // 1. Take the parent state
+    // 2. Reset latest_block_hash to simulate pre-envelope (grandparent's hash)
+    // 3. Advance it to child_slot via per_slot_processing
+    // 4. Put this advanced pre-envelope state into the cache
+    let mut advanced_state = parent_state.clone();
+    // Set latest_block_hash to something wrong (simulating pre-envelope).
+    // The grandparent's block_hash is different from the parent's bid block_hash.
+    *advanced_state
+        .latest_block_hash_mut()
+        .expect("should have latest_block_hash_mut") = ExecutionBlockHash::zero();
+
+    // Advance the state by one slot (simulating state advance timer).
+    let spec = harness.chain.spec.clone();
+    state_processing::per_slot_processing(&mut advanced_state, Some(parent_state_root), &spec)
+        .expect("per_slot_processing should succeed");
+    assert_eq!(
+        advanced_state.slot(),
+        child_slot,
+        "advanced state should be at child slot"
+    );
+
+    // Compute the advanced state's root for caching.
+    let advanced_state_root = advanced_state
+        .update_tree_hash_cache()
+        .expect("tree hash should succeed");
+
+    // Replace the cached state with the advanced pre-envelope state.
+    // This simulates: state advance timer ran BEFORE envelope arrived, so the
+    // cache has (parent_block_root, child_slot) → pre-envelope advanced state.
+    {
+        let mut cache = harness.chain.store.state_cache.lock();
+        // Delete the existing post-envelope state at parent_slot.
+        cache.delete_state(&parent_state_root);
+        // Insert the advanced pre-envelope state at child_slot.
+        cache
+            .put_state(advanced_state_root, parent_root, &advanced_state)
+            .expect("should cache advanced state");
+    }
+
+    // Import the child block. load_parent will:
+    // 1. get_advanced_hot_state_from_cache(parent_root, child_slot) → advanced
+    //    pre-envelope state at child_slot
+    // 2. Detect FULL parent (child_bid.parent_block_hash == parent_bid.block_hash)
+    // 3. Detect is_pre_envelope (latest_block_hash != parent_bid_block_hash)
+    // 4. state.slot() != parent_block.slot() → can't re-apply envelope
+    // 5. Fall back to patching latest_block_hash = parent_bid_block_hash
+    harness
+        .process_block(child_slot, child_block_root, child_block_contents)
+        .await
+        .expect(
+            "child block import should succeed via latest_block_hash patch \
+             on advanced pre-envelope state",
+        );
+
+    // Verify child is in fork choice.
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        assert!(
+            fc.get_block(&child_block_root).is_some(),
+            "child block should be in fork choice after import"
+        );
+    }
+
+    // Process the child's envelope.
+    if let Some(envelope) = child_envelope {
+        harness
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .expect("child envelope should process successfully");
+    }
+
+    // Verify head state has correct latest_block_hash after child envelope.
+    harness.chain.recompute_head_at_current_slot().await;
+    let new_head_state = harness.chain.head_beacon_state_cloned();
+    assert_eq!(
+        *new_head_state
+            .latest_block_hash()
+            .expect("should have latest_block_hash"),
+        child_bid_hash,
+        "head state should have child's bid block_hash after envelope processing"
+    );
+}
+
 /// Test process_envelope_for_sync rejects envelopes with an invalid (zeroed)
 /// BLS signature while builder_index and block_hash are correct. This ensures
 /// the signature verification step is not accidentally skipped.
