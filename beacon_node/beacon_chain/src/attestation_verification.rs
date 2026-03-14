@@ -536,7 +536,7 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
             committee_index: attestation
                 .committee_index()
                 .ok_or(Error::NotExactlyOneCommitteeBitSet(0))?,
-            attestation_data: attestation.data().clone(),
+            attestation_data: *attestation.data(),
         }
         .tree_hash_root();
 
@@ -650,7 +650,7 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
                         // Note: this clones the signature which is known to be a relatively slow operation.
                         // Future optimizations should remove this clone.
                         signed_aggregate.message.selection_proof.clone(),
-                        signed_aggregate.message.aggregate.data.clone(),
+                        signed_aggregate.message.aggregate.data,
                     ),
                     SignedAggregateAndProof::Electra(signed_aggregate) => (
                         signed_aggregate
@@ -660,7 +660,7 @@ impl<'a, T: BeaconChainTypes> IndexedAggregatedAttestation<'a, T> {
                             .ok_or(Error::NotExactlyOneCommitteeBitSet(0))?,
                         signed_aggregate.message.aggregator_index,
                         signed_aggregate.message.selection_proof.clone(),
-                        signed_aggregate.message.aggregate.data.clone(),
+                        signed_aggregate.message.aggregate.data,
                     ),
                 };
                 let slot = data.slot;

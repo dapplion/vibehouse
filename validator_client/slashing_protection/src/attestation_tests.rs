@@ -186,7 +186,7 @@ fn invalid_double_vote_diff_source() {
     let first = attestation_data_builder(0, 2);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
+            Test::single(first),
             Test::single(attestation_data_builder(1, 2))
                 .expect_invalid_att(InvalidAttestation::DoubleVote(signed_att(&first))),
         ],
@@ -203,7 +203,7 @@ fn invalid_double_vote_diff_target() {
     assert_ne!(first, second);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
+            Test::single(first),
             Test::single(second)
                 .expect_invalid_att(InvalidAttestation::DoubleVote(signed_att(&first))),
         ],
@@ -220,7 +220,7 @@ fn invalid_double_vote_diff_data() {
     assert_ne!(first, second);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
+            Test::single(first),
             Test::single(second)
                 .expect_invalid_att(InvalidAttestation::DoubleVote(signed_att(&first))),
         ],
@@ -237,12 +237,12 @@ fn invalid_double_vote_diff_domain() {
 
     StreamTest {
         cases: vec![
-            Test::single(first.clone()).with_domain(domain1),
-            Test::single(first.clone())
-                .with_domain(domain2)
-                .expect_invalid_att(InvalidAttestation::DoubleVote(
-                    SignedAttestation::from_attestation(&first, domain1),
+            Test::single(first).with_domain(domain1),
+            Test::single(first).with_domain(domain2).expect_invalid_att(
+                InvalidAttestation::DoubleVote(SignedAttestation::from_attestation(
+                    &first, domain1,
                 )),
+            ),
         ],
         ..StreamTest::default()
     }
@@ -256,9 +256,9 @@ fn invalid_double_vote_diff_source_multi() {
     let third = attestation_data_builder(2, 4);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
-            Test::single(second.clone()),
-            Test::single(third.clone()),
+            Test::single(first),
+            Test::single(second),
+            Test::single(third),
             Test::single(attestation_data_builder(1, 2))
                 .expect_invalid_att(InvalidAttestation::DoubleVote(signed_att(&first))),
             Test::single(attestation_data_builder(2, 3))
@@ -278,9 +278,9 @@ fn invalid_surrounding_single() {
     let third = attestation_data_builder(6, 7);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
-            Test::single(second.clone()),
-            Test::single(third.clone()),
+            Test::single(first),
+            Test::single(second),
+            Test::single(third),
             Test::single(attestation_data_builder(1, 4)).expect_invalid_att(
                 InvalidAttestation::NewSurroundsPrev {
                     prev: signed_att(&first),
@@ -309,7 +309,7 @@ fn invalid_surrounding_from_first_source() {
     StreamTest {
         cases: vec![
             Test::single(first),
-            Test::single(second.clone()),
+            Test::single(second),
             Test::single(attestation_data_builder(2, 5)).expect_invalid_att(
                 InvalidAttestation::NewSurroundsPrev {
                     prev: signed_att(&second),
@@ -330,7 +330,7 @@ fn invalid_surrounding_multiple_votes() {
         cases: vec![
             Test::single(first),
             Test::single(second),
-            Test::single(third.clone()),
+            Test::single(third),
             Test::single(attestation_data_builder(0, 4)).expect_invalid_att(
                 InvalidAttestation::NewSurroundsPrev {
                     prev: signed_att(&third),
@@ -347,7 +347,7 @@ fn invalid_prev_surrounds_new() {
     let first = attestation_data_builder(0, 7);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
+            Test::single(first),
             Test::single(attestation_data_builder(1, 6)).expect_invalid_att(
                 InvalidAttestation::PrevSurroundsNew {
                     prev: signed_att(&first),
@@ -366,9 +366,9 @@ fn invalid_prev_surrounds_new_multiple() {
     let third = attestation_data_builder(8, 10);
     StreamTest {
         cases: vec![
-            Test::single(first.clone()),
-            Test::single(second.clone()),
-            Test::single(third.clone()),
+            Test::single(first),
+            Test::single(second),
+            Test::single(third),
             Test::single(attestation_data_builder(9, 9)).expect_invalid_att(
                 InvalidAttestation::PrevSurroundsNew {
                     prev: signed_att(&third),

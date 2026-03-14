@@ -15,7 +15,7 @@ pub mod attesting_indices_base {
             get_attesting_indices::<E>(committee, &attestation.aggregation_bits)?;
         Ok(IndexedAttestation::Base(IndexedAttestationBase {
             attesting_indices: VariableList::new(attesting_indices)?,
-            data: attestation.data.clone(),
+            data: attestation.data,
             signature: attestation.signature.clone(),
         }))
     }
@@ -63,7 +63,7 @@ pub mod attesting_indices_electra {
 
         Ok(IndexedAttestation::Electra(IndexedAttestationElectra {
             attesting_indices: VariableList::new(attesting_indices)?,
-            data: attestation.data.clone(),
+            data: attestation.data,
             signature: attestation.signature.clone(),
         }))
     }

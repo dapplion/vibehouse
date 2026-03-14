@@ -892,7 +892,7 @@ mod test {
 
         let fork_attestation = make_attestation(
             attesting_indices.clone(),
-            attestation_data.clone(),
+            attestation_data,
             signature.clone(),
         );
 

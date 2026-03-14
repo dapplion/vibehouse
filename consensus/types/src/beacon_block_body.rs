@@ -913,7 +913,7 @@ impl<E: EthSpec> BeaconBlockBodyBellatrix<E, FullPayload<E>> {
 
         BeaconBlockBodyBellatrix {
             randao_reveal: randao_reveal.clone(),
-            eth1_data: eth1_data.clone(),
+            eth1_data: *eth1_data,
             graffiti: *graffiti,
             proposer_slashings: proposer_slashings.clone(),
             attester_slashings: attester_slashings.clone(),
@@ -946,7 +946,7 @@ impl<E: EthSpec> BeaconBlockBodyCapella<E, FullPayload<E>> {
 
         BeaconBlockBodyCapella {
             randao_reveal: randao_reveal.clone(),
-            eth1_data: eth1_data.clone(),
+            eth1_data: *eth1_data,
             graffiti: *graffiti,
             proposer_slashings: proposer_slashings.clone(),
             attester_slashings: attester_slashings.clone(),
@@ -981,7 +981,7 @@ impl<E: EthSpec> BeaconBlockBodyDeneb<E, FullPayload<E>> {
 
         BeaconBlockBodyDeneb {
             randao_reveal: randao_reveal.clone(),
-            eth1_data: eth1_data.clone(),
+            eth1_data: *eth1_data,
             graffiti: *graffiti,
             proposer_slashings: proposer_slashings.clone(),
             attester_slashings: attester_slashings.clone(),
@@ -1018,7 +1018,7 @@ impl<E: EthSpec> BeaconBlockBodyElectra<E, FullPayload<E>> {
 
         BeaconBlockBodyElectra {
             randao_reveal: randao_reveal.clone(),
-            eth1_data: eth1_data.clone(),
+            eth1_data: *eth1_data,
             graffiti: *graffiti,
             proposer_slashings: proposer_slashings.clone(),
             attester_slashings: attester_slashings.clone(),
@@ -1056,7 +1056,7 @@ impl<E: EthSpec> BeaconBlockBodyFulu<E, FullPayload<E>> {
 
         BeaconBlockBodyFulu {
             randao_reveal: randao_reveal.clone(),
-            eth1_data: eth1_data.clone(),
+            eth1_data: *eth1_data,
             graffiti: *graffiti,
             proposer_slashings: proposer_slashings.clone(),
             attester_slashings: attester_slashings.clone(),

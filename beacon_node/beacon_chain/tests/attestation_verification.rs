@@ -158,7 +158,7 @@ fn get_valid_unaggregated_attestation<T: BeaconChainTypes>(
     let single_attestation = SingleAttestation {
         committee_index: valid_attestation.committee_index().unwrap(),
         attester_index: validator_index as u64,
-        data: valid_attestation.data().clone(),
+        data: *valid_attestation.data(),
         signature: valid_attestation.signature().clone(),
     };
 
@@ -699,7 +699,13 @@ async fn aggregated_gossip_verification() {
                     .chain
                     .head_snapshot()
                     .beacon_state
-                    .get_beacon_committee(tester.slot(), a.message().aggregate().committee_index().expect("should get committee index"))
+                    .get_beacon_committee(
+                        tester.slot(),
+                        a.message()
+                            .aggregate()
+                            .committee_index()
+                            .expect("should get committee index"),
+                    )
                     .expect("should get committees")
                     .committee
                     .len();
@@ -875,7 +881,7 @@ async fn aggregated_gossip_verification() {
                         committee_index: tester.valid_aggregate.message().aggregate()
                             .committee_index()
                             .expect("should get committee index"),
-                        attestation_data: tester.valid_aggregate.message().aggregate().data().clone(),
+                        attestation_data: *tester.valid_aggregate.message().aggregate().data(),
                     }.tree_hash_root()
                 ))
             },

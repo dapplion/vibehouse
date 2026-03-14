@@ -80,7 +80,7 @@ pub fn upgrade_to_altair<E: EthSpec>(
         state_roots: pre.state_roots.clone(),
         historical_roots: mem::take(&mut pre.historical_roots),
         // Eth1
-        eth1_data: pre.eth1_data.clone(),
+        eth1_data: pre.eth1_data,
         eth1_data_votes: mem::take(&mut pre.eth1_data_votes),
         eth1_deposit_index: pre.eth1_deposit_index,
         // Registry

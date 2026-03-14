@@ -4010,12 +4010,11 @@ impl ApiTester {
                 .unwrap()
                 .data;
 
-            let expected = self
+            let expected = *self
                 .chain
                 .produce_unaggregated_attestation(slot, index)
                 .unwrap()
-                .data()
-                .clone();
+                .data();
 
             assert_eq!(result, expected);
         }

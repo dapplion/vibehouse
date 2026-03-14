@@ -108,7 +108,7 @@ pub mod base {
 
             let pending_attestation = PendingAttestation {
                 aggregation_bits: attestation.aggregation_bits.clone(),
-                data: attestation.data.clone(),
+                data: attestation.data,
                 inclusion_delay: state.slot().safe_sub(attestation.data.slot)?.as_u64(),
                 proposer_index,
             };

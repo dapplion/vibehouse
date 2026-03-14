@@ -344,7 +344,7 @@ pub fn process_eth1_data<E: EthSpec>(
         *state.eth1_data_mut() = new_eth1_data;
     }
 
-    state.eth1_data_votes_mut().push(eth1_data.clone())?;
+    state.eth1_data_votes_mut().push(*eth1_data)?;
 
     Ok(())
 }
@@ -363,7 +363,7 @@ pub fn get_new_eth1_data<E: EthSpec>(
 
     // The +1 is to account for the `eth1_data` supplied to the function.
     if num_votes.safe_add(1)?.safe_mul(2)? > E::SlotsPerEth1VotingPeriod::to_usize() {
-        Ok(Some(eth1_data.clone()))
+        Ok(Some(*eth1_data))
     } else {
         Ok(None)
     }

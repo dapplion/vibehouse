@@ -412,7 +412,7 @@ impl<E: EthSpec> AttestationElectra<E> {
         Ok(SingleAttestation {
             committee_index,
             attester_index,
-            data: self.data.clone(),
+            data: self.data,
             signature: self.signature.clone(),
         })
     }
@@ -496,7 +496,7 @@ impl<E: EthSpec> AttestationBase<E> {
         Ok(SingleAttestation {
             committee_index: self.data.index,
             attester_index,
-            data: self.data.clone(),
+            data: self.data,
             signature: self.signature.clone(),
         })
     }
@@ -640,13 +640,13 @@ impl SingleAttestation {
         if fork_name.electra_enabled() {
             IndexedAttestation::Electra(IndexedAttestationElectra {
                 attesting_indices: vec![self.attester_index].into(),
-                data: self.data.clone(),
+                data: self.data,
                 signature: self.signature.clone(),
             })
         } else {
             IndexedAttestation::Base(IndexedAttestationBase {
                 attesting_indices: vec![self.attester_index].into(),
-                data: self.data.clone(),
+                data: self.data,
                 signature: self.signature.clone(),
             })
         }

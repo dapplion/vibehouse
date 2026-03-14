@@ -2078,7 +2078,7 @@ where
         let (mut attestation_1, mut attestation_2) = if fork_name.electra_enabled() {
             let attestation_1 = IndexedAttestationElectra {
                 attesting_indices: VariableList::new(validator_indices_1).unwrap(),
-                data: data.clone(),
+                data,
                 signature: AggregateSignature::infinity(),
             };
 
@@ -2095,7 +2095,7 @@ where
         } else {
             let attestation_1 = IndexedAttestationBase {
                 attesting_indices: VariableList::new(validator_indices_1).unwrap(),
-                data: data.clone(),
+                data,
                 signature: AggregateSignature::infinity(),
             };
 

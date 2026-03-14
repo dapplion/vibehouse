@@ -3562,7 +3562,7 @@ async fn get_validator_attestation_data<T: BeaconChainTypes>(
 
             let attestation_data = chain
                 .produce_unaggregated_attestation(query.slot, committee_index)
-                .map(|attestation| attestation.data().clone())
+                .map(|attestation| *attestation.data())
                 .map_err(ApiError::unhandled_error)?;
 
             match accept {

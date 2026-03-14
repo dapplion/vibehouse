@@ -17,7 +17,7 @@ pub fn all_benches(c: &mut Criterion) {
     let validator_additions = 100;
 
     for n in [1_000_000, 1_500_000, 2_000_000] {
-        let mut source_state = BeaconState::<E>::new(genesis_time, eth1_data.clone(), &spec);
+        let mut source_state = BeaconState::<E>::new(genesis_time, eth1_data, &spec);
 
         for _ in 0..n {
             append_validator(&mut source_state, &mut rng);

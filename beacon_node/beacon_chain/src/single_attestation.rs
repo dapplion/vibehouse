@@ -42,7 +42,7 @@ pub fn single_attestation_to_attestation<E: EthSpec>(
         Ok(Attestation::Electra(AttestationElectra {
             aggregation_bits,
             committee_bits,
-            data: single_attestation.data.clone(),
+            data: single_attestation.data,
             signature: single_attestation.signature.clone(),
         }))
     } else {
@@ -53,7 +53,7 @@ pub fn single_attestation_to_attestation<E: EthSpec>(
             .map_err(|e| Error::Invalid(e.into()))?;
         Ok(Attestation::Base(AttestationBase {
             aggregation_bits,
-            data: single_attestation.data.clone(),
+            data: single_attestation.data,
             signature: single_attestation.signature.clone(),
         }))
     }

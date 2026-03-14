@@ -958,7 +958,7 @@ mod release_tests {
                 .current_epoch_attestations
                 .push(PendingAttestation {
                     aggregation_bits: att1.aggregation_bits_base().unwrap().clone(),
-                    data: att1.data().clone(),
+                    data: *att1.data(),
                     inclusion_delay: 0,
                     proposer_index: 0,
                 })
@@ -1936,7 +1936,7 @@ mod release_tests {
             validator_index: 2,
         };
         let exit2 = SignedVoluntaryExit {
-            message: unsigned_exit.clone(),
+            message: unsigned_exit,
             signature: harness.validator_keypairs[2]
                 .sk
                 .sign(unsigned_exit.signing_root(spec.compute_domain(

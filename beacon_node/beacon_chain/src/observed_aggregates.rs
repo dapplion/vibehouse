@@ -153,7 +153,7 @@ impl<E: EthSpec> SubsetItem for AttestationRef<'_, E> {
     fn root(&self) -> Result<Hash256, Error> {
         Ok(ObservedAttestationKey {
             committee_index: self.committee_index().ok_or(Error::RootError)?,
-            attestation_data: self.data().clone(),
+            attestation_data: *self.data(),
         }
         .tree_hash_root())
     }

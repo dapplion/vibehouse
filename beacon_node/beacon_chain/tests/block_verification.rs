@@ -1655,7 +1655,7 @@ async fn add_base_block_to_altair_chain() {
             state_root: altair_block.state_root,
             body: BeaconBlockBodyBase {
                 randao_reveal: altair_body.randao_reveal.clone(),
-                eth1_data: altair_body.eth1_data.clone(),
+                eth1_data: altair_body.eth1_data,
                 graffiti: altair_body.graffiti,
                 proposer_slashings: altair_body.proposer_slashings.clone(),
                 attester_slashings: altair_body.attester_slashings.clone(),
@@ -1791,7 +1791,7 @@ async fn add_altair_block_to_base_chain() {
             state_root: base_block.state_root,
             body: BeaconBlockBodyAltair {
                 randao_reveal: base_body.randao_reveal.clone(),
-                eth1_data: base_body.eth1_data.clone(),
+                eth1_data: base_body.eth1_data,
                 graffiti: base_body.graffiti,
                 proposer_slashings: base_body.proposer_slashings.clone(),
                 attester_slashings: base_body.attester_slashings.clone(),

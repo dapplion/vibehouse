@@ -93,11 +93,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
 
         // Add the attestation data if desired.
         let attestations = if include_attestations {
-            block
-                .body()
-                .attestations()
-                .map(|a| a.data().clone())
-                .collect()
+            block.body().attestations().map(|a| *a.data()).collect()
         } else {
             vec![]
         };

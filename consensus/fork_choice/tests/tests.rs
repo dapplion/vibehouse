@@ -468,7 +468,7 @@ impl ForkChoiceTest {
         let single_attestation = SingleAttestation {
             attester_index: validator_index as u64,
             committee_index: validator_committee_index as u64,
-            data: attestation.data().clone(),
+            data: *attestation.data(),
             signature: attestation.signature().clone(),
         };
 
