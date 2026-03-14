@@ -1255,7 +1255,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 .network_globals()
                 .peers
                 .read()
-                .has_good_custody_range_sync_peer(&sampling_subnets, epoch)
+                .has_good_custody_range_sync_peer(&sampling_subnets)
         } else {
             true
         }

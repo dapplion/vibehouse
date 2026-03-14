@@ -319,28 +319,17 @@ impl<E: EthSpec> PeerDB<E> {
             .map(|(peer_id, _)| peer_id)
     }
 
-    /// Checks if there is at least one good peer for each specified custody subnet for the given epoch.
-    /// A "good" peer is one that is both connected and synced (or advanced) for the specified epoch.
-    pub fn has_good_custody_range_sync_peer(
-        &self,
-        subnets: &HashSet<DataColumnSubnetId>,
-        epoch: Epoch,
-    ) -> bool {
+    /// Checks if there is at least one good peer for each specified custody subnet.
+    /// A "good" peer is one that is both connected and synced (or advanced).
+    pub fn has_good_custody_range_sync_peer(&self, subnets: &HashSet<DataColumnSubnetId>) -> bool {
         let mut remaining_subnets = subnets.clone();
 
-        let good_sync_peers_for_epoch = self.peers.values().filter(|&info| {
-            info.is_connected()
-                && match info.sync_status() {
-                    SyncStatus::Synced { info } | SyncStatus::Advanced { info } => {
-                        info.has_slot(epoch.end_slot(E::slots_per_epoch()))
-                    }
-                    SyncStatus::IrrelevantPeer
-                    | SyncStatus::Behind { .. }
-                    | SyncStatus::Unknown => false,
-                }
-        });
+        let good_sync_peers = self
+            .peers
+            .values()
+            .filter(|&info| info.is_connected() && info.is_synced_or_advanced());
 
-        for info in good_sync_peers_for_epoch {
+        for info in good_sync_peers {
             for subnet in info.custody_subnets_iter() {
                 if remaining_subnets.remove(subnet) && remaining_subnets.is_empty() {
                     return true;
