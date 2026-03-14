@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1246 (Mar 15) — spec stable, CI green, no action needed
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (13+ consecutive). All 7 tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged. PR #4892 has 2 approvals, #4898 has 1 — neither merged yet.
+
+**CI status**: Latest commit (79c580e69) — all CI jobs passed. Clippy clean (0 warnings). Cargo audit unchanged (1 rsa advisory, no fix available). Docker workflow (23098339992) stuck in queue — runner availability issue, not a code problem.
+
+**Spec compliance check**: Verified PR #5001 (add parent_block_root to bid filtering key, merged Mar 12) — vibehouse already implements this correctly. ObservedExecutionBids uses `(Slot, ExecutionBlockHash, Hash256)` key tuple and gossip validation passes all three parameters. No code changes needed.
+
+**Conclusion**: Project fully stable. No spec drift, no test gaps, no code changes needed this run.
+
 ### run 1245 (Mar 15) — spec stable, CI fully green, comprehensive coverage confirmed
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (12+ consecutive: Mar 4-15). All tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
