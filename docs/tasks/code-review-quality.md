@@ -1092,3 +1092,22 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 **Also verified**: Spec stable — no new consensus-specs commits since run 1184. PR #4992 (cached PTCs in state) still OPEN. PR #4940 (Gloas fork choice tests) merged into v1.7.0-alpha.3 — all 46 Gloas fork choice test cases pass (ex_ante: 3, get_head: 9, on_block: 23, on_execution_payload: 1, reorg: 8, withholding: 2).
 
 **Verification**: 307/307 proto_array+fork_choice tests, 9/9 EF fork choice spec tests, full workspace clippy clean (lint-full + all targets), pre-push hook passes.
+
+### Run 1189: replace Hash256::from_slice with Hash256::from for fixed-size arrays (2026-03-14)
+
+**Scope**: Eliminate unnecessary slice indirection in Hash256 construction from fixed-size `[u8; 32]` arrays.
+
+**Problem**: Multiple call sites used `Hash256::from_slice(&array)` where `array` is already a `[u8; 32]`. `from_slice` takes `&[u8]` (dynamic slice) and performs a runtime length check, while `From<[u8; 32]>` is a direct, zero-cost conversion. One call site (`compute_kzg_proof`) additionally called `.to_vec()` to create a heap-allocated Vec just to pass to `from_slice`.
+
+**Changes** (7 files):
+- `kzg_utils.rs:150`: `Hash256::from_slice(&z.to_vec())` → `Hash256::from(*z)` — eliminates heap allocation (Bytes32 derefs to [u8; 32])
+- `kzg_commitment.rs:23`: `Hash256::from_slice(versioned_hash.as_slice())` → `Hash256::from(versioned_hash)` — hash_fixed returns [u8; 32]
+- `beacon_block_header.rs:46`: `Hash256::from_slice(&self.tree_hash_root()[..])` → `self.tree_hash_root()` — tree_hash::Hash256 IS types::Hash256 (both alloy B256), round-trip was a no-op
+- `slot_epoch_macros.rs:291`: `Hash256::from_slice(&int_to_bytes32(...))` → `Hash256::from(int_to_bytes32(...))` — int_to_bytes32 returns [u8; 32]
+- `deposit_tree_snapshot.rs:72`: `Hash256::from_slice(&deposit_root)` → `Hash256::from(deposit_root)` — hash32_concat returns [u8; 32]
+- `genesis/interop.rs:16,24`: `Hash256::from_slice(&credentials)` → `Hash256::from(credentials)` — credentials are [u8; 32] arrays
+- `genesis/common.rs:29`: `Hash256::from_slice(&int_to_bytes32(...))` → `Hash256::from(int_to_bytes32(...))` — int_to_bytes32 returns [u8; 32]
+
+**Also checked**: Spec stable — no new consensus-specs commits since run 1188. PR #4992 (cached PTCs in state) still OPEN, NOT MERGED (1 APPROVED). No new spec test releases (still v1.6.0-beta.0). PRs #5001 and #5002 already implemented/compatible.
+
+**Verification**: 715/715 types tests, 2/2 kzg tests, 2/2 genesis tests, 69/69 EF SSZ static tests, full workspace clippy clean (lint-full), pre-push hook passes.

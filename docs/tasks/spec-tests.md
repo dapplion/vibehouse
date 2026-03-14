@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1189 (Mar 14) — replace Hash256::from_slice with From for fixed-size arrays
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED, same head d76a278b0a. No new spec test releases (still v1.6.0-beta.0). No new dependency updates.
+
+Shipped: replaced `Hash256::from_slice(&array)` with `Hash256::from(array)` across 7 files where the source is already `[u8; 32]`. Eliminates runtime length checks and one `.to_vec()` heap allocation in `compute_kzg_proof`. Also simplified `canonical_root()` from `Hash256::from_slice(&self.tree_hash_root()[..])` to `self.tree_hash_root()` — both types are the same `alloy_primitives::B256`.
+
 ### run 1188 (Mar 14) — dep update, optimization search, all stable
 
 Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED, same head d76a278b0a. No new spec test releases (still v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix). Updated cc 1.2.56→1.2.57.
