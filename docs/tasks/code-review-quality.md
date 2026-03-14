@@ -1244,3 +1244,23 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Spec check**: No new consensus-specs commits since run 1207 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.7.0-alpha.3).
 
 **Verification**: 37/37 BLS tests, 8/8 EF BLS spec tests (including bls_batch_verify), 52/52 signature state_processing tests, full workspace clippy clean (lint-full + make lint), pre-push hook passes.
+
+### Run 1209: avoid allocations in sync committee and attestation verification (2026-03-14)
+
+**Scope**: Two optimizations targeting gossip verification hot paths.
+
+**Change 1 — Return slice from get_subcommittee_pubkeys instead of Vec**:
+- `SyncCommittee::get_subcommittee_pubkeys` previously returned `Vec<PublicKeyBytes>` by copying the subcommittee slice via `.to_vec()`. On mainnet, each subcommittee has 128 entries × 48 bytes = ~6KB copied per call.
+- Changed return type to `&[PublicKeyBytes]`, returning a direct slice reference into the `FixedVector` backing store. Zero-copy.
+- Updated the caller in `sync_committee_verification.rs` to bind the `Arc<SyncCommittee>` before slicing (required for borrow lifetimes), and changed `.into_iter()` to `.iter()` with explicit copy (`*pubkey`) for the filtered participant pubkeys.
+- The caller in `test_utils.rs` already used `.iter()` on the result, so no changes needed there.
+
+**Change 2 — Avoid cloning selection proof signatures for aggregator checks**:
+- Both `SelectionProof` (attestation aggregation) and `SyncSelectionProof` (sync committee aggregation) required cloning the `Signature` (96 bytes) just to check aggregator status. The comments explicitly noted this as "known to be a relatively slow operation" with "Future optimizations should remove this clone."
+- Added `is_aggregator_sig(&Signature, ...)` static methods to both types that take a reference instead of requiring ownership.
+- Updated callers: `attestation_verification.rs` now extracts `&signed_aggregate.message.selection_proof` (reference) instead of `.clone()`, and calls `SelectionProof::is_aggregator_sig(...)`. `sync_committee_verification.rs` similarly calls `SyncSelectionProof::is_aggregator_sig::<T::EthSpec>(&signed_aggregate.message.selection_proof)`.
+- Eliminates one 96-byte signature clone per aggregate attestation gossip verification and per sync committee contribution gossip verification.
+
+**Spec check**: No new consensus-specs commits since run 1208 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.7.0-alpha.3).
+
+**Verification**: 5/5 attestation + sync committee verification tests, 6/6 types sync committee tests, full workspace clippy clean (lint-full), pre-push hook passes.
