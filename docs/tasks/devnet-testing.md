@@ -350,3 +350,16 @@ scripts/kurtosis-run.sh --slashings              # Full test
 scripts/kurtosis-run.sh --slashings --no-build   # Skip Docker build (reuse vibehouse:local)
 scripts/kurtosis-run.sh --slashings --no-teardown # Leave running for inspection
 ```
+
+### 2026-03-14 — Sync devnet validation (run 1231)
+
+**Validated sync devnet after range sync envelope fixes.**
+
+Ran `--sync` test to verify the 5 commits pushed in this session:
+1. Skip pruning Gloas execution payloads (needed to serve envelopes during range sync)
+2. Simplify custody range sync peer check (remove epoch requirement)
+3. Fix envelope-by-root RPC request size limit (split count vs byte-size fields)
+4. Fix sync mode detection (compare head slots within 4-slot threshold)
+5. Clippy fix
+
+**Result**: Both supernode and fullnode synced through Gloas fork boundary in 25s. Finalized to epoch 5. Both reported correct Gloas fork version (0x80000038).
