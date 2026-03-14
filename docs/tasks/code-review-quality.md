@@ -1139,3 +1139,20 @@ The vote-tracker side effects (advancing `current_root` to `next_root`, zeroing 
 **Spec check**: No new consensus-specs commits since run 1196 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix).
 
 **Verification**: 5/5 swap_or_not_shuffle tests, 1/1 EF shuffling tests, 3/3 EF deposit + genesis tests, full clippy clean (all targets).
+
+### Run 1201: closure reference + pending_consolidations clone avoidance (2026-03-14)
+
+**Scope**: Two optimizations targeting per-block and per-epoch hot paths.
+
+**Change 1 — Pass get_pubkey closure by reference in block signature verifier**:
+- `BlockSignatureVerifier` cloned `self.get_pubkey` (a closure) at every signature set call site — 6 times per block (proposal, randao, proposer slashings, attester slashings, attestations, exits), plus once per proposer slashing and attester slashing in the block.
+- Since `&F` implements `Fn` when `F: Fn`, the signature set functions can accept `&self.get_pubkey` directly instead of `self.get_pubkey.clone()`.
+- Removed the `Clone` bound from `F` on `BlockSignatureVerifier` since it's no longer needed.
+- Replaced all 6 `self.get_pubkey.clone()` call sites with `&self.get_pubkey`.
+
+**Change 2 — Avoid cloning pending_consolidations list in epoch processing**:
+- `process_pending_consolidations` cloned the entire `pending_consolidations` List to iterate while mutating state.
+- Split into two passes: (1) read-only pass collects `(source_index, target_index, consolidated_balance)` tuples into a small Vec, (2) mutation pass applies balance changes.
+- The Vec is bounded by the per-epoch consolidation churn limit (typically single-digit entries), so the allocation is minimal compared to cloning the entire list.
+
+**Verification**: 575/575 state_processing tests, 19/19 EF epoch_processing + consolidation tests, full workspace clippy clean (lint-full), pre-push hook passes.
