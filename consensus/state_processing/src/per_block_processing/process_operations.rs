@@ -702,7 +702,7 @@ pub fn process_deposit_requests<E: EthSpec>(
                     pubkey: request.pubkey,
                     withdrawal_credentials: request.withdrawal_credentials,
                     amount: request.amount,
-                    signature: request.signature.clone(),
+                    signature: request.signature,
                     slot,
                 })?;
             }
@@ -746,7 +746,7 @@ fn process_deposit_request_gloas<E: EthSpec>(
             pubkey: request.pubkey,
             withdrawal_credentials: request.withdrawal_credentials,
             amount: request.amount,
-            signature: request.signature.clone(),
+            signature: request.signature,
             slot,
         })?;
     }
@@ -781,7 +781,7 @@ fn is_pending_validator<E: EthSpec>(
             pubkey: pending_deposit.pubkey,
             withdrawal_credentials: pending_deposit.withdrawal_credentials,
             amount: pending_deposit.amount,
-            signature: pending_deposit.signature.clone(),
+            signature: pending_deposit.signature,
         };
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
             return true;
@@ -816,7 +816,7 @@ fn apply_deposit_for_builder<E: EthSpec>(
             pubkey: request.pubkey,
             withdrawal_credentials: request.withdrawal_credentials,
             amount: request.amount,
-            signature: request.signature.clone(),
+            signature: request.signature,
         };
 
         if is_valid_deposit_signature(&deposit_data, spec).is_err() {
@@ -1549,7 +1549,7 @@ mod builder_deposit_tests {
             pubkey: request.pubkey,
             withdrawal_credentials: request.withdrawal_credentials,
             amount: request.amount,
-            signature: request.signature.clone(),
+            signature: request.signature,
         };
         let valid_sig = deposit_data.create_signature(&new_val_kp.sk, &spec);
         let slot = state.slot();

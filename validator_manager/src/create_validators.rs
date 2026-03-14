@@ -744,7 +744,7 @@ pub mod tests {
                                 pubkey: deposit.pubkey,
                                 withdrawal_credentials: deposit.withdrawal_credentials,
                                 amount: deposit.amount,
-                                signature: deposit.signature.clone()
+                                signature: deposit.signature
                             }
                             .tree_hash_root()
                         );

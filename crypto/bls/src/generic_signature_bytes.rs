@@ -18,11 +18,18 @@ use tree_hash::TreeHash;
 ///
 /// - Lazily verifying a serialized signature.
 /// - Storing some bytes that are actually invalid (required in the case of a `Deposit` message).
-#[derive(Clone)]
 pub struct GenericSignatureBytes<Pub, Sig> {
     bytes: [u8; SIGNATURE_BYTES_LEN],
     _phantom_public_key: PhantomData<Pub>,
     _phantom_signature: PhantomData<Sig>,
+}
+
+impl<Pub, Sig> Copy for GenericSignatureBytes<Pub, Sig> {}
+
+impl<Pub, Sig> Clone for GenericSignatureBytes<Pub, Sig> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<Pub, Sig> GenericSignatureBytes<Pub, Sig>

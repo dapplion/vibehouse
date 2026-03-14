@@ -170,7 +170,7 @@ fn onboard_builders_from_pending_deposits<E: EthSpec>(
             pubkey: deposit.pubkey,
             withdrawal_credentials: deposit.withdrawal_credentials,
             amount: deposit.amount,
-            signature: deposit.signature.clone(),
+            signature: deposit.signature,
         };
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
             new_validator_pubkeys.insert(deposit.pubkey);
@@ -214,7 +214,7 @@ fn apply_builder_deposit<E: EthSpec>(
             pubkey,
             withdrawal_credentials,
             amount,
-            signature: signature.clone(),
+            signature: *signature,
         };
 
         if is_valid_deposit_signature(&deposit_data, spec).is_ok() {
