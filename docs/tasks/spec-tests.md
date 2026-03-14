@@ -29,6 +29,12 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1188 (Mar 14) — dep update, optimization search, all stable
+
+Spec stable: no new consensus-specs commits since last check (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN, NOT MERGED, same head d76a278b0a. No new spec test releases (still v1.6.0-beta.0). cargo audit unchanged (1 rsa, no fix). Updated cc 1.2.56→1.2.57.
+
+Thorough audit of remaining allocation optimization opportunities across all hot paths: per-block (process_operations, signature verification, attestation verification), per-slot (fork choice on_attestation, dequeue_attestations), per-epoch (single_pass, process_pending_consolidations), block production. Conclusion: the codebase is well-optimized after runs 1151-1187 — remaining allocations are either architecturally necessary (state clones for parallel processing, participation snapshot for validator monitor) or negligible (O(1) array lookups). No actionable optimization found.
+
 ### run 1187 (Mar 14) — reuse children Vec allocation in find_head_gloas
 
 Spec stable: no new consensus-specs commits since last check. PR #4992 (cached PTCs in state) still OPEN. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
