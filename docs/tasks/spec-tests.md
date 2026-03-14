@@ -249,3 +249,14 @@ Key activities across ~230 runs:
 
 ### 2026-02-14 — SSZ static pass
 - First pass at Gloas SSZ static tests
+
+### Run 1182: spec tracking review (2026-03-14)
+
+**Scope**: Checked consensus-specs for post-alpha.3 changes.
+
+**Post-alpha.3 PRs (merged after v1.7.0-alpha.3 tag):**
+1. **#5001** — Add `parent_block_root` to bid filtering key → **Already implemented.** Our `ObservedExecutionBids::is_highest_value_bid` already uses `(slot, parent_block_hash, parent_block_root)` as the key (implemented proactively).
+2. **#4940** — Add initial fork choice tests for Gloas → **Already supported.** Our EF test runner handles `on_execution_payload` steps, `execution_payload_envelope_*.ssz_snappy` files, and `head_payload_status` checks. Test vectors will arrive with next spec release.
+3. **#5002** — Clarify wording for payload signature verification → **Documentation only**, no implementation change needed.
+
+**Status**: vibehouse is ahead of the spec. All three post-alpha.3 changes are already handled.

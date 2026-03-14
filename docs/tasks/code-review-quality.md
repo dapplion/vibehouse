@@ -1042,3 +1042,17 @@ These allocations were discarded after each call, creating unnecessary allocatio
 **Additional fix**: `historical_data_columns.rs` — replaced `unique_column_indices.clone()` (HashSet clone per outer loop iteration) with `&unique_column_indices` iteration by reference. ColumnIndex is u64 (Copy), so iterating by reference works fine.
 
 **Verification**: 715/715 types tests, 575/575 state_processing tests, 307/307 fork_choice+proto_array tests, 69/69 EF SSZ static tests, 35/35 EF operations+epoch+sanity tests, full workspace clippy clean (lib + all targets), pre-push lint-full passes.
+
+### Run 1182: get_proposer_head Vec allocation elimination (2026-03-14)
+
+**Scope**: Allocation optimization in fork choice hot path.
+
+**Problem**: `get_proposer_head_info` collected 2 `ProtoNode` elements into a `Vec`, then popped them out in reverse order. This allocated a Vec (heap + 2 large ProtoNode clones) when simple iterator extraction sufficed.
+
+**Fix**: Replaced `.take(2).cloned().collect::<Vec<_>>()` + `.pop()` + `.pop()` with `.cloned()` iterator + `.next()` + `.next()`. The iterator directly yields head then parent (ancestor order), eliminating the Vec allocation entirely. The `take(2)` was also unnecessary since we only call `.next()` twice.
+
+**Impact**: Eliminates one Vec heap allocation per `get_proposer_head_info` call (called on every slot for proposer head computation). ProtoNode is a large struct (~300+ bytes with all Gloas fields), so avoiding even 2 clones into a temporary Vec is worthwhile.
+
+**Also reviewed**: Checked 3 post-alpha.3 consensus-specs PRs (#5001, #4940, #5002) — all already handled by vibehouse.
+
+**Verification**: 188/188 proto_array tests, 119/119 fork_choice tests, 9/9 EF fork choice spec tests, clippy clean.
