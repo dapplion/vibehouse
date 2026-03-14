@@ -3266,15 +3266,28 @@ impl<E: EthSpec, Hot: ItemStore<E>, Cold: ItemStore<E>> HotColdDB<E, Hot, Cold> 
         // should *always* have been pruned. In case of a long split (no parent found) we
         // continue as if the payloads are pruned, as the node probably has other things to worry
         // about.
+        //
+        // Gloas blocks have their payloads intentionally retained (for envelope serving),
+        // so we skip them when checking whether pruning has already completed. If all
+        // ancestors back to the fork boundary are Gloas blocks, everything pre-Gloas is
+        // already pruned.
+        let gloas_fork_slot = self
+            .spec
+            .gloas_fork_epoch
+            .map(|e| e.start_slot(E::slots_per_epoch()));
+
         let split_block_root = split_state.get_latest_block_root(split.state_root);
 
         let already_pruned =
             process_results(split_state.rev_iter_block_roots(&self.spec), |mut iter| {
-                iter.find(|(_, block_root)| *block_root != split_block_root)
-                    .map_or(Ok(true), |(_, split_parent_root)| {
-                        self.execution_payload_exists(&split_parent_root)
-                            .map(|exists| !exists)
-                    })
+                iter.find(|(slot, block_root)| {
+                    *block_root != split_block_root
+                        && gloas_fork_slot.is_none_or(|fork_slot| *slot < fork_slot)
+                })
+                .map_or(Ok(true), |(_, split_parent_root)| {
+                    self.execution_payload_exists(&split_parent_root)
+                        .map(|exists| !exists)
+                })
             })??;
 
         if already_pruned && !force {
