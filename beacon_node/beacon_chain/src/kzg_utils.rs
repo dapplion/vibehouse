@@ -165,7 +165,7 @@ pub fn verify_kzg_proof<E: EthSpec>(
 #[instrument(skip_all, level = "debug", fields(blob_count = blobs.len()))]
 pub fn blobs_to_data_column_sidecars<E: EthSpec>(
     blobs: &[&Blob<E>],
-    cell_proofs: Vec<KzgProof>,
+    cell_proofs: &[KzgProof],
     block: &SignedBeaconBlock<E>,
     kzg: &Kzg,
     spec: &ChainSpec,
@@ -505,8 +505,7 @@ mod test {
             create_test_fulu_block_and_blobs::<E>(num_of_blobs, spec);
         let blob_refs = blobs.iter().collect::<Vec<_>>();
         let column_sidecars =
-            blobs_to_data_column_sidecars(&blob_refs, proofs.to_vec(), &signed_block, kzg, spec)
-                .unwrap();
+            blobs_to_data_column_sidecars(&blob_refs, &proofs, &signed_block, kzg, spec).unwrap();
 
         let result = validate_data_columns::<E, _>(kzg, column_sidecars.iter());
         assert!(result.is_ok());
@@ -519,8 +518,7 @@ mod test {
             create_test_fulu_block_and_blobs::<E>(num_of_blobs, spec);
         let blob_refs = blobs.iter().collect::<Vec<_>>();
         let column_sidecars =
-            blobs_to_data_column_sidecars(&blob_refs, proofs.to_vec(), &signed_block, kzg, spec)
-                .unwrap();
+            blobs_to_data_column_sidecars(&blob_refs, &proofs, &signed_block, kzg, spec).unwrap();
         assert!(column_sidecars.is_empty());
     }
 
@@ -532,8 +530,7 @@ mod test {
 
         let blob_refs = blobs.iter().collect::<Vec<_>>();
         let column_sidecars =
-            blobs_to_data_column_sidecars(&blob_refs, proofs.to_vec(), &signed_block, kzg, spec)
-                .unwrap();
+            blobs_to_data_column_sidecars(&blob_refs, &proofs, &signed_block, kzg, spec).unwrap();
 
         let block_kzg_commitments = signed_block
             .message()
@@ -574,8 +571,7 @@ mod test {
             create_test_fulu_block_and_blobs::<E>(num_of_blobs, spec);
         let blob_refs = blobs.iter().collect::<Vec<_>>();
         let column_sidecars =
-            blobs_to_data_column_sidecars(&blob_refs, proofs.to_vec(), &signed_block, kzg, spec)
-                .unwrap();
+            blobs_to_data_column_sidecars(&blob_refs, &proofs, &signed_block, kzg, spec).unwrap();
 
         // Now reconstruct
         let reconstructed_columns = reconstruct_data_columns(
@@ -597,8 +593,7 @@ mod test {
             create_test_fulu_block_and_blobs::<E>(num_of_blobs, spec);
         let blob_refs = blobs.iter().collect::<Vec<_>>();
         let column_sidecars =
-            blobs_to_data_column_sidecars(&blob_refs, proofs.to_vec(), &signed_block, kzg, spec)
-                .unwrap();
+            blobs_to_data_column_sidecars(&blob_refs, &proofs, &signed_block, kzg, spec).unwrap();
 
         // Test reconstruction with columns in reverse order (non-ascending)
         let mut subset_columns: Vec<_> =
@@ -618,8 +613,7 @@ mod test {
             create_test_fulu_block_and_blobs::<E>(num_of_blobs, spec);
         let blob_refs = blobs.iter().collect::<Vec<_>>();
         let column_sidecars =
-            blobs_to_data_column_sidecars(&blob_refs, proofs.to_vec(), &signed_block, kzg, spec)
-                .unwrap();
+            blobs_to_data_column_sidecars(&blob_refs, &proofs, &signed_block, kzg, spec).unwrap();
 
         // Now reconstruct
         let signed_blinded_block = signed_block.into();

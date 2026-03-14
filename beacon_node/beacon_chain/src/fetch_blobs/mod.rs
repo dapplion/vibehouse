@@ -36,8 +36,8 @@ use tracing::{Span, debug, instrument, warn};
 use types::blob_sidecar::BlobSidecarError;
 use types::data_column_sidecar::DataColumnSidecarError;
 use types::{
-    BeaconStateError, Blob, BlobSidecar, ColumnIndex, EthSpec, FullPayload, Hash256, KzgProofs,
-    SignedBeaconBlock, SignedBeaconBlockHeader, VersionedHash,
+    BeaconStateError, Blob, BlobSidecar, ColumnIndex, EthSpec, FullPayload, Hash256, KzgProof,
+    KzgProofs, SignedBeaconBlock, SignedBeaconBlockHeader, VersionedHash,
 };
 
 /// Result from engine get blobs to be passed onto `DataAvailabilityChecker` and published to the
@@ -357,9 +357,9 @@ async fn compute_custody_columns_to_import<T: BeaconChainTypes>(
                 );
 
                 let blob_refs = blobs.iter().collect::<Vec<_>>();
-                let cell_proofs = proofs.into_iter().flatten().collect();
+                let cell_proofs: Vec<KzgProof> = proofs.into_iter().flatten().collect();
                 let data_columns_result =
-                    blobs_to_data_column_sidecars(&blob_refs, cell_proofs, &block, &kzg, &spec)
+                    blobs_to_data_column_sidecars(&blob_refs, &cell_proofs, &block, &kzg, &spec)
                         .discard_timer_on_break(&mut timer);
                 drop(timer);
 

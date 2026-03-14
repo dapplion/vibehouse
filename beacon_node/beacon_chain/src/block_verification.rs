@@ -798,14 +798,9 @@ pub fn build_blob_data_column_sidecars<T: BeaconChainTypes>(
         &[&blobs.len().to_string()],
     );
     let blob_refs = blobs.iter().collect::<Vec<_>>();
-    let sidecars = blobs_to_data_column_sidecars(
-        &blob_refs,
-        kzg_cell_proofs.to_vec(),
-        block,
-        &chain.kzg,
-        &chain.spec,
-    )
-    .discard_timer_on_break(&mut timer)?;
+    let sidecars =
+        blobs_to_data_column_sidecars(&blob_refs, &kzg_cell_proofs, block, &chain.kzg, &chain.spec)
+            .discard_timer_on_break(&mut timer)?;
     drop(timer);
     Ok(sidecars)
 }

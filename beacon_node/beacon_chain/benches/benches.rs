@@ -43,7 +43,7 @@ fn all_benches(c: &mut Criterion) {
 
         let column_sidecars = blobs_to_data_column_sidecars(
             &blobs.iter().collect::<Vec<_>>(),
-            proofs.to_vec(),
+            &proofs,
             &signed_block,
             &kzg,
             &spec,

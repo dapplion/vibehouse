@@ -317,7 +317,7 @@ impl TestRig {
                     let sampling_indices = chain.sampling_columns_for_epoch(epoch);
                     let custody_columns: DataColumnSidecarList<E> = blobs_to_data_column_sidecars(
                         &blobs.iter().collect_vec(),
-                        kzg_proofs.clone().into_iter().collect_vec(),
+                        &kzg_proofs,
                         &block,
                         &kzg,
                         &chain.spec,
