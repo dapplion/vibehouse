@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1184 (Mar 14) — zero-allocation sorted merge intersection in on_attester_slashing
+
+Spec stable: no new consensus-specs commits since last check. Both tracked PRs (#4992, #4939) still OPEN, unchanged. No new spec test releases. cargo audit unchanged (1 rsa, no fix).
+
+Shipped: replaced two BTreeSet allocations + BTreeSet::intersection in `on_attester_slashing` (fork_choice.rs) with a zero-allocation sorted merge walk. Since IndexedAttestation attesting_indices are sorted by spec, the intersection can be computed in O(n+m) by walking both sorted iterators simultaneously, matching on equal elements. Eliminates two heap-allocated BTreeSets (one per attestation's indices) and the O(n log n) BTreeSet insert cost. Removed unused `BTreeSet` import from production code (test code has its own import). All 119 fork_choice tests, 9/9 EF fork choice spec tests pass. Clippy clean.
+
+Open PRs to track: #4992 (cached PTCs in state — approaching merge), #4939 (request missing payload envelopes for index-1 attestations).
+
 ### run 1181 (Mar 14) — derive Copy for BeaconBlockHeader, EnrForkId, FinalizedExecutionBlock
 
 Spec update: two new PRs merged since last check. #5001 (add `parent_block_root` to bid filtering key, Mar 12) — already compliant, our `ObservedExecutionBids` already uses the 3-tuple `(slot, parent_block_hash, parent_block_root)`. #5002 (wording clarification for self-build envelope signature verification, Mar 13) — docs-only, no code change needed. #4979 (PTC Lookbehind) is now CLOSED (was OPEN). #4939 is also closed. #4992 (cached PTCs in state) still OPEN.
