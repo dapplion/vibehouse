@@ -8,7 +8,6 @@ use crate::{
 use ethereum_hashing::hash_fixed;
 use safe_arith::{ArithError, SafeArith};
 use serde::{Deserialize, Serialize};
-use ssz::Encode;
 use ssz_types::typenum::Unsigned;
 use std::cmp;
 
@@ -58,7 +57,7 @@ impl SyncSelectionProof {
     /// Check if a signature elects an aggregator without requiring ownership.
     pub fn is_aggregator_sig<E: EthSpec>(sig: &Signature) -> Result<bool, ArithError> {
         let modulo = Self::modulo::<E>()?;
-        let signature_hash = hash_fixed(&sig.as_ssz_bytes());
+        let signature_hash = hash_fixed(&sig.serialize());
         let signature_hash_int = u64::from_le_bytes(
             signature_hash[0..8]
                 .try_into()
@@ -69,7 +68,7 @@ impl SyncSelectionProof {
     }
 
     pub fn is_aggregator_from_modulo(&self, modulo: u64) -> Result<bool, ArithError> {
-        let signature_hash = hash_fixed(&self.0.as_ssz_bytes());
+        let signature_hash = hash_fixed(&self.0.serialize());
         let signature_hash_int = u64::from_le_bytes(
             signature_hash[0..8]
                 .try_into()
