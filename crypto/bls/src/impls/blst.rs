@@ -36,20 +36,21 @@ pub type SignatureSet<'a> = crate::generic_signature_set::GenericSignatureSet<
 pub fn verify_signature_sets<'a>(
     signature_sets: impl ExactSizeIterator<Item = &'a SignatureSet<'a>>,
 ) -> bool {
-    let sets = signature_sets.collect::<Vec<_>>();
+    let num_sets = signature_sets.len();
 
-    if sets.is_empty() {
+    if num_sets == 0 {
         return false;
     }
 
     let rng = &mut rand::rng();
 
-    let mut rands: Vec<blst_scalar> = Vec::with_capacity(sets.len());
-    let mut msgs_refs = Vec::with_capacity(sets.len());
-    let mut sigs = Vec::with_capacity(sets.len());
-    let mut pks = Vec::with_capacity(sets.len());
+    let mut rands: Vec<blst_scalar> = Vec::with_capacity(num_sets);
+    let mut msgs_refs = Vec::with_capacity(num_sets);
+    let mut sigs = Vec::with_capacity(num_sets);
+    let mut pks = Vec::with_capacity(num_sets);
+    let mut signing_keys_buf: Vec<&blst_core::PublicKey> = Vec::new();
 
-    for set in &sets {
+    for set in signature_sets {
         // Generate random scalars.
         let mut vals = [0u64; 4];
         while vals[0] == 0 {
@@ -85,25 +86,20 @@ pub fn verify_signature_sets<'a>(
             return false;
         }
 
-        // Collect all the public keys into a point, to satisfy the blst API.
-        //
-        // Note: we could potentially have the `SignatureSet` take a pubkey point instead of a
-        // `GenericPublicKey` and avoid this allocation.
-        let signing_keys = set
-            .signing_keys
-            .iter()
-            .map(|pk| pk.point())
-            .collect::<Vec<_>>();
+        // Collect public key points into a reusable buffer to satisfy the blst API.
+        signing_keys_buf.clear();
+        signing_keys_buf.extend(set.signing_keys.iter().map(|pk| pk.point()));
 
         // Aggregate all the public keys.
         // Public keys have already been checked for subgroup and infinity
-        let Ok(agg_pk) = blst_core::AggregatePublicKey::aggregate(&signing_keys, false) else {
+        let Ok(agg_pk) = blst_core::AggregatePublicKey::aggregate(&signing_keys_buf, false) else {
             return false;
         };
         pks.push(agg_pk.to_public_key());
     }
 
-    let (sig_refs, pks_refs): (Vec<_>, Vec<_>) = sigs.iter().zip(pks.iter()).unzip();
+    let sig_refs: Vec<_> = sigs.iter().collect();
+    let pks_refs: Vec<_> = pks.iter().collect();
 
     // Public keys have already been checked for subgroup and infinity
     // Signatures have already been checked for subgroup
