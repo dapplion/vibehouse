@@ -1264,3 +1264,15 @@ Every iteration allocated at least one Vec. For a depth-32 merkle tree (standard
 **Spec check**: No new consensus-specs commits since run 1208 (latest e50889e1ca, #5004). PR #4992 (cached PTCs in state) still OPEN. No new spec test releases (latest v1.7.0-alpha.3).
 
 **Verification**: 5/5 attestation + sync committee verification tests, 6/6 types sync committee tests, full workspace clippy clean (lint-full), pre-push hook passes.
+
+### Run 1210: use serialize() instead of as_ssz_bytes() in aggregator checks (2026-03-14)
+
+**Scope**: Eliminate Vec heap allocations in `SelectionProof` and `SyncSelectionProof` aggregator checks.
+
+**Problem**: Both `is_aggregator_sig()` and `is_aggregator_from_modulo()` called `sig.as_ssz_bytes()` which invokes the default `Encode::as_ssz_bytes()` method — this creates a `Vec<u8>` with capacity 96, copies the signature bytes into it, then passes `&Vec<u8>` to `hash_fixed()`. Since `Signature::serialize()` returns `[u8; 96]` (a stack-allocated array) with identical content, calling `hash_fixed(&sig.serialize())` is semantically identical but avoids the heap allocation entirely.
+
+**Fix**: Replaced all `as_ssz_bytes()` calls with `serialize()` in both `SelectionProof` (2 call sites) and `SyncSelectionProof` (2 call sites). Removed the now-unused `use ssz::Encode` imports from both files.
+
+**Impact**: Eliminates one 96-byte Vec allocation per aggregator check. These checks run on every aggregate attestation and sync committee contribution received via gossip. On mainnet, this eliminates hundreds of unnecessary heap allocations per slot.
+
+**Verification**: 1/1 sync_selection_proof test, 4/4 attestation + sync committee verification tests, full workspace clippy clean (lint-full), pre-push hook passes.
