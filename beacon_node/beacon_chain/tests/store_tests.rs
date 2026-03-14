@@ -5668,21 +5668,19 @@ async fn gloas_cold_state_loadable_by_post_envelope_root() {
     );
 }
 
-/// Verify that `reconstruct_historic_states` correctly processes Gloas blocks when
-/// execution payloads have been pruned (only blinded envelopes remain).
+/// Verify that `reconstruct_historic_states` correctly processes Gloas blocks
+/// and that Gloas execution payloads are retained during payload pruning.
 ///
-/// After finalization, `try_prune_execution_payloads` deletes the full execution payload
-/// stored in the `ExecPayload` column for finalized Gloas blocks, retaining only the
-/// blinded envelope in the `BeaconEnvelope` column. When `reconstruct_historic_states` then
-/// replays blocks to compute intermediate states, it must fall back to the blinded envelope
-/// path to apply envelope processing and get correct `latest_block_hash` values.
+/// Gloas payloads are intentionally NOT pruned by `try_prune_execution_payloads`
+/// because they are needed to serve full envelopes via `ExecutionPayloadEnvelopesByRoot`
+/// RPC during range sync. Only pre-Gloas execution payloads are pruned.
 ///
 /// The test verifies:
-/// 1. After payload pruning, `get_payload_envelope()` returns None for finalized Gloas blocks
-/// 2. `get_blinded_payload_envelope()` still succeeds (blinded envelopes are retained)
+/// 1. After payload pruning, Gloas full payloads are retained (not pruned)
+/// 2. `get_payload_envelope()` and `get_blinded_payload_envelope()` both work
 /// 3. `reconstruct_historic_states()` completes without error
 /// 4. Cold states loaded after reconstruction have `latest_block_hash` equal to the
-///    bid's `block_hash` from the blinded envelope (envelope processing was correctly applied)
+///    bid's `block_hash` (envelope processing was correctly applied)
 #[tokio::test]
 async fn gloas_reconstruct_states_with_pruned_payloads() {
     let mut spec = ForkName::Gloas.make_genesis_spec(E::default_spec());
@@ -5781,36 +5779,40 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
     // Prune execution payloads (force=true to prune even if already marked pruned).
     store.try_prune_execution_payloads(true).unwrap();
 
-    // Verify: full payloads gone, blinded envelopes retained.
-    let mut pruned_count = 0;
+    // Verify: Gloas full payloads retained (not pruned), blinded envelopes also present.
+    // Gloas payloads are intentionally kept for range sync envelope serving.
+    let mut verified_count_pre = 0;
     for (block_root, _, _, _) in &gloas_blocks {
-        // Full payload should be gone.
+        // Full payload should still exist (Gloas payloads are not pruned).
         assert!(
-            !store.execution_payload_exists(block_root).unwrap(),
-            "full payload should be pruned for {:?}",
+            store.execution_payload_exists(block_root).unwrap(),
+            "Gloas full payload should be retained after pruning for {:?}",
             block_root
         );
-        // get_payload_envelope should return None (requires full payload).
+        // get_payload_envelope should succeed (full payload + blinded envelope).
         assert!(
-            store.get_payload_envelope(block_root).unwrap().is_none(),
-            "get_payload_envelope should return None after pruning for {:?}",
+            store.get_payload_envelope(block_root).unwrap().is_some(),
+            "get_payload_envelope should succeed for retained Gloas payload {:?}",
             block_root
         );
-        // Blinded envelope should still exist.
+        // Blinded envelope should also exist.
         assert!(
             store
                 .get_blinded_payload_envelope(block_root)
                 .unwrap()
                 .is_some(),
-            "blinded envelope should still exist after pruning for {:?}",
+            "blinded envelope should exist for {:?}",
             block_root
         );
-        pruned_count += 1;
+        verified_count_pre += 1;
     }
-    assert!(pruned_count > 0, "should have pruned at least one payload");
+    assert!(
+        verified_count_pre > 0,
+        "should have verified at least one retained Gloas payload"
+    );
 
-    // Reconstruct historic states. This should use blinded envelopes for Gloas blocks since
-    // full payloads are gone. The reconstructed states must have correct latest_block_hash.
+    // Reconstruct historic states. Full payloads are available for Gloas blocks (not pruned).
+    // The reconstructed states must have correct latest_block_hash.
     store.clone().reconstruct_historic_states(None).unwrap();
 
     // Verify reconstructed states have correct latest_block_hash.
@@ -5825,7 +5827,7 @@ async fn gloas_reconstruct_states_with_pruned_payloads() {
             continue;
         };
         // The reconstructed state should have latest_block_hash == bid.block_hash because
-        // reconstruct_historic_states applied the blinded envelope (fallback path).
+        // reconstruct_historic_states applied envelope processing.
         let Ok(state_lbh) = reconstructed_state.latest_block_hash() else {
             // Not a Gloas state (e.g. pre-fork slot that somehow ended up in the loop).
             continue;

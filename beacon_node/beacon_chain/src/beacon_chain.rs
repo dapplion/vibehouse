@@ -4298,6 +4298,35 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             }
         };
 
+        // Process envelopes for blocks that filter_chain_segment removed as
+        // DuplicateFullyImported. These blocks were already imported (e.g. via
+        // gossip) but their envelopes may not have been processed yet, leaving
+        // the fork choice node in EMPTY state. Without this, subsequent blocks
+        // referencing the filtered block as a FULL parent would fail with
+        // StateRootMismatch and retry indefinitely.
+        let filtered_roots: Vec<Hash256> = filtered_chain_segment
+            .iter()
+            .map(|(root, _)| *root)
+            .collect();
+        let orphaned_envelope_roots: Vec<Hash256> = envelopes
+            .keys()
+            .filter(|root| !filtered_roots.contains(root))
+            .copied()
+            .collect();
+        for block_root in orphaned_envelope_roots {
+            if let Some(envelope) = envelopes.remove(&block_root)
+                && let Err(e) = self
+                    .process_envelope_for_sync(block_root, envelope, notify_execution_layer)
+                    .await
+            {
+                debug!(
+                    ?block_root,
+                    ?e,
+                    "Failed to process envelope for filtered block (may already be FULL)"
+                );
+            }
+        }
+
         while let Some((_root, block)) = filtered_chain_segment.first() {
             // Determine the epoch of the first block in the remaining segment.
             let start_epoch = block.epoch();
