@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1304 (Mar 15) — reviewed recently merged spec PRs, all tests pass
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). Latest release v1.7.0-alpha.3. Reviewed 3 recently merged Gloas PRs:
+- **#4940** (initial fork choice tests for Gloas) — new `on_execution_payload` EF test with `head_payload_status` checks. Vibehouse already supports all new test formats. `fork_choice_on_execution_payload` test passes (4.8s).
+- **#5001** (add `parent_block_root` to bid filtering key) — changes gossip bid dedup from `(slot, parent_block_hash)` to `(slot, parent_block_hash, parent_block_root)`. Vibehouse already implements the 3-tuple in `ObservedExecutionBids::highest_bid_values`. No changes needed.
+- **#5002** (clearer self-build payload signature verification wording) — spec wording only, no logic change.
+
+Open Gloas PRs: #4992 (cached PTCs), #4962 (sanity/blocks missed payload), #4960 (fork choice deposit test), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4843 (variable PTC deadline), #4840 (eip7843), #4630 (eip7688 SSZ).
+
+**Fork choice EF tests**: 9/9 pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Conclusion**: All recently merged spec changes already implemented. No code changes needed.
+
 ### run 1303 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs. Open Gloas PRs: #4992 (cached PTCs), #4960 (fork choice deposit test), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4843 (variable PTC deadline), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (13 consecutive days).
