@@ -382,3 +382,291 @@ impl BeaconNodeHttpClient {
         self.get(path).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::FixedBytesExtended;
+
+    #[test]
+    fn global_validator_inclusion_data_serde_roundtrip() {
+        let data = GlobalValidatorInclusionData {
+            current_epoch_active_gwei: 1_000_000,
+            current_epoch_target_attesting_gwei: 800_000,
+            previous_epoch_target_attesting_gwei: 750_000,
+            previous_epoch_head_attesting_gwei: 700_000,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let decoded: GlobalValidatorInclusionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn global_validator_inclusion_data_zero_values() {
+        let data = GlobalValidatorInclusionData {
+            current_epoch_active_gwei: 0,
+            current_epoch_target_attesting_gwei: 0,
+            previous_epoch_target_attesting_gwei: 0,
+            previous_epoch_head_attesting_gwei: 0,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let decoded: GlobalValidatorInclusionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn validator_inclusion_data_serde_roundtrip() {
+        let data = ValidatorInclusionData {
+            is_slashed: false,
+            is_withdrawable_in_current_epoch: true,
+            is_active_unslashed_in_current_epoch: true,
+            is_active_unslashed_in_previous_epoch: false,
+            current_epoch_effective_balance_gwei: 32_000_000_000,
+            is_current_epoch_target_attester: true,
+            is_previous_epoch_target_attester: false,
+            is_previous_epoch_head_attester: true,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let decoded: ValidatorInclusionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn validator_inclusion_data_slashed_validator() {
+        let data = ValidatorInclusionData {
+            is_slashed: true,
+            is_withdrawable_in_current_epoch: false,
+            is_active_unslashed_in_current_epoch: false,
+            is_active_unslashed_in_previous_epoch: false,
+            current_epoch_effective_balance_gwei: 16_000_000_000,
+            is_current_epoch_target_attester: false,
+            is_previous_epoch_target_attester: false,
+            is_previous_epoch_head_attester: false,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        assert!(json.contains("\"is_slashed\":true"));
+        let decoded: ValidatorInclusionData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn system_health_serde_roundtrip() {
+        let health = SystemHealth {
+            sys_virt_mem_total: 16_000_000_000,
+            sys_virt_mem_available: 8_000_000_000,
+            sys_virt_mem_used: 7_000_000_000,
+            sys_virt_mem_free: 1_000_000_000,
+            sys_virt_mem_percent: 43.75,
+            sys_virt_mem_cached: 4_000_000_000,
+            sys_virt_mem_buffers: 500_000_000,
+            sys_loadavg_1: 1.5,
+            sys_loadavg_5: 1.2,
+            sys_loadavg_15: 0.9,
+            cpu_cores: 4,
+            cpu_threads: 8,
+            system_seconds_total: 100_000,
+            user_seconds_total: 200_000,
+            iowait_seconds_total: 5_000,
+            idle_seconds_total: 300_000,
+            cpu_time_total: 605_000,
+            disk_node_bytes_total: 500_000_000_000,
+            disk_node_bytes_free: 200_000_000_000,
+            disk_node_reads_total: 1_000_000,
+            disk_node_writes_total: 500_000,
+            network_node_bytes_total_received: 10_000_000_000,
+            network_node_bytes_total_transmit: 5_000_000_000,
+            misc_node_boot_ts_seconds: 1_700_000_000,
+            misc_os: "Linux".to_string(),
+        };
+        let json = serde_json::to_string(&health).unwrap();
+        let decoded: SystemHealth = serde_json::from_str(&json).unwrap();
+        assert_eq!(health, decoded);
+    }
+
+    #[test]
+    fn process_health_serde_roundtrip() {
+        let health = ProcessHealth {
+            pid: 12345,
+            pid_num_threads: 42,
+            pid_mem_resident_set_size: 500_000_000,
+            pid_mem_virtual_memory_size: 1_000_000_000,
+            pid_mem_shared_memory_size: 100_000_000,
+            pid_process_seconds_total: 3600,
+        };
+        let json = serde_json::to_string(&health).unwrap();
+        let decoded: ProcessHealth = serde_json::from_str(&json).unwrap();
+        assert_eq!(health, decoded);
+    }
+
+    #[test]
+    fn health_serde_roundtrip_flattened() {
+        let health = Health {
+            system: SystemHealth {
+                sys_virt_mem_total: 16_000_000_000,
+                sys_virt_mem_available: 8_000_000_000,
+                sys_virt_mem_used: 7_000_000_000,
+                sys_virt_mem_free: 1_000_000_000,
+                sys_virt_mem_percent: 43.75,
+                sys_virt_mem_cached: 4_000_000_000,
+                sys_virt_mem_buffers: 500_000_000,
+                sys_loadavg_1: 1.5,
+                sys_loadavg_5: 1.2,
+                sys_loadavg_15: 0.9,
+                cpu_cores: 4,
+                cpu_threads: 8,
+                system_seconds_total: 100_000,
+                user_seconds_total: 200_000,
+                iowait_seconds_total: 5_000,
+                idle_seconds_total: 300_000,
+                cpu_time_total: 605_000,
+                disk_node_bytes_total: 500_000_000_000,
+                disk_node_bytes_free: 200_000_000_000,
+                disk_node_reads_total: 1_000_000,
+                disk_node_writes_total: 500_000,
+                network_node_bytes_total_received: 10_000_000_000,
+                network_node_bytes_total_transmit: 5_000_000_000,
+                misc_node_boot_ts_seconds: 1_700_000_000,
+                misc_os: "Linux".to_string(),
+            },
+            process: ProcessHealth {
+                pid: 1,
+                pid_num_threads: 10,
+                pid_mem_resident_set_size: 100_000,
+                pid_mem_virtual_memory_size: 200_000,
+                pid_mem_shared_memory_size: 50_000,
+                pid_process_seconds_total: 100,
+            },
+        };
+        let json = serde_json::to_string(&health).unwrap();
+        // Health uses #[serde(flatten)] so system and process fields are at top level
+        assert!(json.contains("\"pid\":1"));
+        assert!(json.contains("\"sys_virt_mem_total\":16000000000"));
+        let decoded: Health = serde_json::from_str(&json).unwrap();
+        assert_eq!(health, decoded);
+    }
+
+    #[test]
+    fn deposit_log_serde_roundtrip() {
+        let log = DepositLog {
+            deposit_data: DepositData {
+                pubkey: types::PublicKeyBytes::empty(),
+                withdrawal_credentials: Hash256::zero(),
+                amount: 32_000_000_000,
+                signature: types::SignatureBytes::empty(),
+            },
+            block_number: 12345678,
+            index: 42,
+            signature_is_valid: true,
+        };
+        let json = serde_json::to_string(&log).unwrap();
+        let decoded: DepositLog = serde_json::from_str(&json).unwrap();
+        assert_eq!(log, decoded);
+    }
+
+    #[test]
+    fn deposit_log_ssz_roundtrip() {
+        use ssz::{Decode, Encode};
+        let log = DepositLog {
+            deposit_data: DepositData {
+                pubkey: types::PublicKeyBytes::empty(),
+                withdrawal_credentials: Hash256::repeat_byte(0xab),
+                amount: 32_000_000_000,
+                signature: types::SignatureBytes::empty(),
+            },
+            block_number: 999,
+            index: 0,
+            signature_is_valid: false,
+        };
+        let bytes = log.as_ssz_bytes();
+        let decoded = DepositLog::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(log, decoded);
+    }
+
+    #[test]
+    fn deposit_log_invalid_signature() {
+        let log = DepositLog {
+            deposit_data: DepositData {
+                pubkey: types::PublicKeyBytes::empty(),
+                withdrawal_credentials: Hash256::zero(),
+                amount: 0,
+                signature: types::SignatureBytes::empty(),
+            },
+            block_number: 0,
+            index: 0,
+            signature_is_valid: false,
+        };
+        let json = serde_json::to_string(&log).unwrap();
+        assert!(json.contains("\"signature_is_valid\":false"));
+    }
+
+    #[test]
+    fn global_validator_inclusion_data_clone() {
+        let data = GlobalValidatorInclusionData {
+            current_epoch_active_gwei: 100,
+            current_epoch_target_attesting_gwei: 80,
+            previous_epoch_target_attesting_gwei: 75,
+            previous_epoch_head_attesting_gwei: 70,
+        };
+        let cloned = data.clone();
+        assert_eq!(data, cloned);
+    }
+
+    #[test]
+    fn validator_inclusion_data_clone() {
+        let data = ValidatorInclusionData {
+            is_slashed: true,
+            is_withdrawable_in_current_epoch: true,
+            is_active_unslashed_in_current_epoch: false,
+            is_active_unslashed_in_previous_epoch: false,
+            current_epoch_effective_balance_gwei: 32_000_000_000,
+            is_current_epoch_target_attester: false,
+            is_previous_epoch_target_attester: false,
+            is_previous_epoch_head_attester: false,
+        };
+        let cloned = data.clone();
+        assert_eq!(data, cloned);
+    }
+
+    #[test]
+    fn health_clone() {
+        let health = Health {
+            system: SystemHealth {
+                sys_virt_mem_total: 1,
+                sys_virt_mem_available: 1,
+                sys_virt_mem_used: 0,
+                sys_virt_mem_free: 1,
+                sys_virt_mem_percent: 0.0,
+                sys_virt_mem_cached: 0,
+                sys_virt_mem_buffers: 0,
+                sys_loadavg_1: 0.0,
+                sys_loadavg_5: 0.0,
+                sys_loadavg_15: 0.0,
+                cpu_cores: 1,
+                cpu_threads: 1,
+                system_seconds_total: 0,
+                user_seconds_total: 0,
+                iowait_seconds_total: 0,
+                idle_seconds_total: 0,
+                cpu_time_total: 0,
+                disk_node_bytes_total: 0,
+                disk_node_bytes_free: 0,
+                disk_node_reads_total: 0,
+                disk_node_writes_total: 0,
+                network_node_bytes_total_received: 0,
+                network_node_bytes_total_transmit: 0,
+                misc_node_boot_ts_seconds: 0,
+                misc_os: "test".to_string(),
+            },
+            process: ProcessHealth {
+                pid: 1,
+                pid_num_threads: 1,
+                pid_mem_resident_set_size: 0,
+                pid_mem_virtual_memory_size: 0,
+                pid_mem_shared_memory_size: 0,
+                pid_process_seconds_total: 0,
+            },
+        };
+        let cloned = health.clone();
+        assert_eq!(health, cloned);
+    }
+}

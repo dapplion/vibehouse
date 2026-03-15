@@ -44,3 +44,65 @@ impl StoreItem for PersistedCustody {
         Ok(PersistedCustody(custody_context))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn custody_db_key_is_zero() {
+        assert_eq!(CUSTODY_DB_KEY, Hash256::ZERO);
+    }
+
+    #[test]
+    fn store_item_column_is_custody_context() {
+        assert_eq!(PersistedCustody::db_column(), DBColumn::CustodyContext);
+    }
+
+    #[test]
+    fn ssz_roundtrip() {
+        let ctx = CustodyContextSsz {
+            validator_custody_at_head: 4,
+            persisted_is_supernode: false,
+            epoch_validator_custody_requirements: vec![
+                (types::Epoch::new(0), 4),
+                (types::Epoch::new(10), 8),
+            ],
+        };
+        let persisted = PersistedCustody(ctx);
+        let bytes = persisted.as_store_bytes();
+        let decoded = PersistedCustody::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded.0.validator_custody_at_head, 4);
+        assert!(!decoded.0.persisted_is_supernode);
+        assert_eq!(decoded.0.epoch_validator_custody_requirements.len(), 2);
+    }
+
+    #[test]
+    fn ssz_roundtrip_empty_requirements() {
+        let ctx = CustodyContextSsz {
+            validator_custody_at_head: 0,
+            persisted_is_supernode: true,
+            epoch_validator_custody_requirements: vec![],
+        };
+        let persisted = PersistedCustody(ctx);
+        let bytes = persisted.as_store_bytes();
+        let decoded = PersistedCustody::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded.0.validator_custody_at_head, 0);
+        assert!(decoded.0.persisted_is_supernode);
+        assert!(decoded.0.epoch_validator_custody_requirements.is_empty());
+    }
+
+    #[test]
+    fn from_store_bytes_invalid_data() {
+        let result = PersistedCustody::from_store_bytes(&[0xff, 0xff, 0xff]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_store_bytes_empty() {
+        let result = PersistedCustody::from_store_bytes(&[]);
+        // Empty bytes may or may not be valid depending on SSZ encoding;
+        // the important thing is it doesn't panic
+        let _ = result;
+    }
+}

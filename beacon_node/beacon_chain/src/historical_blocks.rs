@@ -316,3 +316,91 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         Ok(num_relevant)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_store_error() {
+        let store_err = StoreError::DBError {
+            message: "test error".to_string(),
+        };
+        let err: HistoricalBlockError = store_err.into();
+        assert!(matches!(err, HistoricalBlockError::StoreError(_)));
+    }
+
+    #[test]
+    fn mismatched_block_root_fields() {
+        let err = HistoricalBlockError::MismatchedBlockRoot {
+            block_root: Hash256::repeat_byte(0x01),
+            expected_block_root: Hash256::repeat_byte(0x02),
+        };
+        match err {
+            HistoricalBlockError::MismatchedBlockRoot {
+                block_root,
+                expected_block_root,
+            } => {
+                assert_eq!(block_root, Hash256::repeat_byte(0x01));
+                assert_eq!(expected_block_root, Hash256::repeat_byte(0x02));
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn invalid_signature_variant() {
+        let err = HistoricalBlockError::InvalidSignature;
+        assert!(matches!(err, HistoricalBlockError::InvalidSignature));
+    }
+
+    #[test]
+    fn validator_pubkey_cache_timeout_variant() {
+        let err = HistoricalBlockError::ValidatorPubkeyCacheTimeout;
+        assert!(matches!(
+            err,
+            HistoricalBlockError::ValidatorPubkeyCacheTimeout
+        ));
+    }
+
+    #[test]
+    fn index_out_of_bounds_variant() {
+        let err = HistoricalBlockError::IndexOutOfBounds;
+        assert!(matches!(err, HistoricalBlockError::IndexOutOfBounds));
+    }
+
+    #[test]
+    fn missing_oldest_block_root_variant() {
+        let err = HistoricalBlockError::MissingOldestBlockRoot {
+            slot: Slot::new(42),
+        };
+        match err {
+            HistoricalBlockError::MissingOldestBlockRoot { slot } => {
+                assert_eq!(slot, Slot::new(42));
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn debug_format() {
+        let err = HistoricalBlockError::InvalidSignature;
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("InvalidSignature"));
+    }
+
+    #[test]
+    fn into_static_str() {
+        let err = HistoricalBlockError::InvalidSignature;
+        let s: &'static str = (&err).into();
+        assert_eq!(s, "InvalidSignature");
+
+        let err = HistoricalBlockError::IndexOutOfBounds;
+        let s: &'static str = (&err).into();
+        assert_eq!(s, "IndexOutOfBounds");
+
+        let err = HistoricalBlockError::ValidatorPubkeyCacheTimeout;
+        let s: &'static str = (&err).into();
+        assert_eq!(s, "ValidatorPubkeyCacheTimeout");
+    }
+}

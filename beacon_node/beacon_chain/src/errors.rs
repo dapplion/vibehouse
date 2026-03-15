@@ -308,3 +308,208 @@ easy_from_to!(SlotProcessingError, BlockProductionError);
 easy_from_to!(StateAdvanceError, BlockProductionError);
 easy_from_to!(ForkChoiceError, BlockProductionError);
 easy_from_to!(EpochCacheError, BlockProductionError);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_arith_error() {
+        let err: BeaconChainError = ArithError::Overflow.into();
+        assert!(matches!(
+            err,
+            BeaconChainError::ArithError(ArithError::Overflow)
+        ));
+    }
+
+    #[test]
+    fn from_ssz_types_error() {
+        let err: BeaconChainError = SszTypesError::OutOfBounds { i: 10, len: 5 }.into();
+        assert!(matches!(err, BeaconChainError::SszTypesError(_)));
+    }
+
+    #[test]
+    fn from_block_replay_error() {
+        let err: BeaconChainError =
+            BlockReplayError::BeaconState(BeaconStateError::InsufficientValidators).into();
+        assert!(matches!(err, BeaconChainError::BlockReplayError(_)));
+    }
+
+    #[test]
+    fn from_state_advance_error() {
+        let err: BeaconChainError = StateAdvanceError::StateRootNotProvided.into();
+        assert!(matches!(err, BeaconChainError::StateAdvanceError(_)));
+    }
+
+    #[test]
+    fn from_inconsistent_fork() {
+        let err: BeaconChainError = InconsistentFork {
+            fork_at_slot: ForkName::Base,
+            object_fork: ForkName::Altair,
+        }
+        .into();
+        assert!(matches!(err, BeaconChainError::InconsistentFork(_)));
+    }
+
+    #[test]
+    fn beacon_chain_error_debug_format() {
+        let err = BeaconChainError::UnableToReadSlot;
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("UnableToReadSlot"));
+    }
+
+    #[test]
+    fn beacon_chain_error_no_state_for_slot() {
+        let err = BeaconChainError::NoStateForSlot(Slot::new(99));
+        match err {
+            BeaconChainError::NoStateForSlot(slot) => assert_eq!(slot, Slot::new(99)),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn beacon_chain_error_missing_beacon_block() {
+        let root = Hash256::repeat_byte(0xab);
+        let err = BeaconChainError::MissingBeaconBlock(root);
+        match err {
+            BeaconChainError::MissingBeaconBlock(r) => assert_eq!(r, root),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn beacon_chain_error_missing_beacon_state() {
+        let root = Hash256::repeat_byte(0xcd);
+        let err = BeaconChainError::MissingBeaconState(root);
+        match err {
+            BeaconChainError::MissingBeaconState(r) => assert_eq!(r, root),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn beacon_chain_error_db_error() {
+        let err = BeaconChainError::DBError(store::Error::DBError {
+            message: "test".to_string(),
+        });
+        assert!(matches!(err, BeaconChainError::DBError(_)));
+    }
+
+    #[test]
+    fn beacon_chain_error_db_inconsistent() {
+        let err = BeaconChainError::DBInconsistent("bad data".to_string());
+        match err {
+            BeaconChainError::DBInconsistent(msg) => assert_eq!(msg, "bad data"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn block_production_error_debug_format() {
+        let err = BlockProductionError::UnableToReadSlot;
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("UnableToReadSlot"));
+    }
+
+    #[test]
+    fn block_production_error_from_beacon_state_error() {
+        let err: BlockProductionError = BeaconStateError::InsufficientValidators.into();
+        assert!(matches!(err, BlockProductionError::BeaconStateError(_)));
+    }
+
+    #[test]
+    fn block_production_error_state_slot_too_high() {
+        let err = BlockProductionError::StateSlotTooHigh {
+            produce_at_slot: Slot::new(5),
+            state_slot: Slot::new(10),
+        };
+        match err {
+            BlockProductionError::StateSlotTooHigh {
+                produce_at_slot,
+                state_slot,
+            } => {
+                assert_eq!(produce_at_slot, Slot::new(5));
+                assert_eq!(state_slot, Slot::new(10));
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn beacon_chain_error_attesting_to_finalized_slot() {
+        let err = BeaconChainError::AttestingToFinalizedSlot {
+            finalized_slot: Slot::new(64),
+            request_slot: Slot::new(32),
+        };
+        match err {
+            BeaconChainError::AttestingToFinalizedSlot {
+                finalized_slot,
+                request_slot,
+            } => {
+                assert_eq!(finalized_slot, Slot::new(64));
+                assert_eq!(request_slot, Slot::new(32));
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn beacon_chain_error_reverted_finalized_epoch() {
+        let old = Checkpoint {
+            epoch: Epoch::new(10),
+            root: Hash256::repeat_byte(0x01),
+        };
+        let new = Checkpoint {
+            epoch: Epoch::new(9),
+            root: Hash256::repeat_byte(0x02),
+        };
+        let err = BeaconChainError::RevertedFinalizedEpoch { old, new };
+        match err {
+            BeaconChainError::RevertedFinalizedEpoch { old: o, new: n } => {
+                assert_eq!(o.epoch, Epoch::new(10));
+                assert_eq!(n.epoch, Epoch::new(9));
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn beacon_chain_error_payload_attestation_not_in_ptc() {
+        let err = BeaconChainError::PayloadAttestationValidatorNotInPtc {
+            validator_index: 42,
+            slot: Slot::new(100),
+        };
+        match err {
+            BeaconChainError::PayloadAttestationValidatorNotInPtc {
+                validator_index,
+                slot,
+            } => {
+                assert_eq!(validator_index, 42);
+                assert_eq!(slot, Slot::new(100));
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn block_production_error_invalid_block_variant() {
+        let err = BlockProductionError::InvalidBlockVariant("wrong fork".to_string());
+        match err {
+            BlockProductionError::InvalidBlockVariant(msg) => {
+                assert_eq!(msg, "wrong fork");
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn block_production_error_envelope_construction_failed() {
+        let err = BlockProductionError::EnvelopeConstructionFailed("missing payload".to_string());
+        match err {
+            BlockProductionError::EnvelopeConstructionFailed(msg) => {
+                assert_eq!(msg, "missing payload");
+            }
+            _ => panic!("wrong variant"),
+        }
+    }
+}
