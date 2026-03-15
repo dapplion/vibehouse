@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1298 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs. Open PRs unchanged + new #4954 (fork choice store milliseconds — seconds→ms conversion for Store.time/genesis_time). Nightly tests green (8 consecutive days).
+
+**CI**: ci run green. Docker build queued.
+
+**Dependency health**: cargo audit — 1 vulnerability (rsa, no fix), 3 allowed warnings (transitive unmaintained: paste via ark-ff, ansi_term via tracing-forest, bincode direct). derivative and paste successfully replaced in prior runs; remaining lockfile references are transitive from ark-ff. Zero compiler warnings.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1297 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs. Open PRs unchanged (#4992 cached PTCs, #4960 fork choice deposit test, #4939 missing payload envelopes, #4932 payload attestation coverage, #4840 eip7843, #4747 fast confirmation, #4630 eip7688 SSZ). Nightly tests green (7 consecutive days).
