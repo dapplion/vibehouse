@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1325 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged (4 with Gloas/ePBS title match): #4960 (fork choice deposit), #4932 (attestation coverage), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (33 consecutive days).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit — 1 vulnerability (rsa, no fix available). derivative and paste fully removed from direct deps (replaced with educe and pastey in prior runs); paste remains as transitive dep of alloy-primitives. bincode 1.3.3 still used in initialized_validators and slasher (v3.0.0 available but format-incompatible migration). Zero clippy warnings. Zero semver-compatible dep updates.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1324 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged (8 open): #4992 (cached PTCs), #4962 (sanity/blocks), #4960 (fork choice deposit), #4939 (missing envelopes), #4932 (attestation coverage), #4843 (variable PTC deadline), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (32 consecutive days).
