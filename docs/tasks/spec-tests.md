@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1351 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs remain open and unmerged. Notable: #4992 (cached PTCs) is mergeable=clean — could merge soon, would require BeaconState changes. #4898 (remove pending tiebreaker) and #4892 (remove impossible forkchoice branch) also mergeable=clean but are simplifications.
+
+**CI**: ci green. Nightly green (3 consecutive). Docker build queued (runner availability). cargo audit: 1 rsa vulnerability (no fix), 3 unmaintained transitive warnings (derivative removed from direct deps last run, paste replaced with pastey). cargo outdated: only rand_xorshift 0.4→0.5 and dev-only rand 0.8→0.9.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1350 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs (#4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630) remain open and unmerged. Also noted PR #4954 (fork choice store seconds→milliseconds) — cosmetic, not merged, no vibehouse impact.
