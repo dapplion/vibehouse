@@ -97,6 +97,259 @@ pub fn upgrade_to_electra<E: EthSpec>(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use types::*;
+
+    type E = MinimalEthSpec;
+
+    fn make_deneb_state(
+        num_validators: usize,
+        pre_activation: &[usize],
+    ) -> (BeaconState<E>, ChainSpec) {
+        let spec = E::default_spec();
+        let epoch = Epoch::new(10);
+        let slot = epoch.start_slot(E::slots_per_epoch());
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        });
+
+        let keypairs = types::test_utils::generate_deterministic_keypairs(num_validators);
+        let mut validators = Vec::with_capacity(num_validators);
+        let mut balances = Vec::with_capacity(num_validators);
+        for (i, kp) in keypairs.iter().enumerate() {
+            let (activation_epoch_val, activation_eligibility) = if pre_activation.contains(&i) {
+                (spec.far_future_epoch, Epoch::new(5))
+            } else {
+                (Epoch::new(0), Epoch::new(0))
+            };
+            validators.push(Validator {
+                pubkey: kp.pk.compress(),
+                withdrawal_credentials: Hash256::zero(),
+                effective_balance: 32_000_000_000,
+                slashed: false,
+                activation_eligibility_epoch: activation_eligibility,
+                activation_epoch: activation_epoch_val,
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+            });
+            balances.push(32_000_000_000);
+        }
+
+        let state = BeaconState::Deneb(BeaconStateDeneb {
+            genesis_time: 5555,
+            genesis_validators_root: Hash256::repeat_byte(0xEE),
+            slot,
+            fork: Fork {
+                previous_version: spec.capella_fork_version,
+                current_version: spec.deneb_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::zero(),
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 300,
+            validators: List::new(validators).unwrap(),
+            balances: List::new(balances).unwrap(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::new(vec![
+                ParticipationFlags::default();
+                num_validators
+            ])
+            .unwrap(),
+            current_epoch_participation: List::new(vec![
+                ParticipationFlags::default();
+                num_validators
+            ])
+            .unwrap(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(8),
+                root: Hash256::repeat_byte(0xAA),
+            },
+            current_justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(9),
+                root: Hash256::repeat_byte(0xBB),
+            },
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(7),
+                root: Hash256::repeat_byte(0xCC),
+            },
+            inactivity_scores: List::new(vec![0; num_validators]).unwrap(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_header: ExecutionPayloadHeaderDeneb {
+                block_hash: ExecutionBlockHash::repeat_byte(0x77),
+                ..Default::default()
+            },
+            next_withdrawal_index: 99,
+            next_withdrawal_validator_index: 3,
+            historical_summaries: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <_>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: EpochCache::default(),
+        });
+
+        (state, spec)
+    }
+
+    #[test]
+    fn upgrade_sets_fork_versions() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        assert!(state.as_electra().is_ok());
+        let fork = state.fork();
+        assert_eq!(fork.previous_version, spec.deneb_fork_version);
+        assert_eq!(fork.current_version, spec.electra_fork_version);
+        assert_eq!(fork.epoch, Epoch::new(10));
+    }
+
+    #[test]
+    fn upgrade_preserves_versioning() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        assert_eq!(state.genesis_time(), 5555);
+        assert_eq!(state.genesis_validators_root(), Hash256::repeat_byte(0xEE));
+    }
+
+    #[test]
+    fn upgrade_preserves_registry_and_eth1() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        assert_eq!(state.validators().len(), 8);
+        assert_eq!(state.eth1_deposit_index(), 300);
+    }
+
+    #[test]
+    fn upgrade_preserves_finality() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        assert_eq!(state.finalized_checkpoint().epoch, Epoch::new(7));
+        assert_eq!(state.previous_justified_checkpoint().epoch, Epoch::new(8));
+        assert_eq!(state.current_justified_checkpoint().epoch, Epoch::new(9));
+    }
+
+    #[test]
+    fn upgrade_preserves_capella_fields() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        let electra = state.as_electra().unwrap();
+        assert_eq!(electra.next_withdrawal_index, 99);
+        assert_eq!(electra.next_withdrawal_validator_index, 3);
+    }
+
+    #[test]
+    fn upgrade_upgrades_execution_payload_header() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        let electra = state.as_electra().unwrap();
+        assert_eq!(
+            electra.latest_execution_payload_header.block_hash,
+            ExecutionBlockHash::repeat_byte(0x77)
+        );
+    }
+
+    #[test]
+    fn upgrade_initializes_electra_fields() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        let electra = state.as_electra().unwrap();
+        assert_eq!(
+            electra.deposit_requests_start_index,
+            spec.unset_deposit_requests_start_index
+        );
+        assert_eq!(electra.deposit_balance_to_consume, 0);
+        // exit_balance_to_consume is set to the activation exit churn limit
+        assert!(electra.exit_balance_to_consume > 0);
+        // consolidation_balance_to_consume is set to the consolidation churn limit
+        // (may be 0 if total active balance is small with minimal spec)
+    }
+
+    #[test]
+    fn upgrade_queues_pre_activation_validators_as_pending_deposits() {
+        // Validators 6 and 7 are not yet active (activation_epoch = far_future)
+        let (mut state, spec) = make_deneb_state(8, &[6, 7]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        let electra = state.as_electra().unwrap();
+
+        // Should have 2 pending deposits for the pre-activation validators
+        assert_eq!(electra.pending_deposits.len(), 2);
+
+        // Pre-activation validators should have balance zeroed
+        assert_eq!(*state.balances().get(6).unwrap(), 0);
+        assert_eq!(*state.balances().get(7).unwrap(), 0);
+
+        // Their effective balance should also be zeroed
+        assert_eq!(state.validators().get(6).unwrap().effective_balance, 0);
+        assert_eq!(state.validators().get(7).unwrap().effective_balance, 0);
+
+        // Their activation eligibility should be reset to far_future
+        assert_eq!(
+            state
+                .validators()
+                .get(6)
+                .unwrap()
+                .activation_eligibility_epoch,
+            spec.far_future_epoch
+        );
+
+        // Active validators should be unaffected
+        assert_eq!(*state.balances().get(0).unwrap(), 32_000_000_000);
+    }
+
+    #[test]
+    fn upgrade_no_pre_activation_means_no_pending_deposits() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+
+        let electra = state.as_electra().unwrap();
+        assert_eq!(electra.pending_deposits.len(), 0);
+    }
+
+    #[test]
+    fn upgrade_fails_on_wrong_variant() {
+        let (mut state, spec) = make_deneb_state(8, &[]);
+        upgrade_to_electra(&mut state, &spec).unwrap();
+        // Now it's Electra — upgrading again should fail
+        assert!(upgrade_to_electra(&mut state, &spec).is_err());
+    }
+}
+
 pub fn upgrade_state_to_electra<E: EthSpec>(
     pre_state: &mut BeaconState<E>,
     earliest_exit_epoch: Epoch,
