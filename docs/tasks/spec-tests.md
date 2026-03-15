@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1272 (Mar 15) — deep spec audit, all alpha.3 changes verified implemented
+
+**Spec audit**: Reviewed all consensus-specs commits since alpha.3 tag (d2cfa51c, Mar 11):
+- #5001 (parent_block_root in bid filtering key) — already implemented: `ObservedExecutionBids` uses 3-tuple `(slot, parent_block_hash, parent_block_root)`
+- #5002 (payload signature verification wording) — cosmetic spec clarification, no code change needed
+- #4940 (initial Gloas fork choice tests) — test vectors included in alpha.3, `on_execution_payload` test passes
+- #4884 (payload data availability vote) — already implemented: `ptc_blob_data_available_weight`, `payload_data_available`, `should_extend_payload` checks both timely AND data-available
+- #4923 (ignore block if parent payload unknown) — already implemented: `GloasParentPayloadUnknown` error with gossip handler integration
+- #4918 (attestations only for known payload statuses) — already implemented: `validate_on_attestation` checks `payload_revealed` for index==1
+- #4930 (rename execution_payload_states→payload_states) — naming difference (spec refactor), behavior matches
+- #4926 (SECONDS_PER_SLOT→SLOT_DURATION_MS) — spec constant rename, no client impact (we use ChainSpec.seconds_per_slot)
+- #4948 (reorder payload status constants) — cosmetic, no impact
+- #4947 (pre-fork subscription for proposer_preferences) — documentation note
+
+**Tests**: 9/9 fork choice test categories pass (including new `on_execution_payload`). 2616/2616 workspace tests pass (web3signer excluded — requires external service).
+
+**Open Gloas PRs**: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**Conclusion**: All alpha.3 spec changes are fully implemented. No drift.
+
 ### run 1271 (Mar 15) — spec stable, CI fully green, no changes needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs — still open, 1 approval, mergeable/clean), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
