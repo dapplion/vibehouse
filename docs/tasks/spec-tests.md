@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1405 (Mar 15) — spec stable, registry_updates and process_slashings test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 28 unit tests across 2 previously-untested consensus-critical epoch processing files:
+- `registry_updates.rs` (18 tests): activation eligibility for new deposits, balance-too-low rejection, already-eligible no-op, exact min_activation_balance boundary, ejection at/above threshold, inactive validator skip, withdrawable epoch set, activation from queue, eligibility-after-finalized rejection, churn limit enforcement, delayed activation epoch, combined eligibility+ejection, multiple ejections, no-change healthy state, multiple eligibility, finalized boundary activation, empty queue no-op
+- `slashings.rs` (10 tests): no penalty without slashed validators, penalty at target withdrawable epoch, withdrawable epoch mismatch skip, unslashed validator skip, proportional penalty scaling, adjusted balance cap at total, zero slashings sum, multiple slashed validators, balance floor at zero, effective balance determines penalty
+
+**CI**: All green.
+
 ### run 1404 (Mar 15) — spec stable, initiate_validator_exit and slash_validator test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
