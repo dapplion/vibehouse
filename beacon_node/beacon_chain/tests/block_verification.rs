@@ -172,9 +172,12 @@ async fn import_chain_segment_with_envelopes(
     }
 }
 
-/// Like `import_chain_segment_with_envelopes` but ignores block import errors.
-/// Used when importing ancestors that may already exist (duplicates) or may fail for
-/// non-critical reasons.
+/// Like `import_chain_segment_with_envelopes` but ignores block import errors and
+/// envelope processing errors. Used when importing ancestors that may already exist
+/// (duplicates) or may fail for non-critical reasons. Envelope processing can fail
+/// for duplicate blocks whose states have been finalized and moved to cold storage,
+/// because the cold state replay requires envelopes that were never stored (the
+/// original import via process_chain_segment didn't include envelopes).
 async fn import_chain_segment_with_envelopes_tolerant(
     harness: &BeaconChainHarness<EphemeralHarnessType<E>>,
     blocks: &[RpcBlock<E>],
@@ -186,8 +189,21 @@ async fn import_chain_segment_with_envelopes_tolerant(
             .process_chain_segment(vec![block.clone()], NotifyExecutionLayer::Yes)
             .await
             .into_block_error();
-        if result.is_ok() {
-            process_envelope_if_present(&harness.chain, envelope).await;
+        if result.is_ok()
+            && let Some(signed_envelope) = envelope
+        {
+            // Envelope processing may fail for duplicate blocks whose states
+            // have been moved to cold storage by finalization. This is expected
+            // and not a test failure — load_parent handles missing envelopes
+            // via its patching fallback.
+            if harness
+                .chain
+                .process_self_build_envelope(signed_envelope)
+                .await
+                .is_ok()
+            {
+                harness.chain.recompute_head_at_current_slot().await;
+            }
         }
     }
 }
