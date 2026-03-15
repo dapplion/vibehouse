@@ -1380,3 +1380,24 @@ All remaining `.clone()` calls are either:
 **Impact**: Without this fix, any node could forge self-build envelopes with arbitrary payloads for any slot — the empty/forged signature would be accepted. The bid's block_hash commitment provides some protection, but the signature is an additional cryptographic guarantee.
 
 **Verification**: 575/575 state_processing tests, 79/79 EF spec tests (real crypto), 139/139 EF spec tests (fake crypto), full workspace lint-full passes.
+
+### Run 1424: add beacon_fork_choice_store and block_times_cache test coverage (2026-03-15)
+
+**Scope**: Add unit test coverage for two previously untested beacon_chain modules.
+
+**beacon_fork_choice_store.rs** (15 tests):
+- `BalancesCache`: empty cache returns None, get/position with matching/non-matching root+epoch, cache eviction at MAX_BALANCE_CACHE_SIZE (4), no duplicate entries, same root different epochs, same epoch different roots, empty balances valid, get clones independently
+- `PersistedForkChoiceStore`: SSZ encode/decode roundtrip preserving all fields
+- `CacheItem`: SSZ roundtrip
+- `BalancesCache`: SSZ roundtrip
+
+**block_times_cache.rs** (13 tests, was 1):
+- `BlockDelays::new()`: full calculation with all timestamps, missing timestamps (all None), available uses max(executed, all_blobs_observed), before-slot-start returns None
+- `set_time_blob_observed`: uses maximum (not minimum like other setters)
+- `set_time_if_less`: keeps minimum timestamp
+- `prune`: removes old entries, no underflow at early slots
+- `get_block_delays`/`get_peer_info`: unknown block returns defaults
+- Multiple blocks tracked independently
+- All `set_time_*` methods create entry if missing
+
+**Verification**: 28/28 tests pass, clippy clean, lint-full passes.
