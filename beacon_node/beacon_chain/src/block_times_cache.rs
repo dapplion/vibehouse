@@ -358,4 +358,280 @@ mod test {
         );
         assert_eq!(cache.get_peer_info(block_root), peer_info3);
     }
+
+    #[test]
+    fn blob_observed_time_uses_maximum() {
+        let mut cache = BlockTimesCache::default();
+        let block_root = Hash256::zero();
+        let slot = Slot::new(1);
+
+        // First blob
+        cache.set_time_blob_observed(block_root, slot, Duration::from_secs(5));
+        assert_eq!(
+            cache
+                .cache
+                .get(&block_root)
+                .unwrap()
+                .timestamps
+                .all_blobs_observed,
+            Some(Duration::from_secs(5))
+        );
+
+        // Later blob should update (want latest = last blob)
+        cache.set_time_blob_observed(block_root, slot, Duration::from_secs(8));
+        assert_eq!(
+            cache
+                .cache
+                .get(&block_root)
+                .unwrap()
+                .timestamps
+                .all_blobs_observed,
+            Some(Duration::from_secs(8))
+        );
+
+        // Earlier blob should NOT update
+        cache.set_time_blob_observed(block_root, slot, Duration::from_secs(3));
+        assert_eq!(
+            cache
+                .cache
+                .get(&block_root)
+                .unwrap()
+                .timestamps
+                .all_blobs_observed,
+            Some(Duration::from_secs(8))
+        );
+    }
+
+    #[test]
+    fn set_time_if_less_keeps_minimum() {
+        let mut cache = BlockTimesCache::default();
+        let block_root = Hash256::zero();
+        let slot = Slot::new(1);
+
+        cache.set_time_imported(block_root, slot, Duration::from_secs(10));
+        assert_eq!(
+            cache.cache.get(&block_root).unwrap().timestamps.imported,
+            Some(Duration::from_secs(10))
+        );
+
+        // Larger timestamp should not override
+        cache.set_time_imported(block_root, slot, Duration::from_secs(15));
+        assert_eq!(
+            cache.cache.get(&block_root).unwrap().timestamps.imported,
+            Some(Duration::from_secs(10))
+        );
+
+        // Smaller timestamp should override
+        cache.set_time_imported(block_root, slot, Duration::from_secs(7));
+        assert_eq!(
+            cache.cache.get(&block_root).unwrap().timestamps.imported,
+            Some(Duration::from_secs(7))
+        );
+    }
+
+    #[test]
+    fn block_delays_calculation() {
+        let slot_start = Duration::from_secs(100);
+        let timestamps = Timestamps {
+            observed: Some(Duration::from_secs(103)),
+            all_blobs_observed: Some(Duration::from_secs(104)),
+            consensus_verified: Some(Duration::from_secs(105)),
+            started_execution: Some(Duration::from_secs(105)),
+            executed: Some(Duration::from_secs(107)),
+            attestable: Some(Duration::from_secs(108)),
+            imported: Some(Duration::from_secs(109)),
+            set_as_head: Some(Duration::from_secs(110)),
+        };
+
+        let delays = BlockDelays::new(timestamps, slot_start);
+
+        // observed = observed_time - slot_start = 103 - 100 = 3s
+        assert_eq!(delays.observed, Some(Duration::from_secs(3)));
+        // all_blobs_observed = all_blobs_observed - slot_start = 104 - 100 = 4s
+        assert_eq!(delays.all_blobs_observed, Some(Duration::from_secs(4)));
+        // consensus_verification_time = consensus_verified - observed = 105 - 103 = 2s
+        assert_eq!(
+            delays.consensus_verification_time,
+            Some(Duration::from_secs(2))
+        );
+        // execution_time = executed - started_execution = 107 - 105 = 2s
+        assert_eq!(delays.execution_time, Some(Duration::from_secs(2)));
+        // available = max(executed, all_blobs_observed) - slot_start = max(107, 104) - 100 = 7s
+        assert_eq!(delays.available, Some(Duration::from_secs(7)));
+        // attestable = attestable - slot_start = 108 - 100 = 8s
+        assert_eq!(delays.attestable, Some(Duration::from_secs(8)));
+        // imported = imported - available_time = 109 - 107 = 2s
+        assert_eq!(delays.imported, Some(Duration::from_secs(2)));
+        // set_as_head = set_as_head - imported = 110 - 109 = 1s
+        assert_eq!(delays.set_as_head, Some(Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn block_delays_with_missing_timestamps() {
+        let slot_start = Duration::from_secs(100);
+        let timestamps = Timestamps::default(); // all None
+
+        let delays = BlockDelays::new(timestamps, slot_start);
+
+        assert_eq!(delays.observed, None);
+        assert_eq!(delays.all_blobs_observed, None);
+        assert_eq!(delays.consensus_verification_time, None);
+        assert_eq!(delays.execution_time, None);
+        assert_eq!(delays.available, None);
+        assert_eq!(delays.attestable, None);
+        assert_eq!(delays.imported, None);
+        assert_eq!(delays.set_as_head, None);
+    }
+
+    #[test]
+    fn block_delays_available_uses_max_of_executed_and_blobs() {
+        let slot_start = Duration::from_secs(100);
+
+        // Case: blobs arrive after execution
+        let timestamps = Timestamps {
+            observed: None,
+            all_blobs_observed: Some(Duration::from_secs(110)),
+            consensus_verified: None,
+            started_execution: None,
+            executed: Some(Duration::from_secs(105)),
+            attestable: None,
+            imported: None,
+            set_as_head: None,
+        };
+        let delays = BlockDelays::new(timestamps, slot_start);
+        // available_time = max(105, 110) = 110, available_delay = 110 - 100 = 10
+        assert_eq!(delays.available, Some(Duration::from_secs(10)));
+
+        // Case: execution finishes after blobs
+        let timestamps2 = Timestamps {
+            observed: None,
+            all_blobs_observed: Some(Duration::from_secs(103)),
+            consensus_verified: None,
+            started_execution: None,
+            executed: Some(Duration::from_secs(108)),
+            attestable: None,
+            imported: None,
+            set_as_head: None,
+        };
+        let delays2 = BlockDelays::new(timestamps2, slot_start);
+        // available_time = max(108, 103) = 108, available_delay = 108 - 100 = 8
+        assert_eq!(delays2.available, Some(Duration::from_secs(8)));
+    }
+
+    #[test]
+    fn block_delays_before_slot_start_returns_none() {
+        let slot_start = Duration::from_secs(100);
+        let timestamps = Timestamps {
+            observed: Some(Duration::from_secs(50)), // before slot start
+            all_blobs_observed: None,
+            consensus_verified: None,
+            started_execution: None,
+            executed: None,
+            attestable: None,
+            imported: None,
+            set_as_head: None,
+        };
+        let delays = BlockDelays::new(timestamps, slot_start);
+        // checked_sub returns None when result would be negative
+        assert_eq!(delays.observed, None);
+    }
+
+    #[test]
+    fn prune_removes_old_entries() {
+        let mut cache = BlockTimesCache::default();
+        let root1 = Hash256::from_low_u64_be(1);
+        let root2 = Hash256::from_low_u64_be(2);
+        let root3 = Hash256::from_low_u64_be(3);
+
+        cache.set_time_observed(root1, Slot::new(10), Duration::from_secs(1), None, None);
+        cache.set_time_observed(root2, Slot::new(50), Duration::from_secs(2), None, None);
+        cache.set_time_observed(root3, Slot::new(90), Duration::from_secs(3), None, None);
+
+        assert_eq!(cache.cache.len(), 3);
+
+        // Prune at slot 100: retain entries where slot > 100 - 64 = 36
+        cache.prune(Slot::new(100));
+
+        assert_eq!(cache.cache.len(), 2);
+        assert!(!cache.cache.contains_key(&root1)); // slot 10 <= 36, pruned
+        assert!(cache.cache.contains_key(&root2)); // slot 50 > 36, kept
+        assert!(cache.cache.contains_key(&root3)); // slot 90 > 36, kept
+    }
+
+    #[test]
+    fn prune_early_slot_does_not_underflow() {
+        let mut cache = BlockTimesCache::default();
+        let root = Hash256::from_low_u64_be(1);
+
+        cache.set_time_observed(root, Slot::new(0), Duration::from_secs(1), None, None);
+
+        // Prune at slot 10: 10.saturating_sub(64) = 0, retain slot > 0
+        // slot 0 is NOT > 0, so it gets pruned
+        cache.prune(Slot::new(10));
+        assert_eq!(cache.cache.len(), 0);
+    }
+
+    #[test]
+    fn get_block_delays_for_unknown_block() {
+        let cache = BlockTimesCache::default();
+        let delays = cache.get_block_delays(Hash256::zero(), Duration::from_secs(0));
+
+        assert_eq!(delays.observed, None);
+        assert_eq!(delays.imported, None);
+    }
+
+    #[test]
+    fn get_peer_info_for_unknown_block() {
+        let cache = BlockTimesCache::default();
+        let info = cache.get_peer_info(Hash256::zero());
+        assert_eq!(info, BlockPeerInfo::default());
+    }
+
+    #[test]
+    fn multiple_blocks_tracked_independently() {
+        let mut cache = BlockTimesCache::default();
+        let root1 = Hash256::from_low_u64_be(1);
+        let root2 = Hash256::from_low_u64_be(2);
+        let slot = Slot::new(1);
+
+        cache.set_time_observed(root1, slot, Duration::from_secs(5), None, None);
+        cache.set_time_observed(root2, slot, Duration::from_secs(10), None, None);
+
+        let delays1 = cache.get_block_delays(root1, Duration::from_secs(0));
+        let delays2 = cache.get_block_delays(root2, Duration::from_secs(0));
+
+        assert_eq!(delays1.observed, Some(Duration::from_secs(5)));
+        assert_eq!(delays2.observed, Some(Duration::from_secs(10)));
+    }
+
+    #[test]
+    fn all_set_time_methods_create_entry_if_missing() {
+        let root = Hash256::from_low_u64_be(1);
+        let slot = Slot::new(1);
+        let ts = Duration::from_secs(5);
+
+        let mut cache = BlockTimesCache::default();
+        cache.set_time_consensus_verified(root, slot, ts);
+        assert_eq!(cache.cache.len(), 1);
+
+        let mut cache = BlockTimesCache::default();
+        cache.set_time_executed(root, slot, ts);
+        assert_eq!(cache.cache.len(), 1);
+
+        let mut cache = BlockTimesCache::default();
+        cache.set_time_started_execution(root, slot, ts);
+        assert_eq!(cache.cache.len(), 1);
+
+        let mut cache = BlockTimesCache::default();
+        cache.set_time_attestable(root, slot, ts);
+        assert_eq!(cache.cache.len(), 1);
+
+        let mut cache = BlockTimesCache::default();
+        cache.set_time_imported(root, slot, ts);
+        assert_eq!(cache.cache.len(), 1);
+
+        let mut cache = BlockTimesCache::default();
+        cache.set_time_set_as_head(root, slot, ts);
+        assert_eq!(cache.cache.len(), 1);
+    }
 }

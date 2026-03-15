@@ -378,3 +378,247 @@ pub struct PersistedForkChoiceStore {
     pub proposer_boost_root: Hash256,
     pub equivocating_indices: BTreeSet<u64>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz::{Decode, Encode};
+
+    fn hash(n: u64) -> Hash256 {
+        Hash256::from_low_u64_be(n)
+    }
+
+    fn make_item(root_n: u64, epoch: u64, balances: Vec<u64>) -> CacheItem {
+        CacheItem {
+            block_root: hash(root_n),
+            epoch: Epoch::new(epoch),
+            balances,
+        }
+    }
+
+    #[test]
+    fn empty_cache_get_returns_none() {
+        let mut cache = BalancesCache::default();
+        assert!(cache.get(hash(1), Epoch::new(0)).is_none());
+    }
+
+    #[test]
+    fn get_returns_matching_balances() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 5, vec![100, 200, 300])],
+        };
+        let result = cache.get(hash(1), Epoch::new(5));
+        assert_eq!(result, Some(vec![100, 200, 300]));
+    }
+
+    #[test]
+    fn get_returns_none_for_wrong_block_root() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 5, vec![100])],
+        };
+        assert!(cache.get(hash(2), Epoch::new(5)).is_none());
+    }
+
+    #[test]
+    fn get_returns_none_for_wrong_epoch() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 5, vec![100])],
+        };
+        assert!(cache.get(hash(1), Epoch::new(6)).is_none());
+    }
+
+    #[test]
+    fn get_requires_both_root_and_epoch_match() {
+        let mut cache = BalancesCache {
+            items: vec![
+                make_item(1, 5, vec![10]),
+                make_item(1, 6, vec![20]),
+                make_item(2, 5, vec![30]),
+            ],
+        };
+        assert_eq!(cache.get(hash(1), Epoch::new(5)), Some(vec![10]));
+        assert_eq!(cache.get(hash(1), Epoch::new(6)), Some(vec![20]));
+        assert_eq!(cache.get(hash(2), Epoch::new(5)), Some(vec![30]));
+        assert!(cache.get(hash(2), Epoch::new(6)).is_none());
+    }
+
+    #[test]
+    fn position_returns_correct_index() {
+        let cache = BalancesCache {
+            items: vec![
+                make_item(1, 0, vec![]),
+                make_item(2, 1, vec![]),
+                make_item(3, 2, vec![]),
+            ],
+        };
+        assert_eq!(cache.position(hash(1), Epoch::new(0)), Some(0));
+        assert_eq!(cache.position(hash(2), Epoch::new(1)), Some(1));
+        assert_eq!(cache.position(hash(3), Epoch::new(2)), Some(2));
+        assert_eq!(cache.position(hash(4), Epoch::new(0)), None);
+    }
+
+    #[test]
+    fn eviction_at_max_size() {
+        // MAX_BALANCE_CACHE_SIZE is 4
+        let mut cache = BalancesCache {
+            items: vec![
+                make_item(1, 0, vec![10]),
+                make_item(2, 1, vec![20]),
+                make_item(3, 2, vec![30]),
+                make_item(4, 3, vec![40]),
+            ],
+        };
+        assert_eq!(cache.items.len(), MAX_BALANCE_CACHE_SIZE);
+
+        // Simulate adding a 5th item — process_state would evict the oldest (index 0)
+        // We test the eviction logic directly
+        if cache.items.len() == MAX_BALANCE_CACHE_SIZE {
+            cache.items.remove(0);
+        }
+        cache.items.push(make_item(5, 4, vec![50]));
+
+        assert_eq!(cache.items.len(), MAX_BALANCE_CACHE_SIZE);
+        // First item (root=1, epoch=0) should be evicted
+        assert!(cache.position(hash(1), Epoch::new(0)).is_none());
+        // New item should be present
+        assert!(cache.position(hash(5), Epoch::new(4)).is_some());
+        // Others should still be present
+        assert!(cache.position(hash(2), Epoch::new(1)).is_some());
+        assert!(cache.position(hash(4), Epoch::new(3)).is_some());
+    }
+
+    #[test]
+    fn no_duplicate_entries_same_root_and_epoch() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 5, vec![100])],
+        };
+        // Simulate process_state's dedup check: if position exists, don't insert
+        if cache.position(hash(1), Epoch::new(5)).is_none() {
+            cache.items.push(make_item(1, 5, vec![200]));
+        }
+        // Should still have only 1 item
+        assert_eq!(cache.items.len(), 1);
+        assert_eq!(cache.get(hash(1), Epoch::new(5)), Some(vec![100]));
+    }
+
+    #[test]
+    fn same_root_different_epochs_are_separate_entries() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 5, vec![100]), make_item(1, 6, vec![200])],
+        };
+        assert_eq!(cache.items.len(), 2);
+        assert_eq!(cache.get(hash(1), Epoch::new(5)), Some(vec![100]));
+        assert_eq!(cache.get(hash(1), Epoch::new(6)), Some(vec![200]));
+    }
+
+    #[test]
+    fn same_epoch_different_roots_are_separate_entries() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 5, vec![100]), make_item(2, 5, vec![200])],
+        };
+        assert_eq!(cache.items.len(), 2);
+        assert_eq!(cache.get(hash(1), Epoch::new(5)), Some(vec![100]));
+        assert_eq!(cache.get(hash(2), Epoch::new(5)), Some(vec![200]));
+    }
+
+    #[test]
+    fn empty_balances_are_valid() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 0, vec![])],
+        };
+        assert_eq!(cache.get(hash(1), Epoch::new(0)), Some(vec![]));
+    }
+
+    #[test]
+    fn get_clones_balances() {
+        let mut cache = BalancesCache {
+            items: vec![make_item(1, 0, vec![100, 200])],
+        };
+        let balances1 = cache.get(hash(1), Epoch::new(0)).unwrap();
+        let balances2 = cache.get(hash(1), Epoch::new(0)).unwrap();
+        assert_eq!(balances1, balances2);
+        // Both should be independent clones
+        assert_eq!(balances1, vec![100, 200]);
+    }
+
+    #[test]
+    fn persisted_fork_choice_store_ssz_roundtrip() {
+        let original = PersistedForkChoiceStore {
+            time: Slot::new(42),
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(1),
+                root: hash(10),
+            },
+            justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(2),
+                root: hash(20),
+            },
+            justified_state_root: hash(30),
+            unrealized_justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(3),
+                root: hash(40),
+            },
+            unrealized_justified_state_root: hash(50),
+            unrealized_finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(4),
+                root: hash(60),
+            },
+            proposer_boost_root: hash(70),
+            equivocating_indices: BTreeSet::from([1, 5, 10]),
+        };
+
+        let bytes = original.as_ssz_bytes();
+        let decoded = PersistedForkChoiceStore::from_ssz_bytes(&bytes).unwrap();
+
+        assert_eq!(original.time, decoded.time);
+        assert_eq!(original.finalized_checkpoint, decoded.finalized_checkpoint);
+        assert_eq!(original.justified_checkpoint, decoded.justified_checkpoint);
+        assert_eq!(original.justified_state_root, decoded.justified_state_root);
+        assert_eq!(
+            original.unrealized_justified_checkpoint,
+            decoded.unrealized_justified_checkpoint
+        );
+        assert_eq!(
+            original.unrealized_justified_state_root,
+            decoded.unrealized_justified_state_root
+        );
+        assert_eq!(
+            original.unrealized_finalized_checkpoint,
+            decoded.unrealized_finalized_checkpoint
+        );
+        assert_eq!(original.proposer_boost_root, decoded.proposer_boost_root);
+        assert_eq!(original.equivocating_indices, decoded.equivocating_indices);
+    }
+
+    #[test]
+    fn cache_item_ssz_roundtrip() {
+        let item = CacheItem {
+            block_root: hash(99),
+            epoch: Epoch::new(7),
+            balances: vec![1000, 2000, 3000, 4000],
+        };
+
+        let bytes = item.as_ssz_bytes();
+        let decoded = CacheItem::from_ssz_bytes(&bytes).unwrap();
+
+        assert_eq!(item.block_root, decoded.block_root);
+        assert_eq!(item.epoch, decoded.epoch);
+        assert_eq!(item.balances, decoded.balances);
+    }
+
+    #[test]
+    fn balances_cache_ssz_roundtrip() {
+        let cache = BalancesCache {
+            items: vec![
+                make_item(1, 0, vec![100, 200]),
+                make_item(2, 1, vec![300]),
+                make_item(3, 2, vec![]),
+            ],
+        };
+
+        let bytes = cache.as_ssz_bytes();
+        let decoded = BalancesCache::from_ssz_bytes(&bytes).unwrap();
+
+        assert_eq!(cache, decoded);
+    }
+}
