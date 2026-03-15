@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1344 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Verified PR #5001 "Add parent_block_root to bid filtering key" (merged Mar 12) — vibehouse already implements the correct `(slot, parent_block_hash, parent_block_root)` tuple in `ObservedExecutionBids::is_highest_value_bid`. No code change needed. PR #4943 closed (not merged). Open Gloas/ePBS PRs: #4992, #4939, #4962, #4960, #4932, #4898, #4892, #4843, #4840, #4630. PR #4992 (PTC lookbehind): still open, 1 approval (jtraglia), active discussion. Nightly tests green (50 consecutive days).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit — 1 vulnerability (rsa, no fix available). Unmaintained warnings unchanged (all transitive). Zero actionable dep updates.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1343 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No newly merged Gloas PRs since last run. Open Gloas/ePBS PRs: #4992, #4939, #4962, #4960, #4943, #4932, #4843, #4840, #4630. Nightly tests green (49 consecutive days).
