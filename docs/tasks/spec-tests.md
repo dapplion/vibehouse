@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1420 (Mar 15) — final 9 untested types files covered (68 tests)
+
+**Test coverage**: Added 68 unit tests across 9 previously-untested type/constant files, completing full test coverage of all `consensus/types/src/` files:
+- `application_domain.rs` (5 tests): constant value check (1<<24), get_domain_constant, copy semantics, debug format
+- `slot_data.rs` (3 tests): SlotData trait impl returns self, zero slot, max slot
+- `attestation_duty.rs` (7 tests): default values, clone+eq, copy, serde round trip, quoted committees_at_slot, debug, inequality
+- `proposer_preparation_data.rs` (6 tests): clone+eq, serde round trip, quoted validator_index, hex fee_recipient, inequality, debug
+- `validator_subscription.rs` (7 tests): clone+eq, serde round trip, SSZ round trip, ordering, debug, inequality by slot/aggregator
+- `sync_committee_subscription.rs` (7 tests): clone+eq, serde round trip, quoted validator_index, quoted indices, SSZ round trip, empty indices, debug
+- `validator_registration_data.rs` (12 tests): clone+eq, serde/SSZ round trip, tree hash deterministic/different, quoted gas_limit/timestamp, signed SSZ, verify_signature with empty key, signing_root, debug
+- `historical_summary.rs` (10 tests): default zero, clone+eq, copy, SSZ round trip, tree hash deterministic/different, serde, new from state, new deterministic, debug
+- `consts.rs` (11 tests): altair flag indices distinct, weights sum to denominator, participation flag weights array, num_flag_indices, sync subnet count, bellatrix intervals, gloas intervals/ptc_size/self_build_max/flag bit position/no validator overlap
+
+**CI**: All 1076 types tests pass (68 new).
+
 ### run 1419 (Mar 15) — execution_block_header, aggregate_and_proof, and contribution_and_proof test coverage added
 
 **Test coverage**: Added 44 unit tests across 5 previously-untested type files:
