@@ -291,3 +291,401 @@ impl ProgressiveBalancesCache {
 pub fn is_progressive_balances_enabled<E: EthSpec>(state: &BeaconState<E>) -> bool {
     state.fork_name_unchecked().altair_enabled()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn spec() -> ChainSpec {
+        ChainSpec::minimal()
+    }
+
+    /// The minimum balance returned by `Balance::get()` when raw is 0.
+    fn min_bal() -> u64 {
+        spec().effective_balance_increment
+    }
+
+    fn new_balances() -> EpochTotalBalances {
+        EpochTotalBalances::new(&spec())
+    }
+
+    fn make_cache(epoch: u64) -> ProgressiveBalancesCache {
+        let mut cache = ProgressiveBalancesCache::default();
+        cache.initialize(Epoch::new(epoch), new_balances(), new_balances());
+        cache
+    }
+
+    // ── EpochTotalBalances tests ──
+
+    #[test]
+    fn epoch_total_balances_new_returns_minimum() {
+        // Balance::get() returns max(raw, minimum) — so "zero" returns effective_balance_increment
+        let balances = new_balances();
+        for i in 0..NUM_FLAG_INDICES {
+            assert_eq!(balances.total_flag_balance(i).unwrap(), min_bal());
+        }
+    }
+
+    #[test]
+    fn epoch_total_balances_invalid_flag_index() {
+        let balances = new_balances();
+        assert!(balances.total_flag_balance(NUM_FLAG_INDICES).is_err());
+    }
+
+    #[test]
+    fn epoch_total_balances_on_new_attestation_unslashed() {
+        let mut balances = new_balances();
+        balances
+            .on_new_attestation(false, TIMELY_TARGET_FLAG_INDEX, 32_000_000_000)
+            .unwrap();
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_TARGET_FLAG_INDEX)
+                .unwrap(),
+            32_000_000_000
+        );
+        // Other flags unchanged — still at minimum
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_SOURCE_FLAG_INDEX)
+                .unwrap(),
+            min_bal()
+        );
+    }
+
+    #[test]
+    fn epoch_total_balances_on_new_attestation_slashed_ignored() {
+        let mut balances = new_balances();
+        balances
+            .on_new_attestation(true, TIMELY_TARGET_FLAG_INDEX, 32_000_000_000)
+            .unwrap();
+        // Raw stayed at 0, get() returns minimum
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_TARGET_FLAG_INDEX)
+                .unwrap(),
+            min_bal()
+        );
+    }
+
+    #[test]
+    fn epoch_total_balances_on_slashing_subtracts() {
+        let mut balances = new_balances();
+        balances
+            .on_new_attestation(false, TIMELY_TARGET_FLAG_INDEX, 32_000_000_000)
+            .unwrap();
+        balances
+            .on_new_attestation(false, TIMELY_SOURCE_FLAG_INDEX, 32_000_000_000)
+            .unwrap();
+
+        let mut flags = ParticipationFlags::default();
+        flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+
+        balances.on_slashing(flags, 32_000_000_000).unwrap();
+        // Back to minimum after subtracting all added balance
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_TARGET_FLAG_INDEX)
+                .unwrap(),
+            min_bal()
+        );
+        // Source not affected (flag wasn't set)
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_SOURCE_FLAG_INDEX)
+                .unwrap(),
+            32_000_000_000
+        );
+    }
+
+    #[test]
+    fn epoch_total_balances_effective_balance_change_increase() {
+        let mut balances = new_balances();
+        balances
+            .on_new_attestation(false, TIMELY_TARGET_FLAG_INDEX, 16_000_000_000)
+            .unwrap();
+
+        let mut flags = ParticipationFlags::default();
+        flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+
+        balances
+            .on_effective_balance_change(false, flags, 16_000_000_000, 32_000_000_000)
+            .unwrap();
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_TARGET_FLAG_INDEX)
+                .unwrap(),
+            32_000_000_000
+        );
+    }
+
+    #[test]
+    fn epoch_total_balances_effective_balance_change_decrease() {
+        let mut balances = new_balances();
+        balances
+            .on_new_attestation(false, TIMELY_TARGET_FLAG_INDEX, 32_000_000_000)
+            .unwrap();
+
+        let mut flags = ParticipationFlags::default();
+        flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+
+        balances
+            .on_effective_balance_change(false, flags, 32_000_000_000, 16_000_000_000)
+            .unwrap();
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_TARGET_FLAG_INDEX)
+                .unwrap(),
+            16_000_000_000
+        );
+    }
+
+    #[test]
+    fn epoch_total_balances_effective_balance_change_slashed_ignored() {
+        let mut balances = new_balances();
+        balances
+            .on_new_attestation(false, TIMELY_TARGET_FLAG_INDEX, 32_000_000_000)
+            .unwrap();
+
+        let mut flags = ParticipationFlags::default();
+        flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+
+        balances
+            .on_effective_balance_change(true, flags, 32_000_000_000, 0)
+            .unwrap();
+        assert_eq!(
+            balances
+                .total_flag_balance(TIMELY_TARGET_FLAG_INDEX)
+                .unwrap(),
+            32_000_000_000
+        );
+    }
+
+    // ── ProgressiveBalancesCache tests ──
+
+    #[test]
+    fn default_is_not_initialized() {
+        let cache = ProgressiveBalancesCache::default();
+        assert!(!cache.is_initialized());
+        assert!(!cache.is_initialized_at(Epoch::new(0)));
+    }
+
+    #[test]
+    fn initialize_sets_epoch() {
+        let cache = make_cache(5);
+        assert!(cache.is_initialized());
+        assert!(cache.is_initialized_at(Epoch::new(5)));
+        assert!(!cache.is_initialized_at(Epoch::new(4)));
+    }
+
+    #[test]
+    fn uninitialized_errors_on_query() {
+        let cache = ProgressiveBalancesCache::default();
+        assert!(cache.previous_epoch_target_attesting_balance().is_err());
+        assert!(cache.current_epoch_target_attesting_balance().is_err());
+    }
+
+    #[test]
+    fn on_new_attestation_current_epoch() {
+        let mut cache = make_cache(10);
+        cache
+            .on_new_attestation(
+                Epoch::new(10),
+                false,
+                TIMELY_TARGET_FLAG_INDEX,
+                32_000_000_000,
+            )
+            .unwrap();
+        assert_eq!(
+            cache.current_epoch_target_attesting_balance().unwrap(),
+            32_000_000_000
+        );
+        // Previous epoch untouched — at minimum
+        assert_eq!(
+            cache.previous_epoch_target_attesting_balance().unwrap(),
+            min_bal()
+        );
+    }
+
+    #[test]
+    fn on_new_attestation_previous_epoch() {
+        let mut cache = make_cache(10);
+        cache
+            .on_new_attestation(
+                Epoch::new(9),
+                false,
+                TIMELY_TARGET_FLAG_INDEX,
+                32_000_000_000,
+            )
+            .unwrap();
+        assert_eq!(
+            cache.previous_epoch_target_attesting_balance().unwrap(),
+            32_000_000_000
+        );
+        assert_eq!(
+            cache.current_epoch_target_attesting_balance().unwrap(),
+            min_bal()
+        );
+    }
+
+    #[test]
+    fn on_new_attestation_wrong_epoch_errors() {
+        let mut cache = make_cache(10);
+        assert!(
+            cache
+                .on_new_attestation(
+                    Epoch::new(8),
+                    false,
+                    TIMELY_TARGET_FLAG_INDEX,
+                    32_000_000_000
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn on_epoch_transition_shifts_balances() {
+        let mut cache = make_cache(10);
+        cache
+            .on_new_attestation(
+                Epoch::new(10),
+                false,
+                TIMELY_TARGET_FLAG_INDEX,
+                32_000_000_000,
+            )
+            .unwrap();
+
+        cache.on_epoch_transition(&spec()).unwrap();
+
+        assert!(cache.is_initialized_at(Epoch::new(11)));
+        // Previous epoch now has the old current balance
+        assert_eq!(
+            cache.previous_epoch_target_attesting_balance().unwrap(),
+            32_000_000_000
+        );
+        // Current epoch is reset — returns minimum
+        assert_eq!(
+            cache.current_epoch_target_attesting_balance().unwrap(),
+            min_bal()
+        );
+    }
+
+    #[test]
+    fn on_slashing_reduces_both_epochs() {
+        let mut cache = make_cache(10);
+        cache
+            .on_new_attestation(
+                Epoch::new(10),
+                false,
+                TIMELY_TARGET_FLAG_INDEX,
+                32_000_000_000,
+            )
+            .unwrap();
+        cache
+            .on_new_attestation(
+                Epoch::new(9),
+                false,
+                TIMELY_TARGET_FLAG_INDEX,
+                32_000_000_000,
+            )
+            .unwrap();
+
+        let mut prev_flags = ParticipationFlags::default();
+        prev_flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+        let mut curr_flags = ParticipationFlags::default();
+        curr_flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+
+        cache
+            .on_slashing(prev_flags, curr_flags, 32_000_000_000)
+            .unwrap();
+
+        // Both reduced back to minimum
+        assert_eq!(
+            cache.previous_epoch_target_attesting_balance().unwrap(),
+            min_bal()
+        );
+        assert_eq!(
+            cache.current_epoch_target_attesting_balance().unwrap(),
+            min_bal()
+        );
+    }
+
+    #[test]
+    fn source_head_balance_accessors() {
+        let mut cache = make_cache(5);
+        cache
+            .on_new_attestation(
+                Epoch::new(5),
+                false,
+                TIMELY_SOURCE_FLAG_INDEX,
+                5_000_000_000,
+            )
+            .unwrap();
+        cache
+            .on_new_attestation(Epoch::new(5), false, TIMELY_HEAD_FLAG_INDEX, 10_000_000_000)
+            .unwrap();
+        cache
+            .on_new_attestation(
+                Epoch::new(4),
+                false,
+                TIMELY_SOURCE_FLAG_INDEX,
+                15_000_000_000,
+            )
+            .unwrap();
+        cache
+            .on_new_attestation(Epoch::new(4), false, TIMELY_HEAD_FLAG_INDEX, 20_000_000_000)
+            .unwrap();
+
+        assert_eq!(
+            cache.current_epoch_source_attesting_balance().unwrap(),
+            5_000_000_000
+        );
+        assert_eq!(
+            cache.current_epoch_head_attesting_balance().unwrap(),
+            10_000_000_000
+        );
+        assert_eq!(
+            cache.previous_epoch_source_attesting_balance().unwrap(),
+            15_000_000_000
+        );
+        assert_eq!(
+            cache.previous_epoch_head_attesting_balance().unwrap(),
+            20_000_000_000
+        );
+    }
+
+    #[test]
+    fn on_effective_balance_change_through_cache() {
+        let mut cache = make_cache(10);
+        cache
+            .on_new_attestation(
+                Epoch::new(10),
+                false,
+                TIMELY_TARGET_FLAG_INDEX,
+                32_000_000_000,
+            )
+            .unwrap();
+
+        let mut flags = ParticipationFlags::default();
+        flags.add_flag(TIMELY_TARGET_FLAG_INDEX).unwrap();
+
+        cache
+            .on_effective_balance_change(false, flags, 32_000_000_000, 16_000_000_000)
+            .unwrap();
+        assert_eq!(
+            cache.current_epoch_target_attesting_balance().unwrap(),
+            16_000_000_000
+        );
+    }
+
+    #[test]
+    fn uninitialized_errors_on_mutation() {
+        let mut cache = ProgressiveBalancesCache::default();
+        assert!(
+            cache
+                .on_new_attestation(Epoch::new(0), false, TIMELY_TARGET_FLAG_INDEX, 100)
+                .is_err()
+        );
+        assert!(cache.on_epoch_transition(&spec()).is_err());
+    }
+}

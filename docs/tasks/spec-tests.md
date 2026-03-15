@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1410 (Mar 15) — slashings_cache, pubkey_cache, progressive_balances_cache, justified_balances test coverage added
+
+**Test coverage**: Added 52 unit tests across 4 previously-untested cache/data structure files:
+- `slashings_cache.rs` (12 tests): default uninitialized, new with no/slashed/empty validators, check_initialized correct/wrong slot, record_validator_slashing success/wrong slot/idempotent, update_latest_block_slot changes initialization, update preserves slashed set
+- `pubkey_cache.rs` (9 tests): default empty, insert first/wrong index/skipped index, get existing/missing, sequential inserts, duplicate pubkey increments len, get after many inserts
+- `progressive_balances_cache.rs` (19 tests): EpochTotalBalances new returns minimum, invalid flag index, attestation unslashed/slashed ignored, slashing subtracts, effective balance change increase/decrease/slashed ignored; ProgressiveBalancesCache default uninitialized, initialize sets epoch, uninitialized errors on query/mutation, attestation current/previous/wrong epoch, epoch transition shifts balances, slashing reduces both epochs, source/head balance accessors, effective balance change through cache
+- `justified_balances.rs` (8 tests): from_effective_balances empty/all active/all zero/mixed/preserves order/single active, default is empty, clone is independent
+
+**Key finding**: `Balance::get()` returns `max(raw, minimum)` where minimum = `effective_balance_increment`, so "zero" progressive balance actually returns 1 gwei — tests account for this.
+
+**CI**: All green.
+
 ### run 1409 (Mar 15) — exit_cache, runtime_fixed_vector, sync_committee, kzg_commitment test coverage added
 
 **Test coverage**: Added 37 unit tests across 4 previously-untested files:

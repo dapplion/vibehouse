@@ -60,3 +60,72 @@ impl JustifiedBalances {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_effective_balances_empty() {
+        let jb = JustifiedBalances::from_effective_balances(vec![]).unwrap();
+        assert_eq!(jb.effective_balances.len(), 0);
+        assert_eq!(jb.total_effective_balance, 0);
+        assert_eq!(jb.num_active_validators, 0);
+    }
+
+    #[test]
+    fn from_effective_balances_all_active() {
+        let jb = JustifiedBalances::from_effective_balances(vec![32_000_000_000, 32_000_000_000])
+            .unwrap();
+        assert_eq!(jb.effective_balances.len(), 2);
+        assert_eq!(jb.total_effective_balance, 64_000_000_000);
+        assert_eq!(jb.num_active_validators, 2);
+    }
+
+    #[test]
+    fn from_effective_balances_all_zero() {
+        let jb = JustifiedBalances::from_effective_balances(vec![0, 0, 0]).unwrap();
+        assert_eq!(jb.effective_balances.len(), 3);
+        assert_eq!(jb.total_effective_balance, 0);
+        assert_eq!(jb.num_active_validators, 0);
+    }
+
+    #[test]
+    fn from_effective_balances_mixed() {
+        let jb =
+            JustifiedBalances::from_effective_balances(vec![32_000_000_000, 0, 16_000_000_000])
+                .unwrap();
+        assert_eq!(jb.effective_balances.len(), 3);
+        assert_eq!(jb.total_effective_balance, 48_000_000_000);
+        assert_eq!(jb.num_active_validators, 2);
+    }
+
+    #[test]
+    fn from_effective_balances_preserves_order() {
+        let balances = vec![100, 0, 200, 300, 0];
+        let jb = JustifiedBalances::from_effective_balances(balances.clone()).unwrap();
+        assert_eq!(jb.effective_balances, balances);
+    }
+
+    #[test]
+    fn from_effective_balances_single_active() {
+        let jb = JustifiedBalances::from_effective_balances(vec![0, 0, 1_000_000_000, 0]).unwrap();
+        assert_eq!(jb.total_effective_balance, 1_000_000_000);
+        assert_eq!(jb.num_active_validators, 1);
+    }
+
+    #[test]
+    fn default_is_empty() {
+        let jb = JustifiedBalances::default();
+        assert_eq!(jb.effective_balances.len(), 0);
+        assert_eq!(jb.total_effective_balance, 0);
+        assert_eq!(jb.num_active_validators, 0);
+    }
+
+    #[test]
+    fn clone_is_independent() {
+        let jb = JustifiedBalances::from_effective_balances(vec![32_000_000_000]).unwrap();
+        let jb2 = jb.clone();
+        assert_eq!(jb, jb2);
+    }
+}
