@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1390 (Mar 15) — PR #5005 merged (test-only), no code changes needed
+
+**Spec monitoring**: consensus-specs HEAD now at 1baa05e711 (was e50889e1ca). One new merge: PR #5005 "Fix builder voluntary exit success test" — adds missing `yield "voluntary_exit"` input to the success test generator. Test-only change, no spec logic affected. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558.
+
+**PR #5005 impact**: When next spec test release drops, the `operations/voluntary_exit/builder_voluntary_exit__success` test vector will include a `voluntary_exit.ssz_snappy` file. Our test runner already handles this — `SignedVoluntaryExit::handler_name()` returns `"voluntary_exit"` and the `Operation` trait reads it automatically. No code changes needed.
+
+**PR #4992 (cached PTCs)**: Still in review (14 review comments, mergeable_state clean). No updates since Mar 13.
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check. Clippy clean (0 warnings).
+
+**Conclusion**: No code changes needed. Spec stable. Ready for next spec test release.
+
 ### run 1389 (Mar 15) — spec stable, impact analysis for FCR and withdrawal edge cases
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 14 tracked PRs open and unmerged: #5005, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558.
