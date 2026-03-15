@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1403 (Mar 15) — spec stable, weigh_justification_and_finalization test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 18 unit tests to `weigh_justification_and_finalization.rs` (previously had ZERO test coverage). This is consensus-critical finalization logic — the 2/3 supermajority threshold checks and 4 finalization rules. Tests cover:
+- Justification (6 tests): no justification below threshold, previous epoch justified at exact 2/3, current epoch justified at exact 2/3, both epochs justified, previous_justified rotated to old current_justified, justification bits shift semantics
+- Finalization rules (4 tests): rule 1 (bits 1,2,3 + epoch-3), rule 2 (bits 1,2 + epoch-2), rule 3 (bits 0,1,2 + epoch-2), rule 4 (bits 0,1 + epoch-1)
+- Edge cases (4 tests): no finalization when epoch mismatch, rule 4 priority over rule 1, just below threshold, just above threshold
+- Boundary behavior (4 tests): zero balances (0 >= 0 justifies), finalization regression not prevented (spec-conformant), finalization preserves checkpoint root, justified checkpoint root matches block root at epoch
+
+**CI**: All green.
+
 ### run 1402 (Mar 15) — spec stable, verify_bls_to_execution_change test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
