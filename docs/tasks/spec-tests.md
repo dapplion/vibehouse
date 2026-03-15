@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1387 (Mar 15) — spec stable, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. New PR #5005 (fix builder voluntary exit success test) opened — test-only change, will affect test vectors in next release but no code impact now.
+
+**CI**: All green — ci (33m), nightly-tests (40m), spec-test-version-check. Clippy clean (0 warnings).
+
+**Code coverage audit**: Reviewed Gloas code paths for untested areas. All critical paths well-covered: `is_parent_block_full` zero-hash edge cases (4 tests), envelope processing error paths (26 variants), network gossip error matching (exhaustive for all 4 gossip types). No production `todo!()`/`unimplemented!()`. `unimplemented!()` calls are only in test mock structs (MinimalValidatorStore etc.). No `#[allow(dead_code)]` on Gloas code.
+
+**Conclusion**: No code changes needed. Spec stable. Comprehensive test coverage confirmed.
+
 ### run 1386 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. Verified PR #5001 (parent_block_root in bid filtering key) already implemented in vibehouse — `observed_execution_bids.rs` uses `(Slot, ExecutionBlockHash, Hash256)` 3-tuple, tests cover independent tracking.
