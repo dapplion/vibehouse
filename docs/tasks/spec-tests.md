@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1422 (Mar 15) — metadata, payload_status, consensus_context, and delta test coverage (46 tests)
+
+**Test coverage**: Added 46 unit tests across 4 previously-untested files spanning 3 crates:
+- `beacon_node/store/src/metadata.rs` (21 tests): SchemaVersion as_u64/store roundtrip/ordering/current value, CompactionTimestamp store roundtrip/zero, AnchorInfo block_backfill_complete/all_historic_states_stored/no_historic_states_stored/full_state_pruning_enabled/as_archive_anchor/store roundtrip/uninitialized constant, BlobInfo store roundtrip/default/none slot roundtrip, DataColumnInfo store roundtrip/default, DataColumnCustodyInfo store roundtrip/default, meta keys distinct
+- `beacon_node/store/src/consensus_context.rs` (5 tests): roundtrip with all fields/no optional fields, SSZ roundtrip strips indexed_attestations, clone preserves fields, epoch computed correctly on recovery
+- `beacon_node/execution_layer/src/payload_status.rs` (12 tests): valid with matching/mismatched/null hash, invalid status with/without LVH, invalid_block_hash status, syncing/accepted status, engine error propagated, syncing/accepted/invalid_block_hash with unexpected LVH still ok
+- `consensus/state_processing/src/per_epoch_processing.rs` (8 tests): Delta default is zero, reward/penalize accumulates, reward and penalize independent, combine merges both, clone is independent, reward/penalize overflow is error
+
+**CI**: All 26 store tests + 12 execution_layer tests + 8 state_processing delta tests pass.
+
 ### run 1421 (Mar 15) — reward_cache and sync_state test coverage (25 tests)
 
 **Test coverage**: Added 25 unit tests across 2 previously-untested files in beacon_node/operation_pool and common/eth2:
