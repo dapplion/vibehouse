@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1285 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged — none merged since last check.
+
+**CI**: Latest ci run green. Docker build queued.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1284 (Mar 15) — spec stable, two new merged PRs (both already compliant)
 
 **Spec monitoring**: Two Gloas spec PRs merged since last check:
