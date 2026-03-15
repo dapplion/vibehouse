@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1345 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs (#4992, #4939, #4962, #4960, #4932, #4898, #4892, #4843, #4840, #4630) remain open and unmerged. Nightly tests green (50 consecutive days).
+
+**CI**: ci run green. Docker build still queued (runner availability — 5h+).
+
+**Dependency health**: cargo audit — 1 vulnerability (rsa, no fix available). Unmaintained warnings: derivative removed from direct deps (run 1344), paste transitive only (alloy). Zero actionable dep updates. `cargo outdated --depth 1`: only rand_xorshift 0.4→0.5 (normal) and rand 0.8→0.9 (dev-only in network).
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1344 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Verified PR #5001 "Add parent_block_root to bid filtering key" (merged Mar 12) — vibehouse already implements the correct `(slot, parent_block_hash, parent_block_root)` tuple in `ObservedExecutionBids::is_highest_value_bid`. No code change needed. PR #4943 closed (not merged). Open Gloas/ePBS PRs: #4992, #4939, #4962, #4960, #4932, #4898, #4892, #4843, #4840, #4630. PR #4992 (PTC lookbehind): still open, 1 approval (jtraglia), active discussion. Nightly tests green (50 consecutive days).
