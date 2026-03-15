@@ -512,3 +512,537 @@ impl HotHDiffBufferCache {
             .sum()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{ChainSpec, Eth1Data, FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn hash(n: u64) -> Hash256 {
+        Hash256::from_low_u64_be(n)
+    }
+
+    fn nz(n: usize) -> NonZeroUsize {
+        NonZeroUsize::new(n).unwrap()
+    }
+
+    fn make_state(slot: u64) -> BeaconState<E> {
+        let spec = ChainSpec::minimal();
+        let mut state = BeaconState::new(0, Eth1Data::default(), &spec);
+        *state.slot_mut() = Slot::new(slot);
+        state
+    }
+
+    fn make_hdiff_buffer(slot: u64) -> HDiffBuffer {
+        HDiffBuffer::from_state(make_state(slot))
+    }
+
+    // ── BlockMap tests ──
+
+    #[test]
+    fn block_map_insert_and_lookup() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(10), hash(100));
+        assert_eq!(bm.blocks.len(), 1);
+        let slot_map = bm.blocks.get(&hash(1)).unwrap();
+        assert_eq!(*slot_map.slots.get(&Slot::new(10)).unwrap(), hash(100));
+    }
+
+    #[test]
+    fn block_map_insert_multiple_slots_same_block() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(10), hash(100));
+        bm.insert(hash(1), Slot::new(11), hash(101));
+        assert_eq!(bm.blocks.len(), 1);
+        let slot_map = bm.blocks.get(&hash(1)).unwrap();
+        assert_eq!(slot_map.slots.len(), 2);
+    }
+
+    #[test]
+    fn block_map_insert_different_blocks() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(10), hash(100));
+        bm.insert(hash(2), Slot::new(20), hash(200));
+        assert_eq!(bm.blocks.len(), 2);
+    }
+
+    #[test]
+    fn block_map_prune_removes_old_slots() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(5), hash(50));
+        bm.insert(hash(1), Slot::new(10), hash(100));
+        bm.insert(hash(1), Slot::new(15), hash(150));
+
+        let pruned = bm.prune(Slot::new(10));
+        assert!(pruned.contains(&hash(50)));
+        assert!(!pruned.contains(&hash(100)));
+        assert!(!pruned.contains(&hash(150)));
+
+        let slot_map = bm.blocks.get(&hash(1)).unwrap();
+        assert_eq!(slot_map.slots.len(), 2);
+    }
+
+    #[test]
+    fn block_map_prune_removes_empty_block_entries() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(5), hash(50));
+        bm.insert(hash(2), Slot::new(15), hash(150));
+
+        let pruned = bm.prune(Slot::new(10));
+        assert!(pruned.contains(&hash(50)));
+        assert!(!bm.blocks.contains_key(&hash(1)));
+        assert!(bm.blocks.contains_key(&hash(2)));
+    }
+
+    #[test]
+    fn block_map_prune_at_zero_keeps_all() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(0), hash(100));
+        bm.insert(hash(1), Slot::new(5), hash(150));
+
+        let pruned = bm.prune(Slot::new(0));
+        assert!(pruned.is_empty());
+        assert_eq!(bm.blocks.get(&hash(1)).unwrap().slots.len(), 2);
+    }
+
+    #[test]
+    fn block_map_delete_state_root() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(10), hash(100));
+        bm.insert(hash(1), Slot::new(11), hash(101));
+
+        bm.delete(&hash(100));
+        let slot_map = bm.blocks.get(&hash(1)).unwrap();
+        assert_eq!(slot_map.slots.len(), 1);
+        assert!(slot_map.slots.get(&Slot::new(11)).is_some());
+    }
+
+    #[test]
+    fn block_map_delete_removes_empty_block() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(10), hash(100));
+
+        bm.delete(&hash(100));
+        assert!(bm.blocks.is_empty());
+    }
+
+    #[test]
+    fn block_map_delete_block_states() {
+        let mut bm = BlockMap::default();
+        bm.insert(hash(1), Slot::new(10), hash(100));
+        bm.insert(hash(1), Slot::new(11), hash(101));
+
+        let removed = bm.delete_block_states(&hash(1));
+        assert!(removed.is_some());
+        assert_eq!(removed.unwrap().slots.len(), 2);
+        assert!(bm.blocks.is_empty());
+    }
+
+    #[test]
+    fn block_map_delete_block_states_missing() {
+        let mut bm = BlockMap::default();
+        assert!(bm.delete_block_states(&hash(99)).is_none());
+    }
+
+    // ── HotHDiffBufferCache tests ──
+
+    #[test]
+    fn hdiff_cache_new_empty() {
+        let cache = HotHDiffBufferCache::new(nz(5));
+        assert_eq!(cache.len(), 0);
+        assert_eq!(cache.cap(), nz(5));
+        assert_eq!(cache.mem_usage(), 0);
+    }
+
+    #[test]
+    fn hdiff_cache_put_and_get() {
+        let mut cache = HotHDiffBufferCache::new(nz(5));
+        let buf = make_hdiff_buffer(10);
+        assert!(cache.put(hash(1), Slot::new(10), buf));
+        assert_eq!(cache.len(), 1);
+        assert!(cache.get(&hash(1)).is_some());
+        assert!(cache.get(&hash(2)).is_none());
+    }
+
+    #[test]
+    fn hdiff_cache_put_not_full_always_inserts() {
+        let mut cache = HotHDiffBufferCache::new(nz(3));
+        for i in 0..3 {
+            assert!(cache.put(hash(i), Slot::new(i), make_hdiff_buffer(i)));
+        }
+        assert_eq!(cache.len(), 3);
+    }
+
+    #[test]
+    fn hdiff_cache_capacity_one_older_replaces() {
+        let mut cache = HotHDiffBufferCache::new(nz(1));
+        cache.put(hash(1), Slot::new(10), make_hdiff_buffer(10));
+        // Inserting an older slot should succeed (replaces)
+        assert!(cache.put(hash(2), Slot::new(5), make_hdiff_buffer(5)));
+        assert_eq!(cache.len(), 1);
+        // The older slot should now be in the cache
+        assert!(cache.get(&hash(2)).is_some());
+    }
+
+    #[test]
+    fn hdiff_cache_capacity_one_newer_rejected() {
+        let mut cache = HotHDiffBufferCache::new(nz(1));
+        cache.put(hash(1), Slot::new(10), make_hdiff_buffer(10));
+        // Inserting a newer or equal slot at cap=1 should be rejected
+        assert!(!cache.put(hash(2), Slot::new(15), make_hdiff_buffer(15)));
+        assert_eq!(cache.len(), 1);
+        assert!(cache.get(&hash(1)).is_some());
+    }
+
+    #[test]
+    fn hdiff_cache_capacity_one_equal_slot_rejected() {
+        let mut cache = HotHDiffBufferCache::new(nz(1));
+        cache.put(hash(1), Slot::new(10), make_hdiff_buffer(10));
+        assert!(!cache.put(hash(2), Slot::new(10), make_hdiff_buffer(10)));
+        assert!(cache.get(&hash(1)).is_some());
+    }
+
+    #[test]
+    fn hdiff_cache_capacity_gt_one_evicts_lru() {
+        let mut cache = HotHDiffBufferCache::new(nz(2));
+        cache.put(hash(1), Slot::new(10), make_hdiff_buffer(10));
+        cache.put(hash(2), Slot::new(20), make_hdiff_buffer(20));
+        // Cache full, inserting newer should evict LRU (hash(1))
+        assert!(cache.put(hash(3), Slot::new(30), make_hdiff_buffer(30)));
+        assert_eq!(cache.len(), 2);
+    }
+
+    #[test]
+    fn hdiff_cache_mem_usage_nonzero() {
+        let mut cache = HotHDiffBufferCache::new(nz(3));
+        cache.put(hash(1), Slot::new(10), make_hdiff_buffer(10));
+        assert!(cache.mem_usage() > 0);
+    }
+
+    #[test]
+    fn hdiff_cache_cap_one_reinserts_min_slot() {
+        let mut cache = HotHDiffBufferCache::new(nz(2));
+        // Insert two entries: slot 5 (older/snapshot) and slot 20
+        cache.put(hash(1), Slot::new(5), make_hdiff_buffer(5));
+        cache.put(hash(2), Slot::new(20), make_hdiff_buffer(20));
+        // Access hash(1) to make hash(2) the LRU
+        cache.get(&hash(1));
+        // Insert newer slot 30 — should evict LRU (hash(2)), not the snapshot
+        assert!(cache.put(hash(3), Slot::new(30), make_hdiff_buffer(30)));
+        assert_eq!(cache.len(), 2);
+    }
+
+    // ── StateCache tests ──
+
+    fn make_cache(capacity: usize, headroom: usize) -> StateCache<E> {
+        StateCache::new(nz(capacity), nz(headroom), nz(2))
+    }
+
+    #[test]
+    fn state_cache_new_empty() {
+        let cache = make_cache(10, 1);
+        assert_eq!(cache.len(), 0);
+        assert_eq!(cache.capacity(), 10);
+        assert_eq!(cache.num_hdiff_buffers(), 0);
+    }
+
+    #[test]
+    fn state_cache_put_and_get_by_state_root() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        let outcome = cache.put_state(state_root, block_root, &state).unwrap();
+        assert!(matches!(outcome, PutStateOutcome::New(_)));
+        assert_eq!(cache.len(), 1);
+
+        let retrieved = cache.get_by_state_root(state_root);
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().slot(), Slot::new(8));
+    }
+
+    #[test]
+    fn state_cache_get_missing_returns_none() {
+        let mut cache = make_cache(10, 1);
+        assert!(cache.get_by_state_root(hash(99)).is_none());
+    }
+
+    #[test]
+    fn state_cache_duplicate_returns_duplicate() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache.put_state(state_root, block_root, &state).unwrap();
+        let outcome = cache.put_state(state_root, block_root, &state).unwrap();
+        assert!(matches!(outcome, PutStateOutcome::Duplicate));
+        assert_eq!(cache.len(), 1);
+    }
+
+    #[test]
+    fn state_cache_get_by_block_root_exact_slot() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache.put_state(state_root, block_root, &state).unwrap();
+        let result = cache.get_by_block_root(block_root, Slot::new(8));
+        assert!(result.is_some());
+        let (sr, s) = result.unwrap();
+        assert_eq!(sr, state_root);
+        assert_eq!(s.slot(), Slot::new(8));
+    }
+
+    #[test]
+    fn state_cache_get_by_block_root_ancestor_slot() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache.put_state(state_root, block_root, &state).unwrap();
+        // Requesting a later slot should find the ancestor at slot 8
+        let result = cache.get_by_block_root(block_root, Slot::new(12));
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().0, state_root);
+    }
+
+    #[test]
+    fn state_cache_get_by_block_root_before_all_slots_returns_none() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache.put_state(state_root, block_root, &state).unwrap();
+        // Requesting a slot before any stored slot
+        let result = cache.get_by_block_root(block_root, Slot::new(5));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn state_cache_get_by_block_root_missing_block() {
+        let mut cache = make_cache(10, 1);
+        assert!(cache.get_by_block_root(hash(99), Slot::new(0)).is_none());
+    }
+
+    #[test]
+    fn state_cache_delete_state() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache.put_state(state_root, block_root, &state).unwrap();
+        cache.delete_state(&state_root);
+        assert_eq!(cache.len(), 0);
+        assert!(cache.get_by_state_root(state_root).is_none());
+    }
+
+    #[test]
+    fn state_cache_delete_block_states() {
+        let mut cache = make_cache(10, 1);
+        let block_root = hash(10);
+
+        // Insert two states for the same block
+        let state1 = make_state(8);
+        let state2 = make_state(9);
+        cache.put_state(hash(1), block_root, &state1).unwrap();
+        cache.put_state(hash(2), block_root, &state2).unwrap();
+
+        cache.delete_block_states(&block_root);
+        assert_eq!(cache.len(), 0);
+    }
+
+    #[test]
+    fn state_cache_update_head_block_root() {
+        let mut cache = make_cache(10, 1);
+        cache.update_head_block_root(hash(42));
+        assert_eq!(cache.head_block_root, hash(42));
+    }
+
+    #[test]
+    fn state_cache_put_finalized_state_root_returns_finalized() {
+        let mut cache = make_cache(10, 1);
+        // Finalized state must be at epoch boundary (slot % 8 == 0 for minimal)
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache
+            .update_finalized_state(state_root, block_root, state.clone(), &[])
+            .unwrap();
+
+        // Now try to put the same state_root
+        let outcome = cache.put_state(state_root, block_root, &state).unwrap();
+        assert!(matches!(outcome, PutStateOutcome::Finalized));
+    }
+
+    #[test]
+    fn state_cache_get_finalized_by_state_root() {
+        let mut cache = make_cache(10, 1);
+        let state = make_state(8);
+        let state_root = hash(1);
+        let block_root = hash(10);
+
+        cache
+            .update_finalized_state(state_root, block_root, state, &[])
+            .unwrap();
+
+        let result = cache.get_by_state_root(state_root);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().slot(), Slot::new(8));
+    }
+
+    #[test]
+    fn state_cache_update_finalized_unaligned_error() {
+        let mut cache = make_cache(10, 1);
+        // Slot 5 is not epoch-aligned (5 % 8 != 0)
+        let state = make_state(5);
+
+        let result = cache.update_finalized_state(hash(1), hash(10), state, &[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn state_cache_update_finalized_decreasing_slot_error() {
+        let mut cache = make_cache(10, 1);
+        let state16 = make_state(16);
+        let state8 = make_state(8);
+
+        cache
+            .update_finalized_state(hash(1), hash(10), state16, &[])
+            .unwrap();
+
+        let result = cache.update_finalized_state(hash(2), hash(20), state8, &[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn state_cache_put_pre_finalized_becomes_hdiff_buffer() {
+        let mut cache = make_cache(10, 1);
+        // Finalize at slot 16
+        let fin_state = make_state(16);
+        cache
+            .update_finalized_state(hash(1), hash(10), fin_state, &[])
+            .unwrap();
+
+        // Put state at slot 8 (before finalized)
+        let pre_state = make_state(8);
+        let outcome = cache.put_state(hash(2), hash(20), &pre_state).unwrap();
+        assert!(matches!(outcome, PutStateOutcome::PreFinalizedHDiffBuffer));
+        assert_eq!(cache.len(), 0); // Not in the state cache
+        assert_eq!(cache.num_hdiff_buffers(), 1); // But in the hdiff cache
+    }
+
+    #[test]
+    fn state_cache_put_hdiff_buffer_pre_finalized() {
+        let mut cache = make_cache(10, 1);
+        let fin_state = make_state(16);
+        cache
+            .update_finalized_state(hash(1), hash(10), fin_state, &[])
+            .unwrap();
+
+        let buf = make_hdiff_buffer(8);
+        cache.put_hdiff_buffer(hash(2), Slot::new(8), &buf);
+        assert_eq!(cache.num_hdiff_buffers(), 1);
+    }
+
+    #[test]
+    fn state_cache_put_hdiff_buffer_post_finalized_rejected() {
+        let mut cache = make_cache(10, 1);
+        let fin_state = make_state(16);
+        cache
+            .update_finalized_state(hash(1), hash(10), fin_state, &[])
+            .unwrap();
+
+        let buf = make_hdiff_buffer(24);
+        cache.put_hdiff_buffer(hash(2), Slot::new(24), &buf);
+        assert_eq!(cache.num_hdiff_buffers(), 0);
+    }
+
+    #[test]
+    fn state_cache_cull_respects_order() {
+        // Create a cache with capacity 10, headroom 1
+        let mut cache = make_cache(10, 1);
+
+        // Insert states at various slots
+        // Epoch boundary = slot % 8 == 0, so slots 0, 8, 16, 24...
+        // Non-boundary (mid-epoch) = slot 1,2,3...7, 9,10...
+        for i in 0u64..8 {
+            let slot = i + 1; // slots 1-8 (mid-epoch except slot 8)
+            let state = make_state(slot);
+            cache
+                .put_state(hash(i + 100), hash(i + 200), &state)
+                .unwrap();
+        }
+
+        assert_eq!(cache.len(), 8);
+
+        // Cull 3 states
+        let deleted = cache.cull(3);
+        assert_eq!(deleted.len(), 3);
+        assert_eq!(cache.len(), 5);
+    }
+
+    #[test]
+    fn state_cache_update_finalized_prunes_old_states() {
+        let mut cache = make_cache(10, 1);
+
+        // Put states at slots 8 and 16 (both epoch-boundary aligned)
+        let state8 = make_state(8);
+        let state16 = make_state(16);
+        cache.put_state(hash(1), hash(10), &state8).unwrap();
+        cache.put_state(hash(2), hash(20), &state16).unwrap();
+        assert_eq!(cache.len(), 2);
+
+        // Finalize at slot 16 — should prune slot 8 state
+        let fin_state = make_state(16);
+        cache
+            .update_finalized_state(hash(3), hash(30), fin_state, &[])
+            .unwrap();
+
+        // State at slot 8 was pruned from the LRU cache
+        assert!(cache.get_by_state_root(hash(1)).is_none());
+    }
+
+    #[test]
+    fn state_cache_get_by_block_root_picks_most_recent_ancestor() {
+        let mut cache = make_cache(10, 1);
+        let block_root = hash(10);
+
+        let state1 = make_state(1);
+        let state5 = make_state(5);
+        let state9 = make_state(9);
+        cache.put_state(hash(1), block_root, &state1).unwrap();
+        cache.put_state(hash(5), block_root, &state5).unwrap();
+        cache.put_state(hash(9), block_root, &state9).unwrap();
+
+        // Requesting slot 7 should find slot 5 (most recent <= 7)
+        let result = cache.get_by_block_root(block_root, Slot::new(7));
+        assert!(result.is_some());
+        let (sr, s) = result.unwrap();
+        assert_eq!(sr, hash(5));
+        assert_eq!(s.slot(), Slot::new(5));
+    }
+
+    #[test]
+    fn state_cache_rebase_on_finalized_noop_without_finalized() {
+        let cache = make_cache(10, 1);
+        let spec = ChainSpec::minimal();
+        let mut state = make_state(8);
+        // Should be a no-op when no finalized state
+        assert!(cache.rebase_on_finalized(&mut state, &spec).is_ok());
+    }
+
+    #[test]
+    fn state_cache_hdiff_buffer_mem_usage() {
+        let cache = make_cache(10, 1);
+        assert_eq!(cache.hdiff_buffer_mem_usage(), 0);
+    }
+}
