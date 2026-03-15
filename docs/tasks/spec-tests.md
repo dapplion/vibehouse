@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1252 (Mar 15) — CI green, spec stable, no action needed
+
+**CI**: Run 23100175757 fully green — all 6 jobs passed (check+clippy, ef-tests, unit tests, beacon_chain, http_api, network+op_pool). Fix from run 1249 (invalid_signature tests after availability bit patch) confirmed working.
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. Recently merged PRs reviewed: #5001 (parent_block_root bid filtering) already implemented, #5002 (wording clarification) docs-only, #4940 (new Gloas fork choice tests) included in v1.7.0-alpha.3 vectors. Open Gloas PRs: #4939 (request missing envelopes), #4992 (cached PTCs), #4843 (variable PTC deadline), #4954 (millisecond timestamps) — all still open. Cargo audit unchanged (1 rsa advisory).
+
+**Conclusion**: Project stable. CI green. No spec drift, no code changes needed.
+
 ### run 1251 (Mar 15) — spec stable, CI in progress, no action needed
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged. Cargo audit unchanged (1 rsa advisory, no fix available).
