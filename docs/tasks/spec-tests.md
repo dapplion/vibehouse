@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1408 (Mar 15) — participation_flags, graffiti, sync_subnet_id, data_column_subnet_id test coverage added
+
+**Spec monitoring**: consensus-specs HEAD has moved past 1baa05e711 — PR #5005 (test fix) merged today. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 53 unit tests across 4 previously-untested core type files:
+- `participation_flags.rs` (16 tests): default is zero, add_flag sets individual bits, add multiple flags, idempotent add, out-of-range errors, has_flag empty/after set/out-of-range, SSZ round-trip, SSZ fixed len, SSZ decode specific value, tree hash matches u8, serde round-trip, equality
+- `graffiti.rs` (16 tests): default is zeros, from_bytes round-trip, as_utf8_lossy ASCII/strips control chars, display is hex, GraffitiString from_str valid/max length/too long/empty, SSZ round-trip/fixed len/decode wrong length, tree hash matches bytes, serde round-trips (Graffiti + GraffitiString)
+- `sync_subnet_id.rs` (13 tests): new/deref, from_u64 round-trip, from_ref, display, as_ref in-range/out-of-range, deref_mut, compute_subnets single/same subcommittee/different/empty, equality+hash, serde round-trip
+- `data_column_subnet_id.rs` (8 tests): new/deref, from_u64 round-trip, from_ref, display, debug, from_column_index wraps/single subnet, deref_mut, equality+hash, serde round-trip, error conversion
+
+**CI**: All green.
+
 ### run 1407 (Mar 15) — get_attesting_indices, base_reward, and deposit_data_tree test coverage added
 
 **Test coverage**: Added 42 unit tests across 4 previously-untested consensus-critical common utility files:
