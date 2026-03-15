@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1409 (Mar 15) — exit_cache, runtime_fixed_vector, sync_committee, kzg_commitment test coverage added
+
+**Test coverage**: Added 37 unit tests across 4 previously-untested files:
+- `exit_cache.rs` (12 tests): default uninitialized errors, new with empty/far-future/single/multiple-same/multiple-different validators, record_validator_exit equal/greater/less/uninitialized, get_churn_at future returns zero/past errors
+- `runtime_fixed_vector.rs` (12 tests): new_from_vec, new_empty, default fills, to_vec clones, into_vec moves, deref slice access, deref_mut modification, take replaces with defaults, into_iter owned/ref, clone, debug format
+- `sync_committee.rs` (8 tests): temporary uses empty pubkeys, contains present/absent, get_subcommittee_pubkeys valid/out-of-range, subcommittee_positions empty/all-same/single occurrence
+- `deneb.rs` (5 tests): versioned hash starts with version byte, different commitments different hashes, same commitment same hash, hash is 32 bytes, version byte overrides hash
+
+**CI**: All green.
+
 ### run 1408 (Mar 15) — participation_flags, graffiti, sync_subnet_id, data_column_subnet_id test coverage added
 
 **Spec monitoring**: consensus-specs HEAD has moved past 1baa05e711 — PR #5005 (test fix) merged today. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
