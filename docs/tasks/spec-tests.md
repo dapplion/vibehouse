@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1259 (Mar 15) — spec stable, reviewed upcoming PR #4992
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**PR #4992 review (cached PTCs)**: Reviewed the full diff. Adds `previous_ptc` and `current_ptc` fields to BeaconState, rotated in `process_slots`. `get_ptc` becomes a simple lookup instead of recomputing each time. Impact on vibehouse: new state fields, `compute_ptc` helper, PTC rotation in per-slot processing, state upgrade initialization. Ready to implement when merged.
+
+**Heze fork**: Noted specs/heze/ directory exists in consensus-specs with inclusion lists (ILs), modified ExecutionPayloadBid, new BeaconState fields. Still work-in-progress, no action needed.
+
+**Code health**: Clippy clean (zero warnings), cargo doc clean, cargo audit unchanged (1 rsa advisory, no fix). CI run 23101168845 in progress (check+clippy passed).
+
+**Conclusion**: Project stable. No spec drift. Prepared for upcoming PR #4992.
+
 ### run 1258 (Mar 15) — spec stable, tinyvec dep update
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged. PR #4992 (cached PTCs) has 1 APPROVED (jtraglia Mar 12), comments from jihoonsong (Mar 13), same head d76a278b0a.
