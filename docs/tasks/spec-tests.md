@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1352 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs remain open and unmerged. Reviewed diffs for 3 near-merge PRs:
+- #4992 (cached PTCs): adds `previous_ptc`/`current_ptc` to BeaconState, changes `get_ptc` from computation to state lookup, adds rotation in `process_slots`. Most impactful — will need implementation when merged.
+- #4898 (remove pending tiebreaker): removes unreachable `PAYLOAD_STATUS_PENDING` check in `get_payload_status_tiebreaker`. Trivial.
+- #4892 (remove impossible forkchoice branch): replaces `<=` with assert + `==` in `is_supporting_vote`. Trivial.
+
+**CI**: ci green. Clippy clean (no warnings). cargo audit: 1 rsa vulnerability (no fix), unmaintained transitive warnings (ansi_term from tracing-forest, bincode, paste from alloy — all transitive, not actionable). cargo outdated: only rand_xorshift 0.4→0.5 (blocked by rand_core mismatch) and dev-only rand 0.8→0.9.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed. Proactively reviewed upcoming spec PRs for preparedness.
+
 ### run 1351 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs remain open and unmerged. Notable: #4992 (cached PTCs) is mergeable=clean — could merge soon, would require BeaconState changes. #4898 (remove pending tiebreaker) and #4892 (remove impossible forkchoice branch) also mergeable=clean but are simplifications.
