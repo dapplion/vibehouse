@@ -29,6 +29,34 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1397 (Mar 15) — spec stable, PR #4843 (variable PTC deadline) analyzed
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged. No new PRs opened.
+
+**PR #4843 (Variable PTC deadline) impact analysis**: 1 approval (jtraglia), clean mergeable_state, last updated Feb 19. Significant spec change:
+1. **Renames `payload_present` → `payload_timely`** in `PayloadAttestationData` and `LatestMessage` — affects types, fork choice, gossip validation, VC attestation construction
+2. **Renames `is_payload_timely` → `has_payload_quorum`** (existing fork choice store function) — our equivalent is `payload_revealed` check in proto_array
+3. **Adds `MIN_PAYLOAD_DUE_BPS` config** (3000 bps = 30% of slot) — new config constant
+4. **Adds `get_payload_due_ms(payload_size)` helper** — linear interpolation from MIN_PAYLOAD_DUE_BPS (size 0) to PAYLOAD_ATTESTATION_DUE_BPS (MAX_PAYLOAD_SIZE) — determines variable deadline based on envelope SSZ size
+5. **Adds `payload_envelopes` to fork choice Store** — `on_execution_payload` now stores envelope for size lookup
+6. **Changes PTC attestation construction** — new `is_payload_timely(store, root, payload_arrival_time)` checks if payload arrived before its size-dependent deadline (replaces simple envelope-seen boolean)
+7. **Adds `get_payload_size(envelope)`** helper — SSZ serialized size of envelope
+
+**Impact on vibehouse**: MEDIUM-HIGH. When this merges:
+- Rename `payload_present` → `payload_timely` across ~15 files (types, fork choice, gossip, VC, tests)
+- Add `MIN_PAYLOAD_DUE_BPS` to ChainSpec
+- Implement `get_payload_due_ms` and `get_payload_size` helpers
+- Store envelope in fork choice (add to proto_array `ProtoBlock` or similar)
+- VC must track payload arrival time and use variable deadline for PTC attestation construction
+- Current simple boolean (envelope seen = present) becomes time-aware check
+Estimated scope: ~500 lines across 15+ files. High complexity due to VC timing changes.
+
+**Other unanalyzed PRs**: #4962 (sanity/blocks tests, 0 approvals, blocked), #4960 (fork choice deposit test, 0 approvals, blocked), #4932 (sanity/blocks tests, 0 approvals, blocked) — all test-only PRs, no spec behavior changes. #4747 (Fast Confirmation Rule, 0 approvals, dirty) — separate feature, not ePBS-specific.
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check.
+
+**Conclusion**: No code changes needed. Spec stable. PR #4843 is the next most impactful PR to watch — significant rename + variable deadline logic.
+
 ### run 1396 (Mar 15) — spec stable, prep branches rebased, PR #4954 analyzed
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged. No new PRs opened.
