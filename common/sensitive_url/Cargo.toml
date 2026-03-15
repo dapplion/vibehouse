@@ -8,3 +8,6 @@ edition = { workspace = true }
 [dependencies]
 serde = { workspace = true }
 url = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

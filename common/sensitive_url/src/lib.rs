@@ -117,4 +117,96 @@ mod tests {
         assert_eq!(surl.to_string(), "http://localhost:5052/");
         assert_eq!(surl.full.to_string(), full);
     }
+
+    #[test]
+    fn redact_url_with_path_only() {
+        let full = "https://example.com/api/v1/status";
+        let surl = SensitiveUrl::parse(full).unwrap();
+        assert_eq!(surl.to_string(), "https://example.com/");
+        assert_eq!(surl.full.to_string(), full);
+    }
+
+    #[test]
+    fn redact_url_with_query_only() {
+        let full = "https://example.com/?token=secret";
+        let surl = SensitiveUrl::parse(full).unwrap();
+        assert_eq!(surl.to_string(), "https://example.com/");
+    }
+
+    #[test]
+    fn redact_url_with_username_no_password() {
+        let full = "https://user@example.com/path";
+        let surl = SensitiveUrl::parse(full).unwrap();
+        let display = surl.to_string();
+        assert!(
+            !display.contains("user@"),
+            "username should be redacted: {display}"
+        );
+    }
+
+    #[test]
+    fn debug_shows_redacted() {
+        let surl = SensitiveUrl::parse("https://secret:pass@example.com/path").unwrap();
+        let debug = format!("{:?}", surl);
+        assert!(
+            !debug.contains("secret"),
+            "debug should not expose credentials: {debug}"
+        );
+        assert!(
+            !debug.contains("pass"),
+            "debug should not expose password: {debug}"
+        );
+    }
+
+    #[test]
+    fn as_ref_returns_redacted() {
+        let surl = SensitiveUrl::parse("https://user:pass@example.com/api").unwrap();
+        let as_ref: &str = surl.as_ref();
+        assert!(!as_ref.contains("user"), "as_ref should be redacted");
+        assert!(!as_ref.contains("pass"), "as_ref should be redacted");
+    }
+
+    #[test]
+    fn from_str_works() {
+        let surl: SensitiveUrl = "http://localhost:8080/".parse().unwrap();
+        assert_eq!(surl.full.to_string(), "http://localhost:8080/");
+    }
+
+    #[test]
+    fn from_str_invalid_url() {
+        let result: Result<SensitiveUrl, _> = "not a url".parse();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn partial_eq() {
+        let a = SensitiveUrl::parse("http://localhost:5052/").unwrap();
+        let b = SensitiveUrl::parse("http://localhost:5052/").unwrap();
+        assert_eq!(a, b);
+
+        let c = SensitiveUrl::parse("http://localhost:5053/").unwrap();
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let original = SensitiveUrl::parse("http://localhost:5052/").unwrap();
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: SensitiveUrl = serde_json::from_str(&json).unwrap();
+        assert_eq!(original, deserialized);
+    }
+
+    #[test]
+    fn serde_serializes_full_url() {
+        let surl = SensitiveUrl::parse("https://user:pass@example.com/path").unwrap();
+        let json = serde_json::to_string(&surl).unwrap();
+        // Serialization should include the full URL (needed for config persistence)
+        assert!(json.contains("user:pass@example.com"), "json: {json}");
+    }
+
+    #[test]
+    fn ipv6_url() {
+        let surl = SensitiveUrl::parse("http://[::1]:5052/").unwrap();
+        assert_eq!(surl.full.to_string(), "http://[::1]:5052/");
+    }
 }

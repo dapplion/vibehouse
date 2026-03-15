@@ -102,3 +102,144 @@ impl ListenAddress {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn v4_addr() -> ListenAddr<Ipv4Addr> {
+        ListenAddr {
+            addr: Ipv4Addr::new(127, 0, 0, 1),
+            disc_port: 9000,
+            quic_port: 9001,
+            tcp_port: 9002,
+        }
+    }
+
+    fn v6_addr() -> ListenAddr<Ipv6Addr> {
+        ListenAddr {
+            addr: Ipv6Addr::LOCALHOST,
+            disc_port: 9100,
+            quic_port: 9101,
+            tcp_port: 9102,
+        }
+    }
+
+    // ── Socket address methods ───────────────────────────────────
+
+    #[test]
+    fn v4_discovery_socket_addr() {
+        let addr = v4_addr();
+        let sa = addr.discovery_socket_addr();
+        assert_eq!(
+            sa,
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9000)
+        );
+    }
+
+    #[test]
+    fn v4_quic_socket_addr() {
+        let addr = v4_addr();
+        let sa = addr.quic_socket_addr();
+        assert_eq!(
+            sa,
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9001)
+        );
+    }
+
+    #[test]
+    fn v4_tcp_socket_addr() {
+        let addr = v4_addr();
+        let sa = addr.tcp_socket_addr();
+        assert_eq!(
+            sa,
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9002)
+        );
+    }
+
+    #[test]
+    fn v6_discovery_socket_addr() {
+        let addr = v6_addr();
+        let sa = addr.discovery_socket_addr();
+        assert_eq!(sa, SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 9100));
+    }
+
+    #[test]
+    fn v6_quic_socket_addr() {
+        let addr = v6_addr();
+        let sa = addr.quic_socket_addr();
+        assert_eq!(sa, SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 9101));
+    }
+
+    #[test]
+    fn v6_tcp_socket_addr() {
+        let addr = v6_addr();
+        let sa = addr.tcp_socket_addr();
+        assert_eq!(sa, SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 9102));
+    }
+
+    // ── ListenAddress v4/v6 selectors ────────────────────────────
+
+    #[test]
+    fn listen_address_v4_returns_some_for_v4() {
+        let la = ListenAddress::V4(v4_addr());
+        assert!(la.v4().is_some());
+        assert!(la.v6().is_none());
+    }
+
+    #[test]
+    fn listen_address_v6_returns_some_for_v6() {
+        let la = ListenAddress::V6(v6_addr());
+        assert!(la.v6().is_some());
+        assert!(la.v4().is_none());
+    }
+
+    #[test]
+    fn listen_address_dual_stack_returns_both() {
+        let la = ListenAddress::DualStack(v4_addr(), v6_addr());
+        assert!(la.v4().is_some());
+        assert!(la.v6().is_some());
+    }
+
+    // ── libp2p_addresses ─────────────────────────────────────────
+
+    #[test]
+    fn libp2p_addresses_v4_produces_two_addrs() {
+        let la = ListenAddress::V4(v4_addr());
+        let addrs: Vec<_> = la.libp2p_addresses().collect();
+        // TCP + QUIC
+        assert_eq!(addrs.len(), 2);
+
+        let tcp_str = addrs[0].to_string();
+        assert!(
+            tcp_str.contains("/ip4/127.0.0.1/tcp/9002"),
+            "got: {tcp_str}"
+        );
+
+        let quic_str = addrs[1].to_string();
+        assert!(
+            quic_str.contains("/ip4/127.0.0.1/udp/9001/quic-v1"),
+            "got: {quic_str}"
+        );
+    }
+
+    #[test]
+    fn libp2p_addresses_v6_produces_two_addrs() {
+        let la = ListenAddress::V6(v6_addr());
+        let addrs: Vec<_> = la.libp2p_addresses().collect();
+        assert_eq!(addrs.len(), 2);
+
+        let quic_str = addrs[0].to_string();
+        assert!(quic_str.contains("quic-v1"), "got: {quic_str}");
+
+        let tcp_str = addrs[1].to_string();
+        assert!(tcp_str.contains("tcp/9102"), "got: {tcp_str}");
+    }
+
+    #[test]
+    fn libp2p_addresses_dual_stack_produces_four_addrs() {
+        let la = ListenAddress::DualStack(v4_addr(), v6_addr());
+        let addrs: Vec<_> = la.libp2p_addresses().collect();
+        assert_eq!(addrs.len(), 4);
+    }
+}
