@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1348 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.5.0 on consensus-spec-tests, v1.7.0-alpha.3 on consensus-specs). Open Gloas/ePBS PRs unchanged: #4992 (cached PTCs), #4962 (sanity/blocks missed payload withdrawals), #4960 (fork choice deposit test), #4939 (request missing envelopes), #4932 (sanity/blocks payload attestation), #4843 (variable PTC deadline), #4840 (eip7843), #4630 (eip7688 SSZ). All still open and unmerged.
+
+**CI**: ci green, nightly green (3 consecutive successes). cargo audit: 1 vulnerability (rsa, no fix), 5 unmaintained warnings (all transitive).
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1346 (Mar 15) — spec stable, PR #4940 merged, no code changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.5.0 on consensus-spec-tests, v1.7.0-alpha.3 on consensus-specs). PR #4940 (Add initial fork choice tests for Gloas) **MERGED** Mar 13 — adds `on_execution_payload` step and `head_payload_status` check to fork choice test format. Our test runner already supports both (`OnExecutionPayload` step + `check_head_payload_status`). No test vectors released yet. Remaining 9 tracked open PRs: #4992, #4939, #4962, #4960, #4932, #4898, #4892, #4843, #4840, #4630 — all still open and unmerged.
