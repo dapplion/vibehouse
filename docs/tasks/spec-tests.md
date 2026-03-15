@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1434 (Mar 16) — block_id, state_id, produce_block, and per_block_processing errors test coverage (75 tests)
+
+**Test coverage**: Added 75 unit tests across 4 previously-untested files spanning 2 crates:
+- `consensus/state_processing/src/per_block_processing/errors.rs` (37 tests): BlockProcessingError From conversions (BeaconStateError, ssz_types::Error, DecodeError, ArithError, SyncAggregateInvalid, ContextError, EpochCacheError, milhouse::Error), BlockOperationError::invalid/from conversions, HeaderInvalid→BlockProcessingError, IntoWithIndex macro tests (ProposerSlashingInvalid, AttesterSlashingInvalid, AttestationInvalid, DepositInvalid, ExitInvalid, BlsExecutionChangeInvalid), passthrough variants (BeaconStateError, ArithError), IndexedAttestationInvalid→AttestationInvalid conversion, error variant field tests (HeaderInvalid, AttestationInvalid, ExitInvalid, PayloadAttestationInvalid, BlockProcessingError), Gloas builder error variants (BuilderUnknown, BuilderNotActive, BuilderPendingWithdrawalInQueue, WithdrawalBuilderIndexInvalid), clone/eq/debug
+- `beacon_node/http_api/src/block_id.rs` (17 tests): FromStr parsing (head, genesis, finalized, justified, slot, root, invalid), TryFrom<String>, Display (head, genesis, slot, root), constructors (from_slot, from_root), Debug, edge cases (slot zero, u64::MAX)
+- `beacon_node/http_api/src/state_id.rs` (16 tests): FromStr parsing (head, genesis, finalized, justified, slot, root, invalid), TryFrom<String>, Display (head, genesis, slot, root), from_slot constructor, Debug, edge cases (slot zero, u64::MAX)
+- `beacon_node/http_api/src/produce_block.rs` (5 tests): get_randao_verification (no skip, no skip with infinity, skip with infinity, skip without infinity errors), DEFAULT_BOOST_FACTOR value
+
+**CI**: All 75 new tests pass. 38 http_api + 37 state_processing.
+
 ### run 1433 (Mar 16) — HTTP API, VC types, and epoch processing error test coverage (81 tests)
 
 **Test coverage**: Added 81 unit tests across 5 previously-untested files spanning 3 crates:
