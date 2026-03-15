@@ -29,6 +29,39 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1384 (Mar 15) — all tests green, spec stable, impact analysis for pending PRs
+
+**EF spec tests**: 79/79 real crypto ✓, 139/139 fake crypto ✓ — all passing.
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 11 tracked Gloas-labeled open PRs: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630. Also tracking non-labeled: #4747 (Fast Confirmation Rule), #4558 (Cell Dissemination).
+
+**New PRs added to tracking**:
+- PR #4898 (Remove pending status from tiebreaker) — small fork choice cleanup
+- PR #4892 (Remove impossible branch in forkchoice) — assert replacement
+
+**Impact analysis for highest-priority pending PRs**:
+
+1. **PR #4992 (cached PTCs)** — approved by jtraglia, 14 review comments, active discussion
+   - Adds `previous_ptc` + `current_ptc` fields to BeaconState (Vector[ValidatorIndex, PTC_SIZE])
+   - New `compute_ptc` function (our `get_ptc_committee` body moves there)
+   - `get_ptc` becomes state lookup: `slot == state.slot → current_ptc`, `slot + 1 == state.slot → previous_ptc`
+   - `process_slots` rotates: `previous_ptc = current_ptc; current_ptc = compute_ptc(state)`
+   - `upgrade_to_gloas` initializes both fields (zeros, then compute current)
+   - Impact: BeaconState Gloas variant (+2 fields), superstruct, SSZ, `get_ptc_committee` callers (7 files)
+
+2. **PR #4843 (variable PTC deadline)** — approved by jtraglia, active discussion with potuz/fradamt
+   - Renames `payload_present` → `payload_timely` (454 occurrences across 25 files)
+   - Renames `is_payload_timely` → `has_payload_quorum`
+   - Adds `payload_envelopes` dict to fork choice Store
+   - New `get_payload_due_ms`/`get_payload_size`/`is_payload_timely` functions
+   - New config: `MIN_PAYLOAD_DUE_BPS`, `MAX_PAYLOAD_SIZE`
+   - Validator: `get_payload_attestation_message` with arrival-time-based timeliness check
+   - Impact: massive rename + new fork choice store field + variable deadline logic
+
+**CI**: Latest CI run (23109705694) green. Clippy clean (0 warnings).
+
+**Conclusion**: No code changes needed. Implementation plans ready for when #4992 or #4843 merge.
+
 ### run 1383 (Mar 15) — spec stable, code audit confirms spec conformance
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 9 tracked PRs still open: #4992, #4962, #4960, #4954, #4939, #4932, #4843, #4630, #4840 (draft). PR #4939 had 3 new commits Mar 12; PR #4992 has jihoonsong review Mar 13.
