@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1280 (Mar 15) — spec stable, all fork choice tests pass, no changes needed
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**Verified**: PR #4940 (initial Gloas fork choice tests) merged to spec — `on_execution_payload` test vectors present in alpha.3, all 9 fork choice test categories pass (9/9). PR #5001 (`parent_block_root` in bid filtering key) already implemented in `ObservedExecutionBids` — uses `(slot, parent_block_hash, parent_block_root)` tuple.
+
+**Cargo audit**: 1 rsa vulnerability + 5 allowed warnings — all transitive deps (SP1/alloy). `derivative` fully removed from tree. `paste` only transitive via alloy-primitives.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1279 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
