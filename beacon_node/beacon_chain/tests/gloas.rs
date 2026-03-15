@@ -21374,6 +21374,156 @@ async fn gloas_load_parent_advanced_state_patches_latest_block_hash() {
     );
 }
 
+/// When both the full payload AND the blinded envelope are missing from the store
+/// (e.g., during range sync without envelope downloads), `load_parent` falls back
+/// to patching only `latest_block_hash` without re-applying the full envelope.
+/// This tests the code path at block_verification.rs:2054-2067 where
+/// `envelope_applied == false` after both `get_payload_envelope` and
+/// `get_blinded_payload_envelope` return None.
+#[tokio::test]
+async fn gloas_load_parent_no_envelope_in_store_patches_latest_block_hash() {
+    let harness = gloas_harness_at_epoch(0);
+
+    // Build 3 blocks for a stable parent chain.
+    Box::pin(harness.extend_slots(3)).await;
+
+    let parent_block = harness.chain.head_snapshot().beacon_block.clone();
+    let parent_root = parent_block.canonical_root();
+    let parent_state = harness.chain.head_beacon_state_cloned();
+    let parent_slot = parent_state.slot();
+
+    // Record parent's bid block_hash.
+    let parent_bid_hash = parent_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .block_hash;
+
+    // Pre-condition: parent state has correct latest_block_hash.
+    assert_eq!(
+        *parent_state
+            .latest_block_hash()
+            .expect("should have latest_block_hash"),
+        parent_bid_hash,
+        "pre-condition: parent state latest_block_hash should match bid"
+    );
+
+    // Produce child block BEFORE deleting envelopes.
+    harness.advance_slot();
+    let child_slot = parent_slot + 1;
+    let (child_block_contents, _child_state, child_envelope) = harness
+        .make_block_with_envelope(parent_state.clone(), child_slot)
+        .await;
+    let child_block_root = child_block_contents.0.canonical_root();
+
+    // Verify child references parent as FULL.
+    let child_parent_block_hash = child_block_contents
+        .0
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .parent_block_hash;
+    assert_eq!(
+        child_parent_block_hash, parent_bid_hash,
+        "child should reference parent as FULL"
+    );
+
+    // Delete BOTH the blinded envelope AND the full payload from store.
+    // DeletePayloadEnvelope removes from BeaconEnvelope column (blinded envelope).
+    // DeleteExecutionPayload removes from ExecPayload column (full payload data).
+    harness
+        .chain
+        .store
+        .do_atomically_with_block_and_blobs_cache(vec![
+            store::StoreOp::DeletePayloadEnvelope(parent_root),
+            store::StoreOp::DeleteExecutionPayload(parent_root),
+        ])
+        .unwrap();
+
+    // Verify: both full and blinded envelopes are gone.
+    assert!(
+        harness
+            .chain
+            .store
+            .get_payload_envelope(&parent_root)
+            .expect("should not error")
+            .is_none(),
+        "full envelope should be None"
+    );
+    assert!(
+        harness
+            .chain
+            .store
+            .get_blinded_payload_envelope(&parent_root)
+            .expect("should not error")
+            .is_none(),
+        "blinded envelope should be None"
+    );
+
+    // Evict parent state from cache to force load_parent to reload from DB.
+    let parent_state_root = parent_block.message().state_root();
+    {
+        let mut cache = harness.chain.store.state_cache.lock();
+        cache.delete_state(&parent_state_root);
+    }
+
+    // Import child block. load_parent will:
+    // 1. Load pre-envelope state from DB
+    // 2. Detect FULL parent (child_bid.parent_block_hash == parent_bid.block_hash)
+    // 3. Try get_payload_envelope → None
+    // 4. Try get_blinded_payload_envelope → None
+    // 5. envelope_applied = false
+    // 6. Fall back to patching latest_block_hash only
+    harness
+        .process_block(child_slot, child_block_root, child_block_contents)
+        .await
+        .expect(
+            "child block import should succeed via latest_block_hash-only patch in load_parent",
+        );
+
+    // Verify child is in fork choice.
+    {
+        let fc = harness.chain.canonical_head.fork_choice_read_lock();
+        assert!(
+            fc.get_block(&child_block_root).is_some(),
+            "child block should be in fork choice after import"
+        );
+    }
+
+    // Process child's envelope.
+    if let Some(envelope) = child_envelope {
+        harness
+            .chain
+            .process_self_build_envelope(&envelope)
+            .await
+            .expect("child envelope should process successfully");
+    }
+
+    // Verify head state has correct latest_block_hash after child import + envelope.
+    let head_state = harness.chain.head_beacon_state_cloned();
+    let child_bid_hash = harness
+        .chain
+        .head_snapshot()
+        .beacon_block
+        .message()
+        .body()
+        .signed_execution_payload_bid()
+        .expect("should be Gloas")
+        .message
+        .block_hash;
+    assert_eq!(
+        *head_state
+            .latest_block_hash()
+            .expect("should have latest_block_hash"),
+        child_bid_hash,
+        "head state should have child's bid block_hash after envelope processing"
+    );
+}
+
 /// Test process_envelope_for_sync rejects envelopes with an invalid (zeroed)
 /// BLS signature while builder_index and block_hash are correct. This ensures
 /// the signature verification step is not accidentally skipped.

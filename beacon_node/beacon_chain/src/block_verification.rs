@@ -2053,10 +2053,10 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
                     };
                     if !envelope_applied {
                         // Envelope not in store (e.g., range sync without envelope
-                        // download). Fall back to patching just latest_block_hash.
-                        // This produces correct results only when the envelope has
-                        // no other state mutations (self-build with value=0 and
-                        // empty execution requests).
+                        // download). Fall back to patching latest_block_hash and
+                        // the availability bit. This produces correct results for
+                        // self-build blocks with value=0 and empty execution
+                        // requests (the only remaining mutations).
                         debug!(
                             ?root,
                             "FULL parent envelope not in store, patching latest_block_hash only"
@@ -2064,11 +2064,19 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
                         if let Ok(h) = state.latest_block_hash_mut() {
                             *h = parent_bid_block_hash;
                         }
+                        // Set the availability bit for the parent's slot, matching
+                        // what process_execution_payload_envelope would do.
+                        if let Ok(bits) = state.execution_payload_availability_mut() {
+                            let idx = parent_block.slot().as_usize()
+                                % T::EthSpec::slots_per_historical_root();
+                            let _ = bits.set(idx, true);
+                        }
                     }
                 } else if is_pre_envelope {
                     // State has been slot-advanced past the parent's slot (e.g.
                     // by the state advance timer). We can't re-apply the envelope
-                    // at the wrong slot. Fall back to latest_block_hash patch.
+                    // at the wrong slot. Fall back to latest_block_hash and
+                    // availability patches.
                     debug!(
                         ?root,
                         state_slot = %state.slot(),
@@ -2077,6 +2085,11 @@ fn load_parent<T: BeaconChainTypes, B: AsBlock<T::EthSpec>>(
                     );
                     if let Ok(h) = state.latest_block_hash_mut() {
                         *h = parent_bid_block_hash;
+                    }
+                    if let Ok(bits) = state.execution_payload_availability_mut() {
+                        let idx = parent_block.slot().as_usize()
+                            % T::EthSpec::slots_per_historical_root();
+                        let _ = bits.set(idx, true);
                     }
                 }
             } else if parent_bid_block_hash != ExecutionBlockHash::zero() {

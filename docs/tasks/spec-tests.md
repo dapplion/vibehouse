@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1247 (Mar 15) — fix load_parent envelope fallback, add integration test
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (13+ consecutive). All 7 tracked spec PRs still OPEN, none merged.
+
+**Bug fix**: `load_parent` in block_verification.rs had two fallback paths (lines 2054-2093) for FULL parent blocks when envelopes were missing from store. Both paths patched `latest_block_hash` but missed the `execution_payload_availability` bit mutation that `process_execution_payload_envelope` performs. This caused `StateRootMismatch` errors during range sync when both full and blinded envelopes were absent. Fixed both paths to also set the availability bit for the parent's slot.
+
+**New test**: `gloas_load_parent_no_envelope_in_store_patches_latest_block_hash` — deletes both full payload (ExecPayload column) and blinded envelope (BeaconEnvelope column) from store, evicts state cache, then imports a child block. Verifies the fallback path at block_verification.rs:2054-2073 correctly patches both `latest_block_hash` and `execution_payload_availability`, allowing the child block to import successfully.
+
+All 7 load_parent tests pass. Full lint clean.
+
 ### run 1246 (Mar 15) — spec stable, CI green, no action needed
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (13+ consecutive). All 7 tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged. PR #4892 has 2 approvals, #4898 has 1 — neither merged yet.
