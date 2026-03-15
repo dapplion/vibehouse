@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1364 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558. New to tracking: #4747 (Fast Confirmation Rule), #4954 (fork choice milliseconds), #4558 (Cell Dissemination via Partial Message) — none merged, no code impact yet.
+
+**Upcoming**: PR #4992 (cached PTCs, mergeable:clean, 122+/39-, 14 review comments, 8 commits) remains the most impactful pending change.
+
+**CI**: ci green. Nightly green. Docker build in progress.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1363 (Mar 15) — spec stable, CI green, post-alpha.3 compliance verified
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). 8 open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
