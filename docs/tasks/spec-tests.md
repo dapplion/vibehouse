@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1310 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Recently merged: #5004 (release notes deps section), #5002 (self-build envelope wording clarification — no functional change, p2p-interface.md only), #4940 (initial Gloas fork choice tests — already included in alpha.3). Open Gloas PRs: #4992 (cached PTCs), #4962 (sanity/blocks missed payload), #4960 (fork choice deposit test), #4954 (fork choice store milliseconds), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4843 (variable PTC deadline), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (19 consecutive days).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit unchanged — 1 vulnerability (rsa, no fix available), 5 allowed warnings (all transitive: derivative via ark-ff/sp1, paste via tikv-jemalloc-ctl, ansi_term via tracing-forest/slop, bincode direct but stable, filesystem is our own crate false-positive). Zero compiler warnings.
+
+**Open issues**: #29 (ROCQ formal proofs), #28 (ZK execution proofs), #27 (validator messaging) — all RFCs, no bugs.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1309 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs since run 1308. Open Gloas PRs: #4992 (cached PTCs), #4962 (sanity/blocks missed payload), #4960 (fork choice deposit test), #4954 (fork choice store milliseconds), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (18 consecutive days).
