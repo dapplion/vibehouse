@@ -1401,3 +1401,31 @@ All remaining `.clone()` calls are either:
 - All `set_time_*` methods create entry if missing
 
 **Verification**: 28/28 tests pass, clippy clean, lint-full passes.
+
+### Run 1425: add fork_choice_signal and events test coverage (2026-03-15)
+
+**Scope**: Add unit test coverage for two previously untested beacon_chain modules.
+
+**fork_choice_signal.rs** (10 tests):
+- `notify_and_wait_success`: basic notify → wait round-trip
+- `wait_already_ahead`: wait for slot below current returns Success immediately
+- `wait_times_out_when_no_signal`: no signal sent → TimeOut
+- `notify_out_of_order_returns_error`: slot regression returns ForkChoiceSignalOutOfOrder
+- `notify_same_slot_is_ok`: same slot is not strictly less, accepted
+- `notify_monotonically_increasing`: 10 increasing slots all succeed
+- `concurrent_notify_then_wait`: cross-thread notify wakes waiting receiver
+- `behind_when_signaled_lower_slot`: signal slot 3 when waiting for slot 10 → Behind
+- `multiple_receivers_all_wake`: notify_all wakes two concurrent receivers
+- `default_tx_starts_at_slot_zero`: Default impl starts at slot 0
+
+**events.rs** (16 tests):
+- `no_subscribers_initially`: all 21 has_*_subscribers() return false on fresh handler
+- `subscribe_block/head/finalized/execution_bid/execution_payload/payload_attestation/execution_proof_received_shows_subscriber`: subscribe creates subscriber
+- `drop_receiver_removes_subscriber`: dropping Receiver decrements count
+- `register_block/head/finalized_event_received_by_subscriber`: end-to-end register → try_recv
+- `register_without_subscribers_does_not_panic`: silent drop when no subscribers
+- `multiple_subscribers_all_receive`: broadcast semantics verified
+- `capacity_multiplier_scales_channel_size`: multiplier=2 allows 32 buffered events
+- `event_routing_independence`: block event not delivered to head subscriber
+
+**Verification**: 26/26 tests pass, clippy clean, lint-full passes.
