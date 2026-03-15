@@ -113,3 +113,147 @@ pub fn compute_sync_aggregate_rewards<E: EthSpec>(
         .safe_div(WEIGHT_DENOMINATOR.safe_sub(PROPOSER_WEIGHT)?)?;
     Ok((participant_reward, proposer_reward))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{Eth1Data, MinimalEthSpec, Unsigned, Validator};
+
+    type E = MinimalEthSpec;
+
+    fn spec() -> ChainSpec {
+        let mut spec = E::default_spec();
+        // Ensure altair is active from genesis
+        spec.altair_fork_epoch = Some(types::Epoch::new(0));
+        spec
+    }
+
+    /// Create a minimal Altair state with `n` active validators, each with max effective balance.
+    fn make_altair_state(n: usize) -> (BeaconState<E>, ChainSpec) {
+        let spec = spec();
+        let mut state = BeaconState::new(0, Eth1Data::default(), &spec);
+
+        // Upgrade to Altair for sync committee support
+        if state.fork_name_unchecked() == types::ForkName::Base {
+            // We need validators for the state to be meaningful
+            let validators = state.validators_mut();
+            for i in 0..n {
+                let mut validator = Validator::default();
+                validator.effective_balance = spec.max_effective_balance;
+                validator.activation_epoch = types::Epoch::new(0);
+                validator.exit_epoch = spec.far_future_epoch;
+                validator.withdrawable_epoch = spec.far_future_epoch;
+                // Set a unique pubkey
+                let mut pubkey_bytes = [0u8; 48];
+                pubkey_bytes[0..8].copy_from_slice(&(i as u64).to_le_bytes());
+                validator.pubkey = types::PublicKeyBytes::empty();
+                validators.push(validator).unwrap();
+            }
+
+            // Add balances
+            let balances = state.balances_mut();
+            for _ in 0..n {
+                balances.push(spec.max_effective_balance).unwrap();
+            }
+        }
+
+        // Build total active balance cache
+        state.build_total_active_balance_cache(&spec).unwrap();
+
+        (state, spec)
+    }
+
+    #[test]
+    fn compute_rewards_nonzero_with_active_validators() {
+        let (state, spec) = make_altair_state(64);
+        let (participant_reward, proposer_reward) =
+            compute_sync_aggregate_rewards(&state, &spec).unwrap();
+
+        // With 64 active validators, rewards should be positive
+        assert!(participant_reward > 0, "participant_reward should be > 0");
+        assert!(proposer_reward > 0, "proposer_reward should be > 0");
+    }
+
+    #[test]
+    fn proposer_reward_less_than_participant_reward() {
+        let (state, spec) = make_altair_state(64);
+        let (participant_reward, proposer_reward) =
+            compute_sync_aggregate_rewards(&state, &spec).unwrap();
+
+        // PROPOSER_WEIGHT < WEIGHT_DENOMINATOR - PROPOSER_WEIGHT, so proposer_reward < participant_reward
+        assert!(
+            proposer_reward < participant_reward,
+            "proposer_reward ({}) should be less than participant_reward ({})",
+            proposer_reward,
+            participant_reward
+        );
+    }
+
+    #[test]
+    fn rewards_scale_with_total_active_balance() {
+        // total_base_rewards = brpi * total_increments
+        // brpi = eff_bal_incr * base_reward_factor / sqrt(total_active_balance)
+        // total_increments = total_active_balance / eff_bal_incr
+        // → total_base_rewards = base_reward_factor * sqrt(total_active_balance)
+        // → participant_reward scales with sqrt(total_active_balance) (divided by committee size & slots)
+        // So MORE validators → HIGHER participant_reward (sqrt scaling)
+        let (state_small, spec_small) = make_altair_state(32);
+        let (state_large, spec_large) = make_altair_state(128);
+
+        let (pr_small, _) = compute_sync_aggregate_rewards(&state_small, &spec_small).unwrap();
+        let (pr_large, _) = compute_sync_aggregate_rewards(&state_large, &spec_large).unwrap();
+
+        assert!(
+            pr_large > pr_small,
+            "more total stake → higher sync reward: small={}, large={}",
+            pr_small,
+            pr_large
+        );
+    }
+
+    #[test]
+    fn proposer_reward_formula_consistency() {
+        // Verify the relationship: proposer_reward = participant_reward * PROPOSER_WEIGHT / (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
+        let (state, spec) = make_altair_state(64);
+        let (participant_reward, proposer_reward) =
+            compute_sync_aggregate_rewards(&state, &spec).unwrap();
+
+        let expected_proposer_reward =
+            participant_reward * PROPOSER_WEIGHT / (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT);
+        assert_eq!(proposer_reward, expected_proposer_reward);
+    }
+
+    #[test]
+    fn rewards_deterministic() {
+        let (state, spec) = make_altair_state(64);
+        let (pr1, prop1) = compute_sync_aggregate_rewards(&state, &spec).unwrap();
+        let (pr2, prop2) = compute_sync_aggregate_rewards(&state, &spec).unwrap();
+        assert_eq!(pr1, pr2);
+        assert_eq!(prop1, prop2);
+    }
+
+    #[test]
+    fn rewards_with_minimum_validators() {
+        // Even with just 1 validator, the function should work (total active balance ≥ EFFECTIVE_BALANCE_INCREMENT)
+        let (state, spec) = make_altair_state(1);
+        let result = compute_sync_aggregate_rewards(&state, &spec);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn max_participant_rewards_divisible_by_committee_size() {
+        // The participant_reward is max_participant_rewards / SyncCommitteeSize, verify truncation is consistent
+        let (state, spec) = make_altair_state(64);
+        let total_active_balance = state.get_total_active_balance().unwrap();
+        let total_active_increments = total_active_balance / spec.effective_balance_increment;
+        let brpi = BaseRewardPerIncrement::new(total_active_balance, &spec).unwrap();
+        let total_base_rewards = brpi.as_u64() * total_active_increments;
+        let max_participant_rewards =
+            total_base_rewards * SYNC_REWARD_WEIGHT / WEIGHT_DENOMINATOR / E::slots_per_epoch();
+        let expected_participant =
+            max_participant_rewards / <E as EthSpec>::SyncCommitteeSize::to_u64();
+
+        let (participant_reward, _) = compute_sync_aggregate_rewards(&state, &spec).unwrap();
+        assert_eq!(participant_reward, expected_participant);
+    }
+}

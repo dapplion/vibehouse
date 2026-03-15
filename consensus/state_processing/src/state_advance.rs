@@ -103,3 +103,131 @@ fn check_target_slot(state_slot: Slot, target_slot: Slot) -> Result<(), Error> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{Eth1Data, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn spec() -> ChainSpec {
+        E::default_spec()
+    }
+
+    fn make_state() -> BeaconState<E> {
+        BeaconState::new(0, Eth1Data::default(), &spec())
+    }
+
+    #[test]
+    fn check_target_slot_equal_ok() {
+        assert!(check_target_slot(Slot::new(5), Slot::new(5)).is_ok());
+    }
+
+    #[test]
+    fn check_target_slot_forward_ok() {
+        assert!(check_target_slot(Slot::new(5), Slot::new(10)).is_ok());
+    }
+
+    #[test]
+    fn check_target_slot_backward_errors() {
+        let result = check_target_slot(Slot::new(10), Slot::new(5));
+        assert_eq!(
+            result,
+            Err(Error::BadTargetSlot {
+                target_slot: Slot::new(5),
+                state_slot: Slot::new(10),
+            })
+        );
+    }
+
+    #[test]
+    fn complete_advance_same_slot_is_noop() {
+        let spec = spec();
+        let mut state = make_state();
+        let slot_before = state.slot();
+        complete_state_advance(&mut state, None, slot_before, &spec).unwrap();
+        assert_eq!(state.slot(), slot_before);
+    }
+
+    #[test]
+    fn complete_advance_one_slot() {
+        let spec = spec();
+        let mut state = make_state();
+        let target = state.slot() + 1;
+        complete_state_advance(&mut state, Some(Hash256::zero()), target, &spec).unwrap();
+        assert_eq!(state.slot(), target);
+    }
+
+    #[test]
+    fn complete_advance_multiple_slots() {
+        let spec = spec();
+        let mut state = make_state();
+        let target = state.slot() + 3;
+        complete_state_advance(&mut state, Some(Hash256::zero()), target, &spec).unwrap();
+        assert_eq!(state.slot(), target);
+    }
+
+    #[test]
+    fn complete_advance_backward_errors() {
+        let spec = spec();
+        let mut state = make_state();
+        // Advance to slot 2 first
+        complete_state_advance(&mut state, Some(Hash256::zero()), Slot::new(2), &spec).unwrap();
+        // Try to go back to slot 1
+        let result = complete_state_advance(&mut state, None, Slot::new(1), &spec);
+        assert!(matches!(result, Err(Error::BadTargetSlot { .. })));
+    }
+
+    #[test]
+    fn partial_advance_same_slot_is_noop() {
+        let spec = spec();
+        let mut state = make_state();
+        let slot_before = state.slot();
+        // At genesis slot == latest_block_header.slot, so a state root is required
+        // but for same-slot advance (target == current), the while loop doesn't execute
+        // The error comes from the state_root check before the loop
+        // Provide a state root to satisfy the check
+        partial_state_advance(&mut state, Some(Hash256::zero()), slot_before, &spec).unwrap();
+        assert_eq!(state.slot(), slot_before);
+    }
+
+    #[test]
+    fn partial_advance_one_slot() {
+        let spec = spec();
+        let mut state = make_state();
+        let target = state.slot() + 1;
+        // At genesis the latest_block_header.slot == state.slot, so state_root is required
+        // but for state.slot() > latest_block_header.slot, zero is used as fallback
+        // Here slot == latest_block_header.slot, so we provide None (OK path for first slot)
+        partial_state_advance(&mut state, Some(Hash256::zero()), target, &spec).unwrap();
+        assert_eq!(state.slot(), target);
+    }
+
+    #[test]
+    fn partial_advance_backward_errors() {
+        let spec = spec();
+        let mut state = make_state();
+        partial_state_advance(&mut state, Some(Hash256::zero()), Slot::new(2), &spec).unwrap();
+        let result = partial_state_advance(&mut state, None, Slot::new(1), &spec);
+        assert!(matches!(result, Err(Error::BadTargetSlot { .. })));
+    }
+
+    #[test]
+    fn partial_advance_no_state_root_when_needed_errors() {
+        let spec = spec();
+        let mut state = make_state();
+        // At genesis, state.slot() == latest_block_header.slot, so state_root is required
+        let result = partial_state_advance(&mut state, None, Slot::new(1), &spec);
+        assert!(matches!(result, Err(Error::StateRootNotProvided)));
+    }
+
+    #[test]
+    fn partial_advance_multiple_slots() {
+        let spec = spec();
+        let mut state = make_state();
+        let target = state.slot() + 4;
+        partial_state_advance(&mut state, Some(Hash256::zero()), target, &spec).unwrap();
+        assert_eq!(state.slot(), target);
+    }
+}

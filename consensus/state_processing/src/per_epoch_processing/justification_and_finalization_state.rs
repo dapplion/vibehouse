@@ -113,3 +113,170 @@ impl<E: EthSpec> JustificationAndFinalizationState<E> {
         &mut self.justification_bits
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{ChainSpec, Eth1Data, FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn spec() -> ChainSpec {
+        E::default_spec()
+    }
+
+    fn make_state() -> BeaconState<E> {
+        BeaconState::new(0, Eth1Data::default(), &spec())
+    }
+
+    #[test]
+    fn new_extracts_epochs() {
+        let state = make_state();
+        let jf = JustificationAndFinalizationState::new(&state);
+        assert_eq!(jf.previous_epoch(), state.previous_epoch());
+        assert_eq!(jf.current_epoch(), state.current_epoch());
+    }
+
+    #[test]
+    fn new_extracts_checkpoints() {
+        let state = make_state();
+        let jf = JustificationAndFinalizationState::new(&state);
+        assert_eq!(
+            jf.previous_justified_checkpoint(),
+            state.previous_justified_checkpoint()
+        );
+        assert_eq!(
+            jf.current_justified_checkpoint(),
+            state.current_justified_checkpoint()
+        );
+        assert_eq!(jf.finalized_checkpoint(), state.finalized_checkpoint());
+    }
+
+    #[test]
+    fn new_extracts_justification_bits() {
+        let state = make_state();
+        let jf = JustificationAndFinalizationState::new(&state);
+        assert_eq!(jf.justification_bits(), state.justification_bits());
+    }
+
+    #[test]
+    fn get_block_root_at_previous_epoch_delegates() {
+        let state = make_state();
+        let jf = JustificationAndFinalizationState::new(&state);
+        let epoch = jf.previous_epoch();
+        // The result should match what the state returns
+        let expected = state.get_block_root_at_epoch(epoch).copied();
+        let actual = jf.get_block_root_at_epoch(epoch);
+        assert_eq!(actual.is_ok(), expected.is_ok());
+        if actual.is_ok() {
+            assert_eq!(actual.unwrap(), expected.unwrap());
+        }
+    }
+
+    #[test]
+    fn get_block_root_at_current_epoch_delegates() {
+        let state = make_state();
+        let jf = JustificationAndFinalizationState::new(&state);
+        let epoch = jf.current_epoch();
+        let expected = state.get_block_root_at_epoch(epoch).copied();
+        let actual = jf.get_block_root_at_epoch(epoch);
+        assert_eq!(actual.is_ok(), expected.is_ok());
+    }
+
+    #[test]
+    fn get_block_root_at_unknown_epoch_errors() {
+        let state = make_state();
+        let jf = JustificationAndFinalizationState::new(&state);
+        // An epoch that is neither previous nor current should error
+        let far_epoch = Epoch::new(9999);
+        let result = jf.get_block_root_at_epoch(far_epoch);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn mutable_checkpoint_setters() {
+        let state = make_state();
+        let mut jf = JustificationAndFinalizationState::new(&state);
+
+        let new_cp = Checkpoint {
+            epoch: Epoch::new(42),
+            root: Hash256::from_low_u64_be(123),
+        };
+
+        *jf.previous_justified_checkpoint_mut() = new_cp;
+        assert_eq!(jf.previous_justified_checkpoint(), new_cp);
+
+        *jf.current_justified_checkpoint_mut() = new_cp;
+        assert_eq!(jf.current_justified_checkpoint(), new_cp);
+
+        *jf.finalized_checkpoint_mut() = new_cp;
+        assert_eq!(jf.finalized_checkpoint(), new_cp);
+    }
+
+    #[test]
+    fn justification_bits_mutable() {
+        let state = make_state();
+        let mut jf = JustificationAndFinalizationState::new(&state);
+
+        // Initially all bits should be false
+        assert!(!jf.justification_bits().get(0).unwrap());
+
+        // Set bit 0
+        jf.justification_bits_mut().set(0, true).unwrap();
+        assert!(jf.justification_bits().get(0).unwrap());
+    }
+
+    #[test]
+    fn apply_changes_updates_state() {
+        let mut state = make_state();
+
+        let mut jf = JustificationAndFinalizationState::new(&state);
+
+        let new_cp = Checkpoint {
+            epoch: Epoch::new(7),
+            root: Hash256::from_low_u64_be(999),
+        };
+
+        *jf.previous_justified_checkpoint_mut() = new_cp;
+        *jf.current_justified_checkpoint_mut() = new_cp;
+        *jf.finalized_checkpoint_mut() = new_cp;
+        jf.justification_bits_mut().set(1, true).unwrap();
+
+        jf.apply_changes_to_state(&mut state);
+
+        assert_eq!(state.previous_justified_checkpoint(), new_cp);
+        assert_eq!(state.current_justified_checkpoint(), new_cp);
+        assert_eq!(state.finalized_checkpoint(), new_cp);
+        assert!(state.justification_bits().get(1).unwrap());
+    }
+
+    #[test]
+    fn apply_changes_does_not_alter_immutable_fields() {
+        let mut state = make_state();
+        let slot_before = state.slot();
+
+        let jf = JustificationAndFinalizationState::new(&state);
+        jf.apply_changes_to_state(&mut state);
+
+        // Slot and other non-J&F fields should be unchanged
+        assert_eq!(state.slot(), slot_before);
+    }
+
+    #[test]
+    fn roundtrip_no_modifications_is_identity() {
+        let mut state = make_state();
+
+        let prev_jc = state.previous_justified_checkpoint();
+        let curr_jc = state.current_justified_checkpoint();
+        let fin = state.finalized_checkpoint();
+        let bits = state.justification_bits().clone();
+
+        let jf = JustificationAndFinalizationState::new(&state);
+        jf.apply_changes_to_state(&mut state);
+
+        assert_eq!(state.previous_justified_checkpoint(), prev_jc);
+        assert_eq!(state.current_justified_checkpoint(), curr_jc);
+        assert_eq!(state.finalized_checkpoint(), fin);
+        assert_eq!(state.justification_bits(), &bits);
+    }
+}
