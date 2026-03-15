@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1386 (Mar 15) — spec stable, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. Verified PR #5001 (parent_block_root in bid filtering key) already implemented in vibehouse — `observed_execution_bids.rs` uses `(Slot, ExecutionBlockHash, Hash256)` 3-tuple, tests cover independent tracking.
+
+**CI**: All green — ci (33m), nightly-tests (40m), spec-test-version-check. Clippy clean (0 warnings).
+
+**Conclusion**: No code changes needed. Spec stable.
+
 ### run 1385 (Mar 15) — spec stable, codebase clean, no action needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases. All 11 tracked Gloas-labeled open PRs unchanged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630. Also tracking: #4747 (Fast Confirmation Rule), #4558 (Cell Dissemination).
