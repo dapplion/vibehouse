@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1399 (Mar 15) — spec stable, base epoch processing test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #5001 (parent_block_root bid filtering) and #5002 (self-build signature wording) already incorporated in alpha.3 — verified vibehouse already implements both correctly. PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 28 unit tests across 2 previously-untested base epoch processing files:
+- `validator_statuses.rs` (15 tests): InclusionInfo default/update semantics, ValidatorStatus merge logic (true-only updates, inclusion_info merging), TotalBalances accessors (EBI floor prevents division-by-zero)
+- `rewards_and_penalties.rs` (13 tests): AttestationDelta flatten, attestation component deltas (reward/penalty/inactivity leak), inclusion delay deltas (delay inversely proportional to reward, slashed/non-attester exclusion), inactivity penalty deltas (no-leak/leak/extra-for-non-target/extra-for-slashed)
+
+**CI**: All green.
+
 ### run 1398 (Mar 15) — spec stable, consensus_context test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
