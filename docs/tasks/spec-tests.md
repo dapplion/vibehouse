@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1263 (Mar 15) — replaced unmaintained paste crate, spec stable
+
+**Dependency maintenance**: Replaced `paste` (RUSTSEC-2024-0436, unmaintained) with `pastey` 0.2 (maintained fork, drop-in replacement). Updated workspace dep, 2 crate Cargo.tomls, 2 source files. All 715 types tests pass. Also ran `cargo sort` to fix pre-existing unsorted workspace deps.
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**Code health**: Zero clippy warnings. Cargo audit: 1 vulnerability (rsa, no fix), 5 allowed warnings (paste still transitive via other crates).
+
+**CI**: Run 23101168845 in progress from prior commit.
+
 ### run 1262 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged. Reviewed merged PR #5002 (wording clarification for envelope signature verification in p2p spec) — no code change needed, vibehouse already uses `verify_execution_payload_envelope_signature`. PR #5004 (release note metadata) — no spec change.
