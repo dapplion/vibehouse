@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1365 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843. #4954, #4898, #4892, #4840, #4747, #4630, #4558 no longer in recent updated list.
+
+**Upcoming**: PR #4992 (cached PTCs, mergeable:clean, 122+/39-, 14 review comments, 8 commits) remains the most impactful pending change. No movement since Mar 13.
+
+**CI**: ci green. Nightly green. Docker build queued (runner availability).
+
+**Deps**: derivative and ansi_term no longer used (replaced in prior runs) but remain as orphaned Cargo.lock entries — cargo doesn't clean them. paste remains transitive via alloy-primitives. bincode v1 used by initialized_validators. No actionable changes.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1364 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558. New to tracking: #4747 (Fast Confirmation Rule), #4954 (fork choice milliseconds), #4558 (Cell Dissemination via Partial Message) — none merged, no code impact yet.
