@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1392 (Mar 15) — spec stable, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. PR #4992 (cached PTCs) remains closest to merge — mergeable_state clean, no new review activity since Mar 13.
+
+**CI**: All green — ci, spec-test-version-check.
+
+**cargo audit**: 1 vulnerability (rsa RUSTSEC-2023-0071, Marvin Attack timing sidechannel — transitive dependency, not directly used), 5 unmaintained warnings (ansi_term, bincode, derivative, etc.). No actionable items.
+
+**Conclusion**: No code changes needed. Spec stable.
+
 ### run 1391 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558.
