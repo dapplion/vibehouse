@@ -266,3 +266,185 @@ pub fn ensure_state_can_determine_proposers_for_epoch<E: EthSpec>(
             .map_err(BeaconChainError::from)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn default_fork() -> Fork {
+        Fork::default()
+    }
+
+    // --- EpochBlockProposers ---
+
+    #[test]
+    fn epoch_block_proposers_get_slot_correct_epoch() {
+        let epoch = Epoch::new(1);
+        let slots_per_epoch = E::slots_per_epoch();
+        let proposers: Vec<usize> = (0..slots_per_epoch as usize).collect();
+        let ebp = EpochBlockProposers::new(epoch, default_fork(), proposers);
+
+        for i in 0..slots_per_epoch {
+            let slot = Slot::new(slots_per_epoch + i);
+            let proposer = ebp.get_slot::<E>(slot).unwrap();
+            assert_eq!(proposer.index, i as usize);
+        }
+    }
+
+    #[test]
+    fn epoch_block_proposers_get_slot_wrong_epoch() {
+        let epoch = Epoch::new(1);
+        let proposers = vec![0; E::slots_per_epoch() as usize];
+        let ebp = EpochBlockProposers::new(epoch, default_fork(), proposers);
+
+        let result = ebp.get_slot::<E>(Slot::new(0));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn epoch_block_proposers_preserves_fork() {
+        let fork = Fork {
+            previous_version: [1, 2, 3, 4],
+            current_version: [5, 6, 7, 8],
+            epoch: Epoch::new(10),
+        };
+        let proposers = vec![42; E::slots_per_epoch() as usize];
+        let ebp = EpochBlockProposers::new(Epoch::new(0), fork, proposers);
+        let proposer = ebp.get_slot::<E>(Slot::new(0)).unwrap();
+        assert_eq!(proposer.fork, fork);
+    }
+
+    // --- BeaconProposerCache ---
+
+    #[test]
+    fn cache_default_returns_none() {
+        let mut cache = BeaconProposerCache::default();
+        assert!(cache.get_slot::<E>(Hash256::zero(), Slot::new(0)).is_none());
+    }
+
+    #[test]
+    fn cache_insert_and_get_slot() {
+        let mut cache = BeaconProposerCache::default();
+        let root = Hash256::repeat_byte(0xaa);
+        let epoch = Epoch::new(2);
+        let slots_per_epoch = E::slots_per_epoch() as usize;
+        let proposers: Vec<usize> = (100..100 + slots_per_epoch).collect();
+
+        cache
+            .insert(epoch, root, proposers.clone(), default_fork())
+            .unwrap();
+
+        for i in 0..slots_per_epoch {
+            let slot = Slot::new(epoch.start_slot(E::slots_per_epoch()).as_u64() + i as u64);
+            let proposer = cache.get_slot::<E>(root, slot).unwrap();
+            assert_eq!(proposer.index, 100 + i);
+        }
+    }
+
+    #[test]
+    fn cache_get_slot_wrong_root_returns_none() {
+        let mut cache = BeaconProposerCache::default();
+        let root = Hash256::repeat_byte(0xaa);
+        let proposers = vec![0; E::slots_per_epoch() as usize];
+        cache
+            .insert(Epoch::new(0), root, proposers, default_fork())
+            .unwrap();
+
+        assert!(
+            cache
+                .get_slot::<E>(Hash256::repeat_byte(0xbb), Slot::new(0))
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn cache_get_epoch_returns_all_proposers() {
+        let mut cache = BeaconProposerCache::default();
+        let root = Hash256::repeat_byte(0xcc);
+        let epoch = Epoch::new(1);
+        let proposers: Vec<usize> = vec![10, 20, 30, 40, 50, 60, 70, 80];
+
+        cache
+            .insert(epoch, root, proposers.clone(), default_fork())
+            .unwrap();
+
+        let result = cache.get_epoch::<E>(root, epoch).unwrap();
+        assert_eq!(result.as_slice(), &proposers);
+    }
+
+    #[test]
+    fn cache_get_epoch_wrong_epoch_returns_none() {
+        let mut cache = BeaconProposerCache::default();
+        let root = Hash256::repeat_byte(0xdd);
+        let proposers = vec![0; E::slots_per_epoch() as usize];
+        cache
+            .insert(Epoch::new(5), root, proposers, default_fork())
+            .unwrap();
+
+        assert!(cache.get_epoch::<E>(root, Epoch::new(6)).is_none());
+    }
+
+    #[test]
+    fn cache_insert_does_not_overwrite() {
+        let mut cache = BeaconProposerCache::default();
+        let root = Hash256::repeat_byte(0xee);
+        let epoch = Epoch::new(3);
+        let proposers_1 = vec![1; E::slots_per_epoch() as usize];
+        let proposers_2 = vec![2; E::slots_per_epoch() as usize];
+
+        cache
+            .insert(epoch, root, proposers_1, default_fork())
+            .unwrap();
+        cache
+            .insert(epoch, root, proposers_2, default_fork())
+            .unwrap();
+
+        // First insert wins
+        let slot = Slot::new(epoch.start_slot(E::slots_per_epoch()).as_u64());
+        let proposer = cache.get_slot::<E>(root, slot).unwrap();
+        assert_eq!(proposer.index, 1);
+    }
+
+    #[test]
+    fn cache_get_or_insert_key_returns_same_arc() {
+        let mut cache = BeaconProposerCache::default();
+        let root = Hash256::repeat_byte(0xff);
+        let epoch = Epoch::new(7);
+
+        let cell1 = cache.get_or_insert_key(epoch, root);
+        let cell2 = cache.get_or_insert_key(epoch, root);
+        assert!(Arc::ptr_eq(&cell1, &cell2));
+    }
+
+    #[test]
+    fn cache_lru_eviction() {
+        let mut cache = BeaconProposerCache::default();
+        let proposers = vec![0; E::slots_per_epoch() as usize];
+
+        // Insert CACHE_SIZE + 1 entries to trigger eviction
+        for i in 0..=CACHE_SIZE.get() {
+            let root = Hash256::repeat_byte(i as u8);
+            cache
+                .insert(
+                    Epoch::new(i as u64),
+                    root,
+                    proposers.clone(),
+                    default_fork(),
+                )
+                .unwrap();
+        }
+
+        // First entry should be evicted
+        let first_root = Hash256::repeat_byte(0);
+        assert!(cache.get_slot::<E>(first_root, Slot::new(0)).is_none());
+
+        // Last entry should still be present
+        let last_root = Hash256::repeat_byte(CACHE_SIZE.get() as u8);
+        let last_epoch = Epoch::new(CACHE_SIZE.get() as u64);
+        let last_slot = Slot::new(last_epoch.start_slot(E::slots_per_epoch()).as_u64());
+        assert!(cache.get_slot::<E>(last_root, last_slot).is_some());
+    }
+}
