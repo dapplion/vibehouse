@@ -190,3 +190,203 @@ impl<E: EthSpec> ConsensusContext<E> {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{
+        DEPOSIT_TREE_DEPTH, FixedBytesExtended, ForkName, MinimalEthSpec,
+        test_utils::generate_deterministic_keypairs,
+    };
+
+    type E = MinimalEthSpec;
+
+    fn make_spec() -> ChainSpec {
+        ForkName::Gloas.make_genesis_spec(E::default_spec())
+    }
+
+    fn make_genesis_state(spec: &ChainSpec) -> BeaconState<E> {
+        let keypairs = generate_deterministic_keypairs(8);
+        let mut deposit_datas = Vec::with_capacity(8);
+        for kp in &keypairs {
+            let mut creds = [0u8; 32];
+            creds[0] = spec.eth1_address_withdrawal_prefix_byte;
+            creds[12..].copy_from_slice(&[0xAA; 20]);
+            let withdrawal_credentials = Hash256::from_slice(&creds);
+
+            let mut data = types::DepositData {
+                pubkey: kp.pk.clone().into(),
+                withdrawal_credentials,
+                amount: spec.max_effective_balance,
+                signature: types::Signature::empty().into(),
+            };
+            data.signature = data.create_signature(&kp.sk, spec);
+            deposit_datas.push(data);
+        }
+
+        let deposit_tree_depth = DEPOSIT_TREE_DEPTH;
+        let mut tree = crate::common::DepositDataTree::create(&[], 0, deposit_tree_depth);
+        let mut deposits = Vec::with_capacity(8);
+        for data in deposit_datas {
+            tree.push_leaf(data.tree_hash_root())
+                .expect("should push leaf");
+            let (_leaf, proof_vec) = tree
+                .generate_proof(deposits.len())
+                .expect("should generate proof");
+            let mut proof = types::FixedVector::from(vec![Hash256::zero(); deposit_tree_depth + 1]);
+            for (i, node) in proof_vec.iter().enumerate() {
+                proof[i] = *node;
+            }
+            deposits.push(types::Deposit { proof, data });
+        }
+
+        crate::initialize_beacon_state_from_eth1::<E>(
+            Hash256::repeat_byte(0x42),
+            2u64.pow(40),
+            deposits,
+            None,
+            spec,
+        )
+        .expect("should initialize state")
+    }
+
+    #[test]
+    fn new_computes_correct_epochs() {
+        let slots_per_epoch = E::slots_per_epoch();
+
+        // Slot 0 => epoch 0
+        let ctx = ConsensusContext::<E>::new(Slot::new(0));
+        assert_eq!(ctx.current_epoch, Epoch::new(0));
+        assert_eq!(ctx.previous_epoch, Epoch::new(0)); // saturating_sub
+
+        // First slot of epoch 1
+        let slot = Slot::new(slots_per_epoch);
+        let ctx = ConsensusContext::<E>::new(slot);
+        assert_eq!(ctx.current_epoch, Epoch::new(1));
+        assert_eq!(ctx.previous_epoch, Epoch::new(0));
+
+        // Arbitrary slot in epoch 5
+        let slot = Slot::new(5 * slots_per_epoch + 3);
+        let ctx = ConsensusContext::<E>::new(slot);
+        assert_eq!(ctx.current_epoch, Epoch::new(5));
+        assert_eq!(ctx.previous_epoch, Epoch::new(4));
+    }
+
+    #[test]
+    fn new_starts_with_empty_caches() {
+        let ctx = ConsensusContext::<E>::new(Slot::new(10));
+        assert_eq!(ctx.proposer_index, None);
+        assert_eq!(ctx.current_block_root, None);
+        assert_eq!(ctx.num_cached_indexed_attestations(), 0);
+    }
+
+    #[test]
+    fn set_proposer_index_builder_pattern() {
+        let ctx = ConsensusContext::<E>::new(Slot::new(0)).set_proposer_index(42);
+        assert_eq!(ctx.proposer_index, Some(42));
+    }
+
+    #[test]
+    fn set_current_block_root_builder_pattern() {
+        let root = Hash256::repeat_byte(0xAB);
+        let ctx = ConsensusContext::<E>::new(Slot::new(0)).set_current_block_root(root);
+        assert_eq!(ctx.current_block_root, Some(root));
+    }
+
+    #[test]
+    fn get_proposer_index_slot_mismatch() {
+        let spec = make_spec();
+        let state = make_genesis_state(&spec);
+        // State is at slot 0, context at slot 5
+        let mut ctx = ConsensusContext::<E>::new(Slot::new(5));
+        let result = ctx.get_proposer_index(&state, &spec);
+        assert_eq!(
+            result,
+            Err(ContextError::SlotMismatch {
+                slot: Slot::new(0),
+                expected: Slot::new(5),
+            })
+        );
+    }
+
+    #[test]
+    fn get_proposer_index_matching_slot() {
+        let spec = make_spec();
+        let state = make_genesis_state(&spec);
+        // State is at slot 0, context also at slot 0
+        let mut ctx = ConsensusContext::<E>::new(Slot::new(0));
+        let proposer = ctx.get_proposer_index(&state, &spec).unwrap();
+        // Should cache
+        assert_eq!(ctx.proposer_index, Some(proposer));
+        // Second call returns same value from cache
+        let proposer2 = ctx.get_proposer_index(&state, &spec).unwrap();
+        assert_eq!(proposer, proposer2);
+    }
+
+    #[test]
+    fn get_proposer_index_uses_preset_value() {
+        let spec = make_spec();
+        let state = make_genesis_state(&spec);
+        let mut ctx = ConsensusContext::<E>::new(Slot::new(0)).set_proposer_index(99);
+        // Returns the preset value without computing from state
+        let proposer = ctx.get_proposer_index(&state, &spec).unwrap();
+        assert_eq!(proposer, 99);
+    }
+
+    #[test]
+    fn get_proposer_index_from_epoch_state_ok() {
+        let spec = make_spec();
+        let state = make_genesis_state(&spec);
+        // State epoch 0, context slot 0 (epoch 0) — same epoch
+        let mut ctx = ConsensusContext::<E>::new(Slot::new(0));
+        let result = ctx.get_proposer_index_from_epoch_state(&state, &spec);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn get_proposer_index_from_epoch_state_epoch_mismatch() {
+        let spec = make_spec();
+        let state = make_genesis_state(&spec);
+        // State epoch 0, context at epoch 2
+        let slot_in_epoch_2 = Slot::new(2 * E::slots_per_epoch());
+        let mut ctx = ConsensusContext::<E>::new(slot_in_epoch_2);
+        let result = ctx.get_proposer_index_from_epoch_state(&state, &spec);
+        assert_eq!(
+            result,
+            Err(ContextError::EpochMismatch {
+                epoch: Epoch::new(0),
+                expected: Epoch::new(2),
+            })
+        );
+    }
+
+    #[test]
+    fn set_indexed_attestations_replaces_cache() {
+        let mut map = HashMap::new();
+        let root = Hash256::repeat_byte(0x01);
+        let indexed = IndexedAttestation::Base(types::IndexedAttestationBase {
+            attesting_indices: types::VariableList::empty(),
+            data: types::AttestationData::default(),
+            signature: types::AggregateSignature::empty(),
+        });
+        map.insert(root, indexed);
+
+        let ctx = ConsensusContext::<E>::new(Slot::new(0)).set_indexed_attestations(map);
+        assert_eq!(ctx.num_cached_indexed_attestations(), 1);
+        assert!(ctx.indexed_attestations.contains_key(&root));
+    }
+
+    #[test]
+    fn context_error_from_beacon_state_error() {
+        let bse = BeaconStateError::InsufficientValidators;
+        let ce: ContextError = bse.clone().into();
+        assert_eq!(ce, ContextError::BeaconState(bse));
+    }
+
+    #[test]
+    fn context_error_from_epoch_cache_error() {
+        let ece = EpochCacheError::CacheNotInitialized;
+        let ce: ContextError = ece.clone().into();
+        assert_eq!(ce, ContextError::EpochCache(ece));
+    }
+}
