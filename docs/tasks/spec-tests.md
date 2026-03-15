@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1388 (Mar 15) — spec stable, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 14 tracked PRs open and unmerged: #5005, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. PR #4992 (cached PTCs) remains closest to merge — approved by jtraglia, mergeable_state clean, but still in active discussion (jihoonsong review comments Mar 13).
+
+**CI**: All green — ci (33m), nightly-tests (40m), spec-test-version-check. Clippy clean (0 warnings).
+
+**Conclusion**: No code changes needed. Spec stable. Waiting for next spec PR merge to implement.
+
 ### run 1387 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. New PR #5005 (fix builder voluntary exit success test) opened — test-only change, will affect test vectors in next release but no code impact now.
