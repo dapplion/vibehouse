@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1394 (Mar 15) — spec stable, PR #4898/#4892 impact analysis
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged.
+
+**PR #4898 (Remove pending status from tiebreaker) impact analysis**: Approved by jihoonsong, mergeable_state clean — likely to merge soon. Diff removes `PAYLOAD_STATUS_PENDING` check from `get_payload_status_tiebreaker` first condition, simplifying the logic. Our `get_payload_tiebreaker` (proto_array_fork_choice.rs:1795) already implements the simplified version — we only check `!is_previous_slot` without a PENDING guard. **No code change needed when this merges.**
+
+**PR #4892 (Remove impossible branch in forkchoice) impact analysis**: Replaces `if message.slot <= block.slot: return False` with `assert message.slot >= block.slot; if message.slot == block.slot: return False`. Our `is_supporting_vote_gloas_at_slot` (proto_array_fork_choice.rs:1689) already uses `vote.current_slot == node_slot` (equality check, not `<=`), with a comment noting the assert is validated by `on_attestation`. **No code change needed when this merges.**
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check. Clippy clean (0 warnings). cargo audit: no actionable issues.
+
+**Conclusion**: No code changes needed. Spec stable. Two pending PRs (#4898, #4892) already match our implementation.
+
 ### run 1393 (Mar 15) — spec stable, PR #4992 impact analysis
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558.
