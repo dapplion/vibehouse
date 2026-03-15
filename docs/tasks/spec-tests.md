@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1375 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630. No merges since alpha.3.
+
+**CI**: Run 23108811449 in progress — check+clippy+fmt passed, remaining jobs running. Nightly green.
+
+**Conclusion**: No code changes needed. Monitoring PR #4992 for merge.
+
 ### run 1374 (Mar 15) — spec stable, watching PR #4992
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). No new merges since alpha.3.
