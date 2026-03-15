@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1354 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs (#4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630) remain open and unmerged.
+
+**CI**: ci green. Nightly green (4 consecutive, today's run queued). Docker build queued (runner availability). cargo audit: 1 rsa vulnerability (no fix), 5 unmaintained warnings (derivative/paste transitive from sp1-verifier/jemalloc, filesystem is false positive matching our local crate name, ansi_term/bincode transitive).
+
+**Bid filtering**: Verified PR #5001 (parent_block_root in bid filtering key) already implemented — `ExecutionBidPool::get_best_bid` filters by `parent_block_root` and has full test coverage. PTC lookbehind branch 88 commits behind main, will rebase when PR #4992 merges.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1353 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs (#4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630) remain open and unmerged.
