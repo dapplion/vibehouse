@@ -1429,3 +1429,15 @@ All remaining `.clone()` calls are either:
 - `event_routing_independence`: block event not delivered to head subscriber
 
 **Verification**: 26/26 tests pass, clippy clean, lint-full passes.
+
+### Run 1426: add attester_cache test coverage (2026-03-15)
+
+**Scope**: Add unit test coverage for the previously untested `attester_cache.rs` module. Also added `Debug` derive to `AttesterCacheKey` to support test assertions.
+
+**attester_cache.rs** (15 tests):
+- **CommitteeLengths** (7 tests): get_committee_count_per_slot bounds check, get_committee_length at slot 0, wrong epoch error, invalid committee index error, all slots in epoch sum to active validators, single validator edge case, epoch 1 boundary
+- **AttesterCacheValue** (1 test): get returns correct justified checkpoint and positive committee length
+- **AttesterCache** (5 tests): get on empty returns None, insert and get roundtrip, prune_below removes old entries and keeps recent, prune_below zero is noop, insert_respecting_max_len evicts lowest epoch at capacity
+- **AttesterCacheKey** (2 tests): equality semantics, inequality on differing epoch/root
+
+**Verification**: 15/15 tests pass, clippy clean, lint-full passes.
