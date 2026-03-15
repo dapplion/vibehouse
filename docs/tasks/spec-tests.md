@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1432 (Mar 16) — vibehouse API types, beacon_chain error types, and persistence test coverage (53 tests)
+
+**Test coverage**: Added 53 unit tests across 5 previously-untested files spanning 2 crates:
+- `common/eth2/src/vibehouse.rs` (13 tests): GlobalValidatorInclusionData serde roundtrip/zero values/clone, ValidatorInclusionData serde roundtrip/slashed validator/clone, SystemHealth serde roundtrip, ProcessHealth serde roundtrip, Health serde roundtrip flattened/clone, DepositLog serde roundtrip/SSZ roundtrip/invalid signature
+- `beacon_node/beacon_chain/src/errors.rs` (20 tests): BeaconChainError From conversions (ArithError, SszTypesError, BlockReplayError, StateAdvanceError, InconsistentFork), debug format, NoStateForSlot/MissingBeaconBlock/MissingBeaconState/DBError/DBInconsistent/AttestingToFinalizedSlot/RevertedFinalizedEpoch/PayloadAttestationNotInPtc field tests, BlockProductionError debug/from/StateSlotTooHigh/InvalidBlockVariant/EnvelopeConstructionFailed
+- `beacon_node/beacon_chain/src/historical_blocks.rs` (8 tests): From<StoreError>, MismatchedBlockRoot fields, InvalidSignature/ValidatorPubkeyCacheTimeout/IndexOutOfBounds/MissingOldestBlockRoot variants, debug format, IntoStaticStr
+- `beacon_node/beacon_chain/src/persisted_beacon_chain.rs` (7 tests): StoreItem column is BeaconChain, SSZ roundtrip zero/nonzero root, from_store_bytes invalid/empty, clone preserves root, store bytes length
+- `beacon_node/beacon_chain/src/persisted_custody.rs` (5 tests): CUSTODY_DB_KEY is zero, StoreItem column is CustodyContext, SSZ roundtrip/empty requirements, from_store_bytes invalid/empty
+
+**CI**: All 53 new + 86 existing eth2 + 944 existing beacon_chain tests pass. Clippy clean.
+
 ### run 1431 (Mar 15) — operation_pool, proto_array, beacon_chain, and eth2 type test coverage (69 tests)
 
 **Test coverage**: Added 69 unit tests across 9 previously-untested files spanning 4 crates:
