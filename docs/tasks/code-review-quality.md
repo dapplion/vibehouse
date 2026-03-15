@@ -1457,3 +1457,18 @@ All remaining `.clone()` calls are either:
 - Empty cache contains nothing, empty cache metrics, block_processed removes from lookups, block_processed noop for unknown root, contains reflects block_roots cache, LRU eviction at BLOCK_ROOT_CACHE_LIMIT (512), lookups LRU eviction at LOOKUP_LIMIT (8), metrics returns correct counts, block_processed does not affect block_roots, duplicate insertions
 
 **Verification**: 32/32 tests pass, clippy clean, lint-full passes.
+
+### Run 1428: add block_verification_types test coverage (2026-03-15)
+
+**Scope**: Add unit test coverage for the previously untested `block_verification_types.rs` module, covering `RpcBlock` construction, blob consistency validation, envelope management, and `AsBlock` trait implementations.
+
+**block_verification_types.rs** (21 tests):
+- **RpcBlock::new_without_blobs** (3 tests): preserves block fields, uses provided root, computes root when None
+- **RpcBlock::new blob consistency** (5 tests): no blobs returns Block variant, empty blob list treated as None, matching blobs succeeds, wrong blob count returns MissingBlobs, mismatched commitment returns KzgCommitmentMismatch
+- **RpcBlock::deconstruct** (2 tests): block-only round-trip, block-and-blobs round-trip
+- **n_blobs/n_data_columns** (2 tests): zero for block-only, matches blob count
+- **envelope operations** (4 tests): initially None, set_and_get, take_returns_and_clears, take_from_empty
+- **AsBlock trait** (4 tests): slot, parent_root, canonical_root, block_cloned
+- **Pre-Deneb** (1 test): pre-Deneb block with None blobs handled correctly
+
+**Verification**: 21/21 tests pass, clippy clean.
