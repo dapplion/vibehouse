@@ -63,3 +63,83 @@ impl<E: EthSpec> OnDiskConsensusContext<E> {
         ctxt.set_indexed_attestations(indexed_attestations)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz::{Decode, Encode};
+    use types::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn roundtrip_with_all_fields() {
+        let block_root = Hash256::repeat_byte(0xab);
+        let ctxt = ConsensusContext::<E>::new(Slot::new(42))
+            .set_proposer_index(7)
+            .set_current_block_root(block_root);
+
+        let on_disk = OnDiskConsensusContext::from_consensus_context(ctxt);
+        let recovered = on_disk.into_consensus_context();
+
+        assert_eq!(recovered.slot, Slot::new(42));
+        assert_eq!(recovered.proposer_index, Some(7));
+        assert_eq!(recovered.current_block_root, Some(block_root));
+    }
+
+    #[test]
+    fn roundtrip_with_no_optional_fields() {
+        let ctxt = ConsensusContext::<E>::new(Slot::new(100));
+        let on_disk = OnDiskConsensusContext::from_consensus_context(ctxt);
+        let recovered = on_disk.into_consensus_context();
+
+        assert_eq!(recovered.slot, Slot::new(100));
+        assert_eq!(recovered.proposer_index, None);
+        assert_eq!(recovered.current_block_root, None);
+    }
+
+    #[test]
+    fn ssz_roundtrip_strips_indexed_attestations() {
+        let block_root = Hash256::repeat_byte(0x01);
+        let ctxt = ConsensusContext::<E>::new(Slot::new(10))
+            .set_proposer_index(3)
+            .set_current_block_root(block_root);
+
+        let on_disk = OnDiskConsensusContext::from_consensus_context(ctxt);
+        let bytes = on_disk.as_ssz_bytes();
+        let decoded = OnDiskConsensusContext::<E>::from_ssz_bytes(&bytes).unwrap();
+
+        // indexed_attestations are skipped in SSZ, so they should be empty after decode
+        assert!(decoded.indexed_attestations.is_empty());
+        // Other fields preserved
+        assert_eq!(decoded.slot, Slot::new(10));
+        assert_eq!(decoded.proposer_index, Some(3));
+        assert_eq!(decoded.current_block_root, Some(block_root));
+    }
+
+    #[test]
+    fn clone_preserves_fields() {
+        let ctxt = ConsensusContext::<E>::new(Slot::new(50)).set_proposer_index(99);
+        let on_disk = OnDiskConsensusContext::from_consensus_context(ctxt);
+        let cloned = on_disk.clone();
+        assert_eq!(on_disk, cloned);
+    }
+
+    #[test]
+    fn epoch_computed_correctly_on_recovery() {
+        // Slot 64 with 8 slots/epoch = epoch 8, previous = 7
+        let ctxt = ConsensusContext::<E>::new(Slot::new(64));
+        let on_disk = OnDiskConsensusContext::from_consensus_context(ctxt);
+        let recovered = on_disk.into_consensus_context();
+        assert_eq!(
+            recovered.current_epoch,
+            Slot::new(64).epoch(E::slots_per_epoch())
+        );
+        assert_eq!(
+            recovered.previous_epoch,
+            Slot::new(64)
+                .epoch(E::slots_per_epoch())
+                .saturating_sub(1u64)
+        );
+    }
+}

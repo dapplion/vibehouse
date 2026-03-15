@@ -77,3 +77,81 @@ impl Delta {
         self.penalize(other.penalties)
     }
 }
+
+#[cfg(test)]
+mod delta_tests {
+    use super::*;
+
+    #[test]
+    fn default_is_zero() {
+        let d = Delta::default();
+        assert_eq!(d.rewards, 0);
+        assert_eq!(d.penalties, 0);
+    }
+
+    #[test]
+    fn reward_accumulates() {
+        let mut d = Delta::default();
+        d.reward(100).unwrap();
+        d.reward(200).unwrap();
+        assert_eq!(d.rewards, 300);
+        assert_eq!(d.penalties, 0);
+    }
+
+    #[test]
+    fn penalize_accumulates() {
+        let mut d = Delta::default();
+        d.penalize(50).unwrap();
+        d.penalize(75).unwrap();
+        assert_eq!(d.penalties, 125);
+        assert_eq!(d.rewards, 0);
+    }
+
+    #[test]
+    fn reward_and_penalize_independent() {
+        let mut d = Delta::default();
+        d.reward(100).unwrap();
+        d.penalize(50).unwrap();
+        assert_eq!(d.rewards, 100);
+        assert_eq!(d.penalties, 50);
+    }
+
+    #[test]
+    fn combine_merges_both() {
+        let mut d1 = Delta::default();
+        d1.reward(100).unwrap();
+        d1.penalize(30).unwrap();
+
+        let mut d2 = Delta::default();
+        d2.reward(50).unwrap();
+        d2.penalize(20).unwrap();
+
+        d1.combine(d2).unwrap();
+        assert_eq!(d1.rewards, 150);
+        assert_eq!(d1.penalties, 50);
+    }
+
+    #[test]
+    fn clone_is_independent() {
+        let mut d = Delta::default();
+        d.reward(100).unwrap();
+        let mut d2 = d.clone();
+        d2.reward(50).unwrap();
+        assert_eq!(d.rewards, 100);
+        assert_eq!(d2.rewards, 150);
+    }
+
+    #[test]
+    fn reward_overflow_is_error() {
+        let mut d = Delta::default();
+        d.reward(u64::MAX).unwrap();
+        assert!(d.reward(1).is_err());
+    }
+
+    #[test]
+    fn penalize_overflow_is_error() {
+        let mut d = Delta::default();
+        d.penalize(u64::MAX).unwrap();
+        assert!(d.penalize(1).is_err());
+    }
+}

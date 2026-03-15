@@ -255,3 +255,242 @@ impl StoreItem for DataColumnInfo {
         Ok(Self::from_ssz_bytes(bytes)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- SchemaVersion ---
+
+    #[test]
+    fn schema_version_as_u64() {
+        assert_eq!(SchemaVersion(42).as_u64(), 42);
+        assert_eq!(SchemaVersion(0).as_u64(), 0);
+    }
+
+    #[test]
+    fn schema_version_store_roundtrip() {
+        let v = SchemaVersion(28);
+        let bytes = v.as_store_bytes();
+        let decoded = SchemaVersion::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded.as_u64(), 28);
+    }
+
+    #[test]
+    fn schema_version_ordering() {
+        assert!(SchemaVersion(1) < SchemaVersion(2));
+        assert_eq!(SchemaVersion(5), SchemaVersion(5));
+    }
+
+    #[test]
+    fn current_schema_version_value() {
+        assert_eq!(CURRENT_SCHEMA_VERSION, SchemaVersion(28));
+    }
+
+    // --- CompactionTimestamp ---
+
+    #[test]
+    fn compaction_timestamp_store_roundtrip() {
+        let ts = CompactionTimestamp(1710000000);
+        let bytes = ts.as_store_bytes();
+        let decoded = CompactionTimestamp::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded.0, 1710000000);
+    }
+
+    #[test]
+    fn compaction_timestamp_zero() {
+        let ts = CompactionTimestamp(0);
+        let bytes = ts.as_store_bytes();
+        let decoded = CompactionTimestamp::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded.0, 0);
+    }
+
+    // --- AnchorInfo ---
+
+    #[test]
+    fn anchor_info_block_backfill_complete() {
+        let anchor = AnchorInfo {
+            anchor_slot: Slot::new(1000),
+            oldest_block_slot: Slot::new(50),
+            oldest_block_parent: Hash256::ZERO,
+            state_upper_limit: Slot::new(0),
+            state_lower_limit: Slot::new(0),
+        };
+        assert!(anchor.block_backfill_complete(Slot::new(50)));
+        assert!(anchor.block_backfill_complete(Slot::new(100)));
+        assert!(!anchor.block_backfill_complete(Slot::new(10)));
+    }
+
+    #[test]
+    fn anchor_info_all_historic_states_stored() {
+        let mut anchor = ANCHOR_UNINITIALIZED;
+        assert!(!anchor.all_historic_states_stored());
+
+        anchor.state_lower_limit = Slot::new(500);
+        anchor.state_upper_limit = Slot::new(500);
+        assert!(anchor.all_historic_states_stored());
+    }
+
+    #[test]
+    fn anchor_info_no_historic_states_stored() {
+        let anchor = AnchorInfo {
+            anchor_slot: Slot::new(1000),
+            oldest_block_slot: Slot::new(0),
+            oldest_block_parent: Hash256::ZERO,
+            state_upper_limit: Slot::new(2000),
+            state_lower_limit: Slot::new(0),
+        };
+        // split_slot <= state_upper_limit: no historic states
+        assert!(anchor.no_historic_states_stored(Slot::new(1500)));
+        // split_slot > state_upper_limit: some states stored
+        assert!(!anchor.no_historic_states_stored(Slot::new(3000)));
+    }
+
+    #[test]
+    fn anchor_info_full_state_pruning_enabled() {
+        let anchor = AnchorInfo {
+            anchor_slot: Slot::new(1000),
+            oldest_block_slot: Slot::new(0),
+            oldest_block_parent: Hash256::ZERO,
+            state_upper_limit: STATE_UPPER_LIMIT_NO_RETAIN,
+            state_lower_limit: Slot::new(0),
+        };
+        assert!(anchor.full_state_pruning_enabled());
+
+        let anchor2 = AnchorInfo {
+            state_upper_limit: Slot::new(100),
+            ..anchor
+        };
+        assert!(!anchor2.full_state_pruning_enabled());
+    }
+
+    #[test]
+    fn anchor_info_as_archive_anchor() {
+        let anchor = AnchorInfo {
+            anchor_slot: Slot::new(1000),
+            oldest_block_slot: Slot::new(500),
+            oldest_block_parent: Hash256::repeat_byte(0xff),
+            state_upper_limit: Slot::new(2000),
+            state_lower_limit: Slot::new(100),
+        };
+        let archive = anchor.as_archive_anchor();
+        // anchor_slot preserved
+        assert_eq!(archive.anchor_slot, Slot::new(1000));
+        // everything else zeroed
+        assert_eq!(archive.oldest_block_slot, Slot::new(0));
+        assert_eq!(archive.oldest_block_parent, Hash256::ZERO);
+        assert_eq!(archive.state_upper_limit, Slot::new(0));
+        assert_eq!(archive.state_lower_limit, Slot::new(0));
+    }
+
+    #[test]
+    fn anchor_info_store_roundtrip() {
+        let anchor = AnchorInfo {
+            anchor_slot: Slot::new(1000),
+            oldest_block_slot: Slot::new(500),
+            oldest_block_parent: Hash256::repeat_byte(0xab),
+            state_upper_limit: Slot::new(2000),
+            state_lower_limit: Slot::new(100),
+        };
+        let bytes = anchor.as_store_bytes();
+        let decoded = AnchorInfo::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded, anchor);
+    }
+
+    #[test]
+    fn anchor_uninitialized_constant() {
+        assert_eq!(ANCHOR_UNINITIALIZED.anchor_slot, Slot::new(u64::MAX));
+        assert_eq!(ANCHOR_UNINITIALIZED.oldest_block_slot, Slot::new(u64::MAX));
+        assert_eq!(ANCHOR_UNINITIALIZED.oldest_block_parent, Hash256::ZERO);
+        assert_eq!(ANCHOR_UNINITIALIZED.state_upper_limit, Slot::new(u64::MAX));
+        assert_eq!(ANCHOR_UNINITIALIZED.state_lower_limit, Slot::new(0));
+    }
+
+    // --- BlobInfo ---
+
+    #[test]
+    fn blob_info_store_roundtrip() {
+        let info = BlobInfo {
+            oldest_blob_slot: Some(Slot::new(100)),
+            blobs_db: true,
+        };
+        let bytes = info.as_store_bytes();
+        let decoded = BlobInfo::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded, info);
+    }
+
+    #[test]
+    fn blob_info_default() {
+        let info = BlobInfo::default();
+        assert_eq!(info.oldest_blob_slot, None);
+        assert!(!info.blobs_db);
+    }
+
+    #[test]
+    fn blob_info_none_slot_roundtrip() {
+        let info = BlobInfo {
+            oldest_blob_slot: None,
+            blobs_db: true,
+        };
+        let bytes = info.as_store_bytes();
+        let decoded = BlobInfo::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded.oldest_blob_slot, None);
+    }
+
+    // --- DataColumnInfo ---
+
+    #[test]
+    fn data_column_info_store_roundtrip() {
+        let info = DataColumnInfo {
+            oldest_data_column_slot: Some(Slot::new(200)),
+        };
+        let bytes = info.as_store_bytes();
+        let decoded = DataColumnInfo::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded, info);
+    }
+
+    #[test]
+    fn data_column_info_default() {
+        let info = DataColumnInfo::default();
+        assert_eq!(info.oldest_data_column_slot, None);
+    }
+
+    // --- DataColumnCustodyInfo ---
+
+    #[test]
+    fn data_column_custody_info_store_roundtrip() {
+        let info = DataColumnCustodyInfo {
+            earliest_data_column_slot: Some(Slot::new(300)),
+        };
+        let bytes = info.as_store_bytes();
+        let decoded = DataColumnCustodyInfo::from_store_bytes(&bytes).unwrap();
+        assert_eq!(decoded, info);
+    }
+
+    #[test]
+    fn data_column_custody_info_default() {
+        let info = DataColumnCustodyInfo::default();
+        assert_eq!(info.earliest_data_column_slot, None);
+    }
+
+    // --- Key constants ---
+
+    #[test]
+    fn meta_keys_are_distinct() {
+        let keys = [
+            SCHEMA_VERSION_KEY,
+            CONFIG_KEY,
+            SPLIT_KEY,
+            COMPACTION_TIMESTAMP_KEY,
+            ANCHOR_INFO_KEY,
+            BLOB_INFO_KEY,
+            DATA_COLUMN_INFO_KEY,
+            DATA_COLUMN_CUSTODY_INFO_KEY,
+        ];
+        for i in 0..keys.len() {
+            for j in (i + 1)..keys.len() {
+                assert_ne!(keys[i], keys[j], "keys at index {} and {} collide", i, j);
+            }
+        }
+    }
+}
