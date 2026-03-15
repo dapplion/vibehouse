@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1258 (Mar 15) — spec stable, tinyvec dep update
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged. PR #4992 (cached PTCs) has 1 APPROVED (jtraglia Mar 12), comments from jihoonsong (Mar 13), same head d76a278b0a.
+
+**Maintenance**: Updated tinyvec 1.10.0→1.11.0. Cargo check + clippy clean (zero warnings). Cargo audit unchanged (1 rsa advisory, no fix).
+
+**Conclusion**: Project stable. No spec drift. Minor dep update applied.
+
 ### run 1257 (Mar 15) — spec stable, CI green, no action needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged. No spec drift.
