@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1268 (Mar 15) — spec stable, CI 5/6 green (beacon_chain still running), no changes needed
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs — still open, 1 approval, active review), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged. New tracked PR: #4954 (fork choice store ms fields — 0 reviews, test-infra only, no code impact).
+
+**CI**: Run 23102403979 (educe migration) — 5/6 jobs green (check+clippy, ef-tests, unit-tests, network+op_pool, http_api all passed). Beacon_chain tests still in progress (~1.5h job). Prior run 23101701474 (pastey migration) fully green.
+
+**Code health**: Zero clippy warnings. Cargo audit unchanged (1 rsa vulnerability no fix, 5 allowed warnings — transitive SP1 deps). No semver-compatible dependency updates available.
+
+**Conclusion**: Project stable. No spec drift. Monitoring beacon_chain CI completion and PR #4992 for merge.
+
 ### run 1267 (Mar 15) — spec stable, CI in progress (educe migration), no changes needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Spec test vectors still v1.6.0-beta.0 (Sep 2025) — Gloas fork choice vectors from PR #4940 included in our local alpha.3 vectors. Open Gloas PRs unchanged: #4992 (cached PTCs — 1 approval, 14 review comments, mergeable/clean), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
