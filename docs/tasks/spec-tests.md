@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1265 (Mar 15) — spec stable, all deps current, CI green
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**CI**: Run 23101701474 (educe migration) completed all green — check+clippy, ef-tests, unit tests, beacon_chain, http_api, network+op_pool all passed. Run 23102403979 in progress with check+clippy already green.
+
+**Dependencies**: All semver-compatible deps at latest. 30 major-version-behind deps (rand 0.8→0.10, reqwest 0.12→0.13, etc.) — none critical, all would require significant migration work. Cargo audit: 1 vulnerability (rsa, no fix), 4 unmaintained warnings (all transitive or false positive — ansi_term via sp1, bincode via sp1, derivative via ark-ff/sp1, filesystem is local crate).
+
+**Conclusion**: Project fully stable. No spec drift, no actionable dependency updates, CI green.
+
 ### run 1264 (Mar 15) — replaced unmaintained derivative crate with educe, spec stable
 
 **Dependency maintenance**: Replaced `derivative` (RUSTSEC-2024-0388, unmaintained) with `educe` 0.6 (actively maintained). Migrated 53 source files across 11 crates (66 files changed total including Cargo.tomls). Syntax differences: `= "ignore"` → `(ignore)`, `bound = "..."` → `bound(...)`, `format_with` → `method`, `value =` → `expression =`. Two types using `Debug = "transparent"` (ExecutionBlockHash, DataColumnSubnetId) replaced with manual `fmt::Debug` impls since educe has no transparent mode. Five light_client superstruct types had unused Derivative derives removed.
