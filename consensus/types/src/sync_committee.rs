@@ -91,3 +91,110 @@ impl<E: EthSpec> SyncCommittee<E> {
         self.pubkeys.contains(pubkey)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    fn make_pubkey(byte: u8) -> PublicKeyBytes {
+        let mut bytes = [0u8; 48];
+        bytes[0] = byte;
+        PublicKeyBytes::deserialize(&bytes).unwrap()
+    }
+
+    fn make_committee(fill: u8) -> SyncCommittee<E> {
+        let pubkeys = FixedVector::from_elem(make_pubkey(fill));
+        SyncCommittee {
+            pubkeys,
+            aggregate_pubkey: make_pubkey(fill),
+        }
+    }
+
+    #[test]
+    fn temporary_uses_empty_pubkeys() {
+        let committee = SyncCommittee::<E>::temporary();
+        assert!(
+            committee
+                .pubkeys
+                .iter()
+                .all(|pk| *pk == PublicKeyBytes::empty())
+        );
+        assert_eq!(committee.aggregate_pubkey, PublicKeyBytes::empty());
+    }
+
+    #[test]
+    fn contains_present_pubkey() {
+        let pk = make_pubkey(42);
+        let mut committee = SyncCommittee::<E>::temporary();
+        committee.pubkeys[0] = pk;
+        assert!(committee.contains(&pk));
+    }
+
+    #[test]
+    fn contains_absent_pubkey() {
+        let committee = SyncCommittee::<E>::temporary();
+        let pk = make_pubkey(99);
+        assert!(!committee.contains(&pk));
+    }
+
+    #[test]
+    fn get_subcommittee_pubkeys_valid() {
+        let committee = make_committee(1);
+        let subcommittee_size = E::sync_subcommittee_size();
+        let sub = committee.get_subcommittee_pubkeys(0).unwrap();
+        assert_eq!(sub.len(), subcommittee_size);
+    }
+
+    #[test]
+    fn get_subcommittee_pubkeys_out_of_range() {
+        let committee = make_committee(1);
+        // There are SYNC_COMMITTEE_SUBNET_COUNT subcommittees
+        let subnet_count = crate::consts::altair::SYNC_COMMITTEE_SUBNET_COUNT as usize;
+        assert!(committee.get_subcommittee_pubkeys(subnet_count).is_err());
+    }
+
+    #[test]
+    fn subcommittee_positions_empty_for_absent_key() {
+        let committee = make_committee(1);
+        let pk = make_pubkey(99);
+        let positions = committee
+            .subcommittee_positions_for_public_key(&pk)
+            .unwrap();
+        assert!(positions.is_empty());
+    }
+
+    #[test]
+    fn subcommittee_positions_for_all_same_key() {
+        // All positions filled with same key
+        let pk = make_pubkey(7);
+        let committee = make_committee(7);
+        let positions = committee
+            .subcommittee_positions_for_public_key(&pk)
+            .unwrap();
+        // Should be present in all subcommittees
+        let subnet_count = crate::consts::altair::SYNC_COMMITTEE_SUBNET_COUNT as usize;
+        assert_eq!(positions.len(), subnet_count);
+        let mut total_positions = 0usize;
+        for v in positions.values() {
+            total_positions += v.len();
+        }
+        assert_eq!(total_positions, E::sync_committee_size());
+    }
+
+    #[test]
+    fn subcommittee_positions_single_occurrence() {
+        let mut committee = SyncCommittee::<E>::temporary();
+        let pk = make_pubkey(42);
+        // Place at position 0 (subcommittee 0, position 0)
+        committee.pubkeys[0] = pk;
+        let positions = committee
+            .subcommittee_positions_for_public_key(&pk)
+            .unwrap();
+        assert_eq!(positions.len(), 1);
+        let sub0 = positions.get(&SyncSubnetId::new(0)).unwrap();
+        assert_eq!(sub0, &vec![0]);
+    }
+}

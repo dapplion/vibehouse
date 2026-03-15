@@ -88,3 +88,101 @@ impl<'a, T> IntoIterator for &'a RuntimeFixedVector<T> {
         self.vec.iter()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_from_vec() {
+        let v = RuntimeFixedVector::new(vec![1, 2, 3]);
+        assert_eq!(v.len(), 3);
+        assert_eq!(v.as_slice(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn new_empty() {
+        let v = RuntimeFixedVector::<u32>::new(vec![]);
+        assert_eq!(v.len(), 0);
+        assert!(v.as_slice().is_empty());
+    }
+
+    #[test]
+    fn default_fills_with_defaults() {
+        let v = RuntimeFixedVector::<u32>::default(4);
+        assert_eq!(v.len(), 4);
+        assert_eq!(v.as_slice(), &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn to_vec_clones() {
+        let v = RuntimeFixedVector::new(vec![10, 20, 30]);
+        let cloned = v.to_vec();
+        assert_eq!(cloned, vec![10, 20, 30]);
+        // Original still usable
+        assert_eq!(v.len(), 3);
+    }
+
+    #[test]
+    fn into_vec_moves() {
+        let v = RuntimeFixedVector::new(vec![5, 6, 7]);
+        let moved = v.into_vec();
+        assert_eq!(moved, vec![5, 6, 7]);
+    }
+
+    #[test]
+    fn deref_slice_access() {
+        let v = RuntimeFixedVector::new(vec![1, 2, 3, 4]);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[3], 4);
+        assert_eq!(&v[1..3], &[2, 3]);
+    }
+
+    #[test]
+    fn deref_mut_modification() {
+        let mut v = RuntimeFixedVector::new(vec![0, 0, 0]);
+        v[1] = 42;
+        assert_eq!(v.as_slice(), &[0, 42, 0]);
+    }
+
+    #[test]
+    fn take_replaces_with_defaults() {
+        let mut v = RuntimeFixedVector::new(vec![1, 2, 3]);
+        let taken = v.take();
+        // taken has the original data
+        assert_eq!(taken.as_slice(), &[1, 2, 3]);
+        assert_eq!(taken.len(), 3);
+        // v is now reset to defaults but same length
+        assert_eq!(v.as_slice(), &[0, 0, 0]);
+        assert_eq!(v.len(), 3);
+    }
+
+    #[test]
+    fn into_iter_owned() {
+        let v = RuntimeFixedVector::new(vec![10, 20, 30]);
+        let collected: Vec<_> = v.into_iter().collect();
+        assert_eq!(collected, vec![10, 20, 30]);
+    }
+
+    #[test]
+    fn into_iter_ref() {
+        let v = RuntimeFixedVector::new(vec![1, 2, 3]);
+        let collected: Vec<_> = (&v).into_iter().copied().collect();
+        assert_eq!(collected, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn clone() {
+        let v = RuntimeFixedVector::new(vec![7, 8, 9]);
+        let cloned = v.clone();
+        assert_eq!(cloned.as_slice(), v.as_slice());
+        assert_eq!(cloned.len(), v.len());
+    }
+
+    #[test]
+    fn debug_format() {
+        let v = RuntimeFixedVector::new(vec![1, 2]);
+        let s = format!("{:?}", v);
+        assert!(s.contains("(len=2)"));
+    }
+}

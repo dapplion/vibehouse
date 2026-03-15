@@ -92,3 +92,139 @@ impl arbitrary::Arbitrary<'_> for ExitCache {
         Ok(Self::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_validator(exit_epoch: Epoch) -> Validator {
+        Validator {
+            exit_epoch,
+            ..Validator::default()
+        }
+    }
+
+    #[test]
+    fn default_is_uninitialized() {
+        let cache = ExitCache::default();
+        assert!(cache.check_initialized().is_err());
+        assert!(cache.max_epoch().is_err());
+        assert!(cache.get_churn_at(Epoch::new(0)).is_err());
+    }
+
+    #[test]
+    fn new_empty_validators() {
+        let spec = ChainSpec::minimal();
+        let validators: [Validator; 0] = [];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        cache.check_initialized().unwrap();
+        // No validators exiting => max_epoch is None
+        assert_eq!(cache.max_epoch().unwrap(), None);
+    }
+
+    #[test]
+    fn new_all_far_future() {
+        let spec = ChainSpec::minimal();
+        let validators = [
+            make_validator(spec.far_future_epoch),
+            make_validator(spec.far_future_epoch),
+        ];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        assert_eq!(cache.max_epoch().unwrap(), None);
+    }
+
+    #[test]
+    fn new_single_exiting_validator() {
+        let spec = ChainSpec::minimal();
+        let validators = [
+            make_validator(Epoch::new(10)),
+            make_validator(spec.far_future_epoch),
+        ];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        assert_eq!(cache.max_epoch().unwrap(), Some(Epoch::new(10)));
+        assert_eq!(cache.get_churn_at(Epoch::new(10)).unwrap(), 1);
+    }
+
+    #[test]
+    fn new_multiple_same_epoch() {
+        let spec = ChainSpec::minimal();
+        let validators = [
+            make_validator(Epoch::new(5)),
+            make_validator(Epoch::new(5)),
+            make_validator(Epoch::new(5)),
+        ];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        assert_eq!(cache.max_epoch().unwrap(), Some(Epoch::new(5)));
+        assert_eq!(cache.get_churn_at(Epoch::new(5)).unwrap(), 3);
+    }
+
+    #[test]
+    fn new_multiple_different_epochs() {
+        let spec = ChainSpec::minimal();
+        let validators = [
+            make_validator(Epoch::new(3)),
+            make_validator(Epoch::new(7)),
+            make_validator(Epoch::new(5)),
+            make_validator(Epoch::new(7)),
+        ];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        // Max epoch should be 7 with churn 2
+        assert_eq!(cache.max_epoch().unwrap(), Some(Epoch::new(7)));
+        assert_eq!(cache.get_churn_at(Epoch::new(7)).unwrap(), 2);
+    }
+
+    #[test]
+    fn record_validator_exit_equal() {
+        let spec = ChainSpec::minimal();
+        let validators = [make_validator(Epoch::new(10))];
+        let mut cache = ExitCache::new(validators.iter(), &spec).unwrap();
+
+        cache.record_validator_exit(Epoch::new(10)).unwrap();
+        assert_eq!(cache.get_churn_at(Epoch::new(10)).unwrap(), 2);
+    }
+
+    #[test]
+    fn record_validator_exit_greater() {
+        let spec = ChainSpec::minimal();
+        let validators = [make_validator(Epoch::new(10))];
+        let mut cache = ExitCache::new(validators.iter(), &spec).unwrap();
+
+        cache.record_validator_exit(Epoch::new(15)).unwrap();
+        assert_eq!(cache.max_epoch().unwrap(), Some(Epoch::new(15)));
+        assert_eq!(cache.get_churn_at(Epoch::new(15)).unwrap(), 1);
+    }
+
+    #[test]
+    fn record_validator_exit_less_ignored() {
+        let spec = ChainSpec::minimal();
+        let validators = [make_validator(Epoch::new(10))];
+        let mut cache = ExitCache::new(validators.iter(), &spec).unwrap();
+
+        cache.record_validator_exit(Epoch::new(5)).unwrap();
+        // Max is still 10 with churn 1
+        assert_eq!(cache.max_epoch().unwrap(), Some(Epoch::new(10)));
+        assert_eq!(cache.get_churn_at(Epoch::new(10)).unwrap(), 1);
+    }
+
+    #[test]
+    fn record_exit_uninitialized_errors() {
+        let mut cache = ExitCache::default();
+        assert!(cache.record_validator_exit(Epoch::new(1)).is_err());
+    }
+
+    #[test]
+    fn get_churn_at_future_epoch_returns_zero() {
+        let spec = ChainSpec::minimal();
+        let validators = [make_validator(Epoch::new(5))];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        assert_eq!(cache.get_churn_at(Epoch::new(10)).unwrap(), 0);
+    }
+
+    #[test]
+    fn get_churn_at_past_epoch_errors() {
+        let spec = ChainSpec::minimal();
+        let validators = [make_validator(Epoch::new(10))];
+        let cache = ExitCache::new(validators.iter(), &spec).unwrap();
+        assert!(cache.get_churn_at(Epoch::new(5)).is_err());
+    }
+}
