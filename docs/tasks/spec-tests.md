@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1332 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Verified PR #5001 implementation: `observed_execution_bids.rs` correctly uses 3-tuple `(slot, parent_block_hash, parent_block_root)` for bid tracking. Notable open Gloas PRs to watch: #4939 (request missing payload envelopes), #4992 (cached PTCs in state), #4898 (remove pending tiebreaker), #4843 (variable PTC deadline), #4747 (fast confirmation rule).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit — 1 vulnerability (rsa, no fix available). No changes from prior run.
+
 ### run 1331 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Verified alpha.3 changes: PR #5001 (parent_block_root bid filtering) already implemented in `observed_execution_bids.rs`. PR #4940 (initial Gloas fork choice tests for `on_execution_payload`) merged but not yet in a test release — our test runner already supports `on_execution_payload` steps and `head_payload_status` checks. Open Gloas PRs unchanged: #4960 (fork choice deposit), #4932 (attestation coverage), #4840 (eip7843), #4630 (eip7688 SSZ).
