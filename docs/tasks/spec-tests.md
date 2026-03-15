@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1416 (Mar 15) — upgrade_to_altair and upgrade_to_electra test coverage added
+
+**Test coverage**: Added 18 unit tests across 2 previously-untested fork upgrade files, completing the full fork upgrade test suite (all 7 forks now covered: altair, bellatrix, capella, deneb, electra, fulu, gloas):
+- `upgrade/altair.rs` (8 tests): fork version transition (base→altair), versioning preservation, registry/eth1 preservation, finality preservation, inactivity scores initialization (all zeros), participation flags initialization (all defaults), sync committee initialization (current=next, computed not temporary), wrong variant rejection
+- `upgrade/electra.rs` (10 tests): fork version transition (deneb→electra), versioning preservation, registry/eth1 preservation, finality preservation, capella fields preservation (withdrawal index/validator), execution payload header upgrade, electra-specific field initialization (deposit_requests_start_index, churn limits), pre-activation validators queued as pending deposits (balance/effective_balance zeroed, eligibility reset), no pre-activation means no pending deposits, wrong variant rejection
+
+**CI**: All 947 state_processing tests pass.
+
 ### run 1415 (Mar 15) — validator and summaries_dag test coverage added
 
 **Test coverage**: Added 51 unit tests across 2 previously-undertested files:
