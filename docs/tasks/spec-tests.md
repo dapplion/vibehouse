@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1415 (Mar 15) — validator and summaries_dag test coverage added
+
+**Test coverage**: Added 51 unit tests across 2 previously-undertested files:
+- `consensus/types/src/validator.rs` (28 new tests): is_slashable_at (active unslashed, already slashed), from_deposit (caps effective balance, rounds down to increment), has_eth1_withdrawal_credential, has_compounding_withdrawal_credential, has_execution_withdrawal_credential (eth1/compounding/bls), get_execution_withdrawal_address (valid/bls returns none), change_withdrawal_credentials, is_eligible_for_activation_queue (base/base wrong balance/electra/already eligible), could_be_eligible_for_activation_at (eligible/already activated), get_max_effective_balance (pre-electra/electra compounding/electra eth1), is_fully_withdrawable_validator (capella/capella bls creds/electra compounding), is_partially_withdrawable_validator (capella/capella bls creds/electra compounding), is_compounding_withdrawal_credential standalone
+- `beacon_node/beacon_chain/src/summaries_dag.rs` (23 new tests): new empty, duplicate block_root+slot errors, summaries_count, previous_state_root chain/missing, ancestor_state_root_at_slot (same/walk back/above errors/unknown parent), ancestors_of (leaf/root/missing), descendants_of (root/leaf empty/missing), tree_roots, state_root_at_slot (found/wrong block root/wrong slot), blocks_of_states (valid/missing), summaries_by_slot_ascending order, forked_dag_descendants, iter_blocks_unique
+
+**Note**: Added `#[derive(Debug)]` to `StateSummariesDAG` to support `unwrap_err()` in tests.
+
+**CI**: All green (32 validator tests, 27 summaries_dag tests).
+
 ### run 1414 (Mar 15) — upgrade_to_bellatrix, upgrade_to_capella, upgrade_to_deneb, upgrade_to_fulu test coverage added
 
 **Test coverage**: Added 28 unit tests across 4 previously-untested fork upgrade files:

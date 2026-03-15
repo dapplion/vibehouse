@@ -22,6 +22,7 @@ pub struct DAGStateSummaryV22 {
     pub block_parent_root: Hash256,
 }
 
+#[derive(Debug)]
 pub struct StateSummariesDAG {
     // state_root -> state_summary
     state_summaries_by_state_root: HashMap<Hash256, DAGStateSummary>,
@@ -480,5 +481,271 @@ mod tests {
         assert_eq!(dag.previous_state_root(root(0xc)).unwrap(), root(0xb));
         assert_eq!(dag.previous_state_root(root(0xd)).unwrap(), root(0xb));
         assert_eq!(dag.previous_state_root(root(0xe)).unwrap(), root(0xd));
+    }
+
+    use super::DAGStateSummary;
+
+    fn summary(slot: u64, block_root: u64, prev: u64) -> DAGStateSummary {
+        DAGStateSummary {
+            slot: Slot::new(slot),
+            latest_block_root: root(block_root),
+            latest_block_slot: Slot::new(slot),
+            previous_state_root: root(prev),
+        }
+    }
+
+    /// Build a simple linear chain: slots 1→2→3, each with a unique block root.
+    fn linear_dag() -> StateSummariesDAG {
+        StateSummariesDAG::new(vec![
+            (root(0xa), summary(1, 1, 0)), // root (prev=0x0 is unknown)
+            (root(0xb), summary(2, 2, 0xa)),
+            (root(0xc), summary(3, 3, 0xb)),
+        ])
+        .unwrap()
+    }
+
+    #[test]
+    fn new_empty() {
+        let dag = StateSummariesDAG::new(vec![]).unwrap();
+        assert_eq!(dag.summaries_count(), 0);
+    }
+
+    #[test]
+    fn new_duplicate_block_root_slot_errors() {
+        let result = StateSummariesDAG::new(vec![
+            (root(0xa), summary(1, 1, 0)),
+            (root(0xb), summary(1, 1, 0)), // same (block_root=1, slot=1)
+        ]);
+        assert!(matches!(
+            result.unwrap_err(),
+            Error::DuplicateStateSummary { .. }
+        ));
+    }
+
+    #[test]
+    fn summaries_count() {
+        let dag = linear_dag();
+        assert_eq!(dag.summaries_count(), 3);
+    }
+
+    #[test]
+    fn previous_state_root_chain() {
+        let dag = linear_dag();
+        assert_previous_state_root_is_zero(&dag, root(0xa));
+        assert_eq!(dag.previous_state_root(root(0xb)).unwrap(), root(0xa));
+        assert_eq!(dag.previous_state_root(root(0xc)).unwrap(), root(0xb));
+    }
+
+    #[test]
+    fn previous_state_root_missing() {
+        let dag = linear_dag();
+        assert!(matches!(
+            dag.previous_state_root(root(0xff)).unwrap_err(),
+            Error::MissingStateSummary(_)
+        ));
+    }
+
+    #[test]
+    fn ancestor_state_root_at_slot_same() {
+        let dag = linear_dag();
+        assert_eq!(
+            dag.ancestor_state_root_at_slot(root(0xc), Slot::new(3))
+                .unwrap(),
+            root(0xc)
+        );
+    }
+
+    #[test]
+    fn ancestor_state_root_at_slot_walk_back() {
+        let dag = linear_dag();
+        assert_eq!(
+            dag.ancestor_state_root_at_slot(root(0xc), Slot::new(2))
+                .unwrap(),
+            root(0xb)
+        );
+        assert_eq!(
+            dag.ancestor_state_root_at_slot(root(0xc), Slot::new(1))
+                .unwrap(),
+            root(0xa)
+        );
+    }
+
+    #[test]
+    fn ancestor_state_root_at_slot_above_errors() {
+        let dag = linear_dag();
+        assert!(matches!(
+            dag.ancestor_state_root_at_slot(root(0xa), Slot::new(5))
+                .unwrap_err(),
+            Error::RequestedSlotAboveSummary { .. }
+        ));
+    }
+
+    #[test]
+    fn ancestor_state_root_at_root_unknown_parent() {
+        let dag = linear_dag();
+        // root(0xa) has prev=0x0 which is unknown, so walking past it errors
+        assert!(matches!(
+            dag.ancestor_state_root_at_slot(root(0xa), Slot::new(0))
+                .unwrap_err(),
+            Error::RootUnknownAncestorStateRoot { .. }
+        ));
+    }
+
+    #[test]
+    fn ancestors_of_leaf() {
+        let dag = linear_dag();
+        let ancestors = dag.ancestors_of(root(0xc)).unwrap();
+        assert_eq!(ancestors.len(), 3);
+        assert_eq!(ancestors[0], (root(0xc), Slot::new(3)));
+        assert_eq!(ancestors[1], (root(0xb), Slot::new(2)));
+        assert_eq!(ancestors[2], (root(0xa), Slot::new(1)));
+    }
+
+    #[test]
+    fn ancestors_of_root() {
+        let dag = linear_dag();
+        let ancestors = dag.ancestors_of(root(0xa)).unwrap();
+        assert_eq!(ancestors.len(), 1);
+        assert_eq!(ancestors[0], (root(0xa), Slot::new(1)));
+    }
+
+    #[test]
+    fn ancestors_of_missing_errors() {
+        let dag = linear_dag();
+        assert!(matches!(
+            dag.ancestors_of(root(0xff)).unwrap_err(),
+            Error::MissingStateSummary(_)
+        ));
+    }
+
+    #[test]
+    fn descendants_of_root() {
+        let dag = linear_dag();
+        let mut desc = dag.descendants_of(&root(0xa)).unwrap();
+        desc.sort();
+        let mut expected = vec![root(0xb), root(0xc)];
+        expected.sort();
+        assert_eq!(desc, expected);
+    }
+
+    #[test]
+    fn descendants_of_leaf_empty() {
+        let dag = linear_dag();
+        let desc = dag.descendants_of(&root(0xc)).unwrap();
+        assert!(desc.is_empty());
+    }
+
+    #[test]
+    fn descendants_of_missing_errors() {
+        let dag = linear_dag();
+        assert!(matches!(
+            dag.descendants_of(&root(0xff)).unwrap_err(),
+            Error::MissingChildStateRoot(_)
+        ));
+    }
+
+    #[test]
+    fn tree_roots_identifies_roots() {
+        let dag = linear_dag();
+        let roots = dag.tree_roots();
+        assert_eq!(roots.len(), 1);
+        assert_eq!(roots[0].0, root(0xa));
+    }
+
+    #[test]
+    fn state_root_at_slot_found() {
+        let dag = linear_dag();
+        assert_eq!(
+            dag.state_root_at_slot(root(2), Slot::new(2)),
+            Some(root(0xb))
+        );
+    }
+
+    #[test]
+    fn state_root_at_slot_wrong_block_root() {
+        let dag = linear_dag();
+        assert_eq!(dag.state_root_at_slot(root(99), Slot::new(2)), None);
+    }
+
+    #[test]
+    fn state_root_at_slot_wrong_slot() {
+        let dag = linear_dag();
+        assert_eq!(dag.state_root_at_slot(root(2), Slot::new(5)), None);
+    }
+
+    #[test]
+    fn blocks_of_states() {
+        let dag = linear_dag();
+        let state_roots = [root(0xa), root(0xb)];
+        let blocks = dag.blocks_of_states(state_roots.iter()).unwrap();
+        assert_eq!(blocks.len(), 2);
+        assert_eq!(blocks[0], (root(1), Slot::new(1)));
+        assert_eq!(blocks[1], (root(2), Slot::new(2)));
+    }
+
+    #[test]
+    fn blocks_of_states_missing_errors() {
+        let dag = linear_dag();
+        let state_roots = [root(0xff)];
+        assert!(matches!(
+            dag.blocks_of_states(state_roots.iter()).unwrap_err(),
+            Error::MissingStateSummary(_)
+        ));
+    }
+
+    #[test]
+    fn summaries_by_slot_ascending_order() {
+        let dag = linear_dag();
+        let by_slot = dag.summaries_by_slot_ascending();
+        let slots: Vec<Slot> = by_slot.keys().cloned().collect();
+        assert_eq!(slots, vec![Slot::new(1), Slot::new(2), Slot::new(3)]);
+    }
+
+    #[test]
+    fn forked_dag_descendants() {
+        // Build a fork: 0xa (slot 1) -> 0xb (slot 2) -> 0xc (slot 3, fork 1)
+        //                                             -> 0xd (slot 3, fork 2)
+        let dag = StateSummariesDAG::new(vec![
+            (root(0xa), summary(1, 1, 0)),
+            (root(0xb), summary(2, 2, 0xa)),
+            (
+                root(0xc),
+                DAGStateSummary {
+                    slot: Slot::new(3),
+                    latest_block_root: root(3),
+                    latest_block_slot: Slot::new(3),
+                    previous_state_root: root(0xb),
+                },
+            ),
+            (
+                root(0xd),
+                DAGStateSummary {
+                    slot: Slot::new(3),
+                    latest_block_root: root(4),
+                    latest_block_slot: Slot::new(3),
+                    previous_state_root: root(0xb),
+                },
+            ),
+        ])
+        .unwrap();
+
+        let mut desc = dag.descendants_of(&root(0xb)).unwrap();
+        desc.sort();
+        let mut expected = vec![root(0xc), root(0xd)];
+        expected.sort();
+        assert_eq!(desc, expected);
+
+        // Both forks are leaves
+        assert!(dag.descendants_of(&root(0xc)).unwrap().is_empty());
+        assert!(dag.descendants_of(&root(0xd)).unwrap().is_empty());
+    }
+
+    #[test]
+    fn iter_blocks_unique() {
+        let dag = linear_dag();
+        let mut blocks: Vec<_> = dag.iter_blocks().collect();
+        blocks.sort();
+        // Each state has a unique block root in our linear dag
+        assert_eq!(blocks.len(), 3);
     }
 }

@@ -316,7 +316,6 @@ pub fn is_compounding_withdrawal_credential(
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn default() {
         let v = Validator::default();
@@ -372,4 +371,379 @@ mod tests {
     }
 
     ssz_and_tree_hash_tests!(Validator);
+
+    fn make_spec() -> ChainSpec {
+        crate::MinimalEthSpec::default_spec()
+    }
+
+    fn eth1_creds(spec: &ChainSpec) -> Hash256 {
+        let mut bytes = [0u8; 32];
+        bytes[0] = spec.eth1_address_withdrawal_prefix_byte;
+        bytes[12..].copy_from_slice(&[0xAA; 20]);
+        Hash256::from(bytes)
+    }
+
+    fn compounding_creds(spec: &ChainSpec) -> Hash256 {
+        let mut bytes = [0u8; 32];
+        bytes[0] = spec.compounding_withdrawal_prefix_byte;
+        bytes[12..].copy_from_slice(&[0xBB; 20]);
+        Hash256::from(bytes)
+    }
+
+    fn bls_creds() -> Hash256 {
+        let mut bytes = [0u8; 32];
+        bytes[0] = 0x00;
+        Hash256::from(bytes)
+    }
+
+    fn active_validator(spec: &ChainSpec) -> Validator {
+        Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: spec.far_future_epoch,
+            withdrawable_epoch: spec.far_future_epoch,
+            effective_balance: spec.max_effective_balance,
+            ..Validator::default()
+        }
+    }
+
+    #[test]
+    fn is_slashable_at_active_unslashed() {
+        let v = Validator {
+            activation_epoch: Epoch::new(5),
+            withdrawable_epoch: Epoch::new(20),
+            slashed: false,
+            ..Validator::default()
+        };
+        assert!(!v.is_slashable_at(Epoch::new(4)));
+        assert!(v.is_slashable_at(Epoch::new(5)));
+        assert!(v.is_slashable_at(Epoch::new(19)));
+        assert!(!v.is_slashable_at(Epoch::new(20)));
+    }
+
+    #[test]
+    fn is_slashable_at_already_slashed() {
+        let v = Validator {
+            activation_epoch: Epoch::new(0),
+            withdrawable_epoch: Epoch::new(100),
+            slashed: true,
+            ..Validator::default()
+        };
+        assert!(!v.is_slashable_at(Epoch::new(50)));
+    }
+
+    #[test]
+    fn from_deposit_caps_effective_balance() {
+        let spec = make_spec();
+        let amount = spec.max_effective_balance + 1_000_000_000;
+        let v = Validator::from_deposit(
+            PublicKeyBytes::empty(),
+            Hash256::zero(),
+            amount,
+            ForkName::Base,
+            &spec,
+        );
+        assert_eq!(v.effective_balance, spec.max_effective_balance);
+        assert_eq!(v.activation_eligibility_epoch, spec.far_future_epoch);
+        assert_eq!(v.activation_epoch, spec.far_future_epoch);
+        assert!(!v.slashed);
+    }
+
+    #[test]
+    fn from_deposit_rounds_down_to_increment() {
+        let spec = make_spec();
+        let amount = spec.max_effective_balance - 1;
+        let v = Validator::from_deposit(
+            PublicKeyBytes::empty(),
+            Hash256::zero(),
+            amount,
+            ForkName::Base,
+            &spec,
+        );
+        let expected = amount - (amount % spec.effective_balance_increment);
+        assert_eq!(v.effective_balance, expected);
+    }
+
+    #[test]
+    fn has_eth1_withdrawal_credential_true() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: eth1_creds(&spec),
+            ..active_validator(&spec)
+        };
+        assert!(v.has_eth1_withdrawal_credential(&spec));
+        assert!(!v.has_compounding_withdrawal_credential(&spec));
+    }
+
+    #[test]
+    fn has_compounding_withdrawal_credential_true() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: compounding_creds(&spec),
+            ..active_validator(&spec)
+        };
+        assert!(v.has_compounding_withdrawal_credential(&spec));
+        assert!(!v.has_eth1_withdrawal_credential(&spec));
+    }
+
+    #[test]
+    fn has_execution_withdrawal_credential_either() {
+        let spec = make_spec();
+        let v_eth1 = Validator {
+            withdrawal_credentials: eth1_creds(&spec),
+            ..active_validator(&spec)
+        };
+        let v_comp = Validator {
+            withdrawal_credentials: compounding_creds(&spec),
+            ..active_validator(&spec)
+        };
+        let v_bls = Validator {
+            withdrawal_credentials: bls_creds(),
+            ..active_validator(&spec)
+        };
+        assert!(v_eth1.has_execution_withdrawal_credential(&spec));
+        assert!(v_comp.has_execution_withdrawal_credential(&spec));
+        assert!(!v_bls.has_execution_withdrawal_credential(&spec));
+    }
+
+    #[test]
+    fn get_execution_withdrawal_address() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: eth1_creds(&spec),
+            ..active_validator(&spec)
+        };
+        let addr = v.get_execution_withdrawal_address(&spec).unwrap();
+        assert_eq!(addr.as_slice(), &[0xAA; 20]);
+    }
+
+    #[test]
+    fn get_execution_withdrawal_address_bls_returns_none() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: bls_creds(),
+            ..active_validator(&spec)
+        };
+        assert!(v.get_execution_withdrawal_address(&spec).is_none());
+    }
+
+    #[test]
+    fn change_withdrawal_credentials_sets_eth1_prefix() {
+        let spec = make_spec();
+        let mut v = Validator {
+            withdrawal_credentials: bls_creds(),
+            ..active_validator(&spec)
+        };
+        let addr = Address::from_slice(&[0xCC; 20]);
+        v.change_withdrawal_credentials(&addr, &spec);
+        assert!(v.has_eth1_withdrawal_credential(&spec));
+        assert_eq!(v.get_execution_withdrawal_address(&spec).unwrap(), addr);
+    }
+
+    #[test]
+    fn is_eligible_for_activation_queue_base() {
+        let spec = make_spec();
+        let v = Validator {
+            activation_eligibility_epoch: spec.far_future_epoch,
+            effective_balance: spec.max_effective_balance,
+            ..active_validator(&spec)
+        };
+        assert!(v.is_eligible_for_activation_queue(&spec, ForkName::Base));
+    }
+
+    #[test]
+    fn is_eligible_for_activation_queue_base_wrong_balance() {
+        let spec = make_spec();
+        let v = Validator {
+            activation_eligibility_epoch: spec.far_future_epoch,
+            effective_balance: spec.max_effective_balance - 1,
+            ..active_validator(&spec)
+        };
+        assert!(!v.is_eligible_for_activation_queue(&spec, ForkName::Base));
+    }
+
+    #[test]
+    fn is_eligible_for_activation_queue_electra() {
+        let spec = make_spec();
+        let v = Validator {
+            activation_eligibility_epoch: spec.far_future_epoch,
+            effective_balance: spec.min_activation_balance,
+            ..active_validator(&spec)
+        };
+        assert!(v.is_eligible_for_activation_queue(&spec, ForkName::Electra));
+    }
+
+    #[test]
+    fn is_eligible_for_activation_queue_already_eligible() {
+        let spec = make_spec();
+        let v = Validator {
+            activation_eligibility_epoch: Epoch::new(5),
+            effective_balance: spec.max_effective_balance,
+            ..active_validator(&spec)
+        };
+        assert!(!v.is_eligible_for_activation_queue(&spec, ForkName::Base));
+    }
+
+    #[test]
+    fn could_be_eligible_for_activation_at() {
+        let spec = make_spec();
+        let v = Validator {
+            activation_eligibility_epoch: Epoch::new(3),
+            activation_epoch: spec.far_future_epoch,
+            ..Validator::default()
+        };
+        assert!(!v.could_be_eligible_for_activation_at(Epoch::new(3), &spec));
+        assert!(v.could_be_eligible_for_activation_at(Epoch::new(4), &spec));
+        assert!(v.could_be_eligible_for_activation_at(Epoch::new(100), &spec));
+    }
+
+    #[test]
+    fn could_be_eligible_for_activation_at_already_activated() {
+        let spec = make_spec();
+        let v = Validator {
+            activation_eligibility_epoch: Epoch::new(3),
+            activation_epoch: Epoch::new(5),
+            ..Validator::default()
+        };
+        assert!(!v.could_be_eligible_for_activation_at(Epoch::new(10), &spec));
+    }
+
+    #[test]
+    fn get_max_effective_balance_pre_electra() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: compounding_creds(&spec),
+            ..active_validator(&spec)
+        };
+        assert_eq!(
+            v.get_max_effective_balance(&spec, ForkName::Deneb),
+            spec.max_effective_balance
+        );
+    }
+
+    #[test]
+    fn get_max_effective_balance_electra_compounding() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: compounding_creds(&spec),
+            ..active_validator(&spec)
+        };
+        assert_eq!(
+            v.get_max_effective_balance(&spec, ForkName::Electra),
+            spec.max_effective_balance_electra
+        );
+    }
+
+    #[test]
+    fn get_max_effective_balance_electra_eth1() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: eth1_creds(&spec),
+            ..active_validator(&spec)
+        };
+        assert_eq!(
+            v.get_max_effective_balance(&spec, ForkName::Electra),
+            spec.min_activation_balance
+        );
+    }
+
+    #[test]
+    fn is_fully_withdrawable_capella() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: eth1_creds(&spec),
+            withdrawable_epoch: Epoch::new(10),
+            ..active_validator(&spec)
+        };
+        assert!(!v.is_fully_withdrawable_validator(100, Epoch::new(9), &spec, ForkName::Capella));
+        assert!(v.is_fully_withdrawable_validator(100, Epoch::new(10), &spec, ForkName::Capella));
+        assert!(!v.is_fully_withdrawable_validator(0, Epoch::new(10), &spec, ForkName::Capella));
+    }
+
+    #[test]
+    fn is_fully_withdrawable_capella_bls_creds() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: bls_creds(),
+            withdrawable_epoch: Epoch::new(10),
+            ..active_validator(&spec)
+        };
+        assert!(!v.is_fully_withdrawable_validator(100, Epoch::new(10), &spec, ForkName::Capella));
+    }
+
+    #[test]
+    fn is_fully_withdrawable_electra_compounding() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: compounding_creds(&spec),
+            withdrawable_epoch: Epoch::new(10),
+            ..active_validator(&spec)
+        };
+        assert!(v.is_fully_withdrawable_validator(100, Epoch::new(10), &spec, ForkName::Electra));
+    }
+
+    #[test]
+    fn is_partially_withdrawable_capella() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: eth1_creds(&spec),
+            effective_balance: spec.max_effective_balance,
+            ..active_validator(&spec)
+        };
+        let excess = spec.max_effective_balance + 1;
+        assert!(v.is_partially_withdrawable_validator(excess, &spec, ForkName::Capella));
+        assert!(!v.is_partially_withdrawable_validator(
+            spec.max_effective_balance,
+            &spec,
+            ForkName::Capella
+        ));
+    }
+
+    #[test]
+    fn is_partially_withdrawable_capella_bls_creds() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: bls_creds(),
+            effective_balance: spec.max_effective_balance,
+            ..active_validator(&spec)
+        };
+        assert!(!v.is_partially_withdrawable_validator(
+            spec.max_effective_balance + 1,
+            &spec,
+            ForkName::Capella
+        ));
+    }
+
+    #[test]
+    fn is_partially_withdrawable_electra_compounding() {
+        let spec = make_spec();
+        let v = Validator {
+            withdrawal_credentials: compounding_creds(&spec),
+            effective_balance: spec.max_effective_balance_electra,
+            ..active_validator(&spec)
+        };
+        assert!(v.is_partially_withdrawable_validator(
+            spec.max_effective_balance_electra + 1,
+            &spec,
+            ForkName::Electra
+        ));
+        assert!(!v.is_partially_withdrawable_validator(
+            spec.max_effective_balance_electra,
+            &spec,
+            ForkName::Electra
+        ));
+    }
+
+    #[test]
+    fn is_compounding_withdrawal_credential_standalone() {
+        let spec = make_spec();
+        assert!(is_compounding_withdrawal_credential(
+            compounding_creds(&spec),
+            &spec
+        ));
+        assert!(!is_compounding_withdrawal_credential(
+            eth1_creds(&spec),
+            &spec
+        ));
+        assert!(!is_compounding_withdrawal_credential(bls_creds(), &spec));
+    }
 }
