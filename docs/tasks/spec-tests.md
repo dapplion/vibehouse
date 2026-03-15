@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1373 (Mar 15) — docker CI tag-only trigger, spec stable
+
+**CI fix**: Docker workflow was failing on every push to main because Docker Hub credentials (DH_KEY/DH_ORG) aren't configured. Changed docker.yml to only trigger on version tags (`v*`), not on branch pushes. This eliminates the noise — Docker images only need building for releases.
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked open PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630. No merges since alpha.3.
+
+**CI**: ci green. Nightly green. Clippy clean.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed beyond Docker CI fix.
+
 ### run 1372 (Mar 15) — fix docker/release CI, spec verified up to date
 
 **CI fix**: Docker and release workflows were stuck in `queued` forever because they referenced self-hosted runners (`self-hosted, linux, release`) that don't exist for dapplion/vibehouse. Fixed both `docker.yml` and `release.yml` to use `ubuntu-22.04`/`ubuntu-latest`. Removed all `SELF_HOSTED_RUNNERS` conditionals. Docker build now starts successfully.
