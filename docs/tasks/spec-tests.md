@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1284 (Mar 15) — spec stable, two new merged PRs (both already compliant)
+
+**Spec monitoring**: Two Gloas spec PRs merged since last check:
+- **#5001** (Mar 12): Add `parent_block_root` to bid filtering key — prevents cross-fork bid interference. **Already compliant**: `is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` 3-tuple with dedicated test `highest_value_different_parent_root_independent`.
+- **#5002** (Mar 13): Clarify self-build envelope signature verification wording — doc-only, no logic change. **Already compliant**: self-build envelopes verified against proposer pubkey.
+
+No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs: #4992 (cached PTCs, 2 approvals), #4954, #4939, #4898, #4892, #4843, #4840, #4747 (fast confirmation, active development), #4630, #4558. PRs #4962, #4960, #4932 still open (test-only). None imminent to merge.
+
+**CI**: All green. Zero compiler warnings, zero clippy issues. Cargo audit: 1 rsa vulnerability (transitive, not applicable), 5 allowed unmaintained warnings (all transitive). No actionable dependency updates.
+
 ### run 1283 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked Gloas PRs (#4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630, #4558) remain open — none merged.
