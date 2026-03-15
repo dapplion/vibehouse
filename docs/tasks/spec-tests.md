@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1378 (Mar 15) — spec stable, CI green, PR #4992 implementation plan ready
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630.
+
+**PR #4992 deep read** (cached PTCs): Studied the full diff. When it merges, implementation requires:
+1. New BeaconState fields: `previous_ptc: Vector[ValidatorIndex, PTC_SIZE]`, `current_ptc: Vector[ValidatorIndex, PTC_SIZE]`
+2. New `compute_ptc(state)` helper: current `get_ptc` logic but always uses `state.slot` (no slot parameter)
+3. Modified `get_ptc(state, slot)`: becomes state lookup — returns `current_ptc` if `slot == state.slot`, `previous_ptc` if `slot + 1 == state.slot`, assert otherwise
+4. Modified `process_slots`: after `state.slot += 1`, rotate `previous_ptc = current_ptc`, `current_ptc = compute_ptc(state)`
+5. Modified `upgrade_to_gloas`: init both fields to zero vectors, then `current_ptc = compute_ptc(post)` after builder onboarding
+6. Fork choice `on_payload_attestation_message`: move `data.slot != state.slot` check before `get_ptc` call (minor reorder)
+7. Validator: `get_ptc_assignment` removed — validators just check `get_ptc(state)` for current slot
+8. New spec tests: `test_ptc_rotates_on_slot_advance`, `test_ptc_rotates_across_epoch_boundary`
+
+**CI**: All green — ci, nightly, spec-test-version-check.
+
+**Clippy**: Clean (zero warnings).
+
+**Conclusion**: No code changes needed. Implementation plan for PR #4992 is ready for when it merges.
+
 ### run 1377 (Mar 15) — spec stable, CI fully green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630. PR #4992 (cached PTCs) still mergeable but not merged.
