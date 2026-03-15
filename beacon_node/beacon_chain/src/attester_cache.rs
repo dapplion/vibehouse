@@ -207,7 +207,7 @@ impl AttesterCacheValue {
 ///
 /// It is also safe, but not maximally efficient, to key the attester shuffling with the same
 /// strategy. For better shuffling keying strategies, see the `ShufflingCache`.
-#[derive(Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct AttesterCacheKey {
     /// The epoch from which the justified checkpoint should be observed.
     ///
@@ -389,5 +389,292 @@ impl AttesterCache {
     /// Generally, the provided `epoch` should be the finalized epoch.
     pub fn prune_below(&self, epoch: Epoch) {
         self.cache.write().retain(|target, _| target.epoch >= epoch);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn hash(n: u64) -> Hash256 {
+        Hash256::from_low_u64_be(n)
+    }
+
+    fn spec() -> ChainSpec {
+        E::default_spec()
+    }
+
+    // ── CommitteeLengths tests ──
+
+    #[test]
+    fn committee_lengths_get_committee_count_per_slot() {
+        let spec = spec();
+        // MinimalEthSpec: 8 slots/epoch, 4 max committees/slot
+        // With 128 validators: committees_per_slot = max(1, 128 / 8 / target_committee_size)
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 128);
+        let count = cl.get_committee_count_per_slot::<E>(&spec).unwrap();
+        assert!(count >= 1, "should have at least 1 committee per slot");
+        assert!(
+            count <= 4,
+            "should not exceed MaxCommitteesPerSlot (4 for minimal)"
+        );
+    }
+
+    #[test]
+    fn committee_lengths_get_committee_length_slot_0() {
+        let spec = spec();
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 128);
+        // Slot 0 is in epoch 0
+        let len = cl
+            .get_committee_length::<E>(Slot::new(0), 0, &spec)
+            .unwrap();
+        assert!(len > 0, "committee length should be positive");
+        assert!(
+            len <= 128,
+            "committee length should not exceed total validators"
+        );
+    }
+
+    #[test]
+    fn committee_lengths_wrong_epoch_error() {
+        let spec = spec();
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 128);
+        // Slot 8 is in epoch 1 (8 slots/epoch for minimal), but CommitteeLengths is for epoch 0
+        let result = cl.get_committee_length::<E>(Slot::new(8), 0, &spec);
+        assert!(
+            matches!(result, Err(Error::WrongEpoch { .. })),
+            "should return WrongEpoch error"
+        );
+    }
+
+    #[test]
+    fn committee_lengths_invalid_committee_index() {
+        let spec = spec();
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 128);
+        // Committee index 99 should be way out of range
+        let result = cl.get_committee_length::<E>(Slot::new(0), 99, &spec);
+        assert!(
+            matches!(result, Err(Error::InvalidCommitteeIndex { .. })),
+            "should return InvalidCommitteeIndex error"
+        );
+    }
+
+    #[test]
+    fn committee_lengths_all_slots_in_epoch() {
+        let spec = spec();
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 128);
+        let mut total = 0;
+        let committees_per_slot = cl.get_committee_count_per_slot::<E>(&spec).unwrap();
+        // Sum all committee lengths across all slots in the epoch
+        for slot in 0..8u64 {
+            for ci in 0..committees_per_slot as u64 {
+                let len = cl
+                    .get_committee_length::<E>(Slot::new(slot), ci, &spec)
+                    .unwrap();
+                assert!(len > 0);
+                total += len;
+            }
+        }
+        // Total should equal the number of active validators
+        assert_eq!(
+            total, 128,
+            "sum of all committee lengths should equal active validator count"
+        );
+    }
+
+    #[test]
+    fn committee_lengths_single_validator() {
+        let spec = spec();
+        // Edge case: only 1 active validator
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 1);
+        let committees_per_slot = cl.get_committee_count_per_slot::<E>(&spec).unwrap();
+        assert_eq!(committees_per_slot, 1, "should have 1 committee per slot");
+        // Only one committee across all 8 slots should have the validator
+        let mut total = 0;
+        for slot in 0..8u64 {
+            let len = cl
+                .get_committee_length::<E>(Slot::new(slot), 0, &spec)
+                .unwrap();
+            total += len;
+        }
+        assert_eq!(total, 1);
+    }
+
+    #[test]
+    fn committee_lengths_epoch_1() {
+        let spec = spec();
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(1), 64);
+        // Slot 8 is the first slot of epoch 1
+        let len = cl
+            .get_committee_length::<E>(Slot::new(8), 0, &spec)
+            .unwrap();
+        assert!(len > 0);
+        // Slot 7 (last slot of epoch 0) should fail
+        let result = cl.get_committee_length::<E>(Slot::new(7), 0, &spec);
+        assert!(matches!(result, Err(Error::WrongEpoch { .. })));
+    }
+
+    // ── AttesterCacheValue tests ──
+
+    #[test]
+    fn attester_cache_value_get() {
+        let spec = spec();
+        let cp = Checkpoint {
+            epoch: Epoch::new(0),
+            root: hash(42),
+        };
+        let cl = CommitteeLengths::new_for_testing(Epoch::new(0), 128);
+        let value = AttesterCacheValue {
+            current_justified_checkpoint: cp,
+            committee_lengths: cl,
+        };
+        let (justified, length) = value.get::<E>(Slot::new(0), 0, &spec).unwrap();
+        assert_eq!(justified, cp);
+        assert!(length > 0);
+    }
+
+    // ── AttesterCache tests ──
+
+    fn make_key(epoch: u64, root: u64) -> AttesterCacheKey {
+        AttesterCacheKey {
+            epoch: Epoch::new(epoch),
+            decision_root: hash(root),
+        }
+    }
+
+    fn make_value(epoch: u64, active_validators: usize) -> AttesterCacheValue {
+        AttesterCacheValue {
+            current_justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(epoch),
+                root: hash(epoch),
+            },
+            committee_lengths: CommitteeLengths::new_for_testing(
+                Epoch::new(epoch),
+                active_validators,
+            ),
+        }
+    }
+
+    #[test]
+    fn cache_get_empty_returns_none() {
+        let cache = AttesterCache::default();
+        let key = make_key(0, 1);
+        let spec = spec();
+        let result = cache.get::<E>(&key, Slot::new(0), 0, &spec).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn cache_insert_and_get() {
+        let cache = AttesterCache::default();
+        let key = make_key(0, 1);
+        let value = make_value(0, 128);
+        let spec = spec();
+
+        cache.cache.write().insert(key, value);
+
+        let result = cache.get::<E>(&key, Slot::new(0), 0, &spec).unwrap();
+        assert!(result.is_some());
+        let (cp, length) = result.unwrap();
+        assert_eq!(cp.epoch, Epoch::new(0));
+        assert!(length > 0);
+    }
+
+    #[test]
+    fn cache_prune_below_removes_old_entries() {
+        let cache = AttesterCache::default();
+        let spec = spec();
+
+        // Insert entries for epochs 0, 1, 2, 3
+        for epoch in 0..4u64 {
+            let key = make_key(epoch, epoch + 10);
+            let value = make_value(epoch, 128);
+            cache.cache.write().insert(key, value);
+        }
+        assert_eq!(cache.cache.read().len(), 4);
+
+        // Prune below epoch 2 — should remove epochs 0 and 1
+        cache.prune_below(Epoch::new(2));
+        assert_eq!(cache.cache.read().len(), 2);
+
+        // Epochs 0 and 1 should be gone
+        let result = cache
+            .get::<E>(&make_key(0, 10), Slot::new(0), 0, &spec)
+            .unwrap();
+        assert!(result.is_none());
+        let result = cache
+            .get::<E>(&make_key(1, 11), Slot::new(8), 0, &spec)
+            .unwrap();
+        assert!(result.is_none());
+
+        // Epochs 2 and 3 should still be present
+        let result = cache
+            .get::<E>(&make_key(2, 12), Slot::new(16), 0, &spec)
+            .unwrap();
+        assert!(result.is_some());
+        let result = cache
+            .get::<E>(&make_key(3, 13), Slot::new(24), 0, &spec)
+            .unwrap();
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn cache_prune_below_zero_keeps_all() {
+        let cache = AttesterCache::default();
+        for epoch in 0..3u64 {
+            cache
+                .cache
+                .write()
+                .insert(make_key(epoch, epoch), make_value(epoch, 64));
+        }
+        cache.prune_below(Epoch::new(0));
+        assert_eq!(cache.cache.read().len(), 3);
+    }
+
+    #[test]
+    fn cache_insert_respecting_max_len() {
+        let mut map = CacheHashMap::new();
+
+        // Fill to MAX_CACHE_LEN
+        for i in 0..MAX_CACHE_LEN as u64 {
+            AttesterCache::insert_respecting_max_len(&mut map, make_key(i, i), make_value(i, 64));
+        }
+        assert_eq!(map.len(), MAX_CACHE_LEN);
+
+        // Insert one more — should evict the entry with the lowest epoch
+        AttesterCache::insert_respecting_max_len(
+            &mut map,
+            make_key(MAX_CACHE_LEN as u64, 9999),
+            make_value(MAX_CACHE_LEN as u64, 64),
+        );
+        assert_eq!(map.len(), MAX_CACHE_LEN);
+
+        // Epoch 0 should have been evicted
+        assert!(!map.contains_key(&make_key(0, 0)));
+        // The new entry should be present
+        assert!(map.contains_key(&make_key(MAX_CACHE_LEN as u64, 9999)));
+    }
+
+    #[test]
+    fn cache_insert_when_not_full() {
+        let mut map = CacheHashMap::new();
+        AttesterCache::insert_respecting_max_len(&mut map, make_key(5, 5), make_value(5, 64));
+        assert_eq!(map.len(), 1);
+        assert!(map.contains_key(&make_key(5, 5)));
+    }
+
+    #[test]
+    fn cache_key_equality() {
+        let key1 = make_key(10, 42);
+        let key2 = make_key(10, 42);
+        let key3 = make_key(10, 43);
+        let key4 = make_key(11, 42);
+
+        assert_eq!(key1, key2, "same epoch and root should be equal");
+        assert_ne!(key1, key3, "different root should differ");
+        assert_ne!(key1, key4, "different epoch should differ");
     }
 }
