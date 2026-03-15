@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1307 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs since run 1306. Open Gloas PRs: #4960 (fork choice deposit test), #4932 (payload attestation coverage), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (16 consecutive days).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit unchanged — 1 vulnerability (rsa, no fix available), 5 allowed warnings (transitive unmaintained deps). Zero compiler warnings.
+
+**Open issues**: #29 (ROCQ formal proofs), #28 (ZK execution proofs), #27 (validator messaging) — all RFCs, no bugs.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1306 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs since run 1305. Open Gloas PRs: #4992 (cached PTCs), #4960 (fork choice deposit test), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4892 (remove impossible fork choice branch), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (15 consecutive days).
