@@ -29,6 +29,23 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1383 (Mar 15) — spec stable, code audit confirms spec conformance
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 9 tracked PRs still open: #4992, #4962, #4960, #4954, #4939, #4932, #4843, #4630, #4840 (draft). PR #4939 had 3 new commits Mar 12; PR #4992 has jihoonsong review Mar 13.
+
+**CI**: Run 23109705694 in progress — check+clippy+fmt ✓, ef-tests ✓, network+op_pool ✓, remaining 3 jobs running. Previous CI run green. Nightly green.
+
+**Code audit**: Deep spec conformance audit of Gloas ePBS state transition paths:
+- `process_payload_attestation`: validation-only, no state mutations — matches spec ✓
+- `process_attestation` weight accumulation: correctly adds validator effective_balance to `builder_pending_payments[].weight` for same-slot attestations with new participation flags — matches spec ✓
+- `is_attestation_same_slot`: correctly checks block_root equality and skip-slot exclusion — matches spec ✓
+- `process_execution_payload_envelope`: immediate payment queuing (amount > 0), entry reset — matches spec ✓
+- `process_builder_pending_payments`: weight >= quorum check, rotation — matches spec ✓
+- Payment index calculation: `SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH` for current epoch, `slot % SLOTS_PER_EPOCH` for previous epoch — matches spec ✓
+- Proposer slashing payment removal: correctly clears payment entry for slashed proposer — matches spec ✓
+
+**Conclusion**: No code changes needed. All critical Gloas ePBS consensus paths confirmed spec-conformant.
+
 ### run 1381 (Mar 15) — spec stable, no changes
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 8 tracked PRs still open: #4992, #4962, #4960, #4954, #4939, #4932, #4843, #4630. Also tracking #4840 (EIP-7843 SLOTNUM opcode). Added PR #4954 (fork choice store milliseconds) to tracking — touches Gloas fork choice, labels: phase0/bellatrix/gloas/heze.
