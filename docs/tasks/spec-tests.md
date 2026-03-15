@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1429 (Mar 15) — memory_store, historic_state_cache, and store errors test coverage (44 tests)
+
+**Test coverage**: Added 44 unit tests across 3 previously-untested files in `beacon_node/store/src/`:
+- `memory_store.rs` (22 tests): open creates empty, put/get bytes, get missing returns none, put_bytes_sync, key_exists true/false wrong column, key_delete removes/nonexistent noop, put overwrites existing, do_atomically put+delete/empty batch, different columns independent, sync noop, compact_column noop, delete_batch multiple keys, delete_if matching values/other columns unaffected, iter_column_from, iter_column_keys, iter_column_keys_from, empty value, large value
+- `historic_state_cache.rs` (13 tests): new empty, put/get state, get state missing, put/get hdiff buffer, get hdiff buffer missing, get hdiff buffer from state fallback, get state from hdiff buffer fallback, put_both, LRU eviction states/hdiff buffers, metrics counts/byte size accumulation, overwrite same slot
+- `errors.rs` (9 tests): HandleUnavailable Ok→Some, HistoryUnavailable→None, other error propagates, DBError::new, From<DBError>, From<DecodeError>, From<ArithError>, From<InconsistentFork>, Debug formatting
+
+**CI**: All 142 store tests pass (44 new + 98 existing).
+
 ### run 1423 (Mar 15) — state_cache test coverage (42 tests)
 
 **Test coverage**: Added 42 unit tests for `beacon_node/store/src/state_cache.rs`, a previously-untested file containing the hot state cache, block map, and HDiff buffer cache:
