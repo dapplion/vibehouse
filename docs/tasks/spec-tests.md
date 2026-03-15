@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1299 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs since run 1298. Open Gloas PRs: #4992 (cached PTCs), #4939 (missing payload envelopes), #4747 (fast confirmation rule), #4558 (cell dissemination partial messages). Nightly tests green (9 consecutive days).
+
+**CI**: ci run green. Docker build in progress (aarch64 + x86_64 runners).
+
+**Dependency health**: cargo audit unchanged — 1 vulnerability (rsa, no fix available), 5 allowed warnings (transitive unmaintained deps). Zero compiler warnings. Zero cargo check warnings.
+
+**Spec change review**: Verified PR #5001 (parent_block_root in bid filtering key) already implemented — `is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple in `observed_execution_bids.rs`. PR #5002 is documentation-only. PR #4940 (fork choice tests) adds Python test code not yet in released test vectors.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1298 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs. Open PRs unchanged + new #4954 (fork choice store milliseconds — seconds→ms conversion for Store.time/genesis_time). Nightly tests green (8 consecutive days).
