@@ -481,3 +481,116 @@ impl fmt::Display for BlockId {
         write!(f, "{}", self.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_head() {
+        let id: BlockId = "head".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Head));
+    }
+
+    #[test]
+    fn parse_genesis() {
+        let id: BlockId = "genesis".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Genesis));
+    }
+
+    #[test]
+    fn parse_finalized() {
+        let id: BlockId = "finalized".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Finalized));
+    }
+
+    #[test]
+    fn parse_justified() {
+        let id: BlockId = "justified".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Justified));
+    }
+
+    #[test]
+    fn parse_slot() {
+        let id: BlockId = "42".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Slot(s) if s == Slot::new(42)));
+    }
+
+    #[test]
+    fn parse_root() {
+        let hex = format!("0x{}", "ab".repeat(32));
+        let id: BlockId = hex.parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Root(_)));
+    }
+
+    #[test]
+    fn parse_invalid() {
+        let result: Result<BlockId, _> = "not_a_block_id".parse();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_string() {
+        let id = BlockId::try_from("head".to_string()).unwrap();
+        assert!(matches!(id.0, CoreBlockId::Head));
+    }
+
+    #[test]
+    fn display_head() {
+        let id = BlockId(CoreBlockId::Head);
+        assert_eq!(format!("{}", id), "head");
+    }
+
+    #[test]
+    fn display_genesis() {
+        let id = BlockId(CoreBlockId::Genesis);
+        assert_eq!(format!("{}", id), "genesis");
+    }
+
+    #[test]
+    fn display_slot() {
+        let id = BlockId::from_slot(Slot::new(100));
+        assert_eq!(format!("{}", id), "100");
+    }
+
+    #[test]
+    fn display_root() {
+        let root = Hash256::repeat_byte(0xab);
+        let id = BlockId::from_root(root);
+        let display = format!("{}", id);
+        assert!(display.starts_with("0x"));
+        assert!(display.contains("abab"));
+    }
+
+    #[test]
+    fn from_slot_constructor() {
+        let id = BlockId::from_slot(Slot::new(0));
+        assert!(matches!(id.0, CoreBlockId::Slot(s) if s == Slot::new(0)));
+    }
+
+    #[test]
+    fn from_root_constructor() {
+        let root = Hash256::zero();
+        let id = BlockId::from_root(root);
+        assert!(matches!(id.0, CoreBlockId::Root(r) if r == Hash256::zero()));
+    }
+
+    #[test]
+    fn debug_impl() {
+        let id = BlockId(CoreBlockId::Head);
+        let dbg = format!("{:?}", id);
+        assert!(dbg.contains("Head"));
+    }
+
+    #[test]
+    fn parse_slot_zero() {
+        let id: BlockId = "0".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Slot(s) if s == Slot::new(0)));
+    }
+
+    #[test]
+    fn parse_large_slot() {
+        let id: BlockId = "18446744073709551615".parse().unwrap();
+        assert!(matches!(id.0, CoreBlockId::Slot(s) if s == Slot::new(u64::MAX)));
+    }
+}

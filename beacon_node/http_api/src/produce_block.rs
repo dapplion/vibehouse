@@ -234,3 +234,53 @@ pub fn build_response_v2<T: BeaconChainTypes>(
         .into_response()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use beacon_chain::ProduceBlockVerification;
+    use eth2::types::{SkipRandaoVerification, ValidatorBlocksQuery};
+    use types::SignatureBytes;
+
+    fn make_query(skip: SkipRandaoVerification, boost: Option<u64>) -> ValidatorBlocksQuery {
+        ValidatorBlocksQuery {
+            randao_reveal: SignatureBytes::empty(),
+            graffiti: None,
+            skip_randao_verification: skip,
+            builder_boost_factor: boost,
+        }
+    }
+
+    #[test]
+    fn randao_verification_no_skip() {
+        let query = make_query(SkipRandaoVerification::No, None);
+        let result = get_randao_verification(&query, false).unwrap();
+        assert!(matches!(result, ProduceBlockVerification::VerifyRandao));
+    }
+
+    #[test]
+    fn randao_verification_no_skip_infinity() {
+        let query = make_query(SkipRandaoVerification::No, None);
+        let result = get_randao_verification(&query, true).unwrap();
+        assert!(matches!(result, ProduceBlockVerification::VerifyRandao));
+    }
+
+    #[test]
+    fn randao_verification_skip_with_infinity() {
+        let query = make_query(SkipRandaoVerification::Yes, None);
+        let result = get_randao_verification(&query, true).unwrap();
+        assert!(matches!(result, ProduceBlockVerification::NoVerification));
+    }
+
+    #[test]
+    fn randao_verification_skip_without_infinity_errors() {
+        let query = make_query(SkipRandaoVerification::Yes, None);
+        let result = get_randao_verification(&query, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn default_boost_factor_value() {
+        assert_eq!(DEFAULT_BOOST_FACTOR, 100);
+    }
+}

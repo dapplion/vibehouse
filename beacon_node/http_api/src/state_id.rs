@@ -281,3 +281,109 @@ pub fn checkpoint_slot_and_execution_optimistic<T: BeaconChainTypes>(
 
     Ok((slot, execution_optimistic))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_head() {
+        let id: StateId = "head".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Head));
+    }
+
+    #[test]
+    fn parse_genesis() {
+        let id: StateId = "genesis".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Genesis));
+    }
+
+    #[test]
+    fn parse_finalized() {
+        let id: StateId = "finalized".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Finalized));
+    }
+
+    #[test]
+    fn parse_justified() {
+        let id: StateId = "justified".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Justified));
+    }
+
+    #[test]
+    fn parse_slot() {
+        let id: StateId = "100".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Slot(s) if s == Slot::new(100)));
+    }
+
+    #[test]
+    fn parse_root() {
+        let hex = format!("0x{}", "cd".repeat(32));
+        let id: StateId = hex.parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Root(_)));
+    }
+
+    #[test]
+    fn parse_invalid() {
+        let result: Result<StateId, _> = "invalid_state_id".parse();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_string() {
+        let id = StateId::try_from("finalized".to_string()).unwrap();
+        assert!(matches!(id.0, CoreStateId::Finalized));
+    }
+
+    #[test]
+    fn display_head() {
+        let id = StateId(CoreStateId::Head);
+        assert_eq!(format!("{}", id), "head");
+    }
+
+    #[test]
+    fn display_genesis() {
+        let id = StateId(CoreStateId::Genesis);
+        assert_eq!(format!("{}", id), "genesis");
+    }
+
+    #[test]
+    fn display_slot() {
+        let id = StateId::from_slot(Slot::new(999));
+        assert_eq!(format!("{}", id), "999");
+    }
+
+    #[test]
+    fn display_root() {
+        let root = Hash256::repeat_byte(0xcd);
+        let id = StateId(CoreStateId::Root(root));
+        let display = format!("{}", id);
+        assert!(display.starts_with("0x"));
+        assert!(display.contains("cdcd"));
+    }
+
+    #[test]
+    fn from_slot_constructor() {
+        let id = StateId::from_slot(Slot::new(0));
+        assert!(matches!(id.0, CoreStateId::Slot(s) if s == Slot::new(0)));
+    }
+
+    #[test]
+    fn debug_impl() {
+        let id = StateId(CoreStateId::Head);
+        let dbg = format!("{:?}", id);
+        assert!(dbg.contains("Head"));
+    }
+
+    #[test]
+    fn parse_slot_zero() {
+        let id: StateId = "0".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Slot(s) if s == Slot::new(0)));
+    }
+
+    #[test]
+    fn parse_large_slot() {
+        let id: StateId = "18446744073709551615".parse().unwrap();
+        assert!(matches!(id.0, CoreStateId::Slot(s) if s == Slot::new(u64::MAX)));
+    }
+}
