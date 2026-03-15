@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1395 (Mar 15) — spec stable, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged. No new PRs opened.
+
+**PR status update**: PR #4992 (cached PTCs) approved by jtraglia (Mar 12), last comment by jihoonsong (Mar 13), mergeable_state clean — closest to merge. PR #4898 approved by jihoonsong, PR #4892 approved by ensi321 + jtraglia — both mergeable_state clean, both already match our implementation.
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check.
+
+**Conclusion**: No code changes needed. Spec stable.
+
 ### run 1394 (Mar 15) — spec stable, PR #4898/#4892 impact analysis
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged.
