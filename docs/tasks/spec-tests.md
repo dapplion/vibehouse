@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1366 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843, #4747, #4630, #4558. PR #4747 (Fast Confirmation Rule) updated Mar 14 — new activity but not Gloas-specific.
+
+**Upcoming**: PR #4992 (cached PTCs, mergeable:clean, 122+/39-, 14 review comments, 8 commits) remains the most impactful pending change. No movement since Mar 13. Branch `ptc-lookbehind` ready locally, blocked on merge + new test vectors.
+
+**CI**: ci green. Nightly green. Clippy clean (zero warnings). Docker build queued (runner availability). derivative fully removed from dep tree (confirmed via `cargo tree`). ansi_term also gone.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1365 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843. #4954, #4898, #4892, #4840, #4747, #4630, #4558 no longer in recent updated list.
