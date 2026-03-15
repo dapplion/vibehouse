@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1413 (Mar 15) — participation_flag_updates, sync_committee_updates, participation_record_updates, historical_summaries_update, justification_and_finalization test coverage added
+
+**Test coverage**: Added 31 unit tests across 6 previously-untested epoch processing files:
+- `participation_flag_updates.rs` (7 tests): current moves to previous, current reset to defaults, length matches validators, double update clears previous, preserves multiple flags, mixed flags across validators
+- `sync_committee_updates.rs` (5 tests): no update at non-boundary epoch, update at boundary epoch (current=next_before), next committee changes at boundary, no update at epoch zero, update at second boundary
+- `participation_record_updates.rs` (6 tests): current moves to previous, current cleared after move, previous replaced not appended, empty current clears previous, double update clears both, fails on non-base state
+- `historical_summaries_update.rs` (6 tests): no push at non-boundary, push at boundary, summary is deterministic, multiple boundaries accumulate, different roots produce different summaries, no push one epoch before boundary
+- `altair/justification_and_finalization.rs` (4 tests): early epoch returns unchanged, epoch one unchanged, epoch two runs justification, returns previous justified checkpoint
+- `base/justification_and_finalization.rs` (3 tests): early epoch returns unchanged, epoch one unchanged, uses total_balances not cache
+
+**CI**: All green.
+
 ### run 1412 (Mar 15) — justification_and_finalization_state, epoch_cache, state_advance, sync_committee test coverage added
 
 **Test coverage**: Added 40 unit tests across 4 previously-untested files:
