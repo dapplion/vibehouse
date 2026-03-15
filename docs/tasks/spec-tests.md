@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1423 (Mar 15) — state_cache test coverage (42 tests)
+
+**Test coverage**: Added 42 unit tests for `beacon_node/store/src/state_cache.rs`, a previously-untested file containing the hot state cache, block map, and HDiff buffer cache:
+- `BlockMap` (10 tests): insert single/multiple slots/different blocks, prune removes old slots/empty block entries/keeps at zero, delete state root/removes empty block, delete_block_states present/missing
+- `HotHDiffBufferCache` (9 tests): new empty, put and get, put not full always inserts, capacity one older replaces/newer rejected/equal slot rejected, capacity gt one evicts LRU, mem_usage nonzero, reinserts min slot
+- `StateCache` (23 tests): new empty, put and get by state root, get missing returns none, duplicate returns duplicate, get by block root exact slot/ancestor slot/before all slots/missing block/picks most recent ancestor, delete state/delete block states, update head block root, put finalized state root returns finalized, get finalized by state root, update finalized unaligned error/decreasing slot error, put pre-finalized becomes hdiff buffer, put hdiff buffer pre-finalized/post-finalized rejected, cull respects order, update finalized prunes old states, rebase on finalized noop without finalized, hdiff buffer mem usage
+
+**CI**: All 98 store tests pass (42 new + 56 existing).
+
 ### run 1422 (Mar 15) — metadata, payload_status, consensus_context, and delta test coverage (46 tests)
 
 **Test coverage**: Added 46 unit tests across 4 previously-untested files spanning 3 crates:
