@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1248 (Mar 15) — spec stable, CI green, no action needed
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (14+ consecutive). All 7 tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
+
+**CI status**: Previous CI run (23099372936) failed on 4 `invalid_signature_*` beacon_chain tests due to availability bit patch from run 1247. Fix committed in d0d6afe86. Latest CI run (23100175757) in progress — clippy passed, remaining jobs building. All 4 tests verified passing locally.
+
+**New spec PRs noted**: #4960 (Gloas fork choice deposit test) and #4932 (Gloas sanity/blocks payload attestation tests) — both are test-only PRs, not yet merged, no code impact until included in a new spec test release.
+
+**Conclusion**: Project stable. No spec drift, no code changes needed.
+
 ### run 1247 (Mar 15) — fix load_parent envelope fallback, add integration test
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (13+ consecutive). All 7 tracked spec PRs still OPEN, none merged.
