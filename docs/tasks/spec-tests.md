@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1261 (Mar 15) — spec stable, reviewed merged PRs #5001 and #4940
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**PR #5001 review (parent_block_root in bid filtering key)**: Merged Mar 12. Adds `parent_block_root` to the bid highest-value tracking tuple `(slot, parent_block_hash, parent_block_root)` to prevent cross-fork bid interference. Verified vibehouse already implements this — `observed_execution_bids.rs:48` uses the 3-tuple key, `is_highest_value_bid` at line 110 takes all three parameters, and tests at line 411 (`highest_value_different_parent_root_independent`) verify cross-fork isolation. No changes needed.
+
+**PR #4940 review (initial Gloas fork choice tests)**: Merged Mar 13. Adds `on_execution_payload` fork choice tests (store init + EMPTY→FULL transition). Our test runner already has `on_execution_payload` step handling (`fork_choice.rs:368`), `ForkChoiceHandler` enables it for Gloas (`handler.rs:717`), and our fork choice `on_execution_payload` implementation (`fork_choice.rs:1527`) sets `payload_revealed`, `envelope_received`, `payload_data_available`. Tests will pass when vectors land in next release.
+
+**PR #4962 readiness (stale withdrawal tests)**: Tests 4 combinations of block-with-withdrawals where payload doesn't arrive, followed by next block with/without withdrawals. Verified our `process_withdrawals_gloas` correctly returns early on EMPTY parent (preserving stale withdrawals), and `process_execution_payload_envelope` validates withdrawals match. Existing test `stale_withdrawal_mismatch_after_missed_payload_rejected` covers this scenario.
+
+**PR #4843 review (variable PTC deadline)**: Still open. Would rename `payload_present` → `payload_timely` in PayloadAttestationData, add `MIN_PAYLOAD_DUE_BPS` config, add `get_payload_due_ms`/`get_payload_size` helpers, change PTC attestation construction to consider payload arrival time. Significant change but not merged yet.
+
+**CI**: Run 23101168845 in progress — check+clippy, ef-tests, network+op_pool all passed; http_api, beacon_chain, unit tests still running.
+
+**Conclusion**: Project stable. Both recently merged PRs (#5001, #4940) already handled. Stale withdrawal handling verified correct for upcoming #4962 tests.
+
 ### run 1260 (Mar 15) — spec stable, PR #4939 already implemented
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
