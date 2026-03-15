@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1266 (Mar 15) — spec stable, ptc-lookbehind branch rebased, CI green
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs — 1 approval, mergeable/clean, active review), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**CI**: Run 23102403979 (educe migration) — check+clippy, ef-tests, network+op_pool all passed; beacon_chain, http_api, unit tests still in progress.
+
+**Branch maintenance**: Rebased `ptc-lookbehind` onto main (was 73 commits behind after educe/pastey migrations and task doc updates). Clean rebase, compiles, 369/369 state_processing tests pass, 715/715 types tests pass. Gloas SSZ static EF test expected to fail (no test vectors for new fields yet). Branch pushed. Ready for PR #4992 merge.
+
+**PR #4992 status**: Mergeable, clean CI, 1 approval (jtraglia), active review comments from jihoonsong (Mar 13). Adds `previous_ptc`/`current_ptc` to BeaconState, rotates in `process_slots`, simplifies `get_ptc` to state lookup. Fixes real epoch-boundary PTC bug.
+
+**Code health**: Zero clippy warnings. Zero doc warnings. Cargo audit unchanged (1 rsa vulnerability no fix, 4 unmaintained transitive deps from SP1).
+
+**Conclusion**: Project stable. ptc-lookbehind branch refreshed and ready. Monitoring PR #4992 for merge.
+
 ### run 1265 (Mar 15) — spec stable, all deps current, CI green
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
