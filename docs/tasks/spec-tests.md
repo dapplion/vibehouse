@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1273 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs — 1 approval, active review comments from jihoonsong Mar 13), #4939 (missing payload envelope request for index-1 attestation — no approvals, stalled since Feb), #4962, #4960, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**PR readiness assessment**:
+- #4992 (cached PTCs in state): Medium-sized change — adds `previous_ptc`/`current_ptc` to BeaconState, rotates in per_slot_processing, simplifies `get_ptc` to state lookup. Has 1 approval but still iterating. Would touch types, per_slot_processing, upgrade_to_gloas, genesis.
+- #4939 (index-1 attestation envelope request): Already implemented in vibehouse (validation logic + error variants). Only gap is proactive `ExecutionPayloadEnvelopesByRoot` RPC request on `PayloadEnvelopeNotSeen`. Stalled, unlikely to merge soon.
+
+**CI**: Run 23102403979 fully green (6/6 jobs). Docker build 23102403977 still queued.
+
+**Code health**: Zero clippy warnings. Cargo audit unchanged (1 rsa vulnerability no fix, 5 allowed warnings — transitive SP1 deps). No semver-compatible dependency updates.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1272 (Mar 15) — deep spec audit, all alpha.3 changes verified implemented
 
 **Spec audit**: Reviewed all consensus-specs commits since alpha.3 tag (d2cfa51c, Mar 11):
