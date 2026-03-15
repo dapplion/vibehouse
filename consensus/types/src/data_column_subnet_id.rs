@@ -81,3 +81,103 @@ impl From<ArithError> for Error {
         Error::ArithError(e)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    fn spec_with_subnet_count(count: u64) -> ChainSpec {
+        let mut spec = ChainSpec::minimal();
+        spec.data_column_sidecar_subnet_count = count;
+        spec
+    }
+
+    #[test]
+    fn new_and_deref() {
+        let id = DataColumnSubnetId::new(5);
+        assert_eq!(*id, 5u64);
+    }
+
+    #[test]
+    fn from_u64_round_trip() {
+        let id = DataColumnSubnetId::from(42u64);
+        let val: u64 = id.into();
+        assert_eq!(val, 42);
+    }
+
+    #[test]
+    fn from_ref_to_u64() {
+        let id = DataColumnSubnetId::new(7);
+        let val: u64 = (&id).into();
+        assert_eq!(val, 7);
+    }
+
+    #[test]
+    fn display() {
+        let id = DataColumnSubnetId::new(13);
+        assert_eq!(format!("{}", id), "13");
+    }
+
+    #[test]
+    fn debug() {
+        let id = DataColumnSubnetId::new(8);
+        assert_eq!(format!("{:?}", id), "8");
+    }
+
+    #[test]
+    fn from_column_index_wraps() {
+        let spec = spec_with_subnet_count(4);
+        assert_eq!(*DataColumnSubnetId::from_column_index(0, &spec), 0);
+        assert_eq!(*DataColumnSubnetId::from_column_index(1, &spec), 1);
+        assert_eq!(*DataColumnSubnetId::from_column_index(3, &spec), 3);
+        assert_eq!(*DataColumnSubnetId::from_column_index(4, &spec), 0);
+        assert_eq!(*DataColumnSubnetId::from_column_index(5, &spec), 1);
+        assert_eq!(*DataColumnSubnetId::from_column_index(7, &spec), 3);
+    }
+
+    #[test]
+    fn from_column_index_single_subnet() {
+        let spec = spec_with_subnet_count(1);
+        // All columns map to subnet 0
+        for i in 0..10 {
+            assert_eq!(*DataColumnSubnetId::from_column_index(i, &spec), 0);
+        }
+    }
+
+    #[test]
+    fn deref_mut() {
+        let mut id = DataColumnSubnetId::new(1);
+        *id = 99;
+        assert_eq!(*id, 99);
+    }
+
+    #[test]
+    fn equality_and_hash() {
+        let a = DataColumnSubnetId::new(3);
+        let b = DataColumnSubnetId::new(3);
+        let c = DataColumnSubnetId::new(4);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+
+        let mut set = HashSet::new();
+        set.insert(a);
+        assert!(set.contains(&b));
+        assert!(!set.contains(&c));
+    }
+
+    #[test]
+    fn serde_round_trip() {
+        let id = DataColumnSubnetId::new(10);
+        let json = serde_json::to_string(&id).unwrap();
+        let decoded: DataColumnSubnetId = serde_json::from_str(&json).unwrap();
+        assert_eq!(id, decoded);
+    }
+
+    #[test]
+    fn error_from_arith_error() {
+        let arith_err = ArithError::Overflow;
+        let err = Error::from(arith_err);
+        assert!(matches!(err, Error::ArithError(ArithError::Overflow)));
+    }
+}

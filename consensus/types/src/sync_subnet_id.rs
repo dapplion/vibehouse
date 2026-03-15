@@ -94,3 +94,119 @@ impl AsRef<str> for SyncSubnetId {
         sync_subnet_id_to_string(self.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MinimalEthSpec;
+
+    #[test]
+    fn new_and_deref() {
+        let id = SyncSubnetId::new(3);
+        assert_eq!(*id, 3u64);
+    }
+
+    #[test]
+    fn from_u64_round_trip() {
+        let id = SyncSubnetId::from(7u64);
+        let val: u64 = id.into();
+        assert_eq!(val, 7);
+    }
+
+    #[test]
+    fn from_ref_to_u64() {
+        let id = SyncSubnetId::new(5);
+        let val: u64 = (&id).into();
+        assert_eq!(val, 5);
+    }
+
+    #[test]
+    fn display() {
+        let id = SyncSubnetId::new(2);
+        assert_eq!(format!("{}", id), "2");
+    }
+
+    #[test]
+    fn as_ref_str_in_range() {
+        let id = SyncSubnetId::new(0);
+        assert_eq!(id.as_ref(), "0");
+
+        let id = SyncSubnetId::new(SYNC_COMMITTEE_SUBNET_COUNT - 1);
+        assert_eq!(
+            id.as_ref(),
+            (SYNC_COMMITTEE_SUBNET_COUNT - 1).to_string().as_str()
+        );
+    }
+
+    #[test]
+    fn as_ref_str_out_of_range() {
+        let id = SyncSubnetId::new(SYNC_COMMITTEE_SUBNET_COUNT);
+        assert_eq!(id.as_ref(), "sync subnet id out of range");
+    }
+
+    #[test]
+    fn deref_mut() {
+        let mut id = SyncSubnetId::new(1);
+        *id = 10;
+        assert_eq!(*id, 10);
+    }
+
+    #[test]
+    fn compute_subnets_single_index() {
+        let indices = vec![0];
+        let subnets =
+            SyncSubnetId::compute_subnets_for_sync_committee::<MinimalEthSpec>(&indices).unwrap();
+        assert_eq!(subnets.len(), 1);
+        assert!(subnets.contains(&SyncSubnetId::new(0)));
+    }
+
+    #[test]
+    fn compute_subnets_multiple_same_subcommittee() {
+        let subcommittee_size = <MinimalEthSpec as EthSpec>::SyncSubcommitteeSize::to_u64();
+        let indices: Vec<u64> = (0..subcommittee_size).collect();
+        let subnets =
+            SyncSubnetId::compute_subnets_for_sync_committee::<MinimalEthSpec>(&indices).unwrap();
+        assert_eq!(subnets.len(), 1);
+        assert!(subnets.contains(&SyncSubnetId::new(0)));
+    }
+
+    #[test]
+    fn compute_subnets_different_subcommittees() {
+        let subcommittee_size = <MinimalEthSpec as EthSpec>::SyncSubcommitteeSize::to_u64();
+        let indices = vec![0, subcommittee_size];
+        let subnets =
+            SyncSubnetId::compute_subnets_for_sync_committee::<MinimalEthSpec>(&indices).unwrap();
+        assert_eq!(subnets.len(), 2);
+        assert!(subnets.contains(&SyncSubnetId::new(0)));
+        assert!(subnets.contains(&SyncSubnetId::new(1)));
+    }
+
+    #[test]
+    fn compute_subnets_empty() {
+        let subnets =
+            SyncSubnetId::compute_subnets_for_sync_committee::<MinimalEthSpec>(&[]).unwrap();
+        assert!(subnets.is_empty());
+    }
+
+    #[test]
+    fn equality_and_hash() {
+        let a = SyncSubnetId::new(3);
+        let b = SyncSubnetId::new(3);
+        let c = SyncSubnetId::new(4);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+
+        let mut set = HashSet::new();
+        set.insert(a);
+        assert!(set.contains(&b));
+        assert!(!set.contains(&c));
+    }
+
+    #[test]
+    fn serde_round_trip() {
+        let id = SyncSubnetId::new(3);
+        let json = serde_json::to_string(&id).unwrap();
+        let decoded: SyncSubnetId = serde_json::from_str(&json).unwrap();
+        assert_eq!(id, decoded);
+    }
+}

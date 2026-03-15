@@ -187,3 +187,136 @@ impl TestRandom for Graffiti {
         Self::from(Hash256::random_for_test(rng).0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_is_zeros() {
+        let g = Graffiti::default();
+        assert_eq!(g.0, [0u8; GRAFFITI_BYTES_LEN]);
+    }
+
+    #[test]
+    fn from_bytes_round_trip() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[0] = 0xAB;
+        bytes[31] = 0xCD;
+        let g = Graffiti::from(bytes);
+        let out: [u8; GRAFFITI_BYTES_LEN] = g.into();
+        assert_eq!(out, bytes);
+    }
+
+    #[test]
+    fn as_utf8_lossy_ascii() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[..5].copy_from_slice(b"hello");
+        let g = Graffiti::from(bytes);
+        assert_eq!(g.as_utf8_lossy(), "hello");
+    }
+
+    #[test]
+    fn as_utf8_lossy_strips_control_chars() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[0] = b'a';
+        bytes[1] = 0x00; // null
+        bytes[2] = b'b';
+        let g = Graffiti::from(bytes);
+        // Control characters should be stripped
+        let result = g.as_utf8_lossy();
+        assert!(result.contains('a'));
+        assert!(result.contains('b'));
+    }
+
+    #[test]
+    fn display_is_hex() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[0] = 0xFF;
+        let g = Graffiti::from(bytes);
+        let s = format!("{}", g);
+        assert!(s.starts_with("0x"));
+        assert!(s.contains("ff"));
+    }
+
+    #[test]
+    fn graffiti_string_from_str_valid() {
+        let gs = GraffitiString::from_str("hello").unwrap();
+        let g: Graffiti = gs.into();
+        assert_eq!(g.0[..5], *b"hello");
+        // Rest should be zero-padded
+        assert_eq!(g.0[5..], [0u8; 27]);
+    }
+
+    #[test]
+    fn graffiti_string_from_str_max_length() {
+        let s = "a".repeat(GRAFFITI_BYTES_LEN);
+        let gs = GraffitiString::from_str(&s).unwrap();
+        let g: Graffiti = gs.into();
+        assert_eq!(&g.0[..], s.as_bytes());
+    }
+
+    #[test]
+    fn graffiti_string_from_str_too_long() {
+        let s = "a".repeat(GRAFFITI_BYTES_LEN + 1);
+        assert!(GraffitiString::from_str(&s).is_err());
+    }
+
+    #[test]
+    fn graffiti_string_empty() {
+        let gs = GraffitiString::empty();
+        let g: Graffiti = gs.into();
+        assert_eq!(g.0, [0u8; GRAFFITI_BYTES_LEN]);
+    }
+
+    #[test]
+    fn ssz_round_trip() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[0] = 42;
+        bytes[15] = 99;
+        let g = Graffiti::from(bytes);
+        let encoded = g.as_ssz_bytes();
+        assert_eq!(encoded.len(), GRAFFITI_BYTES_LEN);
+        let decoded = Graffiti::from_ssz_bytes(&encoded).unwrap();
+        assert_eq!(g, decoded);
+    }
+
+    #[test]
+    fn ssz_fixed_len() {
+        assert!(<Graffiti as Encode>::is_ssz_fixed_len());
+        assert_eq!(<Graffiti as Encode>::ssz_fixed_len(), GRAFFITI_BYTES_LEN);
+    }
+
+    #[test]
+    fn ssz_decode_wrong_length() {
+        assert!(Graffiti::from_ssz_bytes(&[0u8; 16]).is_err());
+        assert!(Graffiti::from_ssz_bytes(&[0u8; 33]).is_err());
+    }
+
+    #[test]
+    fn tree_hash_matches_bytes() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[0] = 1;
+        let g = Graffiti::from(bytes);
+        assert_eq!(g.tree_hash_root(), bytes.tree_hash_root());
+    }
+
+    #[test]
+    fn serde_graffiti_round_trip() {
+        let mut bytes = [0u8; GRAFFITI_BYTES_LEN];
+        bytes[0] = 0xDE;
+        bytes[1] = 0xAD;
+        let g = Graffiti::from(bytes);
+        let json = serde_json::to_string(&g).unwrap();
+        let decoded: Graffiti = serde_json::from_str(&json).unwrap();
+        assert_eq!(g, decoded);
+    }
+
+    #[test]
+    fn graffiti_string_serde_round_trip() {
+        let gs = GraffitiString::from_str("test graffiti").unwrap();
+        let json = serde_json::to_string(&gs).unwrap();
+        let decoded: GraffitiString = serde_json::from_str(&json).unwrap();
+        assert_eq!(gs, decoded);
+    }
+}
