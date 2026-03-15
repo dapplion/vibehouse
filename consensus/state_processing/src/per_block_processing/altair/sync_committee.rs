@@ -137,16 +137,14 @@ mod tests {
         if state.fork_name_unchecked() == types::ForkName::Base {
             // We need validators for the state to be meaningful
             let validators = state.validators_mut();
-            for i in 0..n {
-                let mut validator = Validator::default();
-                validator.effective_balance = spec.max_effective_balance;
-                validator.activation_epoch = types::Epoch::new(0);
-                validator.exit_epoch = spec.far_future_epoch;
-                validator.withdrawable_epoch = spec.far_future_epoch;
-                // Set a unique pubkey
-                let mut pubkey_bytes = [0u8; 48];
-                pubkey_bytes[0..8].copy_from_slice(&(i as u64).to_le_bytes());
-                validator.pubkey = types::PublicKeyBytes::empty();
+            for _ in 0..n {
+                let validator = Validator {
+                    effective_balance: spec.max_effective_balance,
+                    activation_epoch: types::Epoch::new(0),
+                    exit_epoch: spec.far_future_epoch,
+                    withdrawable_epoch: spec.far_future_epoch,
+                    ..Validator::default()
+                };
                 validators.push(validator).unwrap();
             }
 

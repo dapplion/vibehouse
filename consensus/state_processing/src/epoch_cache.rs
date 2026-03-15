@@ -131,190 +131,6 @@ pub fn is_epoch_cache_initialized<E: EthSpec>(
         .is_ok())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use types::FixedBytesExtended;
-    use types::epoch_cache::EpochCacheKey;
-
-    fn make_pre_epoch_cache() -> PreEpochCache {
-        PreEpochCache {
-            epoch_key: EpochCacheKey {
-                epoch: types::Epoch::new(1),
-                decision_block_root: Hash256::zero(),
-            },
-            effective_balances: Vec::new(),
-            total_active_balance: 0,
-        }
-    }
-
-    #[test]
-    fn update_effective_balance_sequential_push() {
-        let mut cache = make_pre_epoch_cache();
-        // Push index 0
-        cache
-            .update_effective_balance(0, 32_000_000_000, true)
-            .unwrap();
-        assert_eq!(cache.effective_balances.len(), 1);
-        assert_eq!(cache.effective_balances[0], 32_000_000_000);
-        assert_eq!(cache.get_total_active_balance(), 32_000_000_000);
-
-        // Push index 1
-        cache
-            .update_effective_balance(1, 16_000_000_000, true)
-            .unwrap();
-        assert_eq!(cache.effective_balances.len(), 2);
-        assert_eq!(cache.get_total_active_balance(), 48_000_000_000);
-    }
-
-    #[test]
-    fn update_effective_balance_inactive_not_counted() {
-        let mut cache = make_pre_epoch_cache();
-        cache
-            .update_effective_balance(0, 32_000_000_000, false)
-            .unwrap();
-        assert_eq!(cache.effective_balances.len(), 1);
-        assert_eq!(cache.effective_balances[0], 32_000_000_000);
-        // Inactive validator should not be added to total
-        assert_eq!(cache.get_total_active_balance(), 0);
-    }
-
-    #[test]
-    fn update_effective_balance_gap_index_errors() {
-        let mut cache = make_pre_epoch_cache();
-        // Try to push index 1 without pushing index 0 first
-        let result = cache.update_effective_balance(1, 32_000_000_000, true);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn update_effective_balance_existing_active() {
-        let mut cache = make_pre_epoch_cache();
-        // Push index 0 as active
-        cache
-            .update_effective_balance(0, 32_000_000_000, true)
-            .unwrap();
-        assert_eq!(cache.get_total_active_balance(), 32_000_000_000);
-
-        // Update index 0 with new balance (still active)
-        cache
-            .update_effective_balance(0, 48_000_000_000, true)
-            .unwrap();
-        assert_eq!(cache.effective_balances[0], 48_000_000_000);
-        // Total should be adjusted: removed old, added new
-        assert_eq!(cache.get_total_active_balance(), 48_000_000_000);
-    }
-
-    #[test]
-    fn update_effective_balance_existing_inactive_no_total_change() {
-        let mut cache = make_pre_epoch_cache();
-        // Push index 0 as inactive
-        cache
-            .update_effective_balance(0, 32_000_000_000, false)
-            .unwrap();
-        assert_eq!(cache.get_total_active_balance(), 0);
-
-        // Update index 0 (still inactive) — total should stay 0
-        cache
-            .update_effective_balance(0, 48_000_000_000, false)
-            .unwrap();
-        assert_eq!(cache.effective_balances[0], 48_000_000_000);
-        assert_eq!(cache.get_total_active_balance(), 0);
-    }
-
-    #[test]
-    fn update_effective_balance_multiple_validators() {
-        let mut cache = make_pre_epoch_cache();
-        cache
-            .update_effective_balance(0, 32_000_000_000, true)
-            .unwrap();
-        cache
-            .update_effective_balance(1, 32_000_000_000, true)
-            .unwrap();
-        cache
-            .update_effective_balance(2, 32_000_000_000, false)
-            .unwrap();
-        cache
-            .update_effective_balance(3, 16_000_000_000, true)
-            .unwrap();
-
-        assert_eq!(cache.effective_balances.len(), 4);
-        // Only indices 0, 1, 3 are active
-        assert_eq!(cache.get_total_active_balance(), 80_000_000_000);
-    }
-
-    #[test]
-    fn get_total_active_balance_initially_zero() {
-        let cache = make_pre_epoch_cache();
-        assert_eq!(cache.get_total_active_balance(), 0);
-    }
-
-    #[test]
-    fn update_existing_increases_balance() {
-        let mut cache = make_pre_epoch_cache();
-        cache
-            .update_effective_balance(0, 10_000_000_000, true)
-            .unwrap();
-        cache
-            .update_effective_balance(1, 20_000_000_000, true)
-            .unwrap();
-
-        // Update index 1 from 20 to 30
-        cache
-            .update_effective_balance(1, 30_000_000_000, true)
-            .unwrap();
-        assert_eq!(cache.get_total_active_balance(), 40_000_000_000);
-    }
-
-    #[test]
-    fn update_existing_decreases_balance() {
-        let mut cache = make_pre_epoch_cache();
-        cache
-            .update_effective_balance(0, 32_000_000_000, true)
-            .unwrap();
-        cache
-            .update_effective_balance(1, 32_000_000_000, true)
-            .unwrap();
-
-        // Update index 0 from 32 to 16
-        cache
-            .update_effective_balance(0, 16_000_000_000, true)
-            .unwrap();
-        assert_eq!(cache.get_total_active_balance(), 48_000_000_000);
-    }
-
-    #[test]
-    fn into_epoch_cache_produces_valid_cache() {
-        let spec = types::MinimalEthSpec::default_spec();
-        let mut cache = PreEpochCache {
-            epoch_key: EpochCacheKey {
-                epoch: types::Epoch::new(1),
-                decision_block_root: Hash256::from_low_u64_be(42),
-            },
-            effective_balances: Vec::new(),
-            total_active_balance: 0,
-        };
-
-        // Add a few validators
-        cache
-            .update_effective_balance(0, spec.max_effective_balance, true)
-            .unwrap();
-        cache
-            .update_effective_balance(1, spec.max_effective_balance, true)
-            .unwrap();
-
-        let activation_queue = ActivationQueue::default();
-        let epoch_cache = cache.into_epoch_cache(activation_queue, &spec).unwrap();
-
-        // The cache should be valid for epoch 1 with the decision block root
-        assert!(
-            epoch_cache
-                .check_validity(types::Epoch::new(1), Hash256::from_low_u64_be(42))
-                .is_ok()
-        );
-    }
-}
-
 #[instrument(skip_all, level = "debug")]
 pub fn initialize_epoch_cache<E: EthSpec>(
     state: &mut BeaconState<E>,
@@ -360,4 +176,174 @@ pub fn initialize_epoch_cache<E: EthSpec>(
     *state.epoch_cache_mut() = pre_epoch_cache.into_epoch_cache(activation_queue, spec)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::FixedBytesExtended;
+    use types::epoch_cache::EpochCacheKey;
+
+    fn make_pre_epoch_cache() -> PreEpochCache {
+        PreEpochCache {
+            epoch_key: EpochCacheKey {
+                epoch: types::Epoch::new(1),
+                decision_block_root: Hash256::zero(),
+            },
+            effective_balances: Vec::new(),
+            total_active_balance: 0,
+        }
+    }
+
+    #[test]
+    fn update_effective_balance_sequential_push() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 32_000_000_000, true)
+            .unwrap();
+        assert_eq!(cache.effective_balances.len(), 1);
+        assert_eq!(cache.effective_balances[0], 32_000_000_000);
+        assert_eq!(cache.get_total_active_balance(), 32_000_000_000);
+
+        cache
+            .update_effective_balance(1, 16_000_000_000, true)
+            .unwrap();
+        assert_eq!(cache.effective_balances.len(), 2);
+        assert_eq!(cache.get_total_active_balance(), 48_000_000_000);
+    }
+
+    #[test]
+    fn update_effective_balance_inactive_not_counted() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 32_000_000_000, false)
+            .unwrap();
+        assert_eq!(cache.effective_balances.len(), 1);
+        assert_eq!(cache.effective_balances[0], 32_000_000_000);
+        assert_eq!(cache.get_total_active_balance(), 0);
+    }
+
+    #[test]
+    fn update_effective_balance_gap_index_errors() {
+        let mut cache = make_pre_epoch_cache();
+        let result = cache.update_effective_balance(1, 32_000_000_000, true);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn update_effective_balance_existing_active() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 32_000_000_000, true)
+            .unwrap();
+        assert_eq!(cache.get_total_active_balance(), 32_000_000_000);
+
+        cache
+            .update_effective_balance(0, 48_000_000_000, true)
+            .unwrap();
+        assert_eq!(cache.effective_balances[0], 48_000_000_000);
+        assert_eq!(cache.get_total_active_balance(), 48_000_000_000);
+    }
+
+    #[test]
+    fn update_effective_balance_existing_inactive_no_total_change() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 32_000_000_000, false)
+            .unwrap();
+        assert_eq!(cache.get_total_active_balance(), 0);
+
+        cache
+            .update_effective_balance(0, 48_000_000_000, false)
+            .unwrap();
+        assert_eq!(cache.effective_balances[0], 48_000_000_000);
+        assert_eq!(cache.get_total_active_balance(), 0);
+    }
+
+    #[test]
+    fn update_effective_balance_multiple_validators() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 32_000_000_000, true)
+            .unwrap();
+        cache
+            .update_effective_balance(1, 32_000_000_000, true)
+            .unwrap();
+        cache
+            .update_effective_balance(2, 32_000_000_000, false)
+            .unwrap();
+        cache
+            .update_effective_balance(3, 16_000_000_000, true)
+            .unwrap();
+
+        assert_eq!(cache.effective_balances.len(), 4);
+        assert_eq!(cache.get_total_active_balance(), 80_000_000_000);
+    }
+
+    #[test]
+    fn get_total_active_balance_initially_zero() {
+        let cache = make_pre_epoch_cache();
+        assert_eq!(cache.get_total_active_balance(), 0);
+    }
+
+    #[test]
+    fn update_existing_increases_balance() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 10_000_000_000, true)
+            .unwrap();
+        cache
+            .update_effective_balance(1, 20_000_000_000, true)
+            .unwrap();
+
+        cache
+            .update_effective_balance(1, 30_000_000_000, true)
+            .unwrap();
+        assert_eq!(cache.get_total_active_balance(), 40_000_000_000);
+    }
+
+    #[test]
+    fn update_existing_decreases_balance() {
+        let mut cache = make_pre_epoch_cache();
+        cache
+            .update_effective_balance(0, 32_000_000_000, true)
+            .unwrap();
+        cache
+            .update_effective_balance(1, 32_000_000_000, true)
+            .unwrap();
+
+        cache
+            .update_effective_balance(0, 16_000_000_000, true)
+            .unwrap();
+        assert_eq!(cache.get_total_active_balance(), 48_000_000_000);
+    }
+
+    #[test]
+    fn into_epoch_cache_produces_valid_cache() {
+        let spec = types::MinimalEthSpec::default_spec();
+        let mut cache = PreEpochCache {
+            epoch_key: EpochCacheKey {
+                epoch: types::Epoch::new(1),
+                decision_block_root: Hash256::from_low_u64_be(42),
+            },
+            effective_balances: Vec::new(),
+            total_active_balance: 0,
+        };
+
+        cache
+            .update_effective_balance(0, spec.max_effective_balance, true)
+            .unwrap();
+        cache
+            .update_effective_balance(1, spec.max_effective_balance, true)
+            .unwrap();
+
+        let activation_queue = ActivationQueue::default();
+        let epoch_cache = cache.into_epoch_cache(activation_queue, &spec).unwrap();
+
+        assert!(
+            epoch_cache
+                .check_validity(types::Epoch::new(1), Hash256::from_low_u64_be(42))
+                .is_ok()
+        );
+    }
 }

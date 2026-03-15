@@ -168,8 +168,8 @@ mod tests {
         let expected = state.get_block_root_at_epoch(epoch).copied();
         let actual = jf.get_block_root_at_epoch(epoch);
         assert_eq!(actual.is_ok(), expected.is_ok());
-        if actual.is_ok() {
-            assert_eq!(actual.unwrap(), expected.unwrap());
+        if let (Ok(a), Ok(e)) = (&actual, &expected) {
+            assert_eq!(a, e);
         }
     }
 

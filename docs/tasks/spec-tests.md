@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1412 (Mar 15) — justification_and_finalization_state, epoch_cache, state_advance, sync_committee test coverage added
+
+**Test coverage**: Added 40 unit tests across 4 previously-untested files:
+- `justification_and_finalization_state.rs` (10 tests): new extracts epochs/checkpoints/justification_bits, get_block_root_at_epoch delegates to correct epoch/errors on unknown, mutable checkpoint setters, justification_bits mutable, apply_changes updates state, immutable fields preserved, roundtrip identity
+- `epoch_cache.rs` (10 tests): PreEpochCache sequential push, inactive not counted in total, gap index errors, update existing active adjusts total, update existing inactive no change, multiple validators mixed, initially zero, update increases/decreases balance, into_epoch_cache produces valid cache
+- `state_advance.rs` (10 tests): check_target_slot equal/forward/backward, complete_state_advance same slot noop/one slot/multiple slots/backward errors, partial_state_advance same slot/one slot/backward errors/no state root errors/multiple slots
+- `sync_committee.rs` (7 tests): compute_sync_aggregate_rewards nonzero with active validators, proposer_reward < participant_reward, rewards scale with sqrt(total_active_balance), proposer_reward formula consistency, deterministic, minimum validators, max_participant_rewards division consistency
+
+**CI**: All green.
+
 ### run 1411 (Mar 15) — selection_proof, sync_aggregate, sync_duty, epoch_processing_summary test coverage added
 
 **Test coverage**: Added 52 unit tests across 4 previously-untested files:
