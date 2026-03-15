@@ -124,3 +124,105 @@ impl<E: EthSpec> SignedAggregateAndProof<E> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+    use crate::{AttestationBase, AttestationElectra, MinimalEthSpec};
+    use ssz::Encode;
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
+
+    fn make_base_signed() -> SignedAggregateAndProof<E> {
+        let mut rng = XorShiftRng::seed_from_u64(99);
+        let att = Attestation::Base(AttestationBase::random_for_test(&mut rng));
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(7, att, proof);
+        SignedAggregateAndProof::from_aggregate_and_proof(agg, Signature::empty())
+    }
+
+    fn make_electra_signed() -> SignedAggregateAndProof<E> {
+        let mut rng = XorShiftRng::seed_from_u64(99);
+        let att = Attestation::Electra(AttestationElectra::random_for_test(&mut rng));
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(8, att, proof);
+        SignedAggregateAndProof::from_aggregate_and_proof(agg, Signature::empty())
+    }
+
+    #[test]
+    fn from_aggregate_and_proof_base() {
+        let signed = make_base_signed();
+        assert!(matches!(signed, SignedAggregateAndProof::Base(_)));
+    }
+
+    #[test]
+    fn from_aggregate_and_proof_electra() {
+        let signed = make_electra_signed();
+        assert!(matches!(signed, SignedAggregateAndProof::Electra(_)));
+    }
+
+    #[test]
+    fn message_returns_correct_ref() {
+        let signed = make_base_signed();
+        let msg_ref = signed.message();
+        assert!(matches!(msg_ref, AggregateAndProofRef::Base(_)));
+        assert_eq!(msg_ref.aggregator_index(), 7);
+    }
+
+    #[test]
+    fn into_attestation_base() {
+        let signed = make_base_signed();
+        let att = signed.into_attestation();
+        assert!(matches!(att, Attestation::Base(_)));
+    }
+
+    #[test]
+    fn into_attestation_electra() {
+        let signed = make_electra_signed();
+        let att = signed.into_attestation();
+        assert!(matches!(att, Attestation::Electra(_)));
+    }
+
+    #[test]
+    fn ssz_encode_base_not_empty() {
+        let signed = make_base_signed();
+        let bytes = signed.as_ssz_bytes();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn ssz_encode_electra_not_empty() {
+        let signed = make_electra_signed();
+        let bytes = signed.as_ssz_bytes();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn ssz_encode_deterministic() {
+        let s1 = make_base_signed();
+        let s2 = make_base_signed();
+        assert_eq!(s1.as_ssz_bytes(), s2.as_ssz_bytes());
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let s1 = make_base_signed();
+        let s2 = make_base_signed();
+        assert_eq!(s1.tree_hash_root(), s2.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_and_equality() {
+        let signed = make_electra_signed();
+        let cloned = signed.clone();
+        assert_eq!(signed, cloned);
+    }
+
+    #[test]
+    fn signature_preserved() {
+        let signed = make_base_signed();
+        assert_eq!(*signed.signature(), Signature::empty());
+    }
+}

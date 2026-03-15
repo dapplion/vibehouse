@@ -154,3 +154,135 @@ impl<E: EthSpec> AggregateAndProof<E> {
 
 impl<E: EthSpec> SignedRoot for AggregateAndProof<E> {}
 impl<E: EthSpec> SignedRoot for AggregateAndProofRef<'_, E> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+    use crate::{AttestationBase, AttestationElectra, FixedBytesExtended, MinimalEthSpec};
+    use ssz::Encode;
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
+
+    fn make_base_attestation() -> AttestationBase<E> {
+        let mut rng = XorShiftRng::seed_from_u64(42);
+        AttestationBase::random_for_test(&mut rng)
+    }
+
+    fn make_electra_attestation() -> AttestationElectra<E> {
+        let mut rng = XorShiftRng::seed_from_u64(42);
+        AttestationElectra::random_for_test(&mut rng)
+    }
+
+    #[test]
+    fn from_attestation_base_variant() {
+        let att = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(7, att.clone(), proof);
+        assert!(matches!(agg, AggregateAndProof::Base(_)));
+        assert_eq!(agg.aggregator_index(), 7);
+    }
+
+    #[test]
+    fn from_attestation_electra_variant() {
+        let att = Attestation::Electra(make_electra_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(42, att, proof);
+        assert!(matches!(agg, AggregateAndProof::Electra(_)));
+        assert_eq!(agg.aggregator_index(), 42);
+    }
+
+    #[test]
+    fn aggregate_ref_returns_correct_variant() {
+        let att_base = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(0, att_base, proof);
+        let agg_ref = agg.aggregate();
+        assert!(matches!(agg_ref, AttestationRef::Base(_)));
+    }
+
+    #[test]
+    fn aggregate_and_proof_ref_aggregate() {
+        let att = Attestation::Electra(make_electra_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(5, att, proof);
+        let agg_ref = agg.to_ref();
+        let att_ref = agg_ref.aggregate();
+        assert!(matches!(att_ref, AttestationRef::Electra(_)));
+    }
+
+    #[test]
+    fn ssz_encode_base_not_empty() {
+        let att = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(10, att, proof);
+        let bytes = agg.as_ssz_bytes();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn ssz_encode_electra_not_empty() {
+        let att = Attestation::Electra(make_electra_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(20, att, proof);
+        let bytes = agg.as_ssz_bytes();
+        assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn ssz_encode_deterministic() {
+        let att = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg1 = AggregateAndProof::from_attestation(10, att.clone(), proof.clone());
+        let agg2 = AggregateAndProof::from_attestation(10, att, proof);
+        assert_eq!(agg1.as_ssz_bytes(), agg2.as_ssz_bytes());
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let att = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg1 = AggregateAndProof::from_attestation(5, att.clone(), proof.clone());
+        let agg2 = AggregateAndProof::from_attestation(5, att, proof);
+        assert_eq!(agg1.tree_hash_root(), agg2.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_different_index_differs() {
+        let att = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg1 = AggregateAndProof::from_attestation(1, att.clone(), proof.clone());
+        let agg2 = AggregateAndProof::from_attestation(2, att, proof);
+        assert_ne!(agg1.tree_hash_root(), agg2.tree_hash_root());
+    }
+
+    #[test]
+    fn signed_root_impl() {
+        let att = Attestation::Base(make_base_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(0, att, proof);
+        let domain = Hash256::from_low_u64_be(99);
+        let root = agg.signing_root(domain);
+        // signing_root should be deterministic
+        assert_eq!(root, agg.signing_root(domain));
+    }
+
+    #[test]
+    fn clone_and_equality() {
+        let att = Attestation::Electra(make_electra_attestation());
+        let proof = SelectionProof::from(Signature::empty());
+        let agg = AggregateAndProof::from_attestation(33, att, proof);
+        let cloned = agg.clone();
+        assert_eq!(agg, cloned);
+    }
+
+    #[test]
+    fn selection_proof_preserved() {
+        let att = Attestation::Base(make_base_attestation());
+        let empty_sig = Signature::empty();
+        let proof = SelectionProof::from(empty_sig.clone());
+        let agg = AggregateAndProof::from_attestation(0, att, proof);
+        assert_eq!(*agg.selection_proof(), empty_sig);
+    }
+}

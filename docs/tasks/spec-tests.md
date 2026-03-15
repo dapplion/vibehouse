@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1419 (Mar 15) — execution_block_header, aggregate_and_proof, and contribution_and_proof test coverage added
+
+**Test coverage**: Added 44 unit tests across 5 previously-untested type files:
+- `consensus/types/src/execution_block_header.rs` (10 tests): header equality/inequality/clone, encodable conversion with/without optional fields, RLP encode deterministic/different headers differ, partial optionals, debug+hash, post-merge zero difficulty/nonce
+- `consensus/types/src/aggregate_and_proof.rs` (12 tests): from_attestation base/electra variant, aggregate ref returns correct variant, aggregate_and_proof_ref aggregate, SSZ encode base/electra/deterministic, tree hash deterministic/different index, signed_root, clone+equality, selection_proof preserved
+- `consensus/types/src/signed_aggregate_and_proof.rs` (11 tests): from_aggregate_and_proof base/electra, message returns correct ref, into_attestation base/electra, SSZ encode base/electra/deterministic, tree hash deterministic, clone+equality, signature preserved
+- `consensus/types/src/contribution_and_proof.rs` (6 tests): fields accessible, SSZ round trip, tree hash deterministic, clone+equality, signed_root, different aggregator_index different hash
+- `consensus/types/src/signed_contribution_and_proof.rs` (5 tests): fields accessible, SSZ round trip, tree hash deterministic, clone+equality, different aggregator_index different hash
+
+**CI**: All 1008 types tests pass (44 new).
+
 ### run 1418 (Mar 15) — epoch_cache and beacon_proposer_cache test coverage added
 
 **Test coverage**: Added 25 unit tests across 2 previously-untested cache files:

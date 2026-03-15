@@ -158,3 +158,154 @@ impl<'a> From<&'a ExecutionBlockHeader> for EncodableExecutionBlockHeader<'a> {
         encodable
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::FixedBytesExtended;
+    use alloy_rlp::Encodable;
+
+    fn sample_header() -> ExecutionBlockHeader {
+        ExecutionBlockHeader {
+            parent_hash: Hash256::from_low_u64_be(1),
+            ommers_hash: Hash256::from_low_u64_be(2),
+            beneficiary: Address::repeat_byte(0xaa),
+            state_root: Hash256::from_low_u64_be(3),
+            transactions_root: Hash256::from_low_u64_be(4),
+            receipts_root: Hash256::from_low_u64_be(5),
+            logs_bloom: vec![0u8; 256],
+            difficulty: Uint256::ZERO,
+            number: Uint256::saturating_from(100u64),
+            gas_limit: Uint256::saturating_from(30_000_000u64),
+            gas_used: Uint256::saturating_from(21_000u64),
+            timestamp: 1_700_000_000,
+            extra_data: vec![0x42, 0x43],
+            mix_hash: Hash256::from_low_u64_be(6),
+            nonce: Hash64::ZERO,
+            base_fee_per_gas: Uint256::saturating_from(7u64),
+            withdrawals_root: None,
+            blob_gas_used: None,
+            excess_blob_gas: None,
+            parent_beacon_block_root: None,
+            requests_root: None,
+        }
+    }
+
+    #[test]
+    fn header_equality() {
+        let h1 = sample_header();
+        let h2 = sample_header();
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn header_inequality_on_different_field() {
+        let h1 = sample_header();
+        let mut h2 = sample_header();
+        h2.timestamp = 999;
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn header_clone() {
+        let h1 = sample_header();
+        let h2 = h1.clone();
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn encodable_conversion_no_optional_fields() {
+        let header = sample_header();
+        let encodable = EncodableExecutionBlockHeader::from(&header);
+        assert_eq!(encodable.parent_hash, header.parent_hash.as_slice());
+        assert_eq!(encodable.beneficiary, header.beneficiary.as_slice());
+        assert_eq!(encodable.timestamp, header.timestamp);
+        assert_eq!(encodable.base_fee_per_gas, header.base_fee_per_gas);
+        assert!(encodable.withdrawals_root.is_none());
+        assert!(encodable.blob_gas_used.is_none());
+        assert!(encodable.excess_blob_gas.is_none());
+        assert!(encodable.parent_beacon_block_root.is_none());
+        assert!(encodable.requests_root.is_none());
+    }
+
+    #[test]
+    fn encodable_conversion_with_optional_fields() {
+        let mut header = sample_header();
+        let wr = Hash256::from_low_u64_be(10);
+        let pbr = Hash256::from_low_u64_be(11);
+        let rr = Hash256::from_low_u64_be(12);
+        header.withdrawals_root = Some(wr);
+        header.blob_gas_used = Some(131072);
+        header.excess_blob_gas = Some(0);
+        header.parent_beacon_block_root = Some(pbr);
+        header.requests_root = Some(rr);
+
+        let encodable = EncodableExecutionBlockHeader::from(&header);
+        assert_eq!(encodable.withdrawals_root, Some(wr.as_slice()));
+        assert_eq!(encodable.blob_gas_used, Some(131072));
+        assert_eq!(encodable.excess_blob_gas, Some(0));
+        assert_eq!(encodable.parent_beacon_block_root, Some(pbr.as_slice()));
+        assert_eq!(encodable.requests_root, Some(rr.as_slice()));
+    }
+
+    #[test]
+    fn encodable_rlp_deterministic() {
+        let header = sample_header();
+        let encodable = EncodableExecutionBlockHeader::from(&header);
+        let mut buf1 = Vec::new();
+        let mut buf2 = Vec::new();
+        encodable.encode(&mut buf1);
+        encodable.encode(&mut buf2);
+        assert_eq!(buf1, buf2);
+        assert!(!buf1.is_empty());
+    }
+
+    #[test]
+    fn encodable_rlp_different_headers_differ() {
+        let h1 = sample_header();
+        let mut h2 = sample_header();
+        h2.number = Uint256::saturating_from(999u64);
+        let e1 = EncodableExecutionBlockHeader::from(&h1);
+        let e2 = EncodableExecutionBlockHeader::from(&h2);
+        let mut buf1 = Vec::new();
+        let mut buf2 = Vec::new();
+        e1.encode(&mut buf1);
+        e2.encode(&mut buf2);
+        assert_ne!(buf1, buf2);
+    }
+
+    #[test]
+    fn encodable_with_partial_optionals() {
+        // Only withdrawals_root set, others None
+        let mut header = sample_header();
+        header.withdrawals_root = Some(Hash256::from_low_u64_be(77));
+        let encodable = EncodableExecutionBlockHeader::from(&header);
+        assert!(encodable.withdrawals_root.is_some());
+        assert!(encodable.parent_beacon_block_root.is_none());
+        assert!(encodable.requests_root.is_none());
+        // blob fields are independent
+        assert!(encodable.blob_gas_used.is_none());
+    }
+
+    #[test]
+    fn header_debug_and_hash() {
+        use std::collections::HashSet;
+        let h1 = sample_header();
+        let mut h2 = sample_header();
+        h2.timestamp = 42;
+        let mut set = HashSet::new();
+        set.insert(h1.clone());
+        assert!(set.contains(&h1));
+        assert!(!set.contains(&h2));
+        // Debug doesn't panic
+        let _ = format!("{:?}", h1);
+    }
+
+    #[test]
+    fn difficulty_and_nonce_are_zero() {
+        // Post-merge headers should have zero difficulty and nonce
+        let header = sample_header();
+        assert_eq!(header.difficulty, Uint256::ZERO);
+        assert_eq!(header.nonce, Hash64::ZERO);
+    }
+}

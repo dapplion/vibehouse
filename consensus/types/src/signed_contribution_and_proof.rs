@@ -65,3 +65,58 @@ impl<E: EthSpec> SignedContributionAndProof<E> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::MinimalEthSpec;
+    use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
+
+    fn make_signed() -> SignedContributionAndProof<E> {
+        let mut rng = XorShiftRng::seed_from_u64(55);
+        SignedContributionAndProof::random_for_test(&mut rng)
+    }
+
+    #[test]
+    fn fields_accessible() {
+        let s = make_signed();
+        let _ = s.message.aggregator_index;
+        let _ = s.message.contribution.slot;
+        let _ = &s.signature;
+    }
+
+    #[test]
+    fn ssz_round_trip() {
+        let s = make_signed();
+        let bytes = s.as_ssz_bytes();
+        let decoded = SignedContributionAndProof::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(s, decoded);
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let s1 = make_signed();
+        let s2 = make_signed();
+        assert_eq!(s1.tree_hash_root(), s2.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_and_equality() {
+        let s = make_signed();
+        let cloned = s.clone();
+        assert_eq!(s, cloned);
+    }
+
+    #[test]
+    fn different_aggregator_index_different_hash() {
+        let mut s1 = make_signed();
+        let mut s2 = make_signed();
+        s1.message.aggregator_index = 100;
+        s2.message.aggregator_index = 200;
+        assert_ne!(s1.tree_hash_root(), s2.tree_hash_root());
+    }
+}

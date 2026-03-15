@@ -65,3 +65,68 @@ impl<E: EthSpec> ContributionAndProof<E> {
 }
 
 impl<E: EthSpec> SignedRoot for ContributionAndProof<E> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{SeedableRng, TestRandom, XorShiftRng};
+    use crate::{FixedBytesExtended, MinimalEthSpec};
+    use ssz::{Decode, Encode};
+    use tree_hash::TreeHash;
+
+    type E = MinimalEthSpec;
+
+    fn make_contribution_and_proof() -> ContributionAndProof<E> {
+        let mut rng = XorShiftRng::seed_from_u64(77);
+        ContributionAndProof::random_for_test(&mut rng)
+    }
+
+    #[test]
+    fn fields_accessible() {
+        let cap = make_contribution_and_proof();
+        // Just ensure all fields are accessible and don't panic
+        let _ = cap.aggregator_index;
+        let _ = cap.contribution.slot;
+        let _ = cap.contribution.subcommittee_index;
+        let _ = &cap.selection_proof;
+    }
+
+    #[test]
+    fn ssz_round_trip() {
+        let cap = make_contribution_and_proof();
+        let bytes = cap.as_ssz_bytes();
+        let decoded = ContributionAndProof::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(cap, decoded);
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let c1 = make_contribution_and_proof();
+        let c2 = make_contribution_and_proof();
+        assert_eq!(c1.tree_hash_root(), c2.tree_hash_root());
+    }
+
+    #[test]
+    fn clone_and_equality() {
+        let cap = make_contribution_and_proof();
+        let cloned = cap.clone();
+        assert_eq!(cap, cloned);
+    }
+
+    #[test]
+    fn signed_root_impl() {
+        let cap = make_contribution_and_proof();
+        let domain = Hash256::from_low_u64_be(42);
+        let root = cap.signing_root(domain);
+        assert_eq!(root, cap.signing_root(domain));
+    }
+
+    #[test]
+    fn different_aggregator_index_different_hash() {
+        let mut c1 = make_contribution_and_proof();
+        let mut c2 = make_contribution_and_proof();
+        c1.aggregator_index = 1;
+        c2.aggregator_index = 2;
+        assert_ne!(c1.tree_hash_root(), c2.tree_hash_root());
+    }
+}
