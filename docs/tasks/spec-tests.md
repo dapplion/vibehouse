@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1435 (Mar 16) — compare_fields, listen_addr, sensitive_url, and logging test coverage (57 tests)
+
+**Test coverage**: Added 57 unit tests across 4 files spanning 4 crates:
+- `common/compare_fields/src/lib.rs` (18 tests): FieldComparison::new equal/unequal/string debug format, Comparison::child equal/unequal, Comparison::parent equal/not_equal, from_slice equal/unequal_middle/right_longer/left_longer/both_empty, retain_children filters equal/noop on child, from_into_iter equal/unequal, clone+eq for Comparison and FieldComparison
+- `common/network_utils/src/listen_addr.rs` (12 tests): ListenAddr socket address methods (v4/v6 discovery/quic/tcp), ListenAddress v4/v6 selectors (v4-only/v6-only/dual-stack), libp2p_addresses multiaddr construction (v4 two addrs/v6 two addrs/dual-stack four addrs)
+- `common/sensitive_url/src/lib.rs` (11 new tests, 13 total): redact path-only URL, redact query-only URL, username-only redaction, Debug shows redacted, AsRef returns redacted, FromStr valid/invalid, PartialEq, serde roundtrip, serde serializes full URL, IPv6 URL
+- `common/logging/src/utils.rs` (16 tests): is_ascii_control boundary tests — null/bell/backspace/tab/newline/vertical-tab/form-feed/CR/escape/DEL/space, printable ASCII range, digit range, high control chars 0x81-0x9f, boundary byte 0x80, bytes 0xa0-0xff
+
+**CI**: All 57 new tests pass across 4 crates. Clippy clean.
+
 ### run 1434 (Mar 16) — block_id, state_id, produce_block, and per_block_processing errors test coverage (75 tests)
 
 **Test coverage**: Added 75 unit tests across 4 previously-untested files spanning 2 crates:
