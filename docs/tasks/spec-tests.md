@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1411 (Mar 15) — selection_proof, sync_aggregate, sync_duty, epoch_processing_summary test coverage added
+
+**Test coverage**: Added 52 unit tests across 4 previously-untested files:
+- `selection_proof.rs` (13 tests): modulo returns 1 for small/zero committee, exact division, with remainder, equals target, large committee; is_aggregator_from_modulo always true for 1/errors for 0; new+verify roundtrip, wrong slot/key fails verification, deterministic result, into_signature roundtrip
+- `sync_aggregate.rs` (9 tests): new/empty have zero bits, from_contributions empty list/single bit/different subcommittees/multiple bits same subcommittee/all subcommittees full/overlapping bits idempotent, num_set_bits on default
+- `sync_duty.rs` (13 tests): from_sync_committee_indices not found/present once/present multiple/empty; from_sync_committee pubkey not found/found once/found multiple; subnet_ids single/same subcommittee/different subcommittees/empty; new returns None for empty; preserves pubkey
+- `epoch_processing_summary.rs` (17 tests): is_active_and_unslashed for active/slashed/inactive/OOB; previous epoch participating with/without flag, slashed/inactive not participating, unknown validator, missing participation errors; current epoch with/without/wrong flag, slashed; multiple validators mixed; all three flags independent; exited validator; boundary epoch activation
+
+**CI**: All green.
+
 ### run 1410 (Mar 15) — slashings_cache, pubkey_cache, progressive_balances_cache, justified_balances test coverage added
 
 **Test coverage**: Added 52 unit tests across 4 previously-untested cache/data structure files:
