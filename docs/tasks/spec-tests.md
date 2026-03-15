@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1374 (Mar 15) — spec stable, watching PR #4992
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). No new merges since alpha.3.
+
+**Upcoming**: PR #4992 (Add cached PTCs to the state) has `mergeable_state: clean` with 1 approval (jtraglia). This adds `previous_ptc` and `current_ptc` fields to BeaconState, changes `get_ptc` to a state lookup, adds `compute_ptc` helper, modifies `process_slots` to rotate cached PTCs each slot, and updates `upgrade_to_gloas`. When it merges, will need: new state fields, modified slot processing, updated fork upgrade, and updated `get_ptc`/`get_ptc_assignment`. Also labeled "heze" — may carry forward to next fork.
+
+**Other open PRs**: #4939 (blocked), #4954 (blocked), #4962/#4960/#4932 (test-only), #4843 (variable PTC deadline), #4747 (Fast Confirmation Rule). None ready to merge.
+
+**CI**: In progress (run 23108811449). check+clippy+fmt passed. Nightly green.
+
+**Conclusion**: No code changes needed. Monitoring PR #4992 for merge.
+
 ### run 1373 (Mar 15) — docker CI tag-only trigger, spec stable
 
 **CI fix**: Docker workflow was failing on every push to main because Docker Hub credentials (DH_KEY/DH_ORG) aren't configured. Changed docker.yml to only trigger on version tags (`v*`), not on branch pushes. This eliminates the noise — Docker images only need building for releases.
