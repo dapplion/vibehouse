@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1379 (Mar 15) — spec stable, fix docker CI spurious triggers
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630.
+
+**CI fix**: Docker workflow was still triggering on pushes to main despite `tags: v*` filter (GitHub Actions evaluates workflow files on all pushes). Added `if: startsWith(github.ref, 'refs/tags/v')` guard to `extract-version` job — all downstream jobs depend on it via `needs:`, so the entire workflow skips cleanly on non-tag pushes.
+
+**CI**: ci green. Nightly green. Spec-test-version-check green.
+
+**Conclusion**: Docker CI noise fixed. No spec changes.
+
 ### run 1378 (Mar 15) — spec stable, CI green, PR #4992 implementation plan ready
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630.
