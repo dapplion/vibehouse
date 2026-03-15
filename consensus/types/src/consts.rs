@@ -41,3 +41,101 @@ pub mod gloas {
     /// When set on a withdrawal's validator_index, it means the withdrawal is for a builder.
     pub const BUILDER_INDEX_FLAG: u64 = 1u64 << 40;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Altair constants
+    #[test]
+    fn altair_flag_indices_distinct() {
+        assert_ne!(
+            altair::TIMELY_SOURCE_FLAG_INDEX,
+            altair::TIMELY_TARGET_FLAG_INDEX
+        );
+        assert_ne!(
+            altair::TIMELY_TARGET_FLAG_INDEX,
+            altair::TIMELY_HEAD_FLAG_INDEX
+        );
+        assert_ne!(
+            altair::TIMELY_SOURCE_FLAG_INDEX,
+            altair::TIMELY_HEAD_FLAG_INDEX
+        );
+    }
+
+    #[test]
+    fn altair_weights_sum_to_denominator() {
+        let total = altair::TIMELY_SOURCE_WEIGHT
+            + altair::TIMELY_TARGET_WEIGHT
+            + altair::TIMELY_HEAD_WEIGHT
+            + altair::SYNC_REWARD_WEIGHT
+            + altair::PROPOSER_WEIGHT;
+        assert_eq!(total, altair::WEIGHT_DENOMINATOR);
+    }
+
+    #[test]
+    fn altair_participation_flag_weights_array() {
+        assert_eq!(
+            altair::PARTICIPATION_FLAG_WEIGHTS.len(),
+            altair::NUM_FLAG_INDICES
+        );
+        assert_eq!(
+            altair::PARTICIPATION_FLAG_WEIGHTS[0],
+            altair::TIMELY_SOURCE_WEIGHT
+        );
+        assert_eq!(
+            altair::PARTICIPATION_FLAG_WEIGHTS[1],
+            altair::TIMELY_TARGET_WEIGHT
+        );
+        assert_eq!(
+            altair::PARTICIPATION_FLAG_WEIGHTS[2],
+            altair::TIMELY_HEAD_WEIGHT
+        );
+    }
+
+    #[test]
+    fn altair_num_flag_indices() {
+        assert_eq!(altair::NUM_FLAG_INDICES, 3);
+    }
+
+    #[test]
+    fn altair_sync_committee_subnet_count() {
+        assert_eq!(altair::SYNC_COMMITTEE_SUBNET_COUNT, 4);
+    }
+
+    // Bellatrix constants
+    #[test]
+    fn bellatrix_intervals_per_slot() {
+        assert_eq!(bellatrix::INTERVALS_PER_SLOT, 3);
+    }
+
+    // Gloas constants
+    #[test]
+    fn gloas_intervals_per_slot() {
+        assert_eq!(gloas::INTERVALS_PER_SLOT, 4);
+    }
+
+    #[test]
+    fn gloas_ptc_size() {
+        assert_eq!(gloas::PTC_SIZE, 512);
+    }
+
+    #[test]
+    fn gloas_builder_index_self_build_is_max() {
+        assert_eq!(gloas::BUILDER_INDEX_SELF_BUILD, u64::MAX);
+    }
+
+    #[test]
+    fn gloas_builder_index_flag_bit_position() {
+        assert_eq!(gloas::BUILDER_INDEX_FLAG, 1u64 << 40);
+        // Should be a single bit set
+        assert_eq!(gloas::BUILDER_INDEX_FLAG.count_ones(), 1);
+    }
+
+    #[test]
+    fn gloas_builder_index_flag_does_not_overlap_validator_range() {
+        // Validator indices are < 2^40, so the flag bit at position 40 doesn't overlap
+        let max_validator_index: u64 = (1u64 << 40) - 1;
+        assert_eq!(max_validator_index & gloas::BUILDER_INDEX_FLAG, 0);
+    }
+}

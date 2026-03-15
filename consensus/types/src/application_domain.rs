@@ -14,3 +14,43 @@ impl ApplicationDomain {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builder_domain_constant_value() {
+        // APPLICATION_DOMAIN_BUILDER = 0x01000000 in little-endian = 16777216
+        assert_eq!(APPLICATION_DOMAIN_BUILDER, 16777216);
+        assert_eq!(APPLICATION_DOMAIN_BUILDER, 1u32 << 24);
+    }
+
+    #[test]
+    fn get_domain_constant_builder() {
+        let domain = ApplicationDomain::Builder;
+        assert_eq!(domain.get_domain_constant(), APPLICATION_DOMAIN_BUILDER);
+    }
+
+    #[test]
+    fn copy_and_eq() {
+        let domain = ApplicationDomain::Builder;
+        let copied: ApplicationDomain = domain;
+        assert_eq!(domain, copied);
+    }
+
+    #[test]
+    fn copy_semantics() {
+        let domain = ApplicationDomain::Builder;
+        let copied = domain;
+        // Both still usable (Copy trait)
+        assert_eq!(domain.get_domain_constant(), copied.get_domain_constant());
+    }
+
+    #[test]
+    fn debug_format() {
+        let domain = ApplicationDomain::Builder;
+        let debug = format!("{:?}", domain);
+        assert!(debug.contains("Builder"));
+    }
+}
