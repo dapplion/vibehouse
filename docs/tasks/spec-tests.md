@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1406 (Mar 15) — effective_balance_updates, resets, and historical_roots_update test coverage added
+
+**Test coverage**: Added 22 unit tests across 3 previously-untested consensus-critical epoch processing files:
+- `effective_balance_updates.rs` (11 tests): no change when balance equals effective, no change within downward hysteresis, decreases when below hysteresis, no change within upward hysteresis, increases when above hysteresis, capped at max_effective_balance, rounds down to increment, total active balance updated, inactive validator excluded from total active balance, zero balance validator, multiple validators mixed changes
+- `resets.rs` (7 tests): eth1_data_votes cleared at period boundary, not cleared mid-period, slashings reset clears next epoch slot, slashings reset preserves other slots, randao_mixes copies current to next, preserves current epoch, zero default
+- `historical_roots_update.rs` (4 tests): pushes root at boundary epoch, no push at non-boundary, multiple boundaries accumulate, root is deterministic
+
+**CI**: All green.
+
 ### run 1405 (Mar 15) — spec stable, registry_updates and process_slashings test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
