@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1264 (Mar 15) — replaced unmaintained derivative crate with educe, spec stable
+
+**Dependency maintenance**: Replaced `derivative` (RUSTSEC-2024-0388, unmaintained) with `educe` 0.6 (actively maintained). Migrated 53 source files across 11 crates (66 files changed total including Cargo.tomls). Syntax differences: `= "ignore"` → `(ignore)`, `bound = "..."` → `bound(...)`, `format_with` → `method`, `value =` → `expression =`. Two types using `Debug = "transparent"` (ExecutionBlockHash, DataColumnSubnetId) replaced with manual `fmt::Debug` impls since educe has no transparent mode. Five light_client superstruct types had unused Derivative derives removed.
+
+**Tests**: 715/715 types, 2652/2652 workspace, 139/139 EF fake_crypto, 79/79 EF real_crypto — all pass. Zero clippy warnings.
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**Cargo audit**: 1 vulnerability (rsa, no fix). 4 unmaintained warnings remaining: ansi_term, bincode, filesystem (local crate false positive), paste (transitive only). derivative removed from direct deps.
+
 ### run 1263 (Mar 15) — replaced unmaintained paste crate, spec stable
 
 **Dependency maintenance**: Replaced `paste` (RUSTSEC-2024-0436, unmaintained) with `pastey` 0.2 (maintained fork, drop-in replacement). Updated workspace dep, 2 crate Cargo.tomls, 2 source files. All 715 types tests pass. Also ran `cargo sort` to fix pre-existing unsorted workspace deps.
