@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1363 (Mar 15) — spec stable, CI green, post-alpha.3 compliance verified
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). 8 open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
+
+**Post-alpha.3 audit**: Verified all 4 post-alpha.3 commits are covered:
+- `f0f41198d6` (parent_block_root in bid filtering key) — already implemented: `ObservedExecutionBids::highest_bid_values` uses `(Slot, ExecutionBlockHash, Hash256)` key
+- `85ab2d2360` (payload signature wording) — no code impact
+- `4b6f527c5c` (new fork choice tests) — test runner already supports `OnExecutionPayload` step, `head_payload_status` check, and `execution_payload_envelope_*.ssz_snappy` loading. Ready for next test vector release
+- `e50889e1ca` (release notes) — no code impact
+
+**Upcoming**: PR #4992 (cached PTCs, mergeable:clean, 122+/39-) is the most impactful pending change. Adds `previous_ptc`/`current_ptc` to BeaconState, modifies `process_slots`/`get_ptc`/`upgrade_to_gloas`. Implementation scope: new state fields, `compute_ptc()` helper, modify slot processing to rotate PTCs, simplify `get_ptc()` to read from state.
+
+**CI**: ci green. Nightly green. Docker build queued (expected — cancel-in-progress with rapid task doc pushes).
+
+**Conclusion**: Fully compliant with spec HEAD. No code changes needed.
+
 ### run 1362 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked open Gloas/ePBS PRs unchanged (#4992, #4962, #4960, #4939, #4932, #4843, #4630).
