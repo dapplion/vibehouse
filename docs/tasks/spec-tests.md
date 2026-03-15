@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1353 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs (#4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630) remain open and unmerged.
+
+**CI**: ci green. Nightly green (3 consecutive). Docker build queued (runner availability). Zero compiler warnings, zero clippy warnings. cargo audit: 1 rsa vulnerability (no fix), 5 unmaintained transitive warnings. cargo outdated: only rand_xorshift 0.4→0.5 (blocked by rand_core mismatch) and dev-only rand 0.8→0.9.
+
+**PTC lookbehind prep**: `ptc-lookbehind` branch verified up-to-date with spec PR #4992's approach. Will rebase onto main when PR merges and spec test vectors are released.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1352 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs remain open and unmerged. Reviewed diffs for 3 near-merge PRs:
