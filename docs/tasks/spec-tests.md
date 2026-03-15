@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1389 (Mar 15) — spec stable, impact analysis for FCR and withdrawal edge cases
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 14 tracked PRs open and unmerged: #5005, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558.
+
+**PR #4747 (Fast Confirmation Rule) impact analysis**: Updated Mar 14, significant feature. Adds 6 new Store fields (confirmed_root, previous/current_epoch_observed_justified_checkpoint, previous/current_slot_head, previous_epoch_greatest_unrealized_checkpoint). New config CONFIRMATION_BYZANTINE_THRESHOLD=25. Core algorithm: `on_fast_confirmation` called at slot start, `get_latest_confirmed` walks canonical chain checking `is_one_confirmed` safety threshold. Gloas-specific: `get_latest_message_epoch` returns `compute_epoch_at_slot(latest_message.slot)` instead of epoch-based. Affects: fork_choice (main algorithm), proto_array (ancestor lookups), beacon_chain (slot timing), execution_layer (safe head). Still in discussion (6 COMMENTED reviews, no APPROVED).
+
+**PR #4962 (withdrawal edge case tests) readiness audit**: Audited our Gloas withdrawal processing for the edge case where a block has withdrawals, payload is missed (EMPTY path), and next block may have different withdrawals. Our code handles this correctly: `process_withdrawals_gloas()` returns early on EMPTY parent, stale `payload_expected_withdrawals` persist, and envelope validation enforces exact match. Comprehensive tests exist (`stale_withdrawal_mismatch_after_missed_payload_rejected`, `empty_parent_preserves_stale_payload_expected_withdrawals`). No bugs found.
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check. Clippy clean (0 warnings). cargo audit: no actionable issues.
+
+**Conclusion**: No code changes needed. Spec stable. Our code is ready for when PR #4962 test vectors merge.
+
 ### run 1388 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca). No new merges. No new spec test releases (latest v1.7.0-alpha.3). All 14 tracked PRs open and unmerged: #5005, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. PR #4992 (cached PTCs) remains closest to merge — approved by jtraglia, mergeable_state clean, but still in active discussion (jihoonsong review comments Mar 13).
