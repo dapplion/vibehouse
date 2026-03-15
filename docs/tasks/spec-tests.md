@@ -7,7 +7,7 @@ Run the latest consensus spec tests at all times. Track and fix failures.
 
 ### Current results
 - **79/79 ef_tests pass (real crypto, 0 skipped)** — both mainnet + minimal presets
-- **138/138 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass)
+- **139/139 fake_crypto pass (0 skipped)** — both mainnet + minimal presets (Fulu + Gloas DataColumnSidecar variants both pass, includes new Gloas fork choice tests from alpha.3)
 - **check_all_files_accessed passes** — all files accessed, intentionally excluded patterns maintained
 - All 9 fork_choice test categories pass (get_head, on_block, ex_ante, reorg, withholding, get_proposer_head, deposit_with_reorg, should_override_forkchoice_update, on_execution_payload)
 - 40/40 gloas execution_payload envelope tests pass (process_execution_payload_envelope spec validation)
@@ -36,6 +36,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 **CI**: ci run green. Docker build queued (runner availability). Clippy clean (zero warnings). cargo audit: 1 vulnerability (rsa, no fix). No actionable dependency updates.
 
 **Conclusion**: Project stable. No spec drift. No code changes needed.
+
+### run 1347 (Mar 15) — verified 139/139 EF tests, all stable
+
+**EF tests**: Ran full fake_crypto minimal suite — **139/139 pass** (up from 138, new Gloas fork choice test vectors from alpha.3 included). Fork choice: 9/9 pass (real crypto). Clippy: zero warnings.
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new releases. Tracked PRs (#4932, #4939, #4960, #4962, #4992) all still OPEN. cargo audit: 1 rsa vulnerability (no fix), 5 unmaintained warnings (all transitive: sp1-verifier→bincode, tracing-forest→ansi_term, ark-ff→derivative, local filesystem false positive). No semver-compatible dep updates.
+
+**CI**: All green — ci success, nightly success.
+
+**Conclusion**: Updated test count to 139/139 in docs. No code changes needed.
 
 ### run 1345 (Mar 15) — spec stable, CI green, no changes needed
 
