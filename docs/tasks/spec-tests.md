@@ -2175,3 +2175,30 @@ Key activities across ~230 runs:
 - All 8 `invalid_signature_*` tests pass
 - Full clippy clean
 - Pushed as d0d6afe86
+
+### Run 1382: spec tracking review + implementation audit (2026-03-15)
+
+**Scope**: Checked consensus-specs for new changes since run 1182, verified `get_ptc_committee` / `compute_balance_weighted_selection` implementation against spec.
+
+**New merged PRs since last check:**
+- **#5004** — Add dependencies section to release notes → **No code change**, release tooling only.
+- **#5003** — Simplify `process_proposer_lookahead` (fulu) → **Closed, not merged**. Raised a concern about Python slice assignment edge case that doesn't affect our Rust implementation (we use explicit index writes).
+
+**Open Gloas PRs tracked (not yet merged):**
+- #4992 — Add cached PTCs to the state
+- #4954 — Update fork choice store to use milliseconds
+- #4939 — Request missing payload envelopes for index-1 attestation
+- #4898 — Remove pending status from tiebreaker
+- #4892 — Remove impossible branch in forkchoice
+- #4843 — Variable PTC deadline
+- #4840 — Add support for EIP-7843 to Gloas
+- #4747 — Fast Confirmation Rule
+- #4630 — EIP-7688 forward compatible SSZ types
+
+**Implementation audit**: Verified `get_ptc_committee` implementation matches spec exactly:
+- Seed computation: `hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))` ✓
+- Balance-weighted selection with `shuffle_indices=False` ✓
+- `compute_balance_weighted_acceptance` random byte extraction and comparison ✓
+- `bytes_to_uint64` 2-byte little-endian interpretation matches `u16::from_le_bytes` ✓
+
+**Status**: No new implementation changes needed. vibehouse remains ahead of the spec.
