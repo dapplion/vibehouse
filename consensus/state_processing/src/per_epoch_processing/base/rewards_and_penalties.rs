@@ -355,3 +355,302 @@ pub fn get_inactivity_penalty_delta(
 fn get_proposer_reward(base_reward: u64, spec: &ChainSpec) -> Result<u64, Error> {
     Ok(base_reward.safe_div(spec.proposer_reward_quotient)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::per_epoch_processing::base::validator_statuses::InclusionInfo;
+
+    fn mainnet_spec() -> ChainSpec {
+        ChainSpec::mainnet()
+    }
+
+    fn make_total_balances(current_epoch: u64, attesting: u64) -> TotalBalances {
+        let spec = mainnet_spec();
+        TotalBalances::new_for_testing(
+            &spec,
+            current_epoch,
+            current_epoch,
+            attesting,
+            attesting,
+            attesting,
+            attesting,
+            attesting,
+        )
+    }
+
+    // --- AttestationDelta::flatten ---
+
+    #[test]
+    fn attestation_delta_flatten_default_is_zero() {
+        let delta = AttestationDelta::default().flatten().unwrap();
+        assert_eq!(delta.rewards, 0);
+        assert_eq!(delta.penalties, 0);
+    }
+
+    #[test]
+    fn attestation_delta_flatten_sums_rewards_and_penalties() {
+        let mut ad = AttestationDelta::default();
+        ad.source_delta.reward(100).unwrap();
+        ad.target_delta.reward(200).unwrap();
+        ad.head_delta.penalize(50).unwrap();
+        ad.inactivity_penalty_delta.penalize(30).unwrap();
+        let delta = ad.flatten().unwrap();
+        assert_eq!(delta.rewards, 300);
+        assert_eq!(delta.penalties, 80);
+    }
+
+    // --- get_attestation_component_delta ---
+
+    #[test]
+    fn component_delta_attesting_gets_reward() {
+        let spec = mainnet_spec();
+        let total = make_total_balances(32_000_000_000, 24_000_000_000);
+        let base_reward = 1000;
+        let finality_delay = 1; // below inactivity threshold
+
+        let delta = get_attestation_component_delta(
+            true,
+            24_000_000_000,
+            &total,
+            base_reward,
+            finality_delay,
+            &spec,
+        )
+        .unwrap();
+        assert!(delta.rewards > 0, "attesting validator should be rewarded");
+        assert_eq!(delta.penalties, 0);
+    }
+
+    #[test]
+    fn component_delta_non_attesting_gets_penalty() {
+        let spec = mainnet_spec();
+        let total = make_total_balances(32_000_000_000, 24_000_000_000);
+        let base_reward = 1000;
+        let finality_delay = 1;
+
+        let delta = get_attestation_component_delta(
+            false,
+            24_000_000_000,
+            &total,
+            base_reward,
+            finality_delay,
+            &spec,
+        )
+        .unwrap();
+        assert_eq!(delta.rewards, 0);
+        assert_eq!(
+            delta.penalties, base_reward,
+            "non-attester penalized by base_reward"
+        );
+    }
+
+    #[test]
+    fn component_delta_inactivity_leak_full_base_reward() {
+        let spec = mainnet_spec();
+        let total = make_total_balances(32_000_000_000, 16_000_000_000);
+        let base_reward = 1000;
+        // finality_delay > min_epochs_to_inactivity_penalty triggers inactivity leak
+        let finality_delay = spec.min_epochs_to_inactivity_penalty + 1;
+
+        let delta = get_attestation_component_delta(
+            true,
+            16_000_000_000,
+            &total,
+            base_reward,
+            finality_delay,
+            &spec,
+        )
+        .unwrap();
+        // During inactivity leak, attesting validators get full base_reward
+        assert_eq!(delta.rewards, base_reward);
+        assert_eq!(delta.penalties, 0);
+    }
+
+    // --- get_inclusion_delay_delta ---
+
+    #[test]
+    fn inclusion_delay_delta_eligible_validator() {
+        let spec = mainnet_spec();
+        let base_reward = 10000;
+        let validator = ValidatorStatus {
+            is_previous_epoch_attester: true,
+            is_slashed: false,
+            inclusion_info: Some(InclusionInfo {
+                delay: 1,
+                proposer_index: 5,
+            }),
+            ..ValidatorStatus::default()
+        };
+
+        let (attester_delta, proposer) =
+            get_inclusion_delay_delta(&validator, base_reward, &spec).unwrap();
+        assert!(attester_delta.rewards > 0, "attester gets inclusion reward");
+        let (proposer_index, proposer_delta) = proposer.unwrap();
+        assert_eq!(proposer_index, 5);
+        assert!(proposer_delta.rewards > 0, "proposer gets reward");
+        // proposer_reward + max_attester_reward = base_reward
+        let proposer_reward = proposer_delta.rewards;
+        let max_attester_reward = base_reward - proposer_reward;
+        assert_eq!(attester_delta.rewards, max_attester_reward); // delay=1 means full attester reward
+    }
+
+    #[test]
+    fn inclusion_delay_delta_higher_delay_less_reward() {
+        let spec = mainnet_spec();
+        let base_reward = 10000;
+
+        let make_validator = |delay: u64| ValidatorStatus {
+            is_previous_epoch_attester: true,
+            is_slashed: false,
+            inclusion_info: Some(InclusionInfo {
+                delay,
+                proposer_index: 0,
+            }),
+            ..ValidatorStatus::default()
+        };
+
+        let (delta_1, _) =
+            get_inclusion_delay_delta(&make_validator(1), base_reward, &spec).unwrap();
+        let (delta_2, _) =
+            get_inclusion_delay_delta(&make_validator(2), base_reward, &spec).unwrap();
+        let (delta_4, _) =
+            get_inclusion_delay_delta(&make_validator(4), base_reward, &spec).unwrap();
+
+        assert!(
+            delta_1.rewards > delta_2.rewards,
+            "delay=1 should reward more than delay=2"
+        );
+        assert!(
+            delta_2.rewards > delta_4.rewards,
+            "delay=2 should reward more than delay=4"
+        );
+    }
+
+    #[test]
+    fn inclusion_delay_delta_slashed_validator_gets_nothing() {
+        let spec = mainnet_spec();
+        let validator = ValidatorStatus {
+            is_previous_epoch_attester: true,
+            is_slashed: true,
+            inclusion_info: Some(InclusionInfo {
+                delay: 1,
+                proposer_index: 0,
+            }),
+            ..ValidatorStatus::default()
+        };
+
+        let (delta, proposer) = get_inclusion_delay_delta(&validator, 10000, &spec).unwrap();
+        assert_eq!(delta.rewards, 0);
+        assert_eq!(delta.penalties, 0);
+        assert!(proposer.is_none());
+    }
+
+    #[test]
+    fn inclusion_delay_delta_non_attester_gets_nothing() {
+        let spec = mainnet_spec();
+        let validator = ValidatorStatus::default();
+
+        let (delta, proposer) = get_inclusion_delay_delta(&validator, 10000, &spec).unwrap();
+        assert_eq!(delta.rewards, 0);
+        assert_eq!(delta.penalties, 0);
+        assert!(proposer.is_none());
+    }
+
+    // --- get_inactivity_penalty_delta ---
+
+    #[test]
+    fn inactivity_penalty_no_leak_no_penalty() {
+        let spec = mainnet_spec();
+        let validator = ValidatorStatus {
+            is_eligible: true,
+            is_previous_epoch_target_attester: true,
+            ..ValidatorStatus::default()
+        };
+        // finality_delay <= min_epochs_to_inactivity_penalty = no inactivity leak
+        let finality_delay = spec.min_epochs_to_inactivity_penalty;
+
+        let delta = get_inactivity_penalty_delta(&validator, 1000, finality_delay, &spec).unwrap();
+        assert_eq!(delta.rewards, 0);
+        assert_eq!(delta.penalties, 0);
+    }
+
+    #[test]
+    fn inactivity_penalty_leak_target_attester_base_penalty_only() {
+        let spec = mainnet_spec();
+        let base_reward = 1000;
+        let validator = ValidatorStatus {
+            is_eligible: true,
+            is_previous_epoch_target_attester: true,
+            current_epoch_effective_balance: 32_000_000_000,
+            ..ValidatorStatus::default()
+        };
+        let finality_delay = spec.min_epochs_to_inactivity_penalty + 1;
+
+        let delta =
+            get_inactivity_penalty_delta(&validator, base_reward, finality_delay, &spec).unwrap();
+        // Target attester: gets base penalty but NOT the extra inactivity penalty
+        let proposer_reward = base_reward / spec.proposer_reward_quotient;
+        let expected_penalty = spec.base_rewards_per_epoch * base_reward - proposer_reward;
+        assert_eq!(delta.penalties, expected_penalty);
+    }
+
+    #[test]
+    fn inactivity_penalty_leak_non_target_attester_gets_extra_penalty() {
+        let spec = mainnet_spec();
+        let base_reward = 1000;
+        let effective_balance = 32_000_000_000u64;
+        let finality_delay = spec.min_epochs_to_inactivity_penalty + 10;
+
+        let target_attester = ValidatorStatus {
+            is_eligible: true,
+            is_previous_epoch_target_attester: true,
+            current_epoch_effective_balance: effective_balance,
+            ..ValidatorStatus::default()
+        };
+        let non_target = ValidatorStatus {
+            is_eligible: true,
+            is_previous_epoch_target_attester: false,
+            current_epoch_effective_balance: effective_balance,
+            ..ValidatorStatus::default()
+        };
+
+        let delta_target =
+            get_inactivity_penalty_delta(&target_attester, base_reward, finality_delay, &spec)
+                .unwrap();
+        let delta_non_target =
+            get_inactivity_penalty_delta(&non_target, base_reward, finality_delay, &spec).unwrap();
+
+        assert!(
+            delta_non_target.penalties > delta_target.penalties,
+            "non-target attester should get extra inactivity penalty"
+        );
+        // The extra penalty = effective_balance * finality_delay / inactivity_penalty_quotient
+        let extra = effective_balance * finality_delay / spec.inactivity_penalty_quotient;
+        assert_eq!(delta_non_target.penalties - delta_target.penalties, extra);
+    }
+
+    #[test]
+    fn inactivity_penalty_slashed_gets_extra_penalty() {
+        let spec = mainnet_spec();
+        let base_reward = 1000;
+        let effective_balance = 32_000_000_000u64;
+        let finality_delay = spec.min_epochs_to_inactivity_penalty + 5;
+
+        let slashed = ValidatorStatus {
+            is_eligible: true,
+            is_slashed: true,
+            is_previous_epoch_target_attester: true, // even with target match
+            current_epoch_effective_balance: effective_balance,
+            ..ValidatorStatus::default()
+        };
+
+        let delta =
+            get_inactivity_penalty_delta(&slashed, base_reward, finality_delay, &spec).unwrap();
+        // Slashed validators get the extra penalty even if they matched target
+        let extra = effective_balance * finality_delay / spec.inactivity_penalty_quotient;
+        let proposer_reward = base_reward / spec.proposer_reward_quotient;
+        let base_penalty = spec.base_rewards_per_epoch * base_reward - proposer_reward;
+        assert_eq!(delta.penalties, base_penalty + extra);
+    }
+}

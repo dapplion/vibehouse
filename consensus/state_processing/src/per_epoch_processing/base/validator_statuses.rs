@@ -171,6 +171,31 @@ impl TotalBalances {
     balance_accessor!(previous_epoch_attesters);
     balance_accessor!(previous_epoch_target_attesters);
     balance_accessor!(previous_epoch_head_attesters);
+
+    /// Create a `TotalBalances` with specified values for testing.
+    #[cfg(test)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_for_testing(
+        spec: &ChainSpec,
+        current_epoch: u64,
+        previous_epoch: u64,
+        current_epoch_attesters: u64,
+        current_epoch_target_attesters: u64,
+        previous_epoch_attesters: u64,
+        previous_epoch_target_attesters: u64,
+        previous_epoch_head_attesters: u64,
+    ) -> Self {
+        Self {
+            effective_balance_increment: spec.effective_balance_increment,
+            current_epoch,
+            previous_epoch,
+            current_epoch_attesters,
+            current_epoch_target_attesters,
+            previous_epoch_attesters,
+            previous_epoch_target_attesters,
+            previous_epoch_head_attesters,
+        }
+    }
 }
 
 /// Summarised information about validator participation in the _previous and _current_ epochs of
@@ -354,4 +379,256 @@ fn has_common_beacon_block_root<E: EthSpec>(
     let state_block_root = *state.get_block_root(a.data.slot)?;
 
     Ok(a.data.beacon_block_root == state_block_root)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- InclusionInfo tests ---
+
+    #[test]
+    fn inclusion_info_default_has_max_delay() {
+        let info = InclusionInfo::default();
+        assert_eq!(info.delay, u64::MAX);
+        assert_eq!(info.proposer_index, 0);
+    }
+
+    #[test]
+    fn inclusion_info_update_lower_delay_replaces() {
+        let mut info = InclusionInfo {
+            delay: 10,
+            proposer_index: 5,
+        };
+        let other = InclusionInfo {
+            delay: 3,
+            proposer_index: 7,
+        };
+        info.update(&other);
+        assert_eq!(info.delay, 3);
+        assert_eq!(info.proposer_index, 7);
+    }
+
+    #[test]
+    fn inclusion_info_update_higher_delay_no_change() {
+        let mut info = InclusionInfo {
+            delay: 3,
+            proposer_index: 7,
+        };
+        let other = InclusionInfo {
+            delay: 10,
+            proposer_index: 5,
+        };
+        info.update(&other);
+        assert_eq!(info.delay, 3);
+        assert_eq!(info.proposer_index, 7);
+    }
+
+    #[test]
+    fn inclusion_info_update_equal_delay_no_change() {
+        let mut info = InclusionInfo {
+            delay: 5,
+            proposer_index: 1,
+        };
+        let other = InclusionInfo {
+            delay: 5,
+            proposer_index: 99,
+        };
+        info.update(&other);
+        assert_eq!(info.delay, 5);
+        assert_eq!(info.proposer_index, 1);
+    }
+
+    #[test]
+    fn inclusion_info_update_from_default_always_replaces() {
+        let mut info = InclusionInfo::default();
+        let other = InclusionInfo {
+            delay: 1,
+            proposer_index: 42,
+        };
+        info.update(&other);
+        assert_eq!(info.delay, 1);
+        assert_eq!(info.proposer_index, 42);
+    }
+
+    // --- ValidatorStatus tests ---
+
+    #[test]
+    fn validator_status_default_all_false() {
+        let status = ValidatorStatus::default();
+        assert!(!status.is_slashed);
+        assert!(!status.is_eligible);
+        assert!(!status.is_withdrawable_in_current_epoch);
+        assert!(!status.is_active_in_current_epoch);
+        assert!(!status.is_active_in_previous_epoch);
+        assert!(!status.is_current_epoch_attester);
+        assert!(!status.is_current_epoch_target_attester);
+        assert!(!status.is_previous_epoch_attester);
+        assert!(!status.is_previous_epoch_target_attester);
+        assert!(!status.is_previous_epoch_head_attester);
+        assert_eq!(status.current_epoch_effective_balance, 0);
+        assert!(status.inclusion_info.is_none());
+    }
+
+    #[test]
+    fn validator_status_update_sets_true_never_false() {
+        let mut status = ValidatorStatus {
+            is_slashed: true,
+            is_current_epoch_attester: true,
+            ..ValidatorStatus::default()
+        };
+        let other = ValidatorStatus {
+            is_slashed: false,                // should NOT clear
+            is_eligible: true,                // should set
+            is_current_epoch_attester: false, // should NOT clear
+            is_previous_epoch_attester: true, // should set
+            ..ValidatorStatus::default()
+        };
+        status.update(&other);
+        assert!(status.is_slashed, "true must not be cleared to false");
+        assert!(status.is_eligible, "false must be set to true");
+        assert!(
+            status.is_current_epoch_attester,
+            "true must not be cleared to false"
+        );
+        assert!(
+            status.is_previous_epoch_attester,
+            "false must be set to true"
+        );
+    }
+
+    #[test]
+    fn validator_status_update_sets_inclusion_info_when_none() {
+        let mut status = ValidatorStatus::default();
+        assert!(status.inclusion_info.is_none());
+
+        let other = ValidatorStatus {
+            inclusion_info: Some(InclusionInfo {
+                delay: 5,
+                proposer_index: 3,
+            }),
+            ..ValidatorStatus::default()
+        };
+        status.update(&other);
+        let info = status.inclusion_info.unwrap();
+        assert_eq!(info.delay, 5);
+        assert_eq!(info.proposer_index, 3);
+    }
+
+    #[test]
+    fn validator_status_update_merges_inclusion_info_lower_delay() {
+        let mut status = ValidatorStatus {
+            inclusion_info: Some(InclusionInfo {
+                delay: 10,
+                proposer_index: 1,
+            }),
+            ..ValidatorStatus::default()
+        };
+        let other = ValidatorStatus {
+            inclusion_info: Some(InclusionInfo {
+                delay: 2,
+                proposer_index: 9,
+            }),
+            ..ValidatorStatus::default()
+        };
+        status.update(&other);
+        let info = status.inclusion_info.unwrap();
+        assert_eq!(info.delay, 2);
+        assert_eq!(info.proposer_index, 9);
+    }
+
+    #[test]
+    fn validator_status_update_keeps_inclusion_info_on_higher_delay() {
+        let mut status = ValidatorStatus {
+            inclusion_info: Some(InclusionInfo {
+                delay: 2,
+                proposer_index: 9,
+            }),
+            ..ValidatorStatus::default()
+        };
+        let other = ValidatorStatus {
+            inclusion_info: Some(InclusionInfo {
+                delay: 10,
+                proposer_index: 1,
+            }),
+            ..ValidatorStatus::default()
+        };
+        status.update(&other);
+        let info = status.inclusion_info.unwrap();
+        assert_eq!(info.delay, 2);
+        assert_eq!(info.proposer_index, 9);
+    }
+
+    #[test]
+    fn validator_status_update_none_inclusion_does_not_clear() {
+        let mut status = ValidatorStatus {
+            inclusion_info: Some(InclusionInfo {
+                delay: 5,
+                proposer_index: 3,
+            }),
+            ..ValidatorStatus::default()
+        };
+        let other = ValidatorStatus::default(); // inclusion_info = None
+        status.update(&other);
+        assert!(
+            status.inclusion_info.is_some(),
+            "None other must not clear existing inclusion_info"
+        );
+    }
+
+    // --- TotalBalances tests ---
+
+    #[test]
+    fn total_balances_new_all_zero() {
+        let spec = ChainSpec::mainnet();
+        let balances = TotalBalances::new(&spec);
+        assert_eq!(balances.current_epoch, 0);
+        assert_eq!(balances.previous_epoch, 0);
+        assert_eq!(balances.current_epoch_attesters, 0);
+        assert_eq!(balances.current_epoch_target_attesters, 0);
+        assert_eq!(balances.previous_epoch_attesters, 0);
+        assert_eq!(balances.previous_epoch_target_attesters, 0);
+        assert_eq!(balances.previous_epoch_head_attesters, 0);
+    }
+
+    #[test]
+    fn total_balances_accessors_return_minimum_ebi() {
+        let spec = ChainSpec::mainnet();
+        let balances = TotalBalances::new(&spec);
+        // When fields are 0, accessors should return effective_balance_increment (the floor)
+        let ebi = spec.effective_balance_increment;
+        assert_eq!(balances.current_epoch(), ebi);
+        assert_eq!(balances.previous_epoch(), ebi);
+        assert_eq!(balances.current_epoch_attesters(), ebi);
+        assert_eq!(balances.current_epoch_target_attesters(), ebi);
+        assert_eq!(balances.previous_epoch_attesters(), ebi);
+        assert_eq!(balances.previous_epoch_target_attesters(), ebi);
+        assert_eq!(balances.previous_epoch_head_attesters(), ebi);
+    }
+
+    #[test]
+    fn total_balances_accessors_return_value_when_above_ebi() {
+        let spec = ChainSpec::mainnet();
+        let ebi = spec.effective_balance_increment;
+        let mut balances = TotalBalances::new(&spec);
+        let large_value = ebi * 100;
+        balances.current_epoch = large_value;
+        balances.previous_epoch_target_attesters = large_value;
+        assert_eq!(balances.current_epoch(), large_value);
+        assert_eq!(balances.previous_epoch_target_attesters(), large_value);
+    }
+
+    #[test]
+    fn total_balances_ebi_floor_prevents_division_by_zero() {
+        // The floor of effective_balance_increment ensures we never get 0 from
+        // an accessor, which prevents division-by-zero in reward calculations.
+        let spec = ChainSpec::mainnet();
+        let balances = TotalBalances::new(&spec);
+        assert!(balances.current_epoch() > 0);
+        assert!(balances.previous_epoch() > 0);
+        assert!(balances.current_epoch_attesters() > 0);
+        assert!(balances.previous_epoch_attesters() > 0);
+        assert!(balances.previous_epoch_target_attesters() > 0);
+        assert!(balances.previous_epoch_head_attesters() > 0);
+    }
 }
