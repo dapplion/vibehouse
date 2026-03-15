@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1290 (Mar 15) — spec stable, verified new fork choice test vectors pass
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Reviewed 3 recently merged Gloas PRs:
+- **#5001** (add `parent_block_root` to bid filtering key) — vibehouse already compliant. `ObservedExecutionBids` uses 3-tuple `(slot, parent_block_hash, parent_block_root)` with full test coverage.
+- **#5002** (clarify self-build envelope signature wording) — editorial only, no code impact.
+- **#4940** (initial fork choice tests for Gloas) — new `on_execution_payload` test category in v1.7.0-alpha.3. Test runner already supports it. Verified: all 9 fork choice tests pass including the new one.
+
+Open Gloas PRs unchanged — #4898, #4992, #4747 still open.
+
+**CI**: ci run green. Docker build in progress.
+
+**Conclusion**: Project stable. All new alpha.3 test vectors pass. No code changes needed.
+
 ### run 1289 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged — #4898 (1 approval, still open), #4992 (1 approval, still open), #4747 (fast confirmation, actively updated Mar 14, no approvals). No PRs merged since last check. Lockfile clean — no crate version updates available.
