@@ -238,3 +238,73 @@ impl DBError {
         Self { message }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn handle_unavailable_ok_returns_some() {
+        let result: Result<u32> = Ok(42);
+        assert_eq!(result.handle_unavailable().unwrap(), Some(42));
+    }
+
+    #[test]
+    fn handle_unavailable_history_unavailable_returns_none() {
+        let result: Result<u32> = Err(Error::HistoryUnavailable);
+        assert_eq!(result.handle_unavailable().unwrap(), None);
+    }
+
+    #[test]
+    fn handle_unavailable_other_error_propagates() {
+        let result: Result<u32> = Err(Error::InvalidBytes);
+        let handled = result.handle_unavailable();
+        assert!(handled.is_err());
+    }
+
+    #[test]
+    fn db_error_new() {
+        let err = DBError::new("test error".to_string());
+        assert_eq!(err.message, "test error");
+    }
+
+    #[test]
+    fn from_db_error() {
+        let db_err = DBError::new("db fail".to_string());
+        let err: Error = db_err.into();
+        match err {
+            Error::DBError { message } => assert_eq!(message, "db fail"),
+            _ => panic!("expected DBError variant"),
+        }
+    }
+
+    #[test]
+    fn from_decode_error() {
+        let decode_err = DecodeError::BytesInvalid("bad".to_string());
+        let err: Error = decode_err.into();
+        assert!(matches!(err, Error::SszDecodeError(_)));
+    }
+
+    #[test]
+    fn from_arith_error() {
+        let arith_err = safe_arith::ArithError::Overflow;
+        let err: Error = arith_err.into();
+        assert!(matches!(err, Error::ArithError(_)));
+    }
+
+    #[test]
+    fn from_inconsistent_fork() {
+        let fork_err = InconsistentFork {
+            fork_at_slot: types::ForkName::Base,
+            object_fork: types::ForkName::Altair,
+        };
+        let err: Error = fork_err.into();
+        assert!(matches!(err, Error::InconsistentFork(_)));
+    }
+
+    #[test]
+    fn error_is_debug() {
+        let err = Error::InvalidBytes;
+        let _ = format!("{:?}", err);
+    }
+}
