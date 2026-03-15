@@ -848,4 +848,140 @@ mod tests {
         assert!(store.key_exists(col, &key).unwrap());
         assert_eq!(store.get_bytes(col, &key).unwrap().unwrap(), b"");
     }
+
+    #[test]
+    fn get_data_column_key_roundtrip() {
+        let block_root = Hash256::repeat_byte(0xab);
+        let column_index: ColumnIndex = 42;
+        let key = get_data_column_key(&block_root, &column_index);
+        assert_eq!(key.len(), DATA_COLUMN_DB_KEY_SIZE);
+
+        let (parsed_root, parsed_index) = parse_data_column_key(key).unwrap();
+        assert_eq!(parsed_root, block_root);
+        assert_eq!(parsed_index, column_index);
+    }
+
+    #[test]
+    fn get_data_column_key_zero_values() {
+        let block_root = Hash256::zero();
+        let column_index: ColumnIndex = 0;
+        let key = get_data_column_key(&block_root, &column_index);
+
+        let (parsed_root, parsed_index) = parse_data_column_key(key).unwrap();
+        assert_eq!(parsed_root, block_root);
+        assert_eq!(parsed_index, column_index);
+    }
+
+    #[test]
+    fn get_data_column_key_max_column_index() {
+        let block_root = Hash256::repeat_byte(0xff);
+        let column_index: ColumnIndex = u64::MAX;
+        let key = get_data_column_key(&block_root, &column_index);
+
+        let (parsed_root, parsed_index) = parse_data_column_key(key).unwrap();
+        assert_eq!(parsed_root, block_root);
+        assert_eq!(parsed_index, column_index);
+    }
+
+    #[test]
+    fn parse_data_column_key_wrong_length() {
+        let result = parse_data_column_key(vec![0u8; 10]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_data_column_key_empty() {
+        let result = parse_data_column_key(vec![]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn get_col_from_key_too_short() {
+        assert!(get_col_from_key(&[0u8; 2]).is_none());
+    }
+
+    #[test]
+    fn get_col_from_key_empty() {
+        assert!(get_col_from_key(&[]).is_none());
+    }
+
+    #[test]
+    fn get_key_for_col_prefix() {
+        let key = get_key_for_col(DBColumn::BeaconBlock, &[1, 2, 3]);
+        assert!(key.starts_with(b"blk"));
+        assert_eq!(&key[3..], &[1, 2, 3]);
+    }
+
+    #[test]
+    fn db_column_as_str_roundtrip() {
+        use std::str::FromStr;
+        for col in <DBColumn as strum::IntoEnumIterator>::iter() {
+            let s = col.as_str();
+            let parsed = DBColumn::from_str(s).unwrap();
+            assert_eq!(col, parsed);
+        }
+    }
+
+    #[test]
+    fn db_column_as_bytes_matches_str() {
+        for col in <DBColumn as strum::IntoEnumIterator>::iter() {
+            assert_eq!(col.as_bytes(), col.as_str().as_bytes());
+        }
+    }
+
+    #[test]
+    fn db_column_key_sizes_positive() {
+        for col in <DBColumn as strum::IntoEnumIterator>::iter() {
+            assert!(col.key_size() > 0, "column {:?} has zero key size", col);
+        }
+    }
+
+    #[test]
+    fn db_column_beacon_data_column_key_size() {
+        assert_eq!(
+            DBColumn::BeaconDataColumn.key_size(),
+            DATA_COLUMN_DB_KEY_SIZE
+        );
+    }
+
+    #[test]
+    fn key_hash256_from_bytes_valid() {
+        let bytes = [0xab_u8; 32];
+        let hash = <Hash256 as Key>::from_bytes(&bytes).unwrap();
+        assert_eq!(hash, Hash256::repeat_byte(0xab));
+    }
+
+    #[test]
+    fn key_hash256_from_bytes_wrong_length() {
+        let result = <Hash256 as Key>::from_bytes(&[0u8; 16]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn key_vec_u8_from_bytes() {
+        let bytes = [1, 2, 3, 4, 5];
+        let v = <Vec<u8> as Key>::from_bytes(&bytes).unwrap();
+        assert_eq!(v, vec![1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn key_vec_u8_from_empty_bytes() {
+        let v = <Vec<u8> as Key>::from_bytes(&[]).unwrap();
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn store_item_as_kv_store_op() {
+        let key = Hash256::repeat_byte(0x01);
+        let item = StorableThing { a: 10, b: 20 };
+        let op = item.as_kv_store_op(key);
+        match op {
+            KeyValueStoreOp::PutKeyValue(col, k, v) => {
+                assert_eq!(col, DBColumn::BeaconBlock);
+                assert_eq!(k, key.as_slice().to_vec());
+                assert_eq!(v, item.as_store_bytes());
+            }
+            _ => panic!("expected PutKeyValue"),
+        }
+    }
 }

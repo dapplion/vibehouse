@@ -40,3 +40,89 @@ impl<E: EthSpec> BlobSidecarListFromRoot<E> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn no_blobs_variant() {
+        let result = BlobSidecarListFromRoot::<E>::NoBlobs;
+        assert!(result.blobs().is_none());
+    }
+
+    #[test]
+    fn no_root_variant() {
+        let result = BlobSidecarListFromRoot::<E>::NoRoot;
+        assert!(result.blobs().is_none());
+    }
+
+    #[test]
+    fn no_blobs_len_is_zero() {
+        let result = BlobSidecarListFromRoot::<E>::NoBlobs;
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn no_root_len_is_zero() {
+        let result = BlobSidecarListFromRoot::<E>::NoRoot;
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn no_blobs_iter_is_empty() {
+        let result = BlobSidecarListFromRoot::<E>::NoBlobs;
+        assert_eq!(result.iter().count(), 0);
+    }
+
+    #[test]
+    fn no_root_iter_is_empty() {
+        let result = BlobSidecarListFromRoot::<E>::NoRoot;
+        assert_eq!(result.iter().count(), 0);
+    }
+
+    #[test]
+    fn blobs_variant_returns_some() {
+        let list = BlobSidecarList::<E>::empty(6);
+        let result = BlobSidecarListFromRoot::<E>::Blobs(list.clone());
+        assert!(result.blobs().is_some());
+    }
+
+    #[test]
+    fn blobs_variant_empty_list_len_zero() {
+        let list = BlobSidecarList::<E>::empty(6);
+        let result = BlobSidecarListFromRoot::<E>::Blobs(list);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn from_blob_sidecar_list() {
+        let list = BlobSidecarList::<E>::empty(6);
+        let result: BlobSidecarListFromRoot<E> = list.into();
+        // From impl wraps in Blobs variant
+        assert!(result.blobs().is_some());
+    }
+
+    #[test]
+    fn clone_preserves_variant() {
+        let no_blobs = BlobSidecarListFromRoot::<E>::NoBlobs;
+        let cloned = no_blobs.clone();
+        assert_eq!(cloned.len(), 0);
+        assert!(cloned.blobs().is_none());
+
+        let no_root = BlobSidecarListFromRoot::<E>::NoRoot;
+        let cloned = no_root.clone();
+        assert_eq!(cloned.len(), 0);
+        assert!(cloned.blobs().is_none());
+    }
+
+    #[test]
+    fn blobs_variant_iter_empty_list() {
+        let list = BlobSidecarList::<E>::empty(6);
+        let result = BlobSidecarListFromRoot::<E>::Blobs(list);
+        assert_eq!(result.iter().count(), 0);
+    }
+}
