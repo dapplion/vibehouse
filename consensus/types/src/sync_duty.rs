@@ -81,3 +81,162 @@ impl SyncDuty {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FixedVector, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn pk(byte: u8) -> PublicKeyBytes {
+        let mut bytes = [0u8; 48];
+        bytes[0] = byte;
+        PublicKeyBytes::deserialize(&bytes).unwrap()
+    }
+
+    #[test]
+    fn from_sync_committee_indices_not_in_committee() {
+        // Validator 99 is not in the committee indices
+        let indices: Vec<usize> = vec![0, 1, 2, 3];
+        let result = SyncDuty::from_sync_committee_indices(99, pk(1), &indices);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn from_sync_committee_indices_present_once() {
+        let indices: Vec<usize> = vec![5, 10, 15, 20];
+        let duty = SyncDuty::from_sync_committee_indices(10, pk(2), &indices).unwrap();
+        assert_eq!(duty.validator_index, 10);
+        assert_eq!(duty.validator_sync_committee_indices, vec![1]); // position 1
+    }
+
+    #[test]
+    fn from_sync_committee_indices_present_multiple() {
+        // Validator 7 appears at positions 0, 2, 4
+        let indices: Vec<usize> = vec![7, 3, 7, 5, 7];
+        let duty = SyncDuty::from_sync_committee_indices(7, pk(3), &indices).unwrap();
+        assert_eq!(duty.validator_sync_committee_indices, vec![0, 2, 4]);
+    }
+
+    #[test]
+    fn from_sync_committee_indices_empty() {
+        let indices: Vec<usize> = vec![];
+        let result = SyncDuty::from_sync_committee_indices(1, pk(4), &indices);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn from_sync_committee_pubkey_not_found() {
+        let target_pk = pk(99);
+        let other_pk = pk(1);
+        let pubkeys_vec = vec![other_pk; 32]; // MinimalEthSpec SyncCommitteeSize = 32
+        // None match target_pk
+        let pubkeys = FixedVector::new(pubkeys_vec).unwrap();
+        let committee = SyncCommittee::<E> {
+            pubkeys,
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        };
+        let result = SyncDuty::from_sync_committee(42, target_pk, &committee);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn from_sync_committee_pubkey_found_once() {
+        let target_pk = pk(42);
+        let other_pk = pk(1);
+        let mut pubkeys_vec = vec![other_pk; 32];
+        pubkeys_vec[5] = target_pk;
+        let pubkeys = FixedVector::new(pubkeys_vec).unwrap();
+        let committee = SyncCommittee::<E> {
+            pubkeys,
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        };
+        let duty = SyncDuty::from_sync_committee(10, target_pk, &committee).unwrap();
+        assert_eq!(duty.validator_index, 10);
+        assert_eq!(duty.validator_sync_committee_indices, vec![5]);
+    }
+
+    #[test]
+    fn from_sync_committee_pubkey_found_multiple() {
+        let target_pk = pk(42);
+        let other_pk = pk(1);
+        let mut pubkeys_vec = vec![other_pk; 32];
+        pubkeys_vec[0] = target_pk;
+        pubkeys_vec[10] = target_pk;
+        pubkeys_vec[31] = target_pk;
+        let pubkeys = FixedVector::new(pubkeys_vec).unwrap();
+        let committee = SyncCommittee::<E> {
+            pubkeys,
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        };
+        let duty = SyncDuty::from_sync_committee(7, target_pk, &committee).unwrap();
+        assert_eq!(duty.validator_sync_committee_indices, vec![0, 10, 31]);
+    }
+
+    #[test]
+    fn subnet_ids_single_index() {
+        let duty = SyncDuty {
+            pubkey: pk(1),
+            validator_index: 0,
+            validator_sync_committee_indices: vec![0], // subcommittee 0
+        };
+        let subnets = duty.subnet_ids::<E>().unwrap();
+        assert_eq!(subnets.len(), 1);
+        assert!(subnets.contains(&SyncSubnetId::new(0)));
+    }
+
+    #[test]
+    fn subnet_ids_multiple_same_subcommittee() {
+        // MinimalEthSpec: SyncSubcommitteeSize = 32/4 = 8
+        // indices 0..7 all map to subcommittee 0
+        let duty = SyncDuty {
+            pubkey: pk(1),
+            validator_index: 0,
+            validator_sync_committee_indices: vec![0, 3, 7],
+        };
+        let subnets = duty.subnet_ids::<E>().unwrap();
+        assert_eq!(subnets.len(), 1);
+        assert!(subnets.contains(&SyncSubnetId::new(0)));
+    }
+
+    #[test]
+    fn subnet_ids_multiple_different_subcommittees() {
+        // index 0 → subnet 0, index 8 → subnet 1, index 16 → subnet 2
+        let duty = SyncDuty {
+            pubkey: pk(1),
+            validator_index: 0,
+            validator_sync_committee_indices: vec![0, 8, 16],
+        };
+        let subnets = duty.subnet_ids::<E>().unwrap();
+        assert_eq!(subnets.len(), 3);
+        assert!(subnets.contains(&SyncSubnetId::new(0)));
+        assert!(subnets.contains(&SyncSubnetId::new(1)));
+        assert!(subnets.contains(&SyncSubnetId::new(2)));
+    }
+
+    #[test]
+    fn subnet_ids_empty_indices() {
+        let duty = SyncDuty {
+            pubkey: pk(1),
+            validator_index: 0,
+            validator_sync_committee_indices: vec![],
+        };
+        let subnets = duty.subnet_ids::<E>().unwrap();
+        assert!(subnets.is_empty());
+    }
+
+    #[test]
+    fn new_returns_none_for_empty_indices() {
+        let result = SyncDuty::from_sync_committee_indices(1, pk(1), &[]);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn duty_preserves_pubkey() {
+        let expected_pk = pk(55);
+        let indices: Vec<usize> = vec![5, 5]; // validator 5 at positions 0 and 1
+        let duty = SyncDuty::from_sync_committee_indices(5, expected_pk, &indices).unwrap();
+        assert_eq!(duty.pubkey, expected_pk);
+    }
+}

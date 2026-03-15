@@ -105,3 +105,162 @@ impl From<Signature> for SelectionProof {
         Self(sig)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    fn minimal_spec() -> ChainSpec {
+        ChainSpec::minimal()
+    }
+
+    #[test]
+    fn modulo_returns_one_for_small_committee() {
+        let spec = minimal_spec();
+        // committee_len < target_aggregators_per_committee → max(1, 0) = 1
+        let m = SelectionProof::modulo(1, &spec).unwrap();
+        assert_eq!(m, 1);
+    }
+
+    #[test]
+    fn modulo_returns_one_for_zero_committee() {
+        let spec = minimal_spec();
+        // 0 / 16 = 0, max(1, 0) = 1
+        let m = SelectionProof::modulo(0, &spec).unwrap();
+        assert_eq!(m, 1);
+    }
+
+    #[test]
+    fn modulo_exact_division() {
+        let spec = minimal_spec();
+        // target_aggregators_per_committee = 16, so 64 / 16 = 4
+        let m = SelectionProof::modulo(64, &spec).unwrap();
+        assert_eq!(m, 4);
+    }
+
+    #[test]
+    fn modulo_with_remainder() {
+        let spec = minimal_spec();
+        // 100 / 16 = 6 (integer division)
+        let m = SelectionProof::modulo(100, &spec).unwrap();
+        assert_eq!(m, 6);
+    }
+
+    #[test]
+    fn modulo_equals_target() {
+        let spec = minimal_spec();
+        // 16 / 16 = 1
+        let m = SelectionProof::modulo(16, &spec).unwrap();
+        assert_eq!(m, 1);
+    }
+
+    #[test]
+    fn modulo_large_committee() {
+        let spec = minimal_spec();
+        // 1024 / 16 = 64
+        let m = SelectionProof::modulo(1024, &spec).unwrap();
+        assert_eq!(m, 64);
+    }
+
+    #[test]
+    fn is_aggregator_from_modulo_one_always_true() {
+        // Any value mod 1 == 0, so always aggregator
+        let secret_key = SecretKey::random();
+        let sig = secret_key.sign(Hash256::zero());
+        let proof = SelectionProof::from(sig);
+        assert!(proof.is_aggregator_from_modulo(1).unwrap());
+    }
+
+    #[test]
+    fn is_aggregator_from_modulo_zero_errors() {
+        let secret_key = SecretKey::random();
+        let sig = secret_key.sign(Hash256::zero());
+        let proof = SelectionProof::from(sig);
+        assert!(proof.is_aggregator_from_modulo(0).is_err());
+    }
+
+    #[test]
+    fn new_and_verify_roundtrip() {
+        let spec = minimal_spec();
+        let secret_key = SecretKey::random();
+        let pubkey = secret_key.public_key();
+        let slot = Slot::new(42);
+        let fork = Fork::default();
+        let genesis_validators_root = Hash256::zero();
+
+        let proof =
+            SelectionProof::new::<E>(slot, &secret_key, &fork, genesis_validators_root, &spec);
+
+        assert!(proof.verify::<E>(slot, &pubkey, &fork, genesis_validators_root, &spec));
+    }
+
+    #[test]
+    fn verify_wrong_slot_fails() {
+        let spec = minimal_spec();
+        let secret_key = SecretKey::random();
+        let pubkey = secret_key.public_key();
+        let slot = Slot::new(42);
+        let fork = Fork::default();
+        let genesis_validators_root = Hash256::zero();
+
+        let proof =
+            SelectionProof::new::<E>(slot, &secret_key, &fork, genesis_validators_root, &spec);
+
+        // Different slot should fail verification
+        assert!(!proof.verify::<E>(
+            Slot::new(43),
+            &pubkey,
+            &fork,
+            genesis_validators_root,
+            &spec
+        ));
+    }
+
+    #[test]
+    fn verify_wrong_key_fails() {
+        let spec = minimal_spec();
+        let secret_key = SecretKey::random();
+        let other_key = SecretKey::random();
+        let slot = Slot::new(42);
+        let fork = Fork::default();
+        let genesis_validators_root = Hash256::zero();
+
+        let proof =
+            SelectionProof::new::<E>(slot, &secret_key, &fork, genesis_validators_root, &spec);
+
+        assert!(!proof.verify::<E>(
+            slot,
+            &other_key.public_key(),
+            &fork,
+            genesis_validators_root,
+            &spec
+        ));
+    }
+
+    #[test]
+    fn is_aggregator_deterministic() {
+        let spec = minimal_spec();
+        let secret_key = SecretKey::random();
+        let slot = Slot::new(1);
+        let fork = Fork::default();
+
+        let proof = SelectionProof::new::<E>(slot, &secret_key, &fork, Hash256::zero(), &spec);
+
+        let result1 = proof.is_aggregator(128, &spec).unwrap();
+        let result2 = proof.is_aggregator(128, &spec).unwrap();
+        assert_eq!(result1, result2);
+    }
+
+    #[test]
+    fn into_signature_roundtrip() {
+        let secret_key = SecretKey::random();
+        let sig = secret_key.sign(Hash256::zero());
+        let sig_bytes = sig.serialize();
+        let proof = SelectionProof::from(sig);
+        let recovered: Signature = proof.into();
+        assert_eq!(recovered.serialize(), sig_bytes);
+    }
+}

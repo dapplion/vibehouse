@@ -89,3 +89,151 @@ impl<E: EthSpec> SyncAggregate<E> {
         self.sync_committee_bits.num_set_bits()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn new_has_zero_bits_set() {
+        let agg = SyncAggregate::<E>::new();
+        assert_eq!(agg.num_set_bits(), 0);
+    }
+
+    #[test]
+    fn empty_has_zero_bits_set() {
+        let agg = SyncAggregate::<E>::empty();
+        assert_eq!(agg.num_set_bits(), 0);
+    }
+
+    #[test]
+    fn from_contributions_empty_list() {
+        let agg = SyncAggregate::<E>::from_contributions(&[]).unwrap();
+        assert_eq!(agg.num_set_bits(), 0);
+    }
+
+    #[test]
+    fn from_contributions_single_contribution_one_bit() {
+        let mut contribution = SyncCommitteeContribution::<E> {
+            slot: crate::Slot::new(0),
+            beacon_block_root: crate::Hash256::zero(),
+            subcommittee_index: 0,
+            aggregation_bits: BitVector::new(),
+            signature: AggregateSignature::infinity(),
+        };
+        contribution.aggregation_bits.set(2, true).unwrap();
+
+        let agg = SyncAggregate::<E>::from_contributions(&[contribution]).unwrap();
+        assert_eq!(agg.num_set_bits(), 1);
+        // subcommittee 0, index 2 → global index 2
+        assert!(agg.sync_committee_bits.get(2).unwrap());
+    }
+
+    #[test]
+    fn from_contributions_different_subcommittees() {
+        // MinimalEthSpec: SyncCommitteeSize=32, SYNC_COMMITTEE_SUBNET_COUNT=4
+        // subcommittee_size = 32/4 = 8
+        let mut c0 = SyncCommitteeContribution::<E> {
+            slot: crate::Slot::new(0),
+            beacon_block_root: crate::Hash256::zero(),
+            subcommittee_index: 0,
+            aggregation_bits: BitVector::new(),
+            signature: AggregateSignature::infinity(),
+        };
+        c0.aggregation_bits.set(0, true).unwrap();
+
+        let mut c1 = SyncCommitteeContribution::<E> {
+            slot: crate::Slot::new(0),
+            beacon_block_root: crate::Hash256::zero(),
+            subcommittee_index: 1,
+            aggregation_bits: BitVector::new(),
+            signature: AggregateSignature::infinity(),
+        };
+        c1.aggregation_bits.set(3, true).unwrap();
+
+        let agg = SyncAggregate::<E>::from_contributions(&[c0, c1]).unwrap();
+        assert_eq!(agg.num_set_bits(), 2);
+        // subcommittee 0, index 0 → global 0
+        assert!(agg.sync_committee_bits.get(0).unwrap());
+        // subcommittee 1, index 3 → global 8 + 3 = 11
+        assert!(agg.sync_committee_bits.get(11).unwrap());
+    }
+
+    #[test]
+    fn from_contributions_multiple_bits_same_subcommittee() {
+        let mut c = SyncCommitteeContribution::<E> {
+            slot: crate::Slot::new(0),
+            beacon_block_root: crate::Hash256::zero(),
+            subcommittee_index: 2,
+            aggregation_bits: BitVector::new(),
+            signature: AggregateSignature::infinity(),
+        };
+        c.aggregation_bits.set(0, true).unwrap();
+        c.aggregation_bits.set(1, true).unwrap();
+        c.aggregation_bits.set(7, true).unwrap();
+
+        let agg = SyncAggregate::<E>::from_contributions(&[c]).unwrap();
+        assert_eq!(agg.num_set_bits(), 3);
+        // subcommittee 2: global offset = 2 * 8 = 16
+        assert!(agg.sync_committee_bits.get(16).unwrap());
+        assert!(agg.sync_committee_bits.get(17).unwrap());
+        assert!(agg.sync_committee_bits.get(23).unwrap());
+    }
+
+    #[test]
+    fn from_contributions_all_subcommittees_full() {
+        // Fill all 4 subcommittees completely (8 bits each = 32 total)
+        let contributions: Vec<_> = (0..4u64)
+            .map(|sub_idx| {
+                let mut c = SyncCommitteeContribution::<E> {
+                    slot: crate::Slot::new(0),
+                    beacon_block_root: crate::Hash256::zero(),
+                    subcommittee_index: sub_idx,
+                    aggregation_bits: BitVector::new(),
+                    signature: AggregateSignature::infinity(),
+                };
+                for i in 0..8 {
+                    c.aggregation_bits.set(i, true).unwrap();
+                }
+                c
+            })
+            .collect();
+
+        let agg = SyncAggregate::<E>::from_contributions(&contributions).unwrap();
+        assert_eq!(agg.num_set_bits(), 32);
+    }
+
+    #[test]
+    fn from_contributions_overlapping_bits_idempotent() {
+        // Two contributions for same subcommittee, same bit
+        let make_contribution = || {
+            let mut c = SyncCommitteeContribution::<E> {
+                slot: crate::Slot::new(0),
+                beacon_block_root: crate::Hash256::zero(),
+                subcommittee_index: 0,
+                aggregation_bits: BitVector::new(),
+                signature: AggregateSignature::infinity(),
+            };
+            c.aggregation_bits.set(0, true).unwrap();
+            c
+        };
+
+        let agg =
+            SyncAggregate::<E>::from_contributions(&[make_contribution(), make_contribution()])
+                .unwrap();
+        // Setting same bit twice still results in 1 bit set
+        assert_eq!(agg.num_set_bits(), 1);
+    }
+
+    #[test]
+    fn num_set_bits_zero_on_default_bits() {
+        let agg = SyncAggregate::<E> {
+            sync_committee_bits: BitVector::default(),
+            sync_committee_signature: AggregateSignature::infinity(),
+        };
+        assert_eq!(agg.num_set_bits(), 0);
+    }
+}
