@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1421 (Mar 15) — reward_cache and sync_state test coverage (25 tests)
+
+**Test coverage**: Added 25 unit tests across 2 previously-untested files in beacon_node/operation_pool and common/eth2:
+- `beacon_node/operation_pool/src/reward_cache.rs` (11 tests): default uninitialized, uninitialized wrong epoch error, update initializes cache, current/previous epoch default participation, wrong epoch error, out of bounds index, nondefault participation detection, idempotent update, bitvec length matches validators, clone preserves state
+- `common/eth2/src/vibehouse/sync_state.rs` (14 tests): PartialEq ignores slot values/counts across all variants, different variants not equal, is_syncing/is_synced/is_stalled predicates for all variants, Display formatting, BackFillState/CustodyBackFillState equality
+
+**CI**: All 47 operation_pool tests + 48 eth2 tests pass.
+
 ### run 1420 (Mar 15) — final 9 untested types files covered (68 tests)
 
 **Test coverage**: Added 68 unit tests across 9 previously-untested type/constant files, completing full test coverage of all `consensus/types/src/` files:
