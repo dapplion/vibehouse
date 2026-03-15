@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1331 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Verified alpha.3 changes: PR #5001 (parent_block_root bid filtering) already implemented in `observed_execution_bids.rs`. PR #4940 (initial Gloas fork choice tests for `on_execution_payload`) merged but not yet in a test release — our test runner already supports `on_execution_payload` steps and `head_payload_status` checks. Open Gloas PRs unchanged: #4960 (fork choice deposit), #4932 (attestation coverage), #4840 (eip7843), #4630 (eip7688 SSZ).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit — 1 vulnerability (rsa, no fix available). `derivative` fully removed (replaced by educe), `paste` fully removed (replaced by pastey) — both now transitive-only via alloy-primitives. `bincode` direct dep in initialized_validators (key cache serde — risky to change). `filesystem` warning is false positive (our own crate, not filesystem-rs). `ansi_term` stale lockfile entry (not in dep tree). Zero semver-compatible dep updates.
+
 ### run 1330 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged (4 with Gloas/ePBS title match): #4960 (fork choice deposit), #4932 (attestation coverage), #4840 (eip7843), #4630 (eip7688 SSZ). No newly merged Gloas PRs. Nightly tests green (38 consecutive days).
