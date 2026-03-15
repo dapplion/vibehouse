@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1400 (Mar 15) — spec stable, verify_exit test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 18 unit tests to `verify_exit.rs` (previously had ZERO test coverage). Tests cover:
+- Helper functions: `is_builder_index` (2 tests), `to_builder_index` (1 test)
+- Validator exit paths (8 tests): success, future epoch, unknown validator, not active, already exited, too young to exit, pending withdrawal in queue, explicit current_epoch parameter
+- Builder exit paths (6 tests): success (returns Ok(true)), unknown builder, not active (withdrawable), not active (deposit not finalized), pending withdrawal in queue, future epoch check ordering
+- Cross-fork behavior (1 test): builder-flagged index on pre-Gloas state treated as validator index (ValidatorUnknown)
+
+**CI**: All green.
+
 ### run 1399 (Mar 15) — spec stable, base epoch processing test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #5001 (parent_block_root bid filtering) and #5002 (self-build signature wording) already incorporated in alpha.3 — verified vibehouse already implements both correctly. PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
