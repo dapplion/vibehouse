@@ -2363,3 +2363,15 @@ Key activities across ~230 runs:
 - `bytes_to_uint64` 2-byte little-endian interpretation matches `u16::from_le_bytes` ✓
 
 **Status**: No new implementation changes needed. vibehouse remains ahead of the spec.
+
+### Run 1395 — implement cached PTCs (consensus-specs PR #4992)
+
+All main task priorities DONE. Proactively implemented consensus-specs PR #4992 (cached PTCs):
+- Added `previous_ptc` and `current_ptc` FixedVector<u64, PtcSize> fields to BeaconState (Gloas only)
+- `get_ptc_committee` is now a simple cache lookup instead of recomputation
+- `compute_ptc` extracts the PTC computation logic for a single slot
+- PTC rotation in `per_slot_processing`: previous = current, current = compute_ptc(state)
+- Genesis initializes `current_ptc`; upgrade_to_gloas initializes both to zero (rotation fills them)
+- 575/575 state_processing unit tests pass
+- EF spec tests will fail (SSZ layout change) — vectors need regeneration when PR merges upstream
+- Branch: `cached-ptc` (pushed to origin)
