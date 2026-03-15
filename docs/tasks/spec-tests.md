@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1249 (Mar 15) — spec stable, CI in progress, no action needed
+
+Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (14+ consecutive). All 7 tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
+
+**CI status**: Run 23100175757 in progress — clippy, EF tests, network+op_pool all passed. beacon_chain, http_api, unit tests still building. PR #5002 (p2p wording fix for envelope signature verification) merged — no code impact, vibehouse already uses `verify_execution_payload_envelope_signature`.
+
+**Coverage audit**: Reviewed `can_builder_cover_bid` test coverage — 8 unit tests already cover all edge cases (sufficient balance, exact available, exceeds available, below min deposit, pending withdrawals, pending payments, combined, unknown builder, equals-min-deposit-zero-bid). No gaps found. Overall Gloas test coverage remains comprehensive (~780+ integration tests, ~298 dedicated tests in gloas.rs).
+
+**Conclusion**: Project stable. No spec drift, no code changes needed.
+
 ### run 1248 (Mar 15) — spec stable, CI green, no action needed
 
 Spec stable: no new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Nightly green (14+ consecutive). All 7 tracked spec PRs (#4992, #4843, #4939, #4898, #4892, #4954, #4840) still OPEN, none merged.
