@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1254 (Mar 15) — spec stable, all tests pass, no action needed
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4939, #4843, #4954, #4747, #4898, #4892, #4840, #4962 — all still open, none merged. PRs #5001 and #5002 (merged runs ago) already accounted for.
+
+**Code verification**: Confirmed `parent_block_root` bid filtering (spec PR #5001) is fully implemented — bid pool filters by `parent_block_root`, observed bids tracker uses `(slot, parent_block_hash, parent_block_root)` tuple. Zero clippy warnings. Zero unwrap() in Gloas production code. Cargo audit unchanged (1 rsa advisory, no fix).
+
+**Conclusion**: Project stable. No spec drift, no code changes needed.
+
 ### run 1253 (Mar 15) — spec stable, all tests pass, no action needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs, 1 approval but still open), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4954 (millisecond timestamps), #4747 (fast confirmation rule, 109 review comments, active design). None merged.
