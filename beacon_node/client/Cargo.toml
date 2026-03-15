@@ -18,7 +18,6 @@ genesis = { workspace = true }
 http_api = { workspace = true }
 http_metrics = { path = "../http_metrics" }
 kzg = { workspace = true }
-vibehouse_network = { workspace = true }
 logging = { workspace = true }
 metrics = { workspace = true }
 monitoring_api = { workspace = true }
@@ -36,6 +35,7 @@ timer = { path = "../timer" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 types = { workspace = true }
+vibehouse_network = { workspace = true }
 
 [dev-dependencies]
 serde_yaml = { workspace = true }

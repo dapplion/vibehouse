@@ -10,6 +10,7 @@ alloy-primitives = { workspace = true }
 alloy-rlp = { workspace = true }
 alloy-trie = { version = "0.9", default-features = false }
 arc-swap = "1.6.0"
+axum = { workspace = true }
 builder_client = { path = "../builder_client" }
 bytes = { workspace = true }
 eth2 = { workspace = true }
@@ -20,7 +21,6 @@ fork_choice = { workspace = true }
 hex = { workspace = true }
 jsonwebtoken = { version = "10", default-features = false, features = ["rust_crypto"] }
 kzg = { workspace = true }
-vibehouse_version = { workspace = true }
 logging = { workspace = true }
 lru = { workspace = true }
 metrics = { workspace = true }
@@ -44,5 +44,5 @@ tracing = { workspace = true }
 tree_hash = { workspace = true }
 tree_hash_derive = { workspace = true }
 types = { workspace = true }
-axum = { workspace = true }
+vibehouse_version = { workspace = true }
 zeroize = { workspace = true }

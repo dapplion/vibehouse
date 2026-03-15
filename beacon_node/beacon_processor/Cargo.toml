@@ -7,7 +7,6 @@ edition = { workspace = true }
 fnv = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
-vibehouse_network = { workspace = true }
 logging = { workspace = true }
 metrics = { workspace = true }
 num_cpus = { workspace = true }
@@ -20,6 +19,7 @@ tokio = { workspace = true }
 tokio-util = { workspace = true }
 tracing = { workspace = true }
 types = { workspace = true }
+vibehouse_network = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

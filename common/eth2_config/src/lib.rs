@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use types::{ChainSpec, EthSpecId};
 
-pub use paste::paste;
+pub use pastey::paste;
 
 // A macro is used to define this constant so it can be used with `include_bytes!`.
 #[macro_export]

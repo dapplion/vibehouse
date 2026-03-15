@@ -3202,7 +3202,7 @@ mod tests {
 #[cfg(test)]
 mod yaml_tests {
     use super::*;
-    use paste::paste;
+    use pastey::paste;
     use std::sync::Arc;
     use tempfile::NamedTempFile;
 

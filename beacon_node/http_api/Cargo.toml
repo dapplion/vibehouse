@@ -6,6 +6,7 @@ edition = { workspace = true }
 autotests = false                               # using a single test binary compiles faster
 
 [dependencies]
+axum = { workspace = true }
 beacon_chain = { workspace = true }
 beacon_processor = { workspace = true }
 bs58 = "0.5.1"
@@ -18,9 +19,6 @@ execution_layer = { workspace = true }
 futures = { workspace = true }
 health_metrics = { workspace = true }
 hex = { workspace = true }
-vibehouse_network = { workspace = true }
-vibehouse_tracing = { workspace = true }
-vibehouse_version = { workspace = true }
 logging = { workspace = true }
 lru = { workspace = true }
 metrics = { workspace = true }
@@ -43,11 +41,13 @@ system_health = { path = "../../common/system_health" }
 task_executor = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
+tower-http = { workspace = true }
 tracing = { workspace = true }
 tree_hash = { workspace = true }
 types = { workspace = true }
-axum = { workspace = true }
-tower-http = { workspace = true }
+vibehouse_network = { workspace = true }
+vibehouse_tracing = { workspace = true }
+vibehouse_version = { workspace = true }
 
 [dev-dependencies]
 genesis = { workspace = true }

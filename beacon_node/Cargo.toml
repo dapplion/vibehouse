@@ -31,7 +31,6 @@ execution_layer = { workspace = true }
 hex = { workspace = true }
 http_api = { workspace = true }
 hyper = { workspace = true }
-vibehouse_network = { workspace = true }
 monitoring_api = { workspace = true }
 network_utils = { workspace = true }
 sensitive_url = { workspace = true }
@@ -41,6 +40,7 @@ strum = { workspace = true }
 task_executor = { workspace = true }
 tracing = { workspace = true }
 types = { workspace = true }
+vibehouse_network = { workspace = true }
 
 [dev-dependencies]
 node_test_rig = { path = "../testing/node_test_rig" }
