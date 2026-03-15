@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1381 (Mar 15) — spec stable, no changes
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 8 tracked PRs still open: #4992, #4962, #4960, #4954, #4939, #4932, #4843, #4630. Also tracking #4840 (EIP-7843 SLOTNUM opcode). Added PR #4954 (fork choice store milliseconds) to tracking — touches Gloas fork choice, labels: phase0/bellatrix/gloas/heze.
+
+**CI**: In progress — check+clippy+fmt passed, remaining 5 jobs running. Previous CI run fully green. Docker workflow correctly skipping non-tag pushes after run 1379 fix.
+
+**Conclusion**: No code changes needed. Spec stable. All implementation plans ready (PRs #4992, #4843, #4840).
+
 ### run 1380 (Mar 15) — spec stable, implementation plans for PRs #4843 and #4840
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630. Also tracking #4840 (EIP-7843 SLOTNUM opcode).
