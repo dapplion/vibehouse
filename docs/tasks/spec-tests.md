@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1401 (Mar 15) — spec stable, slashing & indexed attestation validation test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 31 unit tests across 3 previously-untested validation files:
+- `verify_attester_slashing.rs` (16 tests): get_slashable_indices (overlapping indices, ascending order, no overlap error, already-slashed excluded, all-slashed error, unknown validator, exited validator), get_slashable_indices_modular (custom predicate, all-rejected error), verify_attester_slashing (valid double vote, valid surround vote, not-slashable same data, not-slashable different targets, empty indices att1, unsorted indices att2, all-slashed no-slashable)
+- `verify_proposer_slashing.rs` (9 tests): valid slashing, slot mismatch, proposer index mismatch, identical proposals, unknown proposer, already slashed, withdrawable, exited-but-not-withdrawable (still slashable), not yet activated
+- `is_valid_indexed_attestation.rs` (6 tests): valid sorted indices, single index, empty indices error, unsorted indices error, duplicate indices error, ordering error position reporting
+
+**CI**: All green.
+
 ### run 1400 (Mar 15) — spec stable, verify_exit test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
