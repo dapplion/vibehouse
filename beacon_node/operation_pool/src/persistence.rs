@@ -2,7 +2,7 @@ use crate::OperationPool;
 use crate::attestation_storage::AttestationMap;
 use crate::bls_to_execution_changes::{BlsToExecutionChanges, ReceivedPreCapella};
 use crate::sync_aggregate_id::SyncAggregateId;
-use derivative::Derivative;
+use educe::Educe;
 use parking_lot::RwLock;
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
@@ -19,8 +19,8 @@ type PersistedSyncContributions<E> = Vec<(SyncAggregateId, Vec<SyncCommitteeCont
 ///
 /// Operations are stored in arbitrary order, so it's not a good idea to compare instances
 /// of this type (or its encoded form) for equality. Convert back to an `OperationPool` first.
-#[derive(Derivative, PartialEq, Debug, Encode, Decode)]
-#[derivative(Clone)]
+#[derive(Educe, PartialEq, Debug, Encode, Decode)]
+#[educe(Clone)]
 pub struct PersistedOperationPool<E: EthSpec> {
     /// Attestations and their attesting indices.
     pub attestations: Vec<(AttestationOnDisk<E>, Vec<u64>)>,

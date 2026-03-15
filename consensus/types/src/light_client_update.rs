@@ -7,7 +7,6 @@ use crate::{
     LightClientHeaderCapella, LightClientHeaderDeneb, LightClientHeaderFulu,
     LightClientHeaderGloas, SignedBlindedBeaconBlock, beacon_state, test_utils::TestRandom,
 };
-use derivative::Derivative;
 use safe_arith::ArithError;
 use safe_arith::SafeArith;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -108,7 +107,6 @@ impl From<milhouse::Error> for Error {
             PartialEq,
             Serialize,
             Deserialize,
-            Derivative,
             Decode,
             Encode,
             TestRandom,

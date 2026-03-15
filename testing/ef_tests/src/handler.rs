@@ -2,7 +2,7 @@ use crate::cases::{self, Case, Cases, EpochTransition, LoadCase, Operation};
 use crate::type_name::TypeName;
 use crate::{FeatureName, type_name};
 use context_deserialize::ContextDeserialize;
-use derivative::Derivative;
+use educe::Educe;
 use std::fs::{self, DirEntry};
 use std::marker::PhantomData;
 use std::path::PathBuf;
@@ -172,8 +172,8 @@ pub trait Handler {
 
 macro_rules! bls_eth_handler {
     ($runner_name: ident, $case_name:ident, $handler_name:expr) => {
-        #[derive(Derivative)]
-        #[derivative(Default(bound = ""))]
+        #[derive(Educe)]
+        #[educe(Default(bound()))]
         pub struct $runner_name;
 
         impl Handler for $runner_name {
@@ -192,8 +192,8 @@ macro_rules! bls_eth_handler {
 
 macro_rules! bls_handler {
     ($runner_name: ident, $case_name:ident, $handler_name:expr) => {
-        #[derive(Derivative)]
-        #[derivative(Default(bound = ""))]
+        #[derive(Educe)]
+        #[educe(Default(bound()))]
         pub struct $runner_name;
 
         impl Handler for $runner_name {
@@ -361,8 +361,8 @@ impl<T, E> SszStaticHandler<T, E> {
 }
 
 /// Handler for SSZ types that implement `CachedTreeHash`.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct SszStaticTHCHandler<T, E>(PhantomData<(T, E)>);
 
 /// Handler for SSZ types that don't implement `ssz::Decode`.
@@ -466,8 +466,8 @@ where
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct ShufflingHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for ShufflingHandler<E> {
@@ -490,8 +490,8 @@ impl<E: EthSpec + TypeName> Handler for ShufflingHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct SanityBlocksHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for SanityBlocksHandler<E> {
@@ -516,8 +516,8 @@ impl<E: EthSpec + TypeName> Handler for SanityBlocksHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct SanitySlotsHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for SanitySlotsHandler<E> {
@@ -541,8 +541,8 @@ impl<E: EthSpec + TypeName> Handler for SanitySlotsHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct RandomHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for RandomHandler<E> {
@@ -561,8 +561,8 @@ impl<E: EthSpec + TypeName> Handler for RandomHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct EpochProcessingHandler<E, T>(PhantomData<(E, T)>);
 
 impl<E: EthSpec + TypeName, T: EpochTransition<E>> Handler for EpochProcessingHandler<E, T> {
@@ -619,8 +619,8 @@ impl<E: EthSpec + TypeName> Handler for RewardsHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct ForkHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for ForkHandler<E> {
@@ -639,8 +639,8 @@ impl<E: EthSpec + TypeName> Handler for ForkHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct TransitionHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for TransitionHandler<E> {
@@ -659,8 +659,8 @@ impl<E: EthSpec + TypeName> Handler for TransitionHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct FinalityHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for FinalityHandler<E> {
@@ -743,8 +743,8 @@ impl<E: EthSpec + TypeName> Handler for ForkChoiceHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct OptimisticSyncHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for OptimisticSyncHandler<E> {
@@ -772,8 +772,8 @@ impl<E: EthSpec + TypeName> Handler for OptimisticSyncHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct GenesisValidityHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for GenesisValidityHandler<E> {
@@ -792,8 +792,8 @@ impl<E: EthSpec + TypeName> Handler for GenesisValidityHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct GenesisInitializationHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for GenesisInitializationHandler<E> {
@@ -812,8 +812,8 @@ impl<E: EthSpec + TypeName> Handler for GenesisInitializationHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGBlobToKZGCommitmentHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGBlobToKZGCommitmentHandler<E> {
@@ -832,8 +832,8 @@ impl<E: EthSpec> Handler for KZGBlobToKZGCommitmentHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeBlobKZGProofHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeBlobKZGProofHandler<E> {
@@ -852,8 +852,8 @@ impl<E: EthSpec> Handler for KZGComputeBlobKZGProofHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeKZGProofHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeKZGProofHandler<E> {
@@ -872,8 +872,8 @@ impl<E: EthSpec> Handler for KZGComputeKZGProofHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGVerifyBlobKZGProofHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGVerifyBlobKZGProofHandler<E> {
@@ -892,8 +892,8 @@ impl<E: EthSpec> Handler for KZGVerifyBlobKZGProofHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGVerifyBlobKZGProofBatchHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGVerifyBlobKZGProofBatchHandler<E> {
@@ -912,8 +912,8 @@ impl<E: EthSpec> Handler for KZGVerifyBlobKZGProofBatchHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGVerifyKZGProofHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGVerifyKZGProofHandler<E> {
@@ -932,8 +932,8 @@ impl<E: EthSpec> Handler for KZGVerifyKZGProofHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct GetCustodyGroupsHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for GetCustodyGroupsHandler<E> {
@@ -952,8 +952,8 @@ impl<E: EthSpec + TypeName> Handler for GetCustodyGroupsHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct ComputeColumnsForCustodyGroupHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for ComputeColumnsForCustodyGroupHandler<E> {
@@ -972,8 +972,8 @@ impl<E: EthSpec + TypeName> Handler for ComputeColumnsForCustodyGroupHandler<E> 
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeCellsHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeCellsHandler<E> {
@@ -992,8 +992,8 @@ impl<E: EthSpec> Handler for KZGComputeCellsHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGComputeCellsAndKZGProofHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGComputeCellsAndKZGProofHandler<E> {
@@ -1012,8 +1012,8 @@ impl<E: EthSpec> Handler for KZGComputeCellsAndKZGProofHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGVerifyCellKZGProofBatchHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGVerifyCellKZGProofBatchHandler<E> {
@@ -1032,8 +1032,8 @@ impl<E: EthSpec> Handler for KZGVerifyCellKZGProofBatchHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KZGRecoverCellsAndKZGProofHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec> Handler for KZGRecoverCellsAndKZGProofHandler<E> {
@@ -1052,8 +1052,8 @@ impl<E: EthSpec> Handler for KZGRecoverCellsAndKZGProofHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct KzgInclusionMerkleProofValidityHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for KzgInclusionMerkleProofValidityHandler<E> {
@@ -1076,8 +1076,8 @@ impl<E: EthSpec + TypeName> Handler for KzgInclusionMerkleProofValidityHandler<E
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct MerkleProofValidityHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for MerkleProofValidityHandler<E> {
@@ -1100,8 +1100,8 @@ impl<E: EthSpec + TypeName> Handler for MerkleProofValidityHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct LightClientUpdateHandler<E>(PhantomData<E>);
 
 impl<E: EthSpec + TypeName> Handler for LightClientUpdateHandler<E> {
@@ -1126,8 +1126,8 @@ impl<E: EthSpec + TypeName> Handler for LightClientUpdateHandler<E> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct OperationsHandler<E, O>(PhantomData<(E, O)>);
 
 impl<E: EthSpec + TypeName, O: Operation<E>> Handler for OperationsHandler<E, O> {
@@ -1146,8 +1146,8 @@ impl<E: EthSpec + TypeName, O: Operation<E>> Handler for OperationsHandler<E, O>
     }
 }
 
-#[derive(Derivative)]
-#[derivative(Default(bound = ""))]
+#[derive(Educe)]
+#[educe(Default(bound()))]
 pub struct SszGenericHandler<H>(PhantomData<H>);
 
 impl<H: TypeName> Handler for SszGenericHandler<H> {

@@ -6,7 +6,7 @@ use crate::{
     SignedBeaconBlockHeader, Slot,
 };
 use bls::Signature;
-use derivative::Derivative;
+use educe::Educe;
 use kzg::Error as KzgError;
 use kzg::{KzgCommitment, KzgProof};
 use merkle_proof::verify_merkle_proof;
@@ -48,14 +48,14 @@ pub type DataColumnSidecarList<E> = Vec<Arc<DataColumnSidecar<E>>>;
             Decode,
             TreeHash,
             TestRandom,
-            Derivative,
+            Educe,
         ),
-        derivative(PartialEq, Eq, Hash(bound = "E: EthSpec")),
+        educe(PartialEq, Eq, Hash(bound(E: EthSpec))),
         serde(bound = "E: EthSpec", deny_unknown_fields),
         cfg_attr(
             feature = "arbitrary",
             derive(arbitrary::Arbitrary),
-            arbitrary(bound = "E: EthSpec"),
+            arbitrary(bound(E: EthSpec)),
         ),
         context_deserialize(ForkName),
     ),
@@ -63,8 +63,8 @@ pub type DataColumnSidecarList<E> = Vec<Arc<DataColumnSidecar<E>>>;
     cast_error(ty = "Error", expr = "BeaconStateError::IncorrectStateVariant"),
     partial_getter_error(ty = "Error", expr = "BeaconStateError::IncorrectStateVariant")
 )]
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, TreeHash, Derivative)]
-#[derivative(PartialEq, Eq, Hash(bound = "E: EthSpec"))]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, TreeHash, Educe)]
+#[educe(PartialEq, Eq, Hash(bound(E: EthSpec)))]
 #[serde(bound = "E: EthSpec", untagged)]
 #[tree_hash(enum_behaviour = "transparent")]
 #[ssz(enum_behaviour = "transparent")]

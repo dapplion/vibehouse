@@ -6,7 +6,7 @@
 //!
 //! This serves as equivocation detection for the execution payload bid gossip topic.
 
-use derivative::Derivative;
+use educe::Educe;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use types::{BuilderIndex, EthSpec, ExecutionBlockHash, Hash256, Slot};
@@ -36,8 +36,8 @@ pub enum BidObservationOutcome {
 /// This allows us to:
 /// - Check if we've seen a bid from a specific builder in a specific slot
 /// - Detect when a builder submits two different bids for the same slot
-#[derive(Debug, Derivative)]
-#[derivative(Default(bound = "E: EthSpec"))]
+#[derive(Debug, Educe)]
+#[educe(Default(bound(E: EthSpec)))]
 pub struct ObservedExecutionBids<E: EthSpec> {
     /// Map of slot -> (builder_index -> bid_root)
     observed_bids: HashMap<Slot, HashMap<BuilderIndex, Hash256>>,

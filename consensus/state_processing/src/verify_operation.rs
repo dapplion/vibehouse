@@ -9,7 +9,7 @@ use crate::per_block_processing::{
 };
 #[cfg(feature = "arbitrary-fuzz")]
 use arbitrary::Arbitrary;
-use derivative::Derivative;
+use educe::Educe;
 use smallvec::{SmallVec, smallvec};
 use ssz::{Decode, Encode};
 use ssz_derive::{Decode, Encode};
@@ -40,12 +40,12 @@ pub trait TransformPersist {
 ///
 /// The inner `op` field is private, meaning instances of this type can only be constructed
 /// by calling `validate`.
-#[derive(Derivative, Debug, Clone)]
+#[derive(Educe, Debug, Clone)]
 #[cfg_attr(feature = "arbitrary-fuzz", derive(Arbitrary))]
-#[derivative(
+#[educe(
     PartialEq,
     Eq,
-    Hash(bound = "T: TransformPersist + std::hash::Hash, E: EthSpec")
+    Hash(bound(T: TransformPersist + std::hash::Hash, E: EthSpec))
 )]
 #[cfg_attr(
     feature = "arbitrary-fuzz",

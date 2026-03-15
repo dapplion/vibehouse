@@ -7,7 +7,7 @@ use crate::*;
 pub use builder_pubkey_cache::BuilderPubkeyCache;
 use compare_fields::CompareFields;
 use compare_fields_derive::CompareFields;
-use derivative::Derivative;
+use educe::Educe;
 use ethereum_hashing::hash_fixed;
 use int_to_bytes::{int_to_bytes4, int_to_bytes8};
 use metastruct::{NumFields, metastruct};
@@ -251,7 +251,7 @@ impl From<BeaconStateHash> for Hash256 {
     variants(Base, Altair, Bellatrix, Capella, Deneb, Electra, Fulu, Gloas),
     variant_attributes(
         derive(
-            Derivative,
+            Educe,
             Debug,
             PartialEq,
             Serialize,
@@ -268,7 +268,7 @@ impl From<BeaconStateHash> for Hash256 {
             derive(arbitrary::Arbitrary),
             arbitrary(bound = "E: EthSpec")
         ),
-        derivative(Clone),
+        educe(Clone),
     ),
     specific_variant_attributes(
         Base(metastruct(

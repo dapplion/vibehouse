@@ -6,7 +6,6 @@ use crate::{
     LightClientHeaderElectra, LightClientHeaderFulu, LightClientHeaderGloas,
     SignedBlindedBeaconBlock, light_client_update::*,
 };
-use derivative::Derivative;
 use serde::{Deserialize, Deserializer, Serialize};
 use ssz::{Decode, Encode};
 use ssz_derive::Decode;
@@ -27,7 +26,6 @@ use tree_hash_derive::TreeHash;
             PartialEq,
             Serialize,
             Deserialize,
-            Derivative,
             Decode,
             Encode,
             TestRandom,

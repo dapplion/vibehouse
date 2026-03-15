@@ -1,6 +1,6 @@
 use crate::test_utils::TestRandom;
 use crate::*;
-use derivative::Derivative;
+use educe::Educe;
 use merkle_proof::{MerkleTree, MerkleTreeError};
 use metastruct::metastruct;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -39,9 +39,9 @@ pub const BLOB_KZG_COMMITMENTS_INDEX: usize = 11;
             Decode,
             TreeHash,
             TestRandom,
-            Derivative,
+            Educe,
         ),
-        derivative(PartialEq, Hash(bound = "E: EthSpec, Payload: AbstractExecPayload<E>")),
+        educe(PartialEq, Hash(bound(E: EthSpec, Payload: AbstractExecPayload<E>))),
         serde(
             bound = "E: EthSpec, Payload: AbstractExecPayload<E>",
             deny_unknown_fields
@@ -49,7 +49,7 @@ pub const BLOB_KZG_COMMITMENTS_INDEX: usize = 11;
         cfg_attr(
             feature = "arbitrary",
             derive(arbitrary::Arbitrary),
-            arbitrary(bound = "E: EthSpec, Payload: AbstractExecPayload<E>"),
+            arbitrary(bound(E: EthSpec, Payload: AbstractExecPayload<E>)),
         ),
         context_deserialize(ForkName),
     ),
@@ -69,10 +69,10 @@ pub const BLOB_KZG_COMMITMENTS_INDEX: usize = 11;
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
-    arbitrary(bound = "E: EthSpec, Payload: AbstractExecPayload<E>")
+    arbitrary(bound(E: EthSpec, Payload: AbstractExecPayload<E>))
 )]
-#[derive(Debug, Clone, Serialize, Deserialize, Derivative, TreeHash)]
-#[derivative(PartialEq, Hash(bound = "E: EthSpec"))]
+#[derive(Debug, Clone, Serialize, Deserialize, Educe, TreeHash)]
+#[educe(PartialEq, Hash(bound(E: EthSpec)))]
 #[serde(untagged)]
 #[serde(bound = "E: EthSpec, Payload: AbstractExecPayload<E>")]
 #[tree_hash(enum_behaviour = "transparent")]

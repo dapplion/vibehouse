@@ -6,7 +6,7 @@
 //!
 //! This serves as equivocation detection for the payload attestation gossip topic.
 
-use derivative::Derivative;
+use educe::Educe;
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{EthSpec, Hash256, Slot};
@@ -44,8 +44,8 @@ pub enum AttestationObservationOutcome {
 /// This allows us to:
 /// - Check if we've seen an attestation from a specific validator for a specific block
 /// - Detect when a validator submits conflicting attestations (different payload_present values)
-#[derive(Debug, Derivative)]
-#[derivative(Default(bound = "E: EthSpec"))]
+#[derive(Debug, Educe)]
+#[educe(Default(bound(E: EthSpec)))]
 pub struct ObservedPayloadAttestations<E: EthSpec> {
     /// Map of (slot, block_root, validator_index) -> payload_present
     observed_attestations: HashMap<AttestationKey, bool>,

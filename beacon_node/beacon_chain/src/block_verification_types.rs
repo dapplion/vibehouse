@@ -2,7 +2,7 @@ use crate::data_availability_checker::AvailabilityCheckError;
 pub use crate::data_availability_checker::{AvailableBlock, MaybeAvailableBlock};
 use crate::data_column_verification::{CustodyDataColumn, CustodyDataColumnList};
 use crate::{PayloadVerificationOutcome, get_block_root};
-use derivative::Derivative;
+use educe::Educe;
 use ssz_types::VariableList;
 use state_processing::ConsensusContext;
 use std::fmt::{Debug, Formatter};
@@ -26,14 +26,14 @@ use types::{
 /// Note: We make a distinction over blocks received over gossip because
 /// in a post-deneb world, the blobs corresponding to a given block that are received
 /// over rpc do not contain the proposer signature for dos resistance.
-#[derive(Clone, Derivative)]
-#[derivative(Hash(bound = "E: EthSpec"))]
+#[derive(Clone, Educe)]
+#[educe(Hash(bound(E: EthSpec)))]
 pub struct RpcBlock<E: EthSpec> {
     block_root: Hash256,
     block: RpcBlockInner<E>,
     /// Optional execution payload envelope for Gloas ePBS blocks.
     /// Set during range sync when envelopes are downloaded alongside blocks.
-    #[derivative(Hash = "ignore")]
+    #[educe(Hash(ignore))]
     envelope: Option<Arc<SignedExecutionPayloadEnvelope<E>>>,
 }
 
@@ -84,8 +84,8 @@ impl<E: EthSpec> RpcBlock<E> {
 /// Note: This variant is intentionally private because we want to safely construct the
 /// internal variants after applying consistency checks to ensure that the block and blobs
 /// are consistent with respect to each other.
-#[derive(Debug, Clone, Derivative)]
-#[derivative(Hash(bound = "E: EthSpec"))]
+#[derive(Debug, Clone, Educe)]
+#[educe(Hash(bound(E: EthSpec)))]
 enum RpcBlockInner<E: EthSpec> {
     /// Single block lookup response. This should potentially hit the data availability cache.
     Block(Arc<SignedBeaconBlock<E>>),

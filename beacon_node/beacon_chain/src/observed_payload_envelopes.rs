@@ -7,7 +7,7 @@
 //! Without deduplication a peer can replay valid envelopes and trigger
 //! repeated `newPayload` EL calls (mild DoS vector).
 
-use derivative::Derivative;
+use educe::Educe;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use types::{EthSpec, Hash256};
@@ -16,8 +16,8 @@ use types::{EthSpec, Hash256};
 const MAX_OBSERVED_ROOTS: usize = 256;
 
 /// Tracks block roots for which a valid envelope has been seen.
-#[derive(Debug, Derivative)]
-#[derivative(Default(bound = "E: EthSpec"))]
+#[derive(Debug, Educe)]
+#[educe(Default(bound(E: EthSpec)))]
 pub struct ObservedPayloadEnvelopes<E: EthSpec> {
     /// Block roots for which we've accepted a valid envelope.
     observed_roots: HashSet<Hash256>,

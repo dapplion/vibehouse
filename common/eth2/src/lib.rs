@@ -21,7 +21,7 @@ use ::types::{
     ExecutionProof, PayloadAttestation, PayloadAttestationData, PayloadAttestationMessage,
     SignedExecutionPayloadBid, SignedExecutionPayloadEnvelope, SignedProposerPreferences,
 };
-use derivative::Derivative;
+use educe::Educe;
 use futures::Stream;
 use futures_util::StreamExt;
 use libp2p_identity::PeerId;
@@ -216,10 +216,10 @@ impl Timeouts {
 
 /// A wrapper around `reqwest::Client` which provides convenience methods for interfacing with a
 /// Vibehouse Beacon Node HTTP server (`http_api`).
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq)]
+#[derive(Clone, Debug, Educe)]
+#[educe(PartialEq)]
 pub struct BeaconNodeHttpClient {
-    #[derivative(PartialEq = "ignore")]
+    #[educe(PartialEq(ignore))]
     client: reqwest::Client,
     server: SensitiveUrl,
     timeouts: Timeouts,

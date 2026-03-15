@@ -2,7 +2,7 @@ use crate::{
     EthSpec, ExecutionPayloadEnvelope, ExecutionPayloadGloas, ExecutionPayloadHeaderGloas,
     ExecutionRequests, Hash256, Slot, Withdrawals,
 };
-use derivative::Derivative;
+use educe::Educe;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use tree_hash_derive::TreeHash;
@@ -15,8 +15,8 @@ use tree_hash_derive::TreeHash;
 ///
 /// This allows pruning the large transaction data while keeping enough
 /// envelope metadata for block replay and state reconstruction.
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative)]
-#[derivative(PartialEq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe)]
+#[educe(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 pub struct BlindedExecutionPayloadEnvelope<E: EthSpec> {
     /// The execution payload header (blinded: no transactions/withdrawals lists)
@@ -99,8 +99,8 @@ impl<E: EthSpec> BlindedExecutionPayloadEnvelope<E> {
 ///
 /// Same as `SignedExecutionPayloadEnvelope` but wraps a
 /// `BlindedExecutionPayloadEnvelope` instead of the full version.
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative)]
-#[derivative(PartialEq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe)]
+#[educe(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 pub struct SignedBlindedExecutionPayloadEnvelope<E: EthSpec> {
     /// The blinded execution payload envelope

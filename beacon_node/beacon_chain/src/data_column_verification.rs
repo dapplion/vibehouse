@@ -4,7 +4,7 @@ use crate::block_verification::{
 use crate::kzg_utils::{reconstruct_data_columns, validate_data_columns};
 use crate::observed_data_sidecars::{ObservationStrategy, Observe};
 use crate::{BeaconChain, BeaconChainError, BeaconChainTypes, metrics};
-use derivative::Derivative;
+use educe::Educe;
 use fork_choice::ProtoBlock;
 use kzg::{Error as KzgError, Kzg};
 use proto_array::Block;
@@ -300,8 +300,8 @@ impl<T: BeaconChainTypes, O: ObservationStrategy> GossipVerifiedDataColumn<T, O>
 }
 
 /// Wrapper over a `DataColumnSidecar` for which we have completed kzg verification.
-#[derive(Debug, Derivative, Clone, Encode)]
-#[derivative(PartialEq, Eq)]
+#[derive(Debug, Educe, Clone, Encode)]
+#[educe(PartialEq, Eq)]
 #[ssz(struct_behaviour = "transparent")]
 pub struct KzgVerifiedDataColumn<E: EthSpec> {
     data: Arc<DataColumnSidecar<E>>,
@@ -357,8 +357,8 @@ pub type CustodyDataColumnList<E> =
     VariableList<CustodyDataColumn<E>, <E as EthSpec>::NumberOfColumns>;
 
 /// Data column that we must custody
-#[derive(Debug, Derivative, Clone, Encode)]
-#[derivative(PartialEq, Eq, Hash(bound = "E: EthSpec"))]
+#[derive(Debug, Educe, Clone, Encode)]
+#[educe(PartialEq, Eq, Hash(bound(E: EthSpec)))]
 #[ssz(struct_behaviour = "transparent")]
 pub struct CustodyDataColumn<E: EthSpec> {
     data: Arc<DataColumnSidecar<E>>,
@@ -387,8 +387,8 @@ impl<E: EthSpec> CustodyDataColumn<E> {
 }
 
 /// Data column that we must custody and has completed kzg verification
-#[derive(Debug, Derivative, Clone, Encode)]
-#[derivative(PartialEq, Eq)]
+#[derive(Debug, Educe, Clone, Encode)]
+#[educe(PartialEq, Eq)]
 #[ssz(struct_behaviour = "transparent")]
 pub struct KzgVerifiedCustodyDataColumn<E: EthSpec> {
     data: Arc<DataColumnSidecar<E>>,

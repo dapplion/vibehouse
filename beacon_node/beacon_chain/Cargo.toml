@@ -18,7 +18,7 @@ sp1 = ["sp1-verifier"]
 [dependencies]
 bitvec = { workspace = true }
 bls = { workspace = true }
-derivative = { workspace = true }
+educe = { workspace = true }
 eth2 = { workspace = true }
 ethereum_hashing = { workspace = true }
 ethereum_serde_utils = { workspace = true }

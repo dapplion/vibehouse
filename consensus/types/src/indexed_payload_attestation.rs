@@ -1,7 +1,7 @@
 use crate::{EthSpec, ForkName, PayloadAttestationData, test_utils::TestRandom};
 use bls::AggregateSignature;
 use context_deserialize::context_deserialize;
-use derivative::Derivative;
+use educe::Educe;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use ssz_types::VariableList;
@@ -17,15 +17,13 @@ use tree_hash_derive::TreeHash;
 /// The attesting_indices list must be sorted for efficient verification.
 ///
 /// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#indexedpayloadattestation>
-#[derive(
-    Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Derivative, TestRandom,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode, TreeHash, Educe, TestRandom)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
     arbitrary(bound = "E: EthSpec")
 )]
-#[derivative(PartialEq, Hash)]
+#[educe(PartialEq, Hash)]
 #[serde(bound = "E: EthSpec")]
 #[context_deserialize(ForkName)]
 pub struct IndexedPayloadAttestation<E: EthSpec> {

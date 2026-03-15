@@ -10,7 +10,7 @@ fork_from_env = ["beacon_chain/fork_from_env"]
 
 [dependencies]
 bitvec = { workspace = true }
-derivative = { workspace = true }
+educe = { workspace = true }
 ethereum_ssz = { workspace = true }
 ethereum_ssz_derive = { workspace = true }
 itertools = { workspace = true }

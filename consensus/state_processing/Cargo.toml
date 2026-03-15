@@ -21,7 +21,7 @@ portable = ["bls/supranational-portable"]
 [dependencies]
 arbitrary = { workspace = true, optional = true }
 bls = { workspace = true }
-derivative = { workspace = true }
+educe = { workspace = true }
 ethereum_hashing = { workspace = true }
 ethereum_ssz = { workspace = true }
 ethereum_ssz_derive = { workspace = true }

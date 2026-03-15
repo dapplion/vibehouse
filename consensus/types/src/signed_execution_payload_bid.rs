@@ -3,7 +3,7 @@ use crate::test_utils::TestRandom;
 use crate::{EthSpec, ForkName};
 use bls::Signature;
 use context_deserialize::context_deserialize;
-use derivative::Derivative;
+use educe::Educe;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
@@ -18,15 +18,13 @@ use tree_hash_derive::TreeHash;
 /// must be the infinity point (empty signature) and value must be 0.
 ///
 /// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#signedexecutionpayloadbid>
-#[derive(
-    TestRandom, TreeHash, Debug, Clone, Encode, Decode, Serialize, Deserialize, Derivative,
-)]
+#[derive(TestRandom, TreeHash, Debug, Clone, Encode, Decode, Serialize, Deserialize, Educe)]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary),
-    arbitrary(bound = "E: EthSpec")
+    arbitrary(bound(E: EthSpec))
 )]
-#[derivative(PartialEq, Hash(bound = "E: EthSpec"))]
+#[educe(PartialEq, Hash(bound(E: EthSpec)))]
 #[serde(bound = "E: EthSpec")]
 #[context_deserialize(ForkName)]
 pub struct SignedExecutionPayloadBid<E: EthSpec> {
