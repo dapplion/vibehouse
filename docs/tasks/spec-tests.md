@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1281 (Mar 15) — spec stable, new open PRs tracked, no changes needed
+
+**Spec monitoring**: No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs updated: #4992, #4962, #4960, #4954 (NEW: millisecond timestamps in fork choice store), #4939, #4932, #4898 (NEW: remove pending status from tiebreaker), #4892 (NEW: remove impossible fork choice branch), #4843, #4840, #4747 (NEW: fast confirmation rule), #4630, #4558 (NEW: cell dissemination). None merged — no implementation needed.
+
+**Cargo audit**: Unchanged — 1 rsa vulnerability (no fix) + 5 allowed warnings (transitive SP1/alloy deps).
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1280 (Mar 15) — spec stable, all fork choice tests pass, no changes needed
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
