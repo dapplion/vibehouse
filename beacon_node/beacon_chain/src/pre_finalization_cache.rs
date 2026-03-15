@@ -116,3 +116,139 @@ impl PreFinalizationBlockCache {
         Some((cache.block_roots.len(), cache.in_progress_lookups.len()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::FixedBytesExtended;
+
+    fn root(byte: u8) -> Hash256 {
+        Hash256::repeat_byte(byte)
+    }
+
+    #[test]
+    fn empty_cache_contains_nothing() {
+        let cache = PreFinalizationBlockCache::default();
+        assert!(!cache.contains(root(1)));
+        assert!(!cache.contains(root(0)));
+    }
+
+    #[test]
+    fn empty_cache_metrics() {
+        let cache = PreFinalizationBlockCache::default();
+        let (block_roots, lookups) = cache.metrics().unwrap();
+        assert_eq!(block_roots, 0);
+        assert_eq!(lookups, 0);
+    }
+
+    #[test]
+    fn block_processed_removes_from_lookups() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            inner.in_progress_lookups.put(root(1), ());
+        }
+        let (_, lookups) = cache.metrics().unwrap();
+        assert_eq!(lookups, 1);
+
+        cache.block_processed(root(1));
+        let (_, lookups) = cache.metrics().unwrap();
+        assert_eq!(lookups, 0);
+    }
+
+    #[test]
+    fn block_processed_noop_for_unknown_root() {
+        let cache = PreFinalizationBlockCache::default();
+        cache.block_processed(root(99));
+        let (block_roots, lookups) = cache.metrics().unwrap();
+        assert_eq!(block_roots, 0);
+        assert_eq!(lookups, 0);
+    }
+
+    #[test]
+    fn contains_reflects_block_roots_cache() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            inner.block_roots.put(root(1), ());
+        }
+        assert!(cache.contains(root(1)));
+        assert!(!cache.contains(root(2)));
+    }
+
+    #[test]
+    fn block_roots_lru_eviction() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            for i in 0..=BLOCK_ROOT_CACHE_LIMIT.get() {
+                inner
+                    .block_roots
+                    .put(Hash256::from_low_u64_be(i as u64), ());
+            }
+        }
+        // The first entry (0) should have been evicted
+        assert!(!cache.contains(Hash256::from_low_u64_be(0)));
+        // The last entry should still be present
+        assert!(cache.contains(Hash256::from_low_u64_be(BLOCK_ROOT_CACHE_LIMIT.get() as u64)));
+    }
+
+    #[test]
+    fn lookups_lru_eviction() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            for i in 0..=LOOKUP_LIMIT.get() {
+                inner
+                    .in_progress_lookups
+                    .put(Hash256::from_low_u64_be(i as u64), ());
+            }
+        }
+        let (_, lookups) = cache.metrics().unwrap();
+        assert_eq!(lookups, LOOKUP_LIMIT.get());
+    }
+
+    #[test]
+    fn metrics_returns_correct_counts() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            inner.block_roots.put(root(1), ());
+            inner.block_roots.put(root(2), ());
+            inner.block_roots.put(root(3), ());
+            inner.in_progress_lookups.put(root(10), ());
+            inner.in_progress_lookups.put(root(11), ());
+        }
+        let (block_roots, lookups) = cache.metrics().unwrap();
+        assert_eq!(block_roots, 3);
+        assert_eq!(lookups, 2);
+    }
+
+    #[test]
+    fn block_processed_does_not_affect_block_roots() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            inner.block_roots.put(root(1), ());
+            inner.in_progress_lookups.put(root(1), ());
+        }
+        cache.block_processed(root(1));
+        assert!(cache.contains(root(1)));
+        let (block_roots, lookups) = cache.metrics().unwrap();
+        assert_eq!(block_roots, 1);
+        assert_eq!(lookups, 0);
+    }
+
+    #[test]
+    fn duplicate_block_root_insertions() {
+        let cache = PreFinalizationBlockCache::default();
+        {
+            let mut inner = cache.cache.lock();
+            inner.block_roots.put(root(1), ());
+            inner.block_roots.put(root(1), ());
+            inner.block_roots.put(root(1), ());
+        }
+        let (block_roots, _) = cache.metrics().unwrap();
+        assert_eq!(block_roots, 1);
+    }
+}

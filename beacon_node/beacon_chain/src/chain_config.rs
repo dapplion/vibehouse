@@ -188,3 +188,130 @@ impl ChainConfig {
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_values() {
+        let config = ChainConfig::default();
+        assert_eq!(config.import_max_skip_slots, None);
+        assert_eq!(config.weak_subjectivity_checkpoint, None);
+        assert!(!config.reconstruct_historic_states);
+        assert_eq!(config.max_network_size, 10 * 1_048_576);
+        assert_eq!(
+            config.re_org_head_threshold,
+            Some(DEFAULT_RE_ORG_HEAD_THRESHOLD)
+        );
+        assert_eq!(
+            config.re_org_parent_threshold,
+            Some(DEFAULT_RE_ORG_PARENT_THRESHOLD)
+        );
+        assert_eq!(
+            config.re_org_max_epochs_since_finalization,
+            DEFAULT_RE_ORG_MAX_EPOCHS_SINCE_FINALIZATION
+        );
+        assert_eq!(config.re_org_cutoff_millis, None);
+        assert_eq!(
+            config.fork_choice_before_proposal_timeout_ms,
+            DEFAULT_FORK_CHOICE_BEFORE_PROPOSAL_TIMEOUT
+        );
+        assert_eq!(config.builder_fallback_skips, 3);
+        assert_eq!(config.builder_fallback_skips_per_epoch, 8);
+        assert_eq!(config.builder_fallback_epochs_since_finalization, 3);
+        assert!(!config.builder_fallback_disable_checks);
+        assert!(!config.always_reset_payload_statuses);
+        assert!(!config.paranoid_block_proposal);
+        assert_eq!(config.checkpoint_sync_url_timeout, 60);
+        assert_eq!(config.prepare_payload_lookahead, Duration::from_secs(4));
+        assert!(config.optimistic_finalized_sync);
+        assert!(!config.genesis_backfill);
+        assert!(!config.always_prepare_payload);
+        assert!(config.enable_light_client_server);
+        assert_eq!(config.malicious_withhold_count, 0);
+        assert_eq!(config.blob_publication_batches, 4);
+        assert_eq!(
+            config.blob_publication_batch_interval,
+            Duration::from_millis(300)
+        );
+        assert_eq!(config.sync_tolerance_epochs, DEFAULT_SYNC_TOLERANCE_EPOCHS);
+        assert_eq!(config.block_publishing_delay, None);
+        assert_eq!(config.data_column_publishing_delay, None);
+        assert!(config.invalid_block_roots.is_empty());
+        assert!(!config.disable_get_blobs);
+        assert!(!config.stateless_validation);
+        assert!(!config.generate_execution_proofs);
+        assert_eq!(config.stateless_min_proofs_required, 1);
+    }
+
+    #[test]
+    fn re_org_cutoff_uses_millis_when_set() {
+        let config = ChainConfig {
+            re_org_cutoff_millis: Some(500),
+            ..ChainConfig::default()
+        };
+        assert_eq!(config.re_org_cutoff(12), Duration::from_millis(500));
+    }
+
+    #[test]
+    fn re_org_cutoff_derives_from_slot_duration_when_unset() {
+        let config = ChainConfig::default();
+        // 12 seconds / 12 = 1 second
+        assert_eq!(config.re_org_cutoff(12), Duration::from_secs(1));
+        // 6 seconds / 12 = 500ms
+        assert_eq!(config.re_org_cutoff(6), Duration::from_millis(500));
+    }
+
+    #[test]
+    fn re_org_cutoff_millis_overrides_slot_duration() {
+        let config = ChainConfig {
+            re_org_cutoff_millis: Some(2000),
+            ..ChainConfig::default()
+        };
+        assert_eq!(config.re_org_cutoff(12), Duration::from_millis(2000));
+    }
+
+    #[test]
+    fn re_org_cutoff_zero_millis() {
+        let config = ChainConfig {
+            re_org_cutoff_millis: Some(0),
+            ..ChainConfig::default()
+        };
+        assert_eq!(config.re_org_cutoff(12), Duration::ZERO);
+    }
+
+    #[test]
+    fn default_re_org_thresholds() {
+        assert_eq!(DEFAULT_RE_ORG_HEAD_THRESHOLD.0, 20);
+        assert_eq!(DEFAULT_RE_ORG_PARENT_THRESHOLD.0, 160);
+        assert_eq!(DEFAULT_RE_ORG_MAX_EPOCHS_SINCE_FINALIZATION, Epoch::new(2));
+    }
+
+    #[test]
+    fn default_constants() {
+        assert_eq!(DEFAULT_RE_ORG_CUTOFF_DENOMINATOR, 12);
+        assert_eq!(DEFAULT_FORK_CHOICE_BEFORE_PROPOSAL_TIMEOUT, 250);
+        assert_eq!(DEFAULT_PREPARE_PAYLOAD_LOOKAHEAD_FACTOR, 3);
+        assert_eq!(FORK_CHOICE_LOOKAHEAD_FACTOR, 24);
+        assert_eq!(DEFAULT_SYNC_TOLERANCE_EPOCHS, 2);
+    }
+
+    #[test]
+    fn config_equality() {
+        let config1 = ChainConfig::default();
+        let config2 = ChainConfig::default();
+        assert_eq!(config1, config2);
+    }
+
+    #[test]
+    fn config_clone() {
+        let config = ChainConfig {
+            import_max_skip_slots: Some(100),
+            re_org_cutoff_millis: Some(500),
+            ..ChainConfig::default()
+        };
+        let cloned = config.clone();
+        assert_eq!(config, cloned);
+    }
+}
