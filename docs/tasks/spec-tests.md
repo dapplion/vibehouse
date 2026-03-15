@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1312 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). No new merged Gloas PRs since run 1311. PR #5003 (simplify process_proposer_lookahead) closed without merging — no impact. Open Gloas PRs: #4992 (cached PTCs), #4962 (sanity/blocks missed payload), #4960 (fork choice deposit test), #4954 (fork choice store milliseconds), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4898 (remove pending status from tiebreaker — NEW, cleanup only), #4892 (remove impossible branch in forkchoice — NEW, cleanup only), #4843 (variable PTC deadline), #4840 (eip7843), #4747 (fast confirmation rule), #4630 (eip7688 SSZ). Nightly tests green (21 consecutive days).
+
+**CI**: ci run green. Docker build queued (runner availability).
+
+**Dependency health**: cargo audit unchanged — 1 vulnerability (rsa, no fix available), 5 allowed warnings (all transitive). Zero compiler warnings.
+
+**Open issues**: #29 (ROCQ formal proofs), #28 (ZK execution proofs), #27 (validator messaging) — all RFCs, no bugs.
+
+**Conclusion**: Project stable. No spec drift. No actionable work.
+
 ### run 1311 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). Verified PR #5001 (add `parent_block_root` to bid filtering key, merged Mar 12) — vibehouse already implements the `(bid.slot, bid.parent_block_hash, bid.parent_block_root)` tuple in `observed_execution_bids.rs` and `gloas_verification.rs`. No code change needed. Open Gloas PRs: #4992 (cached PTCs), #4962 (sanity/blocks missed payload), #4960 (fork choice deposit test), #4954 (fork choice store milliseconds), #4939 (missing payload envelopes), #4932 (payload attestation coverage), #4843 (variable PTC deadline), #4840 (eip7843), #4630 (eip7688 SSZ). Nightly tests green (20 consecutive days).
