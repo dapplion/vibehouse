@@ -616,7 +616,7 @@ mod tests {
         bm.delete(&hash(100));
         let slot_map = bm.blocks.get(&hash(1)).unwrap();
         assert_eq!(slot_map.slots.len(), 1);
-        assert!(slot_map.slots.get(&Slot::new(11)).is_some());
+        assert!(slot_map.slots.contains_key(&Slot::new(11)));
     }
 
     #[test]
