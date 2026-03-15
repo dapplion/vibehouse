@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1368 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843, #4630. All 7 still open, no merges since alpha.3.
+
+**Merged since last check**: PR #5001 (add parent_block_root to bid filtering key) — already implemented in vibehouse (is_highest_value_bid uses (slot, parent_block_hash, parent_block_root) triple). No code changes needed.
+
+**Upcoming**: PR #4992 (cached PTCs, heze label added) still open, no movement since Mar 13. PR #4939 (request missing payload envelopes for index-1 attestation) also updated Mar 13 — may affect networking/fork-choice.
+
+**CI**: ci green. Nightly green. Docker builds queued (runner availability). Zero clippy warnings.
+
+**Deps**: cargo audit: rsa RUSTSEC-2023-0071 (no fix available, via jsonwebtoken), bincode/paste unmaintained warnings (transitive via sp1-verifier/alloy). derivative/ansi_term no longer in direct dep tree but still transitive via sp1-verifier's ark-ff/tracing-forest. filesystem false positive (our local crate). No actionable items.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed. Devnet health check running.
+
 ### run 1367 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843, #4630. No recently merged Gloas PRs since alpha.3 release.
