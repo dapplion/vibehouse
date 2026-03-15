@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1398 (Mar 15) — spec stable, consensus_context test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Prep branch maintenance**: Rebased `cached-ptc` and `ptc-lookbehind` onto latest main (2 commits behind). Both compile cleanly, lint passes. Pushed to origin.
+
+**Test coverage**: Added 12 unit tests to `consensus_context.rs` (previously had ZERO test coverage). Tests cover: slot/epoch computation, slot mismatch errors, epoch mismatch errors, proposer index caching, block root caching, builder pattern methods, indexed attestation cache, and error type conversions.
+
+**CI**: All green.
+
 ### run 1397 (Mar 15) — spec stable, PR #4843 (variable PTC deadline) analyzed
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged. No new PRs opened.
