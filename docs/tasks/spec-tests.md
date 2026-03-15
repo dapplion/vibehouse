@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1346 (Mar 15) — spec stable, PR #4940 merged, no code changes needed
+
+**Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.5.0 on consensus-spec-tests, v1.7.0-alpha.3 on consensus-specs). PR #4940 (Add initial fork choice tests for Gloas) **MERGED** Mar 13 — adds `on_execution_payload` step and `head_payload_status` check to fork choice test format. Our test runner already supports both (`OnExecutionPayload` step + `check_head_payload_status`). No test vectors released yet. Remaining 9 tracked open PRs: #4992, #4939, #4962, #4960, #4932, #4898, #4892, #4843, #4840, #4630 — all still open and unmerged.
+
+**CI**: ci run green. Docker build queued (runner availability). Clippy clean (zero warnings). cargo audit: 1 vulnerability (rsa, no fix). No actionable dependency updates.
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1345 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: HEAD of consensus-specs master unchanged (e50889e1ca). No new spec test releases (latest v1.7.0-alpha.3). All 10 tracked open Gloas/ePBS PRs (#4992, #4939, #4962, #4960, #4932, #4898, #4892, #4843, #4840, #4630) remain open and unmerged. Nightly tests green (50 consecutive days).
