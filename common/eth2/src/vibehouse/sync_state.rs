@@ -138,3 +138,261 @@ impl std::fmt::Display for SyncState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn partial_eq_ignores_slot_values() {
+        let a = SyncState::SyncingFinalized {
+            start_slot: Slot::new(0),
+            target_slot: Slot::new(100),
+        };
+        let b = SyncState::SyncingFinalized {
+            start_slot: Slot::new(50),
+            target_slot: Slot::new(200),
+        };
+        assert_eq!(a, b, "SyncingFinalized should match regardless of slots");
+    }
+
+    #[test]
+    fn partial_eq_different_variants_not_equal() {
+        let finalized = SyncState::SyncingFinalized {
+            start_slot: Slot::new(0),
+            target_slot: Slot::new(100),
+        };
+        let head = SyncState::SyncingHead {
+            start_slot: Slot::new(0),
+            target_slot: Slot::new(100),
+        };
+        assert_ne!(finalized, head);
+        assert_ne!(SyncState::Synced, SyncState::Stalled);
+        assert_ne!(SyncState::SyncTransition, SyncState::Synced);
+    }
+
+    #[test]
+    fn partial_eq_syncing_head_ignores_slots() {
+        let a = SyncState::SyncingHead {
+            start_slot: Slot::new(10),
+            target_slot: Slot::new(20),
+        };
+        let b = SyncState::SyncingHead {
+            start_slot: Slot::new(30),
+            target_slot: Slot::new(40),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_backfill_ignores_counts() {
+        let a = SyncState::BackFillSyncing {
+            completed: 10,
+            remaining: 90,
+        };
+        let b = SyncState::BackFillSyncing {
+            completed: 50,
+            remaining: 50,
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn partial_eq_custody_backfill_ignores_counts() {
+        let a = SyncState::CustodyBackFillSyncing {
+            completed: 0,
+            remaining: 100,
+        };
+        let b = SyncState::CustodyBackFillSyncing {
+            completed: 99,
+            remaining: 1,
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn is_syncing_finalized_and_head() {
+        assert!(
+            SyncState::SyncingFinalized {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_syncing()
+        );
+        assert!(
+            SyncState::SyncingHead {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_syncing()
+        );
+        assert!(SyncState::SyncTransition.is_syncing());
+    }
+
+    #[test]
+    fn is_syncing_false_for_synced_stalled_backfill() {
+        assert!(!SyncState::Synced.is_syncing());
+        assert!(!SyncState::Stalled.is_syncing());
+        assert!(
+            !SyncState::BackFillSyncing {
+                completed: 10,
+                remaining: 90,
+            }
+            .is_syncing()
+        );
+        assert!(
+            !SyncState::CustodyBackFillSyncing {
+                completed: 0,
+                remaining: 100,
+            }
+            .is_syncing()
+        );
+    }
+
+    #[test]
+    fn is_syncing_finalized_only_for_finalized() {
+        assert!(
+            SyncState::SyncingFinalized {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_syncing_finalized()
+        );
+        assert!(
+            !SyncState::SyncingHead {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_syncing_finalized()
+        );
+        assert!(!SyncState::Synced.is_syncing_finalized());
+        assert!(!SyncState::Stalled.is_syncing_finalized());
+        assert!(!SyncState::SyncTransition.is_syncing_finalized());
+    }
+
+    #[test]
+    fn is_synced_includes_backfill() {
+        assert!(SyncState::Synced.is_synced());
+        assert!(
+            SyncState::BackFillSyncing {
+                completed: 0,
+                remaining: 100,
+            }
+            .is_synced()
+        );
+        assert!(
+            SyncState::CustodyBackFillSyncing {
+                completed: 0,
+                remaining: 100,
+            }
+            .is_synced()
+        );
+    }
+
+    #[test]
+    fn is_synced_false_for_syncing_stalled() {
+        assert!(
+            !SyncState::SyncingFinalized {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_synced()
+        );
+        assert!(
+            !SyncState::SyncingHead {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_synced()
+        );
+        assert!(!SyncState::Stalled.is_synced());
+        assert!(!SyncState::SyncTransition.is_synced());
+    }
+
+    #[test]
+    fn is_stalled_only_for_stalled() {
+        assert!(SyncState::Stalled.is_stalled());
+        assert!(!SyncState::Synced.is_stalled());
+        assert!(
+            !SyncState::SyncingFinalized {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .is_stalled()
+        );
+        assert!(!SyncState::SyncTransition.is_stalled());
+    }
+
+    #[test]
+    fn display_variants() {
+        assert_eq!(
+            SyncState::SyncingFinalized {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .to_string(),
+            "Syncing Finalized Chain"
+        );
+        assert_eq!(
+            SyncState::SyncingHead {
+                start_slot: Slot::new(0),
+                target_slot: Slot::new(100),
+            }
+            .to_string(),
+            "Syncing Head Chain"
+        );
+        assert_eq!(SyncState::Synced.to_string(), "Synced");
+        assert_eq!(SyncState::Stalled.to_string(), "Stalled");
+        assert_eq!(
+            SyncState::SyncTransition.to_string(),
+            "Evaluating known peers"
+        );
+        assert_eq!(
+            SyncState::BackFillSyncing {
+                completed: 0,
+                remaining: 100,
+            }
+            .to_string(),
+            "Syncing Historical Blocks"
+        );
+        assert_eq!(
+            SyncState::CustodyBackFillSyncing {
+                completed: 0,
+                remaining: 100,
+            }
+            .to_string(),
+            "Syncing Historical Data Columns"
+        );
+    }
+
+    #[test]
+    fn backfill_state_equality() {
+        assert_eq!(BackFillState::Paused, BackFillState::Paused);
+        assert_eq!(BackFillState::Syncing, BackFillState::Syncing);
+        assert_eq!(BackFillState::Completed, BackFillState::Completed);
+        assert_eq!(BackFillState::Failed, BackFillState::Failed);
+        assert_ne!(BackFillState::Paused, BackFillState::Syncing);
+        assert_ne!(BackFillState::Completed, BackFillState::Failed);
+    }
+
+    #[test]
+    fn custody_backfill_state_equality() {
+        assert_eq!(CustodyBackFillState::Syncing, CustodyBackFillState::Syncing);
+        assert_eq!(
+            CustodyBackFillState::Completed,
+            CustodyBackFillState::Completed
+        );
+        assert_eq!(
+            CustodyBackFillState::Pending("reason".to_string()),
+            CustodyBackFillState::Pending("reason".to_string()),
+        );
+        assert_ne!(
+            CustodyBackFillState::Pending("a".to_string()),
+            CustodyBackFillState::Pending("b".to_string()),
+        );
+        assert_ne!(
+            CustodyBackFillState::Syncing,
+            CustodyBackFillState::Completed
+        );
+    }
+}

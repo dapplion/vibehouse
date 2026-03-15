@@ -28,3 +28,4 @@ types = { workspace = true }
 beacon_chain = { workspace = true }
 maplit = { workspace = true }
 tokio = { workspace = true }
+tree_hash = { workspace = true }
