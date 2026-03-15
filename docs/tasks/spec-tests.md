@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1267 (Mar 15) — spec stable, CI in progress (educe migration), no changes needed
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Spec test vectors still v1.6.0-beta.0 (Sep 2025) — Gloas fork choice vectors from PR #4940 included in our local alpha.3 vectors. Open Gloas PRs unchanged: #4992 (cached PTCs — 1 approval, 14 review comments, mergeable/clean), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**CI**: Run 23102403979 (educe migration) — 5/6 jobs green (check+clippy, ef-tests, network+op_pool, http_api all passed). Unit tests and beacon_chain tests still in progress (long-running, ~1.5h). Nightly: 3 consecutive green.
+
+**Code health**: Zero clippy warnings. Cargo audit unchanged (1 rsa vulnerability no fix, 5 allowed warnings — transitive SP1 deps). No semver-compatible dependency updates available. 30 major-version-behind deps (not actionable). ptc-lookbehind branch 1 commit behind main (task doc only).
+
+**Conclusion**: Project stable. No spec drift. Monitoring CI completion and PR #4992 for merge.
+
 ### run 1266 (Mar 15) — spec stable, ptc-lookbehind branch rebased, CI green
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs — 1 approval, mergeable/clean, active review), #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
