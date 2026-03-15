@@ -29,6 +29,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1393 (Mar 15) — spec stable, PR #4992 impact analysis
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558.
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check. Clippy clean (0 warnings). Build clean (0 warnings).
+
+**PR #4992 (cached PTCs) impact analysis**: Proactively analyzed the full diff to prepare for implementation when it merges. Changes needed in vibehouse:
+1. **BeaconState**: Add `previous_ptc: FixedVector<u64, PtcSize>` and `current_ptc: FixedVector<u64, PtcSize>` to Gloas variant
+2. **New `compute_ptc(state)`**: Extract current `get_ptc_committee` body into a helper that only works for `state.slot` (our existing impl at `gloas.rs:377`)
+3. **Modify `get_ptc_committee`**: Change to a simple lookup — assert slot is current or previous, return cached vector
+4. **`process_slots`**: After incrementing slot, rotate `previous_ptc = current_ptc`, compute new `current_ptc = compute_ptc(state)`
+5. **`upgrade_to_gloas`**: Initialize both fields (zero-filled, then compute current)
+6. **`on_payload_attestation_message`** (fork choice): Reorder slot check before `get_ptc` call
+7. **Remove `get_ptc_assignment`** references (we don't have this as a standalone fn — our PTC duties API computes inline)
+8. **Tests**: Update genesis helpers to initialize `current_ptc`
+Estimated scope: ~200 lines across 4-5 files. Medium complexity, straightforward.
+
+**Note**: PR still has open review comments (jihoonsong noted `get_ptc_assignment` references not cleaned up in validator.md). Not yet approved.
+
+**Conclusion**: No code changes needed. Spec stable. Ready for PR #4992 when it merges.
+
 ### run 1392 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged: #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630, #4747, #4558. PR #4992 (cached PTCs) remains closest to merge — mergeable_state clean, no new review activity since Mar 13.
