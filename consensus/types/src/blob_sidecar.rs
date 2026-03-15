@@ -294,3 +294,112 @@ pub type BlobSidecarList<E> = RuntimeVariableList<Arc<BlobSidecar<E>>>;
 /// Alias for a non length-constrained list of `BlobSidecar`s.
 pub type FixedBlobSidecarList<E> = RuntimeFixedVector<Option<Arc<BlobSidecar<E>>>>;
 pub type BlobsList<E> = VariableList<Blob<E>, <E as EthSpec>::MaxBlobCommitmentsPerBlock>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn blob_identifier_ord_by_index() {
+        let id1 = BlobIdentifier {
+            block_root: Hash256::from_low_u64_be(1),
+            index: 0,
+        };
+        let id2 = BlobIdentifier {
+            block_root: Hash256::from_low_u64_be(1),
+            index: 1,
+        };
+        assert!(id1 < id2);
+    }
+
+    #[test]
+    fn blob_identifier_ord_ignores_block_root() {
+        // Ord is defined only on index
+        let id1 = BlobIdentifier {
+            block_root: Hash256::from_low_u64_be(999),
+            index: 0,
+        };
+        let id2 = BlobIdentifier {
+            block_root: Hash256::from_low_u64_be(1),
+            index: 1,
+        };
+        assert!(id1 < id2);
+    }
+
+    #[test]
+    fn blob_identifier_equal_index_equal_ord() {
+        let id1 = BlobIdentifier {
+            block_root: Hash256::from_low_u64_be(1),
+            index: 5,
+        };
+        let id2 = BlobIdentifier {
+            block_root: Hash256::from_low_u64_be(2),
+            index: 5,
+        };
+        assert_eq!(id1.cmp(&id2), std::cmp::Ordering::Equal);
+        // But they're not equal (different block_root)
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn blob_identifier_partial_ord_consistent() {
+        let id1 = BlobIdentifier {
+            block_root: Hash256::zero(),
+            index: 3,
+        };
+        let id2 = BlobIdentifier {
+            block_root: Hash256::zero(),
+            index: 7,
+        };
+        assert_eq!(id1.partial_cmp(&id2), Some(std::cmp::Ordering::Less));
+    }
+
+    #[test]
+    fn blob_sidecar_empty() {
+        let sidecar = BlobSidecar::<E>::empty();
+        assert_eq!(sidecar.index, 0);
+        assert_eq!(sidecar.slot(), Slot::new(0));
+        assert_eq!(sidecar.block_proposer_index(), 0);
+    }
+
+    #[test]
+    fn blob_sidecar_id() {
+        let sidecar = BlobSidecar::<E>::empty();
+        let id = sidecar.id();
+        assert_eq!(id.index, 0);
+        assert_eq!(id.block_root, sidecar.block_root());
+    }
+
+    #[test]
+    fn blob_sidecar_epoch() {
+        let mut sidecar = BlobSidecar::<E>::empty();
+        sidecar.signed_block_header.message.slot = Slot::new(16); // epoch 2 for minimal (8 slots/epoch)
+        assert_eq!(sidecar.epoch(), Epoch::new(2));
+    }
+
+    #[test]
+    fn blob_sidecar_block_parent_root() {
+        let mut sidecar = BlobSidecar::<E>::empty();
+        let parent_root = Hash256::from_low_u64_be(42);
+        sidecar.signed_block_header.message.parent_root = parent_root;
+        assert_eq!(sidecar.block_parent_root(), parent_root);
+    }
+
+    #[test]
+    fn blob_sidecar_ord_by_index() {
+        let mut s1 = BlobSidecar::<E>::empty();
+        let mut s2 = BlobSidecar::<E>::empty();
+        s1.index = 0;
+        s2.index = 1;
+        assert!(s1 < s2);
+    }
+
+    #[test]
+    fn blob_sidecar_max_size_nonzero() {
+        let size = BlobSidecar::<E>::max_size();
+        assert!(size > 0);
+    }
+}
