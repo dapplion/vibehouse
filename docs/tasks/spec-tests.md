@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1414 (Mar 15) — upgrade_to_bellatrix, upgrade_to_capella, upgrade_to_deneb, upgrade_to_fulu test coverage added
+
+**Test coverage**: Added 28 unit tests across 4 previously-untested fork upgrade files:
+- `upgrade/bellatrix.rs` (7 tests): fork version transition, versioning preservation, registry/eth1 preservation, finality preservation, inactivity scores preservation, default execution payload header initialization, wrong variant rejection
+- `upgrade/capella.rs` (7 tests): fork version transition, versioning preservation, registry/eth1 preservation, capella fields initialization (withdrawal index/validator, empty historical summaries), execution payload header upgrade, finality preservation, wrong variant rejection
+- `upgrade/deneb.rs` (6 tests): fork version transition, versioning preservation, capella fields preservation, registry preservation, execution payload header upgrade, wrong variant rejection
+- `upgrade/fulu.rs` (8 tests): fork version transition, versioning preservation, electra fields preservation, capella fields preservation, registry preservation, execution payload header upgrade, proposer lookahead initialization (valid indices + deterministic), wrong variant rejection
+
+**CI**: All 929 state_processing tests pass.
+
 ### run 1413 (Mar 15) — participation_flag_updates, sync_committee_updates, participation_record_updates, historical_summaries_update, justification_and_finalization test coverage added
 
 **Test coverage**: Added 31 unit tests across 6 previously-untested epoch processing files:
