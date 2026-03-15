@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1260 (Mar 15) — spec stable, PR #4939 already implemented
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
+
+**PR #4939 review (request missing envelopes)**: Latest commit 2b9e66ec (Mar 13, clarity refactor). Adds REJECT/IGNORE rules for index-1 attestations requiring payload envelope validation. Verified vibehouse already implements this via `verify_payload_envelope_for_index1()` in `attestation_verification.rs:1348` — both IGNORE (envelope not seen) and REJECT (payload invalid) checks present. No changes needed when this merges.
+
+**Dependency check**: `rand_xorshift` 0.4→0.5 available but requires workspace-wide `rand` 0.8→0.9 migration (not worth doing now). No other actionable updates.
+
+**Code health**: Zero clippy warnings, cargo audit unchanged (1 rsa advisory, no fix). CI run 23101168845 in progress.
+
+**Conclusion**: Project stable. No spec drift. PR #4939 already implemented ahead of merge.
+
 ### run 1259 (Mar 15) — spec stable, reviewed upcoming PR #4992
 
 **Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all still open, none merged.
