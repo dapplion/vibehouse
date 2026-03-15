@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1407 (Mar 15) — get_attesting_indices, base_reward, and deposit_data_tree test coverage added
+
+**Test coverage**: Added 42 unit tests across 4 previously-untested consensus-critical common utility files:
+- `get_attesting_indices.rs` (17 tests): base variant — all bits set, no bits set, partial bits with duplicate indices, sorted output, length mismatch error, single validator, empty committee; electra variant — single committee all attesting, single committee partial, multiple committees, non-contiguous committees, sorted output, empty committee error, bitfield length mismatch, no active committees; get_committee_indices — none set, some set
+- `base.rs` (8 tests): SqrtTotalActiveBalance basic/one/non-perfect-square/large, base reward formula verification, zero balance, division by zero on sqrt(0), proportional to balance
+- `altair.rs` (7 tests): BaseRewardPerIncrement basic/zero total, altair base reward formula, zero balance, proportional to balance, sub-increment balance gives zero, more total balance → smaller reward
+- `deposit_data_tree.rs` (10 tests): empty tree deterministic root, single leaf changes root, different leaves different roots, mix-in length affects root, push_leaf changes root, push matches create, generate_proof valid, proof root verifiable via merkle_proof::verify, snapshot round-trip, no snapshot before finalize
+
+**CI**: All green.
+
 ### run 1406 (Mar 15) — effective_balance_updates, resets, and historical_roots_update test coverage added
 
 **Test coverage**: Added 22 unit tests across 3 previously-untested consensus-critical epoch processing files:
