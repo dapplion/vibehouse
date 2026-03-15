@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1418 (Mar 15) — epoch_cache and beacon_proposer_cache test coverage added
+
+**Test coverage**: Added 25 unit tests across 2 previously-untested cache files:
+- `consensus/types/src/epoch_cache.rs` (14 tests): default uninitialized, get_effective_balance/get_base_reward/activation_queue uninitialized errors, check_validity correct/wrong epoch/wrong decision block, get_effective_balance valid/out of bounds, get_base_reward valid/validator OOB/effective balance OOB, activation_queue returns ref, clone shares Arc
+- `beacon_node/beacon_chain/src/beacon_proposer_cache.rs` (11 tests): EpochBlockProposers get_slot correct epoch/wrong epoch/preserves fork, BeaconProposerCache default returns none/insert and get_slot/wrong root returns none/get_epoch returns all/wrong epoch returns none/insert does not overwrite/get_or_insert_key returns same Arc/LRU eviction
+
+**CI**: All 964 types tests + 816 beacon_chain tests pass.
+
 ### run 1416 (Mar 15) — upgrade_to_altair and upgrade_to_electra test coverage added
 
 **Test coverage**: Added 18 unit tests across 2 previously-untested fork upgrade files, completing the full fork upgrade test suite (all 7 forks now covered: altair, bellatrix, capella, deneb, electra, fulu, gloas):
