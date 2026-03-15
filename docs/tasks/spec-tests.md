@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1430 (Mar 15) — store StoreItem, BlobSidecarListFromRoot, DBColumn, and key function test coverage (44 tests)
+
+**Test coverage**: Added 44 unit tests across 4 files in `beacon_node/store/src/`:
+- `blob_sidecar_list_from_root.rs` (11 tests): NoBlobs/NoRoot blobs() returns None, NoBlobs/NoRoot len() is zero, NoBlobs/NoRoot iter() is empty, Blobs variant returns Some, Blobs empty list len zero, From<BlobSidecarList> wraps in Blobs, clone preserves variant, Blobs variant iter empty list
+- `impls/execution_payload.rs` (12 tests): Bellatrix/Capella/Deneb/Electra/Fulu/Gloas StoreItem roundtrip, all variants use ExecPayload column, fork-agnostic roundtrip Gloas/Bellatrix, from_store_bytes invalid data, fork-agnostic from_store_bytes invalid
+- `impls/execution_payload_envelope.rs` (4 tests): SignedBlindedExecutionPayloadEnvelope StoreItem roundtrip, uses BeaconEnvelope column, from_store_bytes invalid, empty roundtrip
+- `lib.rs` (17 tests): data column key roundtrip/zero values/max column index, parse_data_column_key wrong length/empty, get_col_from_key too short/empty, get_key_for_col prefix, DBColumn as_str roundtrip/as_bytes matches str/key_sizes_positive/beacon_data_column_key_size, Key<Hash256> from_bytes valid/wrong length, Key<Vec<u8>> from_bytes/empty, StoreItem as_kv_store_op
+
+**CI**: All 185 store tests pass (44 new + 141 existing).
+
 ### run 1429 (Mar 15) — memory_store, historic_state_cache, and store errors test coverage (44 tests)
 
 **Test coverage**: Added 44 unit tests across 3 previously-untested files in `beacon_node/store/src/`:
