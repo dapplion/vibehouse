@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1396 (Mar 15) — spec stable, prep branches rebased, PR #4954 analyzed
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged. No new PRs opened.
+
+**PR #4954 (fork choice store milliseconds) impact analysis**: Changes `store.time` (seconds) → `store.time_ms` (milliseconds), `store.genesis_time` → `store.genesis_time_ms`. Adds new helpers: `seconds_to_milliseconds`, `milliseconds_to_seconds`, `compute_time_at_slot_ms`, `compute_store_slot_at_time_ms`, `compute_store_time_at_slot_ms`, `compute_time_into_slot_ms`. Simplifies `record_block_timeliness` and `is_proposing_on_time`. **Minimal impact on vibehouse** — our fork choice store already abstracts time as `Slot` (not UNIX timestamps), and sub-slot timing uses `Duration`-based `block_delay` from the beacon chain layer. No code change needed when this merges.
+
+**Prep branch maintenance**: Rebased `cached-ptc` and `ptc-lookbehind` branches onto latest main (2 commits behind). Both compile cleanly. Pushed to origin.
+
+**Code quality**: clippy 0 warnings. cargo audit: no new issues (rsa RUSTSEC-2023-0071 transitive, no fix available). No production `unwrap()` calls in consensus/state_processing or consensus/fork_choice.
+
+**CI**: All green — ci, nightly-tests, spec-test-version-check.
+
+**Conclusion**: No code changes needed. Spec stable. Prep branches up to date.
+
 ### run 1395 (Mar 15) — spec stable, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). All 13 tracked PRs open and unmerged. No new PRs opened.
