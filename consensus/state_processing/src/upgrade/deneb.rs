@@ -79,3 +79,156 @@ pub fn upgrade_to_deneb<E: EthSpec>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use types::*;
+
+    type E = MinimalEthSpec;
+
+    fn make_capella_state() -> (BeaconState<E>, ChainSpec) {
+        let spec = E::default_spec();
+        let epoch = Epoch::new(10);
+        let slot = epoch.start_slot(E::slots_per_epoch());
+
+        let slots_per_hist = <E as EthSpec>::SlotsPerHistoricalRoot::to_usize();
+        let epochs_per_vector = <E as EthSpec>::EpochsPerHistoricalVector::to_usize();
+        let epochs_per_slash = <E as EthSpec>::EpochsPerSlashingsVector::to_usize();
+
+        let sync_committee = Arc::new(SyncCommittee {
+            pubkeys: FixedVector::new(vec![
+                PublicKeyBytes::empty();
+                <E as EthSpec>::SyncCommitteeSize::to_usize()
+            ])
+            .unwrap(),
+            aggregate_pubkey: PublicKeyBytes::empty(),
+        });
+
+        let state = BeaconState::Capella(BeaconStateCapella {
+            genesis_time: 9999,
+            genesis_validators_root: Hash256::repeat_byte(0xCC),
+            slot,
+            fork: Fork {
+                previous_version: spec.bellatrix_fork_version,
+                current_version: spec.capella_fork_version,
+                epoch,
+            },
+            latest_block_header: BeaconBlockHeader {
+                slot: slot.saturating_sub(1u64),
+                proposer_index: 0,
+                parent_root: Hash256::zero(),
+                state_root: Hash256::zero(),
+                body_root: Hash256::zero(),
+            },
+            block_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            state_roots: Vector::new(vec![Hash256::zero(); slots_per_hist]).unwrap(),
+            historical_roots: List::default(),
+            eth1_data: Eth1Data::default(),
+            eth1_data_votes: List::default(),
+            eth1_deposit_index: 200,
+            validators: List::new(vec![Validator {
+                pubkey: PublicKeyBytes::empty(),
+                withdrawal_credentials: Hash256::zero(),
+                effective_balance: 32_000_000_000,
+                slashed: false,
+                activation_eligibility_epoch: Epoch::new(0),
+                activation_epoch: Epoch::new(0),
+                exit_epoch: spec.far_future_epoch,
+                withdrawable_epoch: spec.far_future_epoch,
+            }])
+            .unwrap(),
+            balances: List::new(vec![32_000_000_000]).unwrap(),
+            randao_mixes: Vector::new(vec![Hash256::zero(); epochs_per_vector]).unwrap(),
+            slashings: Vector::new(vec![0; epochs_per_slash]).unwrap(),
+            previous_epoch_participation: List::default(),
+            current_epoch_participation: List::default(),
+            justification_bits: BitVector::new(),
+            previous_justified_checkpoint: Checkpoint::default(),
+            current_justified_checkpoint: Checkpoint::default(),
+            finalized_checkpoint: Checkpoint::default(),
+            inactivity_scores: List::default(),
+            current_sync_committee: sync_committee.clone(),
+            next_sync_committee: sync_committee,
+            latest_execution_payload_header: ExecutionPayloadHeaderCapella {
+                block_hash: ExecutionBlockHash::repeat_byte(0x55),
+                ..Default::default()
+            },
+            next_withdrawal_index: 42,
+            next_withdrawal_validator_index: 7,
+            historical_summaries: List::default(),
+            total_active_balance: None,
+            progressive_balances_cache: ProgressiveBalancesCache::default(),
+            committee_caches: <_>::default(),
+            pubkey_cache: PubkeyCache::default(),
+            builder_pubkey_cache: BuilderPubkeyCache::default(),
+            exit_cache: ExitCache::default(),
+            slashings_cache: SlashingsCache::default(),
+            epoch_cache: EpochCache::default(),
+        });
+
+        (state, spec)
+    }
+
+    #[test]
+    fn upgrade_sets_fork_versions() {
+        let (mut state, spec) = make_capella_state();
+        upgrade_to_deneb(&mut state, &spec).unwrap();
+
+        assert!(state.as_deneb().is_ok());
+        let fork = state.fork();
+        assert_eq!(fork.previous_version, spec.capella_fork_version);
+        assert_eq!(fork.current_version, spec.deneb_fork_version);
+        assert_eq!(fork.epoch, Epoch::new(10));
+    }
+
+    #[test]
+    fn upgrade_preserves_versioning() {
+        let (mut state, spec) = make_capella_state();
+        upgrade_to_deneb(&mut state, &spec).unwrap();
+
+        assert_eq!(state.genesis_time(), 9999);
+        assert_eq!(state.genesis_validators_root(), Hash256::repeat_byte(0xCC));
+    }
+
+    #[test]
+    fn upgrade_preserves_capella_fields() {
+        let (mut state, spec) = make_capella_state();
+        upgrade_to_deneb(&mut state, &spec).unwrap();
+
+        let deneb = state.as_deneb().unwrap();
+        assert_eq!(deneb.next_withdrawal_index, 42);
+        assert_eq!(deneb.next_withdrawal_validator_index, 7);
+    }
+
+    #[test]
+    fn upgrade_preserves_registry() {
+        let (mut state, spec) = make_capella_state();
+        upgrade_to_deneb(&mut state, &spec).unwrap();
+
+        assert_eq!(state.validators().len(), 1);
+        assert_eq!(*state.balances().get(0).unwrap(), 32_000_000_000);
+        assert_eq!(state.eth1_deposit_index(), 200);
+    }
+
+    #[test]
+    fn upgrade_upgrades_execution_payload_header() {
+        let (mut state, spec) = make_capella_state();
+        upgrade_to_deneb(&mut state, &spec).unwrap();
+
+        let deneb = state.as_deneb().unwrap();
+        assert_eq!(
+            deneb.latest_execution_payload_header.block_hash,
+            ExecutionBlockHash::repeat_byte(0x55)
+        );
+    }
+
+    #[test]
+    fn upgrade_fails_on_wrong_variant() {
+        let spec = E::default_spec();
+        let (mut state, _) = make_capella_state();
+        upgrade_to_deneb(&mut state, &spec).unwrap();
+        assert!(upgrade_to_deneb(&mut state, &spec).is_err());
+    }
+}
