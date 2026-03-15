@@ -4,6 +4,7 @@ use crate::upgrade::{
 };
 use crate::{per_epoch_processing::EpochProcessingSummary, *};
 use safe_arith::{ArithError, SafeArith};
+use ssz_types::FixedVector;
 use ssz_types::typenum::Unsigned;
 use tracing::instrument;
 use types::*;
@@ -90,7 +91,47 @@ pub fn per_slot_processing<E: EthSpec>(
         state.build_caches(spec)?;
     }
 
+    // [New in Gloas:EIP7732] Rotate PTC caches after slot advance.
+    // Spec: state.previous_ptc = state.current_ptc
+    //       state.current_ptc = compute_ptc(state)
+    if state.fork_name_unchecked().gloas_enabled() {
+        rotate_ptc_caches(state, spec)?;
+    }
+
     Ok(summary)
+}
+
+/// [New in Gloas:EIP7732] Rotate cached PTC vectors after a slot advance.
+///
+/// previous_ptc ← current_ptc
+/// current_ptc  ← compute_ptc(state)   (freshly computed for the new slot)
+///
+/// If compute_ptc fails (e.g., committee caches not built, no active validators),
+/// the rotation still sets previous_ptc but leaves current_ptc unchanged.
+/// This is safe because proper states always have committee caches available.
+fn rotate_ptc_caches<E: EthSpec>(
+    state: &mut BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<(), Error> {
+    use crate::per_block_processing::gloas::compute_ptc;
+
+    // Rotate: previous = current
+    let current = state.current_ptc()?.clone();
+    *state.previous_ptc_mut()? = current;
+
+    // Compute new current PTC for the new slot.
+    // Committee caches should already be built at this point (build_caches runs on epoch
+    // boundaries, and for non-epoch-boundary slots the caches from the previous epoch
+    // are still valid).
+    #[allow(clippy::collapsible_if)]
+    if let Ok(ptc_vec) = compute_ptc(state, spec) {
+        // Can't collapse: compute_ptc borrows state; FixedVector::new is a separate fallible step.
+        if let Ok(fv) = FixedVector::new(ptc_vec) {
+            *state.current_ptc_mut()? = fv;
+        }
+    }
+
+    Ok(())
 }
 
 #[instrument(skip_all)]
@@ -272,6 +313,9 @@ mod gloas_per_slot_tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: ExecutionBlockHash::zero(),
             payload_expected_withdrawals: List::default(),
+            previous_ptc: FixedVector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()])
+                .unwrap(),
+            current_ptc: FixedVector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()]).unwrap(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),

@@ -367,14 +367,155 @@ pub fn get_indexed_payload_attestation<E: EthSpec>(
     })
 }
 
-/// Computes the PTC (Payload Timeliness Committee) for a given slot.
+/// Computes the PTC (Payload Timeliness Committee) for the current slot.
+///
+/// Spec: compute_ptc(state)
+/// 1. Concatenate all beacon committees for state.slot
+/// 2. Use compute_balance_weighted_selection to pick PTC_SIZE validators
+///
+/// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#new-compute_ptc>
+pub fn compute_ptc<E: EthSpec>(
+    state: &BeaconState<E>,
+    spec: &ChainSpec,
+) -> Result<Vec<u64>, BlockProcessingError> {
+    let slot = state.slot();
+    let epoch = slot.epoch(E::slots_per_epoch());
+
+    // Spec: seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(state.slot))
+    let base_seed = state
+        .get_seed(epoch, Domain::PtcAttester, spec)
+        .map_err(BlockProcessingError::BeaconStateError)?;
+    let slot_bytes = int_to_bytes8(slot.as_u64());
+    let mut seed_input = [0u8; 40]; // 32 + 8
+    seed_input[..32].copy_from_slice(base_seed.as_slice());
+    seed_input[32..].copy_from_slice(&slot_bytes);
+    let seed = hash_fixed(&seed_input);
+
+    // Get all committees for this slot and compute total validator count.
+    let committees = state
+        .get_beacon_committees_at_slot(slot)
+        .map_err(BlockProcessingError::BeaconStateError)?;
+    let total: usize = committees
+        .iter()
+        .fold(0usize, |acc, c| acc.saturating_add(c.committee.len()));
+
+    let ptc_size = E::PtcSize::to_usize();
+    if total == 0 {
+        return Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::NoActiveValidators,
+        ));
+    }
+
+    let max_effective_balance = spec.max_effective_balance_electra;
+    let max_random_value: u64 = (1u64 << 16).saturating_sub(1); // 2^16 - 1
+
+    let mut selected: Vec<u64> = Vec::with_capacity(ptc_size);
+    let mut i: u64 = 0;
+    let mut hash_input = [0u8; 40];
+    hash_input[..32].copy_from_slice(&seed);
+    let mut cached_hash_group: u64 = u64::MAX;
+    let mut random_bytes = [0u8; 32];
+    while selected.len() < ptc_size {
+        let next_index = i.safe_rem(total as u64)? as usize;
+        let candidate_index = {
+            let mut remaining = next_index;
+            let mut found = None;
+            for committee in &committees {
+                let len = committee.committee.len();
+                if remaining < len {
+                    found = committee.committee.get(remaining).map(|&idx| idx as u64);
+                    break;
+                }
+                remaining = remaining.saturating_sub(len);
+            }
+            found.ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?
+        };
+
+        let hash_group = i.safe_div(16)?;
+        if hash_group != cached_hash_group {
+            hash_input[32..].copy_from_slice(&int_to_bytes8(hash_group));
+            random_bytes = hash_fixed(&hash_input);
+            cached_hash_group = hash_group;
+        }
+        let offset = i.safe_rem(16)?.safe_mul(2)? as usize;
+        let random_byte_0 =
+            *random_bytes
+                .get(offset)
+                .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                    PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+                ))?;
+        let random_byte_1 = *random_bytes.get(offset.safe_add(1)?).ok_or(
+            BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ),
+        )?;
+        let random_value = u16::from_le_bytes([random_byte_0, random_byte_1]) as u64;
+
+        let effective_balance = state
+            .validators()
+            .get(candidate_index as usize)
+            .ok_or(BlockProcessingError::PayloadAttestationInvalid(
+                PayloadAttestationInvalid::AttesterIndexOutOfBounds,
+            ))?
+            .effective_balance;
+
+        if effective_balance.safe_mul(max_random_value)?
+            >= max_effective_balance.safe_mul(random_value)?
+        {
+            selected.push(candidate_index);
+        }
+        i.safe_add_assign(1)?;
+    }
+
+    Ok(selected)
+}
+
+/// Returns the cached PTC (Payload Timeliness Committee) for the given slot.
 ///
 /// Spec: get_ptc(state, slot)
-/// 1. Concatenate all beacon committees for the slot
-/// 2. Use compute_balance_weighted_selection to pick PTC_SIZE validators
+/// After PR #4992, this is a simple lookup from cached state fields.
+/// Asserts slot is either the current slot or the previous slot.
 ///
 /// Reference: <https://github.com/ethereum/consensus-specs/blob/master/specs/gloas/beacon-chain.md#get_ptc>
 pub fn get_ptc_committee<E: EthSpec>(
+    state: &BeaconState<E>,
+    slot: Slot,
+    _spec: &ChainSpec,
+) -> Result<Vec<u64>, BlockProcessingError> {
+    let current_slot = state.slot();
+
+    if slot == current_slot {
+        Ok(state
+            .current_ptc()
+            .map_err(BlockProcessingError::BeaconStateError)?
+            .iter()
+            .copied()
+            .collect())
+    } else if slot.safe_add(1)? == current_slot {
+        Ok(state
+            .previous_ptc()
+            .map_err(BlockProcessingError::BeaconStateError)?
+            .iter()
+            .copied()
+            .collect())
+    } else {
+        Err(BlockProcessingError::PayloadAttestationInvalid(
+            PayloadAttestationInvalid::SlotMismatch {
+                attestation_slot: slot,
+                state_slot: current_slot,
+            },
+        ))
+    }
+}
+
+/// Legacy computation of PTC for a given slot (used by tests and during
+/// initial state construction when the cache isn't populated yet).
+///
+/// This is the original get_ptc algorithm that computes from scratch.
+/// After cached PTCs are populated, use `get_ptc_committee` instead.
+pub fn compute_ptc_for_slot<E: EthSpec>(
     state: &BeaconState<E>,
     slot: Slot,
     spec: &ChainSpec,
@@ -1176,6 +1317,9 @@ mod tests {
             builder_pending_withdrawals: List::default(),
             latest_block_hash: parent_block_hash,
             payload_expected_withdrawals: List::default(),
+            previous_ptc: FixedVector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()])
+                .unwrap(),
+            current_ptc: FixedVector::new(vec![0u64; <E as EthSpec>::PtcSize::to_usize()]).unwrap(),
             total_active_balance: None,
             progressive_balances_cache: ProgressiveBalancesCache::default(),
             committee_caches: <[Arc<CommitteeCache>; CACHED_EPOCHS]>::default(),
@@ -3295,9 +3439,9 @@ mod tests {
         );
     }
 
-    // ── get_ptc_committee tests ──────────────────────────────────
+    // ── compute_ptc_for_slot tests ──────────────────────────────────
 
-    /// Build a state with committee caches initialized (needed for get_ptc_committee).
+    /// Build a state with committee caches and PTC caches initialized.
     fn make_gloas_state_with_committees(
         num_validators: usize,
         balance: u64,
@@ -3310,6 +3454,19 @@ mod tests {
         state
             .build_committee_cache(types::RelativeEpoch::Current, &spec)
             .expect("should build current committee cache");
+        // Populate cached PTC fields so get_ptc_committee (lookup) works.
+        // Use if-let since edge-case states (e.g. 1 validator) may fail PTC computation.
+        let prev_slot = state.slot().saturating_sub(1u64);
+        if let Ok(prev_ptc) = compute_ptc_for_slot(&state, prev_slot, &spec)
+            && let Ok(fv) = FixedVector::new(prev_ptc)
+        {
+            *state.previous_ptc_mut().unwrap() = fv;
+        }
+        if let Ok(curr_ptc) = compute_ptc_for_slot(&state, state.slot(), &spec)
+            && let Ok(fv) = FixedVector::new(curr_ptc)
+        {
+            *state.current_ptc_mut().unwrap() = fv;
+        }
         (state, spec)
     }
 
@@ -3318,7 +3475,7 @@ mod tests {
         // MinimalEthSpec: PtcSize = 2
         let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
         let slot = state.slot();
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, slot, &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
         assert_eq!(ptc.len(), 2);
     }
@@ -3327,7 +3484,7 @@ mod tests {
     fn ptc_committee_members_are_valid_validators() {
         let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
         let slot = state.slot();
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, slot, &spec).unwrap();
 
         let num_validators = state.validators().len();
         for &idx in &ptc {
@@ -3345,8 +3502,8 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
         let slot = state.slot();
 
-        let ptc1 = get_ptc_committee(&state, slot, &spec).unwrap();
-        let ptc2 = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc1 = compute_ptc_for_slot(&state, slot, &spec).unwrap();
+        let ptc2 = compute_ptc_for_slot(&state, slot, &spec).unwrap();
         assert_eq!(
             ptc1, ptc2,
             "PTC should be deterministic for the same state and slot"
@@ -3369,8 +3526,8 @@ mod tests {
             .unwrap();
         let slot_b = state.slot();
 
-        let ptc_a = get_ptc_committee(&state, slot_a, &spec).unwrap();
-        let ptc_b = get_ptc_committee(&state, slot_b, &spec).unwrap();
+        let ptc_a = compute_ptc_for_slot(&state, slot_a, &spec).unwrap();
+        let ptc_b = compute_ptc_for_slot(&state, slot_b, &spec).unwrap();
 
         // With 64 validators and PTC_SIZE=2, very likely different selections
         // (not guaranteed but extremely likely with different seeds)
@@ -3399,7 +3556,7 @@ mod tests {
             .expect("should build committee cache");
 
         let slot = state.slot();
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, slot, &spec).unwrap();
 
         // All members should have max effective balance — they should all pass the filter
         // We just verify the committee was computed successfully and has PTC_SIZE members
@@ -3413,7 +3570,7 @@ mod tests {
         assert_eq!(state.slot(), Slot::new(8));
         assert_eq!(state.slot().epoch(E::slots_per_epoch()), Epoch::new(1));
 
-        let ptc = get_ptc_committee(&state, state.slot(), &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, state.slot(), &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
     }
 
@@ -3423,11 +3580,11 @@ mod tests {
         //
         // When validating a payload attestation from the previous slot at an epoch
         // boundary, effective balance changes from epoch processing cause
-        // get_ptc_committee to return a different committee for the same slot.
+        // compute_ptc_for_slot to return a different committee for the same slot.
         //
         // Example: attestation created for slot 7 (epoch 0) with PTC committee A.
         // Epoch processing runs, effective balances change. At slot 8 (epoch 1),
-        // get_ptc_committee(state, slot=7) returns committee B != A because the
+        // compute_ptc_for_slot(state, slot=7) returns committee B != A because the
         // balance-weighted selection now uses different weights.
         //
         // Fix: PR #4992 adds ptc_lookbehind cache to BeaconState so PTC committees
@@ -3443,7 +3600,7 @@ mod tests {
         // which is the previous slot — exactly when payload attestation validation
         // would look back.
         let target_slot = Slot::new(7);
-        let ptc_before = get_ptc_committee(&state, target_slot, &spec).unwrap();
+        let ptc_before = compute_ptc_for_slot(&state, target_slot, &spec).unwrap();
         assert_eq!(ptc_before.len(), E::ptc_size());
 
         // Simulate what epoch processing does: change effective balances.
@@ -3461,7 +3618,7 @@ mod tests {
             .build_committee_cache(types::RelativeEpoch::Current, &spec)
             .unwrap();
 
-        let ptc_after = get_ptc_committee(&state, target_slot, &spec).unwrap();
+        let ptc_after = compute_ptc_for_slot(&state, target_slot, &spec).unwrap();
         assert_eq!(ptc_after.len(), E::ptc_size());
 
         // The committees should differ because balance weighting changed.
@@ -3499,7 +3656,7 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(64, max_eb, 64_000_000_000);
         let slot = state.slot();
 
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, slot, &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
 
         // Since every candidate passes, selection never rejects. With 64 validators and
@@ -3539,7 +3696,7 @@ mod tests {
             total_members += committee.committee.len();
         }
 
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, slot, &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
 
         if total_members == 1 {
@@ -3568,8 +3725,8 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(16, half_max, 64_000_000_000);
         let slot = state.slot();
 
-        let ptc1 = get_ptc_committee(&state, slot, &spec).unwrap();
-        let ptc2 = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc1 = compute_ptc_for_slot(&state, slot, &spec).unwrap();
+        let ptc2 = compute_ptc_for_slot(&state, slot, &spec).unwrap();
         assert_eq!(ptc1.len(), E::ptc_size());
         assert_eq!(
             ptc1, ptc2,
@@ -3595,7 +3752,7 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(128, max_eb, 64_000_000_000);
         let slot = state.slot();
 
-        let ptc = get_ptc_committee(&state, slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, slot, &spec).unwrap();
         assert_eq!(ptc.len(), E::ptc_size());
 
         // All members should be valid validators
@@ -3631,7 +3788,7 @@ mod tests {
         let (mut state, spec) = make_gloas_state_with_committees(64, half_max, 64_000_000_000);
 
         let slot_epoch1 = Slot::new(8); // slot 0 of epoch 1
-        let ptc_epoch1 = get_ptc_committee(&state, slot_epoch1, &spec).unwrap();
+        let ptc_epoch1 = compute_ptc_for_slot(&state, slot_epoch1, &spec).unwrap();
         assert_eq!(ptc_epoch1.len(), E::ptc_size());
 
         // Advance state to epoch 2 and rebuild caches
@@ -3645,7 +3802,7 @@ mod tests {
             .unwrap();
 
         let slot_epoch2 = Slot::new(16);
-        let ptc_epoch2 = get_ptc_committee(&state, slot_epoch2, &spec).unwrap();
+        let ptc_epoch2 = compute_ptc_for_slot(&state, slot_epoch2, &spec).unwrap();
         assert_eq!(ptc_epoch2.len(), E::ptc_size());
 
         // With 64 validators and half balance, different seeds almost certainly produce
@@ -3792,7 +3949,7 @@ mod tests {
 
         // Get expected PTC
         let prev_slot = state.slot().saturating_sub(1u64);
-        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, prev_slot, &spec).unwrap();
 
         // Set bit 0 only
         let attestation = make_payload_attestation(&state, &[true, false]);
@@ -3810,7 +3967,7 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
 
         let prev_slot = state.slot().saturating_sub(1u64);
-        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, prev_slot, &spec).unwrap();
 
         let attestation = make_payload_attestation(&state, &[true, true]);
         let indexed = get_indexed_payload_attestation(&state, &attestation, &spec).unwrap();
@@ -4201,7 +4358,7 @@ mod tests {
         let (state, spec) = make_gloas_state_with_committees(8, 32_000_000_000, 64_000_000_000);
 
         let prev_slot = state.slot().saturating_sub(1u64);
-        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, prev_slot, &spec).unwrap();
 
         // Only bit[1] set
         let attestation = make_payload_attestation(&state, &[false, true]);
@@ -6881,7 +7038,7 @@ mod tests {
         );
     }
 
-    // ── get_ptc_committee zero-balance edge case tests ──────────
+    // ── compute_ptc_for_slot zero-balance edge case tests ──────────
 
     #[test]
     fn ptc_committee_zero_balance_validators_eventually_selected() {
@@ -6906,7 +7063,7 @@ mod tests {
 
         let slot = state.slot();
         // This may take many iterations but should eventually complete
-        let ptc = get_ptc_committee(&state, slot, &spec);
+        let ptc = compute_ptc_for_slot(&state, slot, &spec);
 
         // With zero balance, acceptance requires random_value == 0 (probability 1/65536 per try).
         // The algorithm is deterministic and will eventually find values. Just verify it
@@ -7653,7 +7810,7 @@ mod tests {
         let parent_root = state.latest_block_header().parent_root;
 
         // Build a valid attestation with correct slot and block root
-        let ptc = get_ptc_committee(&state, correct_slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, correct_slot, &spec).unwrap();
         assert!(!ptc.is_empty(), "PTC should have members");
 
         // Set bit for first PTC member
@@ -9136,7 +9293,7 @@ mod tests {
         );
 
         // The index should correspond to the first PTC member
-        let ptc = get_ptc_committee(&state, prev_slot, &spec).unwrap();
+        let ptc = compute_ptc_for_slot(&state, prev_slot, &spec).unwrap();
         assert_eq!(
             indexed.attesting_indices[0], ptc[0],
             "attesting index should match the PTC member at position 0"
@@ -9198,7 +9355,7 @@ mod tests {
 
     #[test]
     fn ptc_committee_no_validators_returns_error() {
-        // Build a state with 0 validators — get_ptc_committee should fail with NoActiveValidators
+        // Build a state with 0 validators — compute_ptc_for_slot should fail with NoActiveValidators
         // because get_beacon_committees_at_slot returns empty committees.
         let (mut state, spec) = make_gloas_state_with_committees(1, 32_000_000_000, 64_000_000_000);
         let slot = state.slot();
@@ -9213,7 +9370,7 @@ mod tests {
             .build_committee_cache(types::RelativeEpoch::Current, &spec)
             .expect("should build current committee cache");
 
-        let result = get_ptc_committee(&state, slot, &spec);
+        let result = compute_ptc_for_slot(&state, slot, &spec);
         assert!(
             matches!(
                 result,

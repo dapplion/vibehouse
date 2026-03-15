@@ -5,7 +5,7 @@ use std::mem;
 use types::{
     Address, BeaconState, BeaconStateError as Error, BeaconStateGloas, Builder,
     BuilderPendingPayment, BuilderPubkeyCache, ChainSpec, DepositData, EthSpec,
-    ExecutionPayloadBid, Fork, List, PublicKeyBytes, Vector,
+    ExecutionPayloadBid, FixedVector, Fork, List, PublicKeyBytes, Vector,
 };
 
 /// Transform a `Fulu` state into a `Gloas` state.
@@ -17,6 +17,10 @@ pub fn upgrade_to_gloas<E: EthSpec>(
 
     // [New in Gloas:EIP7732] Onboard builders from pending deposits
     onboard_builders_from_pending_deposits(&mut post, spec)?;
+
+    // Note: previous_ptc and current_ptc are initialized to zeros.
+    // The PTC rotation in per_slot_processing (which runs after the upgrade
+    // and after build_caches) will compute the correct values.
 
     *pre_state = post;
 
@@ -109,6 +113,9 @@ pub(crate) fn upgrade_state_to_gloas<E: EthSpec>(
         builder_pending_withdrawals: List::default(),
         latest_block_hash: pre.latest_execution_payload_header.block_hash,
         payload_expected_withdrawals: List::default(),
+        // Cached PTCs — initialized to zero, current_ptc computed after builder onboarding
+        previous_ptc: FixedVector::new(vec![0u64; E::PtcSize::to_usize()])?,
+        current_ptc: FixedVector::new(vec![0u64; E::PtcSize::to_usize()])?,
         // Caches
         total_active_balance: pre.total_active_balance,
         progressive_balances_cache: mem::take(&mut pre.progressive_balances_cache),

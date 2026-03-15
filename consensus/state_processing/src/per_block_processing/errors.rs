@@ -473,4 +473,9 @@ pub enum PayloadAttestationInvalid {
     AttesterIndexOutOfBounds,
     /// No active validators to form PTC
     NoActiveValidators,
+    /// PTC lookup slot is neither current nor previous
+    SlotMismatch {
+        attestation_slot: Slot,
+        state_slot: Slot,
+    },
 }

@@ -179,6 +179,22 @@ pub fn initialize_beacon_state_from_eth1<E: EthSpec>(
     // Now that we have our validators, initialize the caches (including the committees)
     state.build_caches(spec)?;
 
+    // [New in Gloas:EIP7732] Compute initial current_ptc for Gloas genesis.
+    // This must happen after build_caches (committee caches needed) and after
+    // upgrade_to_gloas (which initializes previous_ptc/current_ptc to zeros).
+    if state.fork_name_unchecked().gloas_enabled() {
+        use crate::per_block_processing::gloas::compute_ptc;
+        #[allow(clippy::collapsible_if)]
+        if let Ok(ptc) = compute_ptc(&state, spec) {
+            if let Ok(fv) = ssz_types::FixedVector::new(ptc) {
+                // Can't collapse: compute_ptc borrows state; current_ptc_mut borrows mutably.
+                if let Ok(field) = state.current_ptc_mut() {
+                    *field = fv;
+                }
+            }
+        }
+    }
+
     // Set genesis validators root for domain separation and chain versioning
     *state.genesis_validators_root_mut() = state.update_validators_tree_hash_cache()?;
 

@@ -641,6 +641,20 @@ where
     #[superstruct(only(Gloas))]
     pub payload_expected_withdrawals: List<Withdrawal, E::MaxWithdrawalsPerPayload>,
 
+    // Cached PTC (Payload Timeliness Committee) for the previous slot
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[metastruct(exclude_from(tree_lists))]
+    pub previous_ptc: FixedVector<u64, E::PtcSize>,
+
+    // Cached PTC (Payload Timeliness Committee) for the current slot
+    #[compare_fields(as_iter)]
+    #[test_random(default)]
+    #[superstruct(only(Gloas))]
+    #[metastruct(exclude_from(tree_lists))]
+    pub current_ptc: FixedVector<u64, E::PtcSize>,
+
     // Caching (not in the spec)
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing, skip_deserializing)]
