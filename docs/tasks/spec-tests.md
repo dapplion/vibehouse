@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1402 (Mar 15) — spec stable, verify_bls_to_execution_change test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 10 unit tests to `verify_bls_to_execution_change.rs` (previously had ZERO test coverage). Tests cover:
+- Happy paths (2 tests): valid change, valid change across all 4 validator indices
+- Validator unknown (2 tests): nonexistent index, large index checked first
+- Non-BLS withdrawal credentials (2 tests): eth1 prefix (0x01), compounding prefix (0x02)
+- Withdrawal credentials mismatch (2 tests): wrong pubkey, empty pubkey
+- Error ordering (1 test): non-BLS prefix checked before pubkey mismatch
+- Address acceptance (1 test): any to_execution_address accepted (zero, 0xFF, 0x01)
+
+**CI**: All green.
+
 ### run 1401 (Mar 15) — spec stable, slashing & indexed attestation validation test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
