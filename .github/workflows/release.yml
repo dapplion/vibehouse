@@ -14,8 +14,6 @@ env:
     DOCKER_USERNAME: ${{ secrets.DH_ORG }}
     REPO_NAME: ${{ github.repository_owner }}/vibehouse
     IMAGE_NAME: ${{ github.repository_owner }}/vibehouse
-    # Enable self-hosted runners for the dapplion repo only.
-    SELF_HOSTED_RUNNERS: ${{ github.repository == 'dapplion/vibehouse' }}
 
 jobs:
     extract-version:
@@ -35,10 +33,10 @@ jobs:
                        aarch64-apple-darwin]
                 include:
                     -   arch: aarch64-unknown-linux-gnu
-                        runner: ${{ github.repository == 'dapplion/vibehouse' && fromJson('["self-hosted", "linux", "release", "large"]') || 'ubuntu-latest'  }}
+                        runner: ubuntu-latest
                         profile: maxperf
                     -   arch: x86_64-unknown-linux-gnu
-                        runner: ${{ github.repository == 'dapplion/vibehouse' && fromJson('["self-hosted", "linux", "release", "large"]') || 'ubuntu-latest'  }}
+                        runner: ubuntu-latest
                         profile: maxperf
                     -   arch: aarch64-apple-darwin
                         runner: macos-14
@@ -50,7 +48,6 @@ jobs:
             - name: Checkout sources
               uses: actions/checkout@v5
             - name: Get latest version of stable Rust
-              if: env.SELF_HOSTED_RUNNERS == 'false'
               run: rustup update stable
 
             # ==============================
