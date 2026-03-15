@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1433 (Mar 16) — HTTP API, VC types, and epoch processing error test coverage (81 tests)
+
+**Test coverage**: Added 81 unit tests across 5 previously-untested files spanning 3 crates:
+- `beacon_node/http_api/src/api_error.rs` (23 tests): Debug format for all 9 variants, convenience constructors (not_found/bad_request/server_error/service_unavailable/unsupported_media_type/object_invalid/beacon_state_error/arith_error/unhandled_error), IntoResponse status codes + body content for all variants (404/400/500/503/403/401/415/202/400-indexed)
+- `beacon_node/http_api/src/version.rs` (17 tests): beacon_response versioned/unversioned, execution_optimistic_finalized_beacon_response versioned/unversioned with metadata, add_ssz_content_type_header, add_consensus_version_header, add_execution_payload_blinded_header true/false, add_execution_payload_value_header, add_consensus_block_value_header, inconsistent_fork_rejection, unsupported_version_rejection, V1/V2/V3 constants, ResponseIncludesVersion equality
+- `beacon_node/http_api/src/extractors.rs` (17 tests): accept_header none/json/ssz/unknown, consensus_version_header missing/valid/unknown, optional_consensus_version_header missing/valid/invalid, json_body valid/ssz-rejection/invalid, json_body_or_default empty/data/ssz-rejection, parse_endpoint_version v1/v2/invalid/empty
+- `common/eth2/src/vibehouse_vc/types.rs` (13 tests): ValidatorData/ValidatorRequest/ValidatorPatchRequest/CreatedValidator serde roundtrips, optional field absence, quoted_u64 gas_limit, VoluntaryExitQuery, SetGraffitiRequest, UpdateCandidatesRequest/Response, Web3SignerValidatorRequest, UpdateFeeRecipientRequest address_hex
+- `consensus/state_processing/src/per_epoch_processing/errors.rs` (11 tests): From conversions (BeaconStateError, ssz_types::Error, BitfieldError, ArithError, milhouse::Error, EpochCacheError), DeltaOutOfBounds/InvalidFlagIndex/ProposerLookaheadOutOfBounds field tests, singleton variants debug, equality/inequality
+
+**CI**: All 81 new tests pass. 57 http_api + 13 eth2 + 11 state_processing.
+
 ### run 1432 (Mar 16) — vibehouse API types, beacon_chain error types, and persistence test coverage (53 tests)
 
 **Test coverage**: Added 53 unit tests across 5 previously-untested files spanning 2 crates:

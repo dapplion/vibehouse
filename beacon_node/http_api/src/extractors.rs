@@ -97,3 +97,166 @@ pub fn parse_endpoint_version(version_str: &str) -> Result<api_types::EndpointVe
         .parse::<api_types::EndpointVersion>()
         .map_err(|_| ApiError::bad_request("Invalid version identifier"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::HeaderMap;
+
+    #[test]
+    fn accept_header_none_when_missing() {
+        let headers = HeaderMap::new();
+        assert!(accept_header(&headers).is_none());
+    }
+
+    #[test]
+    fn accept_header_json() {
+        let mut headers = HeaderMap::new();
+        headers.insert("accept", "application/json".parse().unwrap());
+        let accept = accept_header(&headers);
+        assert_eq!(accept, Some(api_types::Accept::Json));
+    }
+
+    #[test]
+    fn accept_header_ssz() {
+        let mut headers = HeaderMap::new();
+        headers.insert("accept", "application/octet-stream".parse().unwrap());
+        let accept = accept_header(&headers);
+        assert_eq!(accept, Some(api_types::Accept::Ssz));
+    }
+
+    #[test]
+    fn accept_header_unknown_returns_none() {
+        let mut headers = HeaderMap::new();
+        headers.insert("accept", "text/html".parse().unwrap());
+        assert!(accept_header(&headers).is_none());
+    }
+
+    #[test]
+    fn consensus_version_header_missing() {
+        let headers = HeaderMap::new();
+        let result = consensus_version_header(&headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn consensus_version_header_valid() {
+        let mut headers = HeaderMap::new();
+        headers.insert(eth2::CONSENSUS_VERSION_HEADER, "deneb".parse().unwrap());
+        let fork = consensus_version_header(&headers).unwrap();
+        assert_eq!(fork, ForkName::Deneb);
+    }
+
+    #[test]
+    fn consensus_version_header_unknown_fork() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            eth2::CONSENSUS_VERSION_HEADER,
+            "unknownfork".parse().unwrap(),
+        );
+        assert!(consensus_version_header(&headers).is_err());
+    }
+
+    #[test]
+    fn optional_consensus_version_header_missing() {
+        let headers = HeaderMap::new();
+        assert!(optional_consensus_version_header(&headers).is_none());
+    }
+
+    #[test]
+    fn optional_consensus_version_header_valid() {
+        let mut headers = HeaderMap::new();
+        headers.insert(eth2::CONSENSUS_VERSION_HEADER, "capella".parse().unwrap());
+        assert_eq!(
+            optional_consensus_version_header(&headers),
+            Some(ForkName::Capella)
+        );
+    }
+
+    #[test]
+    fn optional_consensus_version_header_invalid() {
+        let mut headers = HeaderMap::new();
+        headers.insert(eth2::CONSENSUS_VERSION_HEADER, "garbage".parse().unwrap());
+        assert!(optional_consensus_version_header(&headers).is_none());
+    }
+
+    #[tokio::test]
+    async fn json_body_valid() {
+        let headers = HeaderMap::new();
+        let body = axum::body::Bytes::from(r#"{"value": 42}"#);
+        let result: Result<serde_json::Value, _> = json_body(&headers, body).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap()["value"], 42);
+    }
+
+    #[tokio::test]
+    async fn json_body_rejects_ssz_content_type() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE_HEADER,
+            SSZ_CONTENT_TYPE_HEADER.parse().unwrap(),
+        );
+        let body = axum::body::Bytes::from("{}");
+        let result: Result<serde_json::Value, _> = json_body(&headers, body).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn json_body_invalid_json() {
+        let headers = HeaderMap::new();
+        let body = axum::body::Bytes::from("not json");
+        let result: Result<serde_json::Value, _> = json_body(&headers, body).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn json_body_or_default_empty() {
+        let headers = HeaderMap::new();
+        let body = axum::body::Bytes::new();
+        let result: Result<serde_json::Value, _> = json_body_or_default(&headers, body).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn json_body_or_default_with_data() {
+        let headers = HeaderMap::new();
+        let body = axum::body::Bytes::from(r#"{"key": "val"}"#);
+        let result: Result<serde_json::Value, _> = json_body_or_default(&headers, body).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap()["key"], "val");
+    }
+
+    #[tokio::test]
+    async fn json_body_or_default_rejects_ssz() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE_HEADER,
+            SSZ_CONTENT_TYPE_HEADER.parse().unwrap(),
+        );
+        let body = axum::body::Bytes::new();
+        let result: Result<serde_json::Value, _> = json_body_or_default(&headers, body).await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_endpoint_version_v1() {
+        let v = parse_endpoint_version("v1").unwrap();
+        assert_eq!(v, api_types::EndpointVersion(1));
+    }
+
+    #[test]
+    fn parse_endpoint_version_v2() {
+        let v = parse_endpoint_version("v2").unwrap();
+        assert_eq!(v, api_types::EndpointVersion(2));
+    }
+
+    #[test]
+    fn parse_endpoint_version_invalid() {
+        assert!(parse_endpoint_version("xyz").is_err());
+    }
+
+    #[test]
+    fn parse_endpoint_version_empty() {
+        assert!(parse_endpoint_version("").is_err());
+    }
+}
