@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1253 (Mar 15) — spec stable, all tests pass, no action needed
+
+**Spec monitoring**: No new consensus-specs commits since e50889e1ca. No new spec test releases (latest v1.7.0-alpha.3). Open Gloas PRs unchanged: #4992 (cached PTCs, 1 approval but still open), #4939 (request missing envelopes), #4843 (variable PTC deadline), #4954 (millisecond timestamps), #4747 (fast confirmation rule, 109 review comments, active design). None merged.
+
+**Local verification**: 139/139 EF spec tests pass (fake_crypto, minimal). CI run 23100175757 fully green. Nightly green (15+ consecutive). Docker workflow 23100175799 queued (runner availability, not code issue).
+
+**Cargo audit**: Unchanged — 1 rsa vulnerability (no fix available), 5 unmaintained warnings (all transitive deps). No new advisories.
+
+**Conclusion**: Project stable. No spec drift, no code changes needed.
+
 ### run 1252 (Mar 15) — CI green, spec stable, no action needed
 
 **CI**: Run 23100175757 fully green — all 6 jobs passed (check+clippy, ef-tests, unit tests, beacon_chain, http_api, network+op_pool). Fix from run 1249 (invalid_signature tests after availability bit patch) confirmed working.
