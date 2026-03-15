@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1360 (Mar 15) — spec stable, CI green, no changes needed
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 8 tracked open Gloas/ePBS PRs unchanged (#4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630). Recently merged: #5002 (wording clarification for self-build payload signature verification — no code impact), #5003 (proposer_lookahead simplification — closed without merging).
+
+**CI**: ci green. Nightly in progress (only http-api-tests remaining, all other jobs passed). Docker build queued (runner availability). cargo audit: 1 rsa vulnerability (no fix), 5 unmaintained warnings (all transitive from sp1-verifier, not actionable). cargo outdated: only rand_xorshift 0.4→0.5 (blocked by rand 0.8→0.9 ecosystem migration).
+
+**Conclusion**: Project stable. No spec drift. No code changes needed.
+
 ### run 1359 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). All 8 tracked open Gloas/ePBS PRs unchanged (#4992, #4962, #4960, #4939, #4932, #4843, #4840, #4630). #4898 and #4892 no longer in recent updated list (may have been closed or deprioritized).
