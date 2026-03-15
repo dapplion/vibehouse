@@ -539,3 +539,317 @@ impl<E: EthSpec> AsBlock<E> for RpcBlock<E> {
         self.as_block().canonical_root()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use types::{
+        BeaconBlock, BlobSidecarList, ChainSpec, FixedBytesExtended, MinimalEthSpec,
+        RuntimeVariableList, Signature, SignedBeaconBlock, SignedExecutionPayloadEnvelope,
+    };
+
+    type E = MinimalEthSpec;
+
+    const MAX_BLOBS: usize = 6;
+
+    fn make_block() -> Arc<SignedBeaconBlock<E>> {
+        let spec = ChainSpec::minimal();
+        Arc::new(SignedBeaconBlock::from_block(
+            BeaconBlock::empty(&spec),
+            Signature::empty(),
+        ))
+    }
+
+    fn make_deneb_block(num_commitments: usize) -> Arc<SignedBeaconBlock<E>> {
+        use rand::rng;
+        use types::test_utils::TestRandom;
+        let mut rng = rng();
+        let inner = BeaconBlock::Deneb(types::BeaconBlockDeneb::random_for_test(&mut rng));
+        let mut block = SignedBeaconBlock::from_block(inner, Signature::random_for_test(&mut rng));
+
+        {
+            let mut body = block.message_mut().body_mut();
+            let commitments = body
+                .blob_kzg_commitments_mut()
+                .expect("deneb has commitments");
+
+            *commitments = Default::default();
+
+            for _ in 0..num_commitments {
+                commitments
+                    .push(kzg::KzgCommitment::empty_for_testing())
+                    .unwrap();
+            }
+        }
+
+        Arc::new(block)
+    }
+
+    fn make_blob_sidecar(
+        block: &SignedBeaconBlock<E>,
+        index: u64,
+        commitment: kzg::KzgCommitment,
+    ) -> Arc<types::BlobSidecar<E>> {
+        Arc::new(types::BlobSidecar {
+            index,
+            blob: types::Blob::<E>::default(),
+            kzg_commitment: commitment,
+            kzg_proof: kzg::KzgProof::empty(),
+            signed_block_header: block.signed_block_header(),
+            kzg_commitment_inclusion_proof: Default::default(),
+        })
+    }
+
+    fn make_blob_list(blobs: Vec<Arc<types::BlobSidecar<E>>>) -> BlobSidecarList<E> {
+        RuntimeVariableList::new(blobs, MAX_BLOBS).unwrap()
+    }
+
+    // --- RpcBlock::new_without_blobs ---
+
+    #[test]
+    fn new_without_blobs_preserves_block() {
+        let block = make_block();
+        let rpc = RpcBlock::new_without_blobs(None, block.clone());
+        assert_eq!(rpc.as_block().slot(), block.slot());
+        assert!(rpc.blobs().is_none());
+        assert!(rpc.custody_columns().is_none());
+        assert!(rpc.envelope().is_none());
+    }
+
+    #[test]
+    fn new_without_blobs_uses_provided_root() {
+        let block = make_block();
+        let custom_root = Hash256::from_low_u64_le(42);
+        let rpc = RpcBlock::new_without_blobs(Some(custom_root), block);
+        assert_eq!(rpc.block_root(), custom_root);
+    }
+
+    #[test]
+    fn new_without_blobs_computes_root_when_none() {
+        let block = make_block();
+        let expected_root = block.canonical_root();
+        let rpc = RpcBlock::new_without_blobs(None, block);
+        assert_eq!(rpc.block_root(), expected_root);
+    }
+
+    // --- RpcBlock::new (blob consistency) ---
+
+    #[test]
+    fn new_with_no_blobs_returns_block_variant() {
+        let block = make_block();
+        let rpc = RpcBlock::new(None, block, None).unwrap();
+        assert!(rpc.blobs().is_none());
+        assert_eq!(rpc.n_blobs(), 0);
+    }
+
+    #[test]
+    fn new_with_empty_blob_list_treated_as_none() {
+        let block = make_block();
+        let empty_blobs: BlobSidecarList<E> = RuntimeVariableList::empty(MAX_BLOBS);
+        let rpc = RpcBlock::new(None, block, Some(empty_blobs)).unwrap();
+        assert!(rpc.blobs().is_none());
+        assert_eq!(rpc.n_blobs(), 0);
+    }
+
+    #[test]
+    fn new_with_matching_blobs_succeeds() {
+        let block = make_deneb_block(2);
+        let commitments = block
+            .message()
+            .body()
+            .blob_kzg_commitments()
+            .unwrap()
+            .clone();
+
+        let blobs = make_blob_list(vec![
+            make_blob_sidecar(&block, 0, commitments[0]),
+            make_blob_sidecar(&block, 1, commitments[1]),
+        ]);
+
+        let rpc = RpcBlock::new(None, block, Some(blobs)).unwrap();
+        assert!(rpc.blobs().is_some());
+        assert_eq!(rpc.n_blobs(), 2);
+    }
+
+    #[test]
+    fn new_with_wrong_blob_count_returns_missing_blobs() {
+        let block = make_deneb_block(2);
+        let commitments = block
+            .message()
+            .body()
+            .blob_kzg_commitments()
+            .unwrap()
+            .clone();
+
+        let blobs = make_blob_list(vec![make_blob_sidecar(&block, 0, commitments[0])]);
+
+        let result = RpcBlock::new(None, block, Some(blobs));
+        assert!(
+            matches!(result, Err(AvailabilityCheckError::MissingBlobs)),
+            "expected MissingBlobs, got: {:?}",
+            result
+        );
+    }
+
+    #[test]
+    fn new_with_mismatched_commitment_returns_error() {
+        let block = make_deneb_block(1);
+
+        let wrong_commitment = kzg::KzgCommitment([0xAB; 48]);
+        let blobs = make_blob_list(vec![make_blob_sidecar(&block, 0, wrong_commitment)]);
+
+        let result = RpcBlock::new(None, block, Some(blobs));
+        assert!(
+            matches!(
+                result,
+                Err(AvailabilityCheckError::KzgCommitmentMismatch { .. })
+            ),
+            "expected KzgCommitmentMismatch, got: {:?}",
+            result
+        );
+    }
+
+    // --- RpcBlock::deconstruct ---
+
+    #[test]
+    fn deconstruct_block_only() {
+        let block = make_block();
+        let root = block.canonical_root();
+        let rpc = RpcBlock::new_without_blobs(None, block.clone());
+        let (got_root, got_block, blobs, columns) = rpc.deconstruct();
+        assert_eq!(got_root, root);
+        assert_eq!(got_block.slot(), block.slot());
+        assert!(blobs.is_none());
+        assert!(columns.is_none());
+    }
+
+    #[test]
+    fn deconstruct_block_and_blobs() {
+        let block = make_deneb_block(1);
+        let commitments = block
+            .message()
+            .body()
+            .blob_kzg_commitments()
+            .unwrap()
+            .clone();
+
+        let blobs = make_blob_list(vec![make_blob_sidecar(&block, 0, commitments[0])]);
+
+        let rpc = RpcBlock::new(None, block, Some(blobs)).unwrap();
+        let (_, _, blobs, columns) = rpc.deconstruct();
+        assert!(blobs.is_some());
+        assert_eq!(blobs.unwrap().len(), 1);
+        assert!(columns.is_none());
+    }
+
+    // --- n_blobs, n_data_columns ---
+
+    #[test]
+    fn n_blobs_zero_for_block_only() {
+        let block = make_block();
+        let rpc = RpcBlock::new_without_blobs(None, block);
+        assert_eq!(rpc.n_blobs(), 0);
+        assert_eq!(rpc.n_data_columns(), 0);
+    }
+
+    #[test]
+    fn n_blobs_matches_blob_count() {
+        let block = make_deneb_block(3);
+        let commitments = block
+            .message()
+            .body()
+            .blob_kzg_commitments()
+            .unwrap()
+            .clone();
+
+        let blobs = make_blob_list(vec![
+            make_blob_sidecar(&block, 0, commitments[0]),
+            make_blob_sidecar(&block, 1, commitments[1]),
+            make_blob_sidecar(&block, 2, commitments[2]),
+        ]);
+
+        let rpc = RpcBlock::new(None, block, Some(blobs)).unwrap();
+        assert_eq!(rpc.n_blobs(), 3);
+        assert_eq!(rpc.n_data_columns(), 0);
+    }
+
+    // --- envelope operations ---
+
+    #[test]
+    fn envelope_initially_none() {
+        let block = make_block();
+        let rpc = RpcBlock::new_without_blobs(None, block);
+        assert!(rpc.envelope().is_none());
+    }
+
+    #[test]
+    fn set_and_get_envelope() {
+        let block = make_block();
+        let mut rpc = RpcBlock::new_without_blobs(None, block);
+        let envelope = Arc::new(SignedExecutionPayloadEnvelope::<E>::empty());
+        rpc.set_envelope(envelope.clone());
+        assert!(rpc.envelope().is_some());
+    }
+
+    #[test]
+    fn take_envelope_returns_and_clears() {
+        let block = make_block();
+        let mut rpc = RpcBlock::new_without_blobs(None, block);
+        let envelope = Arc::new(SignedExecutionPayloadEnvelope::<E>::empty());
+        rpc.set_envelope(envelope);
+        let taken = rpc.take_envelope();
+        assert!(taken.is_some());
+        assert!(rpc.envelope().is_none());
+    }
+
+    #[test]
+    fn take_envelope_from_empty_returns_none() {
+        let block = make_block();
+        let mut rpc = RpcBlock::new_without_blobs(None, block);
+        assert!(rpc.take_envelope().is_none());
+    }
+
+    // --- AsBlock trait ---
+
+    #[test]
+    fn as_block_trait_slot() {
+        let block = make_block();
+        let expected_slot = block.slot();
+        let rpc = RpcBlock::new_without_blobs(None, block);
+        assert_eq!(AsBlock::slot(&rpc), expected_slot);
+    }
+
+    #[test]
+    fn as_block_trait_parent_root() {
+        let block = make_block();
+        let expected = block.parent_root();
+        let rpc = RpcBlock::new_without_blobs(None, block);
+        assert_eq!(AsBlock::parent_root(&rpc), expected);
+    }
+
+    #[test]
+    fn as_block_trait_canonical_root() {
+        let block = make_block();
+        let expected = block.canonical_root();
+        let rpc = RpcBlock::new_without_blobs(None, block);
+        assert_eq!(AsBlock::canonical_root(&rpc), expected);
+    }
+
+    #[test]
+    fn block_cloned_returns_same_block() {
+        let block = make_block();
+        let rpc = RpcBlock::new_without_blobs(None, block.clone());
+        let cloned = RpcBlock::block_cloned(&rpc);
+        assert_eq!(cloned.canonical_root(), block.canonical_root());
+    }
+
+    // --- Pre-Deneb block with blobs ---
+
+    #[test]
+    fn pre_deneb_block_ignores_blobs() {
+        let block = make_block();
+        let rpc = RpcBlock::new(None, block, None).unwrap();
+        assert!(rpc.blobs().is_none());
+    }
+}
