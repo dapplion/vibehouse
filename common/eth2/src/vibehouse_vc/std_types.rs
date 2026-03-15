@@ -179,3 +179,166 @@ pub struct GetGraffitiResponse {
     pub pubkey: PublicKeyBytes,
     pub graffiti: Graffiti,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::FixedBytesExtended;
+
+    #[test]
+    fn status_ok_has_no_message() {
+        let s = Status::ok(ImportKeystoreStatus::Imported);
+        assert_eq!(s.status, ImportKeystoreStatus::Imported);
+        assert!(s.message.is_none());
+    }
+
+    #[test]
+    fn status_error_has_message() {
+        let s = Status::error(ImportKeystoreStatus::Error, "failed".into());
+        assert_eq!(s.status, ImportKeystoreStatus::Error);
+        assert_eq!(s.message.as_deref(), Some("failed"));
+    }
+
+    #[test]
+    fn status_message_skipped_when_none() {
+        let s = Status::ok(DeleteKeystoreStatus::Deleted);
+        let json = serde_json::to_string(&s).unwrap();
+        assert!(!json.contains("message"));
+    }
+
+    #[test]
+    fn import_keystore_status_serde() {
+        let cases = vec![
+            (ImportKeystoreStatus::Imported, "\"imported\""),
+            (ImportKeystoreStatus::Duplicate, "\"duplicate\""),
+            (ImportKeystoreStatus::Error, "\"error\""),
+        ];
+        for (status, expected) in cases {
+            let json = serde_json::to_string(&status).unwrap();
+            assert_eq!(json, expected);
+            let decoded: ImportKeystoreStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(decoded, status);
+        }
+    }
+
+    #[test]
+    fn delete_keystore_status_serde() {
+        let cases = vec![
+            (DeleteKeystoreStatus::Deleted, "\"deleted\""),
+            (DeleteKeystoreStatus::NotActive, "\"not_active\""),
+            (DeleteKeystoreStatus::NotFound, "\"not_found\""),
+            (DeleteKeystoreStatus::Error, "\"error\""),
+        ];
+        for (status, expected) in cases {
+            let json = serde_json::to_string(&status).unwrap();
+            assert_eq!(json, expected);
+            let decoded: DeleteKeystoreStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(decoded, status);
+        }
+    }
+
+    #[test]
+    fn import_remotekey_status_serde() {
+        let cases = vec![
+            (ImportRemotekeyStatus::Imported, "\"imported\""),
+            (ImportRemotekeyStatus::Duplicate, "\"duplicate\""),
+            (ImportRemotekeyStatus::Error, "\"error\""),
+        ];
+        for (status, expected) in cases {
+            let json = serde_json::to_string(&status).unwrap();
+            assert_eq!(json, expected);
+        }
+    }
+
+    #[test]
+    fn delete_remotekey_status_serde() {
+        let cases = vec![
+            (DeleteRemotekeyStatus::Deleted, "\"deleted\""),
+            (DeleteRemotekeyStatus::NotFound, "\"not_found\""),
+            (DeleteRemotekeyStatus::Error, "\"error\""),
+        ];
+        for (status, expected) in cases {
+            let json = serde_json::to_string(&status).unwrap();
+            assert_eq!(json, expected);
+        }
+    }
+
+    #[test]
+    fn single_keystore_response_serde_roundtrip() {
+        let resp = SingleKeystoreResponse {
+            validating_pubkey: PublicKeyBytes::empty(),
+            derivation_path: Some("m/12381/3600/0/0/0".into()),
+            readonly: None,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let decoded: SingleKeystoreResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(resp, decoded);
+    }
+
+    #[test]
+    fn single_keystore_response_readonly_skipped_when_none() {
+        let resp = SingleKeystoreResponse {
+            validating_pubkey: PublicKeyBytes::empty(),
+            derivation_path: None,
+            readonly: None,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(!json.contains("readonly"));
+    }
+
+    #[test]
+    fn get_fee_recipient_response_serde() {
+        let resp = GetFeeRecipientResponse {
+            pubkey: PublicKeyBytes::empty(),
+            ethaddress: Address::zero(),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let decoded: GetFeeRecipientResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(resp, decoded);
+    }
+
+    #[test]
+    fn get_gas_limit_response_quoted() {
+        let resp = GetGasLimitResponse {
+            pubkey: PublicKeyBytes::empty(),
+            gas_limit: 30000000,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("\"30000000\""));
+        let decoded: GetGasLimitResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(resp, decoded);
+    }
+
+    #[test]
+    fn auth_response_serde() {
+        let resp = AuthResponse {
+            token_path: "/tmp/token".into(),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let decoded: AuthResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(resp, decoded);
+    }
+
+    #[test]
+    fn single_list_remotekeys_response_serde() {
+        let resp = SingleListRemotekeysResponse {
+            pubkey: PublicKeyBytes::empty(),
+            url: "https://example.com".into(),
+            readonly: false,
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let decoded: SingleListRemotekeysResponse = serde_json::from_str(&json).unwrap();
+        assert_eq!(resp, decoded);
+    }
+
+    #[test]
+    fn single_import_remotekeys_request_serde() {
+        let req = SingleImportRemotekeysRequest {
+            pubkey: PublicKeyBytes::empty(),
+            url: "https://signer.example.com".into(),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        let decoded: SingleImportRemotekeysRequest = serde_json::from_str(&json).unwrap();
+        assert_eq!(req, decoded);
+    }
+}

@@ -182,3 +182,101 @@ impl<E: EthSpec> StoreItem for PersistedOperationPool<E> {
         PersistedOperationPool::from_ssz_bytes(bytes).map_err(Into::into)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn empty_pool_ssz_roundtrip() {
+        let pool = PersistedOperationPool::<E> {
+            attestations: vec![],
+            sync_contributions: vec![],
+            attester_slashings: vec![],
+            proposer_slashings: vec![],
+            voluntary_exits: vec![],
+            bls_to_execution_changes: vec![],
+            capella_bls_change_broadcast_indices: vec![],
+        };
+        let bytes = pool.as_ssz_bytes();
+        let decoded = PersistedOperationPool::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(pool, decoded);
+    }
+
+    #[test]
+    fn store_item_column() {
+        assert_eq!(PersistedOperationPool::<E>::db_column(), DBColumn::OpPool);
+    }
+
+    #[test]
+    fn store_item_roundtrip() {
+        let pool = PersistedOperationPool::<E> {
+            attestations: vec![],
+            sync_contributions: vec![],
+            attester_slashings: vec![],
+            proposer_slashings: vec![],
+            voluntary_exits: vec![],
+            bls_to_execution_changes: vec![],
+            capella_bls_change_broadcast_indices: vec![1, 2, 3],
+        };
+        let bytes = pool.as_store_bytes();
+        let decoded = PersistedOperationPool::<E>::from_store_bytes(&bytes).unwrap();
+        assert_eq!(pool, decoded);
+    }
+
+    #[test]
+    fn store_item_invalid_bytes() {
+        let result = PersistedOperationPool::<E>::from_store_bytes(&[0xff, 0x00]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn into_operation_pool_empty() {
+        let pool = PersistedOperationPool::<E> {
+            attestations: vec![],
+            sync_contributions: vec![],
+            attester_slashings: vec![],
+            proposer_slashings: vec![],
+            voluntary_exits: vec![],
+            bls_to_execution_changes: vec![],
+            capella_bls_change_broadcast_indices: vec![],
+        };
+        let op_pool = pool.into_operation_pool();
+        assert!(op_pool.attester_slashings.read().is_empty());
+        assert!(op_pool.proposer_slashings.read().is_empty());
+        assert!(op_pool.voluntary_exits.read().is_empty());
+    }
+
+    #[test]
+    fn broadcast_indices_preserved() {
+        let pool = PersistedOperationPool::<E> {
+            attestations: vec![],
+            sync_contributions: vec![],
+            attester_slashings: vec![],
+            proposer_slashings: vec![],
+            voluntary_exits: vec![],
+            bls_to_execution_changes: vec![],
+            capella_bls_change_broadcast_indices: vec![42, 99],
+        };
+        let bytes = pool.as_ssz_bytes();
+        let decoded = PersistedOperationPool::<E>::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(decoded.capella_bls_change_broadcast_indices, vec![42, 99]);
+    }
+
+    #[test]
+    fn clone_preserves_fields() {
+        let pool = PersistedOperationPool::<E> {
+            attestations: vec![],
+            sync_contributions: vec![],
+            attester_slashings: vec![],
+            proposer_slashings: vec![],
+            voluntary_exits: vec![],
+            bls_to_execution_changes: vec![],
+            capella_bls_change_broadcast_indices: vec![1],
+        };
+        assert_eq!(pool.clone(), pool);
+    }
+}

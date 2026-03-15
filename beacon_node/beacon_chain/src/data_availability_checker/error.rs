@@ -24,7 +24,7 @@ pub enum Error {
     SlotClockError,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ErrorCategory {
     /// Internal Errors (not caused by peers)
     Internal,
@@ -76,5 +76,84 @@ impl From<ssz::DecodeError> for Error {
 impl From<state_processing::BlockReplayError> for Error {
     fn from(value: state_processing::BlockReplayError) -> Self {
         Self::BlockReplayError(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::FixedBytesExtended;
+
+    #[test]
+    fn internal_errors_category() {
+        let internal_errors: Vec<Error> = vec![
+            Error::SszTypes(ssz_types::Error::OutOfBounds { i: 0, len: 0 }),
+            Error::MissingBlobs,
+            Error::MissingCustodyColumns,
+            Error::StoreError(store::Error::DBError {
+                message: "test".into(),
+            }),
+            Error::DecodeError(ssz::DecodeError::InvalidByteLength {
+                len: 0,
+                expected: 1,
+            }),
+            Error::Unexpected("test".into()),
+            Error::ParentStateMissing(Hash256::zero()),
+            Error::SlotClockError,
+        ];
+        for err in &internal_errors {
+            assert_eq!(err.category(), ErrorCategory::Internal, "{:?}", err);
+        }
+    }
+
+    #[test]
+    fn malicious_errors_category() {
+        let malicious_errors: Vec<Error> = vec![
+            Error::BlobIndexInvalid(99),
+            Error::DataColumnIndexInvalid(99),
+        ];
+        for err in &malicious_errors {
+            assert_eq!(err.category(), ErrorCategory::Malicious, "{:?}", err);
+        }
+    }
+
+    #[test]
+    fn from_ssz_types_error() {
+        let err: Error = ssz_types::Error::OutOfBounds { i: 0, len: 0 }.into();
+        assert!(matches!(err, Error::SszTypes(_)));
+    }
+
+    #[test]
+    fn from_store_error() {
+        let err: Error = store::Error::DBError {
+            message: "test".into(),
+        }
+        .into();
+        assert!(matches!(err, Error::StoreError(_)));
+    }
+
+    #[test]
+    fn from_decode_error() {
+        let err: Error = ssz::DecodeError::InvalidByteLength {
+            len: 0,
+            expected: 1,
+        }
+        .into();
+        assert!(matches!(err, Error::DecodeError(_)));
+    }
+
+    #[test]
+    fn error_category_eq() {
+        assert_eq!(ErrorCategory::Internal, ErrorCategory::Internal);
+        assert_eq!(ErrorCategory::Malicious, ErrorCategory::Malicious);
+        assert_ne!(ErrorCategory::Internal, ErrorCategory::Malicious);
+    }
+
+    #[test]
+    fn debug_format() {
+        let err = Error::BlobIndexInvalid(42);
+        let dbg = format!("{:?}", err);
+        assert!(dbg.contains("BlobIndexInvalid"));
+        assert!(dbg.contains("42"));
     }
 }

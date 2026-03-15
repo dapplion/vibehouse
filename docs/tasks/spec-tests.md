@@ -29,6 +29,21 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1431 (Mar 15) — operation_pool, proto_array, beacon_chain, and eth2 type test coverage (69 tests)
+
+**Test coverage**: Added 69 unit tests across 9 previously-untested files spanning 4 crates:
+- `beacon_node/operation_pool/src/sync_aggregate_id.rs` (8 tests): new sets fields, clone+eq, inequality by slot/root, ordering, hash usable in hashset, SSZ roundtrip, debug format
+- `beacon_node/operation_pool/src/persistence.rs` (7 tests): empty pool SSZ roundtrip, StoreItem column is OpPool, StoreItem roundtrip, invalid bytes error, into_operation_pool empty, broadcast indices preserved, clone preserves fields
+- `consensus/proto_array/src/error.rs` (9 tests): From ArithError, error equality/inequality, clone, debug, InvalidDeltaLen fields, RevertedFinalizedEpoch fields, InvalidBestNodeInfo clone+eq+box wrapping, execution-related error construction
+- `beacon_node/beacon_chain/src/data_availability_checker/error.rs` (7 tests): internal errors category (8 variants), malicious errors category, From ssz_types/store/decode errors, ErrorCategory eq/ne, debug format
+- `common/eth2/src/vibehouse/block_packing_efficiency.rs` (7 tests): UniqueAttestation default/serde roundtrip/hash, ProposerInfo serde, BlockPackingEfficiency serde roundtrip, query serde, clone preserves
+- `common/eth2/src/vibehouse/block_rewards.rs` (6 tests): BlockReward serde roundtrip, AttestationRewards with per-attestation data, empty attestations skipped in serialization, query serde, query include_attestations defaults false, BlockRewardMeta clone+eq
+- `common/eth2/src/vibehouse/attestation_performance.rs` (7 tests): statistics default, statistics serde roundtrip, delay None skipped, initialize with indices/empty, performance serde roundtrip, query serde
+- `common/eth2/src/vibehouse/custody.rs` (4 tests): serde roundtrip, quoted u64 serialization, empty columns, debug format
+- `common/eth2/src/vibehouse_vc/std_types.rs` (14 tests): Status ok/error/message skipped, ImportKeystoreStatus/DeleteKeystoreStatus/ImportRemotekeyStatus/DeleteRemotekeyStatus serde, SingleKeystoreResponse serde/readonly skipped, GetFeeRecipientResponse/GetGasLimitResponse/AuthResponse/SingleListRemotekeysResponse/SingleImportRemotekeysRequest serde
+
+**CI**: All 62 operation_pool + 205 proto_array + 7 beacon_chain DA error + 86 eth2 tests pass.
+
 ### run 1430 (Mar 15) — store StoreItem, BlobSidecarListFromRoot, DBColumn, and key function test coverage (44 tests)
 
 **Test coverage**: Added 44 unit tests across 4 files in `beacon_node/store/src/`:
