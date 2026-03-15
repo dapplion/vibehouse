@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1404 (Mar 15) — spec stable, initiate_validator_exit and slash_validator test coverage added
+
+**Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
+
+**Test coverage**: Added 23 unit tests across 2 previously-untested consensus-critical files:
+- `initiate_validator_exit.rs` (12 tests): already-exited no-op, unknown validator error, normal exit sets epochs, exit epoch delayed from current, exit cache updated, second exit same epoch, idempotent double call, multiple validators exit, exit epoch monotonic, lower effective balance exits sooner (Electra churn), earliest_exit_epoch updated, exit_balance_to_consume decremented
+- `slash_validator.rs` (11 tests): marks validator slashed, initiates exit, sets withdrawable_epoch minimum (EPOCHS_PER_SLASHINGS_VECTOR), updates slashings sum, decreases slashed balance, proposer receives full reward when no whistleblower, separate whistleblower splits reward (Altair formula), unknown whistleblower errors, slash already-exiting validator, proposer slashes self (balance accounting), double slashing accumulates
+
+**CI**: All green.
+
 ### run 1403 (Mar 15) — spec stable, weigh_justification_and_finalization test coverage added
 
 **Spec monitoring**: consensus-specs HEAD unchanged at 1baa05e711. No new merges since PR #5005. No new spec test releases (latest v1.7.0-alpha.3). PR #4992 (cached PTCs) and #4843 (variable PTC deadline) still open, not merged.
