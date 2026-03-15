@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1372 (Mar 15) — fix docker/release CI, spec verified up to date
+
+**CI fix**: Docker and release workflows were stuck in `queued` forever because they referenced self-hosted runners (`self-hosted, linux, release`) that don't exist for dapplion/vibehouse. Fixed both `docker.yml` and `release.yml` to use `ubuntu-22.04`/`ubuntu-latest`. Removed all `SELF_HOSTED_RUNNERS` conditionals. Docker build now starts successfully.
+
+**Spec audit**: Checked all consensus-specs PRs merged since v1.7.0-alpha.3. No new merges. Verified all key alpha.3 changes are already implemented: #5001 (parent_block_root bid filtering), #5002 (wording only), #4948 (constant reorder — N/A, we use enum variants), #4923 (ignore block if parent payload unknown), #4918 (attestations only for known payload statuses), #4884 (payload_data_availability_vote). Open PRs tracked: #4992, #4939, #4892, #4932, #4960, #4630, #4747.
+
+**Tests**: 2652/2652 workspace tests pass (8 web3signer_tests fail — external dependency, not code). Clippy clean.
+
 ### run 1371 (Mar 15) — spec stable, CI green, no changes needed
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new spec test releases (latest v1.7.0-alpha.3). Open Gloas/ePBS PRs tracked: #4992, #4962, #4960, #4939, #4932, #4843, #4630. All 7 still open, no merges since alpha.3.
