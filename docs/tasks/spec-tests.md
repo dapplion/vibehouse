@@ -29,6 +29,37 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1380 (Mar 15) — spec stable, implementation plans for PRs #4843 and #4840
+
+**Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630. Also tracking #4840 (EIP-7843 SLOTNUM opcode).
+
+**PR #4843 deep read** (Variable PTC deadline): Studied the full diff. Replaces fixed PTC deadline with a variable deadline based on payload size. When it merges, implementation requires:
+1. New config constant: `MIN_PAYLOAD_DUE_BPS: u64 = 3000` (30% of slot) in ChainSpec
+2. SSZ rename: `PayloadAttestationData.payload_present` → `payload_timely` (wire-compatible, same type/position)
+3. Fork choice rename: `is_payload_timely` → `has_payload_quorum` (logic unchanged, just rename)
+4. New fork choice Store field: `payload_envelopes: HashMap<Hash256, SignedExecutionPayloadEnvelope>` — populated in `on_execution_payload`
+5. `LatestMessage` field rename: `payload_present` → `payload_timely`
+6. New validator-side helpers:
+   - `get_payload_due_ms(payload_size, spec)` — linear interpolation between MIN_PAYLOAD_DUE_BPS (size 0) and PAYLOAD_ATTESTATION_DUE_BPS (MAX_PAYLOAD_SIZE)
+   - `get_payload_size(envelope)` — `envelope.as_ssz_bytes().len() as u64`
+   - `is_payload_timely(store, root, payload_arrival_time)` — core timeliness check
+   - `get_payload_attestation_message(store, validator_index, privkey, payload_arrival_time)` — constructs and signs PTC attestation
+7. Beacon node must track payload arrival wallclock time when `on_execution_payload` is called
+8. PTC broadcast logic: broadcast at earlier of (envelope+blobs received) or (PTC deadline), using arrival time for timeliness
+9. Key semantic: smallest payload (size 0) → 3.6s deadline, largest (MAX_PAYLOAD_SIZE) → 9.0s deadline (mainnet)
+
+**PR #4840 deep read** (EIP-7843 SLOTNUM opcode): Small, well-scoped change. Passes `state.slot` to EL via Engine API. Implementation requires:
+1. Add `slot_number: u64` field to `PayloadAttributes` (Gloas-gated)
+2. New Engine API versions: `PayloadAttributesV4`, `engine_forkChoiceUpdateV4`, `engine_newPayloadV4`, `engine_getPayloadV6`
+3. Populate `slot_number` from `state.slot()` in `prepare_execution_payload`
+4. Update JSON serialization and mock EL test utils
+5. No state transition, fork choice, or BeaconState changes — pure pass-through
+6. Depends on EL clients supporting new API versions
+
+**CI**: Run 23109705694 in progress — check+clippy+fmt passed, remaining jobs running. Previous CI run fully green.
+
+**Conclusion**: No code changes needed. Implementation plans ready for PRs #4843, #4840, and #4992 (from run 1378).
+
 ### run 1379 (Mar 15) — spec stable, fix docker CI spurious triggers
 
 **Spec monitoring**: consensus-specs HEAD unchanged (e50889e1ca, Mar 13). No new merges since last check. No new spec test releases (latest v1.7.0-alpha.3). All 7 tracked PRs still open: #4992, #4962, #4960, #4939, #4932, #4843, #4630.
