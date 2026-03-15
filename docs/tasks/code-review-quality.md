@@ -1441,3 +1441,19 @@ All remaining `.clone()` calls are either:
 - **AttesterCacheKey** (2 tests): equality semantics, inequality on differing epoch/root
 
 **Verification**: 15/15 tests pass, clippy clean, lint-full passes.
+
+### Run 1427: add single_attestation, chain_config, and pre_finalization_cache test coverage (2026-03-15)
+
+**Scope**: Add unit test coverage for three previously untested beacon_chain modules.
+
+**single_attestation.rs** (14 tests):
+- **build_attestation_from_single** (5 tests): Base fork produces Base variant with correct aggregation bit, Electra fork produces Electra variant with committee_bits set, Gloas fork produces Electra variant (electra_enabled), aggregation bit out of bounds error, committee index out of bounds error (MinimalEthSpec MaxCommitteesPerSlot=4)
+- **single_attestation_to_attestation** (9 tests): Base fork attester lookup, Electra fork attester lookup with committee_bits, AttesterNotInCommittee error with correct fields, attester at first/last position, single member committee, empty committee error, attestation data preservation through conversion
+
+**chain_config.rs** (9 tests):
+- Default values verification (all 30+ fields), re_org_cutoff with explicit millis, re_org_cutoff derived from slot duration, millis override, zero millis, default re-org thresholds, default constants, config equality, config clone
+
+**pre_finalization_cache.rs** (9 tests):
+- Empty cache contains nothing, empty cache metrics, block_processed removes from lookups, block_processed noop for unknown root, contains reflects block_roots cache, LRU eviction at BLOCK_ROOT_CACHE_LIMIT (512), lookups LRU eviction at LOOKUP_LIMIT (8), metrics returns correct counts, block_processed does not affect block_roots, duplicate insertions
+
+**Verification**: 32/32 tests pass, clippy clean, lint-full passes.
