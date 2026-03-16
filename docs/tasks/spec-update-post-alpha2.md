@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1466 (Mar 16) — all stable, no code changes
+
+Spec stable — no new consensus-specs commits since #5005 (Mar 15, test-only). v1.7.0-alpha.3 still latest release. No new spec-test vectors. PR #4992 still OPEN, NOT MERGED (same head d76a278b0a), active discussion today between potuz/jihoonsong about `get_ptc_assignment` lookbehind wording. 1 APPROVED (jtraglia). PR #5008 (doc-only field rename) still OPEN. No semver-compatible cargo updates. cargo audit unchanged (1 rsa). Nightly green (3 consecutive). CI in_progress. `ptc-lookbehind` branch 1 commit behind main (task doc only).
+
 ### run 1465 (Mar 16) — spec stable, dep update, ptc-lookbehind rebased
 
 Spec stable — latest commit #5005 (test-only fix, "Fix builder voluntary exit success test", merged Mar 15). v1.7.0-alpha.3 still latest release. No new spec-test vectors (old repo archived Oct 2025). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a), active discussion between potuz/jihoonsong about `get_ptc_assignment` lookbehind section wording. New PR #5008 (doc-only: `block_root`→`beacon_block_root` naming fix in p2p-interface.md) — no code impact.
