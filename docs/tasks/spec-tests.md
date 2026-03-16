@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1436 (Mar 16) — eth2 types, interop keypairs, directory, and eth2_config test coverage (101 tests)
+
+**Test coverage**: Added 101 unit tests across 4 files spanning 4 crates:
+- `common/eth2/src/types.rs` (60 tests): EndpointVersion FromStr/Display/roundtrip (valid/invalid), BlockId FromStr keywords/slot/root/invalid/Display, StateId FromStr keywords/slot/root/Display, ValidatorStatus FromStr all 13 variants/invalid/Display roundtrip/superstatus all mappings/from_validator 9 states (active_ongoing/active_exiting/active_slashed/exited_unslashed/exited_slashed/withdrawal_possible/withdrawal_done/pending_initialized/pending_queued), PeerState FromStr/invalid/Display roundtrip, PeerDirection FromStr/Display roundtrip, SkipRandaoVerification TryFrom None/empty/value, Failure::new, GenericResponse From/add_execution_optimistic/add_execution_optimistic_finalized, RootData from Hash256, ValidatorId FromStr index/invalid/Display, QueryVec empty/single/invalid/into_vec/from_multiple, serde roundtrips (GenesisData/PeerCount/SseBlock/SseFinalizedCheckpoint/SseChainReorg/SseExecutionBid/SseExecutionPayload/SsePayloadAttestation/ExecutionProofStatus/SyncingData/ValidatorStatus/Error::Message/Error::Indexed/PtcDutyData/SseHead)
+- `common/eth2_interop_keypairs/src/lib.rs` (18 tests): be_private_key deterministic/different_indices/nonzero/correct_length/index_0_known_value/large_index, keypair valid_for_multiple_indices/deterministic/different_indices, string_to_bytes hex_with_prefix/without_prefix/empty/empty_after_prefix/invalid_hex/odd_length, YamlKeypair try_into valid/invalid_privkey, keypairs_from_yaml_file missing_file
+- `common/directory/src/lib.rs` (5 tests): default_constants (8 consts), size_of_dir empty/with_file/nonexistent/multiple_files
+- `common/eth2_config/src/lib.rs` (18 tests): Eth2Config default_is_minimal/mainnet/minimal/gnosis/clone, GenesisStateSource unknown/included_bytes/url_fields/clone_eq/ne, HardcodedNet fields/clone_eq, Eth2NetArchiveAndDirectory fields, PREDEFINED_NETWORKS_DIR/GENESIS_FILE_NAME/GENESIS_ZIP_FILE_NAME constants, ETH2_NET_DIRS non_empty/contains_mainnet
+
+**CI**: All 216 tests pass across 4 crates (101 new). Clippy clean.
+
 ### run 1435 (Mar 16) — compare_fields, listen_addr, sensitive_url, and logging test coverage (57 tests)
 
 **Test coverage**: Added 57 unit tests across 4 files spanning 4 crates:
