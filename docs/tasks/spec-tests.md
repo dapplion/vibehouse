@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1579 (Mar 16) — health check, workspace tests pass
+
+**Health check**: all stable
+- CI: main green. Nightly should pass now (slasher fix was pre-nightly).
+- Spec: v1.7.0-alpha.3 still latest. Only 2 trivial commits since (release notes, test generator fix). No spec changes.
+- Spec tests: v1.6.0-beta.0 still latest vectors.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN.
+- Workspace tests: 4979/4980 pass (8 web3signer_tests failures = external binary timeout, not code bugs).
+- No actionable work — project in maintenance mode.
+
 ### run 1578 (Mar 16) — health check, all stable
 
 **Health check**: all stable
