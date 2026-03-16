@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1644 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed (post-slasher-flake-fix), CI green, spec-test-version-check green.
+- Nightly failure at 09:36 UTC was from BEFORE slasher flake fix (938e1abca, 18:38 UTC). Post-fix nightly at 20:37 UTC passed. Not a regression.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e (#5005). No new merges.
+- PR #4992 (cached PTCs in state) — still OPEN, NOT MERGED.
+- No semver-compatible cargo updates. cargo audit unchanged (1 rsa, 5 warnings transitive).
+- No actionable work.
+
 ### run 1643 (Mar 16) — health check, all stable
 
 **Health check**: all stable
