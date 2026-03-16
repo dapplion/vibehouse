@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1469 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all 7 jobs green (run 1465 completed successfully)
+- Nightly tests: green (3 consecutive days)
+- Spec: v1.7.0-alpha.3 still latest. No new commits since #5005 (Mar 15, test-only)
+- Open Gloas PRs tracked: #4992 (cached PTCs, 1 approval, active discussion today — ensi321/jihoonsong/potuz on PTC assignment lookahead semantics), #4962 (missed payload withdrawal tests), #4939 (index-1 attestation), #4843 (variable PTC deadline), #4960 (fork choice deposit test), #4932 (sanity/blocks tests) — none merged
+- cargo audit: 1 vulnerability (rsa RUSTSEC-2023-0071), 5 unmaintained warnings (ansi_term, bincode, derivative, filesystem, paste) — all pre-existing
+- No semver-compatible cargo updates available
+- `ptc-lookbehind` branch: 2 commits ahead of main, ready for merge when PR #4992 lands
+
 ### run 1468 (Mar 16) — health check + devnet verification
 
 **Health check**: all green
