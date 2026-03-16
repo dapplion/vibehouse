@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1535 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure still stale (schedule 08:30 UTC, fix b79292d35 pushed 09:52 UTC same day). Tomorrow's nightly will include the fix.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e.
+- No new consensus-specs merges since last check (#5005 still most recent, from Mar 15).
+- PR #4992 (cached PTCs): still OPEN, same head d76a278, active discussion on `get_ptc` lookbehind restrictions.
+- All monitored PRs still OPEN: #4992, #4954, #4962, #4960, #4939, #4932, #4843, #4840, #4630, #4747.
+- No actionable work — project in maintenance mode.
+
 ### run 1534 (Mar 16) — health check, all stable
 
 **Health check**: all stable
