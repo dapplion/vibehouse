@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1472 (Mar 16) — health check, spec tracking review
+
+**Health check**: all green
+- CI: all 7 jobs green (latest run successful)
+- Spec: v1.7.0-alpha.3 still latest
+- New merged PRs since last check: #5001 (parent_block_root in bid key — already implemented), #5002 (wording — no code), #4940 (fork choice test defs — vectors included in alpha.3, already passing)
+- Open PR #5008 (field name fix in ExecutionPayloadEnvelopesByRoot) — doc typo, our impl already correct
+- Open Gloas PRs tracked: #4992 (cached PTCs, active discussion), #4954 (ms timing), #4898 (tiebreaker), #4892 (impossible branch — our impl already matches), #4843 (variable PTC deadline), #4939 (index-1 attestation), #4747 (fast confirmation)
+- cargo clippy: clean (0 warnings)
+- cargo audit: unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings)
+- No semver-compatible dep updates (31 behind latest, all breaking changes)
+- `is_supporting_vote` verified: uses `==` not `<=` (matches PR #4892 intent)
+
 ### run 1471 (Mar 16) — health check, all stable
 
 **Health check**: all green
