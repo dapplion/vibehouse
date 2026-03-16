@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1592 (Mar 16) — health check, full test run, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure (slasher mdbx test) was already fixed — next nightly will confirm.
+- Full workspace test run: 4979/4979 pass (8 web3signer failures are external service dep, not code).
+- Clippy clean. Build clean (no warnings).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges to master.
+- PR #4992 (cached PTCs): still open, active discussion.
+- PR #4747 (Fast Confirmation Rule): labeled gloas, active discussion, still open — large feature, not merged.
+- All tracked PRs still OPEN: #4992, #4954, #4939, #4898, #4892, #4843, #4932, #4960, #4962, #5008, #4747.
+- Spec tests: v1.6.0-beta.0 still latest test vectors. No new releases.
+- No actionable work — project in maintenance mode.
+
 ### run 1590 (Mar 16) — health check, all stable
 
 **Health check**: all stable
