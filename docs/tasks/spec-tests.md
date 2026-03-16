@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1444 (Mar 16) — sync_status, validator_path, and keystore module test coverage (55 tests)
+
+**Test coverage**: Added 55 unit tests across 5 files spanning 3 crates:
+- `beacon_node/vibehouse_network/src/peer_manager/peerdb/sync_status.rs` (15 new tests): SyncInfo::has_slot (None/at/above/below earliest), SyncStatus predicates (is_advanced/is_synced/is_behind all 5 variants), PartialEq (same variant different info, different variants, stateless variants), update (returns true on change, false on same, full state machine transitions), as_str values, Display matches as_str.
+- `crypto/eth2_wallet/src/validator_path.rs` (8 new tests): Voting path has 5 nodes, withdrawal has 4 nodes, Display formatting for index 0 and non-zero, EIP-2334 constants, large index (u32::MAX).
+- `crypto/eth2_keystore/src/json_keystore/kdf_module.rs` (16 new tests): KdfFunction TryFrom/Into string roundtrip, unsupported function error, EmptyString from empty/nonempty, Kdf::function accessor for Pbkdf2/Scrypt, Scrypt::default_scrypt params, Prf default, serde roundtrips for KdfFunction and EmptyString.
+- `crypto/eth2_keystore/src/json_keystore/checksum_module.rs` (9 new tests): ChecksumFunction TryFrom/Into/roundtrip/serde, EmptyMap from empty/nonempty/non-object, EmptyMap serde roundtrip, Sha256Checksum::function.
+- `crypto/eth2_keystore/src/json_keystore/cipher_module.rs` (7 new tests): CipherFunction TryFrom/Into/roundtrip/serde, unsupported/empty string, Cipher::function accessor.
+
+**CI**: All 55 new tests pass. Clippy clean.
+
 ### run 1440 (Mar 16) — observed_block_producers, engine_api auth, and gossip_cache test coverage (39 tests)
 
 **Test coverage**: Added 39 unit tests across 3 files spanning 3 crates:
