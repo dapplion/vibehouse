@@ -4732,3 +4732,12 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - No semver-compatible cargo dep updates. cargo audit unchanged (1 rsa, 5 warnings).
 - Rebased `ptc-lookbehind` branch onto main (87 commits behind → current). 1021/1021 state_processing tests pass. Pushed.
 - CI green. Nightly green. All stable. No action needed.
+
+### Run 1649 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
+- No new merged Gloas PRs since #5005 (Mar 15).
+- PR #4992 (cached PTCs): still open, 25 review comments, mergeable. Active debate continues.
+- PR #4962 (sanity/blocks tests for missed payload withdrawals): open, not merged. Test-only PR.
+- PR #5008 (field name fix in p2p spec text): open, docs-only. We already use `beacon_block_root`.
+- cargo audit unchanged (1 rsa, 5 warnings).
+- CI green. Nightly green. All stable. No action needed.
