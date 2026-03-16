@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1603 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure was pre-fix (ran at 09:36 UTC, slasher fix pushed 18:38 UTC). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7 (#5005), no new merges to master.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED (same head d76a278b0a). Active discussion today — ensi321 raised concern that `get_ptc` is too restrictive on slot range; potuz acknowledged "oh yeah that's definitely wrong" and questioning off-protocol caching leaking into spec. May see further revisions before merge.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1602 (Mar 16) — health check, all stable
 
 **Health check**: all stable
