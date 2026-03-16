@@ -119,6 +119,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 - cargo update: 0 semver-compatible crate updates.
 - No actionable work — project in maintenance mode.
 
+### run 1586 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (09:36) was pre-fix timing; verified mdbx-only override_backend test passes locally. Next nightly will be green.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. Recent merges: #4940 (initial Gloas fork choice tests — vectors not yet released), #5005 (test fix), #5004 (docs), #5002 (wording).
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN.
+- cargo update: 0 semver-compatible crate updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1576 (Mar 16) — health check, all stable
 
 **Health check**: all stable
