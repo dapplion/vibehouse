@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1504 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure (slasher override_backend) was stale run pre-fix — will self-resolve next scheduled run.
+- Spec: v1.7.0-alpha.3 still latest. No new releases.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED, same head d76a278b0a.
+- Open Gloas PRs (10): #4992, #4960, #4940 (merged in alpha.3), #4932, #4939, #4892, #4840, #4747, #4704, #4630
+- PR #4940 Gloas fork choice tests: confirmed already passing in our test suite (on_execution_payload handler + head_payload_status check fully wired).
+- No semver-compatible cargo dep updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1503 (Mar 16) — health check, all stable
 
 **Health check**: all stable
