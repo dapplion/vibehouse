@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1491 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all green (latest push successful, nightly queued)
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged)
+- Post-alpha.3 merges unchanged: #5005 (test fix), #5004 (docs) — no code impact
+- PR #4992 (cached PTCs): new review comments from ensi321 suggesting `get_ptc` should accept wider slot range `[previous slot, end of current epoch]` — no new commits, same head d76a278b0a
+- Open Gloas PRs (11): #5008, #4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- cargo clippy: clean (0 warnings), no dep updates available, cargo audit unchanged (1 rsa)
+- No actionable work — project in maintenance mode, all tasks DONE
+
 ### run 1490 (Mar 16) — health check, all stable
 
 **Health check**: all green
