@@ -1534,3 +1534,13 @@ All remaining `.clone()` calls are either:
 - empty_queue, queue_single_block, queue_duplicate_block_deduplicates, queue_different_blocks, dequeue_clears_queue, dequeue_empty_returns_empty_set, queue_after_dequeue
 
 **Verification**: 55/55 tests pass, clippy clean, pushed to origin.
+
+#### Run 1453 — EIP-3076 Interchange Unit Tests
+
+**common/eip_3076/src/lib.rs** (24 new tests):
+- **len/is_empty** (3 tests): len returns count, is_empty false when populated, is_empty true when empty
+- **equiv** (5 tests): same order, different order (set equality), different metadata, different data, both empty
+- **minify edge cases** (11 tests): empty data, picks max block slot, picks max attestation epochs (independent maximization), merges duplicate pubkeys, blocks-only, attestations-only, no blocks or attestations, multiple validators preserved, signing roots cleared, metadata preserved, single entries
+- **serde** (6 tests): SignedBlock with/without signing_root serialization, SignedAttestation roundtrip, deny_unknown_fields rejects extra fields, from_json_str valid/invalid
+
+**Verification**: 27/27 tests pass (24 new + 3 existing), clippy clean, pushed to origin.
