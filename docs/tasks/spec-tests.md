@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1608 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green (slasher flaky test fix working, nightly should be clean now).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7 (#5005), no new merges.
+- PR #4992 (cached PTCs): still OPEN. Active discussion — potuz pushing back on the `get_ptc` slot restriction, says clients should handle caching themselves. Unlikely to merge as-is.
+- PR #4962 (test vectors for missed payload withdrawals): still OPEN, head f15c2043c7.
+- PR #5008 (field name fix `block_root` → `beacon_block_root` in p2p spec): still OPEN. Doc-only, our implementation already uses `beacon_block_root`. No impact.
+- PR #4747 (Fast Confirmation Rule): updated today, still OPEN. Cross-cutting (phase0+gloas). Not yet actionable.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1607 (Mar 16) — health check, all stable
 
 **Health check**: all stable
