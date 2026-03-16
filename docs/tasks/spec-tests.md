@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1642 (Mar 16) — health check, full alpha.3 compliance audit
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. No new merges to dev branch.
+- **Full alpha.3 compliance audit**: verified all 6 key PRs from alpha.3 are implemented:
+  - PR #4884 (payload data availability vote) — implemented in proto_array
+  - PR #4923 (ignore block if parent payload unknown) — implemented in block_verification
+  - PR #4918 (attestations require known payload status) — implemented in fork_choice
+  - PR #5001 (parent_block_root in bid filtering key) — implemented in proto_array
+  - PR #4897 (check pending deposit before builder routing) — implemented in process_operations
+  - PR #4916 (refactor builder deposit conditions) — implemented in process_operations
+- PR #4992 (cached PTCs in state) — still open, not merged.
+- PR #4954 (store time to milliseconds), #5008, #4939 — still open.
+- No actionable work.
+
 ### run 1641 (Mar 16) — health check, all stable
 
 **Health check**: all stable
