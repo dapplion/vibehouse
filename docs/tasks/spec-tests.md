@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1634 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly run 23164776090 still in progress (http-api electra/fulu remaining). All other jobs passed including slasher fix.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #4992 (cached PTCs in state) — still open, NOT merged.
+- PR #5008 (doc field name fix) — still open, doc-only, vibehouse already correct.
+- No actionable work.
+
 ### run 1633 (Mar 16) — health check, slasher flake investigated
 
 **Health check**: all stable
