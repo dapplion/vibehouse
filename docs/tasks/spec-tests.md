@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1560 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher fix confirmed landed, CI run passed.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.6.0-beta.0 still latest (May 2025). No new vectors.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges.
+- PR #5008 (field name fix `block_root` → `beacon_block_root`): verified our code already uses `beacon_block_root` — no action needed.
+- cargo audit: same 1 rsa vuln (no fix), 5 unmaintained warnings. No change.
+- No actionable work — project in maintenance mode.
+
 ### run 1559 (Mar 16) — health check, all stable
 
 **Health check**: all stable
