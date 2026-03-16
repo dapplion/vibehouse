@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1597 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure is a one-off flake (`override_backend_with_mdbx_file_present` — passes locally, previous 4 nightlies passed). Not actionable.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges to master.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED (same head d76a278b0a). Updated today with discussion activity.
+- PR #4962 (missed payload withdrawal tests): still open, updated today.
+- PR #5008 (EnvelopesByRoot field name): still open, cosmetic.
+- No semver-compatible cargo updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1596 (Mar 16) — health check, all stable
 
 **Health check**: all stable
