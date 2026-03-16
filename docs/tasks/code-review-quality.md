@@ -1589,3 +1589,20 @@ All remaining `.clone()` calls are either:
 - **accessors** (4 tests): into_inner returns original op, as_inner returns reference, first_fork_verified_against returns first version, returns None when empty, returns first of multiple versions
 
 **Verification**: 22/22 tests pass (18 new + 4 existing SSZ roundtrip), clippy clean, pushed to origin.
+
+#### Run 1460 — Unit Tests for Graffiti File, Deposit Tree Snapshot, and Max Cover (34 tests)
+
+**validator_client/graffiti_file/src/lib.rs** (15 new tests):
+- **read_line** (7 tests): default key parsing, public key line, empty graffiti, colons in graffiti value, missing delimiter error, invalid public key error, whitespace trimming
+- **determine_graffiti** (4 tests): no sources returns None, flag only, definition overrides flag, file overrides definition and flag
+- **GraffitiFile edge cases** (4 tests): nonexistent path error, no default with unknown key returns None, empty file, only whitespace lines
+
+**consensus/types/src/deposit_tree_snapshot.rs** (9 new tests):
+- **DepositTreeSnapshot** (5 tests): default is valid, default root matches calculated, invalid snapshot with wrong root, calculate_root returns None for bad count, zero count matches default root
+- **FinalizedExecutionBlock** (4 tests): From conversion, SSZ roundtrip, serde roundtrip, deposit_tree_snapshot serde roundtrip
+
+**beacon_node/operation_pool/src/max_cover.rs** (10 new tests):
+- **merge_solutions** (6 tests): empty solutions, one empty one nonempty, prefers higher score, respects limit, zero limit, equal scores stable
+- **maximum_cover edge cases** (4 tests): empty input, all zero score excluded, single item, disjoint sets full coverage
+
+**Verification**: 34 new tests pass across all three crates, clippy clean, pushed to origin.
