@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1630 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly run 23164776090 still in progress — 22/26 jobs complete, all passing. beacon-chain (fulu/electra) and http-api (electra/fulu) still running. Slasher fix verified (passed).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #4992 (cached PTCs in state) — still open, NOT merged.
+- PR #4962 (sanity/blocks tests for missed payload withdrawal) — still open.
+- No actionable work.
+
 ### run 1629 (Mar 16) — health check, all stable
 
 **Health check**: all stable
