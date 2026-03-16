@@ -1472,3 +1472,30 @@ All remaining `.clone()` calls are either:
 - **Pre-Deneb** (1 test): pre-Deneb block with None blobs handled correctly
 
 **Verification**: 21/21 tests pass, clippy clean.
+
+### Run 1446 — Unit test coverage: metrics, deposit_contract, validator_store (93 tests)
+
+**common/metrics/src/lib.rs** (61 tests):
+- **decimal_buckets** (7 tests): standard ranges, single power, wide range, negative powers, adjacent powers, edge cases
+- **duration_to_f64** (5 tests): zero, whole seconds, fractional, nanoseconds, large durations
+- **TryExt trait** (4 tests): Result Ok/Err, Option Some/None timer behavior
+- **try_create_* functions** (6 tests): int_gauge, float_gauge, int_counter, histogram, int_gauge_vec, int_counter_vec
+- **set/get/inc/dec gauge ops** (6 tests): set, get, inc, dec, float gauge set, counter inc/inc_by
+- **maybe_set functions** (4 tests): Some sets value, None is noop for int and float gauges
+- **observe functions** (3 tests): observe histogram, observe_duration with timer
+- **gather** (1 test): returns registered metrics
+- **Error-state no-op** (25 tests): all metric operations on Err values don't panic
+
+**validator_client/validator_store/src/lib.rs** (18 tests):
+- **DoppelgangerStatus::only_safe** (3 tests): SigningEnabled→Some, SigningDisabled→None, Unknown→None
+- **DoppelgangerStatus::ignored** (3 tests): Enabled→Some, Disabled→Some, Unknown→None
+- **DoppelgangerStatus::only_unsafe** (3 tests): Enabled→None, Disabled→Some, Unknown→Some
+- **Error type** (9 tests): From conversion, variant distinctness, slot/epoch variants, clone, debug formatting, pubkey preservation
+
+**common/deposit_contract/src/lib.rs** (14 tests, 13 new + 1 existing):
+- **Round-trip** (3 tests): standard, multiple keypairs, zero amount
+- **Decode failures** (3 tests): empty bytes, short bytes, garbage data
+- **Consistency** (3 tests): consistent encode length, different amounts give different roots, wrong amount mismatch
+- **Constants** (5 tests): DEPOSIT_DATA_LEN value, gas bounds, ABI/bytecode non-empty
+
+**Verification**: 93/93 tests pass, clippy clean, pushed to origin.
