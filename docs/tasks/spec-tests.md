@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1533 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure was stale (ran before fix b79292d35). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases.
+- Recent merges since alpha.3: #5005 (test fix), #4940 (gloas fork choice tests), #5002 (editorial) — no spec logic changes.
+- Verified #5001 (parent_block_root in bid filtering, merged in alpha.3): vibehouse already implements this correctly — `get_best_bid` filters by `parent_block_root` at execution_bid_pool.rs:68.
+- #5008 (NEW, open): networking field name fix `block_root` → `beacon_block_root` in ExecutionPayloadEnvelopesByRoot spec text — vibehouse already uses the correct field name.
+- All 10 monitored PRs still OPEN: #4992, #4954, #4962, #4960, #4939, #4932, #4843, #4840, #4630, #4747.
+- No actionable work — project in maintenance mode.
+
 ### run 1532 (Mar 16) — health check, all stable
 
 **Health check**: all stable
