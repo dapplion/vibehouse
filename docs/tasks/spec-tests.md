@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1652 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed (manual re-run after flaky slasher test fix), CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e (#5005). No new merges since run 1651.
+- Open Gloas PRs unchanged: #5008, #4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630. All OPEN, NOT MERGED.
+- Verified #5008 (`block_root` → `beacon_block_root` field name fix) — vibehouse already uses correct field name.
+- cargo check: 0 warnings. cargo audit unchanged.
+- No actionable work.
+
 ### run 1651 (Mar 17) — health check, all stable
 
 **Health check**: all stable
