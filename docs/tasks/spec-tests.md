@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1466 (Mar 16) — health check: all green
+
+**Full verification run**:
+- 4979/4979 unit tests pass (8 web3signer_tests fail due to infrastructure — Java process timeout on VPS, not code)
+- 139/139 EF spec tests pass (fake_crypto, minimal_testing)
+- CI: all 7 jobs green
+- Spec: v1.7.0-alpha.3 is still latest. No new consensus-specs commits since last check.
+- Open Gloas PRs tracked: #4992 (cached PTCs), #4939 (envelope request on index-1 attestation), #4843 (variable PTC deadline), #5008 (field name fix) — none merged yet
+- Dependencies: no updates available, no actionable security advisories (rsa RUSTSEC-2023-0071 has no fix)
+- All alpha.3 spec changes verified implemented: #4884, #4923, #4918, #5001, #4930, #4897
+
 ### run 1458 (Mar 16) — RPC protocol types and limits test coverage (64 tests)
 
 **Test coverage**: Added 64 unit tests to `beacon_node/vibehouse_network/src/rpc/protocol.rs`, a previously-untested 1,082-line file containing RPC protocol definitions, message limits, and error types:
