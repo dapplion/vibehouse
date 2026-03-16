@@ -23,4 +23,5 @@ types = { workspace = true }
 validator_metrics = { workspace = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 validator_test_rig = { workspace = true }

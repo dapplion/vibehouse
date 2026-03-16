@@ -427,4 +427,555 @@ mod tests {
         assert_eq!(medium_high.tier, 4);
         assert_eq!(large.tier, 10);
     }
+
+    // --- BeaconNodeSyncDistanceTiers tests ---
+
+    #[test]
+    fn sync_distance_tiers_default_values() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        assert_eq!(tiers.synced, Slot::new(8));
+        assert_eq!(tiers.small, Slot::new(16));
+        assert_eq!(tiers.medium, Slot::new(64));
+    }
+
+    #[test]
+    fn from_vec_wrong_length_errors() {
+        assert!(BeaconNodeSyncDistanceTiers::from_vec(&[]).is_err());
+        assert!(BeaconNodeSyncDistanceTiers::from_vec(&[1]).is_err());
+        assert!(BeaconNodeSyncDistanceTiers::from_vec(&[1, 2]).is_err());
+        assert!(BeaconNodeSyncDistanceTiers::from_vec(&[1, 2, 3, 4]).is_err());
+    }
+
+    #[test]
+    fn from_vec_cumulative_values() {
+        let tiers = BeaconNodeSyncDistanceTiers::from_vec(&[10, 20, 30]).unwrap();
+        assert_eq!(tiers.synced, Slot::new(10));
+        assert_eq!(tiers.small, Slot::new(30)); // 10 + 20
+        assert_eq!(tiers.medium, Slot::new(60)); // 10 + 20 + 30
+    }
+
+    #[test]
+    fn from_vec_zero_modifiers() {
+        let tiers = BeaconNodeSyncDistanceTiers::from_vec(&[0, 0, 0]).unwrap();
+        assert_eq!(tiers.synced, Slot::new(0));
+        assert_eq!(tiers.small, Slot::new(0));
+        assert_eq!(tiers.medium, Slot::new(0));
+    }
+
+    #[test]
+    fn compute_distance_tier_boundary_exact() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        // At exact boundary values
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(8)),
+            SyncDistanceTier::Synced
+        );
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(9)),
+            SyncDistanceTier::Small
+        );
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(16)),
+            SyncDistanceTier::Small
+        );
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(17)),
+            SyncDistanceTier::Medium
+        );
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(64)),
+            SyncDistanceTier::Medium
+        );
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(65)),
+            SyncDistanceTier::Large
+        );
+    }
+
+    #[test]
+    fn compute_distance_tier_zero_is_synced() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(0)),
+            SyncDistanceTier::Synced
+        );
+    }
+
+    #[test]
+    fn compute_distance_tier_very_large() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(100_000)),
+            SyncDistanceTier::Large
+        );
+    }
+
+    #[test]
+    fn compute_distance_tier_zero_threshold_tiers() {
+        // When all thresholds are 0, only distance 0 is synced; everything else is large
+        let tiers = BeaconNodeSyncDistanceTiers::from_vec(&[0, 0, 0]).unwrap();
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(0)),
+            SyncDistanceTier::Synced
+        );
+        assert_eq!(
+            tiers.compute_distance_tier(Slot::new(1)),
+            SyncDistanceTier::Large
+        );
+    }
+
+    // --- BeaconNodeHealthTier tests ---
+
+    #[test]
+    fn health_tier_display() {
+        let tier = BeaconNodeHealthTier::new(3, Slot::new(5), SyncDistanceTier::Synced);
+        assert_eq!(format!("{}", tier), "Tier3(5)");
+    }
+
+    #[test]
+    fn health_tier_display_zero() {
+        let tier = BeaconNodeHealthTier::new(1, Slot::new(0), SyncDistanceTier::Synced);
+        assert_eq!(format!("{}", tier), "Tier1(0)");
+    }
+
+    #[test]
+    fn health_tier_ordering_different_tiers() {
+        let tier1 = BeaconNodeHealthTier::new(1, Slot::new(0), SyncDistanceTier::Synced);
+        let tier2 = BeaconNodeHealthTier::new(2, Slot::new(10), SyncDistanceTier::Small);
+        assert!(tier1 < tier2);
+    }
+
+    #[test]
+    fn health_tier_ordering_same_tier_synced_no_tiebreak() {
+        // When distance_tier is Synced, don't tie-break on distance
+        let a = BeaconNodeHealthTier::new(1, Slot::new(0), SyncDistanceTier::Synced);
+        let b = BeaconNodeHealthTier::new(1, Slot::new(5), SyncDistanceTier::Synced);
+        assert_eq!(a.cmp(&b), std::cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn health_tier_ordering_same_tier_small_tiebreak_on_distance() {
+        // When distance_tier is NOT Synced, tie-break on distance
+        let closer = BeaconNodeHealthTier::new(2, Slot::new(9), SyncDistanceTier::Small);
+        let further = BeaconNodeHealthTier::new(2, Slot::new(15), SyncDistanceTier::Small);
+        assert!(closer < further);
+    }
+
+    #[test]
+    fn health_tier_ordering_same_tier_medium_tiebreak() {
+        let a = BeaconNodeHealthTier::new(4, Slot::new(20), SyncDistanceTier::Medium);
+        let b = BeaconNodeHealthTier::new(4, Slot::new(50), SyncDistanceTier::Medium);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn health_tier_ordering_same_tier_large_tiebreak() {
+        let a = BeaconNodeHealthTier::new(10, Slot::new(100), SyncDistanceTier::Large);
+        let b = BeaconNodeHealthTier::new(10, Slot::new(200), SyncDistanceTier::Large);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn health_tier_eq() {
+        let a = BeaconNodeHealthTier::new(1, Slot::new(3), SyncDistanceTier::Synced);
+        let b = BeaconNodeHealthTier::new(1, Slot::new(3), SyncDistanceTier::Synced);
+        assert_eq!(a, b);
+    }
+
+    // --- BeaconNodeHealth ordering tests ---
+
+    #[test]
+    fn health_ordering_different_tiers() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let h1 = BeaconNodeHealth::from_status(
+            0,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        let h2 = BeaconNodeHealth::from_status(
+            1,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Unhealthy,
+            &tiers,
+        );
+        // h1 is tier 1 (synced, not optimistic, healthy), h2 is tier 3 (synced, not optimistic, unhealthy)
+        assert!(h1 < h2);
+    }
+
+    #[test]
+    fn health_ordering_tiebreak_by_user_index() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let h1 = BeaconNodeHealth::from_status(
+            0,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        let h2 = BeaconNodeHealth::from_status(
+            1,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        // Same tier (1), tie-break by user_index — 0 < 1
+        assert!(h1 < h2);
+    }
+
+    #[test]
+    fn health_ordering_higher_index_loses_tiebreak() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let h1 = BeaconNodeHealth::from_status(
+            5,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        let h2 = BeaconNodeHealth::from_status(
+            2,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        // Same tier, h2 has lower user_index
+        assert!(h2 < h1);
+    }
+
+    #[test]
+    fn health_ordering_lower_tier_wins_over_lower_index() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        // Node 5 is synced+healthy (tier 1), node 0 is synced+unhealthy (tier 3)
+        let h_tier1 = BeaconNodeHealth::from_status(
+            5,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        let h_tier3 = BeaconNodeHealth::from_status(
+            0,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Unhealthy,
+            &tiers,
+        );
+        assert!(h_tier1 < h_tier3);
+    }
+
+    #[test]
+    fn health_get_index() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let h = BeaconNodeHealth::from_status(
+            42,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        assert_eq!(h.get_index(), 42);
+    }
+
+    #[test]
+    fn health_get_health_tier_returns_correct_tier() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let h = BeaconNodeHealth::from_status(
+            0,
+            Slot::new(10),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        // sync_distance=10, which is Small tier, not optimistic, healthy => tier 2
+        assert_eq!(h.get_health_tier().tier, 2);
+    }
+
+    // --- Exhaustive health tier classification tests ---
+
+    fn health_tier_for(
+        sync_distance: u64,
+        optimistic: IsOptimistic,
+        ee_health: super::ExecutionEngineHealth,
+    ) -> u8 {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        BeaconNodeHealth::compute_health_tier(
+            Slot::new(sync_distance),
+            optimistic,
+            ee_health,
+            &tiers,
+        )
+        .tier
+    }
+
+    #[test]
+    fn tier_1_synced_not_optimistic_healthy() {
+        assert_eq!(health_tier_for(0, IsOptimistic::No, Healthy), 1);
+    }
+
+    #[test]
+    fn tier_2_small_not_optimistic_healthy() {
+        assert_eq!(health_tier_for(10, IsOptimistic::No, Healthy), 2);
+    }
+
+    #[test]
+    fn tier_3_synced_not_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(0, IsOptimistic::No, Unhealthy), 3);
+    }
+
+    #[test]
+    fn tier_4_medium_not_optimistic_healthy() {
+        assert_eq!(health_tier_for(20, IsOptimistic::No, Healthy), 4);
+    }
+
+    #[test]
+    fn tier_5_synced_optimistic_healthy() {
+        assert_eq!(health_tier_for(0, IsOptimistic::Yes, Healthy), 5);
+    }
+
+    #[test]
+    fn tier_6_synced_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(0, IsOptimistic::Yes, Unhealthy), 6);
+    }
+
+    #[test]
+    fn tier_7_small_not_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(10, IsOptimistic::No, Unhealthy), 7);
+    }
+
+    #[test]
+    fn tier_8_small_optimistic_healthy() {
+        assert_eq!(health_tier_for(10, IsOptimistic::Yes, Healthy), 8);
+    }
+
+    #[test]
+    fn tier_9_small_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(10, IsOptimistic::Yes, Unhealthy), 9);
+    }
+
+    #[test]
+    fn tier_10_large_not_optimistic_healthy() {
+        assert_eq!(health_tier_for(100, IsOptimistic::No, Healthy), 10);
+    }
+
+    #[test]
+    fn tier_11_medium_not_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(20, IsOptimistic::No, Unhealthy), 11);
+    }
+
+    #[test]
+    fn tier_12_medium_optimistic_healthy() {
+        assert_eq!(health_tier_for(20, IsOptimistic::Yes, Healthy), 12);
+    }
+
+    #[test]
+    fn tier_13_medium_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(20, IsOptimistic::Yes, Unhealthy), 13);
+    }
+
+    #[test]
+    fn tier_14_large_not_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(100, IsOptimistic::No, Unhealthy), 14);
+    }
+
+    #[test]
+    fn tier_15_large_optimistic_healthy() {
+        assert_eq!(health_tier_for(100, IsOptimistic::Yes, Healthy), 15);
+    }
+
+    #[test]
+    fn tier_16_large_optimistic_unhealthy() {
+        assert_eq!(health_tier_for(100, IsOptimistic::Yes, Unhealthy), 16);
+    }
+
+    // --- Sorting tests ---
+
+    #[test]
+    fn sort_health_tiers_ascending() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let mut nodes = [
+            BeaconNodeHealth::from_status(
+                0,
+                Slot::new(100),
+                Slot::new(50),
+                IsOptimistic::Yes,
+                Unhealthy,
+                &tiers,
+            ), // large+opt+unhealthy => tier 16
+            BeaconNodeHealth::from_status(
+                1,
+                Slot::new(0),
+                Slot::new(50),
+                IsOptimistic::No,
+                Healthy,
+                &tiers,
+            ), // synced+no_opt+healthy => tier 1
+            BeaconNodeHealth::from_status(
+                2,
+                Slot::new(10),
+                Slot::new(50),
+                IsOptimistic::No,
+                Healthy,
+                &tiers,
+            ), // small+no_opt+healthy => tier 2
+        ];
+        nodes.sort();
+        assert_eq!(nodes[0].user_index, 1); // tier 1
+        assert_eq!(nodes[1].user_index, 2); // tier 2
+        assert_eq!(nodes[2].user_index, 0); // tier 16
+    }
+
+    #[test]
+    fn sort_health_same_tier_by_user_index() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let mut nodes = [
+            BeaconNodeHealth::from_status(
+                3,
+                Slot::new(0),
+                Slot::new(50),
+                IsOptimistic::No,
+                Healthy,
+                &tiers,
+            ),
+            BeaconNodeHealth::from_status(
+                1,
+                Slot::new(0),
+                Slot::new(50),
+                IsOptimistic::No,
+                Healthy,
+                &tiers,
+            ),
+            BeaconNodeHealth::from_status(
+                2,
+                Slot::new(0),
+                Slot::new(50),
+                IsOptimistic::No,
+                Healthy,
+                &tiers,
+            ),
+        ];
+        nodes.sort();
+        assert_eq!(nodes[0].user_index, 1);
+        assert_eq!(nodes[1].user_index, 2);
+        assert_eq!(nodes[2].user_index, 3);
+    }
+
+    // --- Serialization round-trip tests ---
+
+    #[test]
+    fn sync_distance_tier_serde_roundtrip() {
+        for tier in [
+            SyncDistanceTier::Synced,
+            SyncDistanceTier::Small,
+            SyncDistanceTier::Medium,
+            SyncDistanceTier::Large,
+        ] {
+            let json = serde_json::to_string(&tier).unwrap();
+            let deserialized: SyncDistanceTier = serde_json::from_str(&json).unwrap();
+            assert_eq!(tier, deserialized);
+        }
+    }
+
+    #[test]
+    fn beacon_node_health_tier_serde_roundtrip() {
+        let tier = BeaconNodeHealthTier::new(5, Slot::new(3), SyncDistanceTier::Synced);
+        let json = serde_json::to_string(&tier).unwrap();
+        let deserialized: BeaconNodeHealthTier = serde_json::from_str(&json).unwrap();
+        assert_eq!(tier, deserialized);
+    }
+
+    #[test]
+    fn beacon_node_health_serde_roundtrip() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let health = BeaconNodeHealth::from_status(
+            2,
+            Slot::new(5),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        let json = serde_json::to_string(&health).unwrap();
+        let deserialized: BeaconNodeHealth = serde_json::from_str(&json).unwrap();
+        assert_eq!(health, deserialized);
+    }
+
+    #[test]
+    fn sync_distance_tiers_serde_roundtrip() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let json = serde_json::to_string(&tiers).unwrap();
+        let deserialized: BeaconNodeSyncDistanceTiers = serde_json::from_str(&json).unwrap();
+        assert_eq!(tiers, deserialized);
+    }
+
+    #[test]
+    fn execution_engine_health_serde_roundtrip() {
+        for status in [Healthy, Unhealthy] {
+            let json = serde_json::to_string(&status).unwrap();
+            let deserialized: super::ExecutionEngineHealth = serde_json::from_str(&json).unwrap();
+            assert_eq!(status, deserialized);
+        }
+    }
+
+    #[test]
+    fn is_optimistic_serde_roundtrip() {
+        for status in [IsOptimistic::Yes, IsOptimistic::No] {
+            let json = serde_json::to_string(&status).unwrap();
+            let deserialized: IsOptimistic = serde_json::from_str(&json).unwrap();
+            assert_eq!(status, deserialized);
+        }
+    }
+
+    #[test]
+    fn config_serde_roundtrip() {
+        let config = Config::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: Config = serde_json::from_str(&json).unwrap();
+        assert_eq!(config.sync_tolerances, deserialized.sync_tolerances);
+    }
+
+    // --- PartialOrd consistency ---
+
+    #[test]
+    fn health_tier_partial_ord_consistent_with_ord() {
+        let a = BeaconNodeHealthTier::new(1, Slot::new(0), SyncDistanceTier::Synced);
+        let b = BeaconNodeHealthTier::new(2, Slot::new(10), SyncDistanceTier::Small);
+        assert_eq!(a.partial_cmp(&b), Some(a.cmp(&b)));
+    }
+
+    #[test]
+    fn health_partial_ord_consistent_with_ord() {
+        let tiers = BeaconNodeSyncDistanceTiers::default();
+        let a = BeaconNodeHealth::from_status(
+            0,
+            Slot::new(0),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        let b = BeaconNodeHealth::from_status(
+            1,
+            Slot::new(10),
+            Slot::new(100),
+            IsOptimistic::No,
+            Healthy,
+            &tiers,
+        );
+        assert_eq!(a.partial_cmp(&b), Some(a.cmp(&b)));
+    }
 }
