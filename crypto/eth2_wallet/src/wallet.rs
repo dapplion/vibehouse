@@ -328,3 +328,242 @@ pub fn recover_validator_secret_from_mnemonic(
 
     Ok((destination.secret().to_vec().into(), path))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_PASSWORD: &[u8] = b"test-password-123";
+    const TEST_SEED: &[u8] = &[42u8; 64];
+
+    fn build_test_wallet() -> Wallet {
+        WalletBuilder::from_seed_bytes(TEST_SEED, TEST_PASSWORD, "test-wallet".to_string())
+            .unwrap()
+            .build()
+            .unwrap()
+    }
+
+    // ====== WalletBuilder ======
+
+    #[test]
+    fn builder_empty_password_error() {
+        let err = WalletBuilder::from_seed_bytes(TEST_SEED, b"", "test".to_string());
+        assert!(matches!(err, Err(Error::EmptyPassword)));
+    }
+
+    #[test]
+    fn builder_empty_seed_error() {
+        let err = WalletBuilder::from_seed_bytes(&[], TEST_PASSWORD, "test".to_string());
+        assert!(matches!(err, Err(Error::EmptySeed)));
+    }
+
+    #[test]
+    fn builder_successful_build() {
+        let wallet = build_test_wallet();
+        assert_eq!(wallet.name(), "test-wallet");
+        assert_eq!(wallet.nextaccount(), 0);
+    }
+
+    #[test]
+    fn builder_from_mnemonic() {
+        let mnemonic = Mnemonic::new(bip39::MnemonicType::Words12, bip39::Language::English);
+        let wallet = WalletBuilder::from_mnemonic(&mnemonic, TEST_PASSWORD, "mnem".to_string())
+            .unwrap()
+            .build()
+            .unwrap();
+        assert_eq!(wallet.nextaccount(), 0);
+    }
+
+    // ====== Wallet encrypt/decrypt ======
+
+    #[test]
+    fn wallet_decrypt_seed_roundtrip() {
+        let wallet = build_test_wallet();
+        let decrypted = wallet.decrypt_seed(TEST_PASSWORD).unwrap();
+        assert_eq!(decrypted.as_bytes(), TEST_SEED);
+    }
+
+    #[test]
+    fn wallet_decrypt_wrong_password() {
+        let wallet = build_test_wallet();
+        let err = wallet.decrypt_seed(b"wrong-password");
+        assert!(err.is_err());
+    }
+
+    // ====== JSON serialization ======
+
+    #[test]
+    fn wallet_json_roundtrip() {
+        let wallet = build_test_wallet();
+        let json = wallet.to_json_string().unwrap();
+        let wallet2 = Wallet::from_json_str(&json).unwrap();
+        assert_eq!(wallet, wallet2);
+    }
+
+    #[test]
+    fn wallet_json_writer_reader_roundtrip() {
+        let wallet = build_test_wallet();
+        let mut buf = Vec::new();
+        wallet.to_json_writer(&mut buf).unwrap();
+        let wallet2 = Wallet::from_json_reader(&buf[..]).unwrap();
+        assert_eq!(wallet, wallet2);
+    }
+
+    #[test]
+    fn wallet_from_json_invalid() {
+        let err = Wallet::from_json_str("not valid json");
+        assert!(err.is_err());
+    }
+
+    // ====== nextaccount ======
+
+    #[test]
+    fn set_nextaccount_increase() {
+        let mut wallet = build_test_wallet();
+        assert_eq!(wallet.nextaccount(), 0);
+        wallet.set_nextaccount(5).unwrap();
+        assert_eq!(wallet.nextaccount(), 5);
+    }
+
+    #[test]
+    fn set_nextaccount_same_value() {
+        let mut wallet = build_test_wallet();
+        wallet.set_nextaccount(5).unwrap();
+        wallet.set_nextaccount(5).unwrap();
+        assert_eq!(wallet.nextaccount(), 5);
+    }
+
+    #[test]
+    fn set_nextaccount_decrease_error() {
+        let mut wallet = build_test_wallet();
+        wallet.set_nextaccount(5).unwrap();
+        let err = wallet.set_nextaccount(4);
+        assert!(matches!(
+            err,
+            Err(Error::InvalidNextAccount { old: 5, new: 4 })
+        ));
+        assert_eq!(wallet.nextaccount(), 5);
+    }
+
+    // ====== next_validator ======
+
+    #[test]
+    fn next_validator_increments_account() {
+        let mut wallet = build_test_wallet();
+        assert_eq!(wallet.nextaccount(), 0);
+
+        let _keystores = wallet
+            .next_validator(TEST_PASSWORD, b"voting-pass", b"withdrawal-pass")
+            .unwrap();
+        assert_eq!(wallet.nextaccount(), 1);
+
+        let _keystores2 = wallet
+            .next_validator(TEST_PASSWORD, b"voting-pass", b"withdrawal-pass")
+            .unwrap();
+        assert_eq!(wallet.nextaccount(), 2);
+    }
+
+    #[test]
+    fn next_validator_produces_different_keys() {
+        let mut wallet = build_test_wallet();
+        let ks1 = wallet
+            .next_validator(TEST_PASSWORD, b"pass1", b"pass1")
+            .unwrap();
+        let ks2 = wallet
+            .next_validator(TEST_PASSWORD, b"pass2", b"pass2")
+            .unwrap();
+
+        assert_ne!(ks1.voting.pubkey(), ks2.voting.pubkey());
+        assert_ne!(ks1.withdrawal.pubkey(), ks2.withdrawal.pubkey());
+    }
+
+    #[test]
+    fn next_validator_voting_and_withdrawal_differ() {
+        let mut wallet = build_test_wallet();
+        let ks = wallet
+            .next_validator(TEST_PASSWORD, b"pass", b"pass")
+            .unwrap();
+        assert_ne!(ks.voting.pubkey(), ks.withdrawal.pubkey());
+    }
+
+    #[test]
+    fn next_validator_wrong_wallet_password() {
+        let mut wallet = build_test_wallet();
+        let err = wallet.next_validator(b"wrong", b"pass", b"pass");
+        assert!(err.is_err());
+    }
+
+    // ====== recover_validator_secret ======
+
+    #[test]
+    fn recover_validator_secret_deterministic() {
+        let wallet = build_test_wallet();
+        let (secret1, path1) =
+            recover_validator_secret(&wallet, TEST_PASSWORD, 0, KeyType::Voting).unwrap();
+        let (secret2, path2) =
+            recover_validator_secret(&wallet, TEST_PASSWORD, 0, KeyType::Voting).unwrap();
+        assert_eq!(secret1.as_bytes(), secret2.as_bytes());
+        assert_eq!(format!("{}", path1), format!("{}", path2));
+    }
+
+    #[test]
+    fn recover_validator_secret_different_indices() {
+        let wallet = build_test_wallet();
+        let (secret0, _) =
+            recover_validator_secret(&wallet, TEST_PASSWORD, 0, KeyType::Voting).unwrap();
+        let (secret1, _) =
+            recover_validator_secret(&wallet, TEST_PASSWORD, 1, KeyType::Voting).unwrap();
+        assert_ne!(secret0.as_bytes(), secret1.as_bytes());
+    }
+
+    #[test]
+    fn recover_validator_secret_different_key_types() {
+        let wallet = build_test_wallet();
+        let (voting, _) =
+            recover_validator_secret(&wallet, TEST_PASSWORD, 0, KeyType::Voting).unwrap();
+        let (withdrawal, _) =
+            recover_validator_secret(&wallet, TEST_PASSWORD, 0, KeyType::Withdrawal).unwrap();
+        assert_ne!(voting.as_bytes(), withdrawal.as_bytes());
+    }
+
+    // ====== recover_validator_secret_from_mnemonic ======
+
+    #[test]
+    fn recover_from_mnemonic_deterministic() {
+        let seed = [99u8; 64];
+        let (secret1, _) =
+            recover_validator_secret_from_mnemonic(&seed, 0, KeyType::Voting).unwrap();
+        let (secret2, _) =
+            recover_validator_secret_from_mnemonic(&seed, 0, KeyType::Voting).unwrap();
+        assert_eq!(secret1.as_bytes(), secret2.as_bytes());
+    }
+
+    #[test]
+    fn recover_from_mnemonic_empty_seed_error() {
+        let err = recover_validator_secret_from_mnemonic(&[], 0, KeyType::Voting);
+        assert!(matches!(err, Err(Error::EmptySeed)));
+    }
+
+    // ====== Wallet metadata ======
+
+    #[test]
+    fn wallet_uuid_unique() {
+        let w1 = build_test_wallet();
+        let w2 = build_test_wallet();
+        assert_ne!(w1.uuid(), w2.uuid());
+    }
+
+    #[test]
+    fn wallet_type_field() {
+        let wallet = build_test_wallet();
+        assert_eq!(wallet.type_field(), "hierarchical deterministic");
+    }
+
+    // ====== Error conversions ======
+
+    #[test]
+    fn error_from_derived_key_error() {
+        let err: Error = DerivedKeyError::EmptySeed.into();
+        assert_eq!(err, Error::EmptySeed);
+    }
+}
