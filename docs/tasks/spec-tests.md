@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1509 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure (09:36) was stale (pre-slasher fix). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged).
+- PR #4992 (cached PTCs): still OPEN (updated Mar 16, same head d76a278b0a). PR #4979 (PTC lookbehind): CLOSED (not merged).
+- `cargo audit`: same known advisories (rsa, ansi_term, bincode, derivative, filesystem, paste — all unmaintained warnings, no vulnerabilities). Nothing actionable.
+- No actionable work — project in maintenance mode.
+
 ### run 1508 (Mar 16) — health check, all stable
 
 **Health check**: all stable
