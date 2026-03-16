@@ -1544,3 +1544,20 @@ All remaining `.clone()` calls are either:
 - **serde** (6 tests): SignedBlock with/without signing_root serialization, SignedAttestation roundtrip, deny_unknown_fields rejects extra fields, from_json_str valid/invalid
 
 **Verification**: 27/27 tests pass (24 new + 3 existing), clippy clean, pushed to origin.
+
+#### Run 1454 — EIP-2335 Keystore Internal Validation Unit Tests
+
+**crypto/eth2_keystore/src/keystore.rs** (42 new tests):
+- **log2_int** (5 tests): zero, one, powers of two, non-powers (floor), u32::MAX
+- **is_control_character** (5 tests): C0 range (0x00-0x1F), DEL (0x7F), C1 range (0x80-0x9F), printable ASCII, Unicode
+- **normalize** (4 tests): ASCII passthrough, NFKD decomposition of é, invalid UTF-8 error, empty input
+- **validate_salt** (4 tests): empty fails, normal length OK, short OK with warning, long OK with warning
+- **validate_aes_iv** (3 tests): empty fails, correct 16-byte size, wrong size OK with warning
+- **validate_parameters (Pbkdf2)** (7 tests): valid params, wrong dklen, c too large, c at max boundary, c=0, c=1 weak-but-valid, empty salt
+- **validate_parameters (Scrypt)** (10 tests): valid params, n=0, n=1, n not power of two, r=0, p=0, wrong dklen, empty salt, n*p*r overflow, n=2 smallest valid
+- **keypair_from_secret** (3 tests): valid round-trip, all-zeros rejected, wrong length rejected
+- **encrypt** (2 tests): produces different ciphertext, empty IV fails
+- **default_kdf** (1 test): returns Scrypt variant
+- **Error equality** (1 test): variant distinctness
+
+**Verification**: 77/77 tests pass (42 new + 35 existing), clippy clean, pushed to origin.
