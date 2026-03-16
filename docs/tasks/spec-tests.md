@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1638 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly (23164776090) passed all 26 jobs, CI green, spec-test-version-check green.
+- Nightly failure in run 23137093267 was slasher flake — already fixed, subsequent runs pass.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #4992 (cached PTCs in state) — still open, 1 APPROVED (jtraglia), active discussion. NOT merged.
+- PR #5008, #4939, #4962, #4960, #4954 — still open.
+- New PRs: #5011 (GH actions update), #5012 (release-drafter update), #5010/#5009/#5007/#5006 (dep updates) — none ePBS-relevant.
+- cargo audit: unchanged (1 vuln rsa, 5 warnings transitive). Not actionable.
+- No actionable work.
+
 ### run 1637 (Mar 16) — health check, all stable
 
 **Health check**: all stable
