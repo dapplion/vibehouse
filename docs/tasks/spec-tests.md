@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1627 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly run 23164776090 in progress — 18/26 jobs complete, all passing (slasher, op-pool all forks, network all forks, state-transition-vectors). beacon-chain and http-api tests still running.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- New open PR: #5008 (fix field name `block_root`→`beacon_block_root` in spec text) — doc-only, we already use correct field name.
+- #4992 (cached PTCs in state) — still open, 23 reviews, active discussion. Not merged.
+- No cargo updates. No actionable work.
+
 ### run 1626 (Mar 16) — health check, all stable
 
 **Health check**: all stable
