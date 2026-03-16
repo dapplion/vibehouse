@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1656 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e.
+- Recent spec merges since alpha.3: #5005 (test fixture fix), #5002 (wording), #5001 (parent_block_root in bid filter key — already implemented in vibehouse).
+- Open Gloas PRs unchanged: #5008, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840. All OPEN, NOT MERGED.
+- cargo check: 0 warnings. cargo audit: unchanged (rsa/RUSTSEC-2023-0071).
+- No actionable work.
+
 ### run 1655 (Mar 17) — health check, all stable
 
 **Health check**: all stable
