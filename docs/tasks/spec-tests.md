@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1622 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure (run 23137093267) was pre-slasher-fix; next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest release.
+- New merged spec PRs since last check: #5005 (test-only fix), #5002 (wording clarification) — neither requires code changes.
+- New open spec PR: #5008 (fix `block_root` → `beacon_block_root` in EnvelopesByRoot doc) — our implementation already uses correct field names.
+- No semver-compatible cargo updates. No actionable work.
+
 ### run 1621 (Mar 16) — health check, all stable
 
 **Health check**: all stable
