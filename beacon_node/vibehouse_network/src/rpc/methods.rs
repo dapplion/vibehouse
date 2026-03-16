@@ -633,7 +633,7 @@ pub enum RpcSuccessResponse<E: EthSpec> {
 }
 
 /// Indicates which response is being terminated by a stream termination response.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ResponseTermination {
     /// Blocks by range stream termination.
     BlocksByRange,

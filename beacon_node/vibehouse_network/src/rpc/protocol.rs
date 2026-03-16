@@ -1079,3 +1079,879 @@ impl RPCError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz::Encode;
+    use std::str::FromStr;
+    use types::{FixedBytesExtended, Hash256, MinimalEthSpec, Slot};
+
+    type E = MinimalEthSpec;
+
+    fn make_fork_context(fork: ForkName) -> Arc<ForkContext> {
+        let spec = {
+            let mut s = E::default_spec();
+            // Enable all forks at epoch 0 up to the requested fork
+            s.altair_fork_epoch = Some(Epoch::new(0));
+            s.bellatrix_fork_epoch = Some(Epoch::new(0));
+            s.capella_fork_epoch = Some(Epoch::new(0));
+            s.deneb_fork_epoch = Some(Epoch::new(0));
+            s.electra_fork_epoch = Some(Epoch::new(0));
+            s.fulu_fork_epoch = Some(Epoch::new(0));
+            // Only enable Gloas if requested
+            if fork == ForkName::Gloas {
+                s.gloas_fork_epoch = Some(Epoch::new(0));
+            } else {
+                s.gloas_fork_epoch = None;
+            }
+            s
+        };
+        Arc::new(ForkContext::new::<E>(Slot::new(0), Hash256::zero(), &spec))
+    }
+
+    // ── Protocol enum ───────────────────────────────────────────
+
+    #[test]
+    fn protocol_strum_serialization() {
+        assert_eq!(Protocol::Status.to_string(), "status");
+        assert_eq!(Protocol::Goodbye.to_string(), "goodbye");
+        assert_eq!(
+            Protocol::BlocksByRange.to_string(),
+            "beacon_blocks_by_range"
+        );
+        assert_eq!(Protocol::BlocksByRoot.to_string(), "beacon_blocks_by_root");
+        assert_eq!(Protocol::BlobsByRange.to_string(), "blob_sidecars_by_range");
+        assert_eq!(Protocol::BlobsByRoot.to_string(), "blob_sidecars_by_root");
+        assert_eq!(
+            Protocol::DataColumnsByRoot.to_string(),
+            "data_column_sidecars_by_root"
+        );
+        assert_eq!(
+            Protocol::DataColumnsByRange.to_string(),
+            "data_column_sidecars_by_range"
+        );
+        assert_eq!(Protocol::Ping.to_string(), "ping");
+        assert_eq!(Protocol::MetaData.to_string(), "metadata");
+        assert_eq!(
+            Protocol::LightClientBootstrap.to_string(),
+            "light_client_bootstrap"
+        );
+        assert_eq!(
+            Protocol::LightClientOptimisticUpdate.to_string(),
+            "light_client_optimistic_update"
+        );
+        assert_eq!(
+            Protocol::LightClientFinalityUpdate.to_string(),
+            "light_client_finality_update"
+        );
+        assert_eq!(
+            Protocol::LightClientUpdatesByRange.to_string(),
+            "light_client_updates_by_range"
+        );
+        assert_eq!(
+            Protocol::ExecutionPayloadEnvelopesByRoot.to_string(),
+            "execution_payload_envelopes_by_root"
+        );
+    }
+
+    #[test]
+    fn protocol_from_str_roundtrip() {
+        assert_eq!(Protocol::from_str("status").unwrap(), Protocol::Status);
+        assert_eq!(Protocol::from_str("goodbye").unwrap(), Protocol::Goodbye);
+        assert_eq!(
+            Protocol::from_str("beacon_blocks_by_range").unwrap(),
+            Protocol::BlocksByRange
+        );
+        assert_eq!(Protocol::from_str("ping").unwrap(), Protocol::Ping);
+        assert_eq!(Protocol::from_str("metadata").unwrap(), Protocol::MetaData);
+        assert!(Protocol::from_str("nonexistent").is_err());
+    }
+
+    #[test]
+    fn protocol_terminator_some_for_streaming() {
+        assert_eq!(
+            Protocol::BlocksByRange.terminator(),
+            Some(ResponseTermination::BlocksByRange)
+        );
+        assert_eq!(
+            Protocol::BlocksByRoot.terminator(),
+            Some(ResponseTermination::BlocksByRoot)
+        );
+        assert_eq!(
+            Protocol::BlobsByRange.terminator(),
+            Some(ResponseTermination::BlobsByRange)
+        );
+        assert_eq!(
+            Protocol::BlobsByRoot.terminator(),
+            Some(ResponseTermination::BlobsByRoot)
+        );
+        assert_eq!(
+            Protocol::DataColumnsByRoot.terminator(),
+            Some(ResponseTermination::DataColumnsByRoot)
+        );
+        assert_eq!(
+            Protocol::DataColumnsByRange.terminator(),
+            Some(ResponseTermination::DataColumnsByRange)
+        );
+        assert_eq!(
+            Protocol::ExecutionPayloadEnvelopesByRoot.terminator(),
+            Some(ResponseTermination::ExecutionPayloadEnvelopesByRoot)
+        );
+    }
+
+    #[test]
+    fn protocol_terminator_none_for_single_response() {
+        assert_eq!(Protocol::Status.terminator(), None);
+        assert_eq!(Protocol::Goodbye.terminator(), None);
+        assert_eq!(Protocol::Ping.terminator(), None);
+        assert_eq!(Protocol::MetaData.terminator(), None);
+        assert_eq!(Protocol::LightClientBootstrap.terminator(), None);
+        assert_eq!(Protocol::LightClientOptimisticUpdate.terminator(), None);
+        assert_eq!(Protocol::LightClientFinalityUpdate.terminator(), None);
+        assert_eq!(Protocol::LightClientUpdatesByRange.terminator(), None);
+    }
+
+    // ── Encoding ────────────────────────────────────────────────
+
+    #[test]
+    fn encoding_display() {
+        assert_eq!(Encoding::SSZSnappy.to_string(), "ssz_snappy");
+    }
+
+    // ── RpcLimits ───────────────────────────────────────────────
+
+    #[test]
+    fn rpc_limits_in_bounds() {
+        let limits = RpcLimits::new(10, 100);
+        assert!(!limits.is_out_of_bounds(50, 200));
+        assert!(!limits.is_out_of_bounds(10, 200)); // exactly min
+        assert!(!limits.is_out_of_bounds(100, 200)); // exactly max
+    }
+
+    #[test]
+    fn rpc_limits_below_min() {
+        let limits = RpcLimits::new(10, 100);
+        assert!(limits.is_out_of_bounds(9, 200));
+        assert!(limits.is_out_of_bounds(0, 200));
+    }
+
+    #[test]
+    fn rpc_limits_above_max() {
+        let limits = RpcLimits::new(10, 100);
+        assert!(limits.is_out_of_bounds(101, 200));
+    }
+
+    #[test]
+    fn rpc_limits_clamped_by_max_rpc_size() {
+        let limits = RpcLimits::new(10, 100);
+        // max_rpc_size=50 clamps effective max to 50
+        assert!(!limits.is_out_of_bounds(50, 50));
+        assert!(limits.is_out_of_bounds(51, 50));
+    }
+
+    #[test]
+    fn rpc_limits_zero_min_max() {
+        let limits = RpcLimits::new(0, 0);
+        assert!(!limits.is_out_of_bounds(0, 100));
+        assert!(limits.is_out_of_bounds(1, 100));
+    }
+
+    // ── SupportedProtocol ───────────────────────────────────────
+
+    #[test]
+    fn supported_protocol_version_strings() {
+        assert_eq!(SupportedProtocol::StatusV1.version_string(), "1");
+        assert_eq!(SupportedProtocol::StatusV2.version_string(), "2");
+        assert_eq!(SupportedProtocol::BlocksByRangeV1.version_string(), "1");
+        assert_eq!(SupportedProtocol::BlocksByRangeV2.version_string(), "2");
+        assert_eq!(SupportedProtocol::MetaDataV1.version_string(), "1");
+        assert_eq!(SupportedProtocol::MetaDataV2.version_string(), "2");
+        assert_eq!(SupportedProtocol::MetaDataV3.version_string(), "3");
+        assert_eq!(
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1.version_string(),
+            "1"
+        );
+    }
+
+    #[test]
+    fn supported_protocol_to_protocol_mapping() {
+        assert_eq!(SupportedProtocol::StatusV1.protocol(), Protocol::Status);
+        assert_eq!(SupportedProtocol::StatusV2.protocol(), Protocol::Status);
+        assert_eq!(SupportedProtocol::GoodbyeV1.protocol(), Protocol::Goodbye);
+        assert_eq!(
+            SupportedProtocol::BlocksByRangeV1.protocol(),
+            Protocol::BlocksByRange
+        );
+        assert_eq!(
+            SupportedProtocol::BlocksByRangeV2.protocol(),
+            Protocol::BlocksByRange
+        );
+        assert_eq!(
+            SupportedProtocol::BlocksByRootV1.protocol(),
+            Protocol::BlocksByRoot
+        );
+        assert_eq!(
+            SupportedProtocol::BlocksByRootV2.protocol(),
+            Protocol::BlocksByRoot
+        );
+        assert_eq!(
+            SupportedProtocol::BlobsByRangeV1.protocol(),
+            Protocol::BlobsByRange
+        );
+        assert_eq!(
+            SupportedProtocol::BlobsByRootV1.protocol(),
+            Protocol::BlobsByRoot
+        );
+        assert_eq!(
+            SupportedProtocol::DataColumnsByRootV1.protocol(),
+            Protocol::DataColumnsByRoot
+        );
+        assert_eq!(
+            SupportedProtocol::DataColumnsByRangeV1.protocol(),
+            Protocol::DataColumnsByRange
+        );
+        assert_eq!(SupportedProtocol::PingV1.protocol(), Protocol::Ping);
+        assert_eq!(SupportedProtocol::MetaDataV1.protocol(), Protocol::MetaData);
+        assert_eq!(SupportedProtocol::MetaDataV2.protocol(), Protocol::MetaData);
+        assert_eq!(SupportedProtocol::MetaDataV3.protocol(), Protocol::MetaData);
+        assert_eq!(
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1.protocol(),
+            Protocol::ExecutionPayloadEnvelopesByRoot
+        );
+    }
+
+    #[test]
+    fn currently_supported_includes_envelope_for_gloas() {
+        let fc = make_fork_context(ForkName::Gloas);
+        let protocols = SupportedProtocol::currently_supported(&fc);
+        let has_envelope = protocols
+            .iter()
+            .any(|p| p.versioned_protocol == SupportedProtocol::ExecutionPayloadEnvelopesByRootV1);
+        assert!(
+            has_envelope,
+            "Gloas fork context should include ExecutionPayloadEnvelopesByRootV1"
+        );
+    }
+
+    #[test]
+    fn currently_supported_excludes_envelope_pre_gloas() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let protocols = SupportedProtocol::currently_supported(&fc);
+        let has_envelope = protocols
+            .iter()
+            .any(|p| p.versioned_protocol == SupportedProtocol::ExecutionPayloadEnvelopesByRootV1);
+        assert!(
+            !has_envelope,
+            "Pre-Gloas fork context should not include ExecutionPayloadEnvelopesByRootV1"
+        );
+    }
+
+    #[test]
+    fn currently_supported_always_has_core_protocols() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let protocols = SupportedProtocol::currently_supported(&fc);
+        let has = |sp: SupportedProtocol| protocols.iter().any(|p| p.versioned_protocol == sp);
+        assert!(has(SupportedProtocol::StatusV1));
+        assert!(has(SupportedProtocol::StatusV2));
+        assert!(has(SupportedProtocol::GoodbyeV1));
+        assert!(has(SupportedProtocol::BlocksByRangeV1));
+        assert!(has(SupportedProtocol::BlocksByRangeV2));
+        assert!(has(SupportedProtocol::BlocksByRootV1));
+        assert!(has(SupportedProtocol::BlocksByRootV2));
+        assert!(has(SupportedProtocol::PingV1));
+    }
+
+    #[test]
+    fn currently_supported_includes_blobs_for_deneb_plus() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let protocols = SupportedProtocol::currently_supported(&fc);
+        let has = |sp: SupportedProtocol| protocols.iter().any(|p| p.versioned_protocol == sp);
+        assert!(has(SupportedProtocol::BlobsByRangeV1));
+        assert!(has(SupportedProtocol::BlobsByRootV1));
+    }
+
+    #[test]
+    fn currently_supported_includes_data_columns_when_peerdas_scheduled() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let protocols = SupportedProtocol::currently_supported(&fc);
+        let has = |sp: SupportedProtocol| protocols.iter().any(|p| p.versioned_protocol == sp);
+        assert!(has(SupportedProtocol::DataColumnsByRootV1));
+        assert!(has(SupportedProtocol::DataColumnsByRangeV1));
+    }
+
+    #[test]
+    fn currently_supported_metadata_v3_when_peerdas() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let protocols = SupportedProtocol::currently_supported(&fc);
+        let has = |sp: SupportedProtocol| protocols.iter().any(|p| p.versioned_protocol == sp);
+        assert!(has(SupportedProtocol::MetaDataV3));
+        assert!(has(SupportedProtocol::MetaDataV2));
+        assert!(has(SupportedProtocol::MetaDataV1));
+    }
+
+    // ── ProtocolId ──────────────────────────────────────────────
+
+    #[test]
+    fn protocol_id_format() {
+        let pid = ProtocolId::new(SupportedProtocol::StatusV1, Encoding::SSZSnappy);
+        assert_eq!(pid.as_ref(), "/eth2/beacon_chain/req/status/1/ssz_snappy");
+    }
+
+    #[test]
+    fn protocol_id_format_blocks_by_range_v2() {
+        let pid = ProtocolId::new(SupportedProtocol::BlocksByRangeV2, Encoding::SSZSnappy);
+        assert_eq!(
+            pid.as_ref(),
+            "/eth2/beacon_chain/req/beacon_blocks_by_range/2/ssz_snappy"
+        );
+    }
+
+    #[test]
+    fn protocol_id_format_envelope() {
+        let pid = ProtocolId::new(
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+            Encoding::SSZSnappy,
+        );
+        assert_eq!(
+            pid.as_ref(),
+            "/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/ssz_snappy"
+        );
+    }
+
+    #[test]
+    fn protocol_id_has_context_bytes_true() {
+        let context_protocols = [
+            SupportedProtocol::BlocksByRangeV2,
+            SupportedProtocol::BlocksByRootV2,
+            SupportedProtocol::BlobsByRangeV1,
+            SupportedProtocol::BlobsByRootV1,
+            SupportedProtocol::DataColumnsByRootV1,
+            SupportedProtocol::DataColumnsByRangeV1,
+            SupportedProtocol::LightClientBootstrapV1,
+            SupportedProtocol::LightClientOptimisticUpdateV1,
+            SupportedProtocol::LightClientFinalityUpdateV1,
+            SupportedProtocol::LightClientUpdatesByRangeV1,
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+        ];
+        for sp in context_protocols {
+            let pid = ProtocolId::new(sp, Encoding::SSZSnappy);
+            assert!(
+                pid.has_context_bytes(),
+                "{:?} should have context bytes",
+                sp
+            );
+        }
+    }
+
+    #[test]
+    fn protocol_id_has_context_bytes_false() {
+        let no_context_protocols = [
+            SupportedProtocol::StatusV1,
+            SupportedProtocol::StatusV2,
+            SupportedProtocol::BlocksByRootV1,
+            SupportedProtocol::BlocksByRangeV1,
+            SupportedProtocol::PingV1,
+            SupportedProtocol::MetaDataV1,
+            SupportedProtocol::MetaDataV2,
+            SupportedProtocol::MetaDataV3,
+            SupportedProtocol::GoodbyeV1,
+        ];
+        for sp in no_context_protocols {
+            let pid = ProtocolId::new(sp, Encoding::SSZSnappy);
+            assert!(
+                !pid.has_context_bytes(),
+                "{:?} should NOT have context bytes",
+                sp
+            );
+        }
+    }
+
+    // ── rpc_block_limits_by_fork ────────────────────────────────
+
+    #[test]
+    fn block_limits_base_fork() {
+        let limits = rpc_block_limits_by_fork(ForkName::Base);
+        assert_eq!(limits.min, *SIGNED_BEACON_BLOCK_BASE_MIN);
+        assert_eq!(limits.max, *SIGNED_BEACON_BLOCK_BASE_MAX);
+    }
+
+    #[test]
+    fn block_limits_altair_fork() {
+        let limits = rpc_block_limits_by_fork(ForkName::Altair);
+        assert_eq!(limits.min, *SIGNED_BEACON_BLOCK_BASE_MIN);
+        assert_eq!(limits.max, *SIGNED_BEACON_BLOCK_ALTAIR_MAX);
+    }
+
+    #[test]
+    fn block_limits_post_merge_uses_bellatrix_max() {
+        for fork in [
+            ForkName::Bellatrix,
+            ForkName::Capella,
+            ForkName::Deneb,
+            ForkName::Electra,
+            ForkName::Fulu,
+            ForkName::Gloas,
+        ] {
+            let limits = rpc_block_limits_by_fork(fork);
+            assert_eq!(limits.min, *SIGNED_BEACON_BLOCK_BASE_MIN);
+            assert_eq!(limits.max, *SIGNED_BEACON_BLOCK_BELLATRIX_MAX);
+        }
+    }
+
+    #[test]
+    fn block_limits_min_less_than_max() {
+        for fork in ForkName::list_all() {
+            let limits = rpc_block_limits_by_fork(fork);
+            assert!(limits.min <= limits.max, "min > max for fork {:?}", fork);
+        }
+    }
+
+    // ── rpc_request_limits ──────────────────────────────────────
+
+    #[test]
+    fn request_limits_status_fixed_size() {
+        let spec = E::default_spec();
+        let pid = ProtocolId::new(SupportedProtocol::StatusV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_request_limits::<E>(&spec);
+        assert_eq!(limits.min, <StatusMessageV1 as Encode>::ssz_fixed_len());
+        assert_eq!(limits.max, <StatusMessageV2 as Encode>::ssz_fixed_len());
+    }
+
+    #[test]
+    fn request_limits_goodbye_fixed_size() {
+        let spec = E::default_spec();
+        let pid = ProtocolId::new(SupportedProtocol::GoodbyeV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_request_limits::<E>(&spec);
+        let goodbye_len = <GoodbyeReason as Encode>::ssz_fixed_len();
+        assert_eq!(limits.min, goodbye_len);
+        assert_eq!(limits.max, goodbye_len);
+    }
+
+    #[test]
+    fn request_limits_ping_fixed_size() {
+        let spec = E::default_spec();
+        let pid = ProtocolId::new(SupportedProtocol::PingV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_request_limits::<E>(&spec);
+        let ping_len = <Ping as Encode>::ssz_fixed_len();
+        assert_eq!(limits.min, ping_len);
+        assert_eq!(limits.max, ping_len);
+    }
+
+    #[test]
+    fn request_limits_metadata_is_empty() {
+        let spec = E::default_spec();
+        let pid = ProtocolId::new(SupportedProtocol::MetaDataV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_request_limits::<E>(&spec);
+        assert_eq!(limits.min, 0);
+        assert_eq!(limits.max, 0);
+    }
+
+    #[test]
+    fn request_limits_blocks_by_root_variable() {
+        let spec = E::default_spec();
+        let pid = ProtocolId::new(SupportedProtocol::BlocksByRootV2, Encoding::SSZSnappy);
+        let limits = pid.rpc_request_limits::<E>(&spec);
+        assert_eq!(limits.min, 0);
+        assert_eq!(limits.max, spec.max_blocks_by_root_request);
+    }
+
+    #[test]
+    fn request_limits_envelope_by_root_variable() {
+        let spec = E::default_spec();
+        let pid = ProtocolId::new(
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+            Encoding::SSZSnappy,
+        );
+        let limits = pid.rpc_request_limits::<E>(&spec);
+        assert_eq!(limits.min, 0);
+        assert_eq!(
+            limits.max,
+            spec.max_execution_payload_envelopes_by_root_request
+        );
+    }
+
+    // ── rpc_response_limits ─────────────────────────────────────
+
+    #[test]
+    fn response_limits_goodbye_is_zero() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let pid = ProtocolId::new(SupportedProtocol::GoodbyeV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_response_limits::<E>(&fc);
+        assert_eq!(limits.min, 0);
+        assert_eq!(limits.max, 0);
+    }
+
+    #[test]
+    fn response_limits_ping_fixed() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let pid = ProtocolId::new(SupportedProtocol::PingV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_response_limits::<E>(&fc);
+        let ping_len = <Ping as Encode>::ssz_fixed_len();
+        assert_eq!(limits.min, ping_len);
+        assert_eq!(limits.max, ping_len);
+    }
+
+    #[test]
+    fn response_limits_envelope_uses_bellatrix_max() {
+        let fc = make_fork_context(ForkName::Gloas);
+        let pid = ProtocolId::new(
+            SupportedProtocol::ExecutionPayloadEnvelopesByRootV1,
+            Encoding::SSZSnappy,
+        );
+        let limits = pid.rpc_response_limits::<E>(&fc);
+        assert_eq!(limits.min, 0);
+        assert_eq!(limits.max, *SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX);
+    }
+
+    #[test]
+    fn response_limits_metadata_spans_v1_to_v3() {
+        let fc = make_fork_context(ForkName::Fulu);
+        let pid = ProtocolId::new(SupportedProtocol::MetaDataV1, Encoding::SSZSnappy);
+        let limits = pid.rpc_response_limits::<E>(&fc);
+        assert_eq!(limits.min, <MetaDataV1<E> as Encode>::ssz_fixed_len());
+        assert_eq!(limits.max, <MetaDataV3<E> as Encode>::ssz_fixed_len());
+    }
+
+    // ── Light client limits ─────────────────────────────────────
+
+    #[test]
+    fn light_client_limits_base_is_zero() {
+        let base_limits_fns: Vec<fn(ForkName) -> RpcLimits> = vec![
+            rpc_light_client_bootstrap_limits_by_fork,
+            rpc_light_client_finality_update_limits_by_fork,
+            rpc_light_client_optimistic_update_limits_by_fork,
+            rpc_light_client_updates_by_range_limits_by_fork,
+        ];
+        for f in base_limits_fns {
+            let limits = f(ForkName::Base);
+            assert_eq!(limits.min, 0);
+            assert_eq!(limits.max, 0);
+        }
+    }
+
+    #[test]
+    fn light_client_limits_altair_bellatrix_are_fixed() {
+        for fork in [ForkName::Altair, ForkName::Bellatrix] {
+            let limits = rpc_light_client_bootstrap_limits_by_fork(fork);
+            assert_eq!(
+                limits.min, limits.max,
+                "Altair/Bellatrix bootstrap should be fixed-size"
+            );
+        }
+    }
+
+    #[test]
+    fn light_client_limits_grow_with_forks() {
+        let capella = rpc_light_client_bootstrap_limits_by_fork(ForkName::Capella);
+        let deneb = rpc_light_client_bootstrap_limits_by_fork(ForkName::Deneb);
+        let electra = rpc_light_client_bootstrap_limits_by_fork(ForkName::Electra);
+        // All share the same altair min
+        assert_eq!(capella.min, deneb.min);
+        assert_eq!(deneb.min, electra.min);
+        // Max should be non-zero
+        assert!(capella.max > 0);
+        assert!(deneb.max > 0);
+        assert!(electra.max > 0);
+    }
+
+    // ── RPCError ────────────────────────────────────────────────
+
+    #[test]
+    fn rpc_error_display_variants() {
+        let err = RPCError::StreamTimeout;
+        assert_eq!(err.to_string(), "Stream Timeout");
+
+        let err = RPCError::UnsupportedProtocol;
+        assert_eq!(err.to_string(), "Peer does not support the protocol");
+
+        let err = RPCError::IncompleteStream;
+        assert_eq!(err.to_string(), "Stream ended unexpectedly");
+
+        let err = RPCError::NegotiationTimeout;
+        assert_eq!(err.to_string(), "Negotiation timeout");
+
+        let err = RPCError::HandlerRejected;
+        assert_eq!(err.to_string(), "Handler rejected the request");
+
+        let err = RPCError::Disconnected;
+        assert_eq!(err.to_string(), "Gracefully Disconnected");
+    }
+
+    #[test]
+    fn rpc_error_display_with_data() {
+        let err = RPCError::IoError("connection reset".to_string());
+        assert!(err.to_string().contains("connection reset"));
+
+        let err = RPCError::InvalidData("bad payload".to_string());
+        assert!(err.to_string().contains("bad payload"));
+
+        let err = RPCError::InternalError("timer failure");
+        assert!(err.to_string().contains("timer failure"));
+
+        let err = RPCError::ErrorResponse(RpcErrorResponse::ServerError, "overloaded".to_string());
+        assert!(err.to_string().contains("overloaded"));
+    }
+
+    #[test]
+    fn rpc_error_from_io_error() {
+        let io_err = io::Error::new(io::ErrorKind::ConnectionReset, "reset");
+        let rpc_err: RPCError = io_err.into();
+        match rpc_err {
+            RPCError::IoError(msg) => assert!(msg.contains("reset")),
+            other => panic!("expected IoError, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn rpc_error_from_ssz_decode_error() {
+        let ssz_err = ssz::DecodeError::InvalidByteLength {
+            len: 5,
+            expected: 8,
+        };
+        let rpc_err: RPCError = ssz_err.clone().into();
+        assert_eq!(rpc_err, RPCError::SSZDecodeError(ssz_err));
+    }
+
+    #[test]
+    fn rpc_error_as_static_str_for_error_response() {
+        let err = RPCError::ErrorResponse(RpcErrorResponse::InvalidRequest, "bad".to_string());
+        // as_static_str delegates to the RpcErrorResponse code
+        let s = err.as_static_str();
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn rpc_error_as_static_str_for_non_error_response() {
+        let err = RPCError::StreamTimeout;
+        let s = err.as_static_str();
+        assert_eq!(s, "stream_timeout");
+    }
+
+    #[test]
+    fn rpc_error_strum_into_static_str() {
+        let err = RPCError::Disconnected;
+        let s: &'static str = (&err).into();
+        assert_eq!(s, "disconnected");
+    }
+
+    // ── RequestType ─────────────────────────────────────────────
+
+    #[test]
+    fn request_type_expect_exactly_one_response() {
+        // Single-response requests
+        assert!(
+            RequestType::<E>::Status(StatusMessage::V1(StatusMessageV1 {
+                fork_digest: [0; 4],
+                finalized_root: Hash256::zero(),
+                finalized_epoch: Epoch::new(0),
+                head_root: Hash256::zero(),
+                head_slot: Slot::new(0),
+            }))
+            .expect_exactly_one_response()
+        );
+
+        assert!(RequestType::<E>::Ping(Ping { data: 0 }).expect_exactly_one_response());
+
+        assert!(
+            RequestType::<E>::MetaData(MetadataRequest::new_v1()).expect_exactly_one_response()
+        );
+
+        assert!(RequestType::<E>::LightClientOptimisticUpdate.expect_exactly_one_response());
+        assert!(RequestType::<E>::LightClientFinalityUpdate.expect_exactly_one_response());
+
+        // Multi-response requests
+        assert!(
+            !RequestType::<E>::BlocksByRange(OldBlocksByRangeRequest::V2(
+                OldBlocksByRangeRequestV2 {
+                    start_slot: 0,
+                    count: 10,
+                    step: 1,
+                }
+            ))
+            .expect_exactly_one_response()
+        );
+
+        assert!(
+            !RequestType::<E>::Goodbye(GoodbyeReason::ClientShutdown).expect_exactly_one_response()
+        );
+    }
+
+    #[test]
+    fn request_type_versioned_protocol_mapping() {
+        assert_eq!(
+            RequestType::<E>::Ping(Ping { data: 1 }).versioned_protocol(),
+            SupportedProtocol::PingV1
+        );
+        assert_eq!(
+            RequestType::<E>::Goodbye(GoodbyeReason::ClientShutdown).versioned_protocol(),
+            SupportedProtocol::GoodbyeV1
+        );
+        assert_eq!(
+            RequestType::<E>::LightClientOptimisticUpdate.versioned_protocol(),
+            SupportedProtocol::LightClientOptimisticUpdateV1
+        );
+        assert_eq!(
+            RequestType::<E>::LightClientFinalityUpdate.versioned_protocol(),
+            SupportedProtocol::LightClientFinalityUpdateV1
+        );
+    }
+
+    #[test]
+    fn request_type_status_v1_v2_versioned_protocol() {
+        let v1 = RequestType::<E>::Status(StatusMessage::V1(StatusMessageV1 {
+            fork_digest: [0; 4],
+            finalized_root: Hash256::zero(),
+            finalized_epoch: Epoch::new(0),
+            head_root: Hash256::zero(),
+            head_slot: Slot::new(0),
+        }));
+        assert_eq!(v1.versioned_protocol(), SupportedProtocol::StatusV1);
+    }
+
+    #[test]
+    fn request_type_metadata_v1_v2_v3_versioned_protocol() {
+        assert_eq!(
+            RequestType::<E>::MetaData(MetadataRequest::new_v1()).versioned_protocol(),
+            SupportedProtocol::MetaDataV1
+        );
+        assert_eq!(
+            RequestType::<E>::MetaData(MetadataRequest::new_v2()).versioned_protocol(),
+            SupportedProtocol::MetaDataV2
+        );
+        assert_eq!(
+            RequestType::<E>::MetaData(MetadataRequest::new_v3()).versioned_protocol(),
+            SupportedProtocol::MetaDataV3
+        );
+    }
+
+    #[test]
+    fn request_type_max_responses_single() {
+        let spec = E::default_spec();
+        let epoch = Epoch::new(0);
+        let status = RequestType::<E>::Status(StatusMessage::V1(StatusMessageV1 {
+            fork_digest: [0; 4],
+            finalized_root: Hash256::zero(),
+            finalized_epoch: Epoch::new(0),
+            head_root: Hash256::zero(),
+            head_slot: Slot::new(0),
+        }));
+        assert_eq!(status.max_responses(epoch, &spec), 1);
+
+        let ping = RequestType::<E>::Ping(Ping { data: 42 });
+        assert_eq!(ping.max_responses(epoch, &spec), 1);
+
+        let metadata = RequestType::<E>::MetaData(MetadataRequest::new_v1());
+        assert_eq!(metadata.max_responses(epoch, &spec), 1);
+    }
+
+    #[test]
+    fn request_type_max_responses_goodbye_is_zero() {
+        let spec = E::default_spec();
+        let goodbye = RequestType::<E>::Goodbye(GoodbyeReason::ClientShutdown);
+        assert_eq!(goodbye.max_responses(Epoch::new(0), &spec), 0);
+    }
+
+    #[test]
+    fn request_type_max_responses_blocks_by_range() {
+        let spec = E::default_spec();
+        let req = RequestType::<E>::BlocksByRange(OldBlocksByRangeRequest::V2(
+            OldBlocksByRangeRequestV2 {
+                start_slot: 0,
+                count: 64,
+                step: 1,
+            },
+        ));
+        assert_eq!(req.max_responses(Epoch::new(0), &spec), 64);
+    }
+
+    #[test]
+    fn request_type_supported_protocols_status_has_v1_and_v2() {
+        let req = RequestType::<E>::Status(StatusMessage::V1(StatusMessageV1 {
+            fork_digest: [0; 4],
+            finalized_root: Hash256::zero(),
+            finalized_epoch: Epoch::new(0),
+            head_root: Hash256::zero(),
+            head_slot: Slot::new(0),
+        }));
+        let protos = req.supported_protocols();
+        assert_eq!(protos.len(), 2);
+        assert_eq!(protos[0].versioned_protocol, SupportedProtocol::StatusV2);
+        assert_eq!(protos[1].versioned_protocol, SupportedProtocol::StatusV1);
+    }
+
+    #[test]
+    fn request_type_supported_protocols_metadata_has_all_versions() {
+        let req = RequestType::<E>::MetaData(MetadataRequest::new_v1());
+        let protos = req.supported_protocols();
+        assert_eq!(protos.len(), 3);
+    }
+
+    #[test]
+    fn request_type_display_formatting() {
+        let ping = RequestType::<E>::Ping(Ping { data: 42 });
+        assert!(ping.to_string().contains("42"));
+
+        let metadata = RequestType::<E>::MetaData(MetadataRequest::new_v1());
+        assert!(metadata.to_string().contains("MetaData"));
+
+        let lc_opt = RequestType::<E>::LightClientOptimisticUpdate;
+        assert!(lc_opt.to_string().contains("optimistic"));
+
+        let lc_fin = RequestType::<E>::LightClientFinalityUpdate;
+        assert!(lc_fin.to_string().contains("finality"));
+    }
+
+    // ── Static size constants ───────────────────────────────────
+
+    #[test]
+    fn static_block_sizes_are_positive() {
+        assert!(*SIGNED_BEACON_BLOCK_BASE_MIN > 0);
+        assert!(*SIGNED_BEACON_BLOCK_BASE_MAX > 0);
+        assert!(*SIGNED_BEACON_BLOCK_ALTAIR_MAX > 0);
+        assert!(*SIGNED_BEACON_BLOCK_BELLATRIX_MAX > 0);
+    }
+
+    #[test]
+    fn static_block_sizes_monotonic() {
+        assert!(*SIGNED_BEACON_BLOCK_BASE_MIN <= *SIGNED_BEACON_BLOCK_BASE_MAX);
+        assert!(*SIGNED_BEACON_BLOCK_BASE_MAX <= *SIGNED_BEACON_BLOCK_ALTAIR_MAX);
+        assert!(*SIGNED_BEACON_BLOCK_ALTAIR_MAX <= *SIGNED_BEACON_BLOCK_BELLATRIX_MAX);
+    }
+
+    #[test]
+    fn blob_sidecar_size_positive() {
+        assert!(*BLOB_SIDECAR_SIZE > 0);
+        assert!(*BLOB_SIDECAR_SIZE_MINIMAL > 0);
+    }
+
+    #[test]
+    fn error_type_min_max() {
+        assert!(*ERROR_TYPE_MIN <= *ERROR_TYPE_MAX);
+        assert!(*ERROR_TYPE_MAX > 0);
+    }
+
+    #[test]
+    fn envelope_max_equals_bellatrix_max() {
+        assert_eq!(
+            *SIGNED_EXECUTION_PAYLOAD_ENVELOPE_MAX,
+            *SIGNED_BEACON_BLOCK_BELLATRIX_MAX
+        );
+    }
+
+    // ── rpc_blob_limits ─────────────────────────────────────────
+
+    #[test]
+    fn blob_limits_minimal_spec() {
+        let limits = rpc_blob_limits::<E>();
+        assert_eq!(limits.min, *BLOB_SIDECAR_SIZE_MINIMAL);
+        assert_eq!(limits.max, *BLOB_SIDECAR_SIZE_MINIMAL);
+    }
+
+    #[test]
+    fn blob_limits_mainnet_spec() {
+        let limits = rpc_blob_limits::<MainnetEthSpec>();
+        assert_eq!(limits.min, *BLOB_SIDECAR_SIZE);
+        assert_eq!(limits.max, *BLOB_SIDECAR_SIZE);
+    }
+}
