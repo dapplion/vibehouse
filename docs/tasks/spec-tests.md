@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1641 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly (23164776090) passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #4992 (cached PTCs in state) — still open, active discussion. NOT merged.
+- PR #5008 (fix field name in ExecutionPayloadEnvelopesByRoot) — new, open, not merged. Minor docs fix.
+- PR #4962, #4939, #4960, #4932 — still open.
+- No actionable work.
+
 ### run 1639 (Mar 16) — health check, all stable
 
 **Health check**: all stable
