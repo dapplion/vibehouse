@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1548 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (09:36 UTC) predates fix b79292d (09:53 UTC) — next nightly should pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. No new consensus-specs commits since #5005 (Mar 15).
+- PR #4992 (PTC lookbehind): active discussion today — potuz acknowledged `get_ptc` slot restriction bug ("oh yeah that's definitely wrong") raised by ensi321. Expect new commits before merge. Same head d76a278b0a, 1 APPROVED (jtraglia). Our `ptc-lookbehind` branch may need rebase after update.
+- All tracked PRs (#4932, #4939, #4960, #4962, #5008) still OPEN, no merges.
+- cargo audit unchanged (1 rsa). No semver-compatible dep updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1547 (Mar 16) — health check, all stable
 
 **Health check**: all stable
