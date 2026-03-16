@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1513 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly now passes (slasher fix b79292d35 included).
+- Spec: v1.7.0-alpha.3 still latest. HEAD still at 1baa05e (unchanged).
+- New open PR #5008: doc fix for `block_root` → `beacon_block_root` in EnvelopesByRoot spec text. No code impact (vibehouse already uses `beacon_block_root`).
+- PR #4992 (cached PTCs): still OPEN, active review discussion. Not actionable yet.
+- PR #4939 (request missing payload envelopes for index-1 attestation): still open, monitoring.
+- No actionable work — project in maintenance mode.
+
 ### run 1512 (Mar 16) — health check, all stable
 
 **Health check**: all stable
