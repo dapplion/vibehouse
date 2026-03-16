@@ -970,3 +970,497 @@ impl<E: EthSpec> std::fmt::Display for DataColumnsByRootRequest<E> {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz::{Decode, Encode};
+    use types::{FixedBytesExtended, MinimalEthSpec};
+
+    type E = MinimalEthSpec;
+
+    // ── GoodbyeReason ─────────────────────────────────────────
+
+    #[test]
+    fn goodbye_reason_from_u64_known_values() {
+        assert_eq!(GoodbyeReason::from(1), GoodbyeReason::ClientShutdown);
+        assert_eq!(GoodbyeReason::from(2), GoodbyeReason::IrrelevantNetwork);
+        assert_eq!(GoodbyeReason::from(3), GoodbyeReason::Fault);
+        assert_eq!(
+            GoodbyeReason::from(128),
+            GoodbyeReason::UnableToVerifyNetwork
+        );
+        assert_eq!(GoodbyeReason::from(129), GoodbyeReason::TooManyPeers);
+        assert_eq!(GoodbyeReason::from(250), GoodbyeReason::BadScore);
+        assert_eq!(GoodbyeReason::from(251), GoodbyeReason::Banned);
+        assert_eq!(GoodbyeReason::from(252), GoodbyeReason::BannedIP);
+    }
+
+    #[test]
+    fn goodbye_reason_from_u64_unknown() {
+        assert_eq!(GoodbyeReason::from(0), GoodbyeReason::Unknown);
+        assert_eq!(GoodbyeReason::from(42), GoodbyeReason::Unknown);
+        assert_eq!(GoodbyeReason::from(u64::MAX), GoodbyeReason::Unknown);
+    }
+
+    #[test]
+    fn goodbye_reason_into_u64_roundtrip() {
+        let reasons = [
+            (GoodbyeReason::ClientShutdown, 1u64),
+            (GoodbyeReason::IrrelevantNetwork, 2),
+            (GoodbyeReason::Fault, 3),
+            (GoodbyeReason::UnableToVerifyNetwork, 128),
+            (GoodbyeReason::TooManyPeers, 129),
+            (GoodbyeReason::BadScore, 250),
+            (GoodbyeReason::Banned, 251),
+            (GoodbyeReason::BannedIP, 252),
+            (GoodbyeReason::Unknown, 0),
+        ];
+        for (reason, expected) in reasons {
+            assert_eq!(u64::from(reason), expected);
+        }
+    }
+
+    #[test]
+    fn goodbye_reason_ssz_roundtrip() {
+        let reason = GoodbyeReason::Fault;
+        let bytes = reason.as_ssz_bytes();
+        let decoded = GoodbyeReason::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(decoded, reason);
+    }
+
+    #[test]
+    fn goodbye_reason_ssz_fixed_len() {
+        assert!(<GoodbyeReason as Encode>::is_ssz_fixed_len());
+        assert_eq!(<GoodbyeReason as Encode>::ssz_fixed_len(), 8);
+    }
+
+    #[test]
+    fn goodbye_reason_display() {
+        assert_eq!(
+            format!("{}", GoodbyeReason::ClientShutdown),
+            "Client Shutdown"
+        );
+        assert_eq!(format!("{}", GoodbyeReason::Fault), "Fault");
+        assert_eq!(format!("{}", GoodbyeReason::Unknown), "Unknown Reason");
+    }
+
+    // ── ErrorType ─────────────────────────────────────────────
+
+    #[test]
+    fn error_type_from_string() {
+        let err = ErrorType::from("test error".to_string());
+        assert_eq!(err.len(), 10);
+    }
+
+    #[test]
+    fn error_type_from_str() {
+        let err = ErrorType::from("hello");
+        assert_eq!(err.len(), 5);
+    }
+
+    #[test]
+    fn error_type_display_strips_control_chars() {
+        let err = ErrorType::from("ok");
+        let display = format!("{}", err);
+        assert_eq!(display, "ok");
+    }
+
+    #[test]
+    fn error_type_display_empty() {
+        let err = ErrorType::from("");
+        let display = format!("{}", err);
+        assert_eq!(display, "");
+    }
+
+    #[test]
+    fn error_type_truncates_at_max_len() {
+        let long = "a".repeat(300);
+        let err = ErrorType::from(long);
+        assert_eq!(err.len(), 256);
+    }
+
+    // ── RpcErrorResponse ──────────────────────────────────────
+
+    #[test]
+    fn rpc_error_response_code_roundtrip() {
+        let cases = [
+            (1u8, RpcErrorResponse::InvalidRequest),
+            (2, RpcErrorResponse::ServerError),
+            (3, RpcErrorResponse::ResourceUnavailable),
+            (139, RpcErrorResponse::RateLimited),
+            (140, RpcErrorResponse::BlobsNotFoundForBlock),
+        ];
+        for (code, expected) in cases {
+            assert_eq!(expected.as_u8(), code);
+        }
+    }
+
+    #[test]
+    fn rpc_error_response_unknown_code() {
+        assert_eq!(RpcErrorResponse::Unknown.as_u8(), 255);
+    }
+
+    #[test]
+    fn rpc_error_response_display() {
+        assert_eq!(
+            format!("{}", RpcErrorResponse::InvalidRequest),
+            "The request was invalid"
+        );
+        assert_eq!(format!("{}", RpcErrorResponse::RateLimited), "Rate limited");
+    }
+
+    // ── RpcResponse ───────────────────────────────────────────
+
+    #[test]
+    fn rpc_response_is_response() {
+        assert!(RpcResponse::<E>::is_response(0));
+        assert!(!RpcResponse::<E>::is_response(1));
+        assert!(!RpcResponse::<E>::is_response(255));
+    }
+
+    #[test]
+    fn rpc_response_from_error_known_codes() {
+        let resp = RpcResponse::<E>::from_error(1, ErrorType::from("bad"));
+        assert!(matches!(
+            resp,
+            RpcResponse::Error(RpcErrorResponse::InvalidRequest, _)
+        ));
+
+        let resp = RpcResponse::<E>::from_error(2, ErrorType::from("err"));
+        assert!(matches!(
+            resp,
+            RpcResponse::Error(RpcErrorResponse::ServerError, _)
+        ));
+
+        let resp = RpcResponse::<E>::from_error(3, ErrorType::from("na"));
+        assert!(matches!(
+            resp,
+            RpcResponse::Error(RpcErrorResponse::ResourceUnavailable, _)
+        ));
+
+        let resp = RpcResponse::<E>::from_error(139, ErrorType::from("slow"));
+        assert!(matches!(
+            resp,
+            RpcResponse::Error(RpcErrorResponse::RateLimited, _)
+        ));
+
+        let resp = RpcResponse::<E>::from_error(140, ErrorType::from("no blobs"));
+        assert!(matches!(
+            resp,
+            RpcResponse::Error(RpcErrorResponse::BlobsNotFoundForBlock, _)
+        ));
+    }
+
+    #[test]
+    fn rpc_response_from_error_unknown_code() {
+        let resp = RpcResponse::<E>::from_error(42, ErrorType::from("wat"));
+        assert!(matches!(
+            resp,
+            RpcResponse::Error(RpcErrorResponse::Unknown, _)
+        ));
+    }
+
+    #[test]
+    fn rpc_response_close_after() {
+        let err_resp = RpcResponse::<E>::from_error(1, ErrorType::from("err"));
+        assert!(err_resp.close_after());
+
+        let term_resp = RpcResponse::<E>::StreamTermination(ResponseTermination::BlocksByRange);
+        assert!(term_resp.close_after());
+    }
+
+    #[test]
+    fn rpc_response_as_u8() {
+        let err_resp = RpcResponse::<E>::from_error(2, ErrorType::from("x"));
+        assert_eq!(err_resp.as_u8(), Some(2));
+
+        let term_resp = RpcResponse::<E>::StreamTermination(ResponseTermination::BlocksByRoot);
+        assert_eq!(term_resp.as_u8(), None);
+    }
+
+    // ── ResponseTermination ───────────────────────────────────
+
+    #[test]
+    fn response_termination_as_protocol() {
+        assert_eq!(
+            ResponseTermination::BlocksByRange.as_protocol(),
+            Protocol::BlocksByRange
+        );
+        assert_eq!(
+            ResponseTermination::BlobsByRoot.as_protocol(),
+            Protocol::BlobsByRoot
+        );
+        assert_eq!(
+            ResponseTermination::DataColumnsByRoot.as_protocol(),
+            Protocol::DataColumnsByRoot
+        );
+        assert_eq!(
+            ResponseTermination::DataColumnsByRange.as_protocol(),
+            Protocol::DataColumnsByRange
+        );
+        assert_eq!(
+            ResponseTermination::LightClientUpdatesByRange.as_protocol(),
+            Protocol::LightClientUpdatesByRange
+        );
+        assert_eq!(
+            ResponseTermination::ExecutionPayloadEnvelopesByRoot.as_protocol(),
+            Protocol::ExecutionPayloadEnvelopesByRoot
+        );
+    }
+
+    // ── BlocksByRangeRequest ──────────────────────────────────
+
+    #[test]
+    fn blocks_by_range_request_new() {
+        let req = BlocksByRangeRequest::new(10, 5);
+        assert_eq!(*req.start_slot(), 10);
+        assert_eq!(*req.count(), 5);
+        assert!(matches!(req, BlocksByRangeRequest::V2(_)));
+    }
+
+    #[test]
+    fn blocks_by_range_request_new_v1() {
+        let req = BlocksByRangeRequest::new_v1(0, 100);
+        assert!(matches!(req, BlocksByRangeRequest::V1(_)));
+        assert_eq!(*req.start_slot(), 0);
+        assert_eq!(*req.count(), 100);
+    }
+
+    #[test]
+    fn blocks_by_range_request_display() {
+        let req = BlocksByRangeRequest::new(42, 10);
+        let s = format!("{}", req);
+        assert!(s.contains("42"));
+        assert!(s.contains("10"));
+    }
+
+    // ── OldBlocksByRangeRequest ───────────────────────────────
+
+    #[test]
+    fn old_blocks_by_range_from_new() {
+        let new_req = BlocksByRangeRequest::new(5, 20);
+        let old_req = OldBlocksByRangeRequest::from(new_req);
+        assert_eq!(*old_req.start_slot(), 5);
+        assert_eq!(*old_req.count(), 20);
+        assert_eq!(*old_req.step(), 1);
+    }
+
+    #[test]
+    fn old_blocks_by_range_from_v1() {
+        let new_req = BlocksByRangeRequest::new_v1(3, 7);
+        let old_req = OldBlocksByRangeRequest::from(new_req);
+        assert!(matches!(old_req, OldBlocksByRangeRequest::V1(_)));
+        assert_eq!(*old_req.step(), 1);
+    }
+
+    #[test]
+    fn old_blocks_by_range_display() {
+        let req = OldBlocksByRangeRequest::new(1, 10, 2);
+        let s = format!("{}", req);
+        assert!(s.contains("1"));
+        assert!(s.contains("10"));
+        assert!(s.contains("2"));
+    }
+
+    // ── DataColumnsByRangeRequest ─────────────────────────────
+
+    #[test]
+    fn data_columns_by_range_max_requested() {
+        let req = DataColumnsByRangeRequest {
+            start_slot: 0,
+            count: 5,
+            columns: vec![0, 1, 2],
+        };
+        assert_eq!(req.max_requested::<E>(), 15);
+    }
+
+    #[test]
+    fn data_columns_by_range_max_requested_overflow() {
+        let req = DataColumnsByRangeRequest {
+            start_slot: 0,
+            count: u64::MAX,
+            columns: vec![0, 1],
+        };
+        // saturating_mul should not panic
+        assert_eq!(req.max_requested::<E>(), u64::MAX);
+    }
+
+    #[test]
+    fn data_columns_by_range_ssz_min_len() {
+        let min = DataColumnsByRangeRequest::ssz_min_len();
+        assert!(min > 0);
+    }
+
+    #[test]
+    fn data_columns_by_range_ssz_max_len() {
+        let max = DataColumnsByRangeRequest::ssz_max_len::<E>();
+        let min = DataColumnsByRangeRequest::ssz_min_len();
+        assert!(max >= min);
+    }
+
+    #[test]
+    fn data_columns_by_range_ssz_roundtrip() {
+        let req = DataColumnsByRangeRequest {
+            start_slot: 100,
+            count: 10,
+            columns: vec![0, 5, 127],
+        };
+        let bytes = req.as_ssz_bytes();
+        let decoded = DataColumnsByRangeRequest::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(req, decoded);
+    }
+
+    // ── BlobsByRangeRequest ───────────────────────────────────
+
+    #[test]
+    fn blobs_by_range_display() {
+        let req = BlobsByRangeRequest {
+            start_slot: 10,
+            count: 3,
+        };
+        let s = format!("{}", req);
+        assert!(s.contains("10"));
+        assert!(s.contains("3"));
+    }
+
+    // ── LightClientUpdatesByRangeRequest ──────────────────────
+
+    #[test]
+    fn light_client_updates_by_range_max_requested() {
+        let req = LightClientUpdatesByRangeRequest {
+            start_period: 0,
+            count: 999,
+        };
+        assert_eq!(req.max_requested(), MAX_REQUEST_LIGHT_CLIENT_UPDATES);
+    }
+
+    #[test]
+    fn light_client_updates_by_range_ssz_lengths() {
+        let min = LightClientUpdatesByRangeRequest::ssz_min_len();
+        let max = LightClientUpdatesByRangeRequest::ssz_max_len();
+        assert_eq!(min, max, "fixed-size struct should have equal min and max");
+        assert_eq!(min, 16, "two u64 fields = 16 bytes");
+    }
+
+    #[test]
+    fn light_client_updates_by_range_ssz_roundtrip() {
+        let req = LightClientUpdatesByRangeRequest {
+            start_period: 42,
+            count: 7,
+        };
+        let bytes = req.as_ssz_bytes();
+        let decoded = LightClientUpdatesByRangeRequest::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(req, decoded);
+    }
+
+    // ── StatusMessage ─────────────────────────────────────────
+
+    #[test]
+    fn status_v2_to_v1_drops_earliest_slot() {
+        let v2 = StatusMessage::V2(StatusMessageV2 {
+            fork_digest: [1, 2, 3, 4],
+            finalized_root: Hash256::zero(),
+            finalized_epoch: Epoch::new(10),
+            head_root: Hash256::repeat_byte(0xAB),
+            head_slot: Slot::new(100),
+            earliest_available_slot: Slot::new(50),
+        });
+        let v1 = v2.status_v1();
+        assert_eq!(v1.fork_digest, [1, 2, 3, 4]);
+        assert_eq!(v1.head_slot, Slot::new(100));
+        assert_eq!(v1.finalized_epoch, Epoch::new(10));
+    }
+
+    #[test]
+    fn status_v1_to_v2_sets_earliest_slot_zero() {
+        let v1 = StatusMessage::V1(StatusMessageV1 {
+            fork_digest: [5, 6, 7, 8],
+            finalized_root: Hash256::zero(),
+            finalized_epoch: Epoch::new(5),
+            head_root: Hash256::zero(),
+            head_slot: Slot::new(40),
+        });
+        let v2 = v1.status_v2();
+        assert_eq!(v2.earliest_available_slot, Slot::new(0));
+        assert_eq!(v2.head_slot, Slot::new(40));
+    }
+
+    #[test]
+    fn status_v1_roundtrip() {
+        let v1 = StatusMessage::V1(StatusMessageV1 {
+            fork_digest: [1, 2, 3, 4],
+            finalized_root: Hash256::repeat_byte(0xFF),
+            finalized_epoch: Epoch::new(99),
+            head_root: Hash256::repeat_byte(0xAA),
+            head_slot: Slot::new(999),
+        });
+        let extracted = v1.status_v1();
+        assert_eq!(extracted.fork_digest, [1, 2, 3, 4]);
+        assert_eq!(extracted.head_slot, Slot::new(999));
+    }
+
+    #[test]
+    fn status_display_format() {
+        let status = StatusMessage::V2(StatusMessageV2 {
+            fork_digest: [0, 0, 0, 0],
+            finalized_root: Hash256::zero(),
+            finalized_epoch: Epoch::new(0),
+            head_root: Hash256::zero(),
+            head_slot: Slot::new(0),
+            earliest_available_slot: Slot::new(0),
+        });
+        let s = format!("{}", status);
+        assert!(s.contains("Status Message"));
+        assert!(s.contains("Fork Digest"));
+    }
+
+    // ── Ping ──────────────────────────────────────────────────
+
+    #[test]
+    fn ping_ssz_roundtrip() {
+        let ping = Ping { data: 42 };
+        let bytes = ping.as_ssz_bytes();
+        let decoded = Ping::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(ping, decoded);
+    }
+
+    // ── MetadataRequest ───────────────────────────────────────
+
+    #[test]
+    fn metadata_request_versions() {
+        let v1 = MetadataRequest::<E>::new_v1();
+        assert!(matches!(v1, MetadataRequest::V1(_)));
+
+        let v2 = MetadataRequest::<E>::new_v2();
+        assert!(matches!(v2, MetadataRequest::V2(_)));
+
+        let v3 = MetadataRequest::<E>::new_v3();
+        assert!(matches!(v3, MetadataRequest::V3(_)));
+    }
+
+    // ── LightClientBootstrapRequest ───────────────────────────
+
+    #[test]
+    fn light_client_bootstrap_request_ssz_roundtrip() {
+        let req = LightClientBootstrapRequest {
+            root: Hash256::repeat_byte(0xCC),
+        };
+        let bytes = req.as_ssz_bytes();
+        let decoded = LightClientBootstrapRequest::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(req, decoded);
+    }
+
+    // ── BlobsByRangeRequest SSZ ───────────────────────────────
+
+    #[test]
+    fn blobs_by_range_ssz_roundtrip() {
+        let req = BlobsByRangeRequest {
+            start_slot: 777,
+            count: 32,
+        };
+        let bytes = req.as_ssz_bytes();
+        let decoded = BlobsByRangeRequest::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(req, decoded);
+    }
+}
