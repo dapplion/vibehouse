@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1471 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all 7 jobs green (latest run successful)
+- Spec: v1.7.0-alpha.3 still latest. No new consensus-specs commits since #5005
+- PR #4992 (PTC lookbehind): still OPEN, active discussion (ensi321 concern about slot range restriction)
+- cargo audit: unchanged (1 rsa, 5 warnings)
+- No semver-compatible dep updates
+- `ptc-lookbehind` branch rebased, 1021/1021 tests pass
+
 ### run 1470 (Mar 16) — health check + devnet verification
 
 **Health check**: all green
