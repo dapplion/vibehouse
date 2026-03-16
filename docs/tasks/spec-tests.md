@@ -3268,3 +3268,11 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - `Accept`: Display roundtrip for all 3 variants, q-factor priority tests
 - Also added `PartialEq` derive to `ForkChoice` struct (needed for test assertions)
 - 208/208 eth2 tests pass
+
+### Run 1499 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new release or tag.
+- Post-alpha.3 merges: #5005 (test fix), #5004 (docs), #5002 (wording), #5001 (bid filtering key) — all already tracked/implemented.
+- PR #4992 (cached PTCs): active discussion today — potuz acknowledged `get_ptc` range restriction bug ("oh yeah that's definitely wrong"). Branch `ptc-lookbehind` stays unmerged until PR stabilizes.
+- Nightly failure was pre-fix timing (slasher `override_backend_with_mdbx_file_present`); fix already on main (b79292d3).
+- Clippy clean, cargo audit unchanged (1 rsa, 5 warnings), deps fully up to date.
+- All green. No action needed.
