@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1546 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (09:36 UTC) predates fix b79292d (09:53 UTC) — next nightly should pass.
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD still 1baa05e. No new commits.
+- All 10 monitored gloas PRs still OPEN. No status changes.
+- New PRs #5009-#5012 are dependency/CI updates (ruff, setuptools, github actions) — no spec changes.
+- PR #5008 (`block_root` → `beacon_block_root` naming fix) — our code already uses the correct `beacon_block_root` field name. No action needed.
+- No actionable work — project in maintenance mode.
+
 ### run 1545 (Mar 16) — health check, all stable
 
 **Health check**: all stable
