@@ -615,3 +615,376 @@ fn validate_salt(salt: &[u8]) -> Result<(), Error> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::json_keystore::{Aes128Ctr, Cipher, Pbkdf2, Prf, Scrypt};
+
+    // --- log2_int ---
+
+    #[test]
+    fn log2_int_zero() {
+        assert_eq!(log2_int(0), 0);
+    }
+
+    #[test]
+    fn log2_int_one() {
+        assert_eq!(log2_int(1), 0);
+    }
+
+    #[test]
+    fn log2_int_powers_of_two() {
+        assert_eq!(log2_int(2), 1);
+        assert_eq!(log2_int(4), 2);
+        assert_eq!(log2_int(8), 3);
+        assert_eq!(log2_int(16), 4);
+        assert_eq!(log2_int(256), 8);
+        assert_eq!(log2_int(1024), 10);
+        assert_eq!(log2_int(262144), 18);
+    }
+
+    #[test]
+    fn log2_int_non_powers() {
+        // floor(log2) for non-powers
+        assert_eq!(log2_int(3), 1);
+        assert_eq!(log2_int(5), 2);
+        assert_eq!(log2_int(7), 2);
+        assert_eq!(log2_int(255), 7);
+    }
+
+    #[test]
+    fn log2_int_max() {
+        assert_eq!(log2_int(u32::MAX), 31);
+    }
+
+    // --- is_control_character ---
+
+    #[test]
+    fn control_chars_c0_range() {
+        for c in '\x00'..='\x1F' {
+            assert!(
+                is_control_character(c),
+                "0x{:02X} should be control",
+                c as u32
+            );
+        }
+    }
+
+    #[test]
+    fn control_char_del() {
+        assert!(is_control_character('\x7F'), "DEL should be control");
+    }
+
+    #[test]
+    fn control_chars_c1_range() {
+        for code in 0x80u32..=0x9F {
+            let c = char::from_u32(code).unwrap();
+            assert!(is_control_character(c), "0x{:02X} should be control", code);
+        }
+    }
+
+    #[test]
+    fn non_control_printable_ascii() {
+        for c in ' '..='~' {
+            assert!(!is_control_character(c), "{:?} should not be control", c);
+        }
+    }
+
+    #[test]
+    fn non_control_unicode() {
+        assert!(!is_control_character('é'));
+        assert!(!is_control_character('日'));
+    }
+
+    // --- normalize ---
+
+    #[test]
+    fn normalize_ascii() {
+        let result = normalize(b"password").unwrap();
+        assert_eq!(&*result, "password");
+    }
+
+    #[test]
+    fn normalize_nfkd_decomposition() {
+        // U+00E9 (é) decomposes to e + combining acute accent in NFKD
+        let input = "é".as_bytes();
+        let result = normalize(input).unwrap();
+        assert_eq!(result.len(), 3, "NFKD decomposition should expand é");
+    }
+
+    #[test]
+    fn normalize_invalid_utf8() {
+        let invalid = [0xFF, 0xFE];
+        assert_eq!(normalize(&invalid), Err(Error::InvalidPasswordBytes));
+    }
+
+    #[test]
+    fn normalize_empty() {
+        let result = normalize(b"").unwrap();
+        assert_eq!(&*result, "");
+    }
+
+    // --- validate_salt ---
+
+    #[test]
+    fn validate_salt_empty_fails() {
+        assert_eq!(validate_salt(&[]), Err(Error::InvalidSaltLength));
+    }
+
+    #[test]
+    fn validate_salt_normal_length_ok() {
+        assert!(validate_salt(&[0u8; SALT_SIZE]).is_ok());
+    }
+
+    #[test]
+    fn validate_salt_short_ok_with_warning() {
+        assert!(validate_salt(&[0u8; 1]).is_ok());
+    }
+
+    #[test]
+    fn validate_salt_long_ok_with_warning() {
+        assert!(validate_salt(&[0u8; SALT_SIZE * 3]).is_ok());
+    }
+
+    // --- validate_aes_iv ---
+
+    #[test]
+    fn validate_aes_iv_empty_fails() {
+        let result = validate_aes_iv(&[]);
+        assert!(matches!(result, Err(Error::IncorrectIvSize { .. })));
+    }
+
+    #[test]
+    fn validate_aes_iv_correct_size() {
+        assert!(validate_aes_iv(&[0u8; IV_SIZE]).is_ok());
+    }
+
+    #[test]
+    fn validate_aes_iv_wrong_size_ok_with_warning() {
+        assert!(validate_aes_iv(&[0u8; 8]).is_ok());
+    }
+
+    // --- validate_parameters (Pbkdf2) ---
+
+    fn make_pbkdf2(c: u32, dklen: u32, salt_len: usize) -> Kdf {
+        Kdf::Pbkdf2(Pbkdf2 {
+            c,
+            dklen,
+            prf: Prf::HmacSha256,
+            salt: vec![0u8; salt_len].into(),
+        })
+    }
+
+    #[test]
+    fn validate_pbkdf2_valid() {
+        assert!(validate_parameters(&make_pbkdf2(DEFAULT_PBKDF2_C, DKLEN, SALT_SIZE)).is_ok());
+    }
+
+    #[test]
+    fn validate_pbkdf2_wrong_dklen() {
+        assert_eq!(
+            validate_parameters(&make_pbkdf2(DEFAULT_PBKDF2_C, 33, SALT_SIZE)),
+            Err(Error::InvalidPbkdf2Param)
+        );
+    }
+
+    #[test]
+    fn validate_pbkdf2_c_too_large() {
+        assert_eq!(
+            validate_parameters(&make_pbkdf2(80_000_001, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidPbkdf2Param)
+        );
+    }
+
+    #[test]
+    fn validate_pbkdf2_c_at_max() {
+        assert!(validate_parameters(&make_pbkdf2(80_000_000, DKLEN, SALT_SIZE)).is_ok());
+    }
+
+    #[test]
+    fn validate_pbkdf2_c_zero() {
+        assert_eq!(
+            validate_parameters(&make_pbkdf2(0, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidPbkdf2Param)
+        );
+    }
+
+    #[test]
+    fn validate_pbkdf2_c_weak_but_nonzero() {
+        // c=1 is weak but non-zero, should succeed with warning
+        assert!(validate_parameters(&make_pbkdf2(1, DKLEN, SALT_SIZE)).is_ok());
+    }
+
+    #[test]
+    fn validate_pbkdf2_empty_salt() {
+        assert_eq!(
+            validate_parameters(&make_pbkdf2(DEFAULT_PBKDF2_C, DKLEN, 0)),
+            Err(Error::InvalidSaltLength)
+        );
+    }
+
+    // --- validate_parameters (Scrypt) ---
+
+    fn make_scrypt(n: u32, r: u32, p: u32, dklen: u32, salt_len: usize) -> Kdf {
+        Kdf::Scrypt(Scrypt {
+            dklen,
+            n,
+            r,
+            p,
+            salt: vec![0u8; salt_len].into(),
+        })
+    }
+
+    #[test]
+    fn validate_scrypt_valid() {
+        assert!(validate_parameters(&make_scrypt(262144, 8, 1, DKLEN, SALT_SIZE)).is_ok());
+    }
+
+    #[test]
+    fn validate_scrypt_n_zero() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(0, 8, 1, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_n_one() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(1, 8, 1, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_n_not_power_of_two() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(3, 8, 1, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_r_zero() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(262144, 0, 1, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_p_zero() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(262144, 8, 0, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_wrong_dklen() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(262144, 8, 1, 16, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_empty_salt() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(262144, 8, 1, DKLEN, 0)),
+            Err(Error::InvalidSaltLength)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_overflow_npr() {
+        assert_eq!(
+            validate_parameters(&make_scrypt(u32::MAX, 8, 1, DKLEN, SALT_SIZE)),
+            Err(Error::InvalidScryptParam)
+        );
+    }
+
+    #[test]
+    fn validate_scrypt_n_two_is_valid() {
+        // n=2 is the smallest valid power of 2 > 1
+        assert!(validate_parameters(&make_scrypt(2, 8, 1, DKLEN, SALT_SIZE)).is_ok());
+    }
+
+    // --- keypair_from_secret ---
+
+    #[test]
+    fn keypair_from_secret_valid() {
+        let kp = bls::Keypair::random();
+        let secret_bytes: bls::ZeroizeHash = kp.sk.serialize();
+        let recovered = keypair_from_secret(secret_bytes.as_bytes()).unwrap();
+        assert_eq!(recovered.pk, kp.pk);
+    }
+
+    #[test]
+    fn keypair_from_secret_all_zeros() {
+        let zeros = [0u8; SECRET_KEY_LEN];
+        assert!(keypair_from_secret(&zeros).is_err());
+    }
+
+    #[test]
+    fn keypair_from_secret_wrong_length() {
+        let short = [1u8; 16];
+        assert!(keypair_from_secret(&short).is_err());
+    }
+
+    // --- encrypt ---
+
+    #[test]
+    fn encrypt_produces_different_ciphertext() {
+        let plain_text = [42u8; SECRET_KEY_LEN];
+        let password = b"test-password";
+        let kdf = Kdf::Pbkdf2(Pbkdf2 {
+            c: DEFAULT_PBKDF2_C,
+            dklen: DKLEN,
+            prf: Prf::HmacSha256,
+            salt: vec![1u8; SALT_SIZE].into(),
+        });
+        let cipher = Cipher::Aes128Ctr(Aes128Ctr {
+            iv: vec![2u8; IV_SIZE].into(),
+        });
+
+        let (cipher_text, _checksum) = encrypt(&plain_text, password, &kdf, &cipher).unwrap();
+        assert_ne!(cipher_text, plain_text.to_vec());
+        assert_eq!(cipher_text.len(), plain_text.len());
+    }
+
+    #[test]
+    fn encrypt_empty_iv_fails() {
+        let plain_text = [42u8; SECRET_KEY_LEN];
+        let password = b"test-password";
+        let kdf = Kdf::Pbkdf2(Pbkdf2 {
+            c: DEFAULT_PBKDF2_C,
+            dklen: DKLEN,
+            prf: Prf::HmacSha256,
+            salt: vec![0u8; SALT_SIZE].into(),
+        });
+        let cipher = Cipher::Aes128Ctr(Aes128Ctr { iv: vec![].into() });
+        assert!(matches!(
+            encrypt(&plain_text, password, &kdf, &cipher),
+            Err(Error::IncorrectIvSize { .. })
+        ));
+    }
+
+    // --- default_kdf ---
+
+    #[test]
+    fn default_kdf_is_scrypt() {
+        let kdf = default_kdf(vec![0u8; SALT_SIZE]);
+        assert!(matches!(kdf, Kdf::Scrypt(_)));
+    }
+
+    // --- Error equality ---
+
+    #[test]
+    fn error_variants_ne() {
+        assert_ne!(Error::EmptyPassword, Error::InvalidPassword);
+        assert_ne!(Error::InvalidPbkdf2Param, Error::InvalidScryptParam);
+        assert_ne!(Error::InvalidSaltLength, Error::PublicKeyMismatch);
+    }
+}
