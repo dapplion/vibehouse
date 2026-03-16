@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1645 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e (#5005). No new merges.
+- PR #4992 (cached PTCs in state) — still OPEN, NOT MERGED. Same head d76a278b0a.
+- Open Gloas PRs: #5008 (field name fix), #4992 (cached PTCs), #4954 (ms store time), #4939 (index-1 attestation envelope).
+- cargo audit unchanged (1 rsa, 5 warnings transitive).
+- No actionable work.
+
 ### run 1644 (Mar 16) — health check, all stable
 
 **Health check**: all stable
