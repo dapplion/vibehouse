@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1438 (Mar 16) — engine_api unit test coverage (57 tests)
+
+**Test coverage**: Added 57 unit tests to `beacon_node/execution_layer/src/engine_api.rs`, a previously-untested 787-line file containing core Engine API types:
+- `PayloadStatusV1Status` (2 tests): IntoStaticStr all 5 variants (valid/invalid/syncing/accepted/invalid_block_hash), clone/copy/eq
+- `ExecutionBlock` (6 tests): terminal_total_difficulty_reached above/equal/below/None, serde roundtrip with/without total_difficulty
+- `PayloadAttributes` (7 tests): new V1/V2/V3 variant selection based on withdrawals/parent_beacon_block_root, V1 parent_beacon_block_root error, all 3 variants convert to SsePayloadAttributes
+- `ExecutionPayloadBodyV1::to_payload` (13 tests): Bellatrix ok/err(with withdrawals), Capella ok/err(no withdrawals), Deneb ok/err, Electra ok/err, Fulu ok/err, Gloas ok/err, preserves header fields, clone
+- `EngineCapabilities::to_response` (3 tests): all false→empty, all true→18 entries with spot checks, partial (3 of 18)
+- `ClientCode` (4 tests): TryFrom all 14 known codes, unknown 2-char code, invalid length (3/1/0 chars), Display roundtrip all 15 variants
+- `CommitPrefix` (5 tests): valid 8-char hex, 0x prefix stripping+lowercase, wrong length, non-hex chars, 0x+short remaining
+- `ClientVersionV1::calculate_graffiti` (2 tests): format "CODEcommLHvhco" with first-4-char truncation
+- `GetPayloadResponse` (6 tests): Bellatrix/Deneb/Gloas into tuple (payload/value/blobs/requests), accessors (block_number/fee_recipient/block_hash), into ExecutionPayload, Full/Blinded type variants
+- `ForkchoiceUpdatedResponse` (2 tests): with/without payload_id
+- `Error` From conversions (3 tests): serde_json, ssz_types, auth
+- `ProposeBlindedBlockResponseStatus` (1 test): variant inequality
+- `PayloadStatusV1` (1 test): clone+eq with all fields populated
+- Type alias `PayloadTuple` added to satisfy clippy type_complexity
+
+**CI**: All 57 new tests pass. Clippy clean (full workspace lint).
+
 ### run 1437 (Mar 16) — peerdb client, monitoring_api, web3signer, and api_secret test coverage (72 tests)
 
 **Test coverage**: Added 72 unit tests across 6 files spanning 5 crates:
