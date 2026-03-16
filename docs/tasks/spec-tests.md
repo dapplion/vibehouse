@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1606 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure from earlier today was the pre-fix slasher flaky test (already resolved in 938e1abca). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7 (#5005), no new merges to master.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED (same head d76a278b0a).
+- PR #4962 (sanity/blocks tests for missed payload withdrawal interactions): still OPEN, NOT MERGED. Test-only — will produce new vectors in alpha.4.
+- PR #5008 (field name fix in ExecutionPayloadEnvelopesByRoot): still OPEN. Wording-only, no impact on our implementation.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1604 (Mar 16) — health check, all stable
 
 **Health check**: all stable
