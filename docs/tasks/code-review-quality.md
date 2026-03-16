@@ -1618,3 +1618,16 @@ All remaining `.clone()` calls are either:
 Also added `serde_json` dev-dependency to vibehouse_network/Cargo.toml.
 
 **Verification**: 36/36 tests pass, clippy clean, pushed to origin.
+
+#### Run 1463 — Unit Test Coverage Assessment (no new tests)
+
+Exhaustive search of 100+ source files across all directories (common/, consensus/, beacon_node/, validator_client/, crypto/, slasher/, testing/) for modules lacking `#[cfg(test)]` that contain self-contained, unit-testable logic.
+
+**Finding**: All self-contained, unit-testable modules in the codebase now have test coverage from runs 1426-1462. The remaining untested files fall into categories that require complex integration setup:
+- Large integration modules (beacon_chain.rs, block_verification.rs, hot_cold_store.rs, canonical_head.rs, validator_monitor.rs, gloas_verification.rs)
+- Network/sync modules requiring full test harnesses (range_sync/chain.rs, custody_backfill_sync, block_lookups, response_limiter.rs)
+- System-level modules requiring OS deps (system_health, health_metrics)
+- Modules requiring BeaconState/SigVerifiedOp construction (observed_operations.rs, bls_to_execution_changes.rs, block_reward.rs)
+- Filesystem-bound utilities (eth2_wallet_manager filesystem.rs, locked_wallet.rs)
+
+**Conclusion**: Unit test coverage task has reached diminishing returns. Future test improvements should focus on integration-level testing which requires different infrastructure (test harnesses, mock chains, etc.).
