@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1593 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure confirmed as timing issue (fix was already on main).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges to master.
+- PR #4992 (cached PTCs): still open, updated 7h ago with discussion activity, NOT MERGED (same head d76a278b0a).
+- No semver-compatible cargo updates. cargo audit unchanged (1 rsa).
+- No actionable work — project in maintenance mode.
+
 ### run 1592 (Mar 16) — health check, full test run, all stable
 
 **Health check**: all stable
