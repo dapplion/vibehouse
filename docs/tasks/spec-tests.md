@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1636 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly run 23164776090 fully green — all 26 jobs passed including slasher fix.
+- Codebase: zero clippy warnings, zero compiler warnings. Clean build. Workspace tests running.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #5001 (parent_block_root in bid key) — merged in alpha.3, vibehouse already implements this correctly (3-tuple key in ObservedExecutionBids).
+- PR #4992 (cached PTCs in state) — still open, recently updated (Mar 16), NOT merged.
+- PR #5008, #4843 — still open.
+- 3 test PRs (#4962, #4960, #4932) — still open.
+- cargo audit: 1 vuln (rsa, no fix), 5 warnings (transitive, no fix). Not actionable.
+- No actionable work.
+
 ### run 1635 (Mar 16) — health check, all stable
 
 **Health check**: all stable
