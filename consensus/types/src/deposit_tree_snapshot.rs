@@ -79,5 +79,125 @@ impl DepositTreeSnapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ssz::{Decode, Encode};
     ssz_tests!(DepositTreeSnapshot);
+
+    #[test]
+    fn default_is_valid() {
+        let snapshot = DepositTreeSnapshot::default();
+        assert!(snapshot.is_valid(), "default snapshot should be valid");
+        assert_eq!(snapshot.deposit_count, 0);
+        assert!(snapshot.finalized.is_empty());
+        assert_eq!(snapshot.execution_block_hash, Hash256::zero());
+        assert_eq!(snapshot.execution_block_height, 0);
+    }
+
+    #[test]
+    fn default_deposit_root_matches_calculated() {
+        let snapshot = DepositTreeSnapshot::default();
+        let calculated = snapshot.calculate_root().unwrap();
+        assert_eq!(snapshot.deposit_root, calculated);
+    }
+
+    #[test]
+    fn invalid_snapshot_wrong_root() {
+        let mut snapshot = DepositTreeSnapshot::default();
+        // Corrupt the deposit root
+        snapshot.deposit_root = Hash256::from_low_u64_be(42);
+        assert!(
+            !snapshot.is_valid(),
+            "snapshot with wrong root should be invalid"
+        );
+    }
+
+    #[test]
+    fn calculate_root_returns_none_for_bad_count() {
+        // deposit_count implies more finalized hashes than provided
+        let snapshot = DepositTreeSnapshot {
+            finalized: vec![], // No hashes
+            deposit_root: Hash256::zero(),
+            deposit_count: 3, // But count is 3, needs finalized hashes
+            execution_block_hash: Hash256::zero(),
+            execution_block_height: 0,
+        };
+        // When deposit_count has bits set, it tries to index into finalized
+        // which may cause None if index goes below 0
+        let result = snapshot.calculate_root();
+        assert!(
+            result.is_none(),
+            "should return None when finalized hashes don't match count"
+        );
+    }
+
+    #[test]
+    fn from_finalized_execution_block() {
+        let snapshot = DepositTreeSnapshot {
+            finalized: vec![Hash256::from_low_u64_be(1)],
+            deposit_root: Hash256::from_low_u64_be(99),
+            deposit_count: 42,
+            execution_block_hash: Hash256::from_low_u64_be(100),
+            execution_block_height: 500,
+        };
+        let block = FinalizedExecutionBlock::from(&snapshot);
+        assert_eq!(block.deposit_root, snapshot.deposit_root);
+        assert_eq!(block.deposit_count, snapshot.deposit_count);
+        assert_eq!(block.block_hash, snapshot.execution_block_hash);
+        assert_eq!(block.block_height, snapshot.execution_block_height);
+    }
+
+    #[test]
+    fn finalized_execution_block_ssz_roundtrip() {
+        let block = FinalizedExecutionBlock {
+            deposit_root: Hash256::from_low_u64_be(1),
+            deposit_count: 100,
+            block_hash: Hash256::from_low_u64_be(2),
+            block_height: 9999,
+        };
+        let bytes = block.as_ssz_bytes();
+        let decoded = FinalizedExecutionBlock::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(block, decoded);
+    }
+
+    #[test]
+    fn finalized_execution_block_serde_roundtrip() {
+        let block = FinalizedExecutionBlock {
+            deposit_root: Hash256::from_low_u64_be(1),
+            deposit_count: 100,
+            block_hash: Hash256::from_low_u64_be(2),
+            block_height: 9999,
+        };
+        let json = serde_json::to_string(&block).unwrap();
+        let decoded: FinalizedExecutionBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(block, decoded);
+    }
+
+    #[test]
+    fn deposit_tree_snapshot_serde_roundtrip() {
+        let snapshot = DepositTreeSnapshot {
+            finalized: vec![Hash256::from_low_u64_be(1), Hash256::from_low_u64_be(2)],
+            deposit_root: Hash256::from_low_u64_be(99),
+            deposit_count: 42,
+            execution_block_hash: Hash256::from_low_u64_be(100),
+            execution_block_height: 500,
+        };
+        let json = serde_json::to_string(&snapshot).unwrap();
+        let decoded: DepositTreeSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(snapshot, decoded);
+    }
+
+    #[test]
+    fn deposit_tree_snapshot_zero_count_valid() {
+        let snapshot = DepositTreeSnapshot {
+            finalized: vec![],
+            deposit_root: Hash256::zero(),
+            deposit_count: 0,
+            execution_block_hash: Hash256::zero(),
+            execution_block_height: 0,
+        };
+        // Zero count with empty finalized should produce a valid root
+        let root = snapshot.calculate_root().unwrap();
+        // The default also has zero count so roots should match
+        let default_snapshot = DepositTreeSnapshot::default();
+        assert_eq!(root, default_snapshot.deposit_root);
+    }
 }

@@ -197,6 +197,164 @@ mod tests {
         file_name
     }
 
+    // ── read_line unit tests ────────────────────────────────────
+
+    #[test]
+    fn read_line_default_key() {
+        let (pk, graffiti) = read_line("default: my graffiti").unwrap();
+        assert!(pk.is_none(), "default key should return None");
+        assert_eq!(
+            graffiti,
+            GraffitiString::from_str("my graffiti").unwrap().into()
+        );
+    }
+
+    #[test]
+    fn read_line_public_key() {
+        let line = format!("{}: custom", PK1);
+        let (pk, graffiti) = read_line(&line).unwrap();
+        assert!(pk.is_some(), "public key line should return Some");
+        let expected_pk = PublicKeyBytes::deserialize(&hex::decode(&PK1[2..]).unwrap()).unwrap();
+        assert_eq!(pk.unwrap(), expected_pk);
+        assert_eq!(graffiti, GraffitiString::from_str("custom").unwrap().into());
+    }
+
+    #[test]
+    fn read_line_empty_graffiti() {
+        let line = format!("{}:", PK1);
+        let (pk, graffiti) = read_line(&line).unwrap();
+        assert!(pk.is_some());
+        assert_eq!(graffiti, GraffitiString::from_str("").unwrap().into());
+    }
+
+    #[test]
+    fn read_line_graffiti_with_colons() {
+        // Graffiti containing colons (e.g., graffitiwall format)
+        let line = format!("{}: graffitiwall:720:641:#ffff00", PK1);
+        let (pk, graffiti) = read_line(&line).unwrap();
+        assert!(pk.is_some());
+        assert_eq!(
+            graffiti,
+            GraffitiString::from_str("graffitiwall:720:641:#ffff00")
+                .unwrap()
+                .into()
+        );
+    }
+
+    #[test]
+    fn read_line_missing_delimiter() {
+        let result = read_line("no delimiter here");
+        assert!(matches!(result, Err(Error::InvalidLine(_))));
+    }
+
+    #[test]
+    fn read_line_invalid_public_key() {
+        let result = read_line("0xinvalid: graffiti");
+        assert!(matches!(result, Err(Error::InvalidPublicKey(_))));
+    }
+
+    #[test]
+    fn read_line_whitespace_trimmed() {
+        let (pk, graffiti) = read_line("default:   spaced graffiti   ").unwrap();
+        assert!(pk.is_none());
+        assert_eq!(
+            graffiti,
+            GraffitiString::from_str("spaced graffiti").unwrap().into()
+        );
+    }
+
+    // ── determine_graffiti priority tests ─────────────────────
+
+    #[test]
+    fn determine_graffiti_no_sources() {
+        let pk = Keypair::random().pk.compress();
+        let result = determine_graffiti(&pk, None, None, None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn determine_graffiti_flag_only() {
+        let pk = Keypair::random().pk.compress();
+        let flag_graffiti: Graffiti = GraffitiString::from_str("flag").unwrap().into();
+        let result = determine_graffiti(&pk, None, None, Some(flag_graffiti));
+        assert_eq!(result, Some(flag_graffiti));
+    }
+
+    #[test]
+    fn determine_graffiti_definition_over_flag() {
+        let pk = Keypair::random().pk.compress();
+        let def_graffiti: Graffiti = GraffitiString::from_str("definition").unwrap().into();
+        let flag_graffiti: Graffiti = GraffitiString::from_str("flag").unwrap().into();
+        let result = determine_graffiti(&pk, None, Some(def_graffiti), Some(flag_graffiti));
+        assert_eq!(result, Some(def_graffiti));
+    }
+
+    #[test]
+    fn determine_graffiti_file_over_definition_and_flag() {
+        let pk = Keypair::random().pk.compress();
+        let def_graffiti: Graffiti = GraffitiString::from_str("definition").unwrap().into();
+        let flag_graffiti: Graffiti = GraffitiString::from_str("flag").unwrap().into();
+
+        // Create a graffiti file with a default
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.keep().join("graffiti.txt");
+        std::fs::write(&file_path, "default: from-file\n").unwrap();
+        let gf = GraffitiFile::new(file_path);
+
+        let result = determine_graffiti(&pk, Some(gf), Some(def_graffiti), Some(flag_graffiti));
+        let expected: Graffiti = GraffitiString::from_str("from-file").unwrap().into();
+        assert_eq!(result, Some(expected));
+    }
+
+    // ── GraffitiFile edge cases ───────────────────────────────
+
+    #[test]
+    fn graffiti_file_nonexistent_path() {
+        let mut gf = GraffitiFile::new(PathBuf::from("/nonexistent/graffiti.txt"));
+        let pk = Keypair::random().pk.compress();
+        let result = gf.load_graffiti(&pk);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn graffiti_file_no_default_unknown_key() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.keep().join("graffiti.txt");
+        // File with only specific key entries, no default
+        std::fs::write(&file_path, format!("{}: specific\n", PK1)).unwrap();
+        let mut gf = GraffitiFile::new(file_path);
+        let random_pk = Keypair::random().pk.compress();
+        let result = gf.load_graffiti(&random_pk).unwrap();
+        assert!(
+            result.is_none(),
+            "unknown key with no default should return None"
+        );
+    }
+
+    #[test]
+    fn graffiti_file_empty_file() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.keep().join("graffiti.txt");
+        std::fs::write(&file_path, "").unwrap();
+        let mut gf = GraffitiFile::new(file_path);
+        let pk = Keypair::random().pk.compress();
+        let result = gf.load_graffiti(&pk).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn graffiti_file_only_whitespace_lines() {
+        let temp = TempDir::new().unwrap();
+        let file_path = temp.keep().join("graffiti.txt");
+        std::fs::write(&file_path, "\n  \n\t\n").unwrap();
+        let mut gf = GraffitiFile::new(file_path);
+        let pk = Keypair::random().pk.compress();
+        let result = gf.load_graffiti(&pk).unwrap();
+        assert!(result.is_none());
+    }
+
+    // ── Original comprehensive test ───────────────────────────
+
     #[test]
     fn test_load_graffiti() {
         let graffiti_file_path = create_graffiti_file();

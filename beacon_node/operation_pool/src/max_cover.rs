@@ -215,4 +215,113 @@ mod test {
         assert_eq!(quality(&cover), 19);
         assert_eq!(cover.len(), 5);
     }
+
+    // ── merge_solutions tests ──────────────────────────────────
+
+    #[test]
+    fn merge_empty_solutions() {
+        let result: Vec<HashSet<usize>> = merge_solutions(
+            Vec::<HashSet<usize>>::new(),
+            Vec::<HashSet<usize>>::new(),
+            10,
+        );
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn merge_one_empty_one_nonempty() {
+        let cover1 = vec![HashSet::from_iter(vec![1, 2, 3])];
+        let result: Vec<HashSet<usize>> = merge_solutions(cover1, Vec::<HashSet<usize>>::new(), 10);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], HashSet::from_iter(vec![1, 2, 3]));
+    }
+
+    #[test]
+    fn merge_prefers_higher_score() {
+        let cover1 = vec![
+            HashSet::from_iter(vec![1, 2]), // score 2
+            HashSet::from_iter(vec![3]),    // score 1
+        ];
+        let cover2 = vec![
+            HashSet::from_iter(vec![4, 5, 6]), // score 3
+            HashSet::from_iter(vec![7, 8]),    // score 2
+        ];
+        let result: Vec<HashSet<usize>> = merge_solutions(cover1, cover2, 3);
+        assert_eq!(result.len(), 3);
+        // First should be the highest-score item
+        assert_eq!(result[0], HashSet::from_iter(vec![4, 5, 6]));
+    }
+
+    #[test]
+    fn merge_respects_limit() {
+        let cover1 = vec![
+            HashSet::from_iter(vec![1, 2, 3]),
+            HashSet::from_iter(vec![4, 5]),
+        ];
+        let cover2 = vec![
+            HashSet::from_iter(vec![6, 7, 8, 9]),
+            HashSet::from_iter(vec![10]),
+        ];
+        let result: Vec<HashSet<usize>> = merge_solutions(cover1, cover2, 2);
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn merge_zero_limit() {
+        let cover1 = vec![HashSet::from_iter(vec![1, 2])];
+        let cover2 = vec![HashSet::from_iter(vec![3, 4])];
+        let result: Vec<HashSet<usize>> = merge_solutions(cover1, cover2, 0);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn merge_equal_scores_stable() {
+        let cover1 = vec![
+            HashSet::from_iter(vec![1, 2]),
+            HashSet::from_iter(vec![3, 4]),
+        ];
+        let cover2 = vec![
+            HashSet::from_iter(vec![5, 6]),
+            HashSet::from_iter(vec![7, 8]),
+        ];
+        // All have score 2, merge_by with >= favors cover1 when equal
+        let result: Vec<HashSet<usize>> = merge_solutions(cover1, cover2, 4);
+        assert_eq!(result.len(), 4);
+    }
+
+    // ── maximum_cover additional edge cases ──────────────────
+
+    #[test]
+    fn maximum_cover_empty_input() {
+        let sets: Vec<HashSet<usize>> = vec![];
+        let cover = maximum_cover(sets, 5, "test");
+        assert!(cover.is_empty());
+    }
+
+    #[test]
+    fn maximum_cover_all_zero_score() {
+        let sets: Vec<HashSet<usize>> = vec![HashSet::new(), HashSet::new()];
+        let cover = maximum_cover(sets, 5, "test");
+        assert!(cover.is_empty(), "all zero-score items should be excluded");
+    }
+
+    #[test]
+    fn maximum_cover_single_item() {
+        let sets = vec![HashSet::from_iter(vec![1, 2, 3])];
+        let cover = maximum_cover(sets.clone(), 5, "test");
+        assert_eq!(cover.len(), 1);
+        assert_eq!(cover[0], sets[0]);
+    }
+
+    #[test]
+    fn maximum_cover_disjoint_sets() {
+        let sets = vec![
+            HashSet::from_iter(vec![1, 2]),
+            HashSet::from_iter(vec![3, 4]),
+            HashSet::from_iter(vec![5, 6]),
+        ];
+        let cover = maximum_cover(sets, 3, "test");
+        assert_eq!(cover.len(), 3);
+        assert_eq!(quality(&cover), 6);
+    }
 }
