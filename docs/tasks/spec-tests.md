@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1558 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher fix landed, next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15).
+- Spec tests: v1.6.0-beta.0 still latest. No new vectors. PR #4940 (Gloas fork choice tests) merged Mar 13 — vectors will be in next spec test release.
+- Tracked PRs: #4940 MERGED (fork choice tests). #4932, #4939, #4960, #4962, #4992, #5008 still OPEN.
+- Post-alpha.3 merged PRs reviewed: #5001 (parent_block_root bid key — already implemented), #5002 (wording), #5005 (pyspec test fix).
+- cargo audit unchanged (1 rsa, no fix available).
+- No actionable work — project in maintenance mode.
+
 ### run 1557 (Mar 16) — health check, all stable
 
 **Health check**: all stable
