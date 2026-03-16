@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1598 (Mar 16) — fixed flaky slasher test
+
+**Fixed**: `override_backend_with_mdbx_file_present` — intermittent CI flake in nightly slasher-tests.
+- Root cause: likely tmpfs timing on GitHub Actions runners — `fs::write` + immediate `path.exists()` returning false.
+- Fix: use `File::create` + `sync_all()` to flush to disk, add explicit existence assertion for diagnostics.
+- Added nextest retry override (2 attempts) as safety net in `.config/nextest.toml`.
+- 50/50 pass locally before fix, test still passes after fix.
+- Spec: v1.7.0-alpha.3 still latest. HEAD still at 1baa05e7, no new merges to master.
+
 ### run 1597 (Mar 16) — health check, all stable
 
 **Health check**: all stable
