@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1625 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly slasher failure confirmed pre-fix (ran on ea371d28, fix is 938e1abc). Manually re-triggered nightly to verify.
+- Slasher `override_backend_with_mdbx_file_present` passes locally with mdbx feature.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e, no new merges.
+- Open gloas PRs unchanged: #5008, #4992, #4954, #4939, #4898, #4892, #4843, #4840, #4747, #4630.
+- No semver-compatible cargo updates. No actionable work.
+
 ### run 1624 (Mar 16) — health check, all stable
 
 **Health check**: all stable
