@@ -255,4 +255,192 @@ mod test {
         let config_out = OnDiskStoreConfig::from_store_bytes(&bytes).unwrap();
         assert_eq!(config_out, config);
     }
+
+    // ── StoreConfig::verify ──
+
+    #[test]
+    fn verify_default_config_ok() {
+        let config = StoreConfig::default();
+        assert!(config.verify::<types::MinimalEthSpec>().is_ok());
+    }
+
+    #[test]
+    fn verify_compression_level_zero_ok() {
+        let config = StoreConfig {
+            compression_level: 0,
+            ..StoreConfig::default()
+        };
+        assert!(config.verify::<types::MinimalEthSpec>().is_ok());
+    }
+
+    #[test]
+    fn verify_compression_level_max_ok() {
+        let config = StoreConfig {
+            compression_level: *zstd::compression_level_range().end(),
+            ..StoreConfig::default()
+        };
+        assert!(config.verify::<types::MinimalEthSpec>().is_ok());
+    }
+
+    #[test]
+    fn verify_compression_level_out_of_range() {
+        let config = StoreConfig {
+            compression_level: *zstd::compression_level_range().end() + 1,
+            ..StoreConfig::default()
+        };
+        assert!(matches!(
+            config.verify::<types::MinimalEthSpec>(),
+            Err(StoreConfigError::InvalidCompressionLevel { .. })
+        ));
+    }
+
+    #[test]
+    fn verify_epochs_per_blob_prune_zero_error() {
+        let config = StoreConfig {
+            epochs_per_blob_prune: 0,
+            ..StoreConfig::default()
+        };
+        assert!(matches!(
+            config.verify::<types::MinimalEthSpec>(),
+            Err(StoreConfigError::ZeroEpochsPerBlobPrune)
+        ));
+    }
+
+    #[test]
+    fn verify_epochs_per_blob_prune_nonzero_ok() {
+        let config = StoreConfig {
+            epochs_per_blob_prune: 5,
+            ..StoreConfig::default()
+        };
+        assert!(config.verify::<types::MinimalEthSpec>().is_ok());
+    }
+
+    // ── Compression estimation ──
+
+    #[test]
+    fn estimate_compressed_size_no_compression() {
+        let config = StoreConfig {
+            compression_level: 0,
+            ..StoreConfig::default()
+        };
+        assert_eq!(config.estimate_compressed_size(1000), 1000);
+    }
+
+    #[test]
+    fn estimate_compressed_size_with_compression() {
+        let config = StoreConfig::default();
+        // Default compression_level is 1 (non-zero)
+        assert_eq!(config.estimate_compressed_size(1000), 500);
+    }
+
+    #[test]
+    fn estimate_decompressed_size_no_compression() {
+        let config = StoreConfig {
+            compression_level: 0,
+            ..StoreConfig::default()
+        };
+        assert_eq!(config.estimate_decompressed_size(500), 500);
+    }
+
+    #[test]
+    fn estimate_decompressed_size_with_compression() {
+        let config = StoreConfig::default();
+        assert_eq!(config.estimate_decompressed_size(500), 1000);
+    }
+
+    #[test]
+    fn estimate_compressed_zero_bytes() {
+        let config = StoreConfig::default();
+        assert_eq!(config.estimate_compressed_size(0), 0);
+    }
+
+    // ── Compression roundtrip ──
+
+    #[test]
+    fn compress_decompress_roundtrip() {
+        let config = StoreConfig::default();
+        let data = b"hello world, this is a test of zstd compression in vibehouse";
+        let compressed = config.compress_bytes(data).unwrap();
+        let decompressed = config.decompress_bytes(&compressed).unwrap();
+        assert_eq!(decompressed, data);
+    }
+
+    #[test]
+    fn compress_decompress_empty() {
+        let config = StoreConfig::default();
+        let compressed = config.compress_bytes(b"").unwrap();
+        let decompressed = config.decompress_bytes(&compressed).unwrap();
+        assert!(decompressed.is_empty());
+    }
+
+    #[test]
+    fn compress_decompress_large_data() {
+        let config = StoreConfig::default();
+        let data = vec![0xABu8; 100_000];
+        let compressed = config.compress_bytes(&data).unwrap();
+        // Repetitive data should compress well
+        assert!(compressed.len() < data.len());
+        let decompressed = config.decompress_bytes(&compressed).unwrap();
+        assert_eq!(decompressed, data);
+    }
+
+    #[test]
+    fn compress_decompress_no_compression_level() {
+        let config = StoreConfig {
+            compression_level: 0,
+            ..StoreConfig::default()
+        };
+        let data = b"test data with no compression";
+        let compressed = config.compress_bytes(data).unwrap();
+        let decompressed = config.decompress_bytes(&compressed).unwrap();
+        assert_eq!(decompressed, data.as_slice());
+    }
+
+    // ── as_disk_config ──
+
+    #[test]
+    fn as_disk_config_preserves_hierarchy() {
+        let config = StoreConfig::default();
+        let disk = config.as_disk_config();
+        match disk {
+            OnDiskStoreConfig::V22(v22) => {
+                assert_eq!(v22.hierarchy_config, config.hierarchy_config);
+                assert_eq!(v22.version_byte, 22);
+            }
+        }
+    }
+
+    // ── Default values ──
+
+    #[test]
+    fn default_config_values() {
+        let config = StoreConfig::default();
+        assert_eq!(config.block_cache_size, DEFAULT_BLOCK_CACHE_SIZE);
+        assert_eq!(config.state_cache_size, DEFAULT_STATE_CACHE_SIZE);
+        assert_eq!(config.compression_level, DEFAULT_COMPRESSION_LEVEL);
+        assert!(config.prune_payloads);
+        assert!(config.prune_blobs);
+        assert!(config.compact_on_prune);
+        assert!(!config.compact_on_init);
+        assert_eq!(config.epochs_per_blob_prune, DEFAULT_EPOCHS_PER_BLOB_PRUNE);
+        assert_eq!(
+            config.blob_prune_margin_epochs,
+            DEFAULT_BLOB_PUNE_MARGIN_EPOCHS
+        );
+    }
+
+    // ── OnDiskStoreConfig::from_store_bytes edge cases ──
+
+    #[test]
+    fn on_disk_config_invalid_version_byte() {
+        let bytes = vec![99u8, 0, 0, 0]; // version_byte=99, not 22
+        let result = OnDiskStoreConfig::from_store_bytes(&bytes);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn on_disk_config_empty_bytes() {
+        let result = OnDiskStoreConfig::from_store_bytes(&[]);
+        assert!(result.is_err());
+    }
 }

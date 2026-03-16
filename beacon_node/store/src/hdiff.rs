@@ -1109,4 +1109,235 @@ mod tests {
             assert!(closest_layer_points.is_sorted_by(|a, b| a > b));
         }
     }
+
+    // ── HierarchyConfig parsing (FromStr) ──
+
+    #[test]
+    fn hierarchy_config_from_str_valid() {
+        let config = HierarchyConfig::from_str("5,13,21").unwrap();
+        assert_eq!(config.exponents, vec![5, 13, 21]);
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_single() {
+        let config = HierarchyConfig::from_str("10").unwrap();
+        assert_eq!(config.exponents, vec![10]);
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_two_layers() {
+        let config = HierarchyConfig::from_str("5,7").unwrap();
+        assert_eq!(config.exponents, vec![5, 7]);
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_empty_error() {
+        assert!(HierarchyConfig::from_str("").is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_not_ascending_error() {
+        assert!(HierarchyConfig::from_str("5,3,21").is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_equal_values_error() {
+        assert!(HierarchyConfig::from_str("5,5,21").is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_descending_error() {
+        assert!(HierarchyConfig::from_str("21,13,5").is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_from_str_non_numeric_error() {
+        assert!(HierarchyConfig::from_str("abc").is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_display_roundtrip() {
+        let config = HierarchyConfig::from_str("5,13,21").unwrap();
+        assert_eq!(format!("{}", config), "5,13,21");
+        let reparsed = HierarchyConfig::from_str(&format!("{}", config)).unwrap();
+        assert_eq!(reparsed.exponents, config.exponents);
+    }
+
+    // ── HierarchyConfig::validate ──
+
+    #[test]
+    fn hierarchy_config_validate_default_ok() {
+        assert!(HierarchyConfig::default().validate().is_ok());
+    }
+
+    #[test]
+    fn hierarchy_config_validate_empty_error() {
+        let config = HierarchyConfig { exponents: vec![] };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_validate_non_ascending_error() {
+        let config = HierarchyConfig {
+            exponents: vec![10, 5],
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn hierarchy_config_validate_too_large_exponent_error() {
+        let config = HierarchyConfig {
+            exponents: vec![5, 64], // 64 >= u64::BITS
+        };
+        assert!(config.validate().is_err());
+    }
+
+    // ── HierarchyConfig::exponent_for_slot ──
+
+    #[test]
+    fn exponent_for_slot_powers_of_two() {
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(1)), 0);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(2)), 1);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(4)), 2);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(32)), 5);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(1 << 13)), 13);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(1 << 21)), 21);
+    }
+
+    #[test]
+    fn exponent_for_slot_zero() {
+        // trailing_zeros of 0 is 64
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(0)), 64);
+    }
+
+    #[test]
+    fn exponent_for_slot_odd() {
+        // Odd numbers have trailing_zeros = 0
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(3)), 0);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(7)), 0);
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(33)), 0);
+    }
+
+    #[test]
+    fn exponent_for_slot_mixed() {
+        // 12 = 0b1100, trailing_zeros = 2
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(12)), 2);
+        // 48 = 0b110000, trailing_zeros = 4
+        assert_eq!(HierarchyConfig::exponent_for_slot(Slot::new(48)), 4);
+    }
+
+    // ── HierarchyModuli::should_commit_immediately ──
+
+    #[test]
+    fn should_commit_immediately_snapshot_layer() {
+        let moduli = HierarchyConfig::from_str("5,13,21")
+            .unwrap()
+            .to_moduli()
+            .unwrap();
+        // Slot at full snapshot interval (2^21) should commit immediately
+        assert!(
+            moduli
+                .should_commit_immediately(Slot::new(1 << 21))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn should_commit_immediately_second_layer() {
+        let moduli = HierarchyConfig::from_str("5,13,21")
+            .unwrap()
+            .to_moduli()
+            .unwrap();
+        // Slot at 2^13 boundary should commit (it's the second layer)
+        assert!(
+            moduli
+                .should_commit_immediately(Slot::new(1 << 13))
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn should_commit_immediately_leaf_layer() {
+        let moduli = HierarchyConfig::from_str("5,13,21")
+            .unwrap()
+            .to_moduli()
+            .unwrap();
+        // Slot at 2^5 boundary (leaf layer) should NOT commit immediately
+        assert!(!moduli.should_commit_immediately(Slot::new(32)).unwrap());
+    }
+
+    #[test]
+    fn should_commit_immediately_non_aligned_slot() {
+        let moduli = HierarchyConfig::from_str("5,13,21")
+            .unwrap()
+            .to_moduli()
+            .unwrap();
+        assert!(!moduli.should_commit_immediately(Slot::new(33)).unwrap());
+    }
+
+    #[test]
+    fn should_commit_immediately_single_layer() {
+        let moduli = HierarchyConfig::from_str("10")
+            .unwrap()
+            .to_moduli()
+            .unwrap();
+        // With single layer, commit only at snapshot boundaries
+        assert!(
+            moduli
+                .should_commit_immediately(Slot::new(1 << 10))
+                .unwrap()
+        );
+        assert!(!moduli.should_commit_immediately(Slot::new(1)).unwrap());
+    }
+
+    // ── storage_strategy edge cases ──
+
+    #[test]
+    fn storage_strategy_slot_less_than_start_error() {
+        let moduli = HierarchyConfig::default().to_moduli().unwrap();
+        let result = moduli.storage_strategy(Slot::new(5), Slot::new(10));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn storage_strategy_equal_to_start_is_snapshot() {
+        let moduli = HierarchyConfig::default().to_moduli().unwrap();
+        let result = moduli
+            .storage_strategy(Slot::new(100), Slot::new(100))
+            .unwrap();
+        assert_eq!(result, StorageStrategy::Snapshot);
+    }
+
+    #[test]
+    fn storage_strategy_start_slot_affects_diff_from() {
+        let moduli = HierarchyConfig::from_str("5,13")
+            .unwrap()
+            .to_moduli()
+            .unwrap();
+        // With start_slot at 8000, a diff should reference start_slot when it's
+        // closer than the natural grid point
+        let start = Slot::new(8000);
+        let slot = Slot::new(1 << 13); // 8192 — at layer boundary
+        let result = moduli.storage_strategy(slot, start).unwrap();
+        // Diff should be from max(8192/8192*8192=0 → but start=8000, so from 8000)
+        // Actually slot 8192 % 8192 == 0, so this is a snapshot
+        assert_eq!(result, StorageStrategy::Snapshot);
+
+        // Slot just past the leaf boundary after start
+        let slot = Slot::new(8032); // 8032 % 32 == 0
+        let result = moduli.storage_strategy(slot, start).unwrap();
+        // Natural diff_from = 8032/8192*8192 = 0, clamped to start=8000
+        assert_eq!(result, StorageStrategy::DiffFrom(start));
+    }
+
+    // ── next_snapshot_slot edge cases ──
+
+    #[test]
+    fn next_snapshot_slot_zero() {
+        let moduli = HierarchyConfig::default().to_moduli().unwrap();
+        assert_eq!(
+            moduli.next_snapshot_slot(Slot::new(0)).unwrap(),
+            Slot::new(0)
+        );
+    }
 }
