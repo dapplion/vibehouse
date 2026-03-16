@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1562 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure from 09:36 confirmed pre-fix (slasher mdbx test); next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges.
+- PR #4992 active discussion: potuz acknowledged ensi321's concern about `get_ptc` slot range being too restrictive for validator assignment lookbehind. PR may change before merge.
+- PR #5001 (parent_block_root bid filter key, merged Mar 12): verified already implemented — our `highest_bid_values` key is `(Slot, ExecutionBlockHash, Hash256)`.
+- PR #5002 (wording clarity for self-build signature): doc-only, no code change needed.
+- cargo audit: same 1 rsa vuln (no fix), 5 unmaintained warnings. No change.
+- Rebased `ptc-lookbehind` branch onto main (12 commits behind → current). 1021/1021 state_processing tests pass. Pushed.
+- No actionable work — project in maintenance mode.
+
 ### run 1561 (Mar 16) — health check, all stable
 
 **Health check**: all stable
