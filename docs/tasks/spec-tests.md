@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1552 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure from 09:36 UTC confirmed fixed (b79292d pushed 09:53 UTC).
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e.
+- Recently merged spec PRs reviewed: #5005 (test fix), #5001 (parent_block_root — already implemented), #4940 (fork choice tests — runner already supports on_execution_payload + head_payload_status), #5002 (editorial), #5004 (CI).
+- New tracked PR: #5008 (fix field name block_root→beacon_block_root in ExecutionPayloadEnvelopesByRoot) — still open.
+- All tracked PRs (#4932, #4939, #4960, #4962, #4992, #5008) still OPEN, no merges.
+- EF test runner already supports upcoming on_execution_payload step and head_payload_status check — ready for next test vector release.
+- No actionable work — project in maintenance mode.
+
 ### run 1551 (Mar 16) — health check, all stable
 
 **Health check**: all stable
