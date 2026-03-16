@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1524 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure confirmed fixed (ran before fix was pushed).
+- Spec: v1.7.0-alpha.3 still latest. HEAD still at 1baa05e (unchanged).
+- No new spec releases. All monitored PRs still OPEN.
+- **Notable**: PR #4992 (cached PTCs in state) adds `previous_ptc`/`current_ptc` fields to BeaconState, modifies `process_slots` and `get_ptc`. Will require implementation when merged. Still blocked (needs reviews).
+- `cargo audit`: 1 vulnerability (rsa RUSTSEC-2023-0071, medium, no fix available — transitive via jsonwebtoken), 5 unmaintained warnings (all transitive). Nothing actionable.
+- `cargo clippy`: clean, no warnings.
+- Project in maintenance mode.
+
 ### run 1523 (Mar 16) — health check, all stable
 
 **Health check**: all stable
