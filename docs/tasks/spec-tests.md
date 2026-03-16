@@ -4275,3 +4275,12 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - Other open Gloas PRs (#5008, #4962, #4954, #4939, #4898, #4892, #4843, #4840, #4630): all previously tracked, no new implementation changes needed.
 - Nightly failure from run 23137093267 was timing (pre-fix code); fix b79292d3 is on main, next nightly will pass.
 - CI green. All priorities DONE. No action needed.
+
+### Run 1601 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new tags.
+- Verified PR #5001 (`parent_block_root` in bid filtering key) already implemented — our `ObservedExecutionBids::is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple since initial implementation.
+- PR #4992 (cached PTCs): updated today, still open, under debate.
+- PR #4747 (Fast Confirmation Rule): updated today, still under active review.
+- New PRs #5011, #5012: GitHub Actions updates — no code impact.
+- Nightly failure from earlier today was pre-fix timing; CI green on current main (ede1ed8c3).
+- All stable. No action needed.
