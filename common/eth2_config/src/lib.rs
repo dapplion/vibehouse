@@ -279,6 +279,166 @@ macro_rules! define_hardcoded_nets {
     };
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn eth2_config_default_is_minimal() {
+        let config = Eth2Config::default();
+        assert_eq!(config.eth_spec_id, EthSpecId::Minimal);
+    }
+
+    #[test]
+    fn eth2_config_mainnet() {
+        let config = Eth2Config::mainnet();
+        assert_eq!(config.eth_spec_id, EthSpecId::Mainnet);
+    }
+
+    #[test]
+    fn eth2_config_minimal() {
+        let config = Eth2Config::minimal();
+        assert_eq!(config.eth_spec_id, EthSpecId::Minimal);
+    }
+
+    #[test]
+    fn eth2_config_gnosis() {
+        let config = Eth2Config::gnosis();
+        assert_eq!(config.eth_spec_id, EthSpecId::Gnosis);
+    }
+
+    #[test]
+    fn eth2_config_clone() {
+        let config = Eth2Config::mainnet();
+        let cloned = config.clone();
+        assert_eq!(config.eth_spec_id, cloned.eth_spec_id);
+    }
+
+    #[test]
+    fn genesis_state_source_unknown() {
+        let source = GenesisStateSource::Unknown;
+        assert_eq!(source, GenesisStateSource::Unknown);
+    }
+
+    #[test]
+    fn genesis_state_source_included_bytes() {
+        let source = GenesisStateSource::IncludedBytes;
+        assert_eq!(source, GenesisStateSource::IncludedBytes);
+    }
+
+    #[test]
+    fn genesis_state_source_url_fields() {
+        let source = GenesisStateSource::Url {
+            urls: &["https://example.com/genesis.ssz"],
+            checksum: "0xabc",
+            genesis_validators_root: "0xdef",
+            genesis_state_root: "0x123",
+        };
+        if let GenesisStateSource::Url {
+            urls,
+            checksum,
+            genesis_validators_root,
+            genesis_state_root,
+        } = source
+        {
+            assert_eq!(urls.len(), 1);
+            assert_eq!(checksum, "0xabc");
+            assert_eq!(genesis_validators_root, "0xdef");
+            assert_eq!(genesis_state_root, "0x123");
+        } else {
+            panic!("expected Url variant");
+        }
+    }
+
+    #[test]
+    fn genesis_state_source_clone_eq() {
+        let source = GenesisStateSource::IncludedBytes;
+        let cloned = source;
+        assert_eq!(source, cloned);
+    }
+
+    #[test]
+    fn genesis_state_source_ne() {
+        assert_ne!(
+            GenesisStateSource::Unknown,
+            GenesisStateSource::IncludedBytes
+        );
+    }
+
+    #[test]
+    fn hardcoded_net_fields() {
+        let net = HardcodedNet {
+            name: "test",
+            config_dir: "test-dir",
+            genesis_state_source: GenesisStateSource::Unknown,
+            config: b"config_data",
+            deploy_block: b"0",
+            boot_enr: b"enr_data",
+            genesis_state_bytes: b"genesis_state",
+        };
+        assert_eq!(net.name, "test");
+        assert_eq!(net.config_dir, "test-dir");
+        assert_eq!(net.genesis_state_source, GenesisStateSource::Unknown);
+    }
+
+    #[test]
+    fn hardcoded_net_clone_eq() {
+        let net = HardcodedNet {
+            name: "test",
+            config_dir: "test-dir",
+            genesis_state_source: GenesisStateSource::IncludedBytes,
+            config: b"cfg",
+            deploy_block: b"0",
+            boot_enr: b"",
+            genesis_state_bytes: b"",
+        };
+        let cloned = net.clone();
+        assert_eq!(net, cloned);
+    }
+
+    #[test]
+    fn eth2_net_archive_and_directory_fields() {
+        let archive = Eth2NetArchiveAndDirectory {
+            name: "testnet",
+            config_dir: "testnet-dir",
+            genesis_state_source: GenesisStateSource::Unknown,
+        };
+        assert_eq!(archive.name, "testnet");
+        assert_eq!(archive.config_dir, "testnet-dir");
+    }
+
+    #[test]
+    fn predefined_networks_dir_constant() {
+        assert_eq!(PREDEFINED_NETWORKS_DIR, "built_in_network_configs");
+    }
+
+    #[test]
+    fn genesis_file_name_constant() {
+        assert_eq!(GENESIS_FILE_NAME, "genesis.ssz");
+    }
+
+    #[test]
+    fn genesis_zip_file_name_constant() {
+        assert_eq!(GENESIS_ZIP_FILE_NAME, "genesis.ssz.zip");
+    }
+
+    #[test]
+    fn eth2_net_dirs_non_empty() {
+        assert!(
+            !ETH2_NET_DIRS.is_empty(),
+            "should have at least one predefined network"
+        );
+    }
+
+    #[test]
+    fn eth2_net_dirs_contains_mainnet() {
+        assert!(
+            ETH2_NET_DIRS.iter().any(|d| d.name == "mainnet"),
+            "should contain mainnet"
+        );
+    }
+}
+
 // Add a new "built-in" network by adding it to the list below.
 //
 // The last entry must not end with a comma, otherwise compilation will fail.

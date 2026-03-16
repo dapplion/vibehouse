@@ -79,3 +79,60 @@ pub fn size_of_dir(path: &Path) -> u64 {
 fn size_of_dir_entry(dir: fs::DirEntry) -> u64 {
     dir.metadata().map(|m| m.len()).unwrap_or(0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_constants() {
+        assert_eq!(DEFAULT_ROOT_DIR, ".vibehouse");
+        assert_eq!(DEFAULT_BEACON_NODE_DIR, "beacon");
+        assert_eq!(DEFAULT_NETWORK_DIR, "network");
+        assert_eq!(DEFAULT_VALIDATOR_DIR, "validators");
+        assert_eq!(DEFAULT_SECRET_DIR, "secrets");
+        assert_eq!(DEFAULT_WALLET_DIR, "wallets");
+        assert_eq!(DEFAULT_TRACING_DIR, "tracing");
+        assert_eq!(CUSTOM_TESTNET_DIR, "custom");
+    }
+
+    #[test]
+    fn size_of_dir_empty() {
+        let tmp = std::env::temp_dir().join("vibehouse_test_empty_dir");
+        let _ = fs::create_dir(&tmp);
+        let size = size_of_dir(&tmp);
+        assert_eq!(size, 0);
+        let _ = fs::remove_dir(&tmp);
+    }
+
+    #[test]
+    fn size_of_dir_with_file() {
+        let tmp = std::env::temp_dir().join("vibehouse_test_dir_with_file");
+        let _ = fs::create_dir_all(&tmp);
+        let file_path = tmp.join("test.txt");
+        fs::write(&file_path, "hello world").unwrap();
+        let size = size_of_dir(&tmp);
+        assert!(size >= 11, "should count file bytes");
+        let _ = fs::remove_file(&file_path);
+        let _ = fs::remove_dir(&tmp);
+    }
+
+    #[test]
+    fn size_of_dir_nonexistent() {
+        let size = size_of_dir(Path::new("/nonexistent/path/vibehouse_test"));
+        assert_eq!(size, 0);
+    }
+
+    #[test]
+    fn size_of_dir_multiple_files() {
+        let tmp = std::env::temp_dir().join("vibehouse_test_dir_multi");
+        let _ = fs::create_dir_all(&tmp);
+        fs::write(tmp.join("a.txt"), "aaaa").unwrap();
+        fs::write(tmp.join("b.txt"), "bbbbbb").unwrap();
+        let size = size_of_dir(&tmp);
+        assert!(size >= 10, "should sum all file sizes");
+        let _ = fs::remove_file(tmp.join("a.txt"));
+        let _ = fs::remove_file(tmp.join("b.txt"));
+        let _ = fs::remove_dir(&tmp);
+    }
+}

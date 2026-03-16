@@ -124,3 +124,145 @@ pub fn keypairs_from_yaml_file(path: PathBuf) -> Result<Vec<Keypair>, String> {
         .map(TryInto::try_into)
         .collect::<Result<Vec<_>, String>>()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn be_private_key_deterministic() {
+        // Same index always produces same key
+        let key1 = be_private_key(0);
+        let key2 = be_private_key(0);
+        assert_eq!(key1, key2);
+    }
+
+    #[test]
+    fn be_private_key_different_indices() {
+        let key0 = be_private_key(0);
+        let key1 = be_private_key(1);
+        assert_ne!(key0, key1);
+    }
+
+    #[test]
+    fn be_private_key_nonzero() {
+        // Keys should not be all zeros
+        let key = be_private_key(0);
+        assert!(key.iter().any(|&b| b != 0));
+    }
+
+    #[test]
+    fn be_private_key_correct_length() {
+        let key = be_private_key(42);
+        assert_eq!(key.len(), PRIVATE_KEY_BYTES);
+    }
+
+    #[test]
+    fn keypair_valid_for_multiple_indices() {
+        // Should not panic for various indices
+        for i in 0..10 {
+            let kp = keypair(i);
+            // Public key should be derivable from secret key
+            assert_eq!(kp.pk, kp.sk.public_key());
+        }
+    }
+
+    #[test]
+    fn keypair_deterministic() {
+        let kp1 = keypair(5);
+        let kp2 = keypair(5);
+        assert_eq!(kp1.pk, kp2.pk);
+    }
+
+    #[test]
+    fn keypair_different_indices_different_keys() {
+        let kp0 = keypair(0);
+        let kp1 = keypair(1);
+        assert_ne!(kp0.pk, kp1.pk);
+    }
+
+    #[test]
+    fn string_to_bytes_hex_with_prefix() {
+        let bytes = string_to_bytes("0xdeadbeef").unwrap();
+        assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn string_to_bytes_hex_without_prefix() {
+        let bytes = string_to_bytes("deadbeef").unwrap();
+        assert_eq!(bytes, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn string_to_bytes_empty() {
+        let bytes = string_to_bytes("").unwrap();
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
+    fn string_to_bytes_empty_after_prefix() {
+        let bytes = string_to_bytes("0x").unwrap();
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
+    fn string_to_bytes_invalid_hex() {
+        assert!(string_to_bytes("0xZZZZ").is_err());
+    }
+
+    #[test]
+    fn string_to_bytes_odd_length() {
+        // Odd-length hex is invalid
+        assert!(string_to_bytes("0xabc").is_err());
+    }
+
+    #[test]
+    fn yaml_keypair_try_into_valid() {
+        // Use index 0 to get a known keypair, then reconstruct via YamlKeypair
+        let expected = keypair(0);
+        let privkey_hex = hex::encode(be_private_key(0));
+        let pubkey_hex = hex::encode(expected.pk.serialize());
+
+        let yaml_kp = YamlKeypair {
+            privkey: format!("0x{}", privkey_hex),
+            pubkey: format!("0x{}", pubkey_hex),
+        };
+        let result: Result<Keypair, String> = yaml_kp.try_into();
+        assert!(result.is_ok());
+        let kp = result.unwrap();
+        assert_eq!(kp.pk, expected.pk);
+    }
+
+    #[test]
+    fn yaml_keypair_try_into_invalid_privkey() {
+        let yaml_kp = YamlKeypair {
+            privkey: "0x00".to_string(),
+            pubkey: "0x".to_string(),
+        };
+        let result: Result<Keypair, String> = yaml_kp.try_into();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn be_private_key_index_0_known_value() {
+        // Verify index 0 produces a valid BLS secret key
+        let key = be_private_key(0);
+        let sk = SecretKey::deserialize(&key);
+        assert!(sk.is_ok(), "Index 0 should produce a valid secret key");
+    }
+
+    #[test]
+    fn be_private_key_large_index() {
+        // Should work for large indices without panic
+        let key = be_private_key(1_000_000);
+        assert_eq!(key.len(), PRIVATE_KEY_BYTES);
+        let sk = SecretKey::deserialize(&key);
+        assert!(sk.is_ok(), "Large index should produce a valid secret key");
+    }
+
+    #[test]
+    fn keypairs_from_yaml_file_missing_file() {
+        let result = keypairs_from_yaml_file(PathBuf::from("/nonexistent/path.yaml"));
+        assert!(result.is_err());
+    }
+}

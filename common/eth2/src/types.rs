@@ -1743,6 +1743,760 @@ mod tests {
     use super::*;
     use ssz::Encode;
 
+    // ── EndpointVersion ─────────────────────────────────────────
+
+    #[test]
+    fn endpoint_version_from_str_valid() {
+        assert_eq!(EndpointVersion::from_str("v1").unwrap(), EndpointVersion(1));
+        assert_eq!(EndpointVersion::from_str("v2").unwrap(), EndpointVersion(2));
+        assert_eq!(
+            EndpointVersion::from_str("v100").unwrap(),
+            EndpointVersion(100)
+        );
+    }
+
+    #[test]
+    fn endpoint_version_from_str_invalid() {
+        assert!(EndpointVersion::from_str("1").is_err());
+        assert!(EndpointVersion::from_str("V1").is_err());
+        assert!(EndpointVersion::from_str("").is_err());
+        assert!(EndpointVersion::from_str("vx").is_err());
+        assert!(EndpointVersion::from_str("v").is_err());
+    }
+
+    #[test]
+    fn endpoint_version_display() {
+        assert_eq!(EndpointVersion(1).to_string(), "v1");
+        assert_eq!(EndpointVersion(42).to_string(), "v42");
+    }
+
+    #[test]
+    fn endpoint_version_roundtrip() {
+        for v in [1, 2, 3, 100] {
+            let ev = EndpointVersion(v);
+            assert_eq!(EndpointVersion::from_str(&ev.to_string()).unwrap(), ev);
+        }
+    }
+
+    // ── BlockId ─────────────────────────────────────────────────
+
+    #[test]
+    fn block_id_from_str_keywords() {
+        assert_eq!(BlockId::from_str("head").unwrap(), BlockId::Head);
+        assert_eq!(BlockId::from_str("genesis").unwrap(), BlockId::Genesis);
+        assert_eq!(BlockId::from_str("finalized").unwrap(), BlockId::Finalized);
+        assert_eq!(BlockId::from_str("justified").unwrap(), BlockId::Justified);
+    }
+
+    #[test]
+    fn block_id_from_str_slot() {
+        assert_eq!(BlockId::from_str("0").unwrap(), BlockId::Slot(Slot::new(0)));
+        assert_eq!(
+            BlockId::from_str("999").unwrap(),
+            BlockId::Slot(Slot::new(999))
+        );
+    }
+
+    #[test]
+    fn block_id_from_str_root() {
+        let root_hex = "0x0000000000000000000000000000000000000000000000000000000000000001";
+        let block_id = BlockId::from_str(root_hex).unwrap();
+        assert_eq!(block_id, BlockId::Root(Hash256::from_low_u64_be(1)));
+    }
+
+    #[test]
+    fn block_id_from_str_invalid() {
+        assert!(BlockId::from_str("invalid").is_err());
+        assert!(BlockId::from_str("-1").is_err());
+    }
+
+    #[test]
+    fn block_id_display() {
+        assert_eq!(BlockId::Head.to_string(), "head");
+        assert_eq!(BlockId::Genesis.to_string(), "genesis");
+        assert_eq!(BlockId::Finalized.to_string(), "finalized");
+        assert_eq!(BlockId::Justified.to_string(), "justified");
+        assert_eq!(BlockId::Slot(Slot::new(42)).to_string(), "42");
+    }
+
+    // ── StateId ─────────────────────────────────────────────────
+
+    #[test]
+    fn state_id_from_str_keywords() {
+        assert_eq!(StateId::from_str("head").unwrap(), StateId::Head);
+        assert_eq!(StateId::from_str("genesis").unwrap(), StateId::Genesis);
+        assert_eq!(StateId::from_str("finalized").unwrap(), StateId::Finalized);
+        assert_eq!(StateId::from_str("justified").unwrap(), StateId::Justified);
+    }
+
+    #[test]
+    fn state_id_from_str_slot() {
+        assert_eq!(StateId::from_str("0").unwrap(), StateId::Slot(Slot::new(0)));
+        assert_eq!(
+            StateId::from_str("123").unwrap(),
+            StateId::Slot(Slot::new(123))
+        );
+    }
+
+    #[test]
+    fn state_id_from_str_root() {
+        let root_hex = "0x0000000000000000000000000000000000000000000000000000000000000002";
+        let state_id = StateId::from_str(root_hex).unwrap();
+        assert_eq!(state_id, StateId::Root(Hash256::from_low_u64_be(2)));
+    }
+
+    #[test]
+    fn state_id_display() {
+        assert_eq!(StateId::Head.to_string(), "head");
+        assert_eq!(StateId::Genesis.to_string(), "genesis");
+        assert_eq!(StateId::Finalized.to_string(), "finalized");
+        assert_eq!(StateId::Justified.to_string(), "justified");
+        assert_eq!(StateId::Slot(Slot::new(7)).to_string(), "7");
+    }
+
+    // ── ValidatorStatus ─────────────────────────────────────────
+
+    #[test]
+    fn validator_status_from_str_all_variants() {
+        let cases = [
+            ("pending_initialized", ValidatorStatus::PendingInitialized),
+            ("pending_queued", ValidatorStatus::PendingQueued),
+            ("active_ongoing", ValidatorStatus::ActiveOngoing),
+            ("active_exiting", ValidatorStatus::ActiveExiting),
+            ("active_slashed", ValidatorStatus::ActiveSlashed),
+            ("exited_unslashed", ValidatorStatus::ExitedUnslashed),
+            ("exited_slashed", ValidatorStatus::ExitedSlashed),
+            ("withdrawal_possible", ValidatorStatus::WithdrawalPossible),
+            ("withdrawal_done", ValidatorStatus::WithdrawalDone),
+            ("active", ValidatorStatus::Active),
+            ("pending", ValidatorStatus::Pending),
+            ("exited", ValidatorStatus::Exited),
+            ("withdrawal", ValidatorStatus::Withdrawal),
+        ];
+        for (s, expected) in cases {
+            assert_eq!(ValidatorStatus::from_str(s).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn validator_status_from_str_invalid() {
+        assert!(ValidatorStatus::from_str("unknown").is_err());
+        assert!(ValidatorStatus::from_str("ACTIVE").is_err());
+    }
+
+    #[test]
+    fn validator_status_display_roundtrip() {
+        let statuses = [
+            ValidatorStatus::PendingInitialized,
+            ValidatorStatus::PendingQueued,
+            ValidatorStatus::ActiveOngoing,
+            ValidatorStatus::ActiveExiting,
+            ValidatorStatus::ActiveSlashed,
+            ValidatorStatus::ExitedUnslashed,
+            ValidatorStatus::ExitedSlashed,
+            ValidatorStatus::WithdrawalPossible,
+            ValidatorStatus::WithdrawalDone,
+            ValidatorStatus::Active,
+            ValidatorStatus::Pending,
+            ValidatorStatus::Exited,
+            ValidatorStatus::Withdrawal,
+        ];
+        for status in statuses {
+            let s = status.to_string();
+            assert_eq!(ValidatorStatus::from_str(&s).unwrap(), status);
+        }
+    }
+
+    #[test]
+    fn validator_status_superstatus() {
+        assert_eq!(
+            ValidatorStatus::PendingInitialized.superstatus(),
+            ValidatorStatus::Pending
+        );
+        assert_eq!(
+            ValidatorStatus::PendingQueued.superstatus(),
+            ValidatorStatus::Pending
+        );
+        assert_eq!(
+            ValidatorStatus::ActiveOngoing.superstatus(),
+            ValidatorStatus::Active
+        );
+        assert_eq!(
+            ValidatorStatus::ActiveExiting.superstatus(),
+            ValidatorStatus::Active
+        );
+        assert_eq!(
+            ValidatorStatus::ActiveSlashed.superstatus(),
+            ValidatorStatus::Active
+        );
+        assert_eq!(
+            ValidatorStatus::ExitedUnslashed.superstatus(),
+            ValidatorStatus::Exited
+        );
+        assert_eq!(
+            ValidatorStatus::ExitedSlashed.superstatus(),
+            ValidatorStatus::Exited
+        );
+        assert_eq!(
+            ValidatorStatus::WithdrawalPossible.superstatus(),
+            ValidatorStatus::Withdrawal
+        );
+        assert_eq!(
+            ValidatorStatus::WithdrawalDone.superstatus(),
+            ValidatorStatus::Withdrawal
+        );
+        // Superstatuses map to themselves
+        assert_eq!(
+            ValidatorStatus::Active.superstatus(),
+            ValidatorStatus::Active
+        );
+        assert_eq!(
+            ValidatorStatus::Pending.superstatus(),
+            ValidatorStatus::Pending
+        );
+        assert_eq!(
+            ValidatorStatus::Exited.superstatus(),
+            ValidatorStatus::Exited
+        );
+        assert_eq!(
+            ValidatorStatus::Withdrawal.superstatus(),
+            ValidatorStatus::Withdrawal
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_active_ongoing() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: far_future,
+            withdrawable_epoch: far_future,
+            slashed: false,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(10), far_future),
+            ValidatorStatus::ActiveOngoing
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_active_exiting() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: Epoch::new(100),
+            withdrawable_epoch: Epoch::new(200),
+            slashed: false,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(10), far_future),
+            ValidatorStatus::ActiveExiting
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_active_slashed() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: Epoch::new(100),
+            withdrawable_epoch: Epoch::new(200),
+            slashed: true,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(10), far_future),
+            ValidatorStatus::ActiveSlashed
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_exited_unslashed() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: Epoch::new(50),
+            withdrawable_epoch: Epoch::new(200),
+            slashed: false,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(100), far_future),
+            ValidatorStatus::ExitedUnslashed
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_exited_slashed() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: Epoch::new(50),
+            withdrawable_epoch: Epoch::new(200),
+            slashed: true,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(100), far_future),
+            ValidatorStatus::ExitedSlashed
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_withdrawal_possible() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: Epoch::new(50),
+            withdrawable_epoch: Epoch::new(100),
+            slashed: false,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(150), far_future),
+            ValidatorStatus::WithdrawalPossible
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_withdrawal_done() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(0),
+            exit_epoch: Epoch::new(50),
+            withdrawable_epoch: Epoch::new(100),
+            slashed: false,
+            effective_balance: 0,
+            activation_eligibility_epoch: Epoch::new(0),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(150), far_future),
+            ValidatorStatus::WithdrawalDone
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_pending_initialized() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: far_future,
+            exit_epoch: far_future,
+            withdrawable_epoch: far_future,
+            slashed: false,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: far_future,
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(10), far_future),
+            ValidatorStatus::PendingInitialized
+        );
+    }
+
+    #[test]
+    fn validator_status_from_validator_pending_queued() {
+        let far_future = Epoch::new(u64::MAX);
+        let validator = Validator {
+            activation_epoch: Epoch::new(100),
+            exit_epoch: far_future,
+            withdrawable_epoch: far_future,
+            slashed: false,
+            effective_balance: 32_000_000_000,
+            activation_eligibility_epoch: Epoch::new(5),
+            ..Default::default()
+        };
+        assert_eq!(
+            ValidatorStatus::from_validator(&validator, Epoch::new(10), far_future),
+            ValidatorStatus::PendingQueued
+        );
+    }
+
+    // ── PeerState ───────────────────────────────────────────────
+
+    #[test]
+    fn peer_state_from_str_all_variants() {
+        assert_eq!(
+            PeerState::from_str("connected").unwrap(),
+            PeerState::Connected
+        );
+        assert_eq!(
+            PeerState::from_str("connecting").unwrap(),
+            PeerState::Connecting
+        );
+        assert_eq!(
+            PeerState::from_str("disconnected").unwrap(),
+            PeerState::Disconnected
+        );
+        assert_eq!(
+            PeerState::from_str("disconnecting").unwrap(),
+            PeerState::Disconnecting
+        );
+    }
+
+    #[test]
+    fn peer_state_from_str_invalid() {
+        assert!(PeerState::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn peer_state_display_roundtrip() {
+        for state in [
+            PeerState::Connected,
+            PeerState::Connecting,
+            PeerState::Disconnected,
+            PeerState::Disconnecting,
+        ] {
+            assert_eq!(PeerState::from_str(&state.to_string()).unwrap(), state);
+        }
+    }
+
+    // ── PeerDirection ───────────────────────────────────────────
+
+    #[test]
+    fn peer_direction_from_str() {
+        assert_eq!(
+            PeerDirection::from_str("inbound").unwrap(),
+            PeerDirection::Inbound
+        );
+        assert_eq!(
+            PeerDirection::from_str("outbound").unwrap(),
+            PeerDirection::Outbound
+        );
+        assert!(PeerDirection::from_str("both").is_err());
+    }
+
+    #[test]
+    fn peer_direction_display_roundtrip() {
+        for dir in [PeerDirection::Inbound, PeerDirection::Outbound] {
+            assert_eq!(PeerDirection::from_str(&dir.to_string()).unwrap(), dir);
+        }
+    }
+
+    // ── SkipRandaoVerification ──────────────────────────────────
+
+    #[test]
+    fn skip_randao_verification_try_from() {
+        assert_eq!(
+            SkipRandaoVerification::try_from(None).unwrap(),
+            SkipRandaoVerification::No
+        );
+        assert_eq!(
+            SkipRandaoVerification::try_from(Some("".to_string())).unwrap(),
+            SkipRandaoVerification::Yes
+        );
+        assert!(SkipRandaoVerification::try_from(Some("true".to_string())).is_err());
+    }
+
+    // ── Failure ─────────────────────────────────────────────────
+
+    #[test]
+    fn failure_new() {
+        let f = Failure::new(5, "something broke".to_string());
+        assert_eq!(f.index, 5);
+        assert_eq!(f.message, "something broke");
+    }
+
+    // ── GenericResponse ─────────────────────────────────────────
+
+    #[test]
+    fn generic_response_from() {
+        let resp = GenericResponse::from(42u64);
+        assert_eq!(resp.data, 42);
+    }
+
+    #[test]
+    fn generic_response_add_execution_optimistic() {
+        let resp = GenericResponse::from(42u64).add_execution_optimistic(true);
+        assert_eq!(resp.execution_optimistic, Some(true));
+        assert_eq!(resp.data, 42);
+    }
+
+    #[test]
+    fn generic_response_add_execution_optimistic_finalized() {
+        let resp = GenericResponse::from(42u64).add_execution_optimistic_finalized(false, true);
+        assert_eq!(resp.execution_optimistic, Some(false));
+        assert_eq!(resp.finalized, Some(true));
+        assert_eq!(resp.data, 42);
+    }
+
+    // ── RootData ────────────────────────────────────────────────
+
+    #[test]
+    fn root_data_from_hash256() {
+        let hash = Hash256::from_low_u64_be(99);
+        let rd: RootData = hash.into();
+        assert_eq!(rd.root, hash);
+    }
+
+    // ── ValidatorId ─────────────────────────────────────────────
+
+    #[test]
+    fn validator_id_from_str_index() {
+        assert_eq!(ValidatorId::from_str("42").unwrap(), ValidatorId::Index(42));
+    }
+
+    #[test]
+    fn validator_id_from_str_invalid_not_index_or_pubkey() {
+        assert!(ValidatorId::from_str("not_a_number").is_err());
+    }
+
+    #[test]
+    fn validator_id_display_index() {
+        assert_eq!(ValidatorId::Index(7).to_string(), "7");
+    }
+
+    // ── QueryVec ────────────────────────────────────────────────
+
+    #[test]
+    fn query_vec_empty_string() {
+        let qv = QueryVec::<u64>::try_from("".to_string()).unwrap();
+        assert!(qv.values.is_empty());
+    }
+
+    #[test]
+    fn query_vec_single_value() {
+        let qv = QueryVec::<u64>::try_from("42".to_string()).unwrap();
+        assert_eq!(qv.values, vec![42u64]);
+    }
+
+    #[test]
+    fn query_vec_invalid_value() {
+        assert!(QueryVec::<u64>::try_from("not_a_number".to_string()).is_err());
+    }
+
+    #[test]
+    fn query_vec_into_vec() {
+        let qv = QueryVec::<u64>::try_from("1,2,3".to_string()).unwrap();
+        let v: Vec<u64> = qv.into();
+        assert_eq!(v, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn query_vec_from_multiple_query_vecs() {
+        let qv1 = QueryVec::<u64>::try_from("1,2".to_string()).unwrap();
+        let qv2 = QueryVec::<u64>::try_from("3,4".to_string()).unwrap();
+        let merged = QueryVec::from(vec![qv1, qv2]);
+        assert_eq!(merged.values, vec![1u64, 2, 3, 4]);
+    }
+
+    // ── Serde roundtrips ────────────────────────────────────────
+
+    #[test]
+    fn genesis_data_serde_roundtrip() {
+        let data = GenesisData {
+            genesis_time: 1606824023,
+            genesis_validators_root: Hash256::from_low_u64_be(1),
+            genesis_fork_version: [0, 0, 0, 1],
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let decoded: GenesisData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn peer_count_serde_roundtrip() {
+        let pc = PeerCount {
+            connected: 10,
+            connecting: 2,
+            disconnected: 5,
+            disconnecting: 1,
+        };
+        let json = serde_json::to_string(&pc).unwrap();
+        let decoded: PeerCount = serde_json::from_str(&json).unwrap();
+        assert_eq!(pc, decoded);
+    }
+
+    #[test]
+    fn sse_block_serde_roundtrip() {
+        let block = SseBlock {
+            slot: Slot::new(100),
+            block: Hash256::from_low_u64_be(42),
+            execution_optimistic: true,
+        };
+        let json = serde_json::to_string(&block).unwrap();
+        let decoded: SseBlock = serde_json::from_str(&json).unwrap();
+        assert_eq!(block, decoded);
+    }
+
+    #[test]
+    fn sse_finalized_checkpoint_serde_roundtrip() {
+        let cp = SseFinalizedCheckpoint {
+            block: Hash256::from_low_u64_be(1),
+            state: Hash256::from_low_u64_be(2),
+            epoch: Epoch::new(10),
+            execution_optimistic: false,
+        };
+        let json = serde_json::to_string(&cp).unwrap();
+        let decoded: SseFinalizedCheckpoint = serde_json::from_str(&json).unwrap();
+        assert_eq!(cp, decoded);
+    }
+
+    #[test]
+    fn sse_chain_reorg_serde_roundtrip() {
+        let reorg = SseChainReorg {
+            slot: Slot::new(50),
+            depth: 3,
+            old_head_block: Hash256::from_low_u64_be(1),
+            old_head_state: Hash256::from_low_u64_be(2),
+            new_head_block: Hash256::from_low_u64_be(3),
+            new_head_state: Hash256::from_low_u64_be(4),
+            epoch: Epoch::new(5),
+            execution_optimistic: true,
+        };
+        let json = serde_json::to_string(&reorg).unwrap();
+        let decoded: SseChainReorg = serde_json::from_str(&json).unwrap();
+        assert_eq!(reorg, decoded);
+    }
+
+    #[test]
+    fn sse_execution_bid_serde_roundtrip() {
+        let bid = SseExecutionBid {
+            slot: Slot::new(10),
+            block: Hash256::from_low_u64_be(1),
+            builder_index: 42,
+            block_hash: Hash256::from_low_u64_be(2),
+            value: 1000,
+        };
+        let json = serde_json::to_string(&bid).unwrap();
+        let decoded: SseExecutionBid = serde_json::from_str(&json).unwrap();
+        assert_eq!(bid, decoded);
+    }
+
+    #[test]
+    fn sse_execution_payload_serde_roundtrip() {
+        let ep = SseExecutionPayload {
+            slot: Slot::new(20),
+            beacon_block_root: Hash256::from_low_u64_be(1),
+            builder_index: 5,
+            block_hash: Hash256::from_low_u64_be(2),
+        };
+        let json = serde_json::to_string(&ep).unwrap();
+        let decoded: SseExecutionPayload = serde_json::from_str(&json).unwrap();
+        assert_eq!(ep, decoded);
+    }
+
+    #[test]
+    fn sse_payload_attestation_serde_roundtrip() {
+        let pa = SsePayloadAttestation {
+            slot: Slot::new(30),
+            beacon_block_root: Hash256::from_low_u64_be(1),
+            payload_present: true,
+            blob_data_available: false,
+        };
+        let json = serde_json::to_string(&pa).unwrap();
+        let decoded: SsePayloadAttestation = serde_json::from_str(&json).unwrap();
+        assert_eq!(pa, decoded);
+    }
+
+    #[test]
+    fn execution_proof_status_serde_roundtrip() {
+        let eps = ExecutionProofStatus {
+            block_root: Hash256::from_low_u64_be(1),
+            received_proof_subnet_ids: vec![0, 1, 2],
+            required_proofs: 4,
+            is_fully_proven: false,
+        };
+        let json = serde_json::to_string(&eps).unwrap();
+        let decoded: ExecutionProofStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(eps, decoded);
+    }
+
+    #[test]
+    fn syncing_data_serde_roundtrip() {
+        let sd = SyncingData {
+            is_syncing: true,
+            is_optimistic: false,
+            el_offline: false,
+            head_slot: Slot::new(100),
+            sync_distance: Slot::new(50),
+        };
+        let json = serde_json::to_string(&sd).unwrap();
+        let decoded: SyncingData = serde_json::from_str(&json).unwrap();
+        assert_eq!(sd, decoded);
+    }
+
+    #[test]
+    fn validator_status_serde_roundtrip() {
+        for status in [
+            ValidatorStatus::PendingInitialized,
+            ValidatorStatus::ActiveOngoing,
+            ValidatorStatus::ExitedSlashed,
+            ValidatorStatus::WithdrawalDone,
+        ] {
+            let json = serde_json::to_string(&status).unwrap();
+            let decoded: ValidatorStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(status, decoded);
+        }
+    }
+
+    #[test]
+    fn error_message_serde() {
+        let err = Error::Message(ErrorMessage {
+            code: 404,
+            message: "not found".to_string(),
+            stacktraces: vec![],
+        });
+        let json = serde_json::to_string(&err).unwrap();
+        let decoded: Error = serde_json::from_str(&json).unwrap();
+        assert_eq!(err, decoded);
+    }
+
+    #[test]
+    fn indexed_error_message_serde() {
+        let err = Error::Indexed(IndexedErrorMessage {
+            code: 400,
+            message: "bad request".to_string(),
+            failures: vec![Failure::new(0, "invalid field".to_string())],
+        });
+        let json = serde_json::to_string(&err).unwrap();
+        let decoded: Error = serde_json::from_str(&json).unwrap();
+        assert_eq!(err, decoded);
+    }
+
+    #[test]
+    fn ptc_duty_data_serde_roundtrip() {
+        let duty = PtcDutyData {
+            pubkey: PublicKeyBytes::empty(),
+            validator_index: 42,
+            slot: Slot::new(10),
+            ptc_committee_index: 3,
+        };
+        let json = serde_json::to_string(&duty).unwrap();
+        let decoded: PtcDutyData = serde_json::from_str(&json).unwrap();
+        assert_eq!(duty, decoded);
+    }
+
+    #[test]
+    fn sse_head_serde_roundtrip() {
+        let head = SseHead {
+            slot: Slot::new(100),
+            block: Hash256::from_low_u64_be(1),
+            state: Hash256::from_low_u64_be(2),
+            current_duty_dependent_root: Hash256::from_low_u64_be(3),
+            previous_duty_dependent_root: Hash256::from_low_u64_be(4),
+            epoch_transition: true,
+            execution_optimistic: false,
+        };
+        let json = serde_json::to_string(&head).unwrap();
+        let decoded: SseHead = serde_json::from_str(&json).unwrap();
+        assert_eq!(head, decoded);
+    }
+
     #[test]
     fn query_vec() {
         assert_eq!(
