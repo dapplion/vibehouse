@@ -424,6 +424,8 @@ mod tests {
         // Create the mdbx data file
         std::fs::write(dir.path().join(MDBX_DATA_FILENAME), b"data").unwrap();
         let mut config = Config::new(dir.path().into());
+        // Force a non-mdbx backend so the override has something to change
+        config.backend = DatabaseBackend::Disabled;
 
         let result = config.override_backend();
 
