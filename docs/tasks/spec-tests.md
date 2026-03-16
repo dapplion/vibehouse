@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1567 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure was pre-fix; next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges.
+- PR #4992 active discussion (today): potuz responding to ensi321 concern about `get_ptc` being too restrictive for validator assignments. Head still d76a278b0a, 1 APPROVED (jtraglia). Design still evolving.
+- cargo update: 0 semver-compatible updates. cargo audit: same 1 rsa vuln (no fix).
+- No actionable work — project in maintenance mode.
+
 ### run 1566 (Mar 16) — health check, all stable
 
 **Health check**: all stable
