@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1487 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all 7 jobs green (latest run successful)
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (no new merges since last check)
+- PR #4992 (cached PTCs): still OPEN, updated today
+- PR #4954 (milliseconds in fork choice store): still OPEN
+- PR #4747 (fast confirmation rule): OPEN, updated today
+- Open Gloas PRs (11 total): #5008, #4992, #4962, #4960, #4954, #4939, #4898, #4892, #4843, #4840, #4630
+- cargo clippy: clean (0 warnings)
+- No actionable work — project in maintenance mode, all tasks DONE
+
 ### run 1485 (Mar 16) — health check, all stable
 
 **Health check**: all green
