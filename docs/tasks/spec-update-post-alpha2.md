@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1666 (Mar 17) — all stable, no code changes
+
+Spec stable — no new consensus-specs commits since #5005 (Mar 15). v1.7.0-alpha.3 still latest release. PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). CI all green. Nightly green. No code changes needed.
+
 ### run 1650 (Mar 17) — all stable, no code changes
 
 Spec stable — no new consensus-specs commits since #5005 (Mar 15). v1.7.0-alpha.3 still latest release. PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). Active discussion: potuz questioning whether `get_ptc` is needed in spec at all — clients could just use `compute_ptc` for caching. Direction may simplify. No dep updates. cargo audit unchanged (1 rsa). CI all green. No code changes needed.
