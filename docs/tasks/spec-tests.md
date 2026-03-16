@@ -3534,3 +3534,10 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - Nightly failure was pre-fix timing (slasher `override_backend_with_mdbx_file_present`); fix already on main (b79292d3).
 - Clippy clean, cargo audit unchanged (1 rsa, 5 warnings), deps fully up to date.
 - All green. No action needed.
+
+### Run 1526 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new tags.
+- New open PRs: #5008 (docs fix: `block_root` → `beacon_block_root` in p2p spec text — no code impact, we already use correct name), #4962 (new sanity/blocks tests for missed payload withdrawals — test-only), #4960 (fork choice test for new validator deposit). None require implementation changes.
+- Nightly failure confirmed as pre-fix timing — slasher test passes locally on current main.
+- Clippy clean (0 warnings), cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings).
+- All green. No action needed.
