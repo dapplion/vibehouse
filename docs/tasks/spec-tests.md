@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1503 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure (slasher override_backend) was pre-fix — already resolved by commit b79292d35.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged since Mar 15).
+- No new consensus-specs commits since #5005.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED, same head d76a278b0a. Active discussion — potuz acknowledging slot range restriction is wrong, considering full cache vs ad-hoc approach. Not ready to merge.
+- Open Gloas PRs (6): #4992, #4960, #4932, #4843, #4840, #4630
+- No semver-compatible cargo dep updates available.
+- `ptc-lookbehind` branch: only behind by task doc commits, no code drift.
+- No actionable work — project in maintenance mode.
+
 ### run 1502 (Mar 16) — PR #4992 analysis + prototype (reverted)
 
 **PR #4992 (cached PTCs)**: now APPROVED, not yet merged.
