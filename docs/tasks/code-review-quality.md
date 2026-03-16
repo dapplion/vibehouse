@@ -1580,3 +1580,12 @@ All remaining `.clone()` calls are either:
 - **next_snapshot_slot** (1 test): zero slot edge case
 
 **Verification**: 52/52 store tests pass (43 new + 9 existing), clippy clean, pushed to origin.
+
+#### Run 1456 — Verify Operation Signature Validity & Verification Epochs Tests
+
+**consensus/state_processing/src/verify_operation.rs** (18 new tests):
+- **verification_epochs** (4 tests): exit returns message epoch, exit at zero, proposer slashing returns single epoch, attester slashing returns two epochs, BLS-to-execution change returns empty
+- **signature_is_still_valid** (7 tests): valid when fork unchanged, invalid after fork transition, valid when epoch still in previous fork, valid when epoch in current fork, invalid when fork epoch shifts past message epoch, valid with empty verification epochs (BLS change), valid with two matching fork versions (attester slashing), invalid when one of two fork versions changes
+- **accessors** (4 tests): into_inner returns original op, as_inner returns reference, first_fork_verified_against returns first version, returns None when empty, returns first of multiple versions
+
+**Verification**: 22/22 tests pass (18 new + 4 existing SSZ roundtrip), clippy clean, pushed to origin.
