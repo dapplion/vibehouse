@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1628 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly run 23164776090 still in progress — 20/26 jobs complete, all passing. beacon-chain (deneb/bellatrix/capella/fulu/electra) and http-api (electra/fulu) still running. phase0/altair beacon-chain passed.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges since #5005 (Mar 15).
+- PR #4992 (cached PTCs in state) — still open, NOT merged (same head d76a278b0a, 25 reviews, updated today). 1 APPROVED.
+- New PRs: #5011 (GH actions update), #5012 (release-drafter update), #5010/#5009/#5007/#5006 (dep updates) — all infra/tooling, no spec changes.
+- cargo audit unchanged (1 rsa, 5 unmaintained warnings). No semver-compatible cargo updates.
+- `ptc-lookbehind` branch up to date with main (2 commits ahead).
+- No actionable work.
+
 ### run 1627 (Mar 16) — health check, all stable
 
 **Health check**: all stable
