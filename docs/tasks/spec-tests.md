@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1473 (Mar 16) — health check + devnet verification
+
+**Health check**: all green
+- CI: all 7 jobs green (latest run successful)
+- Spec: v1.7.0-alpha.3 still latest. No new commits since #5005 (Mar 15)
+- PR #4992 (PTC lookbehind): still OPEN, active discussion today — jihoonsong/potuz/ensi321 debating slot range restriction for validator PTC assignment lookahead. ensi321 concerned `get_ptc` is too restrictive. No new code commits (still d76a278b from Mar 12)
+- All other Gloas PRs unchanged: #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630 — all blocked/awaiting review
+- cargo clippy: clean (0 warnings)
+- cargo audit: unchanged (1 rsa RUSTSEC-2023-0071, 5 unmaintained warnings)
+
+**Devnet verification**: 4-node kurtosis devnet passed
+- Run ID: 20260316-092248
+- Finalized epoch 8 in 468s (target: 8)
+- Gloas fork at epoch 1 (slot 8), chain healthy through epoch 10
+- All 4 CL+EL node pairs running, no stalls
+
 ### run 1472 (Mar 16) — health check, spec tracking review
 
 **Health check**: all green
