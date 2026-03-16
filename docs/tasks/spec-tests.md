@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1565 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (09:36) was pre-fix; already fixed on main.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges.
+- PR #5005 merged (Mar 15): test fix for builder voluntary exit — test generation only, no spec/code change needed.
+- PR #5008 active: field name consistency fix (`block_root` → `beacon_block_root` in spec text). Our code already uses `beacon_block_root`. No change needed.
+- PR #4962 active: new sanity/blocks tests for missed payload withdrawal interactions. Will need passing when vectors released.
+- cargo update: 0 semver-compatible updates. cargo audit: same 1 rsa vuln (no fix).
+- No actionable work — project in maintenance mode.
+
 ### run 1564 (Mar 16) — health check, all stable
 
 **Health check**: all stable
