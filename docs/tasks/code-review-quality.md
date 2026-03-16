@@ -1515,3 +1515,22 @@ All remaining `.clone()` calls are either:
 - Also added `serde_json` dev-dependency to beacon_node_fallback/Cargo.toml
 
 **Verification**: 57/57 tests pass, clippy clean, pushed to origin.
+
+#### Run 1450 — Slasher Array, AttestationQueue, BlockQueue Tests
+
+**slasher/src/array.rs** (34 new tests):
+- **Chunk::epoch_distance** (5 tests): zero distance, positive distance, large valid distance, overflow, distance of one
+- **Chunk::get_target/set_target/set_raw_distance** (7 tests): basic ops, defaults, multi-validator, multi-epoch, overwrite, out-of-bounds set
+- **MinTargetChunk** (7 tests): empty has MAX_DISTANCE, neutral element, name, first_start_epoch, next_start_epoch, update reduces targets, stops when existing smaller
+- **MaxTargetChunk** (7 tests): empty has zero, neutral element, name, first_start_epoch, next_start_epoch, update increases targets, stops when existing larger
+- **Bincode roundtrips** (3 tests): Chunk, MinTargetChunk, MaxTargetChunk serialization
+
+**slasher/src/attestation_queue.rs** (14 new tests):
+- **AttestationQueue** (6 tests): empty, enqueue_dequeue, multiple_enqueue, dequeue_empty, requeue, enqueue_after_dequeue
+- **AttestationBatch** (5 tests): queue_single, multiple_validators_same_data, different_data, dedup_prefers_larger_aggregate, keeps_larger_when_queued_first
+- **group_by_validator_chunk_index** (3 tests): single_chunk, multiple_chunks, empty_batch
+
+**slasher/src/block_queue.rs** (7 new tests):
+- empty_queue, queue_single_block, queue_duplicate_block_deduplicates, queue_different_blocks, dequeue_clears_queue, dequeue_empty_returns_empty_set, queue_after_dequeue
+
+**Verification**: 55/55 tests pass, clippy clean, pushed to origin.
