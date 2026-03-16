@@ -1561,3 +1561,22 @@ All remaining `.clone()` calls are either:
 - **Error equality** (1 test): variant distinctness
 
 **Verification**: 77/77 tests pass (42 new + 35 existing), clippy clean, pushed to origin.
+
+#### Run 1455 — Store Config & HDiff Unit Tests
+
+**beacon_node/store/src/config.rs** (19 new tests):
+- **verify validation** (5 tests): compression_level zero OK, max OK, out-of-range error, epochs_per_blob_prune zero error, nonzero OK
+- **compression estimation** (5 tests): no compression returns original size, with compression halves, decompressed no-compression passthrough, decompressed with compression doubles, zero bytes
+- **compress/decompress roundtrip** (4 tests): normal data, empty data, large repetitive data (verifies compression ratio), no-compression-level passthrough
+- **as_disk_config** (2 tests): hierarchy preservation, default values preserved
+- **OnDiskStoreConfig edge cases** (3 tests): invalid version byte, empty bytes, default roundtrip
+
+**beacon_node/store/src/hdiff.rs** (24 new tests):
+- **HierarchyConfig::from_str** (8 tests): valid "5,13,21", single "10", two layers "5,13", empty error, not ascending error, equal values error, descending error, non-numeric error, display roundtrip
+- **HierarchyConfig::validate** (4 tests): default OK, empty error, non-ascending error, too-large exponent (>=64) error
+- **exponent_for_slot** (4 tests): powers of two, zero returns 64, odd numbers return 0, mixed values
+- **HierarchyModuli::should_commit_immediately** (5 tests): snapshot layer true, second layer true, leaf layer false, non-aligned false, single layer
+- **storage_strategy edge cases** (3 tests): slot < start error, slot == start is snapshot, start_slot affects diff_from clamping
+- **next_snapshot_slot** (1 test): zero slot edge case
+
+**Verification**: 52/52 store tests pass (43 new + 9 existing), clippy clean, pushed to origin.
