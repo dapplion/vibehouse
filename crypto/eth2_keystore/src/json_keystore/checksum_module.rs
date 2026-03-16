@@ -72,3 +72,85 @@ impl Sha256Checksum {
         ChecksumFunction::Sha256
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- ChecksumFunction TryFrom/Into ---
+
+    #[test]
+    fn checksum_function_sha256_from_string() {
+        let f = ChecksumFunction::try_from("sha256".to_string()).unwrap();
+        assert_eq!(f, ChecksumFunction::Sha256);
+    }
+
+    #[test]
+    fn checksum_function_unsupported() {
+        let err = ChecksumFunction::try_from("md5".to_string()).unwrap_err();
+        assert!(err.contains("Unsupported"));
+    }
+
+    #[test]
+    fn checksum_function_into_string() {
+        assert_eq!(String::from(ChecksumFunction::Sha256), "sha256");
+    }
+
+    #[test]
+    fn checksum_function_roundtrip() {
+        let s: String = ChecksumFunction::Sha256.into();
+        let recovered = ChecksumFunction::try_from(s).unwrap();
+        assert_eq!(recovered, ChecksumFunction::Sha256);
+    }
+
+    #[test]
+    fn checksum_function_serde_roundtrip() {
+        let f = ChecksumFunction::Sha256;
+        let json = serde_json::to_string(&f).unwrap();
+        assert_eq!(json, "\"sha256\"");
+        let recovered: ChecksumFunction = serde_json::from_str(&json).unwrap();
+        assert_eq!(recovered, f);
+    }
+
+    // --- EmptyMap ---
+
+    #[test]
+    fn empty_map_from_empty_object() {
+        let v = Value::Object(Map::default());
+        let em = EmptyMap::try_from(v).unwrap();
+        let back: Value = em.into();
+        assert_eq!(back, Value::Object(Map::default()));
+    }
+
+    #[test]
+    fn empty_map_from_nonempty_object_fails() {
+        let mut map = Map::new();
+        map.insert("key".to_string(), Value::Null);
+        let result = EmptyMap::try_from(Value::Object(map));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn empty_map_from_non_object_fails() {
+        assert!(EmptyMap::try_from(Value::Null).is_err());
+        assert!(EmptyMap::try_from(Value::Bool(true)).is_err());
+        assert!(EmptyMap::try_from(Value::String("".into())).is_err());
+        assert!(EmptyMap::try_from(Value::Array(vec![])).is_err());
+    }
+
+    #[test]
+    fn empty_map_serde_roundtrip() {
+        let em = EmptyMap;
+        let json = serde_json::to_string(&em).unwrap();
+        assert_eq!(json, "{}");
+        let recovered: EmptyMap = serde_json::from_str(&json).unwrap();
+        assert_eq!(recovered, em);
+    }
+
+    // --- Sha256Checksum ---
+
+    #[test]
+    fn sha256_checksum_function() {
+        assert_eq!(Sha256Checksum::function(), ChecksumFunction::Sha256);
+    }
+}
