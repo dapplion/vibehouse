@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1561 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure from 09:36 was pre-fix (slasher test); fix landed 09:53, CI passed. Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.5.0 still latest vectors (May 2025). No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges.
+- cargo audit: same 1 rsa vuln (no fix), 5 unmaintained warnings. No change.
+- No actionable work — project in maintenance mode.
+
 ### run 1560 (Mar 16) — health check, all stable
 
 **Health check**: all stable
