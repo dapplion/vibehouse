@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1510 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure confirmed stale (ran at 09:36, fix b79292d35 pushed at 09:52). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged).
+- PR #4992 (cached PTCs): still OPEN (updated Mar 16, same head d76a278b0a).
+- Open Gloas PRs: #4960 (fork choice deposit test), #4932 (sanity/blocks payload attestation), #4840 (EIP-7843), #4630 (EIP-7688 StableContainer). None merged.
+- `cargo audit`: same known advisories (rsa vulnerability, 5 unmaintained warnings). Nothing actionable.
+- No actionable work — project in maintenance mode.
+
 ### run 1509 (Mar 16) — health check, all stable
 
 **Health check**: all stable
