@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1521 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure was stale (ran before fix b79292d35). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. HEAD still at 1baa05e (unchanged).
+- Newly merged: #4940 ("Add initial fork choice tests for Gloas") merged Mar 13 — new test vectors in next release. No code changes needed now.
+- Monitored PRs (#4992, #5008, #4962, #4939, #4960, #4932, #4843, #4840, #4630) still OPEN.
+- No actionable work — project in maintenance mode.
+
 ### run 1520 (Mar 16) — health check, all stable
 
 **Health check**: all stable
