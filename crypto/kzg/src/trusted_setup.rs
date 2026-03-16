@@ -171,3 +171,194 @@ pub(crate) fn load_trusted_setup(
     let rkzg_trusted_setup = PeerDASTrustedSetup::from_json(trusted_setup_json);
     Ok((ckzg_trusted_setup, rkzg_trusted_setup))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_prefix_removes_0x() {
+        assert_eq!(strip_prefix("0xabcd"), "abcd");
+    }
+
+    #[test]
+    fn strip_prefix_no_prefix_unchanged() {
+        assert_eq!(strip_prefix("abcd"), "abcd");
+    }
+
+    #[test]
+    fn strip_prefix_empty_string() {
+        assert_eq!(strip_prefix(""), "");
+    }
+
+    #[test]
+    fn strip_prefix_only_0x() {
+        assert_eq!(strip_prefix("0x"), "");
+    }
+
+    // --- G1Point serde ---
+
+    #[test]
+    fn g1_point_roundtrip() {
+        let bytes = [42u8; BYTES_PER_G1_POINT];
+        let point = G1Point(bytes);
+        let json = serde_json::to_string(&point).unwrap();
+        let deserialized: G1Point = serde_json::from_str(&json).unwrap();
+        assert_eq!(point, deserialized);
+    }
+
+    #[test]
+    fn g1_point_deserialize_with_0x_prefix() {
+        let hex_str = format!("\"0x{}\"", "aa".repeat(BYTES_PER_G1_POINT));
+        let point: G1Point = serde_json::from_str(&hex_str).unwrap();
+        assert_eq!(point.0, [0xaa; BYTES_PER_G1_POINT]);
+    }
+
+    #[test]
+    fn g1_point_deserialize_without_prefix() {
+        let hex_str = format!("\"{}\"", "bb".repeat(BYTES_PER_G1_POINT));
+        let point: G1Point = serde_json::from_str(&hex_str).unwrap();
+        assert_eq!(point.0, [0xbb; BYTES_PER_G1_POINT]);
+    }
+
+    #[test]
+    fn g1_point_wrong_length_fails() {
+        let hex_str = format!("\"{}\"", "aa".repeat(BYTES_PER_G1_POINT - 1));
+        let result = serde_json::from_str::<G1Point>(&hex_str);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn g1_point_invalid_hex_fails() {
+        let result = serde_json::from_str::<G1Point>("\"not_valid_hex\"");
+        assert!(result.is_err());
+    }
+
+    // --- G2Point serde ---
+
+    #[test]
+    fn g2_point_roundtrip() {
+        let bytes = [99u8; BYTES_PER_G2_POINT];
+        let point = G2Point(bytes);
+        let json = serde_json::to_string(&point).unwrap();
+        let deserialized: G2Point = serde_json::from_str(&json).unwrap();
+        assert_eq!(point, deserialized);
+    }
+
+    #[test]
+    fn g2_point_deserialize_with_0x_prefix() {
+        let hex_str = format!("\"0x{}\"", "cc".repeat(BYTES_PER_G2_POINT));
+        let point: G2Point = serde_json::from_str(&hex_str).unwrap();
+        assert_eq!(point.0, [0xcc; BYTES_PER_G2_POINT]);
+    }
+
+    #[test]
+    fn g2_point_wrong_length_fails() {
+        let hex_str = format!("\"{}\"", "aa".repeat(BYTES_PER_G2_POINT + 1));
+        let result = serde_json::from_str::<G2Point>(&hex_str);
+        assert!(result.is_err());
+    }
+
+    // --- TrustedSetup methods ---
+
+    #[test]
+    fn trusted_setup_g1_monomial_flattens_correctly() {
+        let ts = TrustedSetup {
+            g1_monomial: vec![
+                G1Point([1; BYTES_PER_G1_POINT]),
+                G1Point([2; BYTES_PER_G1_POINT]),
+            ],
+            g1_lagrange: vec![],
+            g2_monomial: vec![],
+        };
+        let bytes = ts.g1_monomial();
+        assert_eq!(bytes.len(), 2 * BYTES_PER_G1_POINT);
+        assert!(bytes[..BYTES_PER_G1_POINT].iter().all(|&b| b == 1));
+        assert!(bytes[BYTES_PER_G1_POINT..].iter().all(|&b| b == 2));
+    }
+
+    #[test]
+    fn trusted_setup_g1_lagrange_flattens_correctly() {
+        let ts = TrustedSetup {
+            g1_monomial: vec![],
+            g1_lagrange: vec![G1Point([3; BYTES_PER_G1_POINT])],
+            g2_monomial: vec![],
+        };
+        let bytes = ts.g1_lagrange();
+        assert_eq!(bytes.len(), BYTES_PER_G1_POINT);
+        assert!(bytes.iter().all(|&b| b == 3));
+    }
+
+    #[test]
+    fn trusted_setup_g2_monomial_flattens_correctly() {
+        let ts = TrustedSetup {
+            g1_monomial: vec![],
+            g1_lagrange: vec![],
+            g2_monomial: vec![G2Point([4; BYTES_PER_G2_POINT])],
+        };
+        let bytes = ts.g2_monomial();
+        assert_eq!(bytes.len(), BYTES_PER_G2_POINT);
+        assert!(bytes.iter().all(|&b| b == 4));
+    }
+
+    #[test]
+    fn trusted_setup_g1_len() {
+        let ts = TrustedSetup {
+            g1_monomial: vec![G1Point([0; BYTES_PER_G1_POINT]); 5],
+            g1_lagrange: vec![G1Point([0; BYTES_PER_G1_POINT]); 3],
+            g2_monomial: vec![],
+        };
+        assert_eq!(ts.g1_len(), 3);
+    }
+
+    #[test]
+    fn trusted_setup_empty() {
+        let ts = TrustedSetup {
+            g1_monomial: vec![],
+            g1_lagrange: vec![],
+            g2_monomial: vec![],
+        };
+        assert_eq!(ts.g1_monomial().len(), 0);
+        assert_eq!(ts.g1_lagrange().len(), 0);
+        assert_eq!(ts.g2_monomial().len(), 0);
+        assert_eq!(ts.g1_len(), 0);
+    }
+
+    // --- TrustedSetup full JSON roundtrip ---
+
+    #[test]
+    fn trusted_setup_json_roundtrip() {
+        let ts = TrustedSetup {
+            g1_monomial: vec![G1Point([0xab; BYTES_PER_G1_POINT])],
+            g1_lagrange: vec![G1Point([0xcd; BYTES_PER_G1_POINT])],
+            g2_monomial: vec![G2Point([0xef; BYTES_PER_G2_POINT])],
+        };
+        let json = serde_json::to_string(&ts).unwrap();
+        let deserialized: TrustedSetup = serde_json::from_str(&json).unwrap();
+        assert_eq!(ts, deserialized);
+    }
+
+    // --- get_trusted_setup ---
+
+    #[test]
+    fn get_trusted_setup_returns_nonempty_bytes() {
+        let bytes = get_trusted_setup();
+        assert!(!bytes.is_empty());
+    }
+
+    // --- load_trusted_setup ---
+
+    #[test]
+    fn load_trusted_setup_from_embedded_succeeds() {
+        let result = load_trusted_setup(TRUSTED_SETUP_BYTES);
+        assert!(result.is_ok());
+        let (ts, _) = result.unwrap();
+        assert!(ts.g1_len() > 0);
+    }
+
+    #[test]
+    fn load_trusted_setup_invalid_json_fails() {
+        let result = load_trusted_setup(b"not json");
+        assert!(result.is_err());
+    }
+}

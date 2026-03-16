@@ -200,3 +200,281 @@ impl Config {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use tempfile::tempdir;
+
+    fn default_config() -> Config {
+        Config::new(PathBuf::from("/tmp/slasher-test"))
+    }
+
+    // --- Config::new defaults ---
+
+    #[test]
+    fn new_uses_default_values() {
+        let config = default_config();
+        assert_eq!(config.chunk_size, DEFAULT_CHUNK_SIZE);
+        assert_eq!(config.validator_chunk_size, DEFAULT_VALIDATOR_CHUNK_SIZE);
+        assert_eq!(config.history_length, DEFAULT_HISTORY_LENGTH);
+        assert_eq!(config.update_period, DEFAULT_UPDATE_PERIOD);
+        assert!((config.slot_offset - DEFAULT_SLOT_OFFSET).abs() < f64::EPSILON);
+        assert_eq!(config.max_db_size_mbs, DEFAULT_MAX_DB_SIZE);
+        assert_eq!(
+            config.attestation_root_cache_size,
+            DEFAULT_ATTESTATION_ROOT_CACHE_SIZE
+        );
+        assert_eq!(config.broadcast, DEFAULT_BROADCAST);
+        assert_eq!(config.backend, DEFAULT_BACKEND);
+    }
+
+    // --- validate ---
+
+    #[test]
+    fn validate_default_config_succeeds() {
+        assert!(default_config().validate().is_ok());
+    }
+
+    #[test]
+    fn validate_zero_chunk_size_fails() {
+        let mut config = default_config();
+        config.chunk_size = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_zero_validator_chunk_size_fails() {
+        let mut config = default_config();
+        config.validator_chunk_size = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_zero_history_length_fails() {
+        let mut config = default_config();
+        config.history_length = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_zero_max_db_size_fails() {
+        let mut config = default_config();
+        config.max_db_size_mbs = 0;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_history_length_not_multiple_of_chunk_size_fails() {
+        let mut config = default_config();
+        config.chunk_size = 16;
+        config.history_length = 100; // not divisible by 16
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_history_length_exceeds_max_fails() {
+        let mut config = default_config();
+        config.chunk_size = 1;
+        config.history_length = MAX_HISTORY_LENGTH + 1;
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn validate_history_length_at_max_succeeds() {
+        let mut config = default_config();
+        config.chunk_size = 1;
+        config.history_length = MAX_HISTORY_LENGTH;
+        assert!(config.validate().is_ok());
+    }
+
+    // --- disk_config ---
+
+    #[test]
+    fn disk_config_matches_fields() {
+        let config = default_config();
+        let disk = config.disk_config();
+        assert_eq!(disk.chunk_size, config.chunk_size);
+        assert_eq!(disk.validator_chunk_size, config.validator_chunk_size);
+        assert_eq!(disk.history_length, config.history_length);
+    }
+
+    // --- chunk_index ---
+
+    #[test]
+    fn chunk_index_basic() {
+        let config = default_config();
+        // chunk_size=16, history_length=4096
+        // epoch 0 -> chunk 0
+        assert_eq!(config.chunk_index(Epoch::new(0)), 0);
+        // epoch 15 -> chunk 0 (15 / 16 = 0)
+        assert_eq!(config.chunk_index(Epoch::new(15)), 0);
+        // epoch 16 -> chunk 1
+        assert_eq!(config.chunk_index(Epoch::new(16)), 1);
+        // epoch 4095 -> chunk 255 (last in history)
+        assert_eq!(config.chunk_index(Epoch::new(4095)), 255);
+        // epoch 4096 wraps -> chunk 0
+        assert_eq!(config.chunk_index(Epoch::new(4096)), 0);
+    }
+
+    #[test]
+    fn chunk_index_custom_sizes() {
+        let mut config = default_config();
+        config.chunk_size = 8;
+        config.history_length = 64;
+        // epoch 7 -> chunk 0
+        assert_eq!(config.chunk_index(Epoch::new(7)), 0);
+        // epoch 8 -> chunk 1
+        assert_eq!(config.chunk_index(Epoch::new(8)), 1);
+        // epoch 63 -> chunk 7 (last)
+        assert_eq!(config.chunk_index(Epoch::new(63)), 7);
+        // epoch 64 wraps -> chunk 0
+        assert_eq!(config.chunk_index(Epoch::new(64)), 0);
+    }
+
+    // --- validator_chunk_index ---
+
+    #[test]
+    fn validator_chunk_index_basic() {
+        let config = default_config();
+        // validator_chunk_size=256
+        assert_eq!(config.validator_chunk_index(0), 0);
+        assert_eq!(config.validator_chunk_index(255), 0);
+        assert_eq!(config.validator_chunk_index(256), 1);
+        assert_eq!(config.validator_chunk_index(512), 2);
+    }
+
+    // --- chunk_offset ---
+
+    #[test]
+    fn chunk_offset_basic() {
+        let config = default_config();
+        // chunk_size=16
+        assert_eq!(config.chunk_offset(Epoch::new(0)), 0);
+        assert_eq!(config.chunk_offset(Epoch::new(15)), 15);
+        assert_eq!(config.chunk_offset(Epoch::new(16)), 0);
+        assert_eq!(config.chunk_offset(Epoch::new(17)), 1);
+    }
+
+    // --- validator_offset ---
+
+    #[test]
+    fn validator_offset_basic() {
+        let config = default_config();
+        // validator_chunk_size=256
+        assert_eq!(config.validator_offset(0), 0);
+        assert_eq!(config.validator_offset(255), 255);
+        assert_eq!(config.validator_offset(256), 0);
+        assert_eq!(config.validator_offset(257), 1);
+    }
+
+    // --- disk_key ---
+
+    #[test]
+    fn disk_key_maps_two_indices() {
+        let config = default_config();
+        // width = history_length / chunk_size = 4096 / 16 = 256
+        assert_eq!(config.disk_key(0, 0), 0);
+        assert_eq!(config.disk_key(0, 1), 1);
+        assert_eq!(config.disk_key(1, 0), 256);
+        assert_eq!(config.disk_key(1, 1), 257);
+        assert_eq!(config.disk_key(2, 5), 2 * 256 + 5);
+    }
+
+    // --- cell_index ---
+
+    #[test]
+    fn cell_index_maps_offsets() {
+        let config = default_config();
+        // chunk_size=16
+        assert_eq!(config.cell_index(0, 0), 0);
+        assert_eq!(config.cell_index(0, 15), 15);
+        assert_eq!(config.cell_index(1, 0), 16);
+        assert_eq!(config.cell_index(3, 5), 3 * 16 + 5);
+    }
+
+    // --- validator_indices_in_chunk ---
+
+    #[test]
+    fn validator_indices_in_chunk_range() {
+        let config = default_config();
+        let indices: Vec<u64> = config.validator_indices_in_chunk(0).collect();
+        assert_eq!(indices.len(), 256);
+        assert_eq!(indices[0], 0);
+        assert_eq!(indices[255], 255);
+
+        let indices: Vec<u64> = config.validator_indices_in_chunk(2).collect();
+        assert_eq!(indices[0], 512);
+        assert_eq!(indices[255], 767);
+    }
+
+    // --- override_backend ---
+
+    #[test]
+    fn override_backend_noop_when_no_mdbx_file() {
+        let dir = tempdir().unwrap();
+        let mut config = Config::new(dir.path().into());
+        assert_eq!(config.override_backend(), DatabaseBackendOverride::Noop);
+    }
+
+    #[test]
+    fn override_backend_with_mdbx_file_present() {
+        let dir = tempdir().unwrap();
+        // Create the mdbx data file
+        std::fs::write(dir.path().join(MDBX_DATA_FILENAME), b"data").unwrap();
+        let mut config = Config::new(dir.path().into());
+
+        let result = config.override_backend();
+
+        // If mdbx feature is enabled, it should override; otherwise fail
+        #[cfg(feature = "mdbx")]
+        assert!(matches!(result, DatabaseBackendOverride::Success(_)));
+        #[cfg(not(feature = "mdbx"))]
+        assert!(matches!(result, DatabaseBackendOverride::Failure(_)));
+    }
+
+    // --- DiskConfig equality ---
+
+    #[test]
+    fn disk_config_equality() {
+        let a = DiskConfig {
+            chunk_size: 16,
+            validator_chunk_size: 256,
+            history_length: 4096,
+        };
+        let b = a.clone();
+        assert_eq!(a, b);
+
+        let c = DiskConfig {
+            chunk_size: 8,
+            ..a.clone()
+        };
+        assert_ne!(a, c);
+    }
+
+    // --- DatabaseBackend display ---
+
+    #[test]
+    fn database_backend_display() {
+        assert_eq!(DatabaseBackend::Disabled.to_string(), "disabled");
+        #[cfg(feature = "lmdb")]
+        assert_eq!(DatabaseBackend::Lmdb.to_string(), "lmdb");
+        #[cfg(feature = "redb")]
+        assert_eq!(DatabaseBackend::Redb.to_string(), "redb");
+    }
+
+    #[test]
+    fn database_backend_from_str() {
+        assert_eq!(
+            "disabled".parse::<DatabaseBackend>().unwrap(),
+            DatabaseBackend::Disabled
+        );
+        #[cfg(feature = "lmdb")]
+        assert_eq!(
+            "lmdb".parse::<DatabaseBackend>().unwrap(),
+            DatabaseBackend::Lmdb
+        );
+        assert!("nonexistent".parse::<DatabaseBackend>().is_err());
+    }
+}

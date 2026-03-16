@@ -142,3 +142,93 @@ pub fn restrict_file_permissions<P: AsRef<Path>>(path: P) -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use tempfile::tempdir;
+
+    #[test]
+    fn create_with_600_perms_creates_file() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("test_file");
+        create_with_600_perms(&path, b"hello").unwrap();
+
+        let contents = std::fs::read(&path).unwrap();
+        assert_eq!(contents, b"hello");
+    }
+
+    #[test]
+    fn create_with_600_perms_sets_permissions() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("test_perms");
+        create_with_600_perms(&path, b"data").unwrap();
+
+        let metadata = std::fs::metadata(&path).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+
+    #[test]
+    fn create_with_600_perms_empty_bytes() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("empty_file");
+        create_with_600_perms(&path, b"").unwrap();
+
+        let contents = std::fs::read(&path).unwrap();
+        assert!(contents.is_empty());
+    }
+
+    #[test]
+    fn create_with_600_perms_overwrites_existing() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("overwrite");
+        create_with_600_perms(&path, b"first").unwrap();
+        create_with_600_perms(&path, b"second").unwrap();
+
+        let contents = std::fs::read(&path).unwrap();
+        assert_eq!(contents, b"second");
+    }
+
+    #[test]
+    fn create_with_600_perms_nonexistent_parent_fails() {
+        let result = create_with_600_perms("/nonexistent/dir/file", b"data");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn restrict_file_permissions_sets_600() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("restrict_test");
+        // Create with wide-open permissions
+        std::fs::write(&path, b"data").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        restrict_file_permissions(&path).unwrap();
+
+        let metadata = std::fs::metadata(&path).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+
+    #[test]
+    fn restrict_file_permissions_nonexistent_file_fails() {
+        let result = restrict_file_permissions("/nonexistent/file");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn restrict_file_permissions_idempotent() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("idempotent");
+        create_with_600_perms(&path, b"data").unwrap();
+
+        // Restricting again should succeed
+        restrict_file_permissions(&path).unwrap();
+
+        let metadata = std::fs::metadata(&path).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+    }
+}
