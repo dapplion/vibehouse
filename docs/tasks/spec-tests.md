@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1547 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure from earlier today was already fixed (b79292d).
+- Spec: v1.7.0-alpha.3 still latest. No new releases.
+- Post-alpha.3 consensus-specs commits reviewed:
+  - #5001 (`parent_block_root` added to bid filtering key) — vibehouse already implements this: `highest_bid_values` uses `(Slot, ExecutionBlockHash, Hash256)` key tuple. No action needed.
+  - #4940 (initial Gloas fork choice tests) — test vectors already downloaded and passing. `fork_choice_on_execution_payload` passes (4.5s).
+  - #5005 (builder voluntary exit test fix) — test infrastructure only. No code impact.
+  - #5002 (payload signature verification wording) — documentation clarification. No code impact.
+- All 9 fork choice test categories pass (9/9, 65.8s total).
+- Monitored open PRs: #4992 (cached PTCs in state — active today, would be a state structure change if merged).
+- No actionable work — project in maintenance mode.
+
 ### run 1546 (Mar 16) — health check, all stable
 
 **Health check**: all stable
