@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1643 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. No new commits to dev branch (latest #5005).
+- PR #4992 (cached PTCs in state) — still OPEN, NOT MERGED, same head d76a278b0a. Active discussion (potuz, ensi321, jihoonsong) about `get_ptc` slot range restrictiveness for validator assignment lookbehind.
+- No semver-compatible cargo updates. cargo audit unchanged (1 rsa).
+- No actionable work.
+
 ### run 1642 (Mar 16) — health check, full alpha.3 compliance audit
 
 **Health check**: all stable
