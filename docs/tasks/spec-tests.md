@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1602 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure was pre-fix (slasher flaky test, already resolved in 938e1abca).
+- Spec: v1.7.0-alpha.3 still latest release. New commit on master: #5005 (test-only fix, adds missing `yield "voluntary_exit"` in builder voluntary exit test). Will produce new test vectors in alpha.4 but no spec logic change.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED.
+- Several new open PRs (#4954 milliseconds, #4960 fork choice deposit test, #4939 missing envelopes, #4898 tiebreaker, #4892 impossible branch) — all still OPEN, none merged.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1600 (Mar 16) — health check, all stable
 
 **Health check**: all stable
