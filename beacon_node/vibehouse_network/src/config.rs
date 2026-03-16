@@ -601,3 +601,345 @@ pub const fn is_global_ipv6(addr: &Ipv6Addr) -> bool {
             || is_unique_local(addr)
             || is_unicast_link_local(addr))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- is_global_ipv4 ---
+
+    #[test]
+    fn ipv4_global_public_address() {
+        assert!(is_global_ipv4(&Ipv4Addr::new(8, 8, 8, 8)));
+        assert!(is_global_ipv4(&Ipv4Addr::new(1, 1, 1, 1)));
+        assert!(is_global_ipv4(&Ipv4Addr::new(142, 250, 80, 14)));
+    }
+
+    #[test]
+    fn ipv4_not_global_private() {
+        assert!(!is_global_ipv4(&Ipv4Addr::new(10, 0, 0, 1)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(172, 16, 0, 1)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 168, 1, 1)));
+    }
+
+    #[test]
+    fn ipv4_not_global_loopback() {
+        assert!(!is_global_ipv4(&Ipv4Addr::new(127, 0, 0, 1)));
+    }
+
+    #[test]
+    fn ipv4_not_global_link_local() {
+        assert!(!is_global_ipv4(&Ipv4Addr::new(169, 254, 0, 1)));
+    }
+
+    #[test]
+    fn ipv4_not_global_broadcast() {
+        assert!(!is_global_ipv4(&Ipv4Addr::new(255, 255, 255, 255)));
+    }
+
+    #[test]
+    fn ipv4_not_global_documentation() {
+        // 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 are documentation
+        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 2, 1)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(198, 51, 100, 1)));
+    }
+
+    #[test]
+    fn ipv4_not_global_shared_address_space() {
+        // 100.64.0.0/10
+        assert!(!is_global_ipv4(&Ipv4Addr::new(100, 64, 0, 1)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(100, 127, 255, 254)));
+    }
+
+    #[test]
+    fn ipv4_not_global_reserved() {
+        // 192.0.0.0/24
+        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 1)));
+    }
+
+    #[test]
+    fn ipv4_not_global_zero_network() {
+        assert!(!is_global_ipv4(&Ipv4Addr::new(0, 0, 0, 0)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(0, 1, 2, 3)));
+    }
+
+    #[test]
+    fn ipv4_special_globally_routable_in_192_0_0() {
+        // 192.0.0.9 and 192.0.0.10 are special globally routable addresses
+        assert!(is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 9)));
+        assert!(is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 10)));
+        // But not other 192.0.0.x
+        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 8)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(192, 0, 0, 11)));
+    }
+
+    #[test]
+    fn ipv4_not_global_future_protocol() {
+        // 240.0.0.0/4 (excluding broadcast)
+        assert!(!is_global_ipv4(&Ipv4Addr::new(240, 0, 0, 1)));
+        assert!(!is_global_ipv4(&Ipv4Addr::new(250, 0, 0, 1)));
+    }
+
+    // --- is_global_ipv6 ---
+
+    #[test]
+    fn ipv6_global_public_address() {
+        assert!(is_global_ipv6(&Ipv6Addr::new(
+            0x2607, 0xf8b0, 0x4004, 0x800, 0, 0, 0, 0x200e
+        )));
+    }
+
+    #[test]
+    fn ipv6_not_global_unspecified() {
+        assert!(!is_global_ipv6(&Ipv6Addr::UNSPECIFIED));
+    }
+
+    #[test]
+    fn ipv6_not_global_loopback() {
+        assert!(!is_global_ipv6(&Ipv6Addr::LOCALHOST));
+    }
+
+    #[test]
+    fn ipv6_not_global_link_local() {
+        // fe80::/10
+        assert!(!is_global_ipv6(&Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 1)));
+    }
+
+    #[test]
+    fn ipv6_not_global_unique_local() {
+        // fc00::/7
+        assert!(!is_global_ipv6(&Ipv6Addr::new(0xfc00, 0, 0, 0, 0, 0, 0, 1)));
+        assert!(!is_global_ipv6(&Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1)));
+    }
+
+    #[test]
+    fn ipv6_not_global_documentation() {
+        // 2001:db8::/32
+        assert!(!is_global_ipv6(&Ipv6Addr::new(
+            0x2001, 0xdb8, 0, 0, 0, 0, 0, 1
+        )));
+    }
+
+    #[test]
+    fn ipv6_not_global_ipv4_mapped() {
+        // ::ffff:0:0/96
+        assert!(!is_global_ipv6(&Ipv6Addr::new(
+            0, 0, 0, 0, 0, 0xffff, 0x7f00, 1
+        )));
+    }
+
+    #[test]
+    fn ipv6_not_global_discard_only() {
+        // 100::/64
+        assert!(!is_global_ipv6(&Ipv6Addr::new(0x100, 0, 0, 0, 0, 0, 0, 1)));
+    }
+
+    #[test]
+    fn ipv6_global_special_anycast() {
+        // 2001:1::1 (Port Control Protocol Anycast) is globally reachable
+        assert!(is_global_ipv6(&Ipv6Addr::new(0x2001, 1, 0, 0, 0, 0, 0, 1)));
+        // 2001:1::2 (TURN Anycast) is globally reachable
+        assert!(is_global_ipv6(&Ipv6Addr::new(0x2001, 1, 0, 0, 0, 0, 0, 2)));
+    }
+
+    #[test]
+    fn ipv6_global_amt() {
+        // 2001:3::/32 (AMT) is globally reachable
+        assert!(is_global_ipv6(&Ipv6Addr::new(0x2001, 3, 0, 0, 0, 0, 0, 1)));
+    }
+
+    // --- NetworkLoad ---
+
+    #[test]
+    fn network_load_from_1() {
+        let load = NetworkLoad::from(1u8);
+        assert_eq!(load.name, "Low");
+        assert_eq!(load.mesh_n, 3);
+        assert_eq!(load.mesh_n_low, 1);
+        assert_eq!(load.mesh_n_high, 4);
+        assert_eq!(load.heartbeat_interval, Duration::from_millis(1200));
+    }
+
+    #[test]
+    fn network_load_from_2() {
+        let load = NetworkLoad::from(2u8);
+        assert_eq!(load.name, "Low");
+        assert_eq!(load.mesh_n, 4);
+        assert_eq!(load.mesh_n_low, 2);
+    }
+
+    #[test]
+    fn network_load_from_3() {
+        let load = NetworkLoad::from(3u8);
+        assert_eq!(load.name, "Average");
+        assert_eq!(load.mesh_n, 5);
+    }
+
+    #[test]
+    fn network_load_from_4() {
+        let load = NetworkLoad::from(4u8);
+        assert_eq!(load.name, "Average");
+        assert_eq!(load.mesh_n, 8);
+    }
+
+    #[test]
+    fn network_load_from_5_or_higher() {
+        let load = NetworkLoad::from(5u8);
+        assert_eq!(load.name, "High");
+        assert_eq!(load.mesh_n, 10);
+        assert_eq!(load.mesh_n_high, 15);
+        assert_eq!(load.heartbeat_interval, Duration::from_millis(700));
+        // Values >= 5 all produce the same "High" config
+        let load_255 = NetworkLoad::from(255u8);
+        assert_eq!(load_255.name, "High");
+        assert_eq!(load_255.mesh_n, 10);
+    }
+
+    #[test]
+    fn network_load_from_0_is_high() {
+        // 0 falls through to the default arm (5+)
+        let load = NetworkLoad::from(0u8);
+        assert_eq!(load.name, "High");
+    }
+
+    // --- Config defaults ---
+
+    #[test]
+    fn config_default_constants() {
+        assert_eq!(DEFAULT_TCP_PORT, 9000);
+        assert_eq!(DEFAULT_DISC_PORT, 9000);
+        assert_eq!(DEFAULT_QUIC_PORT, 9001);
+        assert_eq!(DEFAULT_IDONTWANT_MESSAGE_SIZE_THRESHOLD, 1000);
+        assert_eq!(DEFAULT_IPV4_ADDRESS, Ipv4Addr::UNSPECIFIED);
+    }
+
+    #[test]
+    fn config_default_values() {
+        let config = Config::default();
+        assert_eq!(config.target_peers, DEFAULT_TARGET_PEERS);
+        assert_eq!(config.network_load, 3);
+        assert!(!config.disable_discovery);
+        assert!(!config.disable_quic_support);
+        assert!(config.upnp_enabled);
+        assert!(!config.subscribe_all_subnets);
+        assert!(!config.subscribe_all_data_column_subnets);
+        assert!(!config.import_all_attestations);
+        assert!(!config.private);
+        assert!(!config.shutdown_after_sync);
+        assert!(!config.proposer_only);
+        assert!(!config.metrics_enabled);
+        assert!(config.enable_light_client_server);
+        assert!(config.boot_nodes_enr.is_empty());
+        assert!(config.boot_nodes_multiaddr.is_empty());
+        assert!(config.libp2p_nodes.is_empty());
+        assert!(config.trusted_peers.is_empty());
+        assert!(config.topics.is_empty());
+        assert!(config.outbound_rate_limiter_config.is_none());
+        assert!(config.inbound_rate_limiter_config.is_none());
+        assert!(config.invalid_block_storage.is_none());
+        assert!(config.advertise_false_custody_group_count.is_none());
+        assert_eq!(
+            config.idontwant_message_size_threshold,
+            DEFAULT_IDONTWANT_MESSAGE_SIZE_THRESHOLD
+        );
+    }
+
+    #[test]
+    fn config_default_listen_address_is_ipv4() {
+        let config = Config::default();
+        assert!(matches!(config.listen_addresses, ListenAddress::V4(_)));
+    }
+
+    #[test]
+    fn config_set_ipv4_listening_address() {
+        let mut config = Config::default();
+        config.set_ipv4_listening_address(Ipv4Addr::new(1, 2, 3, 4), 9100, 9200, 9300);
+        match &config.listen_addresses {
+            ListenAddress::V4(addr) => {
+                assert_eq!(addr.addr, Ipv4Addr::new(1, 2, 3, 4));
+                assert_eq!(addr.tcp_port, 9100);
+                assert_eq!(addr.disc_port, 9200);
+                assert_eq!(addr.quic_port, 9300);
+            }
+            _ => panic!("expected V4 listen address"),
+        }
+    }
+
+    #[test]
+    fn config_set_ipv6_listening_address() {
+        let mut config = Config::default();
+        config.set_ipv6_listening_address(Ipv6Addr::LOCALHOST, 9100, 9200, 9300);
+        match &config.listen_addresses {
+            ListenAddress::V6(addr) => {
+                assert_eq!(addr.addr, Ipv6Addr::LOCALHOST);
+                assert_eq!(addr.tcp_port, 9100);
+                assert_eq!(addr.disc_port, 9200);
+                assert_eq!(addr.quic_port, 9300);
+            }
+            _ => panic!("expected V6 listen address"),
+        }
+    }
+
+    #[test]
+    fn config_set_dual_stack_listening_address() {
+        let mut config = Config::default();
+        config.set_ipv4_ipv6_listening_addresses(
+            Ipv4Addr::new(1, 2, 3, 4),
+            9100,
+            9200,
+            9300,
+            Ipv6Addr::LOCALHOST,
+            9400,
+            9500,
+            9600,
+        );
+        match &config.listen_addresses {
+            ListenAddress::DualStack(v4, v6) => {
+                assert_eq!(v4.addr, Ipv4Addr::new(1, 2, 3, 4));
+                assert_eq!(v4.tcp_port, 9100);
+                assert_eq!(v6.addr, Ipv6Addr::LOCALHOST);
+                assert_eq!(v6.tcp_port, 9400);
+            }
+            _ => panic!("expected DualStack listen address"),
+        }
+    }
+
+    #[test]
+    fn config_set_listening_addr_v4() {
+        let mut config = Config::default();
+        config.set_listening_addr(ListenAddress::V4(ListenAddr {
+            addr: Ipv4Addr::new(10, 0, 0, 1),
+            disc_port: 1000,
+            quic_port: 1001,
+            tcp_port: 1002,
+        }));
+        match &config.listen_addresses {
+            ListenAddress::V4(addr) => {
+                assert_eq!(addr.addr, Ipv4Addr::new(10, 0, 0, 1));
+            }
+            _ => panic!("expected V4"),
+        }
+    }
+
+    #[test]
+    fn config_enr_address_default_none() {
+        let config = Config::default();
+        assert_eq!(config.enr_address, (None, None));
+        assert!(config.enr_udp4_port.is_none());
+        assert!(config.enr_tcp4_port.is_none());
+        assert!(config.enr_quic4_port.is_none());
+        assert!(config.enr_udp6_port.is_none());
+        assert!(config.enr_tcp6_port.is_none());
+        assert!(config.enr_quic6_port.is_none());
+    }
+
+    #[test]
+    fn config_serde_roundtrip() {
+        let config = Config::default();
+        let json = serde_json::to_string(&config).unwrap();
+        let decoded: Config = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.target_peers, config.target_peers);
+        assert_eq!(decoded.network_load, config.network_load);
+        assert_eq!(decoded.disable_discovery, config.disable_discovery);
+    }
+}

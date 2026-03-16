@@ -73,4 +73,5 @@ async-channel = { workspace = true }
 logging = { workspace = true }
 quickcheck = { workspace = true }
 quickcheck_macros = { workspace = true }
+serde_json = { workspace = true }
 tempfile = { workspace = true }
