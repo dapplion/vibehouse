@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1555 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly will pick up slasher fix at next 08:30 UTC run.
+- Spec: v1.7.0-alpha.3 still latest. No new releases or commits on consensus-specs.
+- All tracked PRs (#4932, #4939, #4960, #4962, #4992, #5008) still OPEN, no merges.
+- Notable open spec PRs: #4954 (fork choice store ms), #4992 (cached PTCs) — neither merged, no action needed.
+- No actionable work — project in maintenance mode.
+
 ### run 1554 (Mar 16) — health check, all stable
 
 **Health check**: all stable
