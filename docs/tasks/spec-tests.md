@@ -2893,3 +2893,22 @@ All main task priorities DONE. Proactively implemented consensus-specs PR #4992 
 - 575/575 state_processing unit tests pass
 - EF spec tests will fail (SSZ layout change) — vectors need regeneration when PR merges upstream
 - Branch: `cached-ptc` (pushed to origin)
+
+### Run 1462 — unit tests for eth2 API types (36 tests)
+
+Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested types:
+- `BroadcastValidation`: FromStr, Display roundtrip, serde, default, snake_case serialization
+- `EventTopic`: comprehensive Display/FromStr roundtrip for all 22 variants
+- `ForkChoice` + `ForkChoiceNode`: serde roundtrip, quoted weight field, optional fields
+- `SyncCommitteeReward`: serde roundtrip, quoted_u64/quoted_i64 fields
+- `StandardBlockReward`: serde roundtrip, all 6 fields quoted
+- `IdealAttestationRewards`: serde roundtrip, optional inclusion_delay omitted when None
+- `TotalAttestationRewards` + `StandardAttestationRewards`: serde roundtrip
+- `SseLateHead`: serde roundtrip with optional fields
+- `BlockGossip`: serde roundtrip
+- `BroadcastValidationQuery`: default check
+- `LivenessResponseData` + `StandardLivenessResponseData`: serde roundtrip, quoted index
+- `ProduceBlockV3Metadata`: TryFrom<HeaderMap> valid, missing header, invalid fork
+- `Accept`: Display roundtrip for all 3 variants, q-factor priority tests
+- Also added `PartialEq` derive to `ForkChoice` struct (needed for test assertions)
+- 208/208 eth2 tests pass
