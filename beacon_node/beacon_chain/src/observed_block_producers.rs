@@ -55,6 +55,7 @@ impl<E: EthSpec> Default for ObservedBlockProducers<E> {
     }
 }
 
+#[derive(Debug)]
 pub enum SeenBlock {
     Duplicate,
     Slashable,
@@ -204,7 +205,7 @@ impl<E: EthSpec> ObservedBlockProducers<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use types::{BeaconBlock, MainnetEthSpec};
+    use types::{BeaconBlock, Epoch, MainnetEthSpec, Unsigned};
 
     type E = MainnetEthSpec;
 
@@ -531,5 +532,160 @@ mod tests {
             1,
             "only one proposer should be present in slot 1"
         );
+    }
+
+    #[test]
+    fn slashable_detection() {
+        let mut cache = ObservedBlockProducers::<E>::default();
+
+        // Same slot, same proposer, different block roots = slashable
+        let block_a = get_block(5, 42);
+        let root_a = block_a.canonical_root();
+
+        // Create a different block with the same slot and proposer but different content
+        let mut block_b = get_block(5, 42);
+        *block_b.state_root_mut() = Hash256::repeat_byte(0xFF);
+        let root_b = block_b.canonical_root();
+        assert_ne!(root_a, root_b, "sanity: block roots should differ");
+
+        // First observation: unique
+        let result = cache.observe_proposal(root_a, block_a.to_ref()).unwrap();
+        assert!(!result.is_slashable());
+        // (proposer_previously_observed consumes self, call it last)
+
+        // Second observation with different root: slashable
+        let result = cache.observe_proposal(root_b, block_b.to_ref()).unwrap();
+        assert!(result.is_slashable());
+
+        // Re-observe first block: still slashable (2 distinct roots exist)
+        let result = cache.observe_proposal(root_a, block_a.to_ref()).unwrap();
+        assert!(result.is_slashable());
+
+        // Check proposer_has_been_observed for slashable
+        let seen = cache
+            .proposer_has_been_observed(block_a.to_ref(), root_a)
+            .unwrap();
+        assert!(seen.is_slashable());
+
+        // Check proposer_has_been_observed with a third unknown root
+        let seen = cache
+            .proposer_has_been_observed(block_a.to_ref(), Hash256::repeat_byte(0xAA))
+            .unwrap();
+        assert!(seen.is_slashable());
+    }
+
+    #[test]
+    fn duplicate_is_not_slashable() {
+        let mut cache = ObservedBlockProducers::<E>::default();
+
+        let block = get_block(1, 0);
+        let root = block.canonical_root();
+
+        cache.observe_proposal(root, block.to_ref()).unwrap();
+        let result = cache.observe_proposal(root, block.to_ref()).unwrap();
+
+        // Same root re-observed = duplicate, NOT slashable
+        assert!(!result.is_slashable());
+        assert!(result.proposer_previously_observed());
+    }
+
+    #[test]
+    fn index_seen_at_epoch() {
+        let mut cache = ObservedBlockProducers::<E>::default();
+
+        let slots_per_epoch = E::slots_per_epoch();
+
+        // Epoch 0, validator 5
+        let block = get_block(0, 5);
+        let root = block.canonical_root();
+        cache.observe_proposal(root, block.to_ref()).unwrap();
+
+        assert!(
+            cache.index_seen_at_epoch(5, Epoch::new(0)),
+            "validator 5 seen in epoch 0"
+        );
+        assert!(
+            !cache.index_seen_at_epoch(5, Epoch::new(1)),
+            "validator 5 not seen in epoch 1"
+        );
+        assert!(
+            !cache.index_seen_at_epoch(99, Epoch::new(0)),
+            "validator 99 not seen"
+        );
+
+        // Add validator 5 in epoch 1 as well
+        let block2 = get_block(slots_per_epoch, 5);
+        let root2 = block2.canonical_root();
+        cache.observe_proposal(root2, block2.to_ref()).unwrap();
+
+        assert!(cache.index_seen_at_epoch(5, Epoch::new(1)));
+    }
+
+    #[test]
+    fn validator_index_too_high() {
+        let mut cache = ObservedBlockProducers::<E>::default();
+
+        let limit = <E as types::EthSpec>::ValidatorRegistryLimit::to_u64();
+        let block = get_block(0, limit);
+        let root = block.canonical_root();
+
+        let result = cache.observe_proposal(root, block.to_ref());
+        assert!(
+            matches!(
+                result,
+                Err(Error::ValidatorIndexTooHigh(idx)) if idx == limit
+            ),
+            "expected ValidatorIndexTooHigh, got {:?}",
+            result,
+        );
+    }
+
+    #[test]
+    fn proposal_key_equality() {
+        let k1 = ProposalKey::new(42, Slot::new(10));
+        let k2 = ProposalKey::new(42, Slot::new(10));
+        let k3 = ProposalKey::new(42, Slot::new(11));
+        let k4 = ProposalKey::new(43, Slot::new(10));
+
+        assert_eq!(k1, k2);
+        assert_ne!(k1, k3);
+        assert_ne!(k1, k4);
+    }
+
+    #[test]
+    fn seen_block_methods() {
+        assert!(!SeenBlock::UniqueNonSlashable.is_slashable());
+        assert!(!SeenBlock::UniqueNonSlashable.proposer_previously_observed());
+
+        assert!(!SeenBlock::Duplicate.is_slashable());
+        assert!(SeenBlock::Duplicate.proposer_previously_observed());
+
+        assert!(SeenBlock::Slashable.is_slashable());
+        assert!(SeenBlock::Slashable.proposer_previously_observed());
+    }
+
+    #[test]
+    fn prune_retains_later_slots() {
+        let mut cache = ObservedBlockProducers::<E>::default();
+
+        for slot in 0..10 {
+            let block = get_block(slot, 0);
+            let root = block.canonical_root();
+            cache.observe_proposal(root, block.to_ref()).unwrap();
+        }
+
+        assert_eq!(cache.items.len(), 10);
+
+        cache.prune(Slot::new(5));
+        // Retain only slots > 5: slots 6, 7, 8, 9
+        assert_eq!(cache.items.len(), 4);
+
+        // Can't insert at finalized slot
+        let block = get_block(5, 1);
+        let root = block.canonical_root();
+        assert!(matches!(
+            cache.observe_proposal(root, block.to_ref()),
+            Err(Error::FinalizedBlock { .. })
+        ));
     }
 }

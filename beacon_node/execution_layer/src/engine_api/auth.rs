@@ -178,4 +178,169 @@ mod tests {
             claims
         );
     }
+
+    #[test]
+    fn jwt_key_from_slice_correct_length() {
+        let bytes = [0xABu8; JWT_SECRET_LENGTH];
+        let key = JwtKey::from_slice(&bytes).unwrap();
+        assert_eq!(key.as_bytes(), &bytes);
+    }
+
+    #[test]
+    fn jwt_key_from_slice_wrong_length() {
+        let short = [0u8; 16];
+        assert!(JwtKey::from_slice(&short).is_err());
+
+        let long = [0u8; 64];
+        assert!(JwtKey::from_slice(&long).is_err());
+
+        let empty: [u8; 0] = [];
+        assert!(JwtKey::from_slice(&empty).is_err());
+    }
+
+    #[test]
+    fn jwt_key_random_is_unique() {
+        let k1 = JwtKey::random();
+        let k2 = JwtKey::random();
+        assert_ne!(k1.as_bytes(), k2.as_bytes());
+    }
+
+    #[test]
+    fn jwt_key_hex_string() {
+        let bytes = [0xABu8; JWT_SECRET_LENGTH];
+        let key = JwtKey::from_slice(&bytes).unwrap();
+        let hex = key.hex_string();
+        assert_eq!(hex.len(), JWT_SECRET_LENGTH * 2);
+        assert_eq!(hex, "ab".repeat(JWT_SECRET_LENGTH));
+    }
+
+    #[test]
+    fn strip_prefix_with_0x() {
+        assert_eq!(strip_prefix("0xabcdef"), "abcdef");
+    }
+
+    #[test]
+    fn strip_prefix_without_0x() {
+        assert_eq!(strip_prefix("abcdef"), "abcdef");
+    }
+
+    #[test]
+    fn strip_prefix_empty() {
+        assert_eq!(strip_prefix(""), "");
+    }
+
+    #[test]
+    fn strip_prefix_only_0x() {
+        assert_eq!(strip_prefix("0x"), "");
+    }
+
+    #[test]
+    fn validate_token_wrong_secret_fails() {
+        let secret1 = JwtKey::from_slice(&DEFAULT_JWT_SECRET).unwrap();
+        let auth = Auth::new(secret1, None, None);
+        let token = auth.generate_token().unwrap();
+
+        let secret2 = JwtKey::random();
+        assert!(Auth::validate_token(&token, &secret2).is_err());
+    }
+
+    #[test]
+    fn validate_token_invalid_string() {
+        let secret = JwtKey::from_slice(&DEFAULT_JWT_SECRET).unwrap();
+        assert!(Auth::validate_token("not.a.jwt", &secret).is_err());
+        assert!(Auth::validate_token("", &secret).is_err());
+    }
+
+    #[test]
+    fn claims_without_optional_fields() {
+        let auth = Auth::new(JwtKey::from_slice(&DEFAULT_JWT_SECRET).unwrap(), None, None);
+        let claims = auth.generate_claims_at_timestamp();
+        assert!(claims.id.is_none());
+        assert!(claims.clv.is_none());
+        assert!(claims.iat > 0);
+
+        let token = auth.generate_token_with_claims(&claims).unwrap();
+        let decoded =
+            Auth::validate_token(&token, &JwtKey::from_slice(&DEFAULT_JWT_SECRET).unwrap())
+                .unwrap();
+        assert_eq!(decoded.claims, claims);
+    }
+
+    #[test]
+    fn claims_with_optional_fields() {
+        let auth = Auth::new(
+            JwtKey::from_slice(&DEFAULT_JWT_SECRET).unwrap(),
+            Some("node-1".into()),
+            Some("v1.0.0".into()),
+        );
+        let claims = auth.generate_claims_at_timestamp();
+        assert_eq!(claims.id, Some("node-1".into()));
+        assert_eq!(claims.clv, Some("v1.0.0".into()));
+    }
+
+    #[test]
+    fn new_with_path_nonexistent_file() {
+        let result = Auth::new_with_path("/nonexistent/path/jwt.hex".into(), None, None);
+        assert!(matches!(result, Err(Error::InvalidKey(_))));
+    }
+
+    #[test]
+    fn new_with_path_valid_file() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jwt.hex");
+        let key = JwtKey::random();
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "0x{}", key.hex_string()).unwrap();
+
+        let auth = Auth::new_with_path(path, Some("test".into()), None).unwrap();
+        let token = auth.generate_token().unwrap();
+        let decoded = Auth::validate_token(&token, &key).unwrap();
+        assert_eq!(decoded.claims.id, Some("test".into()));
+    }
+
+    #[test]
+    fn new_with_path_no_prefix() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jwt.hex");
+        let key = JwtKey::random();
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "{}", key.hex_string()).unwrap();
+
+        let auth = Auth::new_with_path(path, None, None).unwrap();
+        let token = auth.generate_token().unwrap();
+        assert!(Auth::validate_token(&token, &key).is_ok());
+    }
+
+    #[test]
+    fn new_with_path_invalid_hex() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jwt.hex");
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "0xnothex").unwrap();
+
+        let result = Auth::new_with_path(path, None, None);
+        assert!(matches!(result, Err(Error::InvalidKey(_))));
+    }
+
+    #[test]
+    fn new_with_path_wrong_length_hex() {
+        use std::io::Write;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jwt.hex");
+        let mut f = std::fs::File::create(&path).unwrap();
+        write!(f, "0xaabbcc").unwrap();
+
+        let result = Auth::new_with_path(path, None, None);
+        assert!(matches!(result, Err(Error::InvalidKey(_))));
+    }
+
+    #[test]
+    fn jwt_key_clone() {
+        let key = JwtKey::random();
+        let cloned = key.clone();
+        assert_eq!(key.as_bytes(), cloned.as_bytes());
+    }
 }

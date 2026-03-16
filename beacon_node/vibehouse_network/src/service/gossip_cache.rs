@@ -297,4 +297,156 @@ mod tests {
         assert!(cache.expirations.is_empty());
         assert!(cache.topic_msgs.is_empty());
     }
+
+    fn make_topic(kind: GossipKind) -> GossipTopic {
+        GossipTopic::new(kind, crate::types::GossipEncoding::SSZSnappy, [0u8; 4])
+    }
+
+    #[test]
+    fn builder_default_timeout_applies_to_all() {
+        let cache = GossipCache::builder()
+            .default_timeout(Duration::from_secs(5))
+            .build();
+        assert_eq!(cache.beacon_block, Some(Duration::from_secs(5)));
+        assert_eq!(cache.aggregates, Some(Duration::from_secs(5)));
+        assert_eq!(cache.attestation, Some(Duration::from_secs(5)));
+        assert_eq!(cache.voluntary_exit, Some(Duration::from_secs(5)));
+        assert_eq!(cache.proposer_slashing, Some(Duration::from_secs(5)));
+        assert_eq!(cache.attester_slashing, Some(Duration::from_secs(5)));
+        assert_eq!(
+            cache.signed_contribution_and_proof,
+            Some(Duration::from_secs(5))
+        );
+        assert_eq!(cache.sync_committee_message, Some(Duration::from_secs(5)));
+        assert_eq!(cache.bls_to_execution_change, Some(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn builder_specific_timeout_overrides_default() {
+        let cache = GossipCache::builder()
+            .default_timeout(Duration::from_secs(5))
+            .beacon_block_timeout(Duration::from_secs(10))
+            .build();
+        assert_eq!(cache.beacon_block, Some(Duration::from_secs(10)));
+        assert_eq!(cache.aggregates, Some(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn builder_no_default_leaves_all_none() {
+        let cache = GossipCache::builder().build();
+        assert_eq!(cache.beacon_block, None);
+        assert_eq!(cache.aggregates, None);
+        assert_eq!(cache.attestation, None);
+    }
+
+    #[test]
+    fn insert_ignored_when_no_timeout() {
+        let mut cache = GossipCache::builder().build();
+        let topic = make_topic(GossipKind::BeaconBlock);
+        cache.insert(topic.clone(), vec![1, 2, 3]);
+        // No timeout for beacon_block → message should be dropped
+        assert!(cache.topic_msgs.is_empty());
+        assert!(cache.expirations.is_empty());
+    }
+
+    #[tokio::test]
+    async fn insert_stores_when_timeout_set() {
+        let mut cache = GossipCache::builder()
+            .beacon_block_timeout(Duration::from_secs(10))
+            .build();
+        let topic = make_topic(GossipKind::BeaconBlock);
+        cache.insert(topic.clone(), vec![1, 2, 3]);
+        assert_eq!(cache.topic_msgs.len(), 1);
+        assert!(cache.topic_msgs.contains_key(&topic));
+    }
+
+    #[tokio::test]
+    async fn retrieve_returns_cached_messages() {
+        let mut cache = GossipCache::builder()
+            .beacon_block_timeout(Duration::from_secs(10))
+            .build();
+        let topic = make_topic(GossipKind::BeaconBlock);
+        cache.insert(topic.clone(), vec![1, 2, 3]);
+        cache.insert(topic.clone(), vec![4, 5, 6]);
+
+        let msgs: Vec<Vec<u8>> = cache.retrieve(&topic).unwrap().collect();
+        assert_eq!(msgs.len(), 2);
+        assert!(msgs.contains(&vec![1, 2, 3]));
+        assert!(msgs.contains(&vec![4, 5, 6]));
+
+        // After retrieval, topic should be removed
+        assert!(cache.topic_msgs.is_empty());
+        assert!(cache.expirations.is_empty());
+    }
+
+    #[test]
+    fn retrieve_returns_none_for_unknown_topic() {
+        let mut cache = GossipCache::builder().build();
+        let topic = make_topic(GossipKind::BeaconBlock);
+        assert!(cache.retrieve(&topic).is_none());
+    }
+
+    #[tokio::test]
+    async fn duplicate_insert_resets_timer() {
+        let mut cache = GossipCache::builder()
+            .attestation_timeout(Duration::from_secs(10))
+            .build();
+        let topic = make_topic(GossipKind::Attestation(0u64.into()));
+        let data = vec![1, 2, 3];
+
+        cache.insert(topic.clone(), data.clone());
+        // Re-inserting same data for same topic should reset the timer, not add duplicate
+        cache.insert(topic.clone(), data.clone());
+
+        let msgs: Vec<Vec<u8>> = cache.retrieve(&topic).unwrap().collect();
+        assert_eq!(msgs.len(), 1);
+    }
+
+    #[test]
+    fn epbs_gossip_kinds_are_not_cached() {
+        let mut cache = GossipCache::builder()
+            .default_timeout(Duration::from_secs(10))
+            .build();
+
+        // ePBS types should not be cached
+        let bid_topic = make_topic(GossipKind::ExecutionBid);
+        cache.insert(bid_topic.clone(), vec![1]);
+        assert!(cache.topic_msgs.is_empty());
+
+        let payload_topic = make_topic(GossipKind::ExecutionPayload);
+        cache.insert(payload_topic.clone(), vec![2]);
+        assert!(cache.topic_msgs.is_empty());
+
+        let pa_topic = make_topic(GossipKind::PayloadAttestation);
+        cache.insert(pa_topic.clone(), vec![3]);
+        assert!(cache.topic_msgs.is_empty());
+
+        let pref_topic = make_topic(GossipKind::ProposerPreferences);
+        cache.insert(pref_topic.clone(), vec![4]);
+        assert!(cache.topic_msgs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn different_topics_stored_independently() {
+        let mut cache = GossipCache::builder()
+            .beacon_block_timeout(Duration::from_secs(10))
+            .voluntary_exit_timeout(Duration::from_secs(10))
+            .build();
+
+        let block_topic = make_topic(GossipKind::BeaconBlock);
+        let exit_topic = make_topic(GossipKind::VoluntaryExit);
+
+        cache.insert(block_topic.clone(), vec![1]);
+        cache.insert(exit_topic.clone(), vec![2]);
+
+        assert_eq!(cache.topic_msgs.len(), 2);
+
+        let block_msgs: Vec<Vec<u8>> = cache.retrieve(&block_topic).unwrap().collect();
+        assert_eq!(block_msgs, vec![vec![1]]);
+
+        // Exit topic should still be present
+        assert_eq!(cache.topic_msgs.len(), 1);
+        let exit_msgs: Vec<Vec<u8>> = cache.retrieve(&exit_topic).unwrap().collect();
+        assert_eq!(exit_msgs, vec![vec![2]]);
+    }
 }
