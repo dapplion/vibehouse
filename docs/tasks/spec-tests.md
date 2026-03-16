@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1490 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all green (latest run successful)
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged)
+- Post-alpha.3 merges: #5005 (test fix), #5004 (docs) — no code impact
+- New PRs: #5008 (doc fix: block_root→beacon_block_root in p2p-interface, no code impact), #5006-#5012 (dep bumps, CI tooling)
+- PR #4992 (cached PTCs): active discussion (potuz, jihoonsong, ensi321) about `get_ptc` slot range restrictions — no new commits, same head d76a278b0a
+- Verified PRs #4892 (remove impossible branch) and #4898 (remove pending from tiebreaker) — our implementation already matches both proposed changes
+- Open Gloas PRs (11): #5008, #4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- cargo check: clean, no dep updates available
+- No actionable work — project in maintenance mode, all tasks DONE
+
 ### run 1489 (Mar 16) — health check, all stable
 
 **Health check**: all green
