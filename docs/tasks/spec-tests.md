@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1581 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure from earlier today was pre-fix; next nightly should pass.
+- Spec: v1.7.0-alpha.3 still latest release. Post-alpha.3 commits: #5001 (parent_block_root in bid filter key) already implemented in our codebase, #5002 (wording clarification) no code change needed, #5005 (test fix) no impact.
+- Spec tests: 139/139 fake_crypto minimal pass. v1.6.0-beta.0 still latest test vectors.
+- Open spec PRs: #4992 (PTC lookbehind), #4954 (ms fork choice), #4939 (missing payloads), #4898/#4892 (fork choice cleanups), #4843 (variable PTC deadline) — all still open, none merged.
+- Dependencies: 0 semver-compatible updates. All git repos fetched, no changes.
+- No actionable work — project in maintenance mode.
+
 ### run 1580 (Mar 16) — health check, all stable
 
 **Health check**: all stable
