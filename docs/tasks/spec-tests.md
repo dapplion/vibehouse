@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1484 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all 7 jobs green (latest run successful)
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (#5005, test-only fix — no spec code changes)
+- Recently merged since alpha.3: #5001 (parent_block_root bid filter key — already implemented), #5002 (wording only), #5004 (release notes), #5005 (test fix)
+- PR #4992 (cached PTCs): still OPEN, not merged (updated today)
+- PR #4962 (missed payload withdrawal interaction tests): still OPEN
+- cargo clippy: clean (0 warnings)
+- No actionable work — project in maintenance mode, all tasks DONE
+
 ### run 1483 (Mar 16) — health check, all stable
 
 **Health check**: all green
