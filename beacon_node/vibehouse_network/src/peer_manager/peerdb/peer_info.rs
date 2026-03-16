@@ -711,4 +711,403 @@ mod tests {
         // Peer is subscribed to any custody subnets - return true
         assert!(peer_info.has_long_lived_subnet());
     }
+
+    // --- Default and trusted peer ---
+
+    #[test]
+    fn default_peer_info() {
+        let peer: PeerInfo<E> = PeerInfo::default();
+        assert!(!peer.is_trusted());
+        assert!(!peer.is_connected());
+        assert!(!peer.is_dialing());
+        assert!(!peer.is_banned());
+        assert!(!peer.is_connected_or_dialing());
+        assert!(peer.connection_direction().is_none());
+        assert!(peer.enr().is_none());
+        assert!(peer.meta_data().is_none());
+        assert!(peer.min_ttl().is_none());
+        assert_eq!(peer.custody_subnet_count(), 0);
+    }
+
+    #[test]
+    fn trusted_peer_has_max_score() {
+        let peer: PeerInfo<E> = PeerInfo::trusted_peer_info();
+        assert!(peer.is_trusted());
+        assert!(peer.score().score().is_infinite());
+    }
+
+    #[test]
+    fn trusted_peer_score_update_is_noop() {
+        let mut peer: PeerInfo<E> = PeerInfo::trusted_peer_info();
+        let before = peer.score().score();
+        peer.score_update();
+        assert_eq!(peer.score().score(), before);
+    }
+
+    #[test]
+    fn trusted_peer_action_is_noop() {
+        let mut peer: PeerInfo<E> = PeerInfo::trusted_peer_info();
+        peer.apply_peer_action_to_score(PeerAction::Fatal);
+        assert!(peer.score().score().is_infinite());
+    }
+
+    // --- Connection status ---
+
+    #[test]
+    fn connect_ingoing_sets_connected() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        peer.connect_ingoing(addr);
+        assert!(peer.is_connected());
+        assert!(!peer.is_outbound_only());
+        let (n_in, n_out) = peer.connections();
+        assert_eq!(n_in, 1);
+        assert_eq!(n_out, 0);
+        assert!(matches!(
+            peer.connection_direction(),
+            Some(ConnectionDirection::Incoming)
+        ));
+    }
+
+    #[test]
+    fn connect_outgoing_sets_connected() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        peer.connect_outgoing(addr);
+        assert!(peer.is_connected());
+        assert!(peer.is_outbound_only());
+        let (n_in, n_out) = peer.connections();
+        assert_eq!(n_in, 0);
+        assert_eq!(n_out, 1);
+        assert!(matches!(
+            peer.connection_direction(),
+            Some(ConnectionDirection::Outgoing)
+        ));
+    }
+
+    #[test]
+    fn multiple_ingoing_connections_increment() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        peer.connect_ingoing(addr.clone());
+        peer.connect_ingoing(addr);
+        let (n_in, n_out) = peer.connections();
+        assert_eq!(n_in, 2);
+        assert_eq!(n_out, 0);
+    }
+
+    #[test]
+    fn multiple_outgoing_connections_increment() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        peer.connect_outgoing(addr.clone());
+        peer.connect_outgoing(addr);
+        let (n_in, n_out) = peer.connections();
+        assert_eq!(n_in, 0);
+        assert_eq!(n_out, 2);
+    }
+
+    #[test]
+    fn mixed_connections_not_outbound_only() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        peer.connect_outgoing(addr.clone());
+        peer.connect_ingoing(addr);
+        assert!(!peer.is_outbound_only());
+    }
+
+    #[test]
+    fn disconnected_peer_connections_are_zero() {
+        let mut peer = create_test_peer_info();
+        peer.set_connection_status(PeerConnectionStatus::Disconnected {
+            since: Instant::now(),
+        });
+        assert!(peer.is_disconnected());
+        let (n_in, n_out) = peer.connections();
+        assert_eq!(n_in, 0);
+        assert_eq!(n_out, 0);
+    }
+
+    // --- set_dialing_peer ---
+
+    #[test]
+    fn set_dialing_from_unknown() {
+        let mut peer = create_test_peer_info();
+        assert!(peer.set_dialing_peer().is_ok());
+        assert!(peer.is_dialing());
+        assert!(peer.is_connected_or_dialing());
+    }
+
+    #[test]
+    fn set_dialing_from_disconnected() {
+        let mut peer = create_test_peer_info();
+        peer.set_connection_status(PeerConnectionStatus::Disconnected {
+            since: Instant::now(),
+        });
+        assert!(peer.set_dialing_peer().is_ok());
+        assert!(peer.is_dialing());
+    }
+
+    #[test]
+    fn set_dialing_from_banned() {
+        let mut peer = create_test_peer_info();
+        peer.set_connection_status(PeerConnectionStatus::Banned {
+            since: Instant::now(),
+        });
+        assert!(peer.set_dialing_peer().is_ok());
+    }
+
+    #[test]
+    fn set_dialing_from_connected_fails() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        peer.connect_ingoing(addr);
+        assert!(peer.set_dialing_peer().is_err());
+    }
+
+    #[test]
+    fn set_dialing_from_dialing_fails() {
+        let mut peer = create_test_peer_info();
+        peer.set_dialing_peer().unwrap();
+        assert!(peer.set_dialing_peer().is_err());
+    }
+
+    #[test]
+    fn set_dialing_from_disconnecting_fails() {
+        let mut peer = create_test_peer_info();
+        peer.set_connection_status(PeerConnectionStatus::Disconnecting { to_ban: false });
+        assert!(peer.set_dialing_peer().is_err());
+    }
+
+    // --- IP address detection ---
+
+    #[test]
+    fn is_incoming_ipv4_connection() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip4/192.168.1.1/tcp/9000".parse().unwrap();
+        peer.connect_ingoing(addr);
+        assert!(peer.is_incoming_ipv4_connection());
+        assert!(!peer.is_incoming_ipv6_connection());
+    }
+
+    #[test]
+    fn is_incoming_ipv6_connection() {
+        let mut peer = create_test_peer_info();
+        let addr: Multiaddr = "/ip6/::1/tcp/9000".parse().unwrap();
+        peer.connect_ingoing(addr);
+        assert!(peer.is_incoming_ipv6_connection());
+        assert!(!peer.is_incoming_ipv4_connection());
+    }
+
+    #[test]
+    fn seen_ip_addresses_extracts_ips() {
+        let mut peer = create_test_peer_info();
+        let addr4: Multiaddr = "/ip4/192.168.1.1/tcp/9000".parse().unwrap();
+        let addr6: Multiaddr = "/ip6/::1/tcp/9001".parse().unwrap();
+        peer.connect_ingoing(addr4);
+        peer.connect_outgoing(addr6);
+        let ips: Vec<IpAddr> = peer.seen_ip_addresses().collect();
+        assert_eq!(ips.len(), 2);
+    }
+
+    #[test]
+    fn no_seen_multiaddrs_no_ips() {
+        let peer = create_test_peer_info();
+        assert_eq!(peer.seen_ip_addresses().count(), 0);
+        assert!(!peer.is_incoming_ipv4_connection());
+        assert!(!peer.is_incoming_ipv6_connection());
+    }
+
+    // --- Sync status ---
+
+    #[test]
+    fn update_sync_status_returns_true_on_change() {
+        let mut peer = create_test_peer_info();
+        let info = super::super::sync_status::SyncInfo {
+            head_slot: types::Slot::new(100),
+            head_root: types::Hash256::ZERO,
+            finalized_epoch: types::Epoch::new(3),
+            finalized_root: types::Hash256::ZERO,
+            earliest_available_slot: None,
+        };
+        assert!(peer.update_sync_status(SyncStatus::Synced { info }));
+    }
+
+    #[test]
+    fn is_synced_or_advanced() {
+        let mut peer = create_test_peer_info();
+        assert!(!peer.is_synced_or_advanced());
+
+        let info = super::super::sync_status::SyncInfo {
+            head_slot: types::Slot::new(100),
+            head_root: types::Hash256::ZERO,
+            finalized_epoch: types::Epoch::new(3),
+            finalized_root: types::Hash256::ZERO,
+            earliest_available_slot: None,
+        };
+        peer.update_sync_status(SyncStatus::Synced { info: info.clone() });
+        assert!(peer.is_synced_or_advanced());
+
+        peer.update_sync_status(SyncStatus::Advanced { info });
+        assert!(peer.is_synced_or_advanced());
+    }
+
+    // --- Subnet operations ---
+
+    #[test]
+    fn insert_and_check_subnet_gossipsub() {
+        let mut peer = create_test_peer_info();
+        let subnet = Subnet::DataColumn(DataColumnSubnetId::new(5));
+        assert!(!peer.on_subnet_gossipsub(&subnet));
+        peer.insert_subnet(subnet);
+        assert!(peer.on_subnet_gossipsub(&subnet));
+    }
+
+    #[test]
+    fn remove_subnet() {
+        let mut peer = create_test_peer_info();
+        let subnet = Subnet::DataColumn(DataColumnSubnetId::new(5));
+        peer.insert_subnet(subnet);
+        peer.remove_subnet(&subnet);
+        assert!(!peer.on_subnet_gossipsub(&subnet));
+    }
+
+    #[test]
+    fn clear_subnets() {
+        let mut peer = create_test_peer_info();
+        peer.insert_subnet(Subnet::DataColumn(DataColumnSubnetId::new(1)));
+        peer.insert_subnet(Subnet::DataColumn(DataColumnSubnetId::new(2)));
+        peer.clear_subnets();
+        assert_eq!(peer.subnets().count(), 0);
+    }
+
+    // --- Custody subnets ---
+
+    #[test]
+    fn custody_subnet_operations() {
+        let mut peer = create_test_peer_info();
+        let mut custody = HashSet::new();
+        custody.insert(DataColumnSubnetId::new(1));
+        custody.insert(DataColumnSubnetId::new(3));
+        peer.set_custody_subnets(custody);
+        assert_eq!(peer.custody_subnet_count(), 2);
+        assert!(peer.is_assigned_to_custody_subnet(&DataColumnSubnetId::new(1)));
+        assert!(!peer.is_assigned_to_custody_subnet(&DataColumnSubnetId::new(2)));
+    }
+
+    // --- ConnectionDirection conversion ---
+
+    #[test]
+    fn connection_direction_to_peer_direction() {
+        assert_eq!(
+            PeerDirection::from(ConnectionDirection::Incoming),
+            PeerDirection::Inbound
+        );
+        assert_eq!(
+            PeerDirection::from(ConnectionDirection::Outgoing),
+            PeerDirection::Outbound
+        );
+    }
+
+    // --- PeerConnectionStatus to PeerState ---
+
+    #[test]
+    fn connection_status_to_peer_state() {
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        assert_eq!(
+            PeerState::from(PeerConnectionStatus::Connected {
+                n_in: 1,
+                n_out: 0,
+                multiaddr: addr
+            }),
+            PeerState::Connected
+        );
+        assert_eq!(
+            PeerState::from(PeerConnectionStatus::Dialing {
+                since: Instant::now()
+            }),
+            PeerState::Connecting
+        );
+        assert_eq!(
+            PeerState::from(PeerConnectionStatus::Disconnecting { to_ban: false }),
+            PeerState::Disconnecting
+        );
+        assert_eq!(
+            PeerState::from(PeerConnectionStatus::Disconnected {
+                since: Instant::now()
+            }),
+            PeerState::Disconnected
+        );
+        assert_eq!(
+            PeerState::from(PeerConnectionStatus::Banned {
+                since: Instant::now()
+            }),
+            PeerState::Disconnected
+        );
+        assert_eq!(
+            PeerState::from(PeerConnectionStatus::Unknown),
+            PeerState::Disconnected
+        );
+    }
+
+    // --- has_future_duty ---
+
+    #[test]
+    fn no_future_duty_by_default() {
+        let peer = create_test_peer_info();
+        assert!(!peer.has_future_duty());
+    }
+
+    #[test]
+    fn has_future_duty_with_future_ttl() {
+        let mut peer = create_test_peer_info();
+        peer.set_min_ttl(Instant::now() + std::time::Duration::from_secs(60));
+        assert!(peer.has_future_duty());
+    }
+
+    // --- Listening addresses ---
+
+    #[test]
+    fn set_listening_addresses_returns_old() {
+        let mut peer = create_test_peer_info();
+        let addr1: Multiaddr = "/ip4/127.0.0.1/tcp/9000".parse().unwrap();
+        let addr2: Multiaddr = "/ip4/192.168.1.1/tcp/9000".parse().unwrap();
+
+        let old = peer.set_listening_addresses(vec![addr1.clone()]);
+        assert!(old.is_empty());
+        assert_eq!(peer.listening_addresses().len(), 1);
+
+        let old = peer.set_listening_addresses(vec![addr2]);
+        assert_eq!(old.len(), 1);
+        assert_eq!(old[0], addr1);
+    }
+
+    // --- ConnectionDirection as_ref ---
+
+    #[test]
+    fn connection_direction_as_ref_str() {
+        assert_eq!(ConnectionDirection::Incoming.as_ref(), "incoming");
+        assert_eq!(ConnectionDirection::Outgoing.as_ref(), "outgoing");
+    }
+
+    // --- Score state from peer_info ---
+
+    #[test]
+    fn score_state_reflects_score() {
+        let mut peer = create_test_peer_info();
+        assert_eq!(peer.score_state(), ScoreState::Healthy);
+        peer.add_to_score(-60.0);
+        assert_eq!(peer.score_state(), ScoreState::Banned);
+        assert!(peer.score_is_banned());
+    }
+
+    // --- Gossipsub score ---
+
+    #[test]
+    fn gossipsub_score_affects_peer() {
+        let mut peer = create_test_peer_info();
+        assert!(peer.is_good_gossipsub_peer());
+        peer.set_gossipsub_score(-10.0);
+        assert!(!peer.is_good_gossipsub_peer());
+    }
 }

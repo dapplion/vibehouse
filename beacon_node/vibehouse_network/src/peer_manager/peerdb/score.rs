@@ -418,4 +418,383 @@ mod tests {
         assert!(!score.is_good_gossipsub_peer());
         assert_eq!(score.score(), 0.0);
     }
+
+    // --- PeerAction score changes ---
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn fatal_action_sets_min_score() {
+        let mut score = Score::default();
+        score.apply_peer_action(PeerAction::Fatal);
+        assert_eq!(score.score(), MIN_SCORE);
+        assert_eq!(score.state(), ScoreState::Banned);
+    }
+
+    #[test]
+    fn low_tolerance_error_subtracts_10() {
+        let mut score = Score::default();
+        score.apply_peer_action(PeerAction::LowToleranceError);
+        assert!((score.score() - (-10.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn mid_tolerance_error_subtracts_5() {
+        let mut score = Score::default();
+        score.apply_peer_action(PeerAction::MidToleranceError);
+        assert!((score.score() - (-5.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn high_tolerance_error_subtracts_1() {
+        let mut score = Score::default();
+        score.apply_peer_action(PeerAction::HighToleranceError);
+        assert!((score.score() - (-1.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn five_low_tolerance_errors_ban_peer() {
+        let mut score = Score::default();
+        for _ in 0..5 {
+            score.apply_peer_action(PeerAction::LowToleranceError);
+        }
+        // 5 * -10 = -50 = MIN_SCORE_BEFORE_BAN
+        assert_eq!(score.state(), ScoreState::Banned);
+    }
+
+    #[test]
+    fn ten_mid_tolerance_errors_ban_peer() {
+        let mut score = Score::default();
+        for _ in 0..10 {
+            score.apply_peer_action(PeerAction::MidToleranceError);
+        }
+        // 10 * -5 = -50 = MIN_SCORE_BEFORE_BAN
+        assert_eq!(score.state(), ScoreState::Banned);
+    }
+
+    #[test]
+    fn two_low_tolerance_errors_disconnect_peer() {
+        let mut score = Score::default();
+        score.apply_peer_action(PeerAction::LowToleranceError);
+        score.apply_peer_action(PeerAction::LowToleranceError);
+        // -20 = MIN_SCORE_BEFORE_DISCONNECT
+        assert_eq!(score.state(), ScoreState::ForcedDisconnect);
+    }
+
+    #[test]
+    fn high_tolerance_errors_stay_healthy() {
+        let mut score = Score::default();
+        for _ in 0..19 {
+            score.apply_peer_action(PeerAction::HighToleranceError);
+        }
+        // -19, still above -20 disconnect threshold
+        assert_eq!(score.state(), ScoreState::Healthy);
+    }
+
+    // --- Score::Max ---
+
+    #[test]
+    fn max_score_is_infinity() {
+        let score = Score::max_score();
+        assert!(score.score().is_infinite());
+        assert!(score.score() > 0.0);
+    }
+
+    #[test]
+    fn max_score_state_is_healthy() {
+        let score = Score::max_score();
+        assert_eq!(score.state(), ScoreState::Healthy);
+    }
+
+    #[test]
+    fn max_score_is_good_gossipsub_peer() {
+        let score = Score::max_score();
+        assert!(score.is_good_gossipsub_peer());
+    }
+
+    #[test]
+    fn max_score_apply_peer_action_is_noop() {
+        let mut score = Score::max_score();
+        score.apply_peer_action(PeerAction::Fatal);
+        // Score::Max ignores peer actions
+        assert!(score.score().is_infinite());
+    }
+
+    // --- ScoreState transitions ---
+
+    #[test]
+    fn score_state_healthy_above_disconnect() {
+        let mut score = Score::default();
+        score.test_add(-19.9);
+        assert_eq!(score.state(), ScoreState::Healthy);
+    }
+
+    #[test]
+    fn score_state_disconnect_at_threshold() {
+        let mut score = Score::default();
+        score.test_add(MIN_SCORE_BEFORE_DISCONNECT);
+        assert_eq!(score.state(), ScoreState::ForcedDisconnect);
+    }
+
+    #[test]
+    fn score_state_disconnect_between_thresholds() {
+        let mut score = Score::default();
+        score.test_add(-35.0);
+        assert_eq!(score.state(), ScoreState::ForcedDisconnect);
+    }
+
+    #[test]
+    fn score_state_banned_at_threshold() {
+        let mut score = Score::default();
+        score.test_add(MIN_SCORE_BEFORE_BAN);
+        assert_eq!(score.state(), ScoreState::Banned);
+    }
+
+    #[test]
+    fn score_state_banned_below_threshold() {
+        let mut score = Score::default();
+        score.test_add(MIN_SCORE);
+        assert_eq!(score.state(), ScoreState::Banned);
+    }
+
+    // --- total_cmp ---
+
+    #[test]
+    fn total_cmp_normal_ordering() {
+        let mut low = Score::default();
+        low.test_add(-10.0);
+        let mut high = Score::default();
+        high.test_add(10.0);
+
+        assert_eq!(low.total_cmp(&high, false), Ordering::Less);
+        assert_eq!(high.total_cmp(&low, false), Ordering::Greater);
+    }
+
+    #[test]
+    fn total_cmp_equal_scores() {
+        let a = Score::default();
+        let b = Score::default();
+        assert_eq!(a.total_cmp(&b, false), Ordering::Equal);
+    }
+
+    #[test]
+    fn total_cmp_reverse() {
+        let mut low = Score::default();
+        low.test_add(-10.0);
+        let mut high = Score::default();
+        high.test_add(10.0);
+
+        assert_eq!(low.total_cmp(&high, true), Ordering::Greater);
+        assert_eq!(high.total_cmp(&low, true), Ordering::Less);
+    }
+
+    #[test]
+    fn total_cmp_max_vs_real() {
+        let max = Score::max_score();
+        let real = Score::default();
+        assert_eq!(max.total_cmp(&real, false), Ordering::Greater);
+        assert_eq!(real.total_cmp(&max, false), Ordering::Less);
+    }
+
+    // --- Decay ---
+
+    #[test]
+    fn decay_reduces_positive_score() {
+        let mut score = RealScore::default();
+        let now = Instant::now();
+        score.add(50.0);
+        score.update_state();
+        let initial = score.score();
+
+        // After one halflife, score should be roughly half
+        score.update_at(now + Duration::from_secs(SCORE_HALFLIFE as u64));
+        assert!(score.score() < initial);
+        assert!((score.score() - initial / 2.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn decay_reduces_negative_score_magnitude() {
+        let mut score = RealScore::default();
+        let now = Instant::now();
+        score.add(-10.0);
+        score.update_state();
+        let initial = score.score();
+
+        score.update_at(now + Duration::from_secs(SCORE_HALFLIFE as u64));
+        // Negative score should move toward zero (become less negative)
+        assert!(score.score() > initial);
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn no_decay_during_ban_period() {
+        let mut score = RealScore::default();
+        let now = Instant::now();
+        score.add(MIN_SCORE_BEFORE_BAN);
+        score.update_state();
+        let banned_score = score.score();
+
+        // During ban period, score should not decay
+        score.update_at(now + Duration::from_secs(100));
+        assert_eq!(score.score(), banned_score);
+    }
+
+    // --- Gossipsub score interactions ---
+
+    #[test]
+    fn positive_gossipsub_score_adds_to_total() {
+        let mut score = RealScore::default();
+        score.update_gossipsub_score(10.0, false);
+        assert!(score.score() > 0.0);
+        assert!(score.is_good_gossipsub_peer());
+    }
+
+    #[test]
+    fn negative_gossipsub_score_reduces_total() {
+        let mut score = RealScore::default();
+        score.update_gossipsub_score(-10.0, false);
+        assert!(score.score() < 0.0);
+        assert!(!score.is_good_gossipsub_peer());
+    }
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn ignored_negative_gossipsub_score_has_no_effect() {
+        let mut score = RealScore::default();
+        score.update_gossipsub_score(-100.0, true);
+        assert_eq!(score.score(), 0.0);
+    }
+
+    #[test]
+    fn very_low_vibehouse_score_ignores_gossipsub() {
+        let mut score = RealScore::default();
+        score.set_vibehouse_score(MIN_VIBEHOUSE_SCORE_BEFORE_BAN - 1.0);
+        // Even a positive gossipsub score shouldn't help
+        score.update_gossipsub_score(100.0, false);
+        score.recompute_score();
+        // Score should be just the vibehouse score
+        assert!(score.score() < MIN_VIBEHOUSE_SCORE_BEFORE_BAN);
+    }
+
+    #[test]
+    fn gossipsub_update_ignored_while_banned() {
+        let mut score = RealScore::default();
+        // Ban the peer
+        score.add(MIN_SCORE_BEFORE_BAN);
+        score.update_state();
+        // Now last_updated is in the future (BANNED_BEFORE_DECAY)
+        // Gossipsub update should be ignored
+        score.update_gossipsub_score(100.0, false);
+        // Score should still be banned level
+        assert!(score.score() <= MIN_SCORE_BEFORE_BAN);
+    }
+
+    // --- Display/formatting ---
+
+    #[test]
+    fn score_display_format() {
+        let mut score = Score::default();
+        score.test_add(42.123456);
+        let display = format!("{}", score);
+        assert_eq!(display, "42.12");
+    }
+
+    #[test]
+    fn score_state_display() {
+        assert_eq!(format!("{}", ScoreState::Healthy), "Healthy");
+        assert_eq!(format!("{}", ScoreState::ForcedDisconnect), "Disconnected");
+        assert_eq!(format!("{}", ScoreState::Banned), "Banned");
+    }
+
+    #[test]
+    fn peer_action_display() {
+        assert_eq!(format!("{}", PeerAction::Fatal), "Fatal");
+        assert_eq!(
+            format!("{}", PeerAction::LowToleranceError),
+            "Low Tolerance Error"
+        );
+        assert_eq!(
+            format!("{}", PeerAction::MidToleranceError),
+            "Mid Tolerance Error"
+        );
+        assert_eq!(
+            format!("{}", PeerAction::HighToleranceError),
+            "High Tolerance Error"
+        );
+    }
+
+    #[test]
+    fn peer_action_as_ref_str() {
+        assert_eq!(PeerAction::Fatal.as_ref(), "fatal");
+        assert_eq!(
+            PeerAction::LowToleranceError.as_ref(),
+            "low_tolerance_error"
+        );
+        assert_eq!(
+            PeerAction::MidToleranceError.as_ref(),
+            "mid_tolerance_error"
+        );
+        assert_eq!(
+            PeerAction::HighToleranceError.as_ref(),
+            "high_tolerance_error"
+        );
+    }
+
+    // --- ReportSource ---
+
+    #[test]
+    fn report_source_to_str() {
+        assert_eq!(<&str>::from(ReportSource::Gossipsub), "gossipsub");
+        assert_eq!(<&str>::from(ReportSource::RPC), "rpc_error");
+        assert_eq!(<&str>::from(ReportSource::Processor), "processor");
+        assert_eq!(<&str>::from(ReportSource::SyncService), "sync");
+        assert_eq!(<&str>::from(ReportSource::PeerManager), "peer_manager");
+    }
+
+    // --- Accumulation ---
+
+    #[test]
+    fn multiple_actions_accumulate() {
+        let mut score = Score::default();
+        score.apply_peer_action(PeerAction::HighToleranceError); // -1
+        score.apply_peer_action(PeerAction::MidToleranceError); // -5
+        score.apply_peer_action(PeerAction::LowToleranceError); // -10
+        assert!((score.score() - (-16.0)).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn positive_score_with_negative_action() {
+        let mut score = Score::default();
+        score.test_add(30.0);
+        score.apply_peer_action(PeerAction::LowToleranceError);
+        assert!((score.score() - 20.0).abs() < f64::EPSILON);
+    }
+
+    // --- Default score ---
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn default_score_is_zero() {
+        let score = Score::default();
+        assert_eq!(score.score(), 0.0);
+        assert_eq!(score.state(), ScoreState::Healthy);
+    }
+
+    #[test]
+    fn default_real_score_is_good_gossipsub_peer() {
+        let score = RealScore::default();
+        assert!(score.is_good_gossipsub_peer());
+    }
+
+    // --- Score reset ---
+
+    #[test]
+    #[allow(clippy::float_cmp)]
+    fn test_reset_returns_to_zero() {
+        let mut score = Score::default();
+        score.test_add(-30.0);
+        assert!(score.score() < 0.0);
+        score.test_reset();
+        assert_eq!(score.score(), 0.0);
+        assert_eq!(score.state(), ScoreState::Healthy);
+    }
 }
