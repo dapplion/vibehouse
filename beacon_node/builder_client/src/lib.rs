@@ -685,6 +685,357 @@ mod tests {
         mock.with_status(200).create();
     }
 
+    // --- Timeouts ---
+
+    #[test]
+    fn timeouts_default_get_header() {
+        let t = Timeouts::new(None);
+        assert_eq!(
+            t.get_header,
+            Duration::from_millis(DEFAULT_GET_HEADER_TIMEOUT_MILLIS)
+        );
+        assert_eq!(
+            t.post_validators,
+            Duration::from_millis(DEFAULT_TIMEOUT_MILLIS)
+        );
+        assert_eq!(
+            t.post_blinded_blocks,
+            Duration::from_millis(DEFAULT_TIMEOUT_MILLIS)
+        );
+        assert_eq!(
+            t.get_builder_status,
+            Duration::from_millis(DEFAULT_TIMEOUT_MILLIS)
+        );
+    }
+
+    #[test]
+    fn timeouts_custom_get_header() {
+        let custom = Duration::from_millis(500);
+        let t = Timeouts::new(Some(custom));
+        assert_eq!(t.get_header, custom);
+        // Other timeouts remain default
+        assert_eq!(
+            t.post_validators,
+            Duration::from_millis(DEFAULT_TIMEOUT_MILLIS)
+        );
+    }
+
+    // --- BuilderHttpClient::new ---
+
+    #[test]
+    fn builder_client_default_user_agent() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(client.get_user_agent(), DEFAULT_USER_AGENT);
+    }
+
+    #[test]
+    fn builder_client_custom_user_agent() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            Some("my-custom-agent/1.0".to_string()),
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(client.get_user_agent(), "my-custom-agent/1.0");
+    }
+
+    #[test]
+    fn builder_client_custom_header_timeout() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            Some(Duration::from_millis(2000)),
+            false,
+        )
+        .unwrap();
+        assert_eq!(client.timeouts.get_header, Duration::from_millis(2000));
+    }
+
+    // --- is_ssz_available ---
+
+    #[test]
+    fn is_ssz_available_default_false() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+        assert!(!client.is_ssz_available());
+    }
+
+    #[test]
+    fn is_ssz_available_disabled_even_when_set() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            true, // disable_ssz
+        )
+        .unwrap();
+        // Even if ssz_available is set to true, disable_ssz overrides
+        client.ssz_available.store(true, Ordering::SeqCst);
+        assert!(!client.is_ssz_available());
+    }
+
+    #[test]
+    fn is_ssz_available_true_when_enabled() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+        client.ssz_available.store(true, Ordering::SeqCst);
+        assert!(client.is_ssz_available());
+    }
+
+    // --- fork_name_from_header ---
+
+    #[test]
+    fn fork_name_from_header_present() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(CONSENSUS_VERSION_HEADER, HeaderValue::from_static("fulu"));
+        let result = client.fork_name_from_header(&headers).unwrap();
+        assert_eq!(result, Some(ForkName::Fulu));
+    }
+
+    #[test]
+    fn fork_name_from_header_absent() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let headers = HeaderMap::new();
+        let result = client.fork_name_from_header(&headers).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn fork_name_from_header_invalid() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONSENSUS_VERSION_HEADER,
+            HeaderValue::from_static("nonexistent"),
+        );
+        let result = client.fork_name_from_header(&headers);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn fork_name_from_header_all_forks() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        for fork in ForkName::list_all() {
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                CONSENSUS_VERSION_HEADER,
+                HeaderValue::from_str(&fork.to_string()).unwrap(),
+            );
+            let result = client.fork_name_from_header(&headers).unwrap();
+            assert_eq!(result, Some(fork));
+        }
+    }
+
+    // --- content_type_from_header ---
+
+    #[test]
+    fn content_type_from_header_ssz() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE_HEADER,
+            HeaderValue::from_static(SSZ_CONTENT_TYPE_HEADER),
+        );
+        assert!(matches!(
+            client.content_type_from_header(&headers),
+            ContentType::Ssz
+        ));
+    }
+
+    #[test]
+    fn content_type_from_header_json() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE_HEADER,
+            HeaderValue::from_static(JSON_CONTENT_TYPE_HEADER),
+        );
+        assert!(matches!(
+            client.content_type_from_header(&headers),
+            ContentType::Json
+        ));
+    }
+
+    #[test]
+    fn content_type_from_header_missing() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let headers = HeaderMap::new();
+        assert!(matches!(
+            client.content_type_from_header(&headers),
+            ContentType::Json
+        ));
+    }
+
+    #[test]
+    fn content_type_from_header_unknown_defaults_json() {
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str("http://localhost:18550").unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_TYPE_HEADER, HeaderValue::from_static("text/plain"));
+        assert!(matches!(
+            client.content_type_from_header(&headers),
+            ContentType::Json
+        ));
+    }
+
+    // --- get_builder_header NO_CONTENT ---
+
+    #[tokio::test]
+    async fn test_get_builder_header_no_content_returns_none() {
+        let mut server = Server::new_async().await;
+        server
+            .mock(
+                "GET",
+                Matcher::Regex(r"^/eth/v1/builder/header/\d+/.+/.+$".to_string()),
+            )
+            .with_status(204)
+            .create();
+
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str(&server.url()).unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        let response = client
+            .get_builder_header::<E>(
+                Slot::new(1),
+                ExecutionBlockHash::repeat_byte(1),
+                &PublicKeyBytes::empty(),
+            )
+            .await
+            .expect("should succeed");
+
+        assert!(response.is_none());
+    }
+
+    // --- ssz_available tracking ---
+
+    #[tokio::test]
+    async fn test_ssz_available_set_after_ssz_response() {
+        let mut server = Server::new_async().await;
+        let mock_response_body = fulu_signed_builder_bid();
+        mock_get_header_response(
+            &mut server,
+            Some("fulu"),
+            ContentType::Ssz,
+            mock_response_body.clone(),
+        );
+
+        let client = BuilderHttpClient::new(
+            SensitiveUrl::from_str(&server.url()).unwrap(),
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+
+        assert!(!client.is_ssz_available());
+
+        let _response = client
+            .get_builder_header::<E>(
+                Slot::new(1),
+                ExecutionBlockHash::repeat_byte(1),
+                &PublicKeyBytes::empty(),
+            )
+            .await
+            .unwrap();
+
+        assert!(client.is_ssz_available());
+    }
+
+    // --- constants ---
+
+    #[test]
+    fn default_timeout_values() {
+        assert_eq!(DEFAULT_TIMEOUT_MILLIS, 15000);
+        assert_eq!(DEFAULT_GET_HEADER_TIMEOUT_MILLIS, 1000);
+    }
+
+    #[test]
+    fn preference_accept_value_prefers_ssz() {
+        assert!(PREFERENCE_ACCEPT_VALUE.contains("application/octet-stream"));
+        assert!(PREFERENCE_ACCEPT_VALUE.contains("application/json"));
+        // SSZ should have higher quality factor
+        assert!(PREFERENCE_ACCEPT_VALUE.contains("q=1.0"));
+        assert!(PREFERENCE_ACCEPT_VALUE.contains("q=0.9"));
+    }
+
     fn fulu_signed_builder_bid() -> ForkVersionedResponse<SignedBuilderBid<E>> {
         let rng = &mut XorShiftRng::from_seed([42; 16]);
         ForkVersionedResponse {
