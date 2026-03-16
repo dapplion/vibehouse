@@ -1606,3 +1606,15 @@ All remaining `.clone()` calls are either:
 - **maximum_cover edge cases** (4 tests): empty input, all zero score excluded, single item, disjoint sets full coverage
 
 **Verification**: 34 new tests pass across all three crates, clippy clean, pushed to origin.
+
+#### Run 1461 — Network Config, IP Global Checks, and Network Load Tests
+
+**beacon_node/vibehouse_network/src/config.rs** (36 new tests):
+- **is_global_ipv4** (12 tests): public addresses, private ranges, loopback, link-local, broadcast, documentation, shared address space (100.64/10), reserved (192.0.0/24), zero network, special 192.0.0.9/10 globally routable, future protocol (240/4)
+- **is_global_ipv6** (9 tests): global public, unspecified, loopback, link-local, unique local, documentation (2001:db8), IPv4-mapped, discard-only (100::/64), special anycast (2001:1::1/2), AMT (2001:3::/32)
+- **NetworkLoad::from** (6 tests): load levels 0-5+, verifying mesh params, heartbeat intervals, names ("Low"/"Average"/"High"), 0 and 255 both map to "High"
+- **Config** (9 tests): default constants, default values, default listen address is IPv4, set_ipv4/ipv6/dual-stack listening addresses, set_listening_addr dispatch, ENR defaults are None, serde roundtrip
+
+Also added `serde_json` dev-dependency to vibehouse_network/Cargo.toml.
+
+**Verification**: 36/36 tests pass, clippy clean, pushed to origin.
