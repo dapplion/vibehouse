@@ -426,3 +426,369 @@ impl<E: EthSpec> PeerScoreSettings<E> {
         t_params
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    fn default_settings() -> PeerScoreSettings<E> {
+        let spec = E::default_spec();
+        PeerScoreSettings::new(&spec, 6)
+    }
+
+    // --- vibehouse_gossip_thresholds ---
+
+    #[test]
+    fn gossip_thresholds_values() {
+        let t = vibehouse_gossip_thresholds();
+        assert_eq!(t.gossip_threshold, -4000.0);
+        assert_eq!(t.publish_threshold, -8000.0);
+        assert_eq!(t.graylist_threshold, GREYLIST_THRESHOLD);
+        assert_eq!(t.accept_px_threshold, 100.0);
+        assert_eq!(t.opportunistic_graft_threshold, 5.0);
+    }
+
+    #[test]
+    fn gossip_threshold_ordering() {
+        let t = vibehouse_gossip_thresholds();
+        // publish should be stricter (more negative) than gossip
+        assert!(t.publish_threshold < t.gossip_threshold);
+        // graylist should be stricter than publish
+        assert!(t.graylist_threshold < t.publish_threshold);
+    }
+
+    // --- PeerScoreSettings::new ---
+
+    #[test]
+    fn settings_new_slot_duration() {
+        let spec = E::default_spec();
+        let settings = PeerScoreSettings::<E>::new(&spec, 6);
+        assert_eq!(settings.slot, Duration::from_secs(spec.seconds_per_slot));
+    }
+
+    #[test]
+    fn settings_new_epoch_duration() {
+        let settings = default_settings();
+        let expected = settings.slot * E::slots_per_epoch() as u32;
+        assert_eq!(settings.epoch, expected);
+    }
+
+    #[test]
+    fn settings_new_mesh_n() {
+        let spec = E::default_spec();
+        let settings = PeerScoreSettings::<E>::new(&spec, 12);
+        assert_eq!(settings.mesh_n, 12);
+    }
+
+    #[test]
+    fn settings_new_attestation_subnet_count() {
+        let spec = E::default_spec();
+        let settings = PeerScoreSettings::<E>::new(&spec, 6);
+        assert_eq!(
+            settings.attestation_subnet_count,
+            spec.attestation_subnet_count
+        );
+    }
+
+    #[test]
+    fn settings_new_max_positive_score_positive() {
+        let settings = default_settings();
+        assert!(settings.max_positive_score > 0.0);
+    }
+
+    #[test]
+    fn settings_attestation_subnet_count_accessor() {
+        let settings = default_settings();
+        let spec = E::default_spec();
+        assert_eq!(
+            settings.attestation_subnet_count(),
+            spec.attestation_subnet_count
+        );
+    }
+
+    // --- score_parameter_decay_with_base ---
+
+    #[test]
+    fn decay_with_base_single_tick() {
+        // When decay_time == decay_interval, ticks = 1, result = decay_to_zero^1
+        let result = PeerScoreSettings::<E>::score_parameter_decay_with_base(
+            Duration::from_secs(10),
+            Duration::from_secs(10),
+            0.01,
+        );
+        assert!((result - 0.01).abs() < 1e-10);
+    }
+
+    #[test]
+    fn decay_with_base_two_ticks() {
+        // When decay_time = 2 * decay_interval, ticks = 2, result = 0.01^0.5 = 0.1
+        let result = PeerScoreSettings::<E>::score_parameter_decay_with_base(
+            Duration::from_secs(20),
+            Duration::from_secs(10),
+            0.01,
+        );
+        assert!((result - 0.1).abs() < 1e-10);
+    }
+
+    #[test]
+    fn decay_with_base_result_in_range() {
+        // Result should be between decay_to_zero and 1.0
+        let result = PeerScoreSettings::<E>::score_parameter_decay_with_base(
+            Duration::from_secs(100),
+            Duration::from_secs(12),
+            0.01,
+        );
+        assert!(result > 0.01);
+        assert!(result < 1.0);
+    }
+
+    #[test]
+    fn decay_with_base_longer_time_lower_decay() {
+        // Longer decay time should produce a higher per-tick decay (closer to 1)
+        let short = PeerScoreSettings::<E>::score_parameter_decay_with_base(
+            Duration::from_secs(10),
+            Duration::from_secs(1),
+            0.01,
+        );
+        let long = PeerScoreSettings::<E>::score_parameter_decay_with_base(
+            Duration::from_secs(100),
+            Duration::from_secs(1),
+            0.01,
+        );
+        assert!(long > short);
+    }
+
+    // --- decay_convergence ---
+
+    #[test]
+    fn decay_convergence_known_value() {
+        // decay=0.5, rate=1.0 => 1.0 / (1.0 - 0.5) = 2.0
+        let result = PeerScoreSettings::<E>::decay_convergence(0.5, 1.0);
+        assert!((result - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn decay_convergence_high_decay() {
+        // Higher decay -> higher convergence value
+        let low = PeerScoreSettings::<E>::decay_convergence(0.5, 1.0);
+        let high = PeerScoreSettings::<E>::decay_convergence(0.9, 1.0);
+        assert!(high > low);
+    }
+
+    #[test]
+    fn decay_convergence_scales_with_rate() {
+        // Double rate -> double convergence
+        let single = PeerScoreSettings::<E>::decay_convergence(0.5, 1.0);
+        let double = PeerScoreSettings::<E>::decay_convergence(0.5, 2.0);
+        assert!((double - 2.0 * single).abs() < 1e-10);
+    }
+
+    // --- threshold ---
+
+    #[test]
+    fn threshold_known_value() {
+        // threshold(0.5, 1.0) = decay_convergence(0.5, 1.0) * 0.5 = 2.0 * 0.5 = 1.0
+        let result = PeerScoreSettings::<E>::threshold(0.5, 1.0);
+        assert!((result - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn threshold_less_than_convergence() {
+        // threshold should always be less than convergence (since decay < 1)
+        let decay = 0.8;
+        let rate = 5.0;
+        let conv = PeerScoreSettings::<E>::decay_convergence(decay, rate);
+        let thresh = PeerScoreSettings::<E>::threshold(decay, rate);
+        assert!(thresh < conv);
+    }
+
+    // --- expected_aggregator_count_per_slot ---
+
+    #[test]
+    fn expected_aggregators_positive() {
+        let settings = default_settings();
+        let (agg_per_slot, committees) = settings.expected_aggregator_count_per_slot(1024).unwrap();
+        assert!(agg_per_slot > 0.0);
+        assert!(committees > 0);
+    }
+
+    #[test]
+    fn expected_aggregators_different_validator_counts() {
+        let settings = default_settings();
+        let (agg_1024, committees_1024) =
+            settings.expected_aggregator_count_per_slot(1024).unwrap();
+        let (agg_65536, committees_65536) =
+            settings.expected_aggregator_count_per_slot(65536).unwrap();
+        // Both should be positive
+        assert!(agg_1024 > 0.0);
+        assert!(agg_65536 > 0.0);
+        // More validators should produce at least as many committees
+        assert!(committees_65536 >= committees_1024);
+    }
+
+    // --- score_parameter_decay ---
+
+    #[test]
+    fn score_parameter_decay_uses_settings() {
+        let settings = default_settings();
+        let decay = settings.score_parameter_decay(settings.epoch);
+        assert!(decay > 0.0);
+        assert!(decay < 1.0);
+    }
+
+    // --- get_topic_params ---
+
+    #[test]
+    fn topic_params_without_mesh_info() {
+        let settings = default_settings();
+        let params = settings.get_topic_params(0.5, 1.0, settings.epoch, None);
+
+        assert_eq!(params.topic_weight, 0.5);
+        assert!(params.time_in_mesh_weight > 0.0);
+        assert!(params.first_message_deliveries_weight > 0.0);
+        assert!(params.first_message_deliveries_cap > 0.0);
+        // mesh delivery params should be zero without mesh info
+        assert_eq!(params.mesh_message_deliveries_weight, 0.0);
+        assert_eq!(params.mesh_message_deliveries_threshold, 0.0);
+        assert_eq!(params.mesh_message_deliveries_cap, 0.0);
+        assert_eq!(params.mesh_failure_penalty_weight, 0.0);
+    }
+
+    #[test]
+    fn topic_params_with_mesh_info() {
+        let settings = default_settings();
+        let current_slot = Slot::new(100);
+        let params = settings.get_topic_params(
+            0.5,
+            1.0,
+            settings.epoch,
+            Some((E::slots_per_epoch() * 5, 3.0, settings.epoch, current_slot)),
+        );
+
+        assert_eq!(params.topic_weight, 0.5);
+        // With mesh info and slot > decay_slots, mesh params should be active
+        assert!(params.mesh_message_deliveries_decay > 0.0);
+        assert!(params.mesh_message_deliveries_cap > 0.0);
+    }
+
+    #[test]
+    fn topic_params_mesh_disabled_early_slot() {
+        let settings = default_settings();
+        // When current_slot < decay_slots, mesh delivery scoring is disabled
+        let decay_slots = E::slots_per_epoch() * 5;
+        let current_slot = Slot::new(0);
+        let params = settings.get_topic_params(
+            0.5,
+            1.0,
+            settings.epoch,
+            Some((decay_slots, 3.0, settings.epoch, current_slot)),
+        );
+        // Mesh delivery threshold and weight should be zeroed out
+        assert_eq!(params.mesh_message_deliveries_threshold, 0.0);
+        assert_eq!(params.mesh_message_deliveries_weight, 0.0);
+    }
+
+    #[test]
+    fn topic_params_invalid_message_weight_negative() {
+        let settings = default_settings();
+        let params = settings.get_topic_params(0.5, 1.0, settings.epoch, None);
+        // Invalid message deliveries weight should be negative (penalizing)
+        assert!(params.invalid_message_deliveries_weight < 0.0);
+    }
+
+    #[test]
+    fn topic_params_time_in_mesh_cap_based_on_slot() {
+        let settings = default_settings();
+        let params = settings.get_topic_params(0.5, 1.0, settings.epoch, None);
+        // time_in_mesh_cap should be 3600 / slot_seconds
+        let expected_cap = 3600.0 / settings.slot.as_secs_f64();
+        assert!((params.time_in_mesh_cap - expected_cap).abs() < 1e-10);
+    }
+
+    // --- get_dynamic_topic_params ---
+
+    #[test]
+    fn dynamic_topic_params_returns_three_params() {
+        let settings = default_settings();
+        let current_slot = Slot::new(100);
+        let (block, agg, subnet) = settings
+            .get_dynamic_topic_params(1024, current_slot)
+            .unwrap();
+        assert_eq!(block.topic_weight, BEACON_BLOCK_WEIGHT);
+        assert_eq!(agg.topic_weight, BEACON_AGGREGATE_PROOF_WEIGHT);
+        assert!(subnet.topic_weight > 0.0);
+    }
+
+    // --- get_peer_score_params ---
+
+    #[test]
+    fn peer_score_params_has_all_topics() {
+        let settings = default_settings();
+        let thresholds = vibehouse_gossip_thresholds();
+        let enr_fork_id = EnrForkId::default();
+        let current_slot = Slot::new(100);
+
+        let params = settings
+            .get_peer_score_params(1024, &thresholds, &enr_fork_id, current_slot)
+            .unwrap();
+
+        // Should have topics for: beacon_block, aggregate, voluntary_exit, attester_slashing,
+        // proposer_slashing, execution_bid, execution_payload, payload_attestation,
+        // execution_proof subnets, and attestation subnets
+        let spec = E::default_spec();
+        let min_topics = 3 // fixed (exit, attester, proposer slashing)
+            + 3 // gloas (bid, payload, payload_attest)
+            + 1 // beacon_block
+            + 1 // aggregate
+            + spec.attestation_subnet_count as usize; // attestation subnets
+        assert!(params.topics.len() >= min_topics);
+    }
+
+    #[test]
+    fn peer_score_params_decay_interval() {
+        let settings = default_settings();
+        let thresholds = vibehouse_gossip_thresholds();
+        let enr_fork_id = EnrForkId::default();
+        let params = settings
+            .get_peer_score_params(1024, &thresholds, &enr_fork_id, Slot::new(100))
+            .unwrap();
+        assert_eq!(params.decay_interval, settings.decay_interval);
+    }
+
+    #[test]
+    fn peer_score_params_topic_score_cap_positive() {
+        let settings = default_settings();
+        let thresholds = vibehouse_gossip_thresholds();
+        let enr_fork_id = EnrForkId::default();
+        let params = settings
+            .get_peer_score_params(1024, &thresholds, &enr_fork_id, Slot::new(100))
+            .unwrap();
+        assert!(params.topic_score_cap > 0.0);
+    }
+
+    #[test]
+    fn peer_score_params_ip_colocation_negative() {
+        let settings = default_settings();
+        let thresholds = vibehouse_gossip_thresholds();
+        let enr_fork_id = EnrForkId::default();
+        let params = settings
+            .get_peer_score_params(1024, &thresholds, &enr_fork_id, Slot::new(100))
+            .unwrap();
+        // IP colocation weight should be negative (penalizing)
+        assert!(params.ip_colocation_factor_weight < 0.0);
+    }
+
+    #[test]
+    fn peer_score_params_behaviour_penalty_weight_negative() {
+        let settings = default_settings();
+        let thresholds = vibehouse_gossip_thresholds();
+        let enr_fork_id = EnrForkId::default();
+        let params = settings
+            .get_peer_score_params(1024, &thresholds, &enr_fork_id, Slot::new(100))
+            .unwrap();
+        assert!(params.behaviour_penalty_weight < 0.0);
+    }
+}
