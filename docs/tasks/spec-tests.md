@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1536 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure confirmed fixed (slasher override_backend_with_mdbx_file_present passes locally).
+- Spec: v1.7.0-alpha.3 still latest. consensus-specs HEAD has 3 post-alpha.3 merges: #5005 (test fix), #5004 (docs), #5001 (parent_block_root bid key — already implemented), #5002 (wording only).
+- New open PR #5008: doc fix for ExecutionPayloadEnvelopesByRoot field name (block_root→beacon_block_root) — our impl already uses correct name.
+- fork_choice_on_execution_payload test passes (verified locally).
+- 4907 workspace tests pass (excluding ef_tests, beacon_chain, slasher, network, http_api, operation_pool, web3signer_tests).
+- No actionable work — project in maintenance mode.
+
 ### run 1535 (Mar 16) — health check, all stable
 
 **Health check**: all stable
