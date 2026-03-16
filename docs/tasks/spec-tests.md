@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1516 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (run 23137093267) confirmed stale — fix b79292d35 was already on main before it ran. Previous nightlies (Mar 14, 15) passed. Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest release.
+- PR #4992 (cached PTCs): still OPEN (head d76a278). PR #5008 (field name fix): still OPEN. All other Gloas PRs (#4962, #4939, #4960, #4932, #4843, #4840, #4630) still open.
+- Clippy: zero warnings across entire workspace.
+- No actionable work — project in maintenance mode.
+
 ### run 1515 (Mar 16) — health check, all stable
 
 **Health check**: all stable
