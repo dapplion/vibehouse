@@ -97,3 +97,62 @@ fn find_unused_port(transport: Transport, socket_addr: SocketAddr) -> Result<u16
 
     Ok(local_addr.port())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tcp4_returns_nonzero_port() {
+        let port = unused_tcp4_port().unwrap();
+        assert_ne!(port, 0, "should return a non-zero port");
+    }
+
+    #[test]
+    fn udp4_returns_nonzero_port() {
+        let port = unused_udp4_port().unwrap();
+        assert_ne!(port, 0, "should return a non-zero port");
+    }
+
+    #[test]
+    fn tcp6_returns_nonzero_port() {
+        let port = unused_tcp6_port().unwrap();
+        assert_ne!(port, 0, "should return a non-zero port");
+    }
+
+    #[test]
+    fn udp6_returns_nonzero_port() {
+        let port = unused_udp6_port().unwrap();
+        assert_ne!(port, 0, "should return a non-zero port");
+    }
+
+    #[test]
+    fn consecutive_calls_return_different_ports() {
+        let port1 = unused_tcp4_port().unwrap();
+        let port2 = unused_tcp4_port().unwrap();
+        assert_ne!(
+            port1, port2,
+            "consecutive calls should return different ports"
+        );
+    }
+
+    #[test]
+    fn tcp_and_udp_can_return_different_ports() {
+        let tcp_port = unused_tcp4_port().unwrap();
+        let udp_port = unused_udp4_port().unwrap();
+        // They might occasionally collide, but the cache should prevent it
+        assert_ne!(
+            tcp_port, udp_port,
+            "tcp and udp ports should differ (cache dedup)"
+        );
+    }
+
+    #[test]
+    fn many_ports_are_unique() {
+        let mut ports = std::collections::HashSet::new();
+        for _ in 0..20 {
+            let port = unused_tcp4_port().unwrap();
+            assert!(ports.insert(port), "port {} was returned twice", port);
+        }
+    }
+}
