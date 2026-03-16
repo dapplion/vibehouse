@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1575 (Mar 16) — health check, nightly slasher flake investigated
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure is flaky: `override_backend_with_mdbx_file_present` — passes locally with all feature combos (mdbx-only, lmdb, all-backends). Likely CI tempdir race.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e. No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932 (head a0d0a66240), #4939 (2b9e66eca3), #4960 (14c8211cda), #4962 (f15c2043c7), #4992 (d76a278b0a), #5008 (162257dcc6) all still OPEN, no merges.
+- cargo update: 0 semver-compatible crate updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1574 (Mar 16) — health check, all stable
 
 **Health check**: all stable
