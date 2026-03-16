@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1647 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly re-run passed (flaky slasher test was fixed in prior commit), CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e (#5005). No new merges.
+- PR #4992 (cached PTCs in state) — still OPEN, NOT MERGED.
+- Open Gloas PRs: #5008 (field name fix), #4992 (cached PTCs), #4962 (sanity/blocks missed payload withdrawal tests), #4960 (fork choice deposit with reorg test).
+- cargo audit unchanged (1 rsa, 5 warnings transitive).
+- No actionable work.
+
 ### run 1646 (Mar 16) — health check, all stable
 
 **Health check**: all stable
