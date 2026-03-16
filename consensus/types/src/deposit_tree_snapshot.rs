@@ -101,9 +101,10 @@ mod tests {
 
     #[test]
     fn invalid_snapshot_wrong_root() {
-        let mut snapshot = DepositTreeSnapshot::default();
-        // Corrupt the deposit root
-        snapshot.deposit_root = Hash256::from_low_u64_be(42);
+        let snapshot = DepositTreeSnapshot {
+            deposit_root: Hash256::from_low_u64_be(42),
+            ..Default::default()
+        };
         assert!(
             !snapshot.is_valid(),
             "snapshot with wrong root should be invalid"
