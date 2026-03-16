@@ -102,3 +102,95 @@ impl ApiSecret {
         ]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn constants() {
+        assert_eq!(PK_FILENAME, "api-token.txt");
+        assert_eq!(PK_LEN, 33);
+    }
+
+    #[test]
+    fn create_new_token() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(PK_FILENAME);
+        let secret = ApiSecret::create_or_open(&path).unwrap();
+        assert_eq!(secret.api_token().len(), PK_LEN);
+        assert_eq!(secret.api_token_path(), path);
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn open_existing_token() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(PK_FILENAME);
+        let secret1 = ApiSecret::create_or_open(&path).unwrap();
+        let secret2 = ApiSecret::create_or_open(&path).unwrap();
+        assert_eq!(secret1.api_token(), secret2.api_token());
+    }
+
+    #[test]
+    fn auth_header_values_basic_and_bearer() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(PK_FILENAME);
+        let secret = ApiSecret::create_or_open(&path).unwrap();
+        let headers = secret.auth_header_values();
+        assert_eq!(headers.len(), 2);
+        assert!(headers[0].starts_with("Basic "));
+        assert!(headers[1].starts_with("Bearer "));
+        let token = secret.api_token();
+        assert_eq!(headers[0], format!("Basic {}", token));
+        assert_eq!(headers[1], format!("Bearer {}", token));
+    }
+
+    #[test]
+    fn rejects_directory_path() {
+        let dir = tempdir().unwrap();
+        let result = ApiSecret::create_or_open(dir.path());
+        match result {
+            Err(e) => assert!(
+                e.contains("directory"),
+                "Expected 'directory' in error: {}",
+                e
+            ),
+            Ok(_) => panic!("Expected error for directory path"),
+        }
+    }
+
+    #[test]
+    fn creates_parent_directories() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("nested").join("dir").join(PK_FILENAME);
+        let secret = ApiSecret::create_or_open(&path).unwrap();
+        assert_eq!(secret.api_token().len(), PK_LEN);
+        assert!(path.exists());
+    }
+
+    #[test]
+    fn token_is_alphanumeric() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join(PK_FILENAME);
+        let secret = ApiSecret::create_or_open(&path).unwrap();
+        assert!(
+            secret
+                .api_token()
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric())
+        );
+    }
+
+    #[test]
+    fn two_creates_different_tokens() {
+        let dir = tempdir().unwrap();
+        let path1 = dir.path().join("token1.txt");
+        let path2 = dir.path().join("token2.txt");
+        let s1 = ApiSecret::create_or_open(&path1).unwrap();
+        let s2 = ApiSecret::create_or_open(&path2).unwrap();
+        // Extremely unlikely to be equal with 33 random alphanumeric chars
+        assert_ne!(s1.api_token(), s2.api_token());
+    }
+}

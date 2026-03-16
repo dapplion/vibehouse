@@ -160,3 +160,174 @@ pub struct SigningRequest<'a, E: EthSpec, Payload: AbstractExecPayload<E>> {
 pub struct SigningResponse {
     pub signature: Signature,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use types::MinimalEthSpec;
+
+    type E = MinimalEthSpec;
+
+    #[test]
+    fn message_type_serde_screaming_snake() {
+        assert_eq!(
+            serde_json::to_string(&MessageType::AggregationSlot).unwrap(),
+            r#""AGGREGATION_SLOT""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::AggregateAndProof).unwrap(),
+            r#""AGGREGATE_AND_PROOF""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::Attestation).unwrap(),
+            r#""ATTESTATION""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::BlockV2).unwrap(),
+            r#""BLOCK_V2""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::Deposit).unwrap(),
+            r#""DEPOSIT""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::RandaoReveal).unwrap(),
+            r#""RANDAO_REVEAL""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::VoluntaryExit).unwrap(),
+            r#""VOLUNTARY_EXIT""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::SyncCommitteeMessage).unwrap(),
+            r#""SYNC_COMMITTEE_MESSAGE""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::SyncCommitteeSelectionProof).unwrap(),
+            r#""SYNC_COMMITTEE_SELECTION_PROOF""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::SyncCommitteeContributionAndProof).unwrap(),
+            r#""SYNC_COMMITTEE_CONTRIBUTION_AND_PROOF""#
+        );
+        assert_eq!(
+            serde_json::to_string(&MessageType::ValidatorRegistration).unwrap(),
+            r#""VALIDATOR_REGISTRATION""#
+        );
+    }
+
+    #[test]
+    fn fork_name_serde_screaming_snake() {
+        assert_eq!(
+            serde_json::to_string(&ForkName::Phase0).unwrap(),
+            r#""PHASE0""#
+        );
+        assert_eq!(
+            serde_json::to_string(&ForkName::Altair).unwrap(),
+            r#""ALTAIR""#
+        );
+        assert_eq!(
+            serde_json::to_string(&ForkName::Bellatrix).unwrap(),
+            r#""BELLATRIX""#
+        );
+        assert_eq!(
+            serde_json::to_string(&ForkName::Capella).unwrap(),
+            r#""CAPELLA""#
+        );
+        assert_eq!(
+            serde_json::to_string(&ForkName::Deneb).unwrap(),
+            r#""DENEB""#
+        );
+        assert_eq!(
+            serde_json::to_string(&ForkName::Electra).unwrap(),
+            r#""ELECTRA""#
+        );
+        assert_eq!(serde_json::to_string(&ForkName::Fulu).unwrap(), r#""FULU""#);
+        assert_eq!(
+            serde_json::to_string(&ForkName::Gloas).unwrap(),
+            r#""GLOAS""#
+        );
+    }
+
+    #[test]
+    fn fork_name_eq_and_copy() {
+        let f = ForkName::Gloas;
+        let f2 = f; // Copy
+        assert_eq!(f, f2);
+        assert_ne!(ForkName::Phase0, ForkName::Altair);
+    }
+
+    #[test]
+    fn message_type_eq_and_copy() {
+        let m = MessageType::Attestation;
+        let m2 = m; // Copy
+        assert_eq!(m, m2);
+        assert_ne!(MessageType::Attestation, MessageType::Deposit);
+    }
+
+    #[test]
+    fn message_type_aggregation_slot() {
+        let obj: Web3SignerObject<E, FullPayload<E>> = Web3SignerObject::AggregationSlot {
+            slot: Slot::new(42),
+        };
+        assert_eq!(obj.message_type(), MessageType::AggregationSlot);
+    }
+
+    #[test]
+    fn message_type_attestation() {
+        let data = AttestationData::default();
+        let obj: Web3SignerObject<E, FullPayload<E>> = Web3SignerObject::Attestation(&data);
+        assert_eq!(obj.message_type(), MessageType::Attestation);
+    }
+
+    #[test]
+    fn message_type_randao_reveal() {
+        let obj: Web3SignerObject<E, FullPayload<E>> = Web3SignerObject::RandaoReveal {
+            epoch: Epoch::new(1),
+        };
+        assert_eq!(obj.message_type(), MessageType::RandaoReveal);
+    }
+
+    #[test]
+    fn message_type_voluntary_exit() {
+        let exit = VoluntaryExit {
+            epoch: Epoch::new(1),
+            validator_index: 0,
+        };
+        let obj: Web3SignerObject<E, FullPayload<E>> = Web3SignerObject::VoluntaryExit(&exit);
+        assert_eq!(obj.message_type(), MessageType::VoluntaryExit);
+    }
+
+    #[test]
+    fn message_type_sync_committee_message() {
+        let obj: Web3SignerObject<E, FullPayload<E>> = Web3SignerObject::SyncCommitteeMessage {
+            beacon_block_root: Hash256::zero(),
+            slot: Slot::new(0),
+        };
+        assert_eq!(obj.message_type(), MessageType::SyncCommitteeMessage);
+    }
+
+    #[test]
+    fn fork_info_serde() {
+        let fi = ForkInfo {
+            fork: Fork {
+                previous_version: [0; 4],
+                current_version: [1; 4],
+                epoch: Epoch::new(10),
+            },
+            genesis_validators_root: Hash256::zero(),
+        };
+        let json = serde_json::to_string(&fi).unwrap();
+        assert!(json.contains("previous_version"));
+        assert!(json.contains("genesis_validators_root"));
+    }
+
+    #[test]
+    fn aggregation_slot_serde() {
+        let obj: Web3SignerObject<E, FullPayload<E>> = Web3SignerObject::AggregationSlot {
+            slot: Slot::new(99),
+        };
+        let json = serde_json::to_string(&obj).unwrap();
+        assert!(json.contains("99"));
+    }
+}

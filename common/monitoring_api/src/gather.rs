@@ -209,3 +209,99 @@ pub fn gather_validator_metrics() -> Result<ValidatorProcessMetrics, String> {
         common: process,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn json_metric_integer_typed_value() {
+        let metric = JsonMetric::new("test", "test_out", JsonType::Integer);
+        assert_eq!(metric.get_typed_value(42), json!(42));
+        assert_eq!(metric.get_typed_value(0), json!(0));
+        assert_eq!(metric.get_typed_value(-1), json!(-1));
+    }
+
+    #[test]
+    fn json_metric_boolean_typed_value() {
+        let metric = JsonMetric::new("test", "test_out", JsonType::Boolean);
+        assert_eq!(metric.get_typed_value(1), json!(true));
+        assert_eq!(metric.get_typed_value(100), json!(true));
+        assert_eq!(metric.get_typed_value(0), json!(false));
+        assert_eq!(metric.get_typed_value(-1), json!(false));
+    }
+
+    #[test]
+    fn json_metric_integer_default() {
+        let metric = JsonMetric::new("test", "test_out", JsonType::Integer);
+        assert_eq!(metric.get_typed_value_default(), json!(0));
+    }
+
+    #[test]
+    fn json_metric_boolean_default() {
+        let metric = JsonMetric::new("test", "test_out", JsonType::Boolean);
+        assert_eq!(metric.get_typed_value_default(), json!(false));
+    }
+
+    #[test]
+    fn json_metric_fields() {
+        let metric = JsonMetric::new("vibehouse_metric", "json_key", JsonType::Integer);
+        assert_eq!(metric.vibehouse_metric_name, "vibehouse_metric");
+        assert_eq!(metric.json_output_key, "json_key");
+    }
+
+    #[test]
+    fn beacon_metrics_map_contains_expected_keys() {
+        assert!(BEACON_METRICS_MAP.contains_key("sync_eth1_connected"));
+        assert!(BEACON_METRICS_MAP.contains_key("libp2p_peers"));
+        assert!(BEACON_METRICS_MAP.contains_key("notifier_head_slot"));
+        assert!(BEACON_METRICS_MAP.contains_key("sync_eth2_synced"));
+        assert_eq!(BEACON_METRICS_MAP.len(), BEACON_PROCESS_METRICS.len());
+    }
+
+    #[test]
+    fn validator_metrics_map_contains_expected_keys() {
+        assert!(VALIDATOR_METRICS_MAP.contains_key("vc_validators_enabled_count"));
+        assert!(VALIDATOR_METRICS_MAP.contains_key("vc_validators_total_count"));
+        assert_eq!(VALIDATOR_METRICS_MAP.len(), VALIDATOR_PROCESS_METRICS.len());
+    }
+
+    #[test]
+    fn gather_metrics_with_empty_map_returns_empty_object() {
+        let empty_map = HashMap::new();
+        let result = gather_metrics(&empty_map).unwrap();
+        assert!(result.as_object().unwrap().is_empty());
+    }
+
+    #[test]
+    fn gather_metrics_fills_defaults_for_missing_metrics() {
+        let mut map = HashMap::new();
+        map.insert(
+            "nonexistent_metric".to_string(),
+            JsonMetric::new("nonexistent_metric", "output_key", JsonType::Integer),
+        );
+        let result = gather_metrics(&map).unwrap();
+        let obj = result.as_object().unwrap();
+        assert_eq!(obj.get("output_key"), Some(&json!(0)));
+    }
+
+    #[test]
+    fn gather_metrics_boolean_default() {
+        let mut map = HashMap::new();
+        map.insert(
+            "missing_bool".to_string(),
+            JsonMetric::new("missing_bool", "bool_key", JsonType::Boolean),
+        );
+        let result = gather_metrics(&map).unwrap();
+        let obj = result.as_object().unwrap();
+        assert_eq!(obj.get("bool_key"), Some(&json!(false)));
+    }
+
+    #[test]
+    fn json_metric_clone() {
+        let metric = JsonMetric::new("a", "b", JsonType::Integer);
+        let cloned = metric.clone();
+        assert_eq!(cloned.vibehouse_metric_name, "a");
+        assert_eq!(cloned.json_output_key, "b");
+    }
+}

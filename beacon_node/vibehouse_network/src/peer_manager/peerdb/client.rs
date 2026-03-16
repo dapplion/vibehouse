@@ -216,3 +216,202 @@ fn client_from_agent_version(agent_version: &str) -> (ClientKind, String, String
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn client_default() {
+        let client = Client::default();
+        assert_eq!(client.kind, ClientKind::Unknown);
+        assert_eq!(client.version, "unknown");
+        assert_eq!(client.os_version, "unknown");
+        assert_eq!(client.protocol_version, "unknown");
+        assert!(client.agent_string.is_none());
+    }
+
+    #[test]
+    fn parse_vibehouse_agent() {
+        let (kind, version, os) = client_from_agent_version("vibehouse/v1.0.0/linux");
+        assert_eq!(kind, ClientKind::Vibehouse);
+        assert_eq!(version, "v1.0.0");
+        assert_eq!(os, "linux");
+    }
+
+    #[test]
+    fn parse_lighthouse_agent() {
+        let (kind, version, os) = client_from_agent_version("Lighthouse/v5.3.0/x86_64-linux");
+        assert_eq!(kind, ClientKind::Lighthouse);
+        assert_eq!(version, "v5.3.0");
+        assert_eq!(os, "x86_64-linux");
+    }
+
+    #[test]
+    fn parse_teku_agent() {
+        let (kind, version, os) = client_from_agent_version("teku/teku/v24.1.0/linux-x86_64");
+        assert_eq!(kind, ClientKind::Teku);
+        assert_eq!(version, "v24.1.0");
+        assert_eq!(os, "linux-x86_64");
+    }
+
+    #[test]
+    fn parse_prysm_github_agent() {
+        let (kind, version, _) = client_from_agent_version("github.com/prysmaticlabs/prysm");
+        assert_eq!(kind, ClientKind::Prysm);
+        assert_eq!(version, "unknown");
+    }
+
+    #[test]
+    fn parse_prysm_named_agent() {
+        let (kind, version, os) = client_from_agent_version("Prysm/unused/v5.0.0/linux");
+        assert_eq!(kind, ClientKind::Prysm);
+        assert_eq!(version, "v5.0.0");
+        assert_eq!(os, "linux");
+    }
+
+    #[test]
+    fn parse_nimbus_agent() {
+        let (kind, version, os) = client_from_agent_version("nimbus/unused/v24.1.0/linux");
+        assert_eq!(kind, ClientKind::Nimbus);
+        assert_eq!(version, "v24.1.0");
+        assert_eq!(os, "linux");
+    }
+
+    #[test]
+    fn parse_nim_libp2p_agent() {
+        let (kind, version, os) = client_from_agent_version("nim-libp2p/v1.0.0/linux");
+        assert_eq!(kind, ClientKind::Nimbus);
+        assert_eq!(version, "v1.0.0");
+        assert_eq!(os, "linux");
+    }
+
+    #[test]
+    fn parse_lodestar_js_agent() {
+        let (kind, version, _) = client_from_agent_version("js-libp2p/v0.45.0");
+        assert_eq!(kind, ClientKind::Lodestar);
+        assert_eq!(version, "v0.45.0");
+    }
+
+    #[test]
+    fn parse_lodestar_named_agent() {
+        let (kind, version, _) = client_from_agent_version("lodestar/v1.12.0");
+        assert_eq!(kind, ClientKind::Lodestar);
+        assert_eq!(version, "v1.12.0");
+    }
+
+    #[test]
+    fn parse_caplin_agent() {
+        let (kind, _, _) = client_from_agent_version("erigon/caplin");
+        assert_eq!(kind, ClientKind::Caplin);
+    }
+
+    #[test]
+    fn parse_erigon_non_caplin() {
+        let (kind, _, _) = client_from_agent_version("erigon/other");
+        assert_eq!(kind, ClientKind::Unknown);
+    }
+
+    #[test]
+    fn parse_unknown_agent() {
+        let (kind, version, os) = client_from_agent_version("something_random");
+        assert_eq!(kind, ClientKind::Unknown);
+        assert_eq!(version, "unknown");
+        assert_eq!(os, "unknown");
+    }
+
+    #[test]
+    fn parse_empty_agent() {
+        let (kind, _, _) = client_from_agent_version("");
+        assert_eq!(kind, ClientKind::Unknown);
+    }
+
+    #[test]
+    fn parse_vibehouse_no_version() {
+        let (kind, version, _) = client_from_agent_version("vibehouse");
+        assert_eq!(kind, ClientKind::Vibehouse);
+        assert_eq!(version, "unknown");
+    }
+
+    #[test]
+    fn client_display_vibehouse() {
+        let client = Client {
+            kind: ClientKind::Vibehouse,
+            version: "v1.0.0".into(),
+            os_version: "linux".into(),
+            protocol_version: "unknown".into(),
+            agent_string: None,
+        };
+        let display = format!("{}", client);
+        assert!(display.contains("vibehouse"));
+        assert!(display.contains("v1.0.0"));
+        assert!(display.contains("linux"));
+    }
+
+    #[test]
+    fn client_display_unknown_with_agent() {
+        let client = Client {
+            kind: ClientKind::Unknown,
+            version: "unknown".into(),
+            os_version: "unknown".into(),
+            protocol_version: "unknown".into(),
+            agent_string: Some("mystery/v1".into()),
+        };
+        assert!(format!("{}", client).contains("mystery/v1"));
+    }
+
+    #[test]
+    fn client_display_unknown_without_agent() {
+        let client = Client {
+            kind: ClientKind::Unknown,
+            version: "unknown".into(),
+            os_version: "unknown".into(),
+            protocol_version: "unknown".into(),
+            agent_string: None,
+        };
+        assert_eq!(format!("{}", client), "Unknown");
+    }
+
+    #[test]
+    fn client_kind_display() {
+        assert_eq!(format!("{}", ClientKind::Vibehouse), "Vibehouse");
+        assert_eq!(format!("{}", ClientKind::Lighthouse), "Lighthouse");
+        assert_eq!(format!("{}", ClientKind::Unknown), "Unknown");
+    }
+
+    #[test]
+    fn client_kind_enum_iter() {
+        let kinds: Vec<ClientKind> = ClientKind::iter().collect();
+        assert!(kinds.contains(&ClientKind::Vibehouse));
+        assert!(kinds.contains(&ClientKind::Lighthouse));
+        assert!(kinds.contains(&ClientKind::Nimbus));
+        assert!(kinds.contains(&ClientKind::Teku));
+        assert!(kinds.contains(&ClientKind::Prysm));
+        assert!(kinds.contains(&ClientKind::Lodestar));
+        assert!(kinds.contains(&ClientKind::Caplin));
+        assert!(kinds.contains(&ClientKind::Unknown));
+        assert_eq!(kinds.len(), 8);
+    }
+
+    #[test]
+    fn client_kind_as_ref_str() {
+        assert_eq!(ClientKind::Vibehouse.as_ref(), "Vibehouse");
+        assert_eq!(ClientKind::Lighthouse.as_ref(), "Lighthouse");
+    }
+
+    #[test]
+    fn client_clone() {
+        let client = Client {
+            kind: ClientKind::Teku,
+            version: "v24.1.0".into(),
+            os_version: "linux".into(),
+            protocol_version: "ipfs/0.1.0".into(),
+            agent_string: Some("teku/teku/v24.1.0/linux".into()),
+        };
+        let cloned = client.clone();
+        assert_eq!(cloned.kind, client.kind);
+        assert_eq!(cloned.version, client.version);
+        assert_eq!(cloned.agent_string, client.agent_string);
+    }
+}

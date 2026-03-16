@@ -8774,6 +8774,7 @@ dependencies = [
  "parking_lot",
  "reqwest",
  "serde",
+ "serde_json",
  "task_executor",
  "types",
  "url",
