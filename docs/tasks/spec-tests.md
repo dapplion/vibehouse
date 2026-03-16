@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1553 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher fix confirmed working.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e. No new commits.
+- All tracked PRs (#4932, #4939, #4960, #4962, #4992, #5008) still OPEN, no merges.
+- Verified PR #5008 (block_root→beacon_block_root rename) is a spec text fix only — SSZ is positional, no wire protocol impact. Our `block_roots` field name is fine.
+- No actionable work — project in maintenance mode.
+
 ### run 1552 (Mar 16) — health check, all stable
 
 **Health check**: all stable
