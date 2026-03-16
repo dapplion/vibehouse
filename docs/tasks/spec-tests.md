@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1664 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since last check.
+- Recently merged Gloas PRs (post-alpha.3): #5005 (test fix), #4940 (fork choice tests, already in vectors), #5001 (parent_block_root bid filtering, already implemented).
+- Open Gloas PRs: #4992, #4960, #4932, #4843, #4840, #4630. All OPEN, NOT MERGED.
+- cargo check: 0 warnings. cargo audit: unchanged (1 vuln rsa/RUSTSEC-2023-0071, 5 allowed).
+- No actionable work.
+
 ### run 1663 (Mar 17) — health check, all stable
 
 **Health check**: all stable
