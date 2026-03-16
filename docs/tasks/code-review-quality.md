@@ -1631,3 +1631,17 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 - Filesystem-bound utilities (eth2_wallet_manager filesystem.rs, locked_wallet.rs)
 
 **Conclusion**: Unit test coverage task has reached diminishing returns. Future test improvements should focus on integration-level testing which requires different infrastructure (test harnesses, mock chains, etc.).
+
+#### Run 1464 — Status assessment and PLAN.md cleanup
+
+**Scope**: Reviewed project status across all priorities, checked for spec updates, assessed CI health.
+
+**Findings**:
+- All 8 Gloas phases complete, all devnet scenarios pass, all spec tests pass (79/79 + 139/139)
+- Spec tracked to v1.7.0-alpha.3 (latest release as of 2026-03-13) — all Gloas changes from alpha.3 verified as implemented (#4897, #4884, #4923, #4918, #5001, #4930, #4948)
+- CI healthy: nightly tests passing consistently, all check/clippy/fmt/ef-tests green
+- Codebase clean: zero clippy warnings, zero compiler warnings, zero TODO/FIXME in Gloas code
+- Heze (next fork, FOCIL/EIP-7805) spec exists but is still WIP — not yet actionable
+- EIP-8025 (execution proofs) spec changes are for a standalone feature, not part of Gloas — vibehouse's ZK approach diverges from spec's signed-proof model intentionally
+
+**Action**: Condensed the massive test coverage list in PLAN.md from ~200 lines to a concise summary reflecting completion status.
