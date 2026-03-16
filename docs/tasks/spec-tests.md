@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1508 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure was stale (ran before fix). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged).
+- PR #4992 (cached PTCs): still OPEN, not merged. PR #4962 (sanity/blocks tests): still OPEN.
+- `cargo audit`: same `rsa` RUSTSEC-2023-0071 (no fix available). Nothing actionable.
+- `cargo update --dry-run`: 0 semver-compatible updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1507 (Mar 16) — health check, all stable
 
 **Health check**: all stable
