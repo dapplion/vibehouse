@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1626 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly re-triggered (run 23164776090) after slasher fix, queued. Last push CI green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e.
+- Post-alpha.3 merges reviewed: #5001 (bid filtering key — we already implement this correctly), #5002 (wording only), #5005 (test fix only). No code changes needed.
+- Notable open PR: #4992 (cached PTCs in state) — significant spec change, not yet merged.
+- No semver-compatible cargo updates. No actionable work.
+
 ### run 1625 (Mar 16) — health check, all stable
 
 **Health check**: all stable
