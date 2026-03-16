@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1502 (Mar 16) — PR #4992 analysis + prototype (reverted)
+
+**PR #4992 (cached PTCs)**: now APPROVED, not yet merged.
+- Prototyped full implementation: 2 new state fields (`previous_ptc`, `current_ptc`), `compute_ptc` (state.slot), `get_ptc` (reads cached), `process_slots` rotation, `upgrade_to_gloas` init, all callers updated.
+- 33 files, ~263 insertions. All 1021 state_processing tests pass.
+- **Reverted**: EF spec test vectors are v1.7.0-alpha.3 (pre-PR-4992). SSZ deserialization fails because BeaconState doesn't have the new fields in test vectors. Must wait for alpha.4 or merge + new vectors.
+- Implementation notes for when it merges:
+  - `compute_ptc_for_slot` (slot param) kept for duty endpoint lookups
+  - `compute_ptc` (state.slot) used by process_slots rotation
+  - `get_ptc` reads `current_ptc`/`previous_ptc` from state
+  - `upgrade_to_gloas` builds caches then computes initial PTC (tolerant of empty committees)
+  - Many test helpers need `previous_ptc`/`current_ptc` fields + committee caches
+- Open Gloas PRs (11): #5008, #4992, #4962, #4960, #4939, #4932, #4892, #4843, #4840, #4630, #4747
+
 ### run 1501 (Mar 16) — health check, all stable
 
 **Health check**: all stable
