@@ -4722,3 +4722,13 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - All 8 tracked open Gloas PRs (#4992, #4747, #4954, #4939, #4898, #4892, #4843, #4840) remain open, no status changes.
 - Nightly passed (run 23164776090) — slasher fix confirmed working in CI.
 - CI green. All stable. No action needed.
+
+### Run 1648 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new tags or releases. Latest published release v1.6.1.
+- No new merged Gloas PRs since #5005 (Mar 15). Last 5 merges unchanged: #5005, #5004, #4940, #5002, #5001.
+- PR #4992 (cached PTCs): still open, mergeable, same head d76a278b0a. Discussion ongoing.
+- PR #4747 (Fast Confirmation Rule): updated today (head 592c755dee), NOT mergeable (conflicts). Still under active review.
+- Other tracked open Gloas PRs (#5008, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630): no status changes.
+- No semver-compatible cargo dep updates. cargo audit unchanged (1 rsa, 5 warnings).
+- Rebased `ptc-lookbehind` branch onto main (87 commits behind → current). 1021/1021 state_processing tests pass. Pushed.
+- CI green. Nightly green. All stable. No action needed.
