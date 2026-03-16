@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1468 (Mar 16) — health check + devnet verification
+
+**Health check**: all green
+- CI: all 7 jobs green (run 1465 completed successfully)
+- Nightly tests: green (6 consecutive days, 26/26 jobs green)
+- Spec: v1.7.0-alpha.3 still latest. Post-tag commits: #5004 (release notes), #5005 (test fix), #5002 (wording clarification) — no spec logic changes
+- Open Gloas PRs tracked: #4992 (cached PTCs, 1 approval), #4843 (variable PTC deadline), #4960 (fork choice deposit test), #4932 (sanity/blocks tests), #4840 (eip7843), #4630 (eip7688 SSZ) — none merged
+- cargo audit: clean (except known rsa RUSTSEC-2023-0071, new bincode RUSTSEC-2025-0141 unmaintained warning)
+- PR #5001 (parent_block_root in bid filtering key) already implemented — our `observed_execution_bids.rs` uses `(slot, parent_block_hash, parent_block_root)` tuple
+
+**Devnet verification**: 4-node kurtosis devnet passed
+- Run ID: 20260316-083837
+- Finalized epoch 8 in 468s (target: 8)
+- Gloas fork at epoch 1 (slot 8), chain healthy through epoch 10
+- All 4 CL+EL node pairs running, no stalls
+
 ### run 1467 (Mar 16) — health check + devnet verification
 
 **Health check**: all green
