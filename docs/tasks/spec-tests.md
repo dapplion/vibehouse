@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1527 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure confirmed stale (ran before fix b79292d35).
+- Spec: v1.7.0-alpha.3 still latest. HEAD still at 1baa05e.
+- Recently merged post-alpha.3: #5001 (parent_block_root in bid filtering key) — vibehouse already implements this correctly (observed_execution_bids.rs uses `(Slot, ExecutionBlockHash, Hash256)` key). #5005 (test-only fix). #5002 (wording clarification). #4940 (fork choice tests — will appear in next test release).
+- All monitored PRs still OPEN: #4992, #4954, #4962, #4960, #4939, #4932, #4843, #4840, #4630.
+- No actionable work — project in maintenance mode.
+
 ### run 1525 (Mar 16) — health check, all stable
 
 **Health check**: all stable
