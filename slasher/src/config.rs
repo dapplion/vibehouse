@@ -421,8 +421,18 @@ mod tests {
     #[test]
     fn override_backend_with_mdbx_file_present() {
         let dir = tempdir().unwrap();
-        // Create the mdbx data file
-        std::fs::write(dir.path().join(MDBX_DATA_FILENAME), b"data").unwrap();
+        let mdbx_path = dir.path().join(MDBX_DATA_FILENAME);
+        // Create the mdbx data file and ensure it's flushed to disk
+        {
+            let file = std::fs::File::create(&mdbx_path).unwrap();
+            std::io::Write::write_all(&mut &file, b"data").unwrap();
+            file.sync_all().unwrap();
+        }
+        assert!(
+            mdbx_path.exists(),
+            "mdbx data file should exist at {}",
+            mdbx_path.display()
+        );
         let mut config = Config::new(dir.path().into());
         // Force a non-mdbx backend so the override has something to change
         config.backend = DatabaseBackend::Disabled;

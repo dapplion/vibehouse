@@ -107,6 +107,11 @@ store-success-output = false
 # <description> element.
 store-failure-output = true
 
+# Retry flaky slasher config test that intermittently fails in CI due to tmpfs timing
+[[profile.default.overrides]]
+filter = 'test(override_backend_with_mdbx_file_present)'
+retries = 2
+
 # This profile is activated if MIRI_SYSROOT is set.
 [profile.default-miri]
 # Miri tests take up a lot of memory, so only run 1 test at a time by default.
