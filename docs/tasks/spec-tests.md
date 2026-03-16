@@ -29,6 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1495 (Mar 16) — fixed slasher nightly test failure
+
+**Slasher test fix**: `override_backend_with_mdbx_file_present` was failing when `mdbx` feature is the default backend. `Config::new` sets `backend=Mdbx`, so `already_mdbx=true` and `override_backend` returns `Noop` instead of `Success`. Fix: force `backend=Disabled` before testing override path.
+
+**Spec check**: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged). PR #4992 (cached PTCs) still OPEN, same head d76a278.
+- Recent merge #5001 (add parent_block_root to bid filtering key): already implemented in vibehouse — our `is_highest_value_bid` already uses `(slot, parent_block_hash, parent_block_root)` tuple.
+
 ### run 1494 (Mar 16) — health check, all stable
 
 **Health check**: all green
