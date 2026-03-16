@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1588 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (09:36) was pre-fix — next nightly confirms.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD moved to 1baa05e7 (5 commits post-tag).
+- Post-alpha.3 merged PRs reviewed: #5001 (parent_block_root in bid filtering — already implemented), #5002 (wording only), #4940 (fork choice test generators), #5004 (release notes), #5005 (builder voluntary exit test).
+- Tracked PRs: #4992, #4954, #4939, #4898, #4892, #4843, #4932, #4960, #4962, #5008 — all still OPEN.
+- Spec tests: v1.6.0-beta.0 still latest test vectors. No new releases.
+- No actionable work — project in maintenance mode.
+
 ### run 1587 (Mar 16) — health check, all stable
 
 **Health check**: all stable
