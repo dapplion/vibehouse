@@ -110,6 +110,12 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1465 (Mar 16) — spec stable, dep update, ptc-lookbehind rebased
+
+Spec stable — latest commit #5005 (test-only fix, "Fix builder voluntary exit success test", merged Mar 15). v1.7.0-alpha.3 still latest release. No new spec-test vectors (old repo archived Oct 2025). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a), active discussion between potuz/jihoonsong about `get_ptc_assignment` lookbehind section wording. New PR #5008 (doc-only: `block_root`→`beacon_block_root` naming fix in p2p-interface.md) — no code impact.
+
+Updated num_enum 0.7.5→0.7.6. Nightly green (3 consecutive). Rebased `ptc-lookbehind` branch onto main (130 commits behind → current). Fixed 12 test files missing PTC fields after rebase. 1021/1021 state_processing tests pass. Gloas EF fork choice tests fail as expected (SSZ layout change — needs new test vectors after PR #4992 merges).
+
 ### run 1219 (Mar 14) — spec stable, ptc-lookbehind rebased
 
 Spec stable — no new consensus-specs commits since #5004 (latest e50889e1ca). PR #4992 still OPEN, NOT MERGED (1 APPROVED, same head d76a278b0a). No new spec-test vectors (latest v1.6.0-beta.0). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). Nightly green (3 consecutive). No new Gloas-related PRs opened.
