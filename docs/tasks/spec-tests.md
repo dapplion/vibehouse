@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1520 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure was stale (ran before fix b79292d35). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest (v1.6.1 is latest non-alpha). HEAD still at 1baa05e (unchanged).
+- No new spec PRs merged since last check.
+- All monitored PRs (#4992, #5008, #4962, #4939, #4960, #4932, #4843, #4840, #4630) still OPEN.
+- Local test run: 2430/2430 core consensus tests pass (proto_array, fork_choice, types, state_processing).
+- No actionable work — project in maintenance mode.
+
 ### run 1519 (Mar 16) — health check, all stable
 
 **Health check**: all stable
