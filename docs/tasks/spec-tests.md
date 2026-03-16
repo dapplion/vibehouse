@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1639 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly (23164776090) passed, CI green, spec-test-version-check green.
+- Codebase: zero clippy warnings, zero compiler warnings.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #4992 (cached PTCs in state) — still open, active discussion (potuz, jihoonsong, ensi321 commenting today). 1 APPROVED (jtraglia). NOT merged.
+- PR #4892 (remove impossible forkchoice branch) — still open, 2 APPROVEDs. vibehouse already handles this correctly (uses `==` not `<=`).
+- PR #4939, #4960, #4932 — still open.
+- cargo audit: unchanged (1 vuln rsa, 5 warnings transitive). Not actionable.
+- No actionable work.
+
 ### run 1638 (Mar 16) — health check, all stable
 
 **Health check**: all stable
