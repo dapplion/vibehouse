@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1578 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Slasher fix (run 1574) passed CI. Nightly should be green now.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e. No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges. #4992 (cached PTCs in state) and #5008 (field name fix) have recent discussion but no resolution. PR #5008 fixes docs to use `beacon_block_root` — vibehouse already uses the correct field name.
+- cargo update: 0 semver-compatible crate updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1577 (Mar 16) — health check, all stable
 
 **Health check**: all stable
