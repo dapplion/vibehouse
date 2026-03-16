@@ -1499,3 +1499,19 @@ All remaining `.clone()` calls are either:
 - **Constants** (5 tests): DEPOSIT_DATA_LEN value, gas bounds, ABI/bytecode non-empty
 
 **Verification**: 93/93 tests pass, clippy clean, pushed to origin.
+
+### Run 1447 — Unit test coverage: beacon_node_health module (54 tests)
+
+**validator_client/beacon_node_fallback/src/beacon_node_health.rs** (54 new tests, 3 existing → 57 total):
+- **BeaconNodeSyncDistanceTiers** (4 tests): default values, from_vec wrong length, cumulative values, zero modifiers
+- **compute_distance_tier** (4 tests): boundary exact match, zero is synced, very large distance, zero-threshold tiers
+- **BeaconNodeHealthTier display** (2 tests): normal tier display, zero tier display
+- **BeaconNodeHealthTier ordering** (6 tests): different tiers, synced no tiebreak on distance, small/medium/large tiebreak on distance, equality
+- **BeaconNodeHealth ordering** (6 tests): different tiers, tiebreak by user_index, higher index loses, lower tier wins over lower index, get_index, get_health_tier
+- **Exhaustive tier classification** (16 tests): all 16 possible (SyncDistanceTier × IsOptimistic × ExecutionEngineHealth) combinations verified
+- **Sorting** (2 tests): ascending by tier, same-tier by user_index
+- **Serde roundtrip** (7 tests): SyncDistanceTier, BeaconNodeHealthTier, BeaconNodeHealth, BeaconNodeSyncDistanceTiers, ExecutionEngineHealth, IsOptimistic, Config
+- **PartialOrd consistency** (2 tests): BeaconNodeHealthTier and BeaconNodeHealth consistent with Ord
+- Also added `serde_json` dev-dependency to beacon_node_fallback/Cargo.toml
+
+**Verification**: 57/57 tests pass, clippy clean, pushed to origin.
