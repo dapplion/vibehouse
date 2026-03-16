@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1493 (Mar 16) — health check, all stable
+
+**Health check**: all green
+- CI: all green (nightly queued, last 5 nightly runs all success)
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged)
+- Post-alpha.3 merges unchanged: #5005 (test fix), #5004 (docs) — no code impact
+- PR #4992 (cached PTCs): still OPEN, same head d76a278, no new commits
+- Open Gloas PRs (11): #5008, #4992, #4962, #4960, #4939, #4932, #4898, #4892, #4843, #4840, #4630
+- cargo clippy: clean (0 warnings)
+- No actionable work — project in maintenance mode, all tasks DONE
+
 ### run 1492 (Mar 16) — health check, all stable
 
 **Health check**: all green
