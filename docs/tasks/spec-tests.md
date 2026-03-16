@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1497 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: slasher fix run + nightly both in progress. Previous CI runs all green.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged).
+- PR #4992 (cached PTCs): still OPEN, same head d76a278, active discussion on `get_ptc` slot range (ensi321, potuz, jihoonsong). No new commits.
+- Open Gloas PRs unchanged: #5008, #4992, #4960, #4939, #4932, #4843, #4840, #4630
+- No actionable work — project in maintenance mode.
+
 ### run 1496 (Mar 16) — health check, slasher fix verified
 
 **Health check**: all stable
