@@ -491,7 +491,7 @@ mod test {
         };
         let slashing = ProposerSlashing {
             signed_header_1: SignedBeaconBlockHeader {
-                message: header.clone(),
+                message: header,
                 signature: Signature::empty(),
             },
             signed_header_2: SignedBeaconBlockHeader {
