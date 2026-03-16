@@ -123,23 +123,165 @@ impl arbitrary::Arbitrary<'_> for KzgCommitment {
     }
 }
 
-#[test]
-fn kzg_commitment_display() {
-    let display_commitment_str = "0x53fa…adac";
-    let display_commitment = KzgCommitment::from_str(
-        "0x53fa09af35d1d1a9e76f65e16112a9064ce30d1e4e2df98583f0f5dc2e7dd13a4f421a9c89f518fafd952df76f23adac",
-    )
-    .unwrap()
-    .to_string();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ssz::{Decode, Encode};
 
-    assert_eq!(display_commitment, display_commitment_str);
-}
+    fn sample_hex() -> &'static str {
+        "0x53fa09af35d1d1a9e76f65e16112a9064ce30d1e4e2df98583f0f5dc2e7dd13a4f421a9c89f518fafd952df76f23adac"
+    }
 
-#[test]
-fn kzg_commitment_debug() {
-    let debug_commitment_str =
-        "0x53fa09af35d1d1a9e76f65e16112a9064ce30d1e4e2df98583f0f5dc2e7dd13a4f421a9c89f518fafd952df76f23adac";
-    let debug_commitment = KzgCommitment::from_str(debug_commitment_str).unwrap();
+    fn sample_commitment() -> KzgCommitment {
+        KzgCommitment::from_str(sample_hex()).unwrap()
+    }
 
-    assert_eq!(format!("{debug_commitment:?}"), debug_commitment_str);
+    #[test]
+    fn from_str_valid() {
+        let c = sample_commitment();
+        assert_eq!(c.0[0], 0x53);
+        assert_eq!(c.0[47], 0xac);
+    }
+
+    #[test]
+    fn from_str_no_prefix() {
+        let result = KzgCommitment::from_str(
+            "53fa09af35d1d1a9e76f65e16112a9064ce30d1e4e2df98583f0f5dc2e7dd13a4f421a9c89f518fafd952df76f23adac",
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("must start with 0x"));
+    }
+
+    #[test]
+    fn from_str_wrong_length() {
+        let result = KzgCommitment::from_str("0xaabb");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("InvalidByteLength"));
+    }
+
+    #[test]
+    fn from_str_invalid_hex() {
+        let result = KzgCommitment::from_str("0xZZZZ");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn from_str_empty_hex() {
+        let result = KzgCommitment::from_str("0x");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn display_format() {
+        let c = sample_commitment();
+        let display = c.to_string();
+        assert_eq!(display, "0x53fa…adac");
+    }
+
+    #[test]
+    fn debug_format() {
+        let c = sample_commitment();
+        let debug = format!("{:?}", c);
+        assert_eq!(debug, sample_hex());
+    }
+
+    #[test]
+    fn ssz_roundtrip() {
+        let c = sample_commitment();
+        let bytes = c.as_ssz_bytes();
+        assert_eq!(bytes.len(), BYTES_PER_COMMITMENT);
+        let decoded = KzgCommitment::from_ssz_bytes(&bytes).unwrap();
+        assert_eq!(c, decoded);
+    }
+
+    #[test]
+    fn serde_roundtrip() {
+        let c = sample_commitment();
+        let json = serde_json::to_string(&c).unwrap();
+        let decoded: KzgCommitment = serde_json::from_str(&json).unwrap();
+        assert_eq!(c, decoded);
+    }
+
+    #[test]
+    fn calculate_versioned_hash_prefix() {
+        let c = sample_commitment();
+        let vh = c.calculate_versioned_hash();
+        assert_eq!(vh[0], VERSIONED_HASH_VERSION_KZG);
+    }
+
+    #[test]
+    fn versioned_hash_different_commitments() {
+        let a = sample_commitment();
+        let b = KzgCommitment([0xFF; BYTES_PER_COMMITMENT]);
+        assert_ne!(a.calculate_versioned_hash(), b.calculate_versioned_hash());
+    }
+
+    #[test]
+    fn versioned_hash_deterministic() {
+        let c = sample_commitment();
+        assert_eq!(c.calculate_versioned_hash(), c.calculate_versioned_hash());
+    }
+
+    #[test]
+    fn empty_for_testing() {
+        let c = KzgCommitment::empty_for_testing();
+        assert_eq!(c.0, [0u8; BYTES_PER_COMMITMENT]);
+    }
+
+    #[test]
+    fn equality() {
+        assert_eq!(sample_commitment(), sample_commitment());
+    }
+
+    #[test]
+    fn inequality() {
+        let a = sample_commitment();
+        let mut b_bytes = a.0;
+        b_bytes[0] ^= 0xFF;
+        assert_ne!(a, KzgCommitment(b_bytes));
+    }
+
+    #[test]
+    fn hash_usable_in_hashset() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(sample_commitment());
+        set.insert(sample_commitment());
+        assert_eq!(set.len(), 1);
+    }
+
+    #[test]
+    fn into_bytes48() {
+        let c = sample_commitment();
+        let bytes48: c_kzg::Bytes48 = c.into();
+        assert_eq!(bytes48.as_ref(), &c.0[..]);
+    }
+
+    #[test]
+    fn tree_hash_deterministic() {
+        let c = sample_commitment();
+        assert_eq!(c.tree_hash_root(), c.tree_hash_root());
+    }
+
+    #[test]
+    fn tree_hash_different_for_different_commitments() {
+        let a = sample_commitment();
+        let b = KzgCommitment([0xFF; BYTES_PER_COMMITMENT]);
+        assert_ne!(a.tree_hash_root(), b.tree_hash_root());
+    }
+
+    #[test]
+    fn serde_json_format_is_hex_string() {
+        let c = sample_commitment();
+        let json = serde_json::to_string(&c).unwrap();
+        assert!(json.starts_with('"'));
+        assert!(json.contains("0x"));
+    }
+
+    #[test]
+    fn clone_preserves_value() {
+        let c = sample_commitment();
+        let cloned = c;
+        assert_eq!(c, cloned);
+    }
 }
