@@ -4639,3 +4639,10 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - New PRs #5011, #5012: GitHub Actions updates — no code impact.
 - Nightly failure from earlier today was pre-fix timing; CI green on current main (ede1ed8c3).
 - All stable. No action needed.
+
+### Run 1640 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
+- No new merged Gloas PRs since last check. #5005 (test fix) was the last merge (2026-03-15).
+- All 8 tracked open Gloas PRs (#4992, #4747, #4954, #4939, #4898, #4892, #4843, #4840) remain open, no status changes.
+- Nightly passed (run 23164776090) — slasher fix confirmed working in CI.
+- CI green. All stable. No action needed.
