@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1507 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure was stale (ran 09:36 UTC, fix pushed 09:52 UTC). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged since Mar 15).
+- New open PR #5008 (field name docs fix in ExecutionPayloadEnvelopesByRoot) — no code impact on our implementation.
+- PR #4992 (cached PTCs): still OPEN, not merged. PR #4962 (sanity/blocks tests): still OPEN.
+- `cargo audit`: same `rsa` RUSTSEC-2023-0071 (no fix available). Nothing actionable.
+- No actionable work — project in maintenance mode.
+
 ### run 1506 (Mar 16) — health check, all stable
 
 **Health check**: all stable
