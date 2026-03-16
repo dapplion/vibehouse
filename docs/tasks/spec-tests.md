@@ -4175,3 +4175,12 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - Nightly failure confirmed as pre-fix timing — slasher test passes locally on current main.
 - Clippy clean (0 warnings), cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings).
 - All green. No action needed.
+
+### Run 1591 (2026-03-16)
+- Spec: v1.7.0-alpha.3 still latest. No new tags.
+- PR #4992 (cached PTCs): still under active debate — potuz pushing back on caching in state ("clients should cache locally"), disagreement on lookahead scope. Our `cached-ptc` branch stays unmerged.
+- PR #4747 (Fast Confirmation Rule): still under active review, mkalinin pushing fixes, etan-status providing suggestions. Not ready for implementation.
+- PR #5005 (merged): test generator fix for builder voluntary exit — no code impact.
+- Other open Gloas PRs (#5008, #4962, #4954, #4939, #4898, #4892, #4843, #4840, #4630): all previously tracked, no new implementation changes needed.
+- Nightly failure from run 23137093267 was timing (pre-fix code); fix b79292d3 is on main, next nightly will pass.
+- CI green. All priorities DONE. No action needed.
