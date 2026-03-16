@@ -1659,7 +1659,7 @@ pub struct LivenessResponseData {
     pub is_live: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ForkChoice {
     pub justified_checkpoint: Checkpoint,
     pub finalized_checkpoint: Checkpoint,
@@ -2895,6 +2895,542 @@ mod tests {
         let decoded: ExecutionProofStatus = serde_json::from_str(&json).unwrap();
         assert_eq!(status, decoded);
         assert!(decoded.received_proof_subnet_ids.is_empty());
+    }
+
+    // ── BroadcastValidation ───────────────────────────────────
+
+    #[test]
+    fn broadcast_validation_default_is_gossip() {
+        assert_eq!(BroadcastValidation::default(), BroadcastValidation::Gossip);
+    }
+
+    #[test]
+    fn broadcast_validation_from_str_all_variants() {
+        assert_eq!(
+            BroadcastValidation::from_str("gossip").unwrap(),
+            BroadcastValidation::Gossip
+        );
+        assert_eq!(
+            BroadcastValidation::from_str("consensus").unwrap(),
+            BroadcastValidation::Consensus
+        );
+        assert_eq!(
+            BroadcastValidation::from_str("consensus_and_equivocation").unwrap(),
+            BroadcastValidation::ConsensusAndEquivocation
+        );
+    }
+
+    #[test]
+    fn broadcast_validation_from_str_invalid() {
+        assert!(BroadcastValidation::from_str("invalid").is_err());
+        assert!(BroadcastValidation::from_str("GOSSIP").is_err());
+        assert!(BroadcastValidation::from_str("").is_err());
+    }
+
+    #[test]
+    fn broadcast_validation_display_roundtrip() {
+        for bv in [
+            BroadcastValidation::Gossip,
+            BroadcastValidation::Consensus,
+            BroadcastValidation::ConsensusAndEquivocation,
+        ] {
+            assert_eq!(BroadcastValidation::from_str(&bv.to_string()).unwrap(), bv);
+        }
+    }
+
+    #[test]
+    fn broadcast_validation_serde_roundtrip() {
+        for bv in [
+            BroadcastValidation::Gossip,
+            BroadcastValidation::Consensus,
+            BroadcastValidation::ConsensusAndEquivocation,
+        ] {
+            let json = serde_json::to_string(&bv).unwrap();
+            let decoded: BroadcastValidation = serde_json::from_str(&json).unwrap();
+            assert_eq!(bv, decoded);
+        }
+    }
+
+    #[test]
+    fn broadcast_validation_serde_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&BroadcastValidation::ConsensusAndEquivocation).unwrap(),
+            "\"consensus_and_equivocation\""
+        );
+    }
+
+    // ── EventTopic Display roundtrip ──────────────────────────
+
+    #[test]
+    fn event_topic_display_roundtrip_all_variants() {
+        let topics = [
+            EventTopic::Head,
+            EventTopic::Block,
+            EventTopic::BlobSidecar,
+            EventTopic::DataColumnSidecar,
+            EventTopic::Attestation,
+            EventTopic::SingleAttestation,
+            EventTopic::VoluntaryExit,
+            EventTopic::FinalizedCheckpoint,
+            EventTopic::ChainReorg,
+            EventTopic::ContributionAndProof,
+            EventTopic::LateHead,
+            EventTopic::PayloadAttributes,
+            EventTopic::LightClientFinalityUpdate,
+            EventTopic::LightClientOptimisticUpdate,
+            EventTopic::AttesterSlashing,
+            EventTopic::ProposerSlashing,
+            EventTopic::BlsToExecutionChange,
+            EventTopic::BlockGossip,
+            EventTopic::ExecutionBid,
+            EventTopic::ExecutionPayload,
+            EventTopic::PayloadAttestation,
+            EventTopic::ExecutionProofReceived,
+        ];
+        for topic in topics {
+            let s = topic.to_string();
+            assert_eq!(
+                EventTopic::from_str(&s).unwrap(),
+                topic,
+                "roundtrip failed for {s}"
+            );
+        }
+    }
+
+    // ── ForkChoiceNode ────────────────────────────────────────
+
+    #[test]
+    fn fork_choice_node_serde_roundtrip() {
+        let node = ForkChoiceNode {
+            slot: Slot::new(100),
+            block_root: Hash256::from_low_u64_be(1),
+            parent_root: Some(Hash256::from_low_u64_be(2)),
+            justified_epoch: Epoch::new(3),
+            finalized_epoch: Epoch::new(2),
+            weight: 1_000_000,
+            validity: Some("valid".to_string()),
+            execution_block_hash: Some(Hash256::from_low_u64_be(99)),
+        };
+        let json = serde_json::to_string(&node).unwrap();
+        let decoded: ForkChoiceNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(node, decoded);
+    }
+
+    #[test]
+    fn fork_choice_node_weight_is_quoted() {
+        let node = ForkChoiceNode {
+            slot: Slot::new(0),
+            block_root: Hash256::zero(),
+            parent_root: None,
+            justified_epoch: Epoch::new(0),
+            finalized_epoch: Epoch::new(0),
+            weight: 42,
+            validity: None,
+            execution_block_hash: None,
+        };
+        let json = serde_json::to_value(&node).unwrap();
+        assert_eq!(json["weight"], serde_json::json!("42"));
+    }
+
+    #[test]
+    fn fork_choice_node_optional_fields_null() {
+        let node = ForkChoiceNode {
+            slot: Slot::new(0),
+            block_root: Hash256::zero(),
+            parent_root: None,
+            justified_epoch: Epoch::new(0),
+            finalized_epoch: Epoch::new(0),
+            weight: 0,
+            validity: None,
+            execution_block_hash: None,
+        };
+        let json = serde_json::to_string(&node).unwrap();
+        let decoded: ForkChoiceNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(node, decoded);
+        assert!(decoded.parent_root.is_none());
+        assert!(decoded.validity.is_none());
+        assert!(decoded.execution_block_hash.is_none());
+    }
+
+    // ── ForkChoice ────────────────────────────────────────────
+
+    #[test]
+    fn fork_choice_serde_roundtrip() {
+        let fc = ForkChoice {
+            justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(10),
+                root: Hash256::from_low_u64_be(1),
+            },
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(9),
+                root: Hash256::from_low_u64_be(2),
+            },
+            fork_choice_nodes: vec![ForkChoiceNode {
+                slot: Slot::new(80),
+                block_root: Hash256::from_low_u64_be(3),
+                parent_root: None,
+                justified_epoch: Epoch::new(10),
+                finalized_epoch: Epoch::new(9),
+                weight: 500,
+                validity: Some("valid".to_string()),
+                execution_block_hash: None,
+            }],
+        };
+        let json = serde_json::to_string(&fc).unwrap();
+        let decoded: ForkChoice = serde_json::from_str(&json).unwrap();
+        assert_eq!(fc, decoded);
+    }
+
+    #[test]
+    fn fork_choice_empty_nodes() {
+        let fc = ForkChoice {
+            justified_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            finalized_checkpoint: Checkpoint {
+                epoch: Epoch::new(0),
+                root: Hash256::zero(),
+            },
+            fork_choice_nodes: vec![],
+        };
+        let json = serde_json::to_string(&fc).unwrap();
+        let decoded: ForkChoice = serde_json::from_str(&json).unwrap();
+        assert_eq!(fc, decoded);
+        assert!(decoded.fork_choice_nodes.is_empty());
+    }
+
+    // ── SyncCommitteeReward ───────────────────────────────────
+
+    #[test]
+    fn sync_committee_reward_serde_roundtrip() {
+        let reward = SyncCommitteeReward {
+            validator_index: 42,
+            reward: -1000,
+        };
+        let json = serde_json::to_string(&reward).unwrap();
+        let decoded: SyncCommitteeReward = serde_json::from_str(&json).unwrap();
+        assert_eq!(reward, decoded);
+    }
+
+    #[test]
+    fn sync_committee_reward_quoted_fields() {
+        let reward = SyncCommitteeReward {
+            validator_index: 42,
+            reward: -500,
+        };
+        let json = serde_json::to_value(&reward).unwrap();
+        assert_eq!(json["validator_index"], serde_json::json!("42"));
+        assert_eq!(json["reward"], serde_json::json!("-500"));
+    }
+
+    // ── StandardBlockReward ───────────────────────────────────
+
+    #[test]
+    fn standard_block_reward_serde_roundtrip() {
+        let reward = StandardBlockReward {
+            proposer_index: 7,
+            total: 100_000,
+            attestations: 80_000,
+            sync_aggregate: 15_000,
+            proposer_slashings: 3_000,
+            attester_slashings: 2_000,
+        };
+        let json = serde_json::to_string(&reward).unwrap();
+        let decoded: StandardBlockReward = serde_json::from_str(&json).unwrap();
+        assert_eq!(reward, decoded);
+    }
+
+    #[test]
+    fn standard_block_reward_all_quoted() {
+        let reward = StandardBlockReward {
+            proposer_index: 1,
+            total: 2,
+            attestations: 3,
+            sync_aggregate: 4,
+            proposer_slashings: 5,
+            attester_slashings: 6,
+        };
+        let json = serde_json::to_value(&reward).unwrap();
+        assert_eq!(json["proposer_index"], serde_json::json!("1"));
+        assert_eq!(json["total"], serde_json::json!("2"));
+        assert_eq!(json["attestations"], serde_json::json!("3"));
+        assert_eq!(json["sync_aggregate"], serde_json::json!("4"));
+        assert_eq!(json["proposer_slashings"], serde_json::json!("5"));
+        assert_eq!(json["attester_slashings"], serde_json::json!("6"));
+    }
+
+    // ── IdealAttestationRewards ───────────────────────────────
+
+    #[test]
+    fn ideal_attestation_rewards_serde_roundtrip() {
+        let rewards = IdealAttestationRewards {
+            effective_balance: 32_000_000_000,
+            head: 1000,
+            target: 2000,
+            source: 3000,
+            inclusion_delay: None,
+            inactivity: -100,
+        };
+        let json = serde_json::to_string(&rewards).unwrap();
+        let decoded: IdealAttestationRewards = serde_json::from_str(&json).unwrap();
+        assert_eq!(rewards, decoded);
+    }
+
+    #[test]
+    fn ideal_attestation_rewards_with_inclusion_delay() {
+        let rewards = IdealAttestationRewards {
+            effective_balance: 32_000_000_000,
+            head: 1000,
+            target: 2000,
+            source: 3000,
+            inclusion_delay: Some(Quoted { value: 500 }),
+            inactivity: 0,
+        };
+        let json = serde_json::to_string(&rewards).unwrap();
+        let decoded: IdealAttestationRewards = serde_json::from_str(&json).unwrap();
+        assert_eq!(rewards, decoded);
+    }
+
+    #[test]
+    fn ideal_attestation_rewards_inclusion_delay_omitted_when_none() {
+        let rewards = IdealAttestationRewards {
+            effective_balance: 32_000_000_000,
+            head: 0,
+            target: 0,
+            source: 0,
+            inclusion_delay: None,
+            inactivity: 0,
+        };
+        let json = serde_json::to_value(&rewards).unwrap();
+        assert!(json.get("inclusion_delay").is_none());
+    }
+
+    // ── TotalAttestationRewards ───────────────────────────────
+
+    #[test]
+    fn total_attestation_rewards_serde_roundtrip() {
+        let rewards = TotalAttestationRewards {
+            validator_index: 42,
+            head: 1000,
+            target: -500,
+            source: 800,
+            inclusion_delay: None,
+            inactivity: -200,
+        };
+        let json = serde_json::to_string(&rewards).unwrap();
+        let decoded: TotalAttestationRewards = serde_json::from_str(&json).unwrap();
+        assert_eq!(rewards, decoded);
+    }
+
+    // ── StandardAttestationRewards ────────────────────────────
+
+    #[test]
+    fn standard_attestation_rewards_serde_roundtrip() {
+        let rewards = StandardAttestationRewards {
+            ideal_rewards: vec![IdealAttestationRewards {
+                effective_balance: 32_000_000_000,
+                head: 100,
+                target: 200,
+                source: 300,
+                inclusion_delay: None,
+                inactivity: 0,
+            }],
+            total_rewards: vec![TotalAttestationRewards {
+                validator_index: 0,
+                head: 100,
+                target: 200,
+                source: 300,
+                inclusion_delay: None,
+                inactivity: 0,
+            }],
+        };
+        let json = serde_json::to_string(&rewards).unwrap();
+        let decoded: StandardAttestationRewards = serde_json::from_str(&json).unwrap();
+        assert_eq!(rewards, decoded);
+    }
+
+    // ── Accept ────────────────────────────────────────────────
+
+    #[test]
+    fn accept_display_roundtrip_json() {
+        let accept = Accept::Json;
+        let s = accept.to_string();
+        assert_eq!(s, "application/json");
+        assert_eq!(Accept::from_str(&s).unwrap(), Accept::Json);
+    }
+
+    #[test]
+    fn accept_display_roundtrip_ssz() {
+        let accept = Accept::Ssz;
+        let s = accept.to_string();
+        assert_eq!(s, "application/octet-stream");
+        assert_eq!(Accept::from_str(&s).unwrap(), Accept::Ssz);
+    }
+
+    #[test]
+    fn accept_display_roundtrip_any() {
+        let accept = Accept::Any;
+        let s = accept.to_string();
+        assert_eq!(s, "*/*");
+        assert_eq!(Accept::from_str(&s).unwrap(), Accept::Any);
+    }
+
+    #[test]
+    fn accept_ssz_higher_q_than_json() {
+        let accept =
+            Accept::from_str("application/json;q=0.5,application/octet-stream;q=0.9").unwrap();
+        assert_eq!(accept, Accept::Ssz);
+    }
+
+    #[test]
+    fn accept_default_q_is_1000() {
+        // Without explicit q, default q=1.0 (1000) should win
+        let accept = Accept::from_str("application/octet-stream,application/json;q=0.5").unwrap();
+        assert_eq!(accept, Accept::Ssz);
+    }
+
+    // ── SseLateHead ───────────────────────────────────────────
+
+    #[test]
+    fn sse_late_head_serde_roundtrip() {
+        let late_head = SseLateHead {
+            slot: Slot::new(50),
+            block: Hash256::from_low_u64_be(1),
+            proposer_index: 42,
+            peer_id: Some("16Uiu2HAm...".to_string()),
+            peer_client: Some("Lighthouse/v4.0.0".to_string()),
+            proposer_graffiti: "hello".to_string(),
+            block_delay: Duration::from_millis(4500),
+            observed_delay: Some(Duration::from_millis(1000)),
+            imported_delay: Some(Duration::from_millis(2000)),
+            set_as_head_delay: Some(Duration::from_millis(500)),
+            execution_optimistic: false,
+        };
+        let json = serde_json::to_string(&late_head).unwrap();
+        let decoded: SseLateHead = serde_json::from_str(&json).unwrap();
+        assert_eq!(late_head, decoded);
+    }
+
+    #[test]
+    fn sse_late_head_optional_fields_none() {
+        let late_head = SseLateHead {
+            slot: Slot::new(1),
+            block: Hash256::zero(),
+            proposer_index: 0,
+            peer_id: None,
+            peer_client: None,
+            proposer_graffiti: String::new(),
+            block_delay: Duration::from_secs(0),
+            observed_delay: None,
+            imported_delay: None,
+            set_as_head_delay: None,
+            execution_optimistic: true,
+        };
+        let json = serde_json::to_string(&late_head).unwrap();
+        let decoded: SseLateHead = serde_json::from_str(&json).unwrap();
+        assert_eq!(late_head, decoded);
+    }
+
+    // ── BlockGossip ───────────────────────────────────────────
+
+    #[test]
+    fn block_gossip_serde_roundtrip() {
+        let gossip = BlockGossip {
+            slot: Slot::new(123),
+            block: Hash256::from_low_u64_be(456),
+        };
+        let json = serde_json::to_string(&gossip).unwrap();
+        let decoded: BlockGossip = serde_json::from_str(&json).unwrap();
+        assert_eq!(gossip, decoded);
+    }
+
+    // ── BroadcastValidationQuery ──────────────────────────────
+
+    #[test]
+    fn broadcast_validation_query_default() {
+        let query = BroadcastValidationQuery::default();
+        assert_eq!(query.broadcast_validation, BroadcastValidation::Gossip);
+    }
+
+    // ── LivenessResponseData ──────────────────────────────────
+
+    #[test]
+    fn liveness_response_data_serde_roundtrip() {
+        let data = LivenessResponseData {
+            index: 42,
+            epoch: Epoch::new(10),
+            is_live: true,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let decoded: LivenessResponseData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    // ── StandardLivenessResponseData ──────────────────────────
+
+    #[test]
+    fn standard_liveness_response_data_serde_roundtrip() {
+        let data = StandardLivenessResponseData {
+            index: 99,
+            is_live: false,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let decoded: StandardLivenessResponseData = serde_json::from_str(&json).unwrap();
+        assert_eq!(data, decoded);
+    }
+
+    #[test]
+    fn standard_liveness_response_data_index_quoted() {
+        let data = StandardLivenessResponseData {
+            index: 7,
+            is_live: true,
+        };
+        let json = serde_json::to_value(&data).unwrap();
+        assert_eq!(json["index"], serde_json::json!("7"));
+    }
+
+    // ── ProduceBlockV3Metadata ────────────────────────────────
+
+    #[test]
+    fn produce_block_v3_metadata_from_headers() {
+        use reqwest::header::HeaderMap;
+
+        let mut headers = HeaderMap::new();
+        headers.insert(CONSENSUS_VERSION_HEADER, "deneb".parse().unwrap());
+        headers.insert(EXECUTION_PAYLOAD_BLINDED_HEADER, "false".parse().unwrap());
+        headers.insert(EXECUTION_PAYLOAD_VALUE_HEADER, "1000000".parse().unwrap());
+        headers.insert(CONSENSUS_BLOCK_VALUE_HEADER, "500000".parse().unwrap());
+
+        let metadata = ProduceBlockV3Metadata::try_from(&headers).unwrap();
+        assert_eq!(metadata.consensus_version, ForkName::Deneb);
+        assert!(!metadata.execution_payload_blinded);
+        assert_eq!(
+            metadata.execution_payload_value,
+            Uint256::from(1_000_000u64)
+        );
+        assert_eq!(metadata.consensus_block_value, Uint256::from(500_000u64));
+    }
+
+    #[test]
+    fn produce_block_v3_metadata_missing_header() {
+        use reqwest::header::HeaderMap;
+
+        let headers = HeaderMap::new();
+        assert!(ProduceBlockV3Metadata::try_from(&headers).is_err());
+    }
+
+    #[test]
+    fn produce_block_v3_metadata_invalid_fork() {
+        use reqwest::header::HeaderMap;
+
+        let mut headers = HeaderMap::new();
+        headers.insert(CONSENSUS_VERSION_HEADER, "invalid_fork".parse().unwrap());
+        headers.insert(EXECUTION_PAYLOAD_BLINDED_HEADER, "false".parse().unwrap());
+        headers.insert(EXECUTION_PAYLOAD_VALUE_HEADER, "0".parse().unwrap());
+        headers.insert(CONSENSUS_BLOCK_VALUE_HEADER, "0".parse().unwrap());
+
+        assert!(ProduceBlockV3Metadata::try_from(&headers).is_err());
     }
 }
 
