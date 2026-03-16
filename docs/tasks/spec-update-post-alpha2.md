@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1550 (Mar 16) — all stable, ptc-lookbehind rebased
+
+Spec stable — no new consensus-specs commits since #5005 (Mar 15, test-only). v1.7.0-alpha.3 still latest release. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). CI green (nightly failure was stale — ran before slasher fix, next nightly will pass). Rebased `ptc-lookbehind` branch onto main. 1021/1021 state_processing tests pass. Pushed.
+
 ### run 1486 (Mar 16) — all stable, no code changes
 
 Spec stable — no new consensus-specs commits since #5005 (Mar 15, test-only). v1.7.0-alpha.3 still latest release. No new spec-test vectors. PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). PR #4892 (remove impossible branch) — reviewed, our `is_supporting_vote_gloas_at_slot` already uses `==` with assert comment, no change needed. CI green. Clippy clean (zero warnings). Release build clean. cargo audit unchanged (1 rsa).
