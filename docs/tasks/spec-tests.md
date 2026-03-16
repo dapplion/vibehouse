@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1445 (Mar 16) — BLS crypto and eth2_wallet module test coverage (62 tests)
+
+**Test coverage**: Added 62 unit tests across 2 files spanning 2 crates:
+- `crypto/bls/src/lib.rs` (40 new tests): SecretKey random uniqueness/serialize roundtrip/wrong length/zero rejection/too long. PublicKey from SecretKey deterministic/serialize roundtrip/infinity rejection/wrong length/equality+hash/different keys not equal/SSZ roundtrip/hex string/compress-decompress roundtrip. PublicKeyBytes empty/from PublicKey/wrong length/correct length/SSZ roundtrip. Signature sign+verify/wrong message/wrong key/serialize roundtrip/empty/empty verify fails/infinity/all-zeros is empty/SSZ roundtrip. AggregateSignature empty/infinity/single sig/multiple sigs/wrong message/empty pubkeys false/serialize-deserialize/from single sig/add_assign_aggregate/eth_fast_aggregate_verify empty+infinity/empty+non-infinity/aggregate_verify different messages/empty messages/mismatched lengths. Keypair random/pk matches sk. ZeroizeHash zero/from array/as_mut_bytes. get_withdrawal_credentials prefix/different prefix/deterministic.
+- `crypto/eth2_wallet/src/wallet.rs` (22 new tests): WalletBuilder empty password/empty seed/successful build/from mnemonic. Wallet encrypt/decrypt roundtrip/wrong password. JSON string roundtrip/writer-reader roundtrip/invalid JSON. set_nextaccount increase/same value/decrease error. next_validator increments/different keys/voting vs withdrawal differ/wrong password. recover_validator_secret deterministic/different indices/different key types. recover_from_mnemonic deterministic/empty seed. UUID uniqueness/type field/error conversions.
+
+**CI**: All 62 new tests pass. Clippy clean (including test cfg).
+
 ### run 1444 (Mar 16) — sync_status, validator_path, and keystore module test coverage (55 tests)
 
 **Test coverage**: Added 55 unit tests across 5 files spanning 3 crates:
