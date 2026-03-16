@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1655 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed (after slasher flaky test fix), CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- Open Gloas PRs unchanged: #5008, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840. All OPEN, NOT MERGED.
+- cargo check: 0 warnings.
+- cargo audit: 1 known vulnerability (rsa/RUSTSEC-2023-0071, no fix available upstream). 5 allowed warnings. Not actionable.
+- No actionable work.
+
 ### run 1654 (Mar 17) — health check, all stable
 
 **Health check**: all stable
