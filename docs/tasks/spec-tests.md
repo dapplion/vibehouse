@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1600 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure from run 1598 was pre-fix (ran at 09:36 UTC, fix pushed 18:38 UTC). Latest CI pass confirmed.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges to master.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED (same head d76a278b0a).
+- PR #5008 (docs-only: rename `block_root` → `beacon_block_root` in EnvelopesByRoot desc): our code uses correct field names already.
+- PR #4962 (new sanity/blocks tests for missed payload withdrawals): NOT MERGED, no new test vectors.
+- No semver-compatible cargo updates. `cargo check --workspace` clean.
+- No actionable work — project in maintenance mode.
+
 ### run 1599 (Mar 16) — health check, all stable
 
 **Health check**: all stable
