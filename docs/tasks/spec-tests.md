@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1584 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure (09:36) was pre-fix (b79292d35 committed 10:52). Next nightly will confirm.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still 1baa05e. No new consensus commits. PRs #5009-5012 are CI/dep-only.
+- Spec tests: v1.6.0-beta.0 still latest test vectors.
+- Tracked PRs: #4992 (PTC lookbehind, 1 APPROVED, same head d76a278b0a), #4954, #4939, #4898, #4892, #4843, #4932, #4960, #4962, #5008 — all still OPEN, all heads unchanged.
+- Dependencies: 0 semver-compatible updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1583 (Mar 16) — health check, all stable
 
 **Health check**: all stable
