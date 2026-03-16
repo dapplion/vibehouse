@@ -29,6 +29,27 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1458 (Mar 16) — RPC protocol types and limits test coverage (64 tests)
+
+**Test coverage**: Added 64 unit tests to `beacon_node/vibehouse_network/src/rpc/protocol.rs`, a previously-untested 1,082-line file containing RPC protocol definitions, message limits, and error types:
+- `Protocol` enum (3 tests): strum serialization for all 15 variants, FromStr roundtrip + error case, terminator() Some for 7 streaming protocols / None for 8 single-response
+- `Encoding` (1 test): Display formatting
+- `RpcLimits` (5 tests): in-bounds, below-min, above-max, clamped-by-max_rpc_size, zero min/max
+- `SupportedProtocol` (8 tests): version_string for all 19 variants, protocol() mapping for all variants, currently_supported includes/excludes envelope for Gloas/pre-Gloas, core protocols always present, blob protocols for Deneb+, data column protocols when PeerDAS scheduled, MetaDataV3 when PeerDAS
+- `ProtocolId` (5 tests): format string for StatusV1/BlocksByRangeV2/EnvelopeV1, has_context_bytes true for 11 protocols, false for 9 protocols
+- `rpc_block_limits_by_fork` (4 tests): Base/Altair/post-merge fork limits, min<=max invariant across all forks
+- `rpc_request_limits` (6 tests): Status/Goodbye/Ping fixed-size, MetaData empty, BlocksByRoot/EnvelopeByRoot variable
+- `rpc_response_limits` (4 tests): Goodbye zero, Ping fixed, envelope uses bellatrix max, metadata spans V1-V3
+- Light client limits (3 tests): Base is zero, Altair/Bellatrix fixed-size, limits grow with forks
+- `RPCError` (7 tests): Display for 6 simple variants, Display with data (4 variants), From<io::Error>, From<ssz::DecodeError>, as_static_str for ErrorResponse/non-ErrorResponse, strum IntoStaticStr
+- `RequestType` (8 tests): expect_exactly_one_response for single/multi variants, versioned_protocol mapping, Status V1/V2, MetaData V1/V2/V3, max_responses single/zero/range, supported_protocols Status/MetaData, Display formatting
+- Static size constants (5 tests): block sizes positive, monotonic ordering, blob sidecar positive, error type min<=max, envelope max == bellatrix max
+- `rpc_blob_limits` (2 tests): minimal spec, mainnet spec
+
+**Also**: Added `PartialEq` derive to `ResponseTermination` enum to enable assert_eq in tests.
+
+**CI**: All 64 new tests pass. Clippy clean.
+
 ### run 1457 (Mar 16) — RPC methods types and conversions test coverage (43 tests)
 
 **Test coverage**: Added 43 unit tests to `beacon_node/vibehouse_network/src/rpc/methods.rs`, a previously-untested 972-line file containing RPC request/response types, SSZ encoding, and protocol conversions:
