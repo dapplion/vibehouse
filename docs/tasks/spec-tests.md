@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1572 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher-tests failure (09:36) was pre-fix; next nightly should pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges. All heads unchanged.
+- PR #4992: active discussion — potuz/ensi321 agree current `get_ptc` slot restriction is too narrow, debating whether spec should constrain slot range at all.
+- cargo update: 0 semver-compatible crate updates (only git repo refreshes).
+- No actionable work — project in maintenance mode.
+
 ### run 1571 (Mar 16) — health check, all stable
 
 **Health check**: all stable
