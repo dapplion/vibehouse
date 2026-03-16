@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1607 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green (slasher flaky test fix confirmed working).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7 (#5005), no new merges since last check.
+- Reviewed all merged PRs since alpha.3: #5001 (parent_block_root in bid filtering key), #5002 (wording), #5004 (release notes), #5005 (test fix). Only #5001 has code impact — verified our implementation already uses the `(slot, parent_block_hash, parent_block_root)` tuple in `ObservedExecutionBids::highest_bid_values`. No changes needed.
+- PR #4992 (cached PTCs): still OPEN. PR #4962 (new test vectors): still OPEN. PR #4960 (fork choice deposit test): still OPEN.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1606 (Mar 16) — health check, all stable
 
 **Health check**: all stable
