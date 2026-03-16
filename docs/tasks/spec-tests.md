@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1611 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green (slasher flaky test fix from run 1610 working; nightly failure was before the fix, next nightly should pass).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges.
+- Open PRs: #4992 (cached PTCs) — active debate, potuz pushing back on spec-level caching, unlikely to merge as-is. #4962 (test vectors), #5008 (field name fix), #4747 (Fast Confirmation Rule) — all still OPEN.
+- #5005 (fix builder voluntary exit test) merged Mar 15 — test generator only, no spec logic change. Will affect next test vector release.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1610 (Mar 16) — health check, all stable
 
 **Health check**: all stable
