@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1573 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure now fixed (commit pushed before this run).
+- Spec: v1.7.0-alpha.3 still latest. No new releases. consensus-specs HEAD still 1baa05e (Mar 15). No new commits.
+- Spec tests: v1.6.0-beta.0 still latest vectors. No new release.
+- Tracked PRs: #4932, #4939, #4960, #4962, #4992, #5008 all still OPEN, no merges.
+- PR #4962 (sanity/blocks missed payload withdrawal tests): approved by potuz, awaiting merge.
+- PR #5008 (fix `block_root`→`beacon_block_root` in EnvelopesByRoot doc): our impl already uses correct name.
+- PR #4992 (cached PTCs): still under discussion (potuz, ensi321, jihoonsong commenting).
+- cargo update: 0 semver-compatible crate updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1572 (Mar 16) — health check, all stable
 
 **Health check**: all stable
