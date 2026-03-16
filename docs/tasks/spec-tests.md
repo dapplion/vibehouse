@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1590 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Clippy clean on all key crates.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges.
+- PR #4992 (cached PTCs): active discussion (potuz, jihoonsong, ensi321), still not merged. Design questions around `get_ptc` slot range restriction.
+- PR #5008 (field name fix `block_root` → `beacon_block_root` in EnvelopesByRoot): cosmetic spec prose fix, SSZ wire format unaffected. No code change needed.
+- New dependency PRs: #5006-#5012 (tooling/deps updates, no spec impact).
+- All tracked PRs still OPEN: #4992, #4954, #4939, #4898, #4892, #4843, #4932, #4960, #4962, #5008.
+- Spec tests: v1.6.0-beta.0 still latest test vectors. No new releases.
+- No actionable work — project in maintenance mode.
+
 ### run 1589 (Mar 16) — health check, all stable
 
 **Health check**: all stable
