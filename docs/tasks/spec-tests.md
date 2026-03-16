@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1440 (Mar 16) — observed_block_producers, engine_api auth, and gossip_cache test coverage (39 tests)
+
+**Test coverage**: Added 39 unit tests across 3 files spanning 3 crates:
+- `beacon_node/beacon_chain/src/observed_block_producers.rs` (7 new tests, 9 total): slashable_detection (same slot+epoch different root), duplicate_is_not_slashable, index_seen_at_epoch, validator_index_too_high (ValidatorRegistryLimit boundary), proposal_key_equality, seen_block_methods (UniqueNonSlashable/Duplicate/Slashable variants), prune_retains_later_slots. Added `#[derive(Debug)]` to `SeenBlock` enum.
+- `beacon_node/execution_layer/src/engine_api/auth.rs` (18 new tests, 19 total): JwtKey from_slice correct/wrong length, random uniqueness, hex_string roundtrip, clone. strip_prefix with/without 0x, empty, only-0x. Auth new_with_path valid/no-prefix/invalid-hex/wrong-length/nonexistent. Claims with/without optional fields. validate_token wrong secret, invalid string.
+- `beacon_node/vibehouse_network/src/service/gossip_cache.rs` (10 new tests, 11 total): builder_default_timeout_applies_to_all, builder_specific_timeout_overrides_default, builder_no_default_leaves_all_none, insert_ignored_when_no_timeout, insert_stores_when_timeout_set, retrieve_returns_cached_messages, retrieve_returns_none_for_unknown_topic, duplicate_insert_resets_timer, epbs_gossip_kinds_are_not_cached (ExecutionBid/ExecutionPayload/PayloadAttestation/ProposerPreferences), different_topics_stored_independently.
+
+**CI**: All 39 new tests pass. Clippy clean.
+
 ### run 1438 (Mar 16) — engine_api unit test coverage (57 tests)
 
 **Test coverage**: Added 57 unit tests to `beacon_node/execution_layer/src/engine_api.rs`, a previously-untested 787-line file containing core Engine API types:
