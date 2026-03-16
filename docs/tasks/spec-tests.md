@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1614 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly failure from before slasher fix — next nightly should pass.
+- Spec: v1.7.0-alpha.3 still latest release. 2 commits on master since tag (release notes tweak + test fix), neither touches specs/gloas/.
+- Open PRs: #4992 (cached PTCs), #4843 (variable PTC deadline), #4840 (EIP-7843), #4898/#4892 (fork choice cleanup) — all still OPEN, none merged.
+- `cargo audit`: 1 known advisory (rsa RUSTSEC-2023-0071, no fix available, low impact for JWT auth). 5 allowed warnings.
+- No semver-compatible cargo updates (0 packages to update).
+- No actionable work — project in maintenance mode.
+
 ### run 1613 (Mar 16) — health check, all stable
 
 **Health check**: all stable
