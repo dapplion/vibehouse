@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1515 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure from earlier today confirmed fixed (slasher fix b79292d35 already on main).
+- Spec: v1.7.0-alpha.3 still latest. HEAD still at 1baa05e (unchanged).
+- Reviewed recent spec commits: f0f4119 (parent_block_root in bid filtering) — already implemented in vibehouse. 85ab2d2 (wording fix) — doc only. 1baa05e (test fix) — no code impact.
+- PR #4992 (cached PTCs): still OPEN, 25 review comments, active discussion. Not merged.
+- PR #4962, #5008, #4939, #4960, #4932, #4843, #4840, #4630: all still open, monitoring.
+- Clippy: zero warnings across entire workspace (excluding ef_tests).
+- No actionable work — project in maintenance mode.
+
 ### run 1514 (Mar 16) — health check, all stable
 
 **Health check**: all stable
