@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1531 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure still stale (ran 09:36 before fix b79292d35 at 10:52). Next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. No new releases. No new consensus-specs merges (HEAD still 1baa05e).
+- PR #4992 (PTC lookbehind): still OPEN, same head d76a278b0a. New discussion: ensi321 flagged `get_ptc` too restrictive for validator assignment lookbehind, potuz agrees ("that's definitely wrong") and questions off-protocol elements in spec. May lead to changes before merge.
+- All 10 monitored PRs still OPEN: #4992, #4954, #4962, #4960, #4939, #4932, #4843, #4840, #4630, #4747.
+- No actionable work — project in maintenance mode.
+
 ### run 1530 (Mar 16) — health check, all stable
 
 **Health check**: all stable
