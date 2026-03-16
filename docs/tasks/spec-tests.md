@@ -29,6 +29,18 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1437 (Mar 16) — peerdb client, monitoring_api, web3signer, and api_secret test coverage (72 tests)
+
+**Test coverage**: Added 72 unit tests across 6 files spanning 5 crates:
+- `beacon_node/vibehouse_network/src/peer_manager/peerdb/client.rs` (22 tests): client_from_agent_version parsing for all 8 client kinds (vibehouse/lighthouse/teku/prysm/nimbus/lodestar/caplin/unknown), empty agent, no-version agent, Client default/display/clone, ClientKind display/as_ref_str/enum_iter
+- `common/monitoring_api/src/types.rs` (19 tests): ErrorMessage serde roundtrip/stacktraces default, ProcessType serde lowercase/deserialize, Metadata new/serde roundtrip, ProcessMetrics from ProcessHealth/default, SystemMetrics from SystemHealth (field mapping, disk_io_seconds=0, os truncation 3-char/short/empty→"unk"), serde roundtrip, BeaconProcessMetrics/ValidatorProcessMetrics serde, client_version semver, client_build=0, constants
+- `common/monitoring_api/src/gather.rs` (11 tests): JsonMetric get_typed_value integer/boolean, get_typed_value_default integer/boolean, fields, clone, BEACON_METRICS_MAP/VALIDATOR_METRICS_MAP key checks, gather_metrics empty map/missing metrics defaults/boolean default
+- `validator_client/signing_method/src/web3signer.rs` (11 tests): MessageType serde SCREAMING_SNAKE_CASE all 11 variants, ForkName serde all 8 variants, eq/copy for both enums, message_type() for AggregationSlot/Attestation/RandaoReveal/VoluntaryExit/SyncCommitteeMessage, ForkInfo serde, AggregationSlot serde
+- `validator_client/http_api/src/api_secret.rs` (8 tests): constants, create new token (length, path, file exists), open existing (idempotent), auth_header_values Basic+Bearer, rejects directory path, creates parent directories, token is alphanumeric, two creates different tokens
+- `validator_client/signing_method/Cargo.toml`: added serde_json dev-dependency
+
+**CI**: All 72 new tests pass across 5 crates. Clippy clean.
+
 ### run 1436 (Mar 16) — eth2 types, interop keypairs, directory, and eth2_config test coverage (101 tests)
 
 **Test coverage**: Added 101 unit tests across 4 files spanning 4 crates:
