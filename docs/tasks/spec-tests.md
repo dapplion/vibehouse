@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1633 (Mar 16) — health check, slasher flake investigated
+
+**Health check**: all stable
+- CI: nightly 09:36 failed — `override_backend_with_mdbx_file_present` slasher test (tmpdir flake). Passes locally in all 4 feature combos (mdbx, lmdb, redb, all). Mar 10 failure was different (network-tests fulu). Intermittent CI env issue, not a code bug. Current nightly (20:37) in progress.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges.
+- PR #4992 (cached PTCs in state) — still open, NOT merged. Active discussion: ensi321 raised concern about `get_ptc` being too restrictive on slot range for validator assignment (potuz agreed "definitely wrong"). Spec may change before merge.
+- No dep updates available. No actionable work.
+
 ### run 1632 (Mar 16) — health check, all stable
 
 **Health check**: all stable
