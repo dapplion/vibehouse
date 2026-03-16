@@ -441,3 +441,502 @@ impl<T> TryExt for Option<T> {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── decimal_buckets ─────────────────────────────────────────
+
+    #[test]
+    fn decimal_buckets_standard_range() {
+        let buckets = decimal_buckets(-1, 1).unwrap();
+        let expected = vec![0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0];
+        assert_eq!(buckets.len(), expected.len());
+        for (a, b) in buckets.iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-10, "expected {b}, got {a}");
+        }
+    }
+
+    #[test]
+    fn decimal_buckets_zero_to_two() {
+        let buckets = decimal_buckets(0, 2).unwrap();
+        let expected = vec![1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0];
+        assert_eq!(buckets.len(), expected.len());
+        for (a, b) in buckets.iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-10, "expected {b}, got {a}");
+        }
+    }
+
+    #[test]
+    fn decimal_buckets_single_power() {
+        let buckets = decimal_buckets(0, 0).unwrap();
+        assert_eq!(buckets, vec![1.0, 2.0, 5.0]);
+    }
+
+    #[test]
+    fn decimal_buckets_negative_range() {
+        let buckets = decimal_buckets(-3, -2).unwrap();
+        let expected = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05];
+        assert_eq!(buckets.len(), expected.len());
+        for (a, b) in buckets.iter().zip(expected.iter()) {
+            assert!((a - b).abs() < 1e-15, "expected {b}, got {a}");
+        }
+    }
+
+    #[test]
+    fn decimal_buckets_invalid_range() {
+        assert!(decimal_buckets(2, 1).is_err());
+        assert!(decimal_buckets(0, -1).is_err());
+    }
+
+    #[test]
+    fn decimal_buckets_count() {
+        // 3 * (max - min + 1) buckets
+        let buckets = decimal_buckets(-2, 3).unwrap();
+        assert_eq!(buckets.len(), 3 * 6);
+    }
+
+    // ── duration_to_f64 ─────────────────────────────────────────
+
+    #[test]
+    fn duration_to_f64_zero() {
+        assert_eq!(duration_to_f64(Duration::from_secs(0)), 0.0);
+    }
+
+    #[test]
+    fn duration_to_f64_whole_seconds() {
+        assert_eq!(duration_to_f64(Duration::from_secs(42)), 42.0);
+    }
+
+    #[test]
+    fn duration_to_f64_fractional() {
+        let d = Duration::from_millis(1500);
+        assert!((duration_to_f64(d) - 1.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn duration_to_f64_nanos() {
+        let d = Duration::new(1, 500_000_000); // 1.5s
+        assert!((duration_to_f64(d) - 1.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn duration_to_f64_large() {
+        let d = Duration::from_secs(86400); // 1 day
+        assert_eq!(duration_to_f64(d), 86400.0);
+    }
+
+    // ── stop_timer ──────────────────────────────────────────────
+
+    #[test]
+    fn stop_timer_none_is_noop() {
+        // Should not panic
+        stop_timer(None);
+    }
+
+    #[test]
+    fn stop_timer_with_duration_none_returns_zero() {
+        let d = stop_timer_with_duration(None);
+        assert_eq!(d, Duration::from_secs(0));
+    }
+
+    // ── TryExt for Result ───────────────────────────────────────
+
+    #[test]
+    fn try_ext_result_ok_preserves_timer() {
+        let histogram =
+            try_create_histogram("test_try_ext_result_ok_preserves", "test histogram").unwrap();
+        let mut timer = Some(histogram.start_timer());
+        let result: std::result::Result<i32, &str> = Ok(42);
+        let result = result.discard_timer_on_break(&mut timer);
+        assert_eq!(result.unwrap(), 42);
+        assert!(timer.is_some(), "timer should still be present on Ok");
+    }
+
+    #[test]
+    fn try_ext_result_err_discards_timer() {
+        let histogram =
+            try_create_histogram("test_try_ext_result_err_discards", "test histogram").unwrap();
+        let mut timer = Some(histogram.start_timer());
+        let result: std::result::Result<i32, &str> = Err("fail");
+        let result = result.discard_timer_on_break(&mut timer);
+        assert!(result.is_err());
+        assert!(timer.is_none(), "timer should be taken on Err");
+    }
+
+    #[test]
+    fn try_ext_result_err_no_timer_is_noop() {
+        let mut timer: Option<HistogramTimer> = None;
+        let result: std::result::Result<i32, &str> = Err("fail");
+        let _ = result.discard_timer_on_break(&mut timer);
+        assert!(timer.is_none());
+    }
+
+    // ── TryExt for Option ───────────────────────────────────────
+
+    #[test]
+    fn try_ext_option_some_preserves_timer() {
+        let histogram =
+            try_create_histogram("test_try_ext_option_some_preserves", "test histogram").unwrap();
+        let mut timer = Some(histogram.start_timer());
+        let opt: Option<i32> = Some(42);
+        let opt = opt.discard_timer_on_break(&mut timer);
+        assert_eq!(opt.unwrap(), 42);
+        assert!(timer.is_some(), "timer should still be present on Some");
+    }
+
+    #[test]
+    fn try_ext_option_none_discards_timer() {
+        let histogram =
+            try_create_histogram("test_try_ext_option_none_discards", "test histogram").unwrap();
+        let mut timer = Some(histogram.start_timer());
+        let opt: Option<i32> = None;
+        let opt = opt.discard_timer_on_break(&mut timer);
+        assert!(opt.is_none());
+        assert!(timer.is_none(), "timer should be taken on None");
+    }
+
+    // ── metric creation functions ───────────────────────────────
+
+    #[test]
+    fn try_create_int_counter_success() {
+        let counter = try_create_int_counter("test_counter_create", "A test counter");
+        assert!(counter.is_ok());
+    }
+
+    #[test]
+    fn try_create_int_counter_duplicate_fails() {
+        let _ = try_create_int_counter("test_counter_dup", "first");
+        let result = try_create_int_counter("test_counter_dup", "second");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_create_int_gauge_success() {
+        let gauge = try_create_int_gauge("test_gauge_create", "A test gauge");
+        assert!(gauge.is_ok());
+    }
+
+    #[test]
+    fn try_create_float_gauge_success() {
+        let gauge = try_create_float_gauge("test_float_gauge_create", "A test float gauge");
+        assert!(gauge.is_ok());
+    }
+
+    #[test]
+    fn try_create_histogram_success() {
+        let h = try_create_histogram("test_histogram_create", "A test histogram");
+        assert!(h.is_ok());
+    }
+
+    #[test]
+    fn try_create_histogram_with_buckets_success() {
+        let buckets = Ok(vec![0.1, 0.5, 1.0, 5.0, 10.0]);
+        let h = try_create_histogram_with_buckets("test_histogram_buckets_create", "test", buckets);
+        assert!(h.is_ok());
+    }
+
+    #[test]
+    fn try_create_histogram_vec_success() {
+        let h = try_create_histogram_vec("test_histogram_vec_create", "test", &["label1"]);
+        assert!(h.is_ok());
+    }
+
+    #[test]
+    fn try_create_int_gauge_vec_success() {
+        let g = try_create_int_gauge_vec("test_int_gauge_vec_create", "test", &["label1"]);
+        assert!(g.is_ok());
+    }
+
+    #[test]
+    fn try_create_float_gauge_vec_success() {
+        let g = try_create_float_gauge_vec("test_float_gauge_vec_create", "test", &["label1"]);
+        assert!(g.is_ok());
+    }
+
+    #[test]
+    fn try_create_int_counter_vec_success() {
+        let c = try_create_int_counter_vec("test_int_counter_vec_create", "test", &["label1"]);
+        assert!(c.is_ok());
+    }
+
+    // ── gauge/counter getter and setter functions ───────────────
+
+    #[test]
+    fn set_and_get_int_gauge_vec() {
+        let gauge_vec = try_create_int_gauge_vec("test_set_get_igv", "test", &["name"]);
+        set_gauge_vec(&gauge_vec, &["foo"], 42);
+        let gauge = get_int_gauge(&gauge_vec, &["foo"]);
+        assert_eq!(gauge.unwrap().get(), 42);
+    }
+
+    #[test]
+    fn get_int_gauge_err_returns_none() {
+        let gauge_vec: Result<IntGaugeVec> = Err(Error::Msg("not initialized".into()));
+        assert!(get_int_gauge(&gauge_vec, &["foo"]).is_none());
+    }
+
+    #[test]
+    fn inc_dec_gauge_vec() {
+        let gauge_vec = try_create_int_gauge_vec("test_inc_dec_gv", "test", &["name"]);
+        inc_gauge_vec(&gauge_vec, &["bar"]);
+        inc_gauge_vec(&gauge_vec, &["bar"]);
+        dec_gauge_vec(&gauge_vec, &["bar"]);
+        let gauge = get_int_gauge(&gauge_vec, &["bar"]);
+        assert_eq!(gauge.unwrap().get(), 1);
+    }
+
+    #[test]
+    fn set_int_gauge_returns_true_on_success() {
+        let gauge_vec = try_create_int_gauge_vec("test_set_ig_ret", "test", &["name"]);
+        assert!(set_int_gauge(&gauge_vec, &["x"], 99));
+        let gauge = get_int_gauge(&gauge_vec, &["x"]);
+        assert_eq!(gauge.unwrap().get(), 99);
+    }
+
+    #[test]
+    fn set_int_gauge_err_returns_false() {
+        let gauge_vec: Result<IntGaugeVec> = Err(Error::Msg("err".into()));
+        assert!(!set_int_gauge(&gauge_vec, &["x"], 99));
+    }
+
+    #[test]
+    fn inc_counter_vec_increments() {
+        let counter_vec = try_create_int_counter_vec("test_inc_cv", "test", &["name"]);
+        inc_counter_vec(&counter_vec, &["a"]);
+        inc_counter_vec(&counter_vec, &["a"]);
+        let counter = get_int_counter(&counter_vec, &["a"]);
+        assert_eq!(counter.unwrap().get(), 2);
+    }
+
+    #[test]
+    fn inc_counter_vec_by_amount() {
+        let counter_vec = try_create_int_counter_vec("test_inc_cv_by", "test", &["name"]);
+        inc_counter_vec_by(&counter_vec, &["b"], 10);
+        let counter = get_int_counter(&counter_vec, &["b"]);
+        assert_eq!(counter.unwrap().get(), 10);
+    }
+
+    #[test]
+    fn get_int_counter_err_returns_none() {
+        let counter_vec: Result<IntCounterVec> = Err(Error::Msg("err".into()));
+        assert!(get_int_counter(&counter_vec, &["x"]).is_none());
+    }
+
+    // ── simple gauge/counter operations ─────────────────────────
+
+    #[test]
+    fn set_gauge_and_inc_dec() {
+        let gauge = try_create_int_gauge("test_gauge_ops", "test");
+        set_gauge(&gauge, 10);
+        assert_eq!(gauge.as_ref().unwrap().get(), 10);
+        inc_gauge(&gauge);
+        assert_eq!(gauge.as_ref().unwrap().get(), 11);
+        dec_gauge(&gauge);
+        assert_eq!(gauge.as_ref().unwrap().get(), 10);
+    }
+
+    #[test]
+    fn set_float_gauge_works() {
+        let gauge = try_create_float_gauge("test_float_gauge_ops", "test");
+        set_float_gauge(&gauge, 3.25);
+        assert!((gauge.as_ref().unwrap().get() - 3.25).abs() < 1e-10);
+    }
+
+    #[test]
+    fn inc_counter_works() {
+        let counter = try_create_int_counter("test_inc_counter_ops", "test");
+        inc_counter(&counter);
+        inc_counter(&counter);
+        assert_eq!(counter.as_ref().unwrap().get(), 2);
+    }
+
+    #[test]
+    fn inc_counter_by_works() {
+        let counter = try_create_int_counter("test_inc_counter_by_ops", "test");
+        inc_counter_by(&counter, 5);
+        assert_eq!(counter.as_ref().unwrap().get(), 5);
+    }
+
+    // ── maybe_set functions ─────────────────────────────────────
+
+    #[test]
+    fn maybe_set_gauge_some() {
+        let gauge = try_create_int_gauge("test_maybe_set_some", "test");
+        maybe_set_gauge(&gauge, Some(42));
+        assert_eq!(gauge.as_ref().unwrap().get(), 42);
+    }
+
+    #[test]
+    fn maybe_set_gauge_none_is_noop() {
+        let gauge = try_create_int_gauge("test_maybe_set_none", "test");
+        set_gauge(&gauge, 10);
+        maybe_set_gauge(&gauge, None);
+        assert_eq!(gauge.as_ref().unwrap().get(), 10);
+    }
+
+    #[test]
+    fn maybe_set_float_gauge_some() {
+        let gauge = try_create_float_gauge("test_maybe_set_float_some", "test");
+        maybe_set_float_gauge(&gauge, Some(2.75));
+        assert!((gauge.as_ref().unwrap().get() - 2.75).abs() < 1e-10);
+    }
+
+    #[test]
+    fn maybe_set_float_gauge_none_is_noop() {
+        let gauge = try_create_float_gauge("test_maybe_set_float_none", "test");
+        set_float_gauge(&gauge, 1.0);
+        maybe_set_float_gauge(&gauge, None);
+        assert!((gauge.as_ref().unwrap().get() - 1.0).abs() < 1e-10);
+    }
+
+    // ── observe functions ───────────────────────────────────────
+
+    #[test]
+    fn observe_histogram_works() {
+        let h = try_create_histogram("test_observe_h", "test");
+        observe(&h, 1.5);
+        observe(&h, 2.5);
+        assert_eq!(h.as_ref().unwrap().get_sample_count(), 2);
+    }
+
+    #[test]
+    fn observe_duration_works() {
+        let h = try_create_histogram("test_observe_dur", "test");
+        observe_duration(&h, Duration::from_millis(100));
+        assert_eq!(h.as_ref().unwrap().get_sample_count(), 1);
+    }
+
+    // ── histogram vec operations ────────────────────────────────
+
+    #[test]
+    fn start_timer_vec_returns_some() {
+        let hv = try_create_histogram_vec("test_start_timer_vec", "test", &["op"]);
+        let timer = start_timer_vec(&hv, &["read"]);
+        assert!(timer.is_some());
+        stop_timer(timer);
+    }
+
+    #[test]
+    fn observe_timer_vec_records() {
+        let hv = try_create_histogram_vec("test_observe_timer_vec", "test", &["op"]);
+        observe_timer_vec(&hv, &["write"], Duration::from_millis(50));
+        let h = get_histogram(&hv, &["write"]);
+        assert_eq!(h.unwrap().get_sample_count(), 1);
+    }
+
+    #[test]
+    fn observe_vec_records() {
+        let hv = try_create_histogram_vec("test_observe_vec", "test", &["op"]);
+        observe_vec(&hv, &["sync"], 0.5);
+        let h = get_histogram(&hv, &["sync"]);
+        assert_eq!(h.unwrap().get_sample_count(), 1);
+    }
+
+    #[test]
+    fn get_histogram_err_returns_none() {
+        let hv: Result<HistogramVec> = Err(Error::Msg("err".into()));
+        assert!(get_histogram(&hv, &["x"]).is_none());
+    }
+
+    // ── start_timer for plain Histogram ─────────────────────────
+
+    #[test]
+    fn start_timer_ok_returns_some() {
+        let h = try_create_histogram("test_start_timer_ok", "test");
+        let timer = start_timer(&h);
+        assert!(timer.is_some());
+        stop_timer(timer);
+    }
+
+    #[test]
+    fn start_timer_err_returns_none() {
+        let h: Result<Histogram> = Err(Error::Msg("err".into()));
+        let timer = start_timer(&h);
+        assert!(timer.is_none());
+    }
+
+    // ── gather ──────────────────────────────────────────────────
+
+    #[test]
+    fn gather_returns_families() {
+        // Register a metric so gather has something to return
+        let _ = try_create_int_counter("test_gather_check", "test");
+        let families = gather();
+        assert!(!families.is_empty());
+    }
+
+    // ── set_float_gauge_vec ─────────────────────────────────────
+
+    #[test]
+    fn set_float_gauge_vec_works() {
+        let gv = try_create_float_gauge_vec("test_set_fgv", "test", &["name"]);
+        set_float_gauge_vec(&gv, &["a"], 1.23);
+        let g = get_gauge(&gv, &["a"]);
+        assert!((g.unwrap().get() - 1.23).abs() < 1e-10);
+    }
+
+    // ── set_gauge_entry ─────────────────────────────────────────
+
+    #[test]
+    fn set_gauge_entry_works() {
+        let gv = try_create_int_gauge_vec("test_set_gauge_entry", "test", &["name"]);
+        set_gauge_entry(&gv, &["x"], 77);
+        let g = get_int_gauge(&gv, &["x"]);
+        assert_eq!(g.unwrap().get(), 77);
+    }
+
+    // ── operations on Err metrics are no-ops ────────────────────
+
+    #[test]
+    fn operations_on_err_gauges_are_noop() {
+        let gauge: Result<IntGauge> = Err(Error::Msg("err".into()));
+        set_gauge(&gauge, 10);
+        inc_gauge(&gauge);
+        dec_gauge(&gauge);
+        maybe_set_gauge(&gauge, Some(5));
+        // Should not panic
+    }
+
+    #[test]
+    fn operations_on_err_float_gauges_are_noop() {
+        let gauge: Result<Gauge> = Err(Error::Msg("err".into()));
+        set_float_gauge(&gauge, 1.0);
+        maybe_set_float_gauge(&gauge, Some(2.0));
+        // Should not panic
+    }
+
+    #[test]
+    fn operations_on_err_counters_are_noop() {
+        let counter: Result<IntCounter> = Err(Error::Msg("err".into()));
+        inc_counter(&counter);
+        inc_counter_by(&counter, 5);
+        // Should not panic
+    }
+
+    #[test]
+    fn operations_on_err_histograms_are_noop() {
+        let h: Result<Histogram> = Err(Error::Msg("err".into()));
+        observe(&h, 1.0);
+        observe_duration(&h, Duration::from_secs(1));
+        // Should not panic
+    }
+
+    #[test]
+    fn operations_on_err_counter_vecs_are_noop() {
+        let cv: Result<IntCounterVec> = Err(Error::Msg("err".into()));
+        inc_counter_vec(&cv, &["x"]);
+        inc_counter_vec_by(&cv, &["x"], 5);
+        // Should not panic
+    }
+
+    #[test]
+    fn operations_on_err_gauge_vecs_are_noop() {
+        let gv: Result<IntGaugeVec> = Err(Error::Msg("err".into()));
+        set_gauge_vec(&gv, &["x"], 10);
+        inc_gauge_vec(&gv, &["x"]);
+        dec_gauge_vec(&gv, &["x"]);
+        // Should not panic
+    }
+}

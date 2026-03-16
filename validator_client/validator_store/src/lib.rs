@@ -271,3 +271,181 @@ impl DoppelgangerStatus {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_pubkey(byte: u8) -> PublicKeyBytes {
+        PublicKeyBytes::deserialize(&[byte; 48]).unwrap()
+    }
+
+    // ── DoppelgangerStatus::only_safe ───────────────────────────
+
+    #[test]
+    fn only_safe_signing_enabled_returns_some() {
+        let pk = sample_pubkey(1);
+        let status = DoppelgangerStatus::SigningEnabled(pk);
+        assert_eq!(status.only_safe(), Some(pk));
+    }
+
+    #[test]
+    fn only_safe_signing_disabled_returns_none() {
+        let pk = sample_pubkey(2);
+        let status = DoppelgangerStatus::SigningDisabled(pk);
+        assert_eq!(status.only_safe(), None);
+    }
+
+    #[test]
+    fn only_safe_unknown_returns_none() {
+        let pk = sample_pubkey(3);
+        let status = DoppelgangerStatus::UnknownToDoppelganger(pk);
+        assert_eq!(status.only_safe(), None);
+    }
+
+    // ── DoppelgangerStatus::ignored ─────────────────────────────
+
+    #[test]
+    fn ignored_signing_enabled_returns_some() {
+        let pk = sample_pubkey(4);
+        let status = DoppelgangerStatus::SigningEnabled(pk);
+        assert_eq!(status.ignored(), Some(pk));
+    }
+
+    #[test]
+    fn ignored_signing_disabled_returns_some() {
+        let pk = sample_pubkey(5);
+        let status = DoppelgangerStatus::SigningDisabled(pk);
+        assert_eq!(status.ignored(), Some(pk));
+    }
+
+    #[test]
+    fn ignored_unknown_returns_none() {
+        let pk = sample_pubkey(6);
+        let status = DoppelgangerStatus::UnknownToDoppelganger(pk);
+        assert_eq!(status.ignored(), None);
+    }
+
+    // ── DoppelgangerStatus::only_unsafe ─────────────────────────
+
+    #[test]
+    fn only_unsafe_signing_enabled_returns_none() {
+        let pk = sample_pubkey(7);
+        let status = DoppelgangerStatus::SigningEnabled(pk);
+        assert_eq!(status.only_unsafe(), None);
+    }
+
+    #[test]
+    fn only_unsafe_signing_disabled_returns_some() {
+        let pk = sample_pubkey(8);
+        let status = DoppelgangerStatus::SigningDisabled(pk);
+        assert_eq!(status.only_unsafe(), Some(pk));
+    }
+
+    #[test]
+    fn only_unsafe_unknown_returns_some() {
+        let pk = sample_pubkey(9);
+        let status = DoppelgangerStatus::UnknownToDoppelganger(pk);
+        assert_eq!(status.only_unsafe(), Some(pk));
+    }
+
+    // ── Error type ──────────────────────────────────────────────
+
+    #[test]
+    fn error_from_specific_wraps_correctly() {
+        let err: Error<String> = Error::from("custom error".to_string());
+        assert_eq!(err, Error::SpecificError("custom error".to_string()));
+    }
+
+    #[test]
+    fn error_from_i32() {
+        let err: Error<i32> = Error::from(42);
+        assert_eq!(err, Error::SpecificError(42));
+    }
+
+    #[test]
+    fn error_variants_are_distinct() {
+        let pk = sample_pubkey(10);
+        let e1: Error<String> = Error::DoppelgangerProtected(pk);
+        let e2: Error<String> = Error::UnknownToDoppelgangerService(pk);
+        let e3: Error<String> = Error::UnknownPubkey(pk);
+        let e4: Error<String> = Error::SameData;
+
+        assert_ne!(e1, e2);
+        assert_ne!(e2, e3);
+        assert_ne!(e3, e4);
+    }
+
+    #[test]
+    fn error_greater_than_current_slot() {
+        let err: Error<String> = Error::GreaterThanCurrentSlot {
+            slot: Slot::new(10),
+            current_slot: Slot::new(5),
+        };
+        assert_eq!(
+            err,
+            Error::GreaterThanCurrentSlot {
+                slot: Slot::new(10),
+                current_slot: Slot::new(5),
+            }
+        );
+    }
+
+    #[test]
+    fn error_greater_than_current_epoch() {
+        let err: Error<String> = Error::GreaterThanCurrentEpoch {
+            epoch: Epoch::new(3),
+            current_epoch: Epoch::new(1),
+        };
+        assert_eq!(
+            err,
+            Error::GreaterThanCurrentEpoch {
+                epoch: Epoch::new(3),
+                current_epoch: Epoch::new(1),
+            }
+        );
+    }
+
+    #[test]
+    fn error_clone() {
+        let err: Error<String> = Error::SameData;
+        let cloned = err.clone();
+        assert_eq!(err, cloned);
+    }
+
+    // ── DoppelgangerStatus debug ────────────────────────────────
+
+    #[test]
+    fn doppelganger_status_debug() {
+        let pk = sample_pubkey(11);
+        let status = DoppelgangerStatus::SigningEnabled(pk);
+        let debug = format!("{:?}", status);
+        assert!(debug.contains("SigningEnabled"));
+    }
+
+    // ── Verify all DoppelgangerStatus methods return correct pubkey ──
+
+    #[test]
+    fn methods_return_correct_pubkey() {
+        let pk1 = sample_pubkey(20);
+        let pk2 = sample_pubkey(21);
+        let pk3 = sample_pubkey(22);
+
+        assert_eq!(
+            DoppelgangerStatus::SigningEnabled(pk1).only_safe().unwrap(),
+            pk1
+        );
+
+        assert_eq!(
+            DoppelgangerStatus::SigningDisabled(pk2).ignored().unwrap(),
+            pk2
+        );
+
+        assert_eq!(
+            DoppelgangerStatus::UnknownToDoppelganger(pk3)
+                .only_unsafe()
+                .unwrap(),
+            pk3
+        );
+    }
+}
