@@ -623,3 +623,430 @@ pub fn update_array<E: EthSpec, T: TargetArrayChunk>(
 
     Ok(slashings)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use std::path::PathBuf;
+    use types::Epoch;
+
+    fn test_config() -> Config {
+        Config {
+            database_path: PathBuf::from("/tmp/slasher-test"),
+            chunk_size: 4,
+            validator_chunk_size: 2,
+            history_length: 16,
+            ..Config::new(PathBuf::from("/tmp/slasher-test"))
+        }
+    }
+
+    // ── Chunk::epoch_distance ──────────────────────────────────
+
+    #[test]
+    fn epoch_distance_zero() {
+        let d = Chunk::epoch_distance(Epoch::new(10), Epoch::new(10)).unwrap();
+        assert_eq!(d, 0);
+    }
+
+    #[test]
+    fn epoch_distance_positive() {
+        let d = Chunk::epoch_distance(Epoch::new(15), Epoch::new(10)).unwrap();
+        assert_eq!(d, 5);
+    }
+
+    #[test]
+    fn epoch_distance_large_valid() {
+        let base = Epoch::new(100);
+        let target = Epoch::new(100 + MAX_DISTANCE as u64 - 1);
+        let d = Chunk::epoch_distance(target, base).unwrap();
+        assert_eq!(d, MAX_DISTANCE - 1);
+    }
+
+    #[test]
+    fn epoch_distance_at_max_fails() {
+        let base = Epoch::new(100);
+        let target = Epoch::new(100 + MAX_DISTANCE as u64);
+        assert!(matches!(
+            Chunk::epoch_distance(target, base),
+            Err(Error::DistanceTooLarge)
+        ));
+    }
+
+    #[test]
+    fn epoch_distance_overflow() {
+        assert!(matches!(
+            Chunk::epoch_distance(Epoch::new(5), Epoch::new(10)),
+            Err(Error::DistanceCalculationOverflow)
+        ));
+    }
+
+    #[test]
+    fn epoch_distance_one() {
+        let d = Chunk::epoch_distance(Epoch::new(11), Epoch::new(10)).unwrap();
+        assert_eq!(d, 1);
+    }
+
+    // ── Chunk get/set target ───────────────────────────────────
+
+    #[test]
+    fn chunk_get_set_target() {
+        let config = test_config();
+        let mut chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+
+        chunk
+            .set_target(0, Epoch::new(2), Epoch::new(5), &config)
+            .unwrap();
+        let retrieved = chunk.get_target(0, Epoch::new(2), &config).unwrap();
+        assert_eq!(retrieved, Epoch::new(5));
+    }
+
+    #[test]
+    fn chunk_get_set_raw_distance() {
+        let config = test_config();
+        let mut chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+
+        chunk
+            .set_raw_distance(1, Epoch::new(3), 42, &config)
+            .unwrap();
+        let target = chunk.get_target(1, Epoch::new(3), &config).unwrap();
+        assert_eq!(target, Epoch::new(3 + 42));
+    }
+
+    #[test]
+    fn chunk_default_distance_is_zero() {
+        let config = test_config();
+        let chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+        let target = chunk.get_target(0, Epoch::new(0), &config).unwrap();
+        assert_eq!(target, Epoch::new(0));
+    }
+
+    #[test]
+    fn chunk_multiple_validators_independent() {
+        let config = test_config();
+        let mut chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+        let epoch = Epoch::new(1);
+
+        chunk.set_target(0, epoch, Epoch::new(10), &config).unwrap();
+        chunk.set_target(1, epoch, Epoch::new(20), &config).unwrap();
+
+        assert_eq!(chunk.get_target(0, epoch, &config).unwrap(), Epoch::new(10));
+        assert_eq!(chunk.get_target(1, epoch, &config).unwrap(), Epoch::new(20));
+    }
+
+    #[test]
+    fn chunk_multiple_epochs_independent() {
+        let config = test_config();
+        let mut chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+
+        chunk
+            .set_target(0, Epoch::new(0), Epoch::new(100), &config)
+            .unwrap();
+        chunk
+            .set_target(0, Epoch::new(1), Epoch::new(200), &config)
+            .unwrap();
+
+        assert_eq!(
+            chunk.get_target(0, Epoch::new(0), &config).unwrap(),
+            Epoch::new(100)
+        );
+        assert_eq!(
+            chunk.get_target(0, Epoch::new(1), &config).unwrap(),
+            Epoch::new(200)
+        );
+    }
+
+    #[test]
+    fn chunk_overwrite_target() {
+        let config = test_config();
+        let mut chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+
+        chunk
+            .set_target(0, Epoch::new(0), Epoch::new(10), &config)
+            .unwrap();
+        chunk
+            .set_target(0, Epoch::new(0), Epoch::new(20), &config)
+            .unwrap();
+
+        assert_eq!(
+            chunk.get_target(0, Epoch::new(0), &config).unwrap(),
+            Epoch::new(20)
+        );
+    }
+
+    #[test]
+    fn chunk_out_of_bounds_set() {
+        let config = test_config();
+        let mut chunk = Chunk { data: vec![0; 1] };
+        assert!(matches!(
+            chunk.set_raw_distance(1, Epoch::new(0), 5, &config),
+            Err(Error::ChunkIndexOutOfBounds(_))
+        ));
+    }
+
+    // ── MinTargetChunk ─────────────────────────────────────────
+
+    #[test]
+    fn min_target_chunk_empty_has_max_distance() {
+        let config = test_config();
+        let chunk = MinTargetChunk::empty(&config);
+        assert_eq!(
+            chunk.chunk.data.len(),
+            config.chunk_size * config.validator_chunk_size
+        );
+        assert!(chunk.chunk.data.iter().all(|&v| v == MAX_DISTANCE));
+    }
+
+    #[test]
+    fn min_target_neutral_element() {
+        assert_eq!(MinTargetChunk::neutral_element(), MAX_DISTANCE);
+    }
+
+    #[test]
+    fn min_target_chunk_name() {
+        assert_eq!(MinTargetChunk::name(), "min");
+    }
+
+    #[test]
+    fn min_target_first_start_epoch_within_history() {
+        let config = test_config();
+        let result = MinTargetChunk::first_start_epoch(Epoch::new(10), Epoch::new(20), &config);
+        assert_eq!(result, Some(Epoch::new(9)));
+    }
+
+    #[test]
+    fn min_target_first_start_epoch_at_boundary() {
+        let config = test_config();
+        let result = MinTargetChunk::first_start_epoch(Epoch::new(4), Epoch::new(20), &config);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn min_target_next_start_epoch() {
+        let config = test_config();
+        let result = MinTargetChunk::next_start_epoch(Epoch::new(7), &config);
+        assert_eq!(result, Epoch::new(3));
+    }
+
+    #[test]
+    fn min_target_next_start_epoch_at_chunk_boundary() {
+        let config = test_config();
+        let result = MinTargetChunk::next_start_epoch(Epoch::new(8), &config);
+        assert_eq!(result, Epoch::new(7));
+    }
+
+    #[test]
+    fn min_target_update_reduces_targets() {
+        let config = test_config();
+        let mut chunk = MinTargetChunk::empty(&config);
+
+        let chunk_index = config.chunk_index(Epoch::new(3));
+        let keep_going = chunk
+            .update(
+                chunk_index,
+                0,
+                Epoch::new(3),
+                Epoch::new(10),
+                Epoch::new(10),
+                &config,
+            )
+            .unwrap();
+
+        let target = chunk.chunk.get_target(0, Epoch::new(3), &config).unwrap();
+        assert_eq!(target, Epoch::new(10));
+        assert!(!keep_going);
+    }
+
+    #[test]
+    fn min_target_update_stops_when_existing_is_smaller() {
+        let config = test_config();
+        let mut chunk = MinTargetChunk::empty(&config);
+
+        // Set epoch 1 to a small target
+        chunk
+            .chunk
+            .set_target(0, Epoch::new(1), Epoch::new(5), &config)
+            .unwrap();
+
+        // Update from epoch 3 with target 10
+        let chunk_index = config.chunk_index(Epoch::new(3));
+        let _keep_going = chunk
+            .update(
+                chunk_index,
+                0,
+                Epoch::new(3),
+                Epoch::new(10),
+                Epoch::new(10),
+                &config,
+            )
+            .unwrap();
+
+        // Epoch 3 should be updated
+        assert_eq!(
+            chunk.chunk.get_target(0, Epoch::new(3), &config).unwrap(),
+            Epoch::new(10)
+        );
+        // Epoch 1 should retain its smaller value
+        assert_eq!(
+            chunk.chunk.get_target(0, Epoch::new(1), &config).unwrap(),
+            Epoch::new(5)
+        );
+    }
+
+    // ── MaxTargetChunk ─────────────────────────────────────────
+
+    #[test]
+    fn max_target_chunk_empty_has_zero_distance() {
+        let config = test_config();
+        let chunk = MaxTargetChunk::empty(&config);
+        assert_eq!(
+            chunk.chunk.data.len(),
+            config.chunk_size * config.validator_chunk_size
+        );
+        assert!(chunk.chunk.data.iter().all(|&v| v == 0));
+    }
+
+    #[test]
+    fn max_target_neutral_element() {
+        assert_eq!(MaxTargetChunk::neutral_element(), 0);
+    }
+
+    #[test]
+    fn max_target_chunk_name() {
+        assert_eq!(MaxTargetChunk::name(), "max");
+    }
+
+    #[test]
+    fn max_target_first_start_epoch_within_range() {
+        let config = test_config();
+        let result = MaxTargetChunk::first_start_epoch(Epoch::new(5), Epoch::new(20), &config);
+        assert_eq!(result, Some(Epoch::new(6)));
+    }
+
+    #[test]
+    fn max_target_first_start_epoch_at_current() {
+        let config = test_config();
+        let result = MaxTargetChunk::first_start_epoch(Epoch::new(20), Epoch::new(20), &config);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn max_target_next_start_epoch() {
+        let config = test_config();
+        let result = MaxTargetChunk::next_start_epoch(Epoch::new(5), &config);
+        assert_eq!(result, Epoch::new(8));
+    }
+
+    #[test]
+    fn max_target_next_start_epoch_at_boundary() {
+        let config = test_config();
+        let result = MaxTargetChunk::next_start_epoch(Epoch::new(4), &config);
+        assert_eq!(result, Epoch::new(8));
+    }
+
+    #[test]
+    fn max_target_update_increases_targets() {
+        let config = test_config();
+        let mut chunk = MaxTargetChunk::empty(&config);
+
+        let chunk_index = config.chunk_index(Epoch::new(4));
+        let keep_going = chunk
+            .update(
+                chunk_index,
+                0,
+                Epoch::new(4),
+                Epoch::new(15),
+                Epoch::new(10),
+                &config,
+            )
+            .unwrap();
+
+        let target = chunk.chunk.get_target(0, Epoch::new(4), &config).unwrap();
+        assert_eq!(target, Epoch::new(15));
+        assert!(keep_going);
+    }
+
+    #[test]
+    fn max_target_update_stops_when_existing_is_larger() {
+        let config = test_config();
+        let mut chunk = MaxTargetChunk::empty(&config);
+
+        // Set epoch 5 to a large target
+        chunk
+            .chunk
+            .set_target(0, Epoch::new(5), Epoch::new(100), &config)
+            .unwrap();
+
+        // Update from epoch 4 with target 50
+        let chunk_index = config.chunk_index(Epoch::new(4));
+        let _keep_going = chunk
+            .update(
+                chunk_index,
+                0,
+                Epoch::new(4),
+                Epoch::new(50),
+                Epoch::new(10),
+                &config,
+            )
+            .unwrap();
+
+        assert_eq!(
+            chunk.chunk.get_target(0, Epoch::new(4), &config).unwrap(),
+            Epoch::new(50)
+        );
+        assert_eq!(
+            chunk.chunk.get_target(0, Epoch::new(5), &config).unwrap(),
+            Epoch::new(100)
+        );
+    }
+
+    // ── Chunk serialization ────────────────────────────────────
+
+    #[test]
+    fn chunk_bincode_roundtrip() {
+        let config = test_config();
+        let mut chunk = Chunk {
+            data: vec![0; config.chunk_size * config.validator_chunk_size],
+        };
+        chunk
+            .set_raw_distance(0, Epoch::new(0), 42, &config)
+            .unwrap();
+        chunk
+            .set_raw_distance(1, Epoch::new(2), 99, &config)
+            .unwrap();
+
+        let bytes = bincode::serialize(&chunk).unwrap();
+        let deserialized: Chunk = bincode::deserialize(&bytes).unwrap();
+        assert_eq!(chunk.data, deserialized.data);
+    }
+
+    #[test]
+    fn min_target_chunk_bincode_roundtrip() {
+        let config = test_config();
+        let chunk = MinTargetChunk::empty(&config);
+        let bytes = bincode::serialize(&chunk).unwrap();
+        let deserialized: MinTargetChunk = bincode::deserialize(&bytes).unwrap();
+        assert_eq!(chunk.chunk.data, deserialized.chunk.data);
+    }
+
+    #[test]
+    fn max_target_chunk_bincode_roundtrip() {
+        let config = test_config();
+        let chunk = MaxTargetChunk::empty(&config);
+        let bytes = bincode::serialize(&chunk).unwrap();
+        let deserialized: MaxTargetChunk = bincode::deserialize(&bytes).unwrap();
+        assert_eq!(chunk.chunk.data, deserialized.chunk.data);
+    }
+}

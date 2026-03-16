@@ -108,3 +108,201 @@ impl<E: EthSpec> AttestationQueue<E> {
         self.len() == 0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::{E, indexed_att_electra};
+    use std::path::PathBuf;
+
+    fn test_config() -> Config {
+        Config {
+            database_path: PathBuf::from("/tmp/slasher-test"),
+            chunk_size: 4,
+            validator_chunk_size: 256,
+            history_length: 16,
+            ..Config::new(PathBuf::from("/tmp/slasher-test"))
+        }
+    }
+
+    // ── AttestationQueue ───────────────────────────────────────
+
+    #[test]
+    fn attestation_queue_empty() {
+        let q = AttestationQueue::<E>::default();
+        assert!(q.is_empty());
+        assert_eq!(q.len(), 0);
+    }
+
+    #[test]
+    fn attestation_queue_enqueue_dequeue() {
+        let q = AttestationQueue::<E>::default();
+        let att = indexed_att_electra(vec![1], 0, 1, 0);
+        q.queue(att);
+        assert_eq!(q.len(), 1);
+
+        let batch = q.dequeue();
+        assert_eq!(batch.len(), 1);
+        assert!(q.is_empty());
+    }
+
+    #[test]
+    fn attestation_queue_multiple_enqueue() {
+        let q = AttestationQueue::<E>::default();
+        q.queue(indexed_att_electra(vec![1], 0, 1, 0));
+        q.queue(indexed_att_electra(vec![2], 0, 2, 0));
+        q.queue(indexed_att_electra(vec![3], 0, 3, 0));
+        assert_eq!(q.len(), 3);
+    }
+
+    #[test]
+    fn attestation_queue_dequeue_empty() {
+        let q = AttestationQueue::<E>::default();
+        let batch = q.dequeue();
+        assert!(batch.is_empty());
+    }
+
+    #[test]
+    fn attestation_queue_requeue() {
+        let q = AttestationQueue::<E>::default();
+        q.queue(indexed_att_electra(vec![1], 0, 1, 0));
+        q.queue(indexed_att_electra(vec![2], 0, 2, 0));
+
+        let batch = q.dequeue();
+        assert_eq!(batch.len(), 2);
+        assert!(q.is_empty());
+
+        q.requeue(batch);
+        assert_eq!(q.len(), 2);
+    }
+
+    #[test]
+    fn attestation_queue_enqueue_after_dequeue() {
+        let q = AttestationQueue::<E>::default();
+        q.queue(indexed_att_electra(vec![1], 0, 1, 0));
+        let _ = q.dequeue();
+
+        q.queue(indexed_att_electra(vec![2], 0, 2, 0));
+        assert_eq!(q.len(), 1);
+    }
+
+    // ── AttestationBatch ───────────────────────────────────────
+
+    #[test]
+    fn batch_queue_single() {
+        let att = indexed_att_electra(vec![1], 0, 1, 0);
+        let record = AttesterRecord::from(att.clone());
+        let indexed_record = IndexedAttesterRecord::new(att, record);
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(indexed_record);
+
+        assert_eq!(batch.attestations.len(), 1);
+        assert_eq!(batch.attesters.len(), 1);
+    }
+
+    #[test]
+    fn batch_queue_multiple_validators_same_data() {
+        let att = indexed_att_electra(vec![1, 2, 3], 0, 1, 0);
+        let record = AttesterRecord::from(att.clone());
+        let indexed_record = IndexedAttesterRecord::new(att, record);
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(indexed_record);
+
+        // 3 entries in attesters (one per validator)
+        assert_eq!(batch.attesters.len(), 3);
+        assert_eq!(batch.attestations.len(), 1);
+    }
+
+    #[test]
+    fn batch_queue_different_data() {
+        let att1 = indexed_att_electra(vec![1], 0, 1, 0);
+        let record1 = AttesterRecord::from(att1.clone());
+        let att2 = indexed_att_electra(vec![2], 0, 2, 0);
+        let record2 = AttesterRecord::from(att2.clone());
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(IndexedAttesterRecord::new(att1, record1));
+        batch.queue(IndexedAttesterRecord::new(att2, record2));
+
+        assert_eq!(batch.attestations.len(), 2);
+        assert_eq!(batch.attesters.len(), 2);
+    }
+
+    #[test]
+    fn batch_dedup_prefers_larger_aggregate() {
+        let att_small = indexed_att_electra(vec![1], 0, 1, 0);
+        let record_small = AttesterRecord::from(att_small.clone());
+
+        let att_large = indexed_att_electra(vec![1, 2, 3], 0, 1, 0);
+        let record_large = AttesterRecord::from(att_large.clone());
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(IndexedAttesterRecord::new(att_small, record_small));
+        batch.queue(IndexedAttesterRecord::new(att_large, record_large));
+
+        // Validator 1 should map to the larger attestation
+        let data_hash = batch.attesters.keys().find(|(v, _)| *v == 1).unwrap().1;
+        let record = batch.attesters.get(&(1, data_hash)).unwrap();
+        assert_eq!(record.indexed.attesting_indices_len(), 3);
+    }
+
+    #[test]
+    fn batch_dedup_keeps_larger_when_queued_first() {
+        let att_large = indexed_att_electra(vec![1, 2, 3], 0, 1, 0);
+        let record_large = AttesterRecord::from(att_large.clone());
+
+        let att_small = indexed_att_electra(vec![1], 0, 1, 0);
+        let record_small = AttesterRecord::from(att_small.clone());
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(IndexedAttesterRecord::new(att_large, record_large));
+        batch.queue(IndexedAttesterRecord::new(att_small, record_small));
+
+        // Validator 1 should still map to the larger attestation
+        let data_hash = batch.attesters.keys().find(|(v, _)| *v == 1).unwrap().1;
+        let record = batch.attesters.get(&(1, data_hash)).unwrap();
+        assert_eq!(record.indexed.attesting_indices_len(), 3);
+    }
+
+    // ── group_by_validator_chunk_index ──────────────────────────
+
+    #[test]
+    fn group_by_validator_chunk_single_chunk() {
+        let config = test_config();
+        let att = indexed_att_electra(vec![1, 2, 3], 0, 1, 0);
+        let record = AttesterRecord::from(att.clone());
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(IndexedAttesterRecord::new(att, record));
+
+        let grouped = batch.group_by_validator_chunk_index(&config);
+        assert_eq!(grouped.subqueues.len(), 1);
+        assert_eq!(grouped.subqueues[0].len(), 3);
+    }
+
+    #[test]
+    fn group_by_validator_chunk_multiple_chunks() {
+        let config = test_config();
+        let att = indexed_att_electra(vec![0, 256, 512], 0, 1, 0);
+        let record = AttesterRecord::from(att.clone());
+
+        let mut batch = AttestationBatch::<E>::default();
+        batch.queue(IndexedAttesterRecord::new(att, record));
+
+        let grouped = batch.group_by_validator_chunk_index(&config);
+        assert_eq!(grouped.subqueues.len(), 3);
+        assert_eq!(grouped.subqueues[0].len(), 1);
+        assert_eq!(grouped.subqueues[1].len(), 1);
+        assert_eq!(grouped.subqueues[2].len(), 1);
+    }
+
+    #[test]
+    fn group_by_validator_chunk_empty_batch() {
+        let config = test_config();
+        let batch = AttestationBatch::<E>::default();
+        let grouped = batch.group_by_validator_chunk_index(&config);
+        assert!(grouped.subqueues.is_empty());
+    }
+}
