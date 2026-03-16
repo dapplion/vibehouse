@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1501 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green. Nightly slasher failure was pre-fix (stale run). Latest CI run passed.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged).
+- Merged since alpha.3: #5001 (parent_block_root in bid key — already implemented), #5002 (wording), #5005 (test fix), #4940 (fork choice tests — already passing). No action needed.
+- PR #4992 (cached PTCs): still OPEN, no approvals, active discussion (potuz, kevaundray, jtraglia). Not urgent.
+- Open Gloas PRs (8): #5008, #4992, #4962, #4960, #4939, #4932, #4843, #4840
+- cargo clippy: clean (0 warnings)
+- No actionable work — project in maintenance mode.
+
 ### run 1500 (Mar 16) — health check, all stable
 
 **Health check**: all stable
