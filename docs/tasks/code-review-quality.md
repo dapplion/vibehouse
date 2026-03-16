@@ -1659,3 +1659,18 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 - No open PRs, no open issues requiring action (issue #27 has 0 upvotes).
 
 **Action**: No code changes needed. Monitoring run only.
+
+#### Run 1605 — Status check, CI verification, slasher fix validation
+
+**Scope**: Checked all priorities, CI status, spec updates, Heze fork status, slasher fix validation.
+
+**Findings**:
+- All priorities DONE (1-6 + backlog). Only priority 7 (ROCQ formal proofs, lowest priority) remains open.
+- CI green: latest commit (flaky slasher test fix) passed all 7 main CI jobs. Nightly failure from 09:36 was before the fix (09:53 + 18:38 pushes).
+- Validated slasher fix locally: `override_backend_with_mdbx_file_present` passes with both `lmdb`-only and `mdbx`-only feature configs. Nightly should be green tonight.
+- Spec v1.7.0-alpha.3 still latest consensus-specs release. No new Gloas spec changes since alpha.3 (only #5002 wording clarification).
+- `cargo audit`: only `rsa` RUSTSEC-2023-0071 (no fix available, JWT auth on localhost, low risk).
+- Heze fork (FOCIL/EIP-7805): spec exists (7 files, 197-line beacon-chain.md), still marked WIP. Promoted to Heze on 2026-02-20. Not yet actionable for implementation.
+- No open PRs, no open issues requiring action (issue #27 has 0 upvotes, #28/#29 are RFCs).
+
+**Action**: No code changes needed. Monitoring run only.
