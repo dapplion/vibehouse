@@ -29,6 +29,26 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1457 (Mar 16) — RPC methods types and conversions test coverage (43 tests)
+
+**Test coverage**: Added 43 unit tests to `beacon_node/vibehouse_network/src/rpc/methods.rs`, a previously-untested 972-line file containing RPC request/response types, SSZ encoding, and protocol conversions:
+- `GoodbyeReason` (6 tests): from_u64 known values (8 variants), unknown values (0/42/MAX), into_u64 roundtrip for all 9 variants, SSZ encode/decode roundtrip, SSZ fixed len = 8 bytes, Display formatting
+- `ErrorType` (5 tests): From<String>, From<&str>, Display strips control chars, empty Display, truncation at MAX_ERROR_LEN (256)
+- `RpcErrorResponse` (3 tests): code roundtrip for all 5 known codes (1/2/3/139/140), Unknown code = 255, Display text
+- `RpcResponse` (5 tests): is_response(0) = true / non-zero = false, from_error for all 5 known codes + unknown, close_after for error/termination, as_u8 for error/termination
+- `ResponseTermination` (1 test): as_protocol mapping for all 6 termination types including ExecutionPayloadEnvelopesByRoot
+- `BlocksByRangeRequest` (3 tests): new() creates V2, new_v1() creates V1, Display format
+- `OldBlocksByRangeRequest` (3 tests): From<BlocksByRangeRequest> V2 with step=1, From V1 preserves variant, Display format
+- `DataColumnsByRangeRequest` (5 tests): max_requested multiplication, saturating overflow, SSZ min/max lengths, SSZ roundtrip
+- `BlobsByRangeRequest` (2 tests): Display format, SSZ roundtrip
+- `LightClientUpdatesByRangeRequest` (3 tests): max_requested constant, SSZ min==max==16, SSZ roundtrip
+- `StatusMessage` (4 tests): V2→V1 drops earliest_available_slot, V1→V2 sets earliest=0, V1 identity roundtrip, Display format
+- `Ping` (1 test): SSZ roundtrip
+- `MetadataRequest` (1 test): V1/V2/V3 variant constructors
+- `LightClientBootstrapRequest` (1 test): SSZ roundtrip
+
+**CI**: All 43 new tests pass. Clippy clean.
+
 ### run 1449 (Mar 16) — gossipsub scoring parameters test coverage (31 tests)
 
 **Test coverage**: Added 31 unit tests to `beacon_node/vibehouse_network/src/service/gossipsub_scoring_parameters.rs`, a previously-untested 428-line file containing gossipsub peer scoring math:
