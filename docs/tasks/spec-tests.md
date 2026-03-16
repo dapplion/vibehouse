@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1496 (Mar 16) — health check, slasher fix verified
+
+**Health check**: all stable
+- CI: latest run (slasher fix) in progress, clippy/fmt green. Nightly slasher failure was from before the fix push — confirmed fix works locally.
+- Spec: v1.7.0-alpha.3 still latest. No new merges since run 1495.
+- PR #5008 (fix field name in p2p-interface prose): docs-only, our code already uses correct `beacon_block_root` field name. No action.
+- PR #4992 (cached PTCs): still OPEN, active discussion on PTC stability semantics. No action yet.
+- No actionable work — project in maintenance mode.
+
 ### run 1495 (Mar 16) — fixed slasher nightly test failure
 
 **Slasher test fix**: `override_backend_with_mdbx_file_present` was failing when `mdbx` feature is the default backend. `Config::new` sets `backend=Mdbx`, so `already_mdbx=true` and `override_backend` returns `Noop` instead of `Success`. Fix: force `backend=Disabled` before testing override path.
