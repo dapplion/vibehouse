@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1637 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly, CI, spec-test-version-check all passing.
+- Codebase: zero clippy warnings, zero compiler warnings.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new merges since #5005 (Mar 15).
+- PR #4992 (cached PTCs in state) — still open, same head d76a278b0a, 1 APPROVED (jtraglia). NOT merged.
+- PR #5008, #4843, #4939 — still open.
+- 3 test PRs (#4962, #4960, #4932) — still open.
+- cargo audit: 1 vuln (rsa, no fix), 5 warnings (transitive, no fix). Not actionable.
+- No semver-compatible dep updates (0 packages).
+- ptc-lookbehind branch 76 commits behind main (all task doc drift). No rebase needed.
+- No actionable work.
+
 ### run 1636 (Mar 16) — health check, all stable
 
 **Health check**: all stable
