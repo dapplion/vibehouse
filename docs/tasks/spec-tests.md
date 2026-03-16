@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1596 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly slasher failure confirmed fixed (ran on pre-fix commit, next nightly will pass).
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e7, no new merges to master.
+- PR #5008 (field name fix in EnvelopesByRoot): cosmetic spec text fix, our code already uses correct `beacon_block_root` from container definition.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED (same head d76a278b0a). potuz questioning if off-protocol caching belongs in spec. Design still evolving.
+- PR #4962 (missed payload withdrawal tests): blocked, not merged.
+- Verified `parent_block_root` bid filtering key (PR #5001, in alpha.3): our code already uses `(slot, parent_block_hash, parent_block_root)` tuple in `observed_execution_bids` — fully aligned.
+- No actionable work — project in maintenance mode.
+
 ### run 1595 (Mar 16) — health check, all stable
 
 **Health check**: all stable
