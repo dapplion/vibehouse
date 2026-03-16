@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1505 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: main green. Nightly failure (slasher override_backend) was stale run pre-fix (b79292d35 pushed after nightly started) — next nightly will pass.
+- Spec: v1.7.0-alpha.3 still latest. HEAD at 1baa05e (unchanged).
+- Post-alpha.3 merged PRs: #5001 (parent_block_root in bid filtering) — already implemented in our `observed_execution_bids.rs`, #5005 (test fix only), #5004/#5002 (docs only). No code changes needed.
+- PR #4992 (cached PTCs): still OPEN, NOT MERGED.
+- New open PRs: #5008 (field name docs fix), #4962 (sanity/blocks tests for missed payload), #4954 (fork choice ms — still open).
+- No semver-compatible cargo dep updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1504 (Mar 16) — health check, all stable
 
 **Health check**: all stable
