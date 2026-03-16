@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1620 (Mar 16) — health check, all stable
+
+**Health check**: all stable
+- CI: all green (latest run 23160034185 success). Nightly slasher flake fixed in 938e1abca.
+- Spec: v1.7.0-alpha.3 still latest release. No new gloas PRs merged since alpha.3.
+- Verified parent_block_root bid filtering (spec PR #5001) correctly implemented in observed_execution_bids.rs.
+- Clippy clean (workspace, no warnings). No semver-compatible cargo updates.
+- No actionable work — project in maintenance mode.
+
 ### run 1619 (Mar 16) — health check, all stable
 
 **Health check**: all stable
