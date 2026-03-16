@@ -29,6 +29,22 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1449 (Mar 16) — gossipsub scoring parameters test coverage (31 tests)
+
+**Test coverage**: Added 31 unit tests to `beacon_node/vibehouse_network/src/service/gossipsub_scoring_parameters.rs`, a previously-untested 428-line file containing gossipsub peer scoring math:
+- `vibehouse_gossip_thresholds` (2 tests): exact threshold values, ordering invariants (publish < gossip < 0, graylist < publish)
+- `PeerScoreSettings::new` (6 tests): slot/epoch duration from spec, mesh_n passthrough, attestation_subnet_count from spec, max_positive_score positive, accessor method
+- `score_parameter_decay_with_base` (4 tests): single tick (decay_to_zero^1), two ticks (sqrt), result in valid range (0,1), longer time → higher per-tick decay
+- `decay_convergence` (3 tests): known value (0.5, 1.0 → 2.0), higher decay → higher convergence, linear scaling with rate
+- `threshold` (2 tests): known value (0.5, 1.0 → 1.0), always less than convergence
+- `expected_aggregator_count_per_slot` (2 tests): positive values, more validators → more committees
+- `score_parameter_decay` (1 test): uses settings decay_interval, result in (0,1)
+- `get_topic_params` (5 tests): without mesh info (mesh params zeroed), with mesh info (mesh params active), early slot disables mesh scoring, invalid message weight negative, time_in_mesh_cap = 3600/slot_secs
+- `get_dynamic_topic_params` (1 test): returns correct weights for block/aggregate/subnet
+- `get_peer_score_params` (5 tests): all expected topics present, decay_interval matches, topic_score_cap positive, ip_colocation negative, behaviour_penalty negative
+
+**CI**: All 31 new tests pass. Clippy clean.
+
 ### run 1445 (Mar 16) — BLS crypto and eth2_wallet module test coverage (62 tests)
 
 **Test coverage**: Added 62 unit tests across 2 files spanning 2 crates:
