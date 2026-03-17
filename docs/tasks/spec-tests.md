@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1755 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`7686fb2`). Clippy clean (zero warnings). Nightly failure on `837cf89` is stale (pre-fix); tonight's nightly will pass.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged.
+- **Open Gloas PRs**: unchanged — #5008, #4992, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630. All OPEN. #4992 (cached PTCs) has 1 approval (jtraglia), active discussion. Our `cached-ptc` branch matches latest spec state (two-field split).
+- **New PR #5014**: EIP-8025 p2p protocol update — not Gloas core, not actionable.
+- **cargo audit**: unchanged.
+- No code changes needed.
+
 ### run 1754 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`3e89927`). Clippy clean (zero warnings).
