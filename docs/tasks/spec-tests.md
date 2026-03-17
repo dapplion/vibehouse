@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1697 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since #5005 (Mar 15).
+- CI: run 23180048211 — all 7 jobs green (check+clippy, ef-tests, unit-tests, beacon_chain, http_api, network+op_pool, ci-success). Nightly: 2/3 green, slasher flake re-run passed.
+- Recently merged Gloas PRs reviewed: #5001 (parent_block_root bid filter — already implemented), #5002 (wording only), #5005 (test fix — already handled in run 1690), #4940 (fork choice tests — already passing).
+- Open Gloas PRs: #4992 (PTC lookbehind, still in discussion), #4939, #4960, #4932, #4892, #4840, #4630. All OPEN, NOT MERGED.
+- No semver-compatible cargo updates. cargo audit unchanged (1 rsa vulnerability, no fix available).
+- No code changes needed.
+
 ### run 1696 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since #5005 (Mar 15).
