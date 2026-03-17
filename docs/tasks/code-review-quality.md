@@ -1730,3 +1730,15 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 **Spec audit**: checked 15 recently merged consensus-specs PRs. PR #5001 (`parent_block_root` in bid filtering key) already implemented — our `is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple. PR #5002 (wording clarification) is doc-only. PR #5005 (test fixture fix) already handled. No open Gloas PRs are merged/actionable.
 
 **Code quality scan**: reviewed production code for unwraps, unnecessary clones, visibility issues. Findings are all pre-existing architectural patterns (state clones in block_verification.rs, ExecutionPayload clones in engine API) — not quick fixes, and not regressions from autonomous development.
+
+### Run 1774 (2026-03-17)
+
+**Nightly failure triage**: reviewed all 4 recent nightly failures:
+- March 17: `finalized_sync_not_enough_custody_peers_on_start` — already fixed in `8f8faa7de`
+- March 16: `override_backend_with_mdbx_file_present` — filesystem flake, hardened now
+- March 10: `data_column_reconstruction_at_deadline` — already fixed in `62df56862`
+- Feb 28: beacon-chain tests (altair/fulu) — separate issue, pre-existing
+
+**Slasher test hardening**: the `override_backend_with_mdbx_file_present` test was still vulnerable to CI filesystem flakes despite previous fsync fixes. Added: (1) read file back after write as a filesystem barrier, (2) moved config path visibility check BEFORE calling `override_backend()` so diagnostic fires before the confusing assertion.
+
+**Spec check**: no new consensus-specs releases since v1.7.0-alpha.3. All open Gloas PRs still unmerged. No actionable work.
