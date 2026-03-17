@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1787 (Mar 17) — health check, all stable
+
+- **CI**: all 7 jobs green on HEAD (`076448c`). Nightly failure on stale commit `837cf89` — HEAD has 54 commits ahead with fix, next nightly will pass.
+- **Build**: `cargo check --release` clean (17s). Zero warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since last check.
+- **Open Gloas PRs**: #4992 (cached PTCs), #4558 (cell dissemination), #4747 (fast confirmation), #5008 (field name fix) — all still open/unmerged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1786 (Mar 17) — health check, all stable
 
 - **CI**: all 7 jobs green on HEAD (`b6a6d9f`). Nightly failure on stale commit `837cf89` — fix `8f8faa7` already in HEAD, next nightly will pass.
