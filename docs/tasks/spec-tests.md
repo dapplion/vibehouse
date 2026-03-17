@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1741 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits since run 1740.
+- CI: run for mock EL execution requests commit in progress (check+clippy+fmt passed, test jobs running).
+- Open Gloas PRs: #4992 (cached PTCs, still OPEN, mergeable_state=clean), #5008 (field name fix, OPEN), #4962, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- PR #5008 (field name `block_root` → `beacon_block_root`): verified vibehouse already uses correct name `beacon_block_root` in `ExecutionPayloadEnvelope` struct.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings (allowed).
+- All 8 remaining TODOs in codebase tracked in #36, all blocked on externals or non-critical refactors.
+- No code changes needed.
+
 ### run 1740 (Mar 17) — mock EL execution requests (#36)
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits since run 1739.
