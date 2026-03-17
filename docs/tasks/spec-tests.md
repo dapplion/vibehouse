@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1754 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`3e89927`). Clippy clean (zero warnings).
+- **Spec**: v1.7.0-alpha.3 still latest release.
+- **EF tests**: 79/79 real crypto + 139/139 fake crypto — all passing.
+- **Merged spec PRs since last check**: none new (still #5005, #5002, #5001, #4940).
+- **Open Gloas PRs**: #5008 (field name fix), #4992 (cached PTCs), #4960 (fork choice deposit test), #4954 (millisecond store), #4939 (missing envelope request), #4932 (sanity tests), #4898 (remove pending tiebreaker), #4892 (remove impossible branch), #4843 (variable PTC deadline), #4840 (EIP-7843 draft), #4747 (fast confirmation), #4630 (EIP-7688 SSZ). All still OPEN.
+- **cargo audit**: unchanged (rsa RUSTSEC-2023-0071, no fix available; 5 allowed warnings from transitive deps).
+- **`heze` fork**: test vectors present in alpha.3 download — vibehouse doesn't implement heze, test runner skips it correctly.
+- No code changes needed.
+
 ### run 1753 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`9f515c4`). Clippy clean (zero warnings).
