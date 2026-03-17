@@ -243,3 +243,13 @@ Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4
 - Nightly fix verified locally: `finalized_sync_not_enough_custody_peers_on_start` passes (3.6s)
 - Clippy clean, CI green, `cargo audit` unchanged (1 unfixable rsa advisory)
 - No code changes needed
+
+### run 1794 (Mar 18) — spec tracking refresh + full test validation
+
+- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
+- Re-verified all 4 post-alpha.3 merged PRs (#5001, #5002, #4940, #5005) — all already implemented or handled
+- Full test suite validation:
+  - EF spec tests: 139/139 (fake_crypto,minimal_testing) + 9/9 fork choice (real crypto)
+  - Workspace tests: 4914/4914 pass (excluding web3signer JRE infrastructure tests)
+- Clippy clean (zero warnings), CI green
+- No code changes needed
