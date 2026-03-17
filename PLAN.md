@@ -94,6 +94,7 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 - **Sync: peer group tracking** — DONE (#34): batch downloads track PeerGroup instead of single PeerId; block and column requests decoupled — blocks download immediately, columns deferred until custody peers available
 - **Sync: test coverage** — DONE (#35): deterministic ENR generation, DataColumnByRoot retry tests, fullnode peer range sync tests, blob download logic review (verified correct)
 - **HTTP API attestation test** — DONE (#36 partial): `get_aggregate` test uses `Attestation::empty_for_signing` instead of hardcoded `Attestation::Base`
+- **DataColumnsByRootRequester refactor** — DONE (#36 partial): removed single-variant enum, DataColumnsByRootRequestId now contains CustodyId directly
 
 ---
 
