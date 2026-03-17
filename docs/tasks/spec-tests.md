@@ -29,6 +29,19 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1763 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`b4ac1a3`). spec-test-version-check also green.
+- **Clippy**: zero warnings across entire workspace.
+- **Spec**: v1.7.0-alpha.3 still latest release. Reviewed 3 merged PRs since last check:
+  - **#5001** (Add `parent_block_root` to bid filtering key) — already implemented in our `observed_execution_bids.rs` (uses `(Slot, ExecutionBlockHash, Hash256)` tuple).
+  - **#5002** (self-build payload signature verification wording) — wording-only, no logic change.
+  - **#5005** (fix builder voluntary exit success test) — test-only.
+  - **#4940** (initial Gloas fork choice test generators) — test generators, not vectors. Will be available in next spec test release.
+- **Open Gloas PRs**: #4960, #4932 both blocked (testing). #4840 (EIP-7843), #4630 (EIP-7688) still open.
+- **cargo audit**: unchanged (rsa RUSTSEC-2023-0071, no fix; 5 allowed warnings).
+- No code changes needed.
+
 ### run 1758 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`d4a23f7`). spec-test-version-check also green.
