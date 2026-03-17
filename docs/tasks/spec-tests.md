@@ -5067,3 +5067,13 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - TODO cleanup: all 58 remaining TODOs have issue links (#31). `Ipv6Addr::is_global()` still unstable (rustc 1.94.0).
 - CI in progress (run 23173384176) from previous commit. Clippy passed.
 - All stable. No action needed.
+
+### Run 1686 (2026-03-17)
+- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
+- No new merged Gloas PRs since #5005 (Mar 15). All open PRs unchanged (#5008, #4992, #4747, #4962, #4954, #4939, #4898, #4892, #4843, #4840, #4630).
+- PR #4992 (cached PTCs): still open, active debate. Our `cached-ptc` branch stays unmerged.
+- PR #4747 (Fast Confirmation Rule): still under review, recently updated.
+- PR #5008 (field name fix): open, docs-only. We already use `beacon_block_root`.
+- cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings).
+- CI run 23173384176: check/clippy/fmt passed, ef-tests passed, network+op_pool passed; unit/beacon_chain/http_api still running.
+- All stable. No action needed.
