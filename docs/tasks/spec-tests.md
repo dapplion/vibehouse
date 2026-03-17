@@ -29,6 +29,20 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1742 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD at #5005 (Mar 15).
+- New merges since alpha.3: PR #4940 (initial fork choice tests for Gloas — `test_on_execution_payload`), PR #5001 (`parent_block_root` added to bid filtering key), PR #5005 (fix builder voluntary exit test). All three are in master, not yet in a release.
+- PR #5001 spec change: bid filtering key now `(slot, parent_block_hash, parent_block_root)` — vibehouse already implements this correctly.
+- PR #4940 test format: new `execution_payload` step + `head_payload_status` check + `execution_payload_envelope_*.ssz_snappy` files — our fork choice test runner already supports all of these (`Step::OnExecutionPayload`, `check_head_payload_status`). Ready for alpha.4 vectors.
+- PR #5005: test fix for yielding voluntary_exit object — will affect test vectors in alpha.4, no code change needed.
+- Open Gloas PRs: #4992 (cached PTCs, OPEN), #5008 (field name fix, OPEN), #4962, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- CI: mock EL execution requests run — check+clippy+fmt passed, ef-tests passed, remaining jobs in progress.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings (RUSTSEC-2025-0141 bincode added to list).
+- clippy: clean, no warnings.
+- All remaining TODOs in codebase tracked in #36, all blocked on externals or non-critical refactors.
+- No code changes needed.
+
 ### run 1741 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits since run 1740.
