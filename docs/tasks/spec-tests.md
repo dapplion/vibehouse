@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1683 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: in progress from run 1682 commit. Nightly passed. spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits.
+- Open Gloas PRs: #5008, #4992, #4962, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4630. All OPEN, NOT MERGED.
+- cargo check: 0 warnings. cargo clippy: 0 warnings.
+- cargo audit: rsa RUSTSEC-2023-0071 (transitive via jsonwebtoken, no fix available), bincode RUSTSEC-2025-0141 (transitive via sp1-verifier). Not actionable.
+- No actionable work.
+
 ### run 1681 (Mar 17) — health check, all stable
 
 **Health check**: all stable
