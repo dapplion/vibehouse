@@ -29,6 +29,14 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1758 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`d4a23f7`). spec-test-version-check also green.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since last check.
+- **Open Gloas PRs**: unchanged — #5008, #4992, #4960, #4954, #4939, #4932, #4898, #4892, #4843, #4840, #4747, #4630. All OPEN. New PR #5014 (EIP-8025 p2p) also open, not Gloas core.
+- **cargo audit**: unchanged (rsa RUSTSEC-2023-0071, no fix; 5 allowed warnings).
+- No code changes needed.
+
 ### run 1756 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`9b6bede`). Nightly failure on `837cf89` is stale (pre-fix commit); tonight's nightly will run on HEAD and pass.
