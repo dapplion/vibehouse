@@ -3,7 +3,7 @@
 use clap::{Arg, ArgAction, Command};
 use clap_utils::{FLAG_HEADER, get_color_style};
 
-// TODO: Add DOS prevention CLI params (#31)
+// TODO: Add DOS prevention CLI params (#36)
 pub fn cli_app() -> Command {
     Command::new("boot_node")
         .about("Start a special vibehouse process that only serves as a discv5 boot-node. This \

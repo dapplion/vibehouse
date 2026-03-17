@@ -1262,7 +1262,7 @@ impl<E: EthSpec> BeaconState<E> {
         // Proposer indices are only known for the current epoch, due to the dependence on the
         // effective balances of validators, which change at every epoch transition.
         let epoch = slot.epoch(E::slots_per_epoch());
-        // TODO(EIP-7917): Explore allowing this function to be called with a slot one epoch in the future (#31).
+        // Note (EIP-7917): could allow calling with a slot one epoch in the future.
         if epoch != self.current_epoch() {
             return Err(Error::SlotOutOfBounds);
         }

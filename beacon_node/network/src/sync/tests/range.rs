@@ -140,7 +140,7 @@ impl TestRig {
 
     fn add_supernode_peer(&mut self, remote_info: SyncInfo) -> PeerId {
         // Create valid peer known to network globals
-        // TODO(#31): Using supernode peers to ensure we have peer across all column
+        // TODO(#35): Using supernode peers to ensure we have peer across all column
         // subnets for syncing. Should add tests connecting to full node peers.
         let peer_id = self.new_connected_supernode_peer();
         // Send peer to sync

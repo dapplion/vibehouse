@@ -358,9 +358,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             }
             // A batch could be retried without the peer failing the request (disconnecting/
             // sending an error /timeout) if the peer is removed from the chain for other
-            // reasons. Check that this block belongs to the expected peer
-            // TODO(#31): removed peer_id matching as the node may request a different peer for data
-            // columns.
+            // reasons. Peer_id matching was removed as the node may request a different
+            // peer for data columns — just check the request_id.
             if !batch.is_expecting_request_id(&request_id) {
                 return Ok(());
             }
@@ -642,7 +641,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                         );
 
                         for peer in self.participating_peers.drain() {
-                            // TODO(#31): `participating_peers` only includes block peers. Should we
+                            // TODO(#32): `participating_peers` only includes block peers. Should we
                             // penalize the custody column peers too?
                             network.report_peer(peer, *penalty, "backfill_batch_failed");
                         }
@@ -709,8 +708,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                     return Ok(ProcessResult::Successful);
                 }
                 BatchState::AwaitingValidation(_) => {
-                    // TODO(#31): I don't think this state is possible, log a CRIT just in case.
-                    // If this is not observed, add it to the failed state branch above.
+                    // This state should be unreachable — log a CRIT to verify via observation.
+                    // If never observed, move to the failed state branch above.
                     crit!(
                         batch = ?self.processing_target,
                         "Chain encountered a robust batch awaiting validation"

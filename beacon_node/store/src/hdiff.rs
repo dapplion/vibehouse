@@ -358,7 +358,7 @@ impl BytesDiff {
     }
 
     pub fn apply_xdelta(&self, source: &[u8], target: &mut Vec<u8>) -> Result<(), Error> {
-        // TODO(#31): Dynamic buffer allocation. This is a stopgap until we implement a schema
+        // TODO(#36): Dynamic buffer allocation. This is a stopgap until we implement a schema
         // change to store the output buffer size inside the `BytesDiff`.
         let mut output_length = ((source.len() + self.bytes.len()) * 3) / 2;
         let mut num_resizes = 0;

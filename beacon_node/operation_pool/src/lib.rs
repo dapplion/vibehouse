@@ -280,7 +280,7 @@ impl<E: EthSpec> OperationPool<E> {
         let mut num_prev_valid = 0_i64;
         let mut num_curr_valid = 0_i64;
 
-        // TODO(electra): work out how to do this more elegantly (#31)
+        // TODO(electra): work out how to do this more elegantly (#36)
         let mut all_attestations = self.attestations.write();
 
         if fork_name.electra_enabled() {

@@ -555,7 +555,7 @@ mod tests {
             block_hash: Hash256::zero(),
         };
 
-        // TODO(#31): figure out how to generate ENR and add some here.
+        // Note: test ENR generation not yet implemented.
         let boot_enr = None;
         let genesis_state = Some(BeaconState::new(42, eth1_data, spec));
         let config = Config::from_chain_spec::<E>(spec);

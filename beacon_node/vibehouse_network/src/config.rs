@@ -563,8 +563,8 @@ fn is_global_ipv4(addr: &Ipv4Addr) -> bool {
 /// - Addresses reserved for documentation (is_documentation)
 /// - Unique local addresses (is_unique_local)
 /// - Unicast addresses with link-local scope (is_unicast_link_local)
-// TODO(#31): replace with [`Ipv6Addr::is_global`] once
-//       [Ip](https://github.com/rust-lang/rust/issues/27709) is stable.
+// Note: could replace with `Ipv6Addr::is_global()` (stable since Rust 1.84) but
+// it is not a `const fn` yet, so we keep this custom implementation.
 pub const fn is_global_ipv6(addr: &Ipv6Addr) -> bool {
     const fn is_documentation(addr: &Ipv6Addr) -> bool {
         (addr.segments()[0] == 0x2001) && (addr.segments()[1] == 0xdb8)

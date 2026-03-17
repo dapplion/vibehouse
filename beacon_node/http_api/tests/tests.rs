@@ -4143,7 +4143,7 @@ impl ApiTester {
             .unwrap()
             .data;
 
-        // TODO(#31) make fork-agnostic
+        // TODO(#36) make fork-agnostic
         let mut attestation = Attestation::Base(AttestationBase {
             aggregation_bits: BitList::with_capacity(duty.committee_length as usize).unwrap(),
             data: attestation_data,

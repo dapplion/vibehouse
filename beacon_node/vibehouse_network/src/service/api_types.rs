@@ -123,7 +123,7 @@ pub enum RangeRequestId {
     BackfillSync { batch_id: Epoch },
 }
 
-// TODO(#31) refactor in a separate PR. We might be able to remove this and replace
+// TODO(#36) refactor in a separate PR. We might be able to remove this and replace
 // [`DataColumnsByRootRequestId`] with a [`SingleLookupReqId`].
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum DataColumnsByRootRequester {

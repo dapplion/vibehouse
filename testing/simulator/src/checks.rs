@@ -320,7 +320,7 @@ pub(crate) async fn verify_light_client_updates<E: EthSpec>(
         // Verify light client finality update. `signature_slot_distance` should be 1 in the ideal scenario.
         // NOTE: Currently finality updates are produced as long as the finalized block is known, even if the finalized header
         // sync committee period does not match the signature slot committee period.
-        // TODO(#31): This complies with the current spec, but we should check if this is a bug.
+        // Note: this complies with the current spec, but may warrant a spec clarification.
         if !have_achieved_finality {
             let FinalityCheckpointsData { finalized, .. } = client
                 .get_beacon_states_finality_checkpoints(StateId::Head)

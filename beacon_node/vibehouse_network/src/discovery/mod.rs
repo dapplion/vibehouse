@@ -427,9 +427,9 @@ impl<E: EthSpec> Discovery<E> {
         Ok(true)
     }
 
-    // TODO(#31): Group these functions here once the ENR is shared across discv5.
-    // This currently doesn't support ipv6. These functions should be removed and
-    // addressed properly with direct ENR modification support.
+    // These functions should be grouped once the ENR is shared across discv5.
+    // This currently doesn't support ipv6 — should be addressed with direct ENR
+    // modification support.
     pub fn update_enr_quic_port(&mut self, port: u16, v6: bool) -> Result<bool, String> {
         let enr_field = if v6 {
             if self.discv5.external_enr().read().quic6() == Some(port) {
@@ -1001,7 +1001,7 @@ impl<E: EthSpec> NetworkBehaviour for Discovery<E> {
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<libp2p::swarm::THandler<Self>, libp2p::swarm::ConnectionDenied> {
-        // TODO(#31): we might want to check discovery's banned ips here in the future.
+        // Note: could check discovery's banned IPs here in the future.
         Ok(ConnectionHandler)
     }
 

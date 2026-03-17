@@ -58,7 +58,7 @@ pub trait Handler {
     }
 
     // Do NOT override this function.
-    // TODO(#31): use default keyword when stable.
+    // Note: use `default` keyword when stabilized in Rust.
     fn rayon_enabled() -> bool {
         #[cfg(feature = "disable_rayon")]
         {
