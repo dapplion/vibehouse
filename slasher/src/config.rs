@@ -422,8 +422,15 @@ mod tests {
     fn override_backend_with_mdbx_file_present() {
         let dir = tempdir().unwrap();
         let mdbx_path = dir.path().join(MDBX_DATA_FILENAME);
-        // Create the mdbx data file and ensure it's flushed to disk
-        std::fs::write(&mdbx_path, b"data").unwrap();
+        // Create the mdbx data file and sync to ensure visibility on all filesystems.
+        // fsync both file and parent directory to prevent intermittent CI flakes.
+        {
+            let file = std::fs::File::create(&mdbx_path).unwrap();
+            std::io::Write::write_all(&mut &file, b"data").unwrap();
+            file.sync_all().unwrap();
+            let parent = std::fs::File::open(dir.path()).unwrap();
+            parent.sync_all().unwrap();
+        }
         assert!(
             mdbx_path.exists(),
             "mdbx data file should exist at {}",
