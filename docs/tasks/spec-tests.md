@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1690 (Mar 17) — fix minimal config min_builder_withdrawability_delay, nightly tests pass
+
+- Downloaded nightly spec test vectors (run 23123340474, commit 1baa05e) to check for new tests
+- Found new `on_execution_payload` fork choice test from PR #4940 — passes with existing test runner
+- Found `builder_voluntary_exit__success` test failure from PR #5005 — `withdrawable_epoch` mismatch
+- Root cause: minimal config `MIN_BUILDER_WITHDRAWABILITY_DELAY` was 64 (mainnet default) instead of 2
+- Fix: added `min_builder_withdrawability_delay: Epoch::new(2)` to `ChainSpec::minimal()` overrides
+- Verified: 79/79 real crypto + 139/139 fake_crypto pass with both alpha.3 and nightly vectors
+- Also verified: PR #5001 (parent_block_root bid filter) already implemented, PR #4940 tests pass
+
 ### run 1685 (Mar 17) — health check, all stable
 
 **Health check**: all stable
