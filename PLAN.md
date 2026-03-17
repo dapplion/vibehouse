@@ -88,6 +88,9 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 - **Gloas slot timing** — DONE (#8686: SlotClock uses 4 intervals/slot after Gloas fork, fork choice proposer boost timing fixed, BN/VC wired)
 - **CI workflow** — DONE (`.github/workflows/ci.yml`: check, ef-tests, unit-tests, beacon-chain-tests, http-api-tests, network+op-pool-tests (parallelized in run 248); `nightly-tests.yml`: all prior forks beacon_chain/network/op_pool + http_api electra/fulu)
 - **Rebranding** — DONE: binary renamed, all crate names renamed, LighthouseSubcommands→VibehouseSubcommands, eth2 feature flag lighthouse→vibehouse, all modules/functions/variables/constants/string literals/comments/API paths renamed, `lighthouse/` source directory renamed to `vibehouse/`, TLS test fixtures updated, Docker symlinks removed, book documentation fully rebranded (61 files, api_lighthouse.md→api_vibehouse.md)
+- **Sync: NoPeer graceful handling** — DONE (#33): range sync leaves batches in AwaitingDownload on NoPeer instead of faking download failures; retried via resume() when peers join
+- **Sync: custody column robustness** — DONE (#32): empty custody column responses now count as download failures (bounded by MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS)
+- **Deterministic test crypto** — DONE (#36 partial): SecretKey/Signature TestRandom implementations now use deterministic RNG via interop keypairs KDF
 
 ---
 
