@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1781 (Mar 17) — health check, all stable
+
+- **CI**: all 7 jobs green on HEAD (`2f0c028`). Nightly `network-tests (fulu)` failure still on stale commit `837cf89` — next nightly will pick up HEAD with fix.
+- **Build**: `cargo check --release` clean (17s). Zero clippy warnings.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new commits since Mar 15 (`1baa05e`).
+- **Open Gloas PRs**: #4992 (cached PTCs) still open/unmerged. #4960, #4932, #4843 unchanged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- **Issue #36**: 5 items blocked (external), 2 non-critical remaining (EL error enum, pool persistence). No action needed.
+- No code changes needed.
+
 ### run 1780 (Mar 17) — health check, all stable
 
 - **CI**: all 7 jobs green on HEAD (`0c6bdf8`). Nightly `network-tests (fulu)` failure on stale commit `837cf89` (known — `finalized_sync_not_enough_custody_peers_on_start`, fix in HEAD).
