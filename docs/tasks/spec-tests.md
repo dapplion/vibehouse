@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1681 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: in progress (check+clippy+fmt passed, other jobs running) from run 1680 commit.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. All 12 open Gloas PRs still OPEN.
+- Reviewed PRs #4898 (pending tiebreaker), #4892 (impossible branch), #4962 (sanity tests): all already implemented or test-only.
+- cargo check: 0 warnings. cargo clippy: 0 warnings.
+- cargo audit: 1 new warning (RUSTSEC-2025-0141, bincode unmaintained via sp1-verifier) — transitive dep, not actionable.
+- Fixed last remaining TODO without issue link (ipv6 `is_global` in vibehouse_network config).
+
 ### run 1680 (Mar 17) — TODO cleanup, all stable
 
 **Health check**: all stable
