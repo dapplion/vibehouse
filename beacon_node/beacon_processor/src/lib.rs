@@ -606,6 +606,8 @@ pub enum Work<E: EthSpec> {
     // Gloas ePBS gossip.
     GossipExecutionBid(BlockingFn),
     GossipExecutionPayload(AsyncFn),
+    /// An RPC-received payload envelope triggered by an index-1 attestation.
+    RpcPayloadEnvelope(AsyncFn),
     GossipPayloadAttestation(AsyncFn),
     GossipProposerPreferences(BlockingFn),
     GossipExecutionProof(AsyncFn),
@@ -670,6 +672,7 @@ pub enum WorkType {
     GossipLightClientOptimisticUpdate,
     GossipExecutionBid,
     GossipExecutionPayload,
+    RpcPayloadEnvelope,
     GossipPayloadAttestation,
     GossipProposerPreferences,
     GossipExecutionProof,
@@ -725,6 +728,7 @@ impl<E: EthSpec> Work<E> {
             }
             Work::GossipExecutionBid(_) => WorkType::GossipExecutionBid,
             Work::GossipExecutionPayload(_) => WorkType::GossipExecutionPayload,
+            Work::RpcPayloadEnvelope(_) => WorkType::RpcPayloadEnvelope,
             Work::GossipPayloadAttestation(_) => WorkType::GossipPayloadAttestation,
             Work::GossipProposerPreferences(_) => WorkType::GossipProposerPreferences,
             Work::GossipExecutionProof(_) => WorkType::GossipExecutionProof,
@@ -1396,7 +1400,8 @@ impl<E: EthSpec> BeaconProcessor<E> {
                             Work::GossipExecutionBid { .. } => {
                                 gossip_execution_bid_queue.push(work, work_id)
                             }
-                            Work::GossipExecutionPayload { .. } => {
+                            Work::GossipExecutionPayload { .. }
+                            | Work::RpcPayloadEnvelope { .. } => {
                                 gossip_execution_payload_queue.push(work, work_id)
                             }
                             Work::GossipPayloadAttestation { .. } => {
@@ -1495,7 +1500,9 @@ impl<E: EthSpec> BeaconProcessor<E> {
                         WorkType::GossipProposerSlashing => gossip_proposer_slashing_queue.len(),
                         WorkType::GossipAttesterSlashing => gossip_attester_slashing_queue.len(),
                         WorkType::GossipExecutionBid => gossip_execution_bid_queue.len(),
-                        WorkType::GossipExecutionPayload => gossip_execution_payload_queue.len(),
+                        WorkType::GossipExecutionPayload | WorkType::RpcPayloadEnvelope => {
+                            gossip_execution_payload_queue.len()
+                        }
                         WorkType::GossipPayloadAttestation => {
                             gossip_payload_attestation_queue.len()
                         }
@@ -1701,6 +1708,7 @@ impl<E: EthSpec> BeaconProcessor<E> {
                 BlockingOrAsync::Async(process_fn) => task_spawner.spawn_async(process_fn),
             },
             Work::GossipExecutionPayload(process_fn)
+            | Work::RpcPayloadEnvelope(process_fn)
             | Work::GossipPayloadAttestation(process_fn)
             | Work::GossipExecutionProof(process_fn) => task_spawner.spawn_async(process_fn),
             Work::GossipVoluntaryExit(process_fn)

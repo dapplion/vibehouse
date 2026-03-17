@@ -154,6 +154,10 @@ pub enum SyncMessage<E: EthSpec> {
     /// manager to attempt to find the block matching the unknown hash.
     UnknownBlockHashFromAttestation(PeerId, Hash256),
 
+    /// An index-1 attestation was received for a known block whose execution payload envelope
+    /// has not been seen. Request the envelope via ExecutionPayloadEnvelopesByRoot.
+    MissingEnvelopeFromAttestation(PeerId, Hash256),
+
     /// A peer has disconnected.
     Disconnect(PeerId),
 
@@ -265,6 +269,10 @@ pub struct SyncManager<T: BeaconChainTypes> {
     /// may forward us thousands of a attestations, each one triggering an individual event. Only
     /// one event is useful, the rest generating log noise and wasted cycles
     notified_unknown_roots: LRUTimeCache<(PeerId, Hash256)>,
+
+    /// Debounce duplicated `MissingEnvelopeFromAttestation` events for the same block root.
+    /// Keyed by block_root only (not peer) since the envelope is the same regardless of peer.
+    notified_missing_envelopes: LRUTimeCache<Hash256>,
 }
 
 /// Spawns a new `SyncManager` thread which has a weak reference to underlying beacon
@@ -323,6 +331,9 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             custody_backfill_sync: CustodyBackFillSync::new(beacon_chain.clone(), network_globals),
             block_lookups: BlockLookups::new(),
             notified_unknown_roots: LRUTimeCache::new(Duration::from_secs(
+                NOTIFIED_UNKNOWN_ROOT_EXPIRY_SECONDS,
+            )),
+            notified_missing_envelopes: LRUTimeCache::new(Duration::from_secs(
                 NOTIFIED_UNKNOWN_ROOT_EXPIRY_SECONDS,
             )),
         }
@@ -508,6 +519,17 @@ impl<T: BeaconChainTypes> SyncManager<T> {
             }
             SyncRequestId::DataColumnsByRange(req_id) => {
                 self.on_data_columns_by_range_response(req_id, peer_id, RpcEvent::RPCError(error))
+            }
+            SyncRequestId::SingleEnvelope { id, block_root } => {
+                // Attestation-triggered envelope request failed — not critical, the
+                // envelope will arrive via gossip or a future attestation will retry.
+                debug!(
+                    ?block_root,
+                    %id,
+                    %peer_id,
+                    ?error,
+                    "Attestation-triggered envelope request failed"
+                );
             }
             SyncRequestId::EnvelopesByRoot(id) => {
                 // Envelope request failed — deliver the batch without envelopes.
@@ -951,6 +973,17 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                     self.handle_unknown_block_root(peer_id, block_root);
                 }
             }
+            SyncMessage::MissingEnvelopeFromAttestation(peer_id, block_root) => {
+                if !self.notified_missing_envelopes.contains(&block_root) {
+                    self.notified_missing_envelopes.insert(block_root);
+                    debug!(
+                        ?block_root,
+                        ?peer_id,
+                        "Requesting missing envelope triggered by index-1 attestation"
+                    );
+                    self.network.request_single_envelope(peer_id, block_root);
+                }
+            }
             SyncMessage::Disconnect(peer_id) => {
                 debug!(%peer_id, "Received disconnected message");
                 self.peer_disconnect(&peer_id);
@@ -1288,6 +1321,35 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                                 }
                             }
                         }
+                    }
+                }
+            }
+            SyncRequestId::SingleEnvelope { id, block_root } => {
+                match envelope {
+                    Some(env) => {
+                        debug!(
+                            ?block_root,
+                            %id,
+                            %peer_id,
+                            "Received envelope for attestation-triggered request"
+                        );
+                        if let Err(e) = self.network.send_rpc_payload_envelope(peer_id, env) {
+                            debug!(
+                                ?block_root,
+                                error = ?e,
+                                "Failed to send RPC envelope to beacon processor"
+                            );
+                        }
+                    }
+                    None => {
+                        // Stream terminated — no envelope received. Not necessarily an error:
+                        // the peer may not have the envelope either.
+                        debug!(
+                            ?block_root,
+                            %id,
+                            %peer_id,
+                            "Empty response for attestation-triggered envelope request"
+                        );
                     }
                 }
             }

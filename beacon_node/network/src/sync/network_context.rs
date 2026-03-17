@@ -1100,6 +1100,46 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         }
     }
 
+    /// Request a single envelope for a known block. Triggered when an index-1
+    /// attestation arrives but the execution payload envelope hasn't been seen yet.
+    pub fn request_single_envelope(&mut self, peer_id: PeerId, block_root: Hash256) {
+        let request =
+            match ExecutionPayloadEnvelopesByRootRequest::new(vec![block_root], &self.chain.spec) {
+                Ok(req) => req,
+                Err(e) => {
+                    warn!(error = ?e, ?block_root, "Failed to create single envelope request");
+                    return;
+                }
+            };
+
+        let id = self.next_id();
+        let sync_id = SyncRequestId::SingleEnvelope { id, block_root };
+
+        if let Err(e) = self.network_send.send(NetworkMessage::SendRequest {
+            peer_id,
+            request: RequestType::ExecutionPayloadEnvelopesByRoot(request),
+            app_request_id: AppRequestId::Sync(sync_id),
+        }) {
+            warn!(error = ?e, ?block_root, "Failed to send single envelope request");
+        }
+    }
+
+    /// Send an RPC-received payload envelope to the beacon processor for verification
+    /// and fork choice integration. Used for attestation-triggered envelope requests.
+    pub fn send_rpc_payload_envelope(
+        &self,
+        peer_id: PeerId,
+        envelope: Arc<SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) -> Result<(), String> {
+        let beacon_processor = self
+            .beacon_processor_if_enabled()
+            .ok_or("beacon processor not available")?;
+
+        beacon_processor
+            .send_rpc_payload_envelope(peer_id, envelope)
+            .map_err(|e| format!("Failed to send to beacon processor: {e:?}"))
+    }
+
     /// Request block of `block_root` if necessary by checking:
     /// - If the da_checker has a pending block from gossip or a previous request
     ///

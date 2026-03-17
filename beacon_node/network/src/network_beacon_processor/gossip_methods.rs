@@ -2529,15 +2529,23 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
             AttnError::PayloadEnvelopeNotSeen { beacon_block_root } => {
                 /*
                  * [Gloas:EIP7732] Index-1 attestation for a block whose execution
-                 * payload envelope has not been seen yet. IGNORE per spec — MAY queue
-                 * and SHOULD request envelope via ExecutionPayloadEnvelopesByRoot.
+                 * payload envelope has not been seen yet. IGNORE per spec.
+                 * Request the envelope via ExecutionPayloadEnvelopesByRoot (SHOULD).
                  */
                 debug!(
                     %peer_id,
                     block = ?beacon_block_root,
                     ?attestation_type,
-                    "Index-1 attestation but payload envelope not seen"
+                    "Index-1 attestation but payload envelope not seen, requesting envelope"
                 );
+                self.sync_tx
+                    .send(SyncMessage::MissingEnvelopeFromAttestation(
+                        peer_id,
+                        *beacon_block_root,
+                    ))
+                    .unwrap_or_else(|_| {
+                        warn!(msg = "MissingEnvelope", "Failed to send to sync service")
+                    });
                 self.propagate_validation_result(message_id, peer_id, MessageAcceptance::Ignore);
                 return;
             }
@@ -3752,6 +3760,98 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
                     builder_index,
                     error = ?e,
                     "Failed to process payload envelope, skipping head recompute"
+                );
+            }
+        }
+    }
+
+    /// Process an RPC-received execution payload envelope (gloas ePBS).
+    ///
+    /// Triggered when an index-1 attestation references a block whose envelope we haven't
+    /// seen. We request the envelope via ExecutionPayloadEnvelopesByRoot and process it here.
+    /// This is the same as gossip envelope processing but without gossip scoring/propagation.
+    pub async fn process_rpc_payload_envelope(
+        self: &Arc<Self>,
+        peer_id: PeerId,
+        envelope: std::sync::Arc<types::SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) {
+        let beacon_block_root = envelope.message.beacon_block_root;
+        let builder_index = envelope.message.builder_index;
+
+        let verified_envelope = match self.chain.verify_payload_envelope_for_gossip(envelope) {
+            Ok(verified) => verified,
+            Err(e) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    %peer_id,
+                    error = ?e,
+                    "RPC envelope verification failed"
+                );
+                return;
+            }
+        };
+
+        match self
+            .chain
+            .process_payload_envelope(&verified_envelope)
+            .await
+        {
+            Ok(el_valid) => {
+                metrics::inc_counter(&metrics::BEACON_PROCESSOR_PAYLOAD_ENVELOPE_IMPORTED_TOTAL);
+                debug!(
+                    ?beacon_block_root,
+                    builder_index, "Successfully processed RPC payload envelope"
+                );
+
+                if let Err(e) = self
+                    .chain
+                    .apply_payload_envelope_to_fork_choice(&verified_envelope)
+                {
+                    warn!(
+                        ?beacon_block_root,
+                        builder_index,
+                        error = ?e,
+                        "Failed to import RPC payload envelope to fork choice"
+                    );
+                    return;
+                }
+
+                if el_valid
+                    && let Err(e) = self
+                        .chain
+                        .canonical_head
+                        .fork_choice_write_lock()
+                        .on_valid_execution_payload(beacon_block_root)
+                {
+                    warn!(
+                        ?beacon_block_root,
+                        error = ?e,
+                        "Failed to mark RPC envelope payload as valid in fork choice"
+                    );
+                }
+
+                if let Some(event_handler) = self.chain.event_handler.as_ref()
+                    && event_handler.has_execution_payload_subscribers()
+                {
+                    let envelope = verified_envelope.envelope();
+                    event_handler.register(EventKind::ExecutionPayload(SseExecutionPayload {
+                        slot: envelope.message.slot,
+                        beacon_block_root: envelope.message.beacon_block_root,
+                        builder_index: envelope.message.builder_index,
+                        block_hash: envelope.message.payload.block_hash.into_root(),
+                    }));
+                }
+
+                self.chain.recompute_head_at_current_slot().await;
+            }
+            Err(e) => {
+                debug!(
+                    ?beacon_block_root,
+                    builder_index,
+                    %peer_id,
+                    error = ?e,
+                    "Failed to process RPC payload envelope"
                 );
             }
         }

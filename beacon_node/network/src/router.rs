@@ -779,7 +779,8 @@ impl<T: BeaconChainTypes> Router<T> {
     ) {
         let sync_request_id = match app_request_id {
             AppRequestId::Sync(sync_id) => match sync_id {
-                id @ SyncRequestId::EnvelopesByRoot(..) => id,
+                id @ SyncRequestId::EnvelopesByRoot(..)
+                | id @ SyncRequestId::SingleEnvelope { .. } => id,
                 other => {
                     crit!(request = ?other, "EnvelopesByRoot response on incorrect request");
                     return;

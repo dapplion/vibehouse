@@ -401,6 +401,26 @@ impl<T: BeaconChainTypes> NetworkBeaconProcessor<T> {
         })
     }
 
+    /// Create a new `Work` event for an RPC-received execution payload envelope.
+    /// Triggered when an index-1 attestation causes us to request the missing envelope.
+    pub fn send_rpc_payload_envelope(
+        self: &Arc<Self>,
+        peer_id: PeerId,
+        envelope: std::sync::Arc<types::SignedExecutionPayloadEnvelope<T::EthSpec>>,
+    ) -> Result<(), Error<T::EthSpec>> {
+        let processor = self.clone();
+        let process_fn = async move {
+            processor
+                .process_rpc_payload_envelope(peer_id, envelope)
+                .await;
+        };
+
+        self.try_send(BeaconWorkEvent {
+            drop_during_sync: false,
+            work: Work::RpcPayloadEnvelope(Box::pin(process_fn)),
+        })
+    }
+
     /// Create a new `Work` event for some exit.
     pub fn send_gossip_voluntary_exit(
         self: &Arc<Self>,

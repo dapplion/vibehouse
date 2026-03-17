@@ -3,7 +3,7 @@ use libp2p::PeerId;
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use types::{
-    BlobSidecar, DataColumnSidecar, Epoch, EthSpec, LightClientBootstrap,
+    BlobSidecar, DataColumnSidecar, Epoch, EthSpec, Hash256, LightClientBootstrap,
     LightClientFinalityUpdate, LightClientOptimisticUpdate, LightClientUpdate, SignedBeaconBlock,
     SignedExecutionPayloadEnvelope,
 };
@@ -33,6 +33,9 @@ pub enum SyncRequestId {
     DataColumnsByRange(DataColumnsByRangeRequestId),
     /// Execution payload envelopes by root request (range sync)
     EnvelopesByRoot(EnvelopesByRootRequestId),
+    /// Single envelope request triggered by an index-1 attestation (gloas ePBS).
+    /// The block is known but the envelope hasn't been seen yet.
+    SingleEnvelope { id: Id, block_root: Hash256 },
 }
 
 /// Request ID for envelopes_by_root requests used during range sync.
