@@ -5721,3 +5721,8 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings).
 - CI run 23173384176: check/clippy/fmt passed, ef-tests passed, network+op_pool passed; unit/beacon_chain/http_api still running.
 - All stable. No action needed.
+
+### Run 1776 (2026-03-17)
+- **Fixed fork_choice_on_execution_payload EF test**. Test vectors from consensus-specs #4940 (merged post-alpha.3) include a `block → envelope → block` sequence. The second block expects the pre-envelope state (EMPTY parent), but the test runner wasn't persisting the envelope to the store. Fixed by adding `StoreOp::PutPayloadEnvelope` in `process_execution_payload`, enabling `load_parent` to re-apply the envelope state transition on demand when a child signals a FULL parent.
+- 79/79 real crypto + 139/139 fake crypto all passing.
+- New post-alpha.3 spec PRs reviewed: #5001 (parent_block_root in bid filter key) — already implemented; #5002 (wording) — no code change needed; #5005 (test fixture fix) — already noted.
