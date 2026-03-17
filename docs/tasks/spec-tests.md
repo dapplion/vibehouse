@@ -29,6 +29,17 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1746 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
+- CI: mock EL execution requests run in progress — check+clippy+fmt, ef-tests, http_api, network+op_pool all passed. beacon_chain and unit tests still running.
+- Nightly: in progress.
+- Open Gloas PRs: #4992 (cached PTCs, 1 APPROVED, still OPEN), #5008, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings.
+- Remaining #36 TODOs: 7 code TODOs (store_tests PeerDAS, blob count EIP-7892x2, blst unsafe, pool persistence, EL error refactor, BlockProposalContents variant). All blocked on externals or cosmetic.
+- `ptc-lookbehind` branch: 31 commits behind main but only 1 code change (mock EL) — no rebase needed.
+- No code changes needed.
+
 ### run 1745 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits.
