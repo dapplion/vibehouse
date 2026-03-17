@@ -31,6 +31,7 @@ Audited all Gloas spec commits since alpha.3 (17 PRs total). All implemented or 
 | #4890 | Clarify when builders become active | Doc-only, no code change |
 | #4947 | Pre-fork subscription for proposer_preferences topic | Already implemented (PRE_FORK_SUBSCRIBE_EPOCHS=1, ProposerPreferences in Gloas topics) |
 | #5005 | Fix builder voluntary exit success test (yield missing fixture) | Test-only; our EF test runner already handles missing fixtures with SkippedKnownFailure |
+| #4940 | Add initial fork choice tests for Gloas (genesis + on_execution_payload) | Test-only; our EF test runner already supports on_execution_payload steps, all tests pass |
 
 ### Implemented
 
@@ -120,6 +121,10 @@ Scanned open PRs in ethereum/consensus-specs for upcoming changes that could aff
 **New EIPs being bundled into Gloas:**
 - #4840: EIP-7843 (SLOTNUM opcode) — EL-side, no CL impact expected
 
+**Attestation validation change (not merged yet):**
+- #4939: Request missing payload envelopes when index-1 attestations indicate payload present — vibehouse already implements `verify_payload_envelope_for_index1` in attestation_verification.rs for both aggregated and unaggregated paths
+- #5008: Fix field name block_root → beacon_block_root in ExecutionPayloadEnvelopesByRoot spec text — doc-only, vibehouse already uses correct field name
+
 **New test PRs (not merged yet):**
 - #4960: Fork choice test with new validator deposit via envelope + reorg
 - #4932: Sanity/blocks tests with payload attestation coverage
@@ -131,3 +136,10 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Fork choice payload_states: `payload_states` maintained in proto_array, envelope-based deposits processed correctly
 
 **No code changes needed. Will re-check when alpha.4 is released.**
+
+### run 1751 (Mar 17) — spec tracking refresh
+
+- Verified newly merged PR #4940 (initial Gloas fork choice tests): test runner already supports `on_execution_payload` steps, all 9 fork choice tests pass including new Gloas tests
+- Added tracking for open PR #4939 (attestation-triggered envelope requests) — new REJECT/IGNORE rules for index-1 attestations, guidance to use ExecutionPayloadEnvelopesByRoot
+- Added tracking for open PR #5008 (doc fix: block_root → beacon_block_root) — vibehouse already uses correct field name
+- Confirmed all remaining open spec PRs from run 1750 scan are still open/unmerged
