@@ -177,6 +177,30 @@ impl TestRig {
         ));
     }
 
+    fn trigger_missing_envelope_from_attestation(&mut self, block_root: Hash256, peer_id: PeerId) {
+        self.send_sync_message(SyncMessage::MissingEnvelopeFromAttestation(
+            peer_id, block_root,
+        ));
+    }
+
+    #[track_caller]
+    fn expect_envelope_request(&mut self, for_block: Hash256) -> Id {
+        self.pop_received_network_event(|ev| match ev {
+            NetworkMessage::SendRequest {
+                peer_id: _,
+                request: RequestType::ExecutionPayloadEnvelopesByRoot(request),
+                app_request_id:
+                    AppRequestId::Sync(SyncRequestId::SingleEnvelope { id, block_root }),
+            } if *block_root == for_block
+                && request.block_roots.to_vec().contains(&for_block) =>
+            {
+                Some(*id)
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|e| panic!("Expected envelope request for {for_block:?}: {e}"))
+    }
+
     /// Drain all sync messages in the sync_rx attached to the beacon processor
     fn drain_sync_rx(&mut self) {
         while let Ok(sync_message) = self.sync_rx.try_recv() {
@@ -2875,4 +2899,68 @@ mod deneb_only {
         // Assert no downscore event for original peer
         r.expect_no_penalty_for(peer_a);
     }
+}
+
+// Tests for MissingEnvelopeFromAttestation (Gloas ePBS)
+// When an index-1 attestation references a block whose envelope hasn't been seen,
+// the sync manager should request the envelope via ExecutionPayloadEnvelopesByRoot.
+
+#[test]
+fn missing_envelope_from_attestation_triggers_request() {
+    // Only meaningful for Gloas (ePBS) where envelopes are separate from blocks
+    if !fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
+    let mut r = TestRig::test_setup();
+    let peer_id = r.new_connected_peer();
+    let block_root = Hash256::random();
+
+    r.trigger_missing_envelope_from_attestation(block_root, peer_id);
+
+    // Should fire an ExecutionPayloadEnvelopesByRoot request for the block
+    let _id = r.expect_envelope_request(block_root);
+    r.expect_empty_network();
+}
+
+#[test]
+fn missing_envelope_from_attestation_debounced() {
+    // Only meaningful for Gloas (ePBS)
+    if !fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
+    let mut r = TestRig::test_setup();
+    let peer_a = r.new_connected_peer();
+    let peer_b = r.new_connected_peer();
+    let block_root = Hash256::random();
+
+    // First attestation triggers the request
+    r.trigger_missing_envelope_from_attestation(block_root, peer_a);
+    let _id = r.expect_envelope_request(block_root);
+    r.expect_empty_network();
+
+    // Second attestation from a different peer for the same block root is debounced
+    r.trigger_missing_envelope_from_attestation(block_root, peer_b);
+    r.expect_empty_network();
+}
+
+#[test]
+fn missing_envelope_different_blocks_not_debounced() {
+    // Only meaningful for Gloas (ePBS)
+    if !fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
+    let mut r = TestRig::test_setup();
+    let peer_id = r.new_connected_peer();
+    let block_root_a = Hash256::random();
+    let block_root_b = Hash256::random();
+
+    // Request for block A
+    r.trigger_missing_envelope_from_attestation(block_root_a, peer_id);
+    let _id_a = r.expect_envelope_request(block_root_a);
+    r.expect_empty_network();
+
+    // Request for block B (different block) should NOT be debounced
+    r.trigger_missing_envelope_from_attestation(block_root_b, peer_id);
+    let _id_b = r.expect_envelope_request(block_root_b);
+    r.expect_empty_network();
 }
