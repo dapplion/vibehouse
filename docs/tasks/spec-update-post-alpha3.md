@@ -143,3 +143,16 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Added tracking for open PR #4939 (attestation-triggered envelope requests) — new REJECT/IGNORE rules for index-1 attestations, guidance to use ExecutionPayloadEnvelopesByRoot
 - Added tracking for open PR #5008 (doc fix: block_root → beacon_block_root) — vibehouse already uses correct field name
 - Confirmed all remaining open spec PRs from run 1750 scan are still open/unmerged
+
+### run 1752 (Mar 17) — spec tracking refresh
+
+- No new consensus-specs commits since last check (latest 1baa05e711, #5005 — already tracked)
+- No new spec test releases (latest v1.6.0-beta.0 on consensus-spec-tests)
+- Clippy clean, CI green
+- New open Gloas PRs tracked:
+  - #4954: Update fork choice store to use milliseconds — converts `Store.time` → `Store.time_ms` and `Store.genesis_time` → `Store.genesis_time_ms`. Vibehouse uses `SystemTimeSlotClock` not raw `Store.time`, so impact would be limited to fork choice spec test handler (which reads `time` from test fixtures). Not merged.
+  - #4747: Fast Confirmation Rule — major new feature adding `confirmed_root` to Store, replaces `safe` block with confirmed chain. Large scope, still under review. Not merged.
+  - #4630: EIP-7688 forward compatible SSZ (StableContainer/Profile types) — architectural SSZ change. Not merged, design phase.
+  - #4558: Cell Dissemination via Partial Message Specification — new P2P layer for data availability. Not merged, early stage.
+- All previously tracked open PRs (#4843, #4840, #4892, #4898, #4899, #4939, #4992, #5008) still open/unmerged
+- No code changes needed. Will re-check next run.
