@@ -109,6 +109,7 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 - **Slasher test diagnostics** — DONE (#36 partial): improved override_backend_with_mdbx_file_present test with better error reporting for CI flake diagnosis
 - **Boot node CLI cleanup** — DONE (#36 partial): removed inapplicable multiaddr/DOS TODOs (boot node is discv5-only), fixed misleading help text
 - **Subnet service TODO cleanup** — DONE (#36 partial): removed dynamic bitfield TODO (HashSet is fine for ≤64 subnets)
+- **Envelope request from attestations** — DONE: when index-1 attestation arrives but envelope not seen, request it via ExecutionPayloadEnvelopesByRoot RPC (spec SHOULD behavior, aligned with consensus-specs PR #4939)
 
 ---
 

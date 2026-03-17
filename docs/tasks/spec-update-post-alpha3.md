@@ -122,7 +122,7 @@ Scanned open PRs in ethereum/consensus-specs for upcoming changes that could aff
 - #4840: EIP-7843 (SLOTNUM opcode) — EL-side, no CL impact expected
 
 **Attestation validation change (not merged yet):**
-- #4939: Request missing payload envelopes when index-1 attestations indicate payload present — vibehouse already implements `verify_payload_envelope_for_index1` in attestation_verification.rs for both aggregated and unaggregated paths
+- #4939: Request missing payload envelopes when index-1 attestations indicate payload present — DONE: vibehouse now requests envelopes via ExecutionPayloadEnvelopesByRoot when index-1 attestation arrives but envelope not seen (run 1773)
 - #5008: Fix field name block_root → beacon_block_root in ExecutionPayloadEnvelopesByRoot spec text — doc-only, vibehouse already uses correct field name
 
 **New test PRs (not merged yet):**
@@ -135,7 +135,17 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Stale withdrawals after missed payload: existing test `stale_withdrawal_mismatch_after_missed_payload_rejected`
 - Fork choice payload_states: `payload_states` maintained in proto_array, envelope-based deposits processed correctly
 
-**No code changes needed. Will re-check when alpha.4 is released.**
+### run 1773 (Mar 17) — implement envelope request from index-1 attestations
+
+Implemented the SHOULD behavior from the Gloas p2p spec (aligned with open PR #4939):
+- When an index-1 attestation arrives but the execution payload envelope hasn't been seen, we now request it via `ExecutionPayloadEnvelopesByRoot` RPC
+- Added `SyncMessage::MissingEnvelopeFromAttestation` with debounce (30s per block_root)
+- Added `SyncRequestId::SingleEnvelope` for response routing
+- Added `Work::RpcPayloadEnvelope` beacon processor work item
+- Response processing: verify envelope → process state transition → update fork choice
+- All 201 network tests, 61 Gloas beacon_chain tests, 9 EF fork choice test categories pass
+
+**Will re-check when alpha.4 is released.**
 
 ### run 1751 (Mar 17) — spec tracking refresh
 
