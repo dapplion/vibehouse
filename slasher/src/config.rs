@@ -424,6 +424,7 @@ mod tests {
         let mdbx_path = dir.path().join(MDBX_DATA_FILENAME);
         // Create the mdbx data file and sync to ensure visibility on all filesystems.
         // fsync both file and parent directory to prevent intermittent CI flakes.
+        // Read the file back as an additional filesystem barrier.
         {
             let file = std::fs::File::create(&mdbx_path).unwrap();
             std::io::Write::write_all(&mut &file, b"data").unwrap();
@@ -431,18 +432,19 @@ mod tests {
             let parent = std::fs::File::open(dir.path()).unwrap();
             parent.sync_all().unwrap();
         }
-        assert!(
-            mdbx_path.exists(),
-            "mdbx data file should exist at {}",
-            mdbx_path.display()
-        );
+        // Read back as a filesystem barrier — ensures the write is fully visible.
+        let contents = std::fs::read(&mdbx_path).unwrap_or_else(|e| {
+            panic!(
+                "mdbx data file not readable at {}: {e}",
+                mdbx_path.display()
+            )
+        });
+        assert_eq!(contents, b"data");
         let mut config = Config::new(dir.path().into());
         // Force a non-mdbx backend so the override has something to change
         config.backend = DatabaseBackend::Disabled;
 
-        let result = config.override_backend();
-
-        // Verify the file is still visible to the config's path
+        // Verify the file is visible at the config's path before calling override_backend.
         let config_mdbx_path = config.database_path.join(MDBX_DATA_FILENAME);
         assert!(
             config_mdbx_path.exists(),
@@ -450,6 +452,8 @@ mod tests {
             config_mdbx_path.display(),
             mdbx_path.display(),
         );
+
+        let result = config.override_backend();
 
         // If mdbx feature is enabled, it should override; otherwise fail
         #[cfg(feature = "mdbx")]
