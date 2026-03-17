@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1739 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at #5005 (Mar 15). No new commits since run 1738.
+- CI: latest run green (success).
+- Open Gloas PRs: #4992 (cached PTCs, still OPEN, not merged, head d76a278b0a), #5008, #4962, #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, none merged.
+- PR #5001 (parent_block_root in bid filtering key, merged Mar 12): verified vibehouse already implements this — `is_highest_value_bid` uses `(slot, parent_block_hash, parent_block_root)` tuple, with cross-fork isolation tests.
+- cargo audit: unchanged — rsa RUSTSEC-2023-0071 (no fix). 5 unmaintained crate warnings (allowed).
+- Remaining #36 TODOs: 1 actionable (mock EL requests), rest blocked on externals.
+- No code changes needed.
+
 ### run 1738 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. Master HEAD still at 1baa05e. No new commits since run 1737.
