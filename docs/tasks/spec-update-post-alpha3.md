@@ -192,3 +192,13 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Nightly failure (Mar 17) was already fixed in 8f8faa7de (pre-fix commit ran); verified test passes locally
 - Clippy clean, CI green
 - No code changes needed
+
+### run 1761 (Mar 17) — spec tracking refresh
+
+- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
+- All 11 tracked open Gloas PRs still open/unmerged
+- #4992 (cached PTCs in state) has active discussion (updated today) — potuz flagged `get_ptc` as "too restrictive" on slot range, design still evolving. Not ready to implement.
+- Nightly failure (Mar 17 09:11 UTC) confirmed as timing: fix 8f8faa7de pushed at 09:35 UTC, after nightly started. Test passes locally.
+- Clippy clean, CI green
+- Checked heze fork spec: only EIP-7805 (FOCIL/inclusion lists) — small scope, early stage
+- No code changes needed
