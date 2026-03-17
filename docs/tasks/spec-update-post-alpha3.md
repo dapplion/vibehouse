@@ -202,3 +202,13 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Clippy clean, CI green
 - Checked heze fork spec: only EIP-7805 (FOCIL/inclusion lists) — small scope, early stage
 - No code changes needed
+
+### run 1762 (Mar 17) — spec tracking + devnet health check
+
+- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
+- All tracked open Gloas PRs still open/unmerged
+- #4992 (cached PTCs in state): pushback from Grandine (sauliusgrigaitis) questioning if cache belongs in state; potuz discussing tradeoffs. Design not settled.
+- New PR #5014 (EIP-8025 p2p protocol): adds ExecutionProofStatus and ExecutionProofsByRange RPCs for ZK proof sync. Not merged, early stage.
+- Clippy clean, CI green, nightly Fulu failure confirmed as pre-fix timing
+- Devnet health check: finalized_epoch=8 (slot 80, epoch 10), no stalls, Gloas fork transition clean
+- No code changes needed
