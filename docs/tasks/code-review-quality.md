@@ -1753,3 +1753,15 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 - `missing_envelope_different_blocks_not_debounced` — verifies independent block roots get separate requests
 
 **CI status**: all nightly flakes from prior runs already fixed on HEAD. Current CI run green for check+clippy, ef-tests, network+op_pool.
+
+### Run 1795 (2026-03-18)
+
+**Status check**: all priorities DONE, CI green, clippy clean (zero warnings, zero compiler warnings).
+
+**Nightly triage**: March 17 nightly failure (`network-tests (fulu)`: `finalized_sync_not_enough_custody_peers_on_start`) was before the fix commit `8f8faa7de` (09:11 UTC run vs 09:35 UTC fix). Already resolved on HEAD — next nightly will pass.
+
+**Spec audit**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since March 13 (#5001, #5002 — both already handled). Heze fork spec now has 7 files (~6.7KB beacon-chain.md) but still unreleased/pre-alpha — not actionable.
+
+**Remaining TODOs**: all 8 are in issue #36, all blocked on external dependencies (EIP-7892 ×3, blst safe API, PeerDAS checkpoint sync, EL error refactor, pool persistence, store tests).
+
+**Action**: no code changes needed. Monitoring run only.
