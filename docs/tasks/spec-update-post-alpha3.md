@@ -224,3 +224,12 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Nightly Fulu failure (Mar 17) confirmed as timing: `finalized_sync_not_enough_custody_peers_on_start` fixed in 8f8faa7de before nightly completed
 - `cargo audit`: 1 medium advisory (RUSTSEC-2023-0071 in `rsa` via `jsonwebtoken`) — no fix available upstream
 - No code changes needed
+
+### run 1771 (Mar 17) — spec tracking refresh + nightly fix verification
+
+- No new consensus-specs merges since last check (latest merged: #5005, Mar 15)
+- All 11 tracked open Gloas PRs still open/unmerged (#4558, #4630, #4747, #4840, #4843, #4892, #4898, #4939, #4954, #4992, #5008)
+- No new consensus-spec-tests releases (latest v1.6.0-beta.0)
+- Nightly fix verified locally: `finalized_sync_not_enough_custody_peers_on_start` passes (3.6s)
+- Clippy clean, CI green, `cargo audit` unchanged (1 unfixable rsa advisory)
+- No code changes needed
