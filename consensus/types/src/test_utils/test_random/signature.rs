@@ -1,10 +1,11 @@
 use super::*;
 
 impl TestRandom for Signature {
-    fn random_for_test(_rng: &mut impl RngCore) -> Self {
-        // TODO(#36): `SecretKey::random_for_test` does not return a deterministic signature. Since this
-        // signature will not pass verification we could just return the generator point or the
-        // generator point multiplied by a random scalar if we want disctint signatures.
-        Signature::infinity().expect("infinity signature is valid")
+    fn random_for_test(rng: &mut impl RngCore) -> Self {
+        // Now that SecretKey::random_for_test is deterministic, produce a real
+        // deterministic signature by signing a random message.
+        let sk = SecretKey::random_for_test(rng);
+        let msg = Hash256::random_for_test(rng);
+        sk.sign(msg)
     }
 }
