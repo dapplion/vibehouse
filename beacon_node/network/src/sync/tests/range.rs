@@ -600,17 +600,14 @@ fn finalized_sync_not_enough_custody_peers_on_start() {
     let advanced_epochs: u64 = 2;
     let remote_info = r.finalized_remote_info_advanced_by(advanced_epochs.into());
 
-    // Unikely that the single peer we added has enough columns for us. Tests are deterministic and
-    // this error should never be hit
+    // Add a single fullnode peer — not enough to cover all custody columns.
+    // With peer group tracking, block requests go out immediately but column requests
+    // are deferred until enough custody peers are available.
     r.add_fullnode_peer(remote_info.clone());
     r.assert_state(RangeSyncType::Finalized);
 
-    // Because we don't have enough peers on all columns we haven't sent any request.
-    // NOTE: There's a small chance that this single peer happens to custody exactly the set we
-    // expect, in that case the test will fail. Find a way to make the test deterministic.
-    r.expect_empty_network();
-
-    // Generate enough peers and supernodes to cover all custody columns
+    // Generate enough peers and supernodes to cover all custody columns.
+    // Column requests will now be sent, and sync can complete.
     let peer_count = 100;
     r.add_fullnode_peers(remote_info.clone(), peer_count);
     r.add_supernode_peer(remote_info);
