@@ -7,7 +7,9 @@ use crate::sync::batch::{
     BatchState,
 };
 use crate::sync::block_sidecar_coupling::CouplingError;
-use crate::sync::network_context::{RangeRequestId, RpcRequestSendError, RpcResponseError};
+use crate::sync::network_context::{
+    PeerGroup, RangeRequestId, RpcRequestSendError, RpcResponseError,
+};
 use crate::sync::{BatchProcessResult, network_context::SyncNetworkContext};
 use beacon_chain::BeaconChainTypes;
 use beacon_chain::block_verification_types::RpcBlock;
@@ -272,7 +274,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
-        peer_id: &PeerId,
+        peer_group: PeerGroup,
         request_id: Id,
         blocks: Vec<RpcBlock<T::EthSpec>>,
     ) -> ProcessingResult {
@@ -299,9 +301,8 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         // A stream termination has been sent. This batch has ended. Process a completed batch.
         // Remove the request from the peer's active batches
 
-        // TODO(#34): should use peer group here
         let received = blocks.len();
-        batch.download_completed(blocks, *peer_id)?;
+        batch.download_completed(blocks, peer_group)?;
         let awaiting_batches = batch_id
             .saturating_sub(self.optimistic_start.unwrap_or(self.processing_target))
             / EPOCHS_PER_BATCH;
@@ -310,7 +311,6 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             blocks = received,
             batch_state = self.visualize_batch_state(),
             %awaiting_batches,
-            %peer_id,
             "Batch downloaded"
         );
 
@@ -516,7 +516,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
             }
         };
 
-        let peer = batch.processing_peer().cloned().ok_or_else(|| {
+        let peer_group = batch.processing_peers().cloned().ok_or_else(|| {
             RemoveChain::WrongBatchState(format!(
                 "Processing target is in wrong state: {:?}",
                 batch.state(),
@@ -527,7 +527,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         debug!(
             result = ?result,
             batch_epoch = %batch_id,
-            client = %network.client_type(&peer),
+            peer_count = peer_group.all().count(),
             batch_state = ?batch_state,
             ?batch,
             "Batch processing result"
@@ -592,8 +592,10 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 imported_blocks,
                 penalty,
             } => {
-                // Penalize the peer appropriately.
-                network.report_peer(peer, *penalty, "faulty_batch");
+                // Penalize all peers that contributed to this batch.
+                for peer in peer_group.all() {
+                    network.report_peer(*peer, *penalty, "faulty_batch");
+                }
 
                 // Check if this batch is allowed to continue
                 match batch.processing_completed(BatchProcessingResult::FaultyFailure)? {
@@ -701,36 +703,41 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                         // The validated batch has been re-processed
                         if attempt.hash != processed_attempt.hash {
                             // The re-downloaded version was different
-                            if processed_attempt.peer_id != attempt.peer_id {
-                                // A different peer sent the correct batch, the previous peer did not
-                                // We negatively score the original peer.
+                            // Check if the peer groups share any peers
+                            let shared_peers: bool = attempt
+                                .peer_group
+                                .all()
+                                .any(|p| processed_attempt.peer_group.all().any(|q| p == q));
+                            if !shared_peers {
+                                // Different peers sent the correct batch, the previous peers did not
                                 let action = PeerAction::LowToleranceError;
                                 debug!(
-                                    batch_epoch = %id, score_adjustment = %action,
-                                    original_peer = %attempt.peer_id, new_peer = %processed_attempt.peer_id,
-                                    "Re-processed batch validated. Scoring original peer"
+                                    batch_epoch = %id,
+                                    score_adjustment = %action,
+                                    "Re-processed batch validated. Scoring original peers"
                                 );
-                                network.report_peer(
-                                    attempt.peer_id,
-                                    action,
-                                    "batch_reprocessed_original_peer",
-                                );
+                                for peer in attempt.peer_group.all() {
+                                    network.report_peer(
+                                        *peer,
+                                        action,
+                                        "batch_reprocessed_original_peer",
+                                    );
+                                }
                             } else {
-                                // The same peer corrected it's previous mistake. There was an error, so we
-                                // negative score the original peer.
+                                // The same peer(s) corrected the previous mistake.
                                 let action = PeerAction::MidToleranceError;
                                 debug!(
                                     batch_epoch = %id,
                                     score_adjustment = %action,
-                                    original_peer = %attempt.peer_id,
-                                    new_peer = %processed_attempt.peer_id,
-                                    "Re-processed batch validated by the same peer"
+                                    "Re-processed batch validated by the same peer group"
                                 );
-                                network.report_peer(
-                                    attempt.peer_id,
-                                    action,
-                                    "batch_reprocessed_same_peer",
-                                );
+                                for peer in attempt.peer_group.all() {
+                                    network.report_peer(
+                                        *peer,
+                                        action,
+                                        "batch_reprocessed_same_peer",
+                                    );
+                                }
                             }
                         }
                     }
@@ -1293,9 +1300,8 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         }
 
         // don't send batch requests until we have peers on sampling subnets
-        // TODO(#34): this is a workaround to avoid sending out excessive block requests because
-        // block and data column requests are currently coupled. This can be removed once we find a
-        // way to decouple the requests and do retries individually, see issue #6258.
+        // NOTE: block and data column requests are still coupled — this check prevents
+        // excessive block requests when custody peers aren't available yet.
         if !self.good_peers_on_sampling_subnets(self.to_be_downloaded, network) {
             debug!(
                 src = "include_next_batch",

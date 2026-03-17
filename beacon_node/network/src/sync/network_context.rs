@@ -192,8 +192,8 @@ pub enum LookupRequestResult<I = ReqId> {
 }
 
 /// Wraps a Network channel to employ various RPC related network functionality for the Sync manager. This includes management of a global RPC request Id.
-/// Result of a completed envelope batch: (blocks, parent_request_id, peer).
-type EnvelopeBatchResult<E> = (Vec<RpcBlock<E>>, ComponentsByRangeRequestId, PeerId);
+/// Result of a completed envelope batch: (blocks, parent_request_id, peer_group).
+type EnvelopeBatchResult<E> = (Vec<RpcBlock<E>>, ComponentsByRangeRequestId, PeerGroup);
 
 /// Tracks a batch of coupled RPC blocks awaiting envelope downloads for Gloas blocks.
 struct PendingEnvelopeBatch<E: EthSpec> {
@@ -205,8 +205,8 @@ struct PendingEnvelopeBatch<E: EthSpec> {
     received_envelopes: HashMap<Hash256, Arc<SignedExecutionPayloadEnvelope<E>>>,
     /// The original components-by-range request ID (for routing the result).
     parent_request_id: ComponentsByRangeRequestId,
-    /// The peer that provided the blocks.
-    peer: PeerId,
+    /// The peers that contributed to this batch.
+    peer_group: PeerGroup,
 }
 
 pub struct SyncNetworkContext<T: BeaconChainTypes> {
@@ -784,13 +784,15 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         Ok(columns_to_request_by_peer)
     }
 
-    /// Received a blocks by range or blobs by range response for a request that couples blocks '
+    /// Received a blocks by range or blobs by range response for a request that couples blocks
     /// and blobs.
+    #[allow(clippy::type_complexity)]
     pub fn range_block_component_response(
         &mut self,
         id: ComponentsByRangeRequestId,
+        peer_id: PeerId,
         range_block_component: RangeBlockComponent<T::EthSpec>,
-    ) -> Option<Result<Vec<RpcBlock<T::EthSpec>>, RpcResponseError>> {
+    ) -> Option<Result<(Vec<RpcBlock<T::EthSpec>>, PeerGroup), RpcResponseError>> {
         let Entry::Occupied(mut entry) = self.components_by_range_requests.entry(id) else {
             metrics::inc_counter_vec(&metrics::SYNC_UNKNOWN_NETWORK_REQUESTS, &["range_blocks"]);
             return None;
@@ -800,6 +802,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             let request = entry.get_mut();
             match range_block_component {
                 RangeBlockComponent::Block(req_id, resp) => resp.and_then(|(blocks, _)| {
+                    request.record_peer(peer_id, vec![0]);
                     request.add_blocks(req_id, blocks).map_err(|e| {
                         RpcResponseError::BlockComponentCouplingError(CouplingError::InternalError(
                             e,
@@ -807,6 +810,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                     })
                 }),
                 RangeBlockComponent::Blob(req_id, resp) => resp.and_then(|(blobs, _)| {
+                    request.record_peer(peer_id, vec![1]);
                     request.add_blobs(req_id, blobs).map_err(|e| {
                         RpcResponseError::BlockComponentCouplingError(CouplingError::InternalError(
                             e,
@@ -815,6 +819,9 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 }),
                 RangeBlockComponent::CustodyColumns(req_id, resp) => {
                     resp.and_then(|(custody_columns, _)| {
+                        let col_indices: Vec<usize> =
+                            custody_columns.iter().map(|c| c.index() as usize).collect();
+                        request.record_peer(peer_id, col_indices);
                         request
                             .add_custody_columns(req_id, custody_columns)
                             .map_err(|e| {
@@ -866,7 +873,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         &mut self,
         blocks: Vec<RpcBlock<T::EthSpec>>,
         parent_request_id: ComponentsByRangeRequestId,
-        peer_id: PeerId,
+        peer_group: PeerGroup,
     ) -> Option<Vec<RpcBlock<T::EthSpec>>> {
         let gloas_roots: Vec<Hash256> = blocks
             .iter()
@@ -900,8 +907,14 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             parent_request_id,
         };
 
+        // Pick a peer from the group to request envelopes from (prefer the block peer)
+        let Some(envelope_peer) = peer_group.all().next().copied() else {
+            warn!("No peers in peer group to request envelopes from");
+            return Some(blocks);
+        };
+
         if let Err(e) = self.network_send.send(NetworkMessage::SendRequest {
-            peer_id,
+            peer_id: envelope_peer,
             request: RequestType::ExecutionPayloadEnvelopesByRoot(request),
             app_request_id: AppRequestId::Sync(SyncRequestId::EnvelopesByRoot(envelope_id)),
         }) {
@@ -912,7 +925,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         debug!(
             count = gloas_roots.len(),
             %id,
-            peer = %peer_id,
+            peer = %envelope_peer,
             "Requesting envelopes for range sync batch"
         );
 
@@ -924,7 +937,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 expected_roots,
                 received_envelopes: HashMap::new(),
                 parent_request_id,
-                peer: peer_id,
+                peer_group,
             },
         );
 
@@ -985,7 +998,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                     );
                 }
 
-                Some((batch.blocks, batch.parent_request_id, batch.peer))
+                Some((batch.blocks, batch.parent_request_id, batch.peer_group))
             }
         }
     }

@@ -17,7 +17,7 @@ use crate::sync::batch::{
 use crate::sync::block_sidecar_coupling::CouplingError;
 use crate::sync::manager::BatchProcessResult;
 use crate::sync::network_context::{
-    RangeRequestId, RpcRequestSendError, RpcResponseError, SyncNetworkContext,
+    PeerGroup, RangeRequestId, RpcRequestSendError, RpcResponseError, SyncNetworkContext,
 };
 use beacon_chain::block_verification_types::RpcBlock;
 use beacon_chain::{BeaconChain, BeaconChainTypes};
@@ -387,7 +387,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         &mut self,
         network: &mut SyncNetworkContext<T>,
         batch_id: BatchId,
-        peer_id: &PeerId,
+        peer_group: PeerGroup,
         request_id: Id,
         blocks: Vec<RpcBlock<T::EthSpec>>,
     ) -> Result<ProcessResult, BackFillError> {
@@ -409,7 +409,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
         }
         let received = blocks.len();
 
-        match batch.download_completed(blocks, *peer_id) {
+        match batch.download_completed(blocks, peer_group) {
             Ok(_) => {
                 let awaiting_batches =
                     self.processing_target.saturating_sub(batch_id) / BACKFILL_EPOCHS_PER_BATCH;
@@ -565,10 +565,10 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             }
         };
 
-        let Some(peer) = batch.processing_peer() else {
+        let Some(peer_group) = batch.processing_peers() else {
             self.fail_sync(BackFillError::BatchInvalidState(
                 batch_id,
-                String::from("Peer does not exist"),
+                String::from("Peer group does not exist"),
             ))?;
             return Ok(ProcessResult::Successful);
         };
@@ -577,8 +577,7 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
             ?result,
             %batch,
             batch_epoch = %batch_id,
-            %peer,
-            client = %network.client_type(peer),
+            peer_count = peer_group.all().count(),
             "Backfill batch processed"
         );
 
@@ -762,38 +761,43 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                         // The validated batch has been re-processed
                         if attempt.hash != processed_attempt.hash {
                             // The re-downloaded version was different.
-                            if processed_attempt.peer_id != attempt.peer_id {
-                                // A different peer sent the correct batch, the previous peer did not
-                                // We negatively score the original peer.
+                            // Check if the peer groups share any peers
+                            let shared_peers: bool = attempt
+                                .peer_group
+                                .all()
+                                .any(|p| processed_attempt.peer_group.all().any(|q| p == q));
+                            if !shared_peers {
+                                // Different peers sent the correct batch, the previous peers did not
+                                // We negatively score the original peers.
                                 let action = PeerAction::LowToleranceError;
                                 debug!(
                                     batch_epoch = ?id,
                                     score_adjustment = %action,
-                                    original_peer = %attempt.peer_id,
-                                    new_peer = %processed_attempt.peer_id,
-                                    "Re-processed batch validated. Scoring original peer"
+                                    "Re-processed batch validated. Scoring original peers"
                                 );
-                                network.report_peer(
-                                    attempt.peer_id,
-                                    action,
-                                    "backfill_reprocessed_original_peer",
-                                );
+                                for peer in attempt.peer_group.all() {
+                                    network.report_peer(
+                                        *peer,
+                                        action,
+                                        "backfill_reprocessed_original_peer",
+                                    );
+                                }
                             } else {
-                                // The same peer corrected it's previous mistake. There was an error, so we
-                                // negative score the original peer.
+                                // The same peer(s) corrected the previous mistake. There was an error, so we
+                                // negative score the original peers.
                                 let action = PeerAction::MidToleranceError;
                                 debug!(
                                     batch_epoch = ?id,
                                     score_adjustment = %action,
-                                    original_peer = %attempt.peer_id,
-                                    new_peer = %processed_attempt.peer_id,
-                                    "Re-processed batch validated by the same peer"
+                                    "Re-processed batch validated by the same peer group"
                                 );
-                                network.report_peer(
-                                    attempt.peer_id,
-                                    action,
-                                    "backfill_reprocessed_same_peer",
-                                );
+                                for peer in attempt.peer_group.all() {
+                                    network.report_peer(
+                                        *peer,
+                                        action,
+                                        "backfill_reprocessed_same_peer",
+                                    );
+                                }
                             }
                         }
                     }

@@ -14,7 +14,12 @@ use vibehouse_network::{
     },
 };
 
+use crate::sync::network_context::PeerGroup;
+
 use crate::sync::network_context::MAX_COLUMN_RETRIES;
+
+/// Result of a completed range block components request: blocks coupled with peer tracking info.
+pub type CouplingResult<E> = Result<(Vec<RpcBlock<E>>, PeerGroup), CouplingError>;
 
 /// Accumulates and couples beacon blocks with their associated data (blobs or data columns)
 /// from range sync network responses.
@@ -32,6 +37,8 @@ pub struct RangeBlockComponentsRequest<E: EthSpec> {
     blocks_request: ByRangeRequest<BlocksByRangeRequestId, Vec<Arc<SignedBeaconBlock<E>>>>,
     /// Sidecars we have received awaiting for their corresponding block.
     block_data_request: RangeBlockDataRequest<E>,
+    /// Tracks which peers contributed to this batch (block peer, blob peer, column peers).
+    peers: HashMap<PeerId, Vec<usize>>,
     /// Span to track the range request and all children range requests.
     pub(crate) request_span: Span,
 }
@@ -105,6 +112,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
         Self {
             blocks_request: ByRangeRequest::Active(blocks_req_id),
             block_data_request,
+            peers: HashMap::new(),
             request_span,
         }
     }
@@ -130,6 +138,17 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             }
             _ => Err("not a column request".to_string()),
         }
+    }
+
+    /// Record a peer that contributed to this batch's download.
+    /// `index` convention: 0 = blocks, 1 = blobs, column_index + 2 = data columns.
+    pub fn record_peer(&mut self, peer_id: PeerId, indices: Vec<usize>) {
+        self.peers.entry(peer_id).or_default().extend(indices);
+    }
+
+    /// Build a PeerGroup from all recorded peers.
+    pub fn peer_group(&self) -> PeerGroup {
+        PeerGroup::from_set(self.peers.clone())
     }
 
     /// Adds received blocks to the request.
@@ -191,24 +210,22 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
     /// Returns `None` if not all expected requests have completed.
     /// Returns `Some(Ok(_))` with valid RPC blocks if all data is present and valid.
     /// Returns `Some(Err(_))` if there are issues coupling blocks with their data.
-    pub fn responses(
-        &mut self,
-        spec: &ChainSpec,
-    ) -> Option<Result<Vec<RpcBlock<E>>, CouplingError>> {
+    pub fn responses(&mut self, spec: &ChainSpec) -> Option<CouplingResult<E>> {
         let blocks = self.blocks_request.to_finished()?;
+        let peer_group = self.peer_group();
 
         // Increment the attempt once this function returns the response or errors
         match &mut self.block_data_request {
-            RangeBlockDataRequest::NoData => {
-                Some(Self::responses_with_blobs(blocks.to_vec(), vec![], spec))
-            }
+            RangeBlockDataRequest::NoData => Some(
+                Self::responses_with_blobs(blocks.to_vec(), vec![], spec)
+                    .map(|blocks| (blocks, peer_group)),
+            ),
             RangeBlockDataRequest::Blobs(request) => {
                 let blobs = request.to_finished()?;
-                Some(Self::responses_with_blobs(
-                    blocks.to_vec(),
-                    blobs.to_vec(),
-                    spec,
-                ))
+                Some(
+                    Self::responses_with_blobs(blocks.to_vec(), blobs.to_vec(), spec)
+                        .map(|blocks| (blocks, peer_group)),
+                )
             }
             RangeBlockDataRequest::DataColumns {
                 requests,
@@ -262,7 +279,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                     }
                 }
 
-                Some(resp)
+                Some(resp.map(|blocks| (blocks, peer_group)))
             }
         }
     }
@@ -906,7 +923,7 @@ mod tests {
 
         // THEN: Should succeed with complete RPC blocks
         assert!(result.is_ok());
-        let rpc_blocks = result.unwrap();
+        let (rpc_blocks, _peer_group) = result.unwrap();
         assert_eq!(rpc_blocks.len(), 2);
     }
 

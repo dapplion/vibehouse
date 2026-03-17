@@ -26,7 +26,7 @@ use crate::sync::{
     },
     block_sidecar_coupling::CouplingError,
     manager::CustodyBatchProcessResult,
-    network_context::{RpcResponseError, SyncNetworkContext},
+    network_context::{PeerGroup, RpcResponseError, SyncNetworkContext},
 };
 
 /// The maximum number of batches to queue before requesting more.
@@ -568,7 +568,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
             Ok(data_columns) => {
                 let received = data_columns.len();
 
-                match batch.download_completed(data_columns, *peer_id) {
+                match batch.download_completed(data_columns, PeerGroup::from_single(*peer_id)) {
                     Ok(_) => {
                         let awaiting_batches = self.processing_target.saturating_sub(batch_id)
                             / CUSTODY_BACKFILL_EPOCHS_PER_BATCH;
@@ -682,10 +682,10 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
             }
         };
 
-        let Some(peer) = batch.processing_peer() else {
+        let Some(peer_group) = batch.processing_peers() else {
             self.fail_sync(CustodyBackfillError::BatchInvalidState(
                 batch_id,
-                String::from("Peer does not exist"),
+                String::from("Peer group does not exist"),
             ))?;
             return Ok(ProcessResult::Successful);
         };
@@ -693,8 +693,7 @@ impl<T: BeaconChainTypes> CustodyBackFillSync<T> {
         debug!(
             ?result,
             batch_id = %custody_batch_id,
-            %peer,
-            client = %network.client_type(peer),
+            peer_count = peer_group.all().count(),
             "Custody backfill batch processed"
         );
 

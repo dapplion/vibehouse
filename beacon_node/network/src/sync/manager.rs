@@ -518,14 +518,14 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                     %peer_id,
                     "Envelope request failed, delivering batch without envelopes"
                 );
-                if let Some((blocks, parent_request_id, batch_peer)) =
+                if let Some((blocks, parent_request_id, peer_group)) =
                     self.network.on_envelope_by_root_response(id, peer_id, None)
                 {
                     match parent_request_id.requester {
                         RangeRequestId::RangeSync { chain_id, batch_id } => {
                             self.range_sync.blocks_by_range_response(
                                 &mut self.network,
-                                batch_peer,
+                                peer_group,
                                 chain_id,
                                 batch_id,
                                 parent_request_id.id,
@@ -537,7 +537,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                             match self.backfill_sync.on_block_response(
                                 &mut self.network,
                                 batch_id,
-                                &batch_peer,
+                                peer_group,
                                 parent_request_id.id,
                                 blocks,
                             ) {
@@ -1254,7 +1254,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
     ) {
         match sync_request_id {
             SyncRequestId::EnvelopesByRoot(id) => {
-                if let Some((blocks, parent_request_id, batch_peer)) = self
+                if let Some((blocks, parent_request_id, peer_group)) = self
                     .network
                     .on_envelope_by_root_response(id, peer_id, envelope)
                 {
@@ -1264,7 +1264,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                         RangeRequestId::RangeSync { chain_id, batch_id } => {
                             self.range_sync.blocks_by_range_response(
                                 &mut self.network,
-                                batch_peer,
+                                peer_group,
                                 chain_id,
                                 batch_id,
                                 parent_request_id.id,
@@ -1276,7 +1276,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                             match self.backfill_sync.on_block_response(
                                 &mut self.network,
                                 batch_id,
-                                &batch_peer,
+                                peer_group,
                                 parent_request_id.id,
                                 blocks,
                             ) {
@@ -1418,19 +1418,21 @@ impl<T: BeaconChainTypes> SyncManager<T> {
         peer_id: PeerId,
         range_block_component: RangeBlockComponent<T::EthSpec>,
     ) {
-        if let Some(resp) = self
-            .network
-            .range_block_component_response(range_request_id, range_block_component)
-        {
+        if let Some(resp) = self.network.range_block_component_response(
+            range_request_id,
+            peer_id,
+            range_block_component,
+        ) {
             match resp {
-                Ok(blocks) => {
+                Ok((blocks, peer_group)) => {
                     // Check if any blocks need envelope downloads (Gloas ePBS).
                     // If so, the blocks are stashed and will be delivered via
                     // rpc_envelope_received once envelopes arrive.
-                    let Some(blocks) =
-                        self.network
-                            .request_envelopes_if_needed(blocks, range_request_id, peer_id)
-                    else {
+                    let Some(blocks) = self.network.request_envelopes_if_needed(
+                        blocks,
+                        range_request_id,
+                        peer_group.clone(),
+                    ) else {
                         return;
                     };
 
@@ -1438,7 +1440,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                         RangeRequestId::RangeSync { chain_id, batch_id } => {
                             self.range_sync.blocks_by_range_response(
                                 &mut self.network,
-                                peer_id,
+                                peer_group,
                                 chain_id,
                                 batch_id,
                                 range_request_id.id,
@@ -1450,7 +1452,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                             match self.backfill_sync.on_block_response(
                                 &mut self.network,
                                 batch_id,
-                                &peer_id,
+                                peer_group,
                                 range_request_id.id,
                                 blocks,
                             ) {
