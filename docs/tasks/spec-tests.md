@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1673 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: nightly green (latest), CI green, spec-test-version-check green. Prior nightly failure (slasher `override_backend_with_mdbx_file_present`) was flaky — next run passed.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since last check.
+- Open Gloas PRs: #4992 (PTC lookbehind, still OPEN, 1 APPROVED, same head d76a278b0a), #5008 (doc-only field rename), #4962 (test-only). All OPEN, NOT MERGED.
+- cargo check: 0 warnings. No semver-compatible dep updates.
+- No actionable work.
+
 ### run 1672 (Mar 17) — health check, all stable
 
 **Health check**: all stable
