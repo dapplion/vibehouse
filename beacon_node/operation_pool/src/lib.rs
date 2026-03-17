@@ -22,7 +22,7 @@ use crate::bls_to_execution_changes::BlsToExecutionChanges;
 use crate::sync_aggregate_id::SyncAggregateId;
 use attester_slashing::AttesterSlashingMaxCover;
 use max_cover::maximum_cover;
-use parking_lot::{RwLock, RwLockWriteGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use rand::rng;
 use rand::seq::SliceRandom;
 use state_processing::per_block_processing::errors::AttestationValidationError;
@@ -280,15 +280,16 @@ impl<E: EthSpec> OperationPool<E> {
         let mut num_prev_valid = 0_i64;
         let mut num_curr_valid = 0_i64;
 
-        // TODO(electra): work out how to do this more elegantly (#36)
-        let mut all_attestations = self.attestations.write();
-
-        if fork_name.electra_enabled() {
-            all_attestations.aggregate_across_committees(prev_epoch_key);
-            all_attestations.aggregate_across_committees(curr_epoch_key);
-        }
-
-        let all_attestations = parking_lot::RwLockWriteGuard::downgrade(all_attestations);
+        // Electra+ needs a write lock for cross-committee aggregation, then downgrade.
+        // Pre-electra only needs a read lock.
+        let all_attestations: RwLockReadGuard<_> = if fork_name.electra_enabled() {
+            let mut write_guard = self.attestations.write();
+            write_guard.aggregate_across_committees(prev_epoch_key);
+            write_guard.aggregate_across_committees(curr_epoch_key);
+            RwLockWriteGuard::downgrade(write_guard)
+        } else {
+            self.attestations.read()
+        };
 
         let prev_epoch_att = self
             .get_valid_attestations_for_epoch(
