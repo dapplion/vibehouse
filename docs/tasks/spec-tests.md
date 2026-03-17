@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1751 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`965bec8a6`). Nightly failure on `837cf89` (stale, pre-fix) confirmed — next nightly will run on current HEAD.
+- **Spec**: v1.7.0-alpha.3 still latest release. No new Gloas PRs merged since last check.
+- **Open Gloas PRs**: unchanged — #4992, #5008, #4939, #4960, #4932, #4843, #4840, #4630. All OPEN.
+- **New spec PRs audited** (not previously tracked): #4914 (FOCIL SignedExecutionProof field change — not relevant, vibehouse doesn't implement FOCIL), #4931 (FOCIL rebase onto Gloas — same), #4908/#4903/#4900/#4906 (test-only).
+- **cargo audit**: unchanged.
+- **#36 issue updated**: 10 items done, 5 blocked on externals, 2 remaining non-critical. Mock EL execution_requests confirmed already implemented.
+- No code changes needed.
+
 ### run 1750 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green. Latest run (KZG verification fix) passed all jobs.
