@@ -1716,3 +1716,9 @@ Exhaustive search of 100+ source files across all directories (common/, consensu
 - PeerDAS checkpoint sync: depends on PeerDAS feature implementation
 - Subnet service dynamic bitfield: minor optimization (max 64 entries)
 - Store hdiff dynamic buffer: needs schema migration, not a quick fix
+
+### Run 1694 (2026-03-17)
+
+**Nightly flake fix**: `override_backend_with_mdbx_file_present` slasher test flaked in nightly CI (March 16, pre-diagnostics). Root cause: `std::fs::write` doesn't guarantee directory entry visibility on all CI filesystems. Fix: replaced with explicit `File::create` + `sync_all()` on both file and parent directory. Test verified with `--features "mdbx"` and all backends.
+
+**Audit sweep**: checked all remaining TODOs, clippy, build warnings, cargo audit, unused deps. Everything clean. Spec tracked to v1.7.0-alpha.3 (latest). `cargo-machete` false positives on `ethereum_ssz*`/`rand` (used by `TestRandom` derive macro).
