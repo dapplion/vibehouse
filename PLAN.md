@@ -96,6 +96,7 @@ All 5 phases complete: (1) clippy/doc/dead-code/unwrap audit, (2) architecture r
 - **HTTP API attestation test** — DONE (#36 partial): `get_aggregate` test uses `Attestation::empty_for_signing` instead of hardcoded `Attestation::Base`
 - **DataColumnsByRootRequester refactor** — DONE (#36 partial): removed single-variant enum, DataColumnsByRootRequestId now contains CustodyId directly
 - **Operation pool lock optimization** — DONE (#36 partial): pre-electra forks use read lock instead of write-then-downgrade for attestation pool access
+- **HDiff buffer allocation** — DONE (#36 partial): parse VCDIFF header (RFC 3284) for exact target window size instead of guess-and-double loop
 
 ---
 

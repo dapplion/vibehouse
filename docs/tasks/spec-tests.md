@@ -29,6 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1691 (Mar 17) — hdiff VCDIFF header parsing, health check
+
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits.
+- CI: all jobs passing. Nightly slasher flake (override_backend_with_mdbx_file_present, 1/3 runs) — environment issue, not reproducible locally.
+- Implemented VCDIFF header parsing in hdiff to extract exact target window size from RFC 3284 header, eliminating the guess-and-double buffer allocation loop. Falls back to heuristic if parsing fails. 6 new tests.
+- Reviewed open Gloas spec PRs: #4960 (fork choice deposit test), #4932 (sanity blocks with payload attestations), #4840 (EIP-7843 SLOTNUM opcode), #4630 (EIP-7688 forward compatible SSZ). None merged, no action needed.
+
 ### run 1690 (Mar 17) — fix minimal config min_builder_withdrawability_delay, nightly tests pass
 
 - Downloaded nightly spec test vectors (run 23123340474, commit 1baa05e) to check for new tests
