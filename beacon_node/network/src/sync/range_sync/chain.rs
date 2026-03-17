@@ -1090,18 +1090,20 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                     return Ok(KeepChain);
                 }
                 Err(e) => match e {
-                    // TODO(#33): Handle the NoPeer case explicitly and don't drop the batch. For
-                    // sync to work properly it must be okay to have "stalled" batches in
-                    // AwaitingDownload state. Currently it will error with invalid state if
-                    // that happens. Sync manager must periodicatlly prune stalled batches like
-                    // we do for lookup sync. Then we can deprecate the redundant
-                    // `good_peers_on_sampling_subnets` checks.
-                    e
-                    @ (RpcRequestSendError::NoPeer(_) | RpcRequestSendError::InternalError(_)) => {
-                        // NOTE: under normal conditions this shouldn't happen but we handle it anyway
-                        warn!(%batch_id, error = ?e, "batch_id" = %batch_id, %batch, "Could not send batch request");
+                    RpcRequestSendError::NoPeer(ref reason) => {
+                        // Leave batch in AwaitingDownload state without counting a failure.
+                        // The batch will be retried when peers become available via resume()
+                        // (triggered by updated_peer_cgc or engine state changes).
+                        debug!(
+                            %batch_id, reason = ?reason, %batch, %batch_state,
+                            "No peer available for batch, waiting for peers"
+                        );
+                        return Ok(KeepChain);
+                    }
+                    RpcRequestSendError::InternalError(msg) => {
+                        warn!(%batch_id, error = %msg, %batch, "Internal error sending batch request");
                         // register the failed download and check if the batch can be retried
-                        batch.start_downloading(1)?; // fake request_id = 1 is not relevant
+                        batch.start_downloading(1)?; // fake request_id
                         match batch.download_failed(None)? {
                             BatchOperationOutcome::Failed { blacklist } => {
                                 return Err(RemoveChain::ChainFailed {

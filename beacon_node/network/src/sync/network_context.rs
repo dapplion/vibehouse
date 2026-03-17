@@ -767,10 +767,9 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 .min()
                 .map(|(_, _, _, peer)| *peer)
             else {
-                // TODO(#33): this will be pretty bad UX. To improve we should:
-                // - Handle the no peers case gracefully, maybe add some timeout and give a few
-                //   minutes / seconds to the peer manager to locate peers on this subnet before
-                //   abandoing progress on the chain completely.
+                // No custody peer available for this column. Range sync handles this
+                // gracefully by leaving the batch in AwaitingDownload state and retrying
+                // when peers become available via resume().
                 return Err(RpcRequestSendError::NoPeer(NoPeerError::CustodyPeer(
                     *column_index,
                 )));
