@@ -167,3 +167,16 @@ Verified vibehouse handles the edge cases from all three test PRs:
 - Clippy clean, CI green, devnet healthy (finalized_epoch=8)
 - EF spec tests all pass: 139/139 (fake_crypto) + 79/79 (real crypto)
 - No code changes needed. Will re-check next run.
+
+### run 1759 (Mar 17) — spec tracking refresh + full test suite validation
+
+- No new consensus-specs commits since last check
+- All tracked open Gloas PRs still open/unmerged
+- Full test suite validation:
+  - EF spec tests: 139/139 (fake_crypto) + 79/79 (real crypto), including new on_execution_payload fork choice tests from #4940
+  - beacon_chain: 991/991 pass (FORK_NAME=gloas)
+  - network: 201/201 pass (FORK_NAME=gloas)
+  - operation_pool: 72/72 pass (FORK_NAME=gloas)
+  - workspace (excl heavy crates): 4914/4914 pass (8 web3signer failures are JRE infrastructure, not code)
+- Clippy clean, CI green
+- No code changes needed
