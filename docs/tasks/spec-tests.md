@@ -5038,3 +5038,13 @@ Added 36 unit tests to `common/eth2/src/types.rs` covering previously untested t
 - PR #5008 (field name fix in p2p spec text): open, docs-only. We already use `beacon_block_root`.
 - cargo audit unchanged (1 rsa, 5 warnings).
 - CI green. Nightly green. All stable. No action needed.
+
+### Run 1682 (2026-03-17)
+- Spec: v1.7.0-alpha.3 still latest. No new tags or releases.
+- No new merged Gloas PRs. Latest 5 open PRs: #5011, #4747, #4992, #5012, #5010 — all unchanged.
+- PR #4962 (sanity/blocks tests): still open, blocked. Test-only (Python test generator).
+- PR #4992 (cached PTCs): still open, debate continues.
+- cargo audit unchanged (1 rsa vuln, 5 unmaintained warnings). No semver-compatible dep updates.
+- TODO cleanup: all 58 remaining TODOs have issue links (#31). `Ipv6Addr::is_global()` still unstable (rustc 1.94.0).
+- CI in progress (run 23173384176) from previous commit. Clippy passed.
+- All stable. No action needed.
