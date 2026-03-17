@@ -2821,10 +2821,10 @@ async fn weak_subjectivity_sync_test(
     let temp1 = tempdir().unwrap();
     let full_store = get_store(&temp1);
 
-    // TODO(das): Run a supernode so the node has full blobs stored.
+    // TODO(#31): Run a supernode so the node has full blobs stored.
     // This may not be required in the future if we end up implementing downloading checkpoint
     // blobs from p2p peers:
-    // TODO: implement downloading checkpoint blobs/columns from p2p peers.
+    // TODO(#31): implement downloading checkpoint blobs/columns from p2p peers.
     let harness = get_harness_import_all_data_columns(full_store.clone(), LOW_VALIDATOR_COUNT);
 
     let all_validators = (0..LOW_VALIDATOR_COUNT).collect::<Vec<_>>();
@@ -2943,7 +2943,7 @@ async fn weak_subjectivity_sync_test(
         .unwrap();
 
     assert_eq!(store_wss_block, wss_block);
-    // TODO(fulu): Remove this condition once PeerDAS checkpoint sync is implemented.
+    // TODO(#31): Remove this condition once PeerDAS checkpoint sync is implemented.
     if !beacon_chain.spec.is_peer_das_scheduled() {
         assert_eq!(store_wss_blobs_opt, wss_blobs_opt);
     }

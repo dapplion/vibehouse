@@ -1061,7 +1061,7 @@ where
             store_migrator,
             slot_clock: slot_clock.clone(),
             op_pool: self.op_pool.ok_or("Cannot build without op pool")?,
-            // TODO: allow for persisting and loading these pools from disk.
+            // TODO(#31): allow for persisting and loading these pools from disk.
             naive_aggregation_pool: <_>::default(),
             naive_sync_aggregation_pool: <_>::default(),
             observed_attestations: <_>::default(),

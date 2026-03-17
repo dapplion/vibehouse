@@ -1,6 +1,6 @@
 //! This module contains root span identifiers for key code paths in the beacon node.
 //!
-//! TODO: These span identifiers will be used to implement selective tracing export (to be implemented),
+//! TODO(#31): These span identifiers will be used to implement selective tracing export (to be implemented),
 //! where only the listed root spans and their descendants will be exported to the tracing backend.
 
 /// Root span names for block production and publishing

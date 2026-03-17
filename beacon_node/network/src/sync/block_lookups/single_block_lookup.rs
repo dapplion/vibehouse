@@ -203,7 +203,7 @@ impl<T: BeaconChainTypes> SingleBlockLookup<T> {
         cx: &mut SyncNetworkContext<T>,
     ) -> Result<LookupResult, LookupRequestError> {
         let _guard = self.span.clone().entered();
-        // TODO: Check what's necessary to download, specially for blobs
+        // TODO(#31): Check what's necessary to download, specially for blobs
         self.continue_request::<BlockRequestState<T::EthSpec>>(cx, 0)?;
 
         if let ComponentRequests::WaitingForBlock = self.component_requests {

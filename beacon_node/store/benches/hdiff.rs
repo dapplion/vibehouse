@@ -32,7 +32,7 @@ pub fn all_benches(c: &mut Criterion) {
         // And some validator records
         for _ in 0..validator_mutations {
             let index = rng.random_range(1..n);
-            // TODO: Only change a few things, and not the pubkey
+            // TODO(#31): Only change a few things, and not the pubkey
             *target_state.validators_mut().get_mut(index).unwrap() = rand_validator(&mut rng);
         }
         for _ in 0..validator_additions {

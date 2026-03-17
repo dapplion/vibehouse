@@ -191,7 +191,7 @@ impl From<EngineError> for Error {
     fn from(e: EngineError) -> Self {
         match e {
             // This removes an unnecessary layer of indirection.
-            // TODO (mark): consider refactoring these error enums
+            // TODO: consider refactoring these error enums (#31)
             EngineError::Api { error } => Error::ApiError(error),
             _ => Error::EngineError(Box::new(e)),
         }
@@ -214,7 +214,7 @@ pub enum BlockProposalContents<E: EthSpec, Payload: AbstractExecPayload<E>> {
         kzg_commitments: KzgCommitments<E>,
         /// `None` for blinded `PayloadAndBlobs`.
         blobs_and_proofs: Option<(BlobsList<E>, KzgProofs<E>)>,
-        // TODO(electra): this should probably be a separate variant/superstruct
+        // TODO: this should probably be a separate variant/superstruct (#31)
         requests: Option<ExecutionRequests<E>>,
     },
 }

@@ -354,7 +354,7 @@ impl BeaconNodeHttpClient {
 
         #[derive(serde::Deserialize)]
         struct Helper {
-            // TODO: remove this default once checkpointz follows the spec
+            // Default for checkpointz compat — it omits `version` (see #31)
             #[serde(default = "ForkName::latest_stable")]
             version: ForkName,
             #[serde(flatten)]
@@ -1520,7 +1520,7 @@ impl BeaconNodeHttpClient {
         }
 
         self.get_fork_contextual(path, |fork| {
-            // TODO(EIP-7892): this will overestimate the max number of blobs
+            // TODO(EIP-7892): this will overestimate the max number of blobs (#31)
             // It would be better if we could get an epoch passed into this function
             (fork, spec.max_blobs_per_block_within_fork(fork) as usize)
         })

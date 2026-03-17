@@ -148,7 +148,7 @@ impl Kzg {
     /// Verify a batch of blob commitment proof triplets.
     ///
     /// Note: This method is slightly faster than calling `Self::verify_blob_kzg_proof` in a loop sequentially.
-    /// TODO(pawan): test performance against a parallelized rayon impl.
+    /// TODO: test performance against a parallelized rayon impl (#31).
     pub fn verify_blob_kzg_proof_batch(
         &self,
         blobs: &[Blob],

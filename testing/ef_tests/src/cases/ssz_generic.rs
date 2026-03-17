@@ -239,7 +239,7 @@ fn ssz_generic_test<
     };
 
     // Valid
-    // TODO: signing root (annoying because of traits)
+    // TODO(#31): signing root (annoying because of traits)
     if let Some(value) = value {
         check_serialization(&value, &serialized, T::from_ssz_bytes)?;
 

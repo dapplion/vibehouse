@@ -845,8 +845,7 @@ fn run<E: EthSpec>(
                 "beacon_node",
             );
         }
-        // TODO(clap-derive) delete this once we've fully migrated to clap derive.
-        // Qt the moment this needs to exist so that we dont trigger a crit.
+        // Validator client is handled by clap derive; this arm prevents the crit below.
         Some(("validator_client", _)) => (),
         _ => {
             crit!("No subcommand supplied. See --help .");

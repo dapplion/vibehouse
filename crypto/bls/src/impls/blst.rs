@@ -59,7 +59,7 @@ pub fn verify_signature_sets<'a>(
         }
         let mut rand_i = std::mem::MaybeUninit::<blst_scalar>::uninit();
 
-        // TODO: remove this `unsafe` code-block once we get a safe option from `blst`.
+        // TODO: remove this `unsafe` code-block once blst provides a safe API (#31)
         unsafe {
             blst::blst_scalar_from_uint64(rand_i.as_mut_ptr(), vals.as_ptr());
             rands.push(rand_i.assume_init());

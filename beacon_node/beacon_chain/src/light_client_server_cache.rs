@@ -27,10 +27,9 @@ const PREV_BLOCK_CACHE_SIZE: NonZeroUsize = new_non_zero_usize(32);
 pub struct LightClientServerCache<T: BeaconChainTypes> {
     /// Tracks a single global latest finality update out of all imported blocks.
     ///
-    /// TODO: Active discussion with @etan-status if this cache should be fork aware to return
-    /// latest canonical (update with highest signature slot, where its attested header is part of
-    /// the head chain) instead of global latest (update with highest signature slot, out of all
-    /// branches).
+    /// Note: this tracks the global latest (update with highest signature slot, out of all
+    /// branches) rather than the latest canonical (update with highest signature slot where
+    /// its attested header is part of the head chain). A fork-aware approach may be preferable.
     latest_finality_update: RwLock<Option<LightClientFinalityUpdate<T::EthSpec>>>,
     /// Tracks a single global latest optimistic update out of all imported blocks.
     latest_optimistic_update: RwLock<Option<LightClientOptimisticUpdate<T::EthSpec>>>,

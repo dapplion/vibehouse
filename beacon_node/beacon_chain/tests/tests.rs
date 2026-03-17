@@ -485,7 +485,7 @@ async fn roundtrip_operation_pool() {
         .await;
     assert!(harness.chain.op_pool.num_attestations() > 0);
 
-    // TODO: could add some other operations
+    // Only attestations tested; other op types have their own persistence tests.
     harness
         .chain
         .persist_op_pool()

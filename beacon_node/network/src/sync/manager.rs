@@ -421,7 +421,7 @@ impl<T: BeaconChainTypes> SyncManager<T> {
                     // A peer should always be considered `Advanced` if its finalized root is
                     // unknown and ahead of ours, so we don't check for that root here.
                     //
-                    // TODO: This fork-choice check is potentially duplicated, review code
+                    // TODO(#31): This fork-choice check is potentially duplicated, review code
                     if !self.chain.block_is_known_to_fork_choice(&remote.head_root) {
                         self.handle_unknown_block_root(peer_id, remote.head_root);
                     }

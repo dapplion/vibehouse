@@ -824,7 +824,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             .get_blinded_block(&block_root)?
             .ok_or(Error::MissingBeaconBlock(block_root))?;
         // This method is only used in tests, so we may as well cache states to make CI go brr.
-        // TODO(release-v7) move this method out of beacon chain and into `store_tests`` or something equivalent.
         let state = self
             .get_state(&block.state_root(), Some(block.slot()), true)?
             .ok_or_else(|| Error::MissingBeaconState(block.state_root()))?;

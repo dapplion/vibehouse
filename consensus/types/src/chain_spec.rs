@@ -870,7 +870,7 @@ impl ChainSpec {
         }
     }
 
-    // TODO(EIP-7892): remove this once we have fork-version changes on BPO forks
+    // TODO(EIP-7892): remove this once we have fork-version changes on BPO forks (#31)
     pub fn max_blobs_per_block_within_fork(&self, fork_name: ForkName) -> u64 {
         if !fork_name.fulu_enabled() {
             if fork_name.electra_enabled() {
@@ -1799,7 +1799,7 @@ impl BlobSchedule {
     }
 
     pub const fn default() -> Self {
-        // TODO(EIP-7892): think about what the default should be
+        // TODO(EIP-7892): think about what the default should be (#31)
         Self {
             schedule: vec![],
             skip_serializing: false,

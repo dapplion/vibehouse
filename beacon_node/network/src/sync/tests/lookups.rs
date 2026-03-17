@@ -79,7 +79,7 @@ impl TestRig {
 
         let (network_tx, network_rx) = mpsc::unbounded_channel();
         let (sync_tx, sync_rx) = mpsc::unbounded_channel::<SyncMessage<E>>();
-        // TODO(das): make the generation of the ENR use the deterministic rng to have consistent
+        // TODO(#31): make the generation of the ENR use the deterministic rng to have consistent
         // column assignments
         let network_config = Arc::new(NetworkConfig::default());
         let globals = Arc::new(NetworkGlobals::new_test_globals(
@@ -1923,7 +1923,7 @@ fn custody_lookup_happy_path() {
     r.expect_no_active_lookups();
 }
 
-// TODO(das): Test retries of DataColumnByRoot:
+// TODO(#31): Test retries of DataColumnByRoot:
 // - Expect request for column_index
 // - Respond with bad data
 // - Respond with stream terminator
@@ -2357,7 +2357,7 @@ mod deneb_only {
             self.expect_block_request()
                 .block_response_and_expect_blob_request()
                 .blobs_response()
-                // TODO: Should send blobs for processing
+                // TODO(#31): Should send blobs for processing
                 .expect_block_process()
                 .block_imported()
         }
@@ -2584,7 +2584,7 @@ mod deneb_only {
             .log("resolve original block trigger blobs request and import")
             // Should not have block request, it is cached
             .expect_blobs_request()
-            // TODO: Should send blobs for processing
+            // TODO(#31): Should send blobs for processing
             .block_imported()
             .expect_no_active_lookups();
     }

@@ -574,7 +574,7 @@ impl<E: EthSpec> PeerManager<E> {
                     // by the time the ban lifts, the peers will have completed their backfill
                     // sync.
                     //
-                    // TODO: Potentially a more graceful way of handling such peers, would be to
+                    // TODO(#31): Potentially a more graceful way of handling such peers, would be to
                     // implement a new sync type which tracks these peers and prevents the sync
                     // algorithms from requesting blocks from them (at least for a set period of
                     // time, multiple failures would then lead to a ban).

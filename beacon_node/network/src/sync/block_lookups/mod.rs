@@ -117,7 +117,7 @@ pub struct BlockLookups<T: BeaconChainTypes> {
     /// eventually sync those blocks
     ignored_chains: LRUTimeCache<Hash256>,
 
-    // TODO: Why not index lookups by block_root?
+    // TODO(#31): Why not index lookups by block_root?
     single_block_lookups: FnvHashMap<SingleLookupId, SingleBlockLookup<T>>,
 }
 
@@ -873,7 +873,7 @@ impl<T: BeaconChainTypes> BlockLookups<T> {
     ///   already have there cached.
     ///
     /// Instead there's no negative for keeping lookups with no peers around for some time. If we
-    /// regularly prune them, it should not be a memory concern (TODO: maybe yes!).
+    /// regularly prune them, it should not be a memory concern (TODO(#31): maybe yes!).
     fn drop_lookups_without_peers(&mut self) {
         for (lookup_id, block_root) in self
             .single_block_lookups

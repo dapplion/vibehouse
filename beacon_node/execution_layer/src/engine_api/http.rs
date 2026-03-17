@@ -698,12 +698,6 @@ impl HttpJsonRpc {
             )
             .await?;
 
-        /*
-         * TODO
-         *
-         * Check the network and chain ids. We omit this to save time for the merge f2f and since it
-         * also seems like it might get annoying during development.
-         */
         match result.as_bool() {
             Some(false) => Ok(()),
             _ => Err(Error::IsSyncing),

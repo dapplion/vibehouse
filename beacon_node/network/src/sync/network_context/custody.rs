@@ -148,10 +148,10 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                         )?;
                     } else {
                         // Peer does not have the requested data.
-                        // TODO(das) do not consider this case a success. We know for sure the block has
+                        // TODO(#31) do not consider this case a success. We know for sure the block has
                         // data. However we allow the peer to return empty as we can't attribute fault.
-                        // TODO(das): Should track which columns are missing and eventually give up
-                        // TODO(das): If the peer is in the lookup peer set it claims to have imported
+                        // TODO(#31): Should track which columns are missing and eventually give up
+                        // TODO(#31): If the peer is in the lookup peer set it claims to have imported
                         // the block AND its custody columns. So in this case we can downscore
                         column_request.on_download_error(req_id)?;
                         missing_column_indexes.push(column_index);
@@ -181,7 +181,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                     "Custody column download error"
                 );
 
-                // TODO(das): Should mark peer as failed and try from another peer
+                // TODO(#31): Should mark peer as failed and try from another peer
                 for column_index in &batch_request.indices {
                     self.column_requests
                         .get_mut(column_index)
@@ -373,7 +373,7 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
     }
 }
 
-/// TODO(das): this attempt count is nested into the existing lookup request count.
+/// TODO(#31): this attempt count is nested into the existing lookup request count.
 const MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS: usize = 3;
 
 /// Max number of attempts to request custody columns from a single peer.
@@ -447,7 +447,7 @@ impl<E: EthSpec> ColumnRequest<E> {
         &mut self,
         req_id: DataColumnsByRootRequestId,
     ) -> Result<(), Error> {
-        // TODO(das): Should track which peers don't have data
+        // TODO(#31): Should track which peers don't have data
         self.download_failures += 1;
         self.on_download_error(req_id)
     }

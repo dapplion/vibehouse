@@ -911,7 +911,7 @@ impl<E: EthSpec> PeerDB<E> {
                     }
                     PeerConnectionStatus::Banned { .. } => {
                         error!(%peer_id, "Accepted a connection from a banned peer");
-                        // TODO: check if this happens and report the unban back
+                        // TODO(#31): check if this happens and report the unban back
                         self.banned_peers_count
                             .remove_banned_peer(info.seen_ip_addresses());
                     }

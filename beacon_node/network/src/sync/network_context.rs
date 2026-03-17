@@ -767,7 +767,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                 .min()
                 .map(|(_, _, _, peer)| *peer)
             else {
-                // TODO(das): this will be pretty bad UX. To improve we should:
+                // TODO(#31): this will be pretty bad UX. To improve we should:
                 // - Handle the no peers case gracefully, maybe add some timeout and give a few
                 //   minutes / seconds to the peer manager to locate peers on this subnet before
                 //   abandoing progress on the chain completely.

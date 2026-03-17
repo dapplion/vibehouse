@@ -289,7 +289,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                 // sending an error /timeout) if the peer is removed from the chain for other
                 // reasons. Check that this block belongs to the expected peer, and that the
                 // request_id matches
-                // TODO(das): removed peer_id matching as the node may request a different peer for data
+                // TODO(#31): removed peer_id matching as the node may request a different peer for data
                 // columns.
                 if !batch.is_expecting_request_id(&request_id) {
                     return Ok(KeepChain);
@@ -301,7 +301,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         // A stream termination has been sent. This batch has ended. Process a completed batch.
         // Remove the request from the peer's active batches
 
-        // TODO(das): should use peer group here
+        // TODO(#31): should use peer group here
         let received = blocks.len();
         batch.download_completed(blocks, *peer_id)?;
         let awaiting_batches = batch_id
@@ -1092,7 +1092,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
                     return Ok(KeepChain);
                 }
                 Err(e) => match e {
-                    // TODO(das): Handle the NoPeer case explicitly and don't drop the batch. For
+                    // TODO(#31): Handle the NoPeer case explicitly and don't drop the batch. For
                     // sync to work properly it must be okay to have "stalled" batches in
                     // AwaitingDownload state. Currently it will error with invalid state if
                     // that happens. Sync manager must periodicatlly prune stalled batches like
@@ -1293,7 +1293,7 @@ impl<T: BeaconChainTypes> SyncingChain<T> {
         }
 
         // don't send batch requests until we have peers on sampling subnets
-        // TODO(das): this is a workaround to avoid sending out excessive block requests because
+        // TODO(#31): this is a workaround to avoid sending out excessive block requests because
         // block and data column requests are currently coupled. This can be removed once we find a
         // way to decouple the requests and do retries individually, see issue #6258.
         if !self.good_peers_on_sampling_subnets(self.to_be_downloaded, network) {

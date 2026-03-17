@@ -415,7 +415,7 @@ impl<E: EthSpec> HotColdDB<E, BeaconNodeBackend<E>, BeaconNodeBackend<E>> {
             db.store_schema_version(CURRENT_SCHEMA_VERSION)?;
         }
 
-        // TODO(tree-states): Here we can choose to prune advanced states to reclaim disk space. As
+        // TODO(#31): Here we can choose to prune advanced states to reclaim disk space. As
         // it's a foreground task there's no risk of race condition that can corrupt the DB.
         // Advanced states for invalid blocks that were never written to the DB, or descendants of
         // heads can be safely pruned at the expense of potentially having to recompute them in the
@@ -3925,7 +3925,7 @@ pub fn get_ancestor_state_root<'a, E: EthSpec, Hot: ItemStore<E>, Cold: ItemStor
         // - SlotsPerHistoricalRoot`.
         //
         // Values we could start from:
-        // - `state.slot() - 1`: TODO if we don't immediately commit all each state to the DB
+        // - `state.slot() - 1`: TODO(#31) if we don't immediately commit all each state to the DB
         //   individually, we may be attempting to read a state summary that is stored in a DB ops
         //   vector but not yet written to the DB. Also starting from this slot is wasteful as we
         //   know that the target slot is `< state.slot() - SlotsPerHistoricalRoot`.

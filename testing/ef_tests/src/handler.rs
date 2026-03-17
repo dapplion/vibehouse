@@ -58,7 +58,7 @@ pub trait Handler {
     }
 
     // Do NOT override this function.
-    // TODO: use default keyword when stable.
+    // TODO(#31): use default keyword when stable.
     fn rayon_enabled() -> bool {
         #[cfg(feature = "disable_rayon")]
         {
