@@ -572,6 +572,89 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
         Ok(())
     }
 
+    /// Attempts to send column requests for any `components_by_range_requests` entries that
+    /// have deferred columns. Called when new peers become available.
+    ///
+    /// Returns the number of deferred requests that were successfully activated.
+    pub fn send_deferred_columns(
+        &mut self,
+        column_peers: &HashSet<PeerId>,
+        peers_to_deprioritize: &HashSet<PeerId>,
+    ) -> usize {
+        let active_request_count_by_peer = self.active_request_count_by_peer();
+
+        // Collect deferred requests info first to avoid borrow conflicts
+        let deferred: Vec<_> = self
+            .components_by_range_requests
+            .iter()
+            .filter(|(_, req)| req.has_deferred_columns())
+            .filter_map(|(id, req)| {
+                req.deferred_column_info().map(|(cols, start_slot, count)| {
+                    (
+                        *id,
+                        cols.to_vec(),
+                        start_slot,
+                        count,
+                        req.request_span.clone(),
+                    )
+                })
+            })
+            .collect();
+
+        let mut activated = 0;
+        for (id, expected_columns, start_slot, count, parent_span) in deferred {
+            let column_indexes: HashSet<ColumnIndex> = expected_columns.iter().cloned().collect();
+
+            // Try to find custody peers for the deferred columns
+            let Ok(columns_by_range_peers) = self.select_columns_by_range_peers_to_request(
+                &column_indexes,
+                column_peers,
+                active_request_count_by_peer.clone(),
+                peers_to_deprioritize,
+            ) else {
+                // Still no peers available, keep deferred
+                continue;
+            };
+
+            // Send column requests
+            let column_requests: Result<Vec<_>, _> = columns_by_range_peers
+                .into_iter()
+                .map(|(peer_id, columns)| {
+                    self.send_data_columns_by_range_request(
+                        peer_id,
+                        DataColumnsByRangeRequest {
+                            start_slot,
+                            count,
+                            columns,
+                        },
+                        DataColumnsByRangeRequester::ComponentsByRange(id),
+                        new_range_request_span!(
+                            self,
+                            "outgoing_columns_by_range_deferred",
+                            parent_span.clone(),
+                            peer_id
+                        ),
+                    )
+                })
+                .collect();
+
+            match column_requests {
+                Ok(requests) => {
+                    if let Some(range_req) = self.components_by_range_requests.get_mut(&id) {
+                        range_req.activate_deferred_columns(requests);
+                        activated += 1;
+                        debug!(?id, "Activated deferred column requests");
+                    }
+                }
+                Err(e) => {
+                    debug!(?id, ?e, "Failed to send deferred column requests");
+                }
+            }
+        }
+
+        activated
+    }
+
     /// Removes all `components_by_range_requests` entries belonging to a range sync chain.
     ///
     /// Called when a chain is removed so that its outstanding meta-requests do not leak.
@@ -631,24 +714,37 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
             return Err(RpcRequestSendError::NoPeer(NoPeerError::BlockPeer));
         };
 
-        // Attempt to find all required custody peers before sending any request or creating an ID
-        let columns_by_range_peers_to_request =
+        // Attempt to find custody peers for columns. If no peers are available, defer column
+        // requests — blocks will be downloaded immediately and columns sent when peers arrive.
+        let (columns_by_range_peers_to_request, deferred_columns) =
             if matches!(batch_type, ByRangeRequestType::BlocksAndColumns) {
                 let epoch = Slot::new(*request.start_slot()).epoch(T::EthSpec::slots_per_epoch());
-                let column_indexes = self
+                let column_indexes: HashSet<ColumnIndex> = self
                     .chain
                     .sampling_columns_for_epoch(epoch)
                     .iter()
                     .cloned()
                     .collect();
-                Some(self.select_columns_by_range_peers_to_request(
+                match self.select_columns_by_range_peers_to_request(
                     &column_indexes,
                     column_peers,
                     active_request_count_by_peer,
                     peers_to_deprioritize,
-                )?)
+                ) {
+                    Ok(peers) => (Some(peers), None),
+                    Err(RpcRequestSendError::NoPeer(_)) => {
+                        // No custody peers available — defer column requests, send blocks now
+                        debug!("No custody peers available, deferring column requests for batch");
+                        let expected: Vec<ColumnIndex> = column_indexes.into_iter().collect();
+                        (
+                            None,
+                            Some((expected, *request.start_slot(), *request.count())),
+                        )
+                    }
+                    Err(e) => return Err(e),
+                }
             } else {
-                None
+                (None, None)
             };
 
         // Create the overall components_by_range request ID before its individual components
@@ -723,6 +819,7 @@ impl<T: BeaconChainTypes> SyncNetworkContext<T> {
                     self.chain.sampling_columns_for_epoch(epoch).to_vec(),
                 )
             }),
+            deferred_columns,
             range_request_span,
         );
         self.components_by_range_requests.insert(id, info);

@@ -61,6 +61,14 @@ enum RangeBlockDataRequest<E: EthSpec> {
         expected_custody_columns: Vec<ColumnIndex>,
         attempt: usize,
     },
+    /// Columns are needed but no custody peers were available when blocks were requested.
+    /// Column requests will be sent when peers become available.
+    DeferredColumns {
+        expected_custody_columns: Vec<ColumnIndex>,
+        /// The slot range parameters needed to construct column requests later.
+        start_slot: u64,
+        count: u64,
+    },
 }
 
 #[derive(Debug)]
@@ -90,6 +98,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             Vec<(DataColumnsByRangeRequestId, Vec<ColumnIndex>)>,
             Vec<ColumnIndex>,
         )>,
+        deferred_columns: Option<(Vec<ColumnIndex>, u64, u64)>,
         request_span: Span,
     ) -> Self {
         let block_data_request = if let Some(blobs_req_id) = blobs_req_id {
@@ -105,6 +114,12 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
                 expected_custody_columns,
                 attempt: 0,
             }
+        } else if let Some((expected_custody_columns, start_slot, count)) = deferred_columns {
+            RangeBlockDataRequest::DeferredColumns {
+                expected_custody_columns,
+                start_slot,
+                count,
+            }
         } else {
             RangeBlockDataRequest::NoData
         };
@@ -114,6 +129,50 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
             block_data_request,
             peers: HashMap::new(),
             request_span,
+        }
+    }
+
+    /// Returns true if this request has deferred columns (columns needed but not yet requested).
+    pub fn has_deferred_columns(&self) -> bool {
+        matches!(
+            self.block_data_request,
+            RangeBlockDataRequest::DeferredColumns { .. }
+        )
+    }
+
+    /// Returns the expected custody columns and request parameters if this request has deferred columns.
+    pub fn deferred_column_info(&self) -> Option<(&[ColumnIndex], u64, u64)> {
+        match &self.block_data_request {
+            RangeBlockDataRequest::DeferredColumns {
+                expected_custody_columns,
+                start_slot,
+                count,
+            } => Some((expected_custody_columns, *start_slot, *count)),
+            _ => None,
+        }
+    }
+
+    /// Activates deferred columns by transitioning to the DataColumns state with actual requests.
+    pub fn activate_deferred_columns(
+        &mut self,
+        column_requests: Vec<(DataColumnsByRangeRequestId, Vec<ColumnIndex>)>,
+    ) {
+        if let RangeBlockDataRequest::DeferredColumns {
+            expected_custody_columns,
+            ..
+        } = &self.block_data_request
+        {
+            let expected = expected_custody_columns.clone();
+            let column_peers: HashMap<_, _> = column_requests.into_iter().collect();
+            self.block_data_request = RangeBlockDataRequest::DataColumns {
+                requests: column_peers
+                    .keys()
+                    .map(|id| (*id, ByRangeRequest::Active(*id)))
+                    .collect(),
+                column_peers,
+                expected_custody_columns: expected,
+                attempt: 0,
+            };
         }
     }
 
@@ -172,7 +231,9 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
         blobs: Vec<Arc<BlobSidecar<E>>>,
     ) -> Result<(), String> {
         match &mut self.block_data_request {
-            RangeBlockDataRequest::NoData => Err("received blobs but expected no data".to_owned()),
+            RangeBlockDataRequest::NoData | RangeBlockDataRequest::DeferredColumns { .. } => {
+                Err("received blobs but expected no data".to_owned())
+            }
             RangeBlockDataRequest::Blobs(req) => req.finish(req_id, blobs),
             RangeBlockDataRequest::DataColumns { .. } => {
                 Err("received blobs but expected data columns".to_owned())
@@ -190,7 +251,7 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
         columns: Vec<Arc<DataColumnSidecar<E>>>,
     ) -> Result<(), String> {
         match &mut self.block_data_request {
-            RangeBlockDataRequest::NoData => {
+            RangeBlockDataRequest::NoData | RangeBlockDataRequest::DeferredColumns { .. } => {
                 Err("received data columns but expected no data".to_owned())
             }
             RangeBlockDataRequest::Blobs(_) => {
@@ -216,6 +277,8 @@ impl<E: EthSpec> RangeBlockComponentsRequest<E> {
 
         // Increment the attempt once this function returns the response or errors
         match &mut self.block_data_request {
+            // Columns are deferred — not ready until column requests are activated and complete
+            RangeBlockDataRequest::DeferredColumns { .. } => None,
             RangeBlockDataRequest::NoData => Some(
                 Self::responses_with_blobs(blocks.to_vec(), vec![], spec)
                     .map(|blocks| (blocks, peer_group)),
@@ -545,7 +608,7 @@ mod tests {
 
         let blocks_req_id = blocks_id(components_id());
         let mut info =
-            RangeBlockComponentsRequest::<E>::new(blocks_req_id, None, None, Span::none());
+            RangeBlockComponentsRequest::<E>::new(blocks_req_id, None, None, None, Span::none());
 
         // Send blocks and complete terminate response
         info.add_blocks(blocks_req_id, blocks).unwrap();
@@ -578,6 +641,7 @@ mod tests {
         let mut info = RangeBlockComponentsRequest::<E>::new(
             blocks_req_id,
             Some(blobs_req_id),
+            None,
             None,
             Span::none(),
         );
@@ -628,6 +692,7 @@ mod tests {
             blocks_req_id,
             None,
             Some((columns_req_id.clone(), expects_custody_columns.clone())),
+            None,
             Span::none(),
         );
         // Send blocks and complete terminate response
@@ -696,6 +761,7 @@ mod tests {
             blocks_req_id,
             None,
             Some((columns_req_id.clone(), expects_custody_columns.clone())),
+            None,
             Span::none(),
         );
 
@@ -784,6 +850,7 @@ mod tests {
             blocks_req_id,
             None,
             Some((columns_req_id.clone(), expected_custody_columns.clone())),
+            None,
             Span::none(),
         );
 
@@ -870,6 +937,7 @@ mod tests {
             blocks_req_id,
             None,
             Some((columns_req_id.clone(), expected_custody_columns.clone())),
+            None,
             Span::none(),
         );
 
@@ -963,6 +1031,7 @@ mod tests {
             blocks_req_id,
             None,
             Some((columns_req_id.clone(), expected_custody_columns.clone())),
+            None,
             Span::none(),
         );
 
