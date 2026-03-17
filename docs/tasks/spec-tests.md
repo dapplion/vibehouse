@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1698 (Mar 17) — health check, all stable
+
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits.
+- CI: all 7 jobs green. Nightly: green (slasher flake re-run passed).
+- Open Gloas PRs: #5008 (field name fix, NOT MERGED), #4992 (PTC lookbehind, still in discussion), #4960, #4939, #4932, #4843, #4840, #4630. All OPEN, NOT MERGED.
+- Reviewed #5008: `block_root` → `beacon_block_root` naming fix in spec for ExecutionPayloadEnvelopesByRoot. Our impl uses `block_roots` (plural, internal naming) — no action needed until merged.
+- Remaining #36 items: 3 blocked on EIP-7892, 1 on blst upstream, 1 on PeerDAS, rest are low-value refactoring. No actionable changes.
+- No code changes needed.
+
 ### run 1697 (Mar 17) — health check, all stable
 
 - Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since #5005 (Mar 15).
