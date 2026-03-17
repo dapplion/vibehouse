@@ -110,6 +110,10 @@ Adds two new gossip validation rules for `beacon_aggregate_and_proof` and `beaco
 
 ## Progress log
 
+### run 1695 (Mar 17) — all stable, ptc-lookbehind rebased
+
+Spec stable — no new consensus-specs commits since #5005 (Mar 15). v1.7.0-alpha.3 still latest release. No new spec-test vectors (still v1.6.0-beta.0). PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). CI in progress (check+clippy pass). Nightly failure (Mar 16 09:36) was pre-fsync-fix `override_backend_with_mdbx_file_present` flake — manual re-run passed, fix already on main. Rebased `ptc-lookbehind` branch onto main. 1021/1021 state_processing tests pass. Pushed. No code changes needed.
+
 ### run 1684 (Mar 17) — all stable, ptc-lookbehind rebased
 
 Spec stable — no new consensus-specs commits since #5005 (Mar 15). v1.7.0-alpha.3 still latest release. PR #4992 still OPEN, NOT MERGED (same head d76a278b0a). No semver-compatible cargo updates. cargo audit unchanged (1 rsa). CI green. Nightly green. Rebased `ptc-lookbehind` branch onto main (38 commits behind → current). 1021/1021 state_processing tests pass. Pushed. All TODOs have issue links (issue #31 fully resolved). No code changes needed.
