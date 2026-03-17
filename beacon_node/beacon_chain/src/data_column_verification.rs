@@ -1,7 +1,9 @@
 use crate::block_verification::{
     BlockSlashInfo, get_validator_pubkey_cache, process_block_slash_info,
 };
-use crate::kzg_utils::{reconstruct_data_columns, validate_data_columns};
+use crate::kzg_utils::{
+    reconstruct_data_columns, validate_data_columns, validate_data_columns_with_commitments,
+};
 use crate::observed_data_sidecars::{ObservationStrategy, Observe};
 use crate::{BeaconChain, BeaconChainError, BeaconChainTypes, metrics};
 use educe::Educe;
@@ -640,8 +642,12 @@ fn validate_data_column_sidecar_for_gossip_gloas<T: BeaconChainTypes, O: Observa
     }
 
     // [REJECT] verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments)
-    let kzg_verified_data_column = verify_kzg_for_data_column(data_column.clone(), &chain.kzg)
+    // Gloas sidecars don't embed commitments — use the bid's commitments for KZG verification.
+    validate_data_columns_with_commitments(&chain.kzg, &data_column, &bid_commitments)
         .map_err(|(_, e)| GossipDataColumnError::InvalidKzgProof(e))?;
+    let kzg_verified_data_column = KzgVerifiedDataColumn {
+        data: data_column.clone(),
+    };
 
     if O::observe() {
         observe_gossip_data_column(&data_column, chain)?;

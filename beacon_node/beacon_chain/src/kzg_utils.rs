@@ -103,6 +103,51 @@ where
     kzg.verify_cell_proof_batch(&cells, &proofs, column_indices, &commitments)
 }
 
+/// Validate a batch of `DataColumnSidecar` using externally-provided KZG commitments.
+/// Used for Gloas, where commitments come from the bid rather than the sidecar.
+pub fn validate_data_columns_with_commitments<E: EthSpec>(
+    kzg: &Kzg,
+    data_column: &Arc<DataColumnSidecar<E>>,
+    kzg_commitments: &KzgCommitments<E>,
+) -> Result<(), (Option<u64>, KzgError)> {
+    let col_index = data_column.index();
+
+    if data_column.column().is_empty() {
+        return Err((Some(col_index), KzgError::KzgVerificationFailed));
+    }
+
+    let mut cells = Vec::new();
+    let mut column_indices = Vec::new();
+    let mut proofs = Vec::new();
+    let mut commitments = Vec::new();
+
+    for cell in data_column.column() {
+        cells.push(ssz_cell_to_crypto_cell::<E>(cell).map_err(|e| (Some(col_index), e))?);
+        column_indices.push(col_index);
+    }
+
+    for &proof in data_column.kzg_proofs() {
+        proofs.push(Bytes48::from(proof));
+    }
+
+    for &commitment in kzg_commitments.iter() {
+        commitments.push(Bytes48::from(commitment));
+    }
+
+    let expected_len = column_indices.len();
+    if cells.len() != expected_len
+        || proofs.len() != expected_len
+        || commitments.len() != expected_len
+    {
+        return Err((
+            Some(col_index),
+            KzgError::InconsistentArrayLength("Invalid data column".to_string()),
+        ));
+    }
+
+    kzg.verify_cell_proof_batch(&cells, &proofs, column_indices, &commitments)
+}
+
 /// Validate a batch of blob-commitment-proof triplets from multiple `BlobSidecars`.
 pub fn validate_blobs<E: EthSpec>(
     kzg: &Kzg,
