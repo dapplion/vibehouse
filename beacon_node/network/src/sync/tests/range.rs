@@ -139,11 +139,7 @@ impl TestRig {
     }
 
     fn add_supernode_peer(&mut self, remote_info: SyncInfo) -> PeerId {
-        // Create valid peer known to network globals
-        // TODO(#35): Using supernode peers to ensure we have peer across all column
-        // subnets for syncing. Should add tests connecting to full node peers.
         let peer_id = self.new_connected_supernode_peer();
-        // Send peer to sync
         self.send_sync_message(SyncMessage::AddPeer(peer_id, remote_info));
         peer_id
     }
@@ -568,6 +564,25 @@ fn finalized_sync_enough_global_custody_peers_few_chain_peers() {
     let peer_count = 100;
     r.add_fullnode_peers(remote_info.clone(), peer_count);
     r.add_supernode_peer(remote_info);
+    r.assert_state(RangeSyncType::Finalized);
+
+    let last_epoch = advanced_epochs + EXTRA_SYNCED_EPOCHS;
+    r.complete_and_process_range_sync_until(last_epoch, filter());
+}
+
+#[test]
+fn finalized_sync_fullnode_peers_only() {
+    // Test finalized sync using only fullnode peers (no supernodes). With enough fullnode
+    // peers the custody columns should be fully covered.
+    let mut r = TestRig::test_setup();
+
+    let advanced_epochs: u64 = 2;
+    let remote_info = r.finalized_remote_info_advanced_by(advanced_epochs.into());
+
+    // Add enough fullnode peers to cover all custody columns without any supernodes.
+    // Use the same remote_info so all peers join the same chain.
+    let peer_count = 101;
+    r.add_fullnode_peers(remote_info, peer_count);
     r.assert_state(RangeSyncType::Finalized);
 
     let last_epoch = advanced_epochs + EXTRA_SYNCED_EPOCHS;

@@ -249,7 +249,23 @@ impl<E: EthSpec> NetworkGlobals<E> {
             syncnets: Default::default(),
             custody_group_count: spec.custody_requirement,
         });
-        Self::new_test_globals_with_metadata(trusted_peers, metadata, config, spec)
+        Self::new_test_globals_with_metadata(trusted_peers, metadata, config, spec, None)
+    }
+
+    /// Create test globals with a deterministic ENR key for reproducible column assignments.
+    pub fn new_test_globals_with_key(
+        trusted_peers: Vec<PeerId>,
+        config: Arc<NetworkConfig>,
+        spec: Arc<ChainSpec>,
+        enr_key: discv5::enr::CombinedKey,
+    ) -> NetworkGlobals<E> {
+        let metadata = MetaData::V3(MetaDataV3 {
+            seq_number: 0,
+            attnets: Default::default(),
+            syncnets: Default::default(),
+            custody_group_count: spec.custody_requirement,
+        });
+        Self::new_test_globals_with_metadata(trusted_peers, metadata, config, spec, Some(enr_key))
     }
 
     pub(crate) fn new_test_globals_with_metadata(
@@ -257,10 +273,13 @@ impl<E: EthSpec> NetworkGlobals<E> {
         metadata: MetaData<E>,
         config: Arc<NetworkConfig>,
         spec: Arc<ChainSpec>,
+        enr_key: Option<discv5::enr::CombinedKey>,
     ) -> NetworkGlobals<E> {
-        use network_utils::enr_ext::CombinedKeyExt;
-        let keypair = libp2p::identity::secp256k1::Keypair::generate();
-        let enr_key: discv5::enr::CombinedKey = discv5::enr::CombinedKey::from_secp256k1(&keypair);
+        let enr_key = enr_key.unwrap_or_else(|| {
+            use network_utils::enr_ext::CombinedKeyExt;
+            let keypair = libp2p::identity::secp256k1::Keypair::generate();
+            discv5::enr::CombinedKey::from_secp256k1(&keypair)
+        });
         let enr = discv5::enr::Enr::builder().build(&enr_key).unwrap();
         NetworkGlobals::new(enr, metadata, trusted_peers, false, config, spec)
     }
@@ -294,6 +313,7 @@ mod test {
             metadata,
             config,
             Arc::new(spec),
+            None,
         );
         assert_eq!(
             globals.sampling_subnets.read().len(),

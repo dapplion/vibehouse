@@ -79,13 +79,16 @@ impl TestRig {
 
         let (network_tx, network_rx) = mpsc::unbounded_channel();
         let (sync_tx, sync_rx) = mpsc::unbounded_channel::<SyncMessage<E>>();
-        // TODO(#35): make the generation of the ENR use the deterministic rng to have consistent
-        // column assignments
+        // Use deterministic RNG for the local ENR key so column assignments are reproducible
+        let mut enr_rng =
+            <rand_chacha_03::ChaCha20Rng as rand_08::SeedableRng>::from_seed([1u8; 32]);
+        let enr_key: CombinedKey = k256::ecdsa::SigningKey::random(&mut enr_rng).into();
         let network_config = Arc::new(NetworkConfig::default());
-        let globals = Arc::new(NetworkGlobals::new_test_globals(
+        let globals = Arc::new(NetworkGlobals::new_test_globals_with_key(
             Vec::new(),
             network_config,
             chain.spec.clone(),
+            enr_key,
         ));
         let (beacon_processor, beacon_processor_rx) = NetworkBeaconProcessor::null_for_testing(
             globals,
