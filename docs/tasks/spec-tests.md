@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1769 (Mar 17) — health check, all stable
+
+- **CI**: all jobs green on HEAD (`3fb5756`). spec-test-version-check green.
+- **Build**: `cargo check --release` clean (17s).
+- **Spec**: v1.7.0-alpha.3 still latest release. No new merged PRs since #5005 (Mar 15).
+- **Open Gloas PRs**: #4992 (cached PTCs) still active (25 review comments, mergeable=clean, updated today — not merged). #4979 (PTC lookbehind slice) 10 review comments, adds new state field — not near merge. #5003 (simplify process_proposer_lookahead) new PR, not merged. #5008, #4939, #4843, #4960, #4932, #4840, #4630 unchanged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1766 (Mar 17) — devnet integration test, all passing
 
 - **Devnet**: 4-node kurtosis devnet passed — finalized_epoch=8, chain progressed through Gloas fork. Validates today's code changes: KZG verification fix, gossip simplification (#4874), builder error propagation.
