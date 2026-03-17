@@ -156,3 +156,14 @@ Verified vibehouse handles the edge cases from all three test PRs:
   - #4558: Cell Dissemination via Partial Message Specification — new P2P layer for data availability. Not merged, early stage.
 - All previously tracked open PRs (#4843, #4840, #4892, #4898, #4899, #4939, #4992, #5008) still open/unmerged
 - No code changes needed. Will re-check next run.
+
+### run 1757 (Mar 17) — spec tracking refresh + nightly investigation
+
+- No new consensus-specs commits since last check (latest 1baa05e711, #5005)
+- All 11 tracked open Gloas PRs still open/unmerged (#4558, #4630, #4747, #4840, #4843, #4892, #4898, #4939, #4954, #4992, #5008)
+- No new spec test releases (latest v1.5.0 on consensus-spec-tests)
+- Investigated nightly-tests failure (Mar 17): `finalized_sync_not_enough_custody_peers_on_start` in Fulu network tests — already fixed in commit 8f8faa7de earlier today
+- Mar 16 nightly failure was known flaky slasher test (`override_backend_with_mdbx_file_present`) — CI environment timing issue
+- Clippy clean, CI green, devnet healthy (finalized_epoch=8)
+- EF spec tests all pass: 139/139 (fake_crypto) + 79/79 (real crypto)
+- No code changes needed. Will re-check next run.
