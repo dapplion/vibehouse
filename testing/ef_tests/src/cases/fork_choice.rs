@@ -832,6 +832,7 @@ impl<E: EthSpec> Tester<E> {
         let beacon_block_root = signed_envelope.message.beacon_block_root;
         let payload_block_hash = signed_envelope.message.payload.block_hash;
 
+        // Update fork choice: mark the node as payload-revealed (EMPTY → FULL).
         let result = self
             .harness
             .chain
@@ -851,6 +852,30 @@ impl<E: EthSpec> Tester<E> {
                 "on_execution_payload for block root {:?} should have failed",
                 beacon_block_root
             )));
+        }
+
+        // For valid envelopes, persist the envelope to the store so that
+        // `load_parent` can re-apply the state transition when a child block
+        // signals a FULL parent (bid.parent_block_hash == parent_bid.block_hash).
+        // The spec maintains separate `block_states` (pre-envelope) and
+        // `payload_states` (post-envelope); the child's bid determines which is
+        // used. We must NOT replace the pre-envelope state in cache — we just
+        // need the envelope available for `load_parent` to apply on demand.
+        if valid {
+            use beacon_chain::store::StoreOp;
+            self.harness
+                .chain
+                .store
+                .do_atomically_with_block_and_blobs_cache(vec![StoreOp::PutPayloadEnvelope(
+                    beacon_block_root,
+                    Arc::new(signed_envelope.clone()),
+                )])
+                .map_err(|e| {
+                    Error::InternalError(format!(
+                        "Failed to persist envelope for {:?}: {:?}",
+                        beacon_block_root, e
+                    ))
+                })?;
         }
 
         Ok(())
