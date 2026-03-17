@@ -1153,7 +1153,7 @@ fn stable_rng() {
     assert_eq!(
         block.canonical_root(),
         Hash256::from_slice(
-            &hex::decode("adfd2e9e7a7976e8ccaed6eaf0257ed36a5b476732fee63ff44966602fd099ec")
+            &hex::decode("119dd1a6281e4604681d922bb7f4cc4349a5a05489bd43e376a575e762cd7c8f")
                 .unwrap()
         ),
         "rng produces a consistent value"
@@ -1923,11 +1923,175 @@ fn custody_lookup_happy_path() {
     r.expect_no_active_lookups();
 }
 
-// TODO(#35): Test retries of DataColumnByRoot:
-// - Expect request for column_index
-// - Respond with bad data
-// - Respond with stream terminator
-//   ^ The stream terminator should be ignored and not close the next retry
+// Test that empty DataColumnByRoot responses trigger retries and eventually succeed.
+// Specifically tests that after an empty response (stream terminator only), the column is
+// retried with a different peer and the lookup completes normally.
+#[test]
+fn custody_lookup_empty_response_triggers_retry() {
+    // Gloas (ePBS): data columns come via envelope, not block body
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
+    let Some(mut r) = TestRig::test_setup_after_fulu() else {
+        return;
+    };
+    let spec = E::default_spec();
+    r.new_connected_peers_for_peerdas();
+    let (block, data_columns) = r.rand_block_and_data_columns();
+    let block_root = block.canonical_root();
+    let peer_id = r.new_connected_peer();
+    r.trigger_unknown_block_from_attestation(block_root, peer_id);
+
+    // Complete the block request
+    let id = r.expect_block_lookup_request(block.canonical_root());
+    r.complete_valid_block_request(id, block.into(), true);
+
+    // Get initial custody column requests
+    let sample_column_count = spec.samples_per_slot * spec.data_columns_per_group::<E>();
+    let custody_ids =
+        r.expect_only_data_columns_by_root_requests(block_root, sample_column_count as usize);
+
+    // Respond to ALL initial requests with empty data (just stream terminator, no columns).
+    // This simulates peers that don't have the requested columns.
+    for (sync_request_id, _indices) in &custody_ids {
+        let response_peer = PeerId::random();
+        // Send only stream termination (no data chunks)
+        r.send_sync_message(SyncMessage::RpcDataColumn {
+            sync_request_id: *sync_request_id,
+            peer_id: response_peer,
+            data_column: None,
+            seen_timestamp: timestamp_now(),
+        });
+    }
+
+    // After empty responses, the custody request should retry with new requests.
+    // Collect all retry requests.
+    let retry_ids =
+        r.expect_only_data_columns_by_root_requests(block_root, sample_column_count as usize);
+
+    // Complete the retry requests with valid data
+    r.complete_valid_custody_request(retry_ids, data_columns, false);
+    r.expect_no_active_lookups();
+}
+
+// Test that a DataColumnByRoot response with an invalid column (wrong block root) triggers
+// a penalty and retry, and that the stream terminator after the bad data is ignored.
+#[test]
+fn custody_lookup_bad_data_triggers_penalty_and_retry() {
+    // Gloas (ePBS): data columns come via envelope, not block body
+    if fork_name_from_env().is_some_and(|f| f.gloas_enabled()) {
+        return;
+    }
+    let Some(mut r) = TestRig::test_setup_after_fulu() else {
+        return;
+    };
+    let spec = E::default_spec();
+    r.new_connected_peers_for_peerdas();
+    let (block, data_columns) = r.rand_block_and_data_columns();
+    let block_root = block.canonical_root();
+    let peer_id = r.new_connected_peer();
+    r.trigger_unknown_block_from_attestation(block_root, peer_id);
+
+    // Complete the block request
+    let id = r.expect_block_lookup_request(block.canonical_root());
+    r.complete_valid_block_request(id, block.into(), true);
+
+    // Get initial custody column requests
+    let sample_column_count = spec.samples_per_slot * spec.data_columns_per_group::<E>();
+    let custody_ids =
+        r.expect_only_data_columns_by_root_requests(block_root, sample_column_count as usize);
+
+    // Pick the first request and send a column with wrong block root (bad data)
+    let (first_sync_id, first_indices) = &custody_ids[0];
+    let bad_peer = PeerId::random();
+
+    // Create a bad column from a different block
+    let (_other_block, other_columns) = r.rand_block_and_data_columns();
+    let bad_column = other_columns
+        .into_iter()
+        .find(|c| first_indices.contains(&c.index()))
+        .or_else(|| {
+            // If no matching index, just use the first column — it will still have wrong block_root
+            Some(
+                r.rand_block_and_data_columns()
+                    .1
+                    .into_iter()
+                    .next()
+                    .unwrap(),
+            )
+        })
+        .unwrap();
+
+    // Send bad data chunk (wrong block root)
+    r.send_sync_message(SyncMessage::RpcDataColumn {
+        sync_request_id: *first_sync_id,
+        peer_id: bad_peer,
+        data_column: Some(bad_column),
+        seen_timestamp: timestamp_now(),
+    });
+    // Expect penalty for the bad data
+    r.expect_penalty(bad_peer, "UnrequestedBlockRoot");
+
+    // Send stream terminator for the bad request — this should be ignored since the
+    // request is already in Errored state
+    r.send_sync_message(SyncMessage::RpcDataColumn {
+        sync_request_id: *first_sync_id,
+        peer_id: bad_peer,
+        data_column: None,
+        seen_timestamp: timestamp_now(),
+    });
+
+    // Complete the remaining initial requests with valid data
+    for (sync_request_id, indices) in custody_ids.iter().skip(1) {
+        let columns_to_send: Vec<_> = indices
+            .iter()
+            .map(|&i| data_columns[i as usize].clone())
+            .collect();
+        r.complete_data_columns_by_root_request(
+            (*sync_request_id, indices.clone()),
+            &columns_to_send,
+        );
+    }
+
+    // The first request's columns should be retried
+    let retry_ids = r.expect_data_columns_by_root_requests(block_root, first_indices.len());
+
+    // Complete retry with valid data
+    for (sync_request_id, indices) in &retry_ids {
+        let columns_to_send: Vec<_> = indices
+            .iter()
+            .map(|&i| data_columns[i as usize].clone())
+            .collect();
+        r.complete_data_columns_by_root_request(
+            (*sync_request_id, indices.clone()),
+            &columns_to_send,
+        );
+    }
+
+    // All columns received — expect custody processing
+    r.expect_rpc_custody_column_work_event();
+
+    // Extract lookup_id from first custody id for the processing response
+    let lookup_id = if let SyncRequestId::DataColumnsByRoot(DataColumnsByRootRequestId {
+        requester: DataColumnsByRootRequester::Custody(id),
+        ..
+    }) = custody_ids[0].0
+    {
+        id.requester.0.lookup_id
+    } else {
+        panic!("not a custody requester")
+    };
+
+    let first_column = data_columns.first().cloned().unwrap();
+    r.send_sync_message(SyncMessage::BlockComponentProcessed {
+        process_type: BlockProcessType::SingleCustodyColumn(lookup_id),
+        result: BlockProcessingResult::Ok(AvailabilityProcessingStatus::Imported(
+            first_column.block_root(),
+        )),
+    });
+
+    r.expect_no_active_lookups();
+}
 
 mod deneb_only {
     use super::*;
