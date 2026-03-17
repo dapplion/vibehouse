@@ -29,6 +29,15 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1784 (Mar 17) — health check, all stable
+
+- **CI**: all 7 jobs green on HEAD (`3aff2be`). Nightly failure still on stale commit — confirmed `finalized_sync_not_enough_custody_peers_on_start` passes locally on HEAD.
+- **Build**: `cargo check --release` clean (17s). Zero warnings.
+- **Spec**: v1.6.1 latest stable. v1.7.0-alpha.3 still latest pre-release. No new commits since #5005 (Mar 15). No implementation changes needed.
+- **Open Gloas PRs**: #4960 (fork choice deposit test), #4932 (sanity/blocks tests) — still open/unmerged.
+- **cargo audit**: unchanged (1 vulnerability rsa RUSTSEC-2023-0071, 5 allowed warnings).
+- No code changes needed.
+
 ### run 1782 (Mar 17) — health check, all stable
 
 - **CI**: all 7 jobs green on HEAD (`c5662dd`). Nightly failure on stale commit — next nightly will pick up HEAD with fix. Verified `finalized_sync_not_enough_custody_peers_on_start` passes locally on HEAD.
