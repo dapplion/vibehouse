@@ -423,11 +423,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let mdbx_path = dir.path().join(MDBX_DATA_FILENAME);
         // Create the mdbx data file and ensure it's flushed to disk
-        {
-            let file = std::fs::File::create(&mdbx_path).unwrap();
-            std::io::Write::write_all(&mut &file, b"data").unwrap();
-            file.sync_all().unwrap();
-        }
+        std::fs::write(&mdbx_path, b"data").unwrap();
         assert!(
             mdbx_path.exists(),
             "mdbx data file should exist at {}",
@@ -439,11 +435,28 @@ mod tests {
 
         let result = config.override_backend();
 
+        // Verify the file is still visible to the config's path
+        let config_mdbx_path = config.database_path.join(MDBX_DATA_FILENAME);
+        assert!(
+            config_mdbx_path.exists(),
+            "mdbx file not visible at config path {}, dir path {}",
+            config_mdbx_path.display(),
+            mdbx_path.display(),
+        );
+
         // If mdbx feature is enabled, it should override; otherwise fail
         #[cfg(feature = "mdbx")]
-        assert!(matches!(result, DatabaseBackendOverride::Success(_)));
+        assert!(
+            matches!(result, DatabaseBackendOverride::Success(_)),
+            "expected Success, got {:?}",
+            result,
+        );
         #[cfg(not(feature = "mdbx"))]
-        assert!(matches!(result, DatabaseBackendOverride::Failure(_)));
+        assert!(
+            matches!(result, DatabaseBackendOverride::Failure(_)),
+            "expected Failure, got {:?}",
+            result,
+        );
     }
 
     // --- DiskConfig equality ---
