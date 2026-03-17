@@ -147,13 +147,9 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                             seen_timestamp,
                         )?;
                     } else {
-                        // Peer does not have the requested data.
-                        // TODO(#32) do not consider this case a success. We know for sure the block has
-                        // data. However we allow the peer to return empty as we can't attribute fault.
-                        // TODO(#32): Should track which columns are missing and eventually give up
-                        // TODO(#32): If the peer is in the lookup peer set it claims to have imported
-                        // the block AND its custody columns. So in this case we can downscore
-                        column_request.on_download_error(req_id)?;
+                        // Peer does not have the requested data. Count this as a failure
+                        // so we don't retry forever (bounded by MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS).
+                        column_request.on_download_error_and_mark_failure(req_id)?;
                         missing_column_indexes.push(column_index);
                     }
                 }
@@ -181,7 +177,8 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
                     "Custody column download error"
                 );
 
-                // TODO(#32): Should mark peer as failed and try from another peer
+                // Mark all columns in the batch as failed. The peer will be deprioritized
+                // on retry via peer_attempts tracking in select_column_peer.
                 for column_index in &batch_request.indices {
                     self.column_requests
                         .get_mut(column_index)
@@ -230,8 +227,6 @@ impl<T: BeaconChainTypes> ActiveCustodyRequest<T> {
 
         for (column_index, request) in self.column_requests.iter() {
             if let Some(wait_duration) = request.is_awaiting_download() {
-                // Note: an empty response is considered a successful response, so we may end up
-                // retrying many more times than `MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS`.
                 if request.download_failures > MAX_CUSTODY_COLUMN_DOWNLOAD_ATTEMPTS {
                     return Err(Error::TooManyFailures);
                 }
@@ -447,7 +442,6 @@ impl<E: EthSpec> ColumnRequest<E> {
         &mut self,
         req_id: DataColumnsByRootRequestId,
     ) -> Result<(), Error> {
-        // TODO(#32): Should track which peers don't have data
         self.download_failures += 1;
         self.on_download_error(req_id)
     }

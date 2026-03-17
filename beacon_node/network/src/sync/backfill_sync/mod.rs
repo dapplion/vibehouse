@@ -641,8 +641,8 @@ impl<T: BeaconChainTypes> BackFillSync<T> {
                         );
 
                         for peer in self.participating_peers.drain() {
-                            // TODO(#32): `participating_peers` only includes block peers. Should we
-                            // penalize the custody column peers too?
+                            // Note: only penalizes block peers. Custody column peers are
+                            // deprioritized via peer_attempts in the custody request system.
                             network.report_peer(peer, *penalty, "backfill_batch_failed");
                         }
                         self.fail_sync(BackFillError::BatchProcessingFailed(batch_id))
