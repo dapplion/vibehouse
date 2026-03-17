@@ -29,6 +29,13 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1766 (Mar 17) — devnet integration test, all passing
+
+- **Devnet**: 4-node kurtosis devnet passed — finalized_epoch=8, chain progressed through Gloas fork. Validates today's code changes: KZG verification fix, gossip simplification (#4874), builder error propagation.
+- **Nightly**: confirmed `finalized_sync_not_enough_custody_peers_on_start` passes on HEAD (was failing on stale commit `837cf89`). Tonight's nightly should be green.
+- **Spec**: v1.7.0-alpha.3 still latest. Reviewed close-to-merge PRs: #4892 (remove impossible branch) and #4898 (remove pending tiebreaker) — both already implemented in vibehouse. #4843 (variable PTC deadline) still open, not yet actionable.
+- No code changes needed.
+
 ### run 1765 (Mar 17) — health check, all stable
 
 - **CI**: all jobs green on HEAD (`a2d9d33`). spec-test-version-check green.
