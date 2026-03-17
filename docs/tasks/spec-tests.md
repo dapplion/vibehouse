@@ -29,6 +29,16 @@ bls, epoch_processing, finality, fork, fork_choice, genesis, light_client, opera
 
 ## Progress log
 
+### run 1676 (Mar 17) — health check, all stable
+
+**Health check**: all stable
+- CI: all green — nightly passed, CI green, spec-test-version-check green.
+- Spec: v1.7.0-alpha.3 still latest release. HEAD still at 1baa05e. No new commits since #5005 (Mar 15).
+- PR #4992 (cached PTCs): still OPEN, same head d76a278b0a, 1 APPROVED (jtraglia). Active discussion — potuz questioning whether `get_ptc` should exist in spec at all, suggesting clients just use `compute_ptc` for caching. ensi321 flagged `get_ptc` as too restrictive on slot range for validator assignment. Direction may simplify.
+- Open Gloas PRs: #4992, #4960 (test-only), #4932 (test-only), #4840 (EIP-7843), #4630 (EIP-7688 SSZ). All OPEN, NOT MERGED.
+- cargo check: 0 warnings. No semver-compatible dep updates.
+- No actionable work.
+
 ### run 1675 (Mar 17) — health check, all stable
 
 **Health check**: all stable
